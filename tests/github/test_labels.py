@@ -5,13 +5,19 @@ from __future__ import annotations
 
 import importlib
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+from github import GithubException
 
 from orchestrator import github as _github
+from orchestrator.github import GitHubClient
 from orchestrator.github import labels as _labels
 from orchestrator.state_machine import ControlLabel, WorkflowLabel
 
 from tests.fakes import FakeIssue, FakeLabel
+
+_HTTP_FORBIDDEN = 403
+_LABEL_SPECS = _labels.WORKFLOW_LABEL_SPECS + _labels.CONTROL_LABEL_SPECS
 
 _FACADE_LABEL_NAMES = (
     "WORKFLOW_LABEL_SPECS",
@@ -158,6 +164,64 @@ class HardSkipControlLabelTest(unittest.TestCase):
                     _labels.hard_skip_control_label(_issue_with(*label_names)),
                     expected,
                 )
+
+
+class EnsureWorkflowLabelsTest(unittest.TestCase):
+    """Bootstrap creates the missing vocabulary and never blocks the loop.
+
+    The PAT may lack `Issues: Read and write`, and the orchestrator has to keep
+    polling either way: a failed listing skips the pass entirely, and a failed
+    creation stops after the first refusal instead of retrying it per spec.
+    """
+
+    def setUp(self) -> None:
+        # Bypass the networked __init__; the bootstrap reads only `self.repo`.
+        self.gh = GitHubClient.__new__(GitHubClient)
+        self.gh.repo = MagicMock()
+
+    def test_creates_only_the_absent_labels(self) -> None:
+        present, absent = _LABEL_SPECS[0], _LABEL_SPECS[1]
+        self.gh.repo.get_labels.return_value = [FakeLabel(present[0])]
+
+        self.gh.ensure_workflow_labels()
+
+        created = {
+            call.kwargs["name"]: call.kwargs
+            for call in self.gh.repo.create_label.call_args_list
+        }
+        self.assertNotIn(present[0], created)
+        self.assertEqual(len(created), len(_LABEL_SPECS) - 1)
+        self.assertEqual(
+            created[absent[0]],
+            {
+                "name": absent[0],
+                "color": absent[1],
+                "description": absent[2],
+            },
+        )
+
+    def test_unreadable_labels_skip_the_bootstrap(self) -> None:
+        self.gh.repo.get_labels.side_effect = GithubException(
+            _HTTP_FORBIDDEN,
+            {"message": "Forbidden"},
+            None,
+        )
+
+        self.gh.ensure_workflow_labels()
+
+        self.gh.repo.create_label.assert_not_called()
+
+    def test_refused_creation_stops_bootstrap(self) -> None:
+        self.gh.repo.get_labels.return_value = []
+        self.gh.repo.create_label.side_effect = GithubException(
+            _HTTP_FORBIDDEN,
+            {"message": "Forbidden"},
+            None,
+        )
+
+        self.gh.ensure_workflow_labels()
+
+        self.gh.repo.create_label.assert_called_once()
 
 
 if __name__ == "__main__":

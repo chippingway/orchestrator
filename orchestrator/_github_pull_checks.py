@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Pull-request checks, reviews, merge, and branch cleanup methods."""
+"""Pull-request check folding, merge, and branch cleanup methods."""
 from __future__ import annotations
 
 import logging
@@ -8,7 +8,7 @@ import logging
 from github import GithubException
 from github.PullRequest import PullRequest
 
-from orchestrator import _github_checks, _github_reviews
+from orchestrator import _github_checks
 from orchestrator.github.pull_requests import GitHubPullRequestMixin
 
 log = logging.getLogger("orchestrator.github")
@@ -16,7 +16,7 @@ _HTTP_NOT_FOUND = 404
 
 
 class GitHubPullChecksMixin(GitHubPullRequestMixin):
-    """Evaluate merge readiness and execute merge-side mutations."""
+    """Fold the check surfaces and execute merge-side mutations."""
 
     def pr_combined_check_state(self, pr: PullRequest) -> str:
         """Fold legacy status and check-runs into one fail-closed state."""
@@ -29,46 +29,6 @@ class GitHubPullChecksMixin(GitHubPullRequestMixin):
                 combined_surface.read_failed
                 or check_run_surface.read_failed
             ),
-        )
-
-    @classmethod
-    def pr_has_changes_requested(
-        cls,
-        pr: PullRequest,
-        *,
-        head_sha: str,
-    ) -> bool:
-        """Return whether any reviewer's latest head review is a veto."""
-        return any(
-            review_state == _github_reviews._REVIEW_CHANGES_REQUESTED
-            for review_state in cls._latest_review_states_for_head(
-                pr,
-                head_sha=head_sha,
-            )
-        )
-
-    @classmethod
-    def pr_is_approved(
-        cls,
-        pr: PullRequest,
-        *,
-        head_sha: str,
-    ) -> bool:
-        """Require one current-head approval and no current-head veto."""
-        review_states = cls._latest_review_states_for_head(
-            pr,
-            head_sha=head_sha,
-        )
-        if not review_states:
-            return False
-        if any(
-            review_state == _github_reviews._REVIEW_CHANGES_REQUESTED
-            for review_state in review_states
-        ):
-            return False
-        return any(
-            review_state == "APPROVED"
-            for review_state in review_states
         )
 
     def delete_remote_branch(self, branch: str) -> bool:

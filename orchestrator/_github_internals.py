@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Per-worker cloning, cached reads, and analytics hooks."""
+"""Composed client base: per-worker cloning, cached reads, analytics hooks."""
 from __future__ import annotations
 
 import logging
@@ -11,17 +11,26 @@ from github.Issue import Issue
 from github.Label import Label
 
 from orchestrator import analytics
-from orchestrator import _github_checks, _github_reviews
-from orchestrator._github_feedback import GitHubFeedbackMixin
+from orchestrator import _github_checks
+from orchestrator._github_pull_checks import GitHubPullChecksMixin
+from orchestrator.github.labels import GitHubLabelMixin
+from orchestrator.github.reviews import GitHubReviewMixin
 
 log = logging.getLogger("orchestrator.github")
 _HTTP_FORBIDDEN = 403
 
 
-class GitHubInternalsMixin(GitHubFeedbackMixin):
-    """Internal seams used by polling, checks, and worker isolation."""
+class GitHubInternalsMixin(
+    GitHubReviewMixin,
+    GitHubLabelMixin,
+    GitHubPullChecksMixin,
+):
+    """Internal seams used by polling, checks, and worker isolation.
 
-    _latest_review_states_for_head = _github_reviews.LATEST_REVIEW_STATES_METHOD
+    The review and label collaborators stand beside the pull-request chain
+    rather than inside it: neither needs a check or PR method, and keeping them
+    independent lets each own its surface without a leaf-to-leaf import.
+    """
 
     def _for_worker_thread(self):
         """Build a fresh requester/repository pair for one worker thread."""

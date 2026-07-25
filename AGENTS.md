@@ -41,15 +41,17 @@ orchestrator process is stateless.
   per-backend command modules in the `backends/` subpackage (`backends/codex.py`, `backends/claude.py`)),
   the github package (`github/`, whose `__init__.py` is the stable compatibility facade -- eager label, event, and
   issue-query re-exports plus a lazy `__getattr__` that resolves `GitHubClient` (in `client.py`), the pinned-state
-  re-exports, and the check / review inventory re-exports so a leaf-first import never re-enters a half-built
-  initializer -- over the `labels.py` owner (the self-contained workflow/control label vocabulary, bootstrap
-  specifications, and predicates), the `events.py` owner (audit record construction and the optional JSONL sink),
-  the `issues.py` owner (non-PR issue filtering, issue-query options, and the issue-client mixin: polling with the
-  closed-issue sweep, guarded workflow-label writes, event emission, comments, and validated child creation), the
-  `pinned_state.py` owner (the authenticated pinned-state model, parser, and the state / comment-watermark client
-  mixin), the `pull_requests.py` owner (stateless PR status helpers plus the pull-request client mixin: branch/base
-  lookup, creation, comments, open-PR iteration, labeling, and retrieval), and the composed `_github_*` client mixin
-  leaves), and stable runtime-core facades (`main.py`, `state_machine.py`).
+  and review re-exports, and the check inventory re-exports so a leaf-first import never re-enters a half-built
+  initializer -- over the `labels.py` owner (the workflow/control label vocabulary, bootstrap specifications,
+  predicates, and the label-bootstrap client mixin), the `events.py` owner (audit record construction and the
+  optional JSONL sink), the `issues.py` owner (non-PR issue filtering, issue-query options, and the issue-client
+  mixin: polling with the closed-issue sweep, guarded workflow-label writes, event emission, comments, and
+  validated child creation), the `pinned_state.py` owner (the authenticated pinned-state model, parser, and the
+  state / comment-watermark client mixin), the `pull_requests.py` owner (stateless PR status helpers plus the
+  pull-request client mixin: branch/base lookup, creation, comments, open-PR iteration, labeling, and retrieval),
+  the `reviews.py` owner (current-head review aggregation plus the review client mixin: approval and
+  change-request verdicts and the unread conversation / inline / summary feedback watermarks), and the composed
+  `_github_*` client mixin leaves), and stable runtime-core facades (`main.py`, `state_machine.py`).
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory fakes in `tests/fakes.py`. Stage-handler tests in
   `tests/test_workflow_<stage>*.py` (the validating stage is split across review, controls, drift, handoff, pause,
@@ -82,7 +84,8 @@ orchestrator process is stateless.
   `tests/test_workflow_stage_analytics.py`, `tests/test_workflow_finalize_pr_merged.py`,
   `tests/test_workflow_drain_terminals.py`); shared helpers in `tests/workflow_helpers.py`. Configuration-package
   tests live in `tests/config/`, agent-package owner / import-cycle tests in `tests/agents/`, and github-package
-  label, event, issue-query, issue-client (real-client polling and child creation), pinned-state, pull-request, and
+  label (vocabulary, predicates, and bootstrap), event, issue-query, issue-client (real-client polling and child
+  creation), pinned-state, pull-request, review (head verdicts, actionable summaries, feedback watermarks), and
   import-cycle tests in `tests/github/`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.

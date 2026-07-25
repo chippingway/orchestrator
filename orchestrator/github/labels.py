@@ -3,12 +3,16 @@
 """GitHub label vocabulary, bootstrap specifications, and predicates."""
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
+from github import GithubException
 from github.Issue import Issue
 
 from orchestrator._static_alias import StaticMethodAlias
 from orchestrator.state_machine import ControlLabel, WorkflowLabel
+
+log = logging.getLogger("orchestrator.github")
 
 WORKFLOW_LABEL_SPECS: tuple[tuple[WorkflowLabel, str, str], ...] = (
     (WorkflowLabel.DECOMPOSING, "fbca04", "Orchestrator is breaking this issue into sub-issues"),
@@ -92,3 +96,43 @@ def workflow_label(issue: Issue) -> Optional[WorkflowLabel]:
 
 
 WORKFLOW_LABEL_METHOD = StaticMethodAlias(workflow_label)
+
+
+class GitHubLabelMixin:
+    """Repository-side bootstrap of the workflow and control vocabulary."""
+
+    def ensure_workflow_labels(self) -> None:
+        """Best-effort creation of missing workflow and control labels."""
+        try:
+            existing_labels = {
+                repo_label.name
+                for repo_label in self.repo.get_labels()
+            }
+        except GithubException as error:
+            log.warning(
+                "could not list labels (HTTP %s); skipping label bootstrap. "
+                "Grant the PAT 'Issues: Read and write' to enable.",
+                error.status,
+            )
+            return
+        label_specs = WORKFLOW_LABEL_SPECS + CONTROL_LABEL_SPECS
+        for name, color, description in label_specs:
+            if name in existing_labels:
+                continue
+            try:
+                self.repo.create_label(
+                    name=name,
+                    color=color,
+                    description=description,
+                )
+            except GithubException as error:
+                log.error(
+                    "could not create label %r (HTTP %s). "
+                    "Fine-grained PAT needs 'Issues: Read and write'. "
+                    "Skipping remaining label bootstrap; orchestrator will "
+                    "keep running and may retry on the next restart.",
+                    name,
+                    error.status,
+                )
+                return
+            log.info("created label %r", name)
