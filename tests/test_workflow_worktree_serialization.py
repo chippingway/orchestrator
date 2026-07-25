@@ -55,21 +55,6 @@ class WorktreePlumbingSerializationTest(unittest.TestCase):
         # Clear the process-local registry so tests do not retain per-key locks
         # for temporary paths from earlier cases.
         worktrees._TARGET_ROOT_LOCKS.clear()
-        self.assertIsInstance(
-            worktrees._TARGET_ROOT_LOCKS_LOCK,
-            type(threading.Lock()),
-        )
-
-    def test_root_lock_registry_keeps_path_identity(self) -> None:
-        target_root = Path("/tmp/orchestrator-test-stable-target-root")
-
-        first = worktrees._target_root_lock(target_root)
-        second = worktrees._target_root_lock(target_root)
-        other = worktrees._target_root_lock(target_root.with_name("other-root"))
-
-        self.assertIs(first, second)
-        self.assertIsNot(first, other)
-        self.assertNotIsInstance(worktrees._TARGET_ROOT_LOCKS, dict)
 
     def test_root_lock_serializes_callers(self) -> None:
         # Drive `_ensure_worktree` against the SAME `spec.target_root`

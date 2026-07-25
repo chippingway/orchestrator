@@ -5,11 +5,12 @@ from __future__ import annotations
 
 from orchestrator import _git_plumbing_state as _state
 from orchestrator import git_plumbing as _owner
+from orchestrator.git import commands as _commands
 
 Path = _owner.Path
 config = _owner.config
 subprocess = _owner.subprocess
-_AUTHED_GIT_PREFIX = _state._AUTHED_GIT_PREFIX
+_AUTHED_GIT_PREFIX = _commands._AUTHED_GIT_PREFIX
 _FETCH = _state._FETCH
 log = _state.log
 

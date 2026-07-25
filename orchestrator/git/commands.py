@@ -1,19 +1,45 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Git commands."""
+"""Plain and hardened git execution plus local transport probing.
+
+The argv prefixes live here because every git invocation is assembled from
+them: the hardened prefix extends the authenticated one that the
+token-bearing fetch and push leaves run under, so the two cannot drift.
+"""
 from __future__ import annotations
 
-from orchestrator import _git_plumbing_state as _state
-from orchestrator import git_plumbing as _owner
+import os
+import subprocess
+from pathlib import Path
+from types import MappingProxyType
+from typing import Mapping
 
-Path = _owner.Path
-config = _owner.config
-os = _owner.os
-subprocess = _owner.subprocess
-_GIT = _state._GIT
-_GIT_NO_PROMPT_ENV = _state._GIT_NO_PROMPT_ENV
-_HARDENED_GIT_PREFIX = _state._HARDENED_GIT_PREFIX
-_UNSAFE_TRANSPORT_CONFIG_RE = _state._UNSAFE_TRANSPORT_CONFIG_RE
+from orchestrator import config
+
+_GIT_NO_PROMPT_ENV: Mapping[str, str] = MappingProxyType({
+    "GIT_TERMINAL_PROMPT": "0",
+})
+
+_GIT = "git"
+
+_GIT_CONFIG_FLAG = "-c"
+
+_AUTHED_GIT_PREFIX = (
+    _GIT,
+    _GIT_CONFIG_FLAG, "core.hooksPath=/dev/null",
+    _GIT_CONFIG_FLAG, "credential.helper=",
+    _GIT_CONFIG_FLAG, "core.fsmonitor=",
+)
+
+_HARDENED_GIT_PREFIX = (
+    *_AUTHED_GIT_PREFIX,
+    _GIT_CONFIG_FLAG, "commit.gpgsign=false",
+    _GIT_CONFIG_FLAG, "rebase.autoStash=false",
+)
+
+_UNSAFE_TRANSPORT_CONFIG_RE = (
+    r"^(url\..*\.(insteadof|pushinsteadof)|http\..*)$"
+)
 
 
 def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess:
