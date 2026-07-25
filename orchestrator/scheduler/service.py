@@ -8,7 +8,7 @@ import logging
 from concurrent.futures import Future
 from typing import Any, Iterator, Optional
 
-from orchestrator import _scheduler_submission
+from orchestrator.scheduler import models
 
 log = logging.getLogger("orchestrator.scheduler")
 
@@ -63,7 +63,7 @@ class SchedulerReservationMixin(SchedulerViewMixin):
 
     def _cap_skip_reason_locked(
         self,
-        submission: _scheduler_submission.Submission,
+        submission: models.Submission,
     ) -> Optional[str]:
         if len(self._active) >= self._global_cap:
             return "global_cap"
@@ -74,7 +74,7 @@ class SchedulerReservationMixin(SchedulerViewMixin):
 
     def _skip_reason_locked(
         self,
-        submission: _scheduler_submission.Submission,
+        submission: models.Submission,
     ) -> Optional[str]:
         if self._closed:
             return "closed"
@@ -93,7 +93,7 @@ class SchedulerReservationMixin(SchedulerViewMixin):
 
     def _log_skip_locked(
         self,
-        submission: _scheduler_submission.Submission,
+        submission: models.Submission,
         reason: str,
     ) -> None:
         if reason == "duplicate_active":
@@ -132,7 +132,7 @@ class SchedulerReservationMixin(SchedulerViewMixin):
 
     def _reserve_slot_locked(
         self,
-        submission: _scheduler_submission.Submission,
+        submission: models.Submission,
     ) -> None:
         if submission.cap_exempt:
             self._tracked.add(submission.key)
@@ -144,7 +144,7 @@ class SchedulerReservationMixin(SchedulerViewMixin):
 
     def _release_slot_locked(
         self,
-        submission: _scheduler_submission.Submission,
+        submission: models.Submission,
     ) -> None:
         if submission.cap_exempt:
             self._tracked.discard(submission.key)
@@ -164,8 +164,8 @@ class SchedulerExecutionMixin(SchedulerReservationMixin):
 
     def submit(self, *args: Any, **kwargs: Any) -> bool:
         """Dispatch a typed request or the historical submit call shape."""
-        request = _scheduler_submission.bind_submission_request(args, kwargs)
-        submission = _scheduler_submission.normalize_submission(
+        request = models.bind_submission_request(args, kwargs)
+        submission = models.normalize_submission(
             request,
             self._per_repo_cap,
         )
@@ -198,7 +198,7 @@ class SchedulerExecutionMixin(SchedulerReservationMixin):
 
     def _start_worker_locked(
         self,
-        submission: _scheduler_submission.Submission,
+        submission: models.Submission,
     ) -> bool:
         executor = (
             self._exempt_executor
@@ -221,13 +221,11 @@ class SchedulerExecutionMixin(SchedulerReservationMixin):
     def _on_worker_done(
         self,
         future: Future,
-        submission: _scheduler_submission.Submission,
+        submission: models.Submission,
     ) -> None:
         with self._lock:
             self._release_slot_locked(submission)
             self._completed.append(future)
 
 
-SchedulerExecutionMixin.submit.__signature__ = (
-    _scheduler_submission._SUBMIT_METHOD_SIGNATURE
-)
+SchedulerExecutionMixin.submit.__signature__ = models._SUBMIT_METHOD_SIGNATURE
