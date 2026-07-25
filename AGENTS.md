@@ -37,7 +37,9 @@ orchestrator process is stateless.
   legacy-call binding, normalization) and the `service.py` owner (the concrete scheduler and its view,
   reservation, and execution layers)),
   the configuration package (`config/`, whose `__init__.py` binds each setting resolved by the `environment.py`
-  `_SettingsResolver`, which draws on the `_dotenv.py` / `credentials.py` / `models.py` / `repositories.py` leaves),
+  `_SettingsResolver`, which draws on the `_dotenv.py` / `credentials.py` / `models.py` / `repositories.py` leaves;
+  `credentials.py` also owns secret redaction -- the secret-key shapes plus the environment / configured-token
+  passes every stderr, verify-output, and trajectory consumer masks with),
   the agents package (`agents/`, whose `__init__.py` is the stable runner facade over the `models.py` /
   `environment.py` / `sessions.py` / `processes.py` / `runner.py` owners -- `processes.py` owning the shared process
   registry and subprocess-group lifecycle (the facade re-exports only its `terminate_all_running`) and `runner.py`

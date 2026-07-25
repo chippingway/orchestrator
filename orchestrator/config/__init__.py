@@ -9,7 +9,8 @@ returns the resolved mapping; this module then binds each value as a
 module-level attribute so callers and tests keep patching them on
 `orchestrator.config` itself. The resolution lives in the leaves: `_dotenv`
 owns the `.env` loader, `environment` the env-value parsers and the resolver,
-`credentials` the token resolver, `models` the repository-config data types
+`credentials` the token resolver and the secret redactor every stderr /
+verify-output / trajectory consumer masks with, `models` the repository-config data types
 (`RepoSpec`, `RepoEnvEntry`), and `repositories` the `REPOS` parsing /
 default-spec construction.
 

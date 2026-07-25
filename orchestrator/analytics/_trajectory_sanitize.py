@@ -30,7 +30,7 @@ def _redact_tree(node: Any, redact: _Redactor) -> Any:
     Applied before JSON serialization so a multiline / control-character
     secret in a tool input or result is masked on the raw leaf:
     `json.dumps` would otherwise escape its newlines (a real `\n` becomes
-    the two-character `\n` escape), leaving `_redact_secrets`' literal
+    the two-character `\n` escape), leaving `redact_secrets`' literal
     `str.replace` unable to match the raw env value -- and the secret would
     survive into `steps[].content`. Dict keys are structural field names and
     pass through unredacted; only values and list elements carry
@@ -49,7 +49,7 @@ def _redact_tree(node: Any, redact: _Redactor) -> Any:
 def _redact_and_truncate(field_value: Any, redact: _Redactor) -> Optional[str]:
     """Redact then per-field head/tail truncate one trajectory value.
 
-    String leaves are redacted with `_redact_secrets` BEFORE any JSON
+    String leaves are redacted with `redact_secrets` BEFORE any JSON
     serialization. A plain string is redacted directly; dict / list content
     (claude tool inputs are dicts; `tool_result` content a list) is redacted
     leaf-by-leaf via `_redact_tree` first, then serialized -- serializing

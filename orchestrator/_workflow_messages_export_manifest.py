@@ -105,9 +105,6 @@ EXPORTS = (
             ("_ORCHESTRATOR_CONTINUE_RE", "_ORCHESTRATOR_CONTINUE_RE"),
             ("_ORCH_COMMENT_ID_CAP", "_ORCH_COMMENT_ID_CAP"),
             ("_ORCH_COMMENT_MARKER", "_ORCH_COMMENT_MARKER"),
-            ("_REDACT_MIN_VALUE_LEN", "_REDACT_MIN_VALUE_LEN"),
-            ("_SECRET_KEY_NAMES", "_SECRET_KEY_NAMES"),
-            ("_SECRET_KEY_SUFFIXES", "_SECRET_KEY_SUFFIXES"),
             ("_SECTION_SEP", "_SECTION_SEP"),
             ("_STDERR_TAIL_BUDGET", "_STDERR_TAIL_BUDGET"),
             ("_TRACKED_REPOS_CAP", "_TRACKED_REPOS_CAP"),
@@ -121,15 +118,6 @@ EXPORTS = (
             ("_prompt_comment_chunk", "_prompt_comment_chunk"),
             ("_quote_comment_line", "_quote_comment_line"),
             ("_recent_comments_text", "_recent_comments_text"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_redaction",
-        (
-            ("_is_secret_environment_value", "_is_secret_environment_value"),
-            ("_redact_configured_github_token", "_redact_configured_github_token"),
-            ("_redact_environment_secrets", "_redact_environment_secrets"),
-            ("_redact_secrets", "_redact_secrets"),
         ),
     ),
     *export_group(
@@ -160,6 +148,18 @@ EXPORTS = (
     *export_group(
         "orchestrator.comment_trust",
         (("is_trusted_author", "is_trusted_author"),),
+    ),
+    *export_group(
+        "orchestrator.config.credentials",
+        (
+            ("_REDACT_MIN_VALUE_LEN", "_REDACT_MIN_VALUE_LEN"),
+            ("_SECRET_KEY_NAMES", "_SECRET_KEY_NAMES"),
+            ("_SECRET_KEY_SUFFIXES", "_SECRET_KEY_SUFFIXES"),
+            ("_is_secret_environment_value", "is_secret_environment_value"),
+            ("_redact_configured_github_token", "redact_configured_github_token"),
+            ("_redact_environment_secrets", "redact_environment_secrets"),
+            ("_redact_secrets", "redact_secrets"),
+        ),
     ),
     *export_group(
         "orchestrator.github.client",

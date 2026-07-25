@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_messages_state as _state
 from orchestrator import workflow_messages as _owner
+from orchestrator.config import credentials as _credentials
 
 AgentResult = _owner.AgentResult
 _STDERR_TAIL_BUDGET = _state._STDERR_TAIL_BUDGET
@@ -32,7 +33,7 @@ def _format_stderr_diagnostics(
     stripped first, so `str.replace` would no longer find the env value
     verbatim and the secret would leak.
     """
-    tail = _owner._redact_secrets(agent_result.stderr or "").rstrip()
+    tail = _credentials.redact_secrets(agent_result.stderr or "").rstrip()
     if not tail:
         return ""
     if len(tail) > _STDERR_TAIL_BUDGET:
@@ -52,7 +53,7 @@ def _stderr_log_tail(agent_result: AgentResult, max_chars: int = 400) -> str:
     a multi-line secret value ending in `\\n` would not match `str.replace`
     if `rstrip` ate the trailing newline first.
     """
-    tail = _owner._redact_secrets(agent_result.stderr or "").rstrip()
+    tail = _credentials.redact_secrets(agent_result.stderr or "").rstrip()
     if len(tail) > max_chars:
         tail = tail[-max_chars:]
     return tail

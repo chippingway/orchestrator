@@ -15,6 +15,7 @@ from orchestrator.analytics._recording import (
     log,
 )
 from orchestrator.analytics._trajectory_serialize import _build_trajectory_record
+from orchestrator.config import credentials
 
 
 def _codex_trajectory_changes(
@@ -53,15 +54,11 @@ def _persist_trajectory_record(
     metrics: usage.UsageMetrics,
     codex_catalog: _CodexCatalog,
 ) -> None:
-    """Build and append the denormalized trajectory record.
-
-    `_redact_secrets` is imported at call time to avoid a
-    `github` -> `analytics` -> `workflow_messages` -> `github` import cycle.
-    """
-    from orchestrator.workflow_messages import _redact_secrets
-
+    """Build and append the denormalized trajectory record."""
     trajectory = _agent_trajectory(context, codex_catalog)
-    _live_settings().append_trajectory_record(_build_trajectory_record(context, trajectory, metrics, _redact_secrets))
+    _live_settings().append_trajectory_record(
+        _build_trajectory_record(context, trajectory, metrics, credentials.redact_secrets),
+    )
 
 
 def _maybe_record_trajectory(
@@ -82,8 +79,6 @@ def _maybe_record_trajectory(
     payload, or a sink IO failure logs and is swallowed so it can never drop
     the baseline `agent_exit` usage / cost record or the `skill_triggered`
     audit events, all of which were already produced before this runs.
-    `_redact_secrets` is imported at call time to avoid a
-    `github` -> `analytics` -> `workflow_messages` -> `github` import cycle.
 
     `codex_catalog` carries the out-of-band offered-skills and offered-tools
     sets `record_agent_exit` discovered for a codex run (empty for claude,

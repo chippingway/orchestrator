@@ -58,15 +58,15 @@ EXPORTS = (
         (("_filter_agent_env", "filter_agent_env"),),
     ),
     *export_group(
+        "orchestrator.config.credentials",
+        (("_redact_secrets", "redact_secrets"),),
+    ),
+    *export_group(
         "orchestrator.git_plumbing",
         (
             ("_git", "_git"),
             ("_git_hardened", "_git_hardened"),
         ),
-    ),
-    *export_group(
-        "orchestrator.workflow_messages",
-        (("_redact_secrets", "_redact_secrets"),),
     ),
     *export_group(
         "os",
