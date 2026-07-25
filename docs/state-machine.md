@@ -190,7 +190,7 @@ externally-merged/closed issue can take up to `N-1` extra ticks to finalize. See
 ### Pinned state
 
 Per-issue durable state lives in a single **pinned comment** on the issue (`<!--orchestrator-state {...json...}-->`).
-The schema is defined by `read_pinned_state` / `write_pinned_state` (see `github.PINNED_STATE_MARKER` /
+The schema is defined by `read_pinned_state` / `write_pinned_state` (see `github.pinned_state.PINNED_STATE_MARKER` /
 `PINNED_STATE_RE`). `read_pinned_state` trusts a comment as state only when it is authored by the account backing the
 orchestrator's token AND its whole body is the marker, so neither a third party's forged marker nor an ordinary
 bot-authored comment that embeds the marker in prose can preempt state (see
