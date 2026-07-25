@@ -202,6 +202,10 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.config.credentials",
+        (("_redact_secrets", "redact_secrets"),),
+    ),
+    *export_group(
         "orchestrator.github.client",
         (("GitHubClient", "GitHubClient"),),
     ),
@@ -340,7 +344,6 @@ EXPORTS = (
             ("_post_pr_comment", "_post_pr_comment"),
             ("_quote_comment_line", "_quote_comment_line"),
             ("_recent_comments_text", "_recent_comments_text"),
-            ("_redact_secrets", "_redact_secrets"),
             ("_refuse_parked_continue", "_refuse_parked_continue"),
             ("_stderr_log_tail", "_stderr_log_tail"),
             ("_with_orch_marker", "_with_orch_marker"),

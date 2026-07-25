@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator import _verify_state as _state
 from orchestrator import verify as _owner
 from orchestrator.agents import processes as _processes
+from orchestrator.config import credentials as _credentials
 
 VerifyResult = _owner.VerifyResult
 Optional = _owner.Optional
@@ -103,7 +104,7 @@ def _run_verify_commands(
 def _truncate_verify_output(text: str) -> str:
     """Redact secrets, then keep the tail within `_VERIFY_OUTPUT_BUDGET`.
 
-    Redaction MUST happen before the truncation. `_redact_secrets` does a
+    Redaction MUST happen before the truncation. `redact_secrets` does a
     full-string `str.replace(value, "***")` against each candidate env
     value; if the truncation cut sliced a secret in half first, the
     surviving partial would no longer match the replace and would leak
@@ -116,7 +117,7 @@ def _truncate_verify_output(text: str) -> str:
     """
     if not text:
         return ""
-    redacted = _owner._redact_secrets(text)
+    redacted = _credentials.redact_secrets(text)
     if len(redacted) <= _VERIFY_OUTPUT_BUDGET:
         return redacted
     return redacted[-_VERIFY_OUTPUT_BUDGET:]

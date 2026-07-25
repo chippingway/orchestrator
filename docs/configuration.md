@@ -231,8 +231,8 @@ running tests.
 ### Failure modes and `park_reason` tokens
 
 The park comment names the failing command, its exit code (or timeout), and a redacted / truncated tail (last 4096
-bytes) of the captured output. Output is redacted via `_redact_secrets` **before** truncation so a secret straddling the
-cut cannot leak a partial value. `park_reason` is set to one of:
+bytes) of the captured output. Output is redacted via `config.credentials.redact_secrets` **before** truncation so a
+secret straddling the cut cannot leak a partial value. `park_reason` is set to one of:
 
 - `verify_failed` — Command exited non-zero.
 - `verify_timeout` — Command exceeded `VERIFY_TIMEOUT`.

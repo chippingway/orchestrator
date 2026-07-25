@@ -58,7 +58,7 @@ class VerifyCommandEnvironmentTest(
     """Redact output and strip secrets or credential locators from env."""
 
     def test_boundary_secret_fully_redacted(self) -> None:
-        # Regression: `_redact_secrets` does `str.replace(value, "***")`
+        # Regression: `redact_secrets` does `str.replace(value, "***")`
         # on the full value, so a secret whose bytes straddle the
         # truncation cut would no longer match a post-truncation replace
         # and would leak a partial value verbatim in the park comment.

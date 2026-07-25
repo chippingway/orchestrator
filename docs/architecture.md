@@ -54,7 +54,8 @@ orchestrator/
     environment.py      env-value parsers plus the `_SettingsResolver` that
                         reads/validates every knob into a resolved mapping
     _dotenv.py          non-secret `.env` loader
-    credentials.py      process/token-file GitHub credential resolution
+    credentials.py      process/token-file GitHub credential resolution and
+                        secret redaction over the process environment
     models.py           `RepoSpec` / `RepoEnvEntry` repository-config types
     repositories.py     REPOS entry parsing, validation, and default-spec
                         construction
@@ -112,7 +113,7 @@ orchestrator/
   _workflow_drift_*.py  drift hashing and stage-route leaves
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
-                        prompt, parser, redaction, and comment leaves
+                        prompt, parser, and comment leaves
   comment_trust.py      shared trust helpers (is_trusted_author /
                         filter_trusted) gating comment authors on the
                         ALLOWED_ISSUE_AUTHORS allowlist

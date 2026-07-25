@@ -386,7 +386,7 @@ context, not `session_id`. Either way the heavy free-text trajectory body can be
 token row for the same run without ever being stored alongside it — the whole point of keeping it in a separate file.
 
 **Redaction and truncation caps.** Every free-text field — `user_input`, `system_prompt`, each step's `content`, and
-`output` — is passed through `workflow_messages._redact_secrets` (the same secret-shaped-env-value masker used on
+`output` — is passed through `config.credentials.redact_secrets` (the same secret-shaped-env-value masker used on
 agent stderr) **before** truncation, so a secret straddling an elided boundary cannot survive as two halves. Each field
 is then head/tail truncated to its first `_TRAJECTORY_FIELD_HEAD` (`2000`) and last `_TRAJECTORY_FIELD_TAIL` (`2000`)
 characters with an `...[N chars elided]...` marker in between — the head keeps the request/intent, the tail the
@@ -399,7 +399,7 @@ turns with no tool calls cannot write the whole array in full and blow the budge
 flag is set; only the small fixed `run_usage` summary is always kept whole, so one pathological run (thousands of turns
 or tool calls) cannot write an unbounded line. Non-string step content (claude tool inputs are dicts; `tool_result`
 content a list) is redacted **leaf-by-leaf before** JSON serialization (`_redact_tree`) — serializing first would
-escape a multiline secret's newlines into `\n`, leaving the literal `str.replace` in `_redact_secrets` unable to match
+escape a multiline secret's newlines into `\n`, leaving the literal `str.replace` in `redact_secrets` unable to match
 the raw env value, so the secret would leak into the serialized content.
 
 **Privacy contract — redaction is not anonymization.** The redactor masks only *secret-shaped* values: env vars whose

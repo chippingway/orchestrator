@@ -75,7 +75,7 @@ def _park_verify_failure(
         f"off to in_review. {detail}."
     )
     # `verify.output` is already redacted-then-truncated by the runner;
-    # re-redacting here would be a no-op for any match `_redact_secrets`
+    # re-redacting here would be a no-op for any match `redact_secrets`
     # already collapsed to `***`, AND would not catch a partial secret
     # that straddled the truncation cut -- the only safe way to handle
     # that case is the redact-before-truncate pass inside the runner.

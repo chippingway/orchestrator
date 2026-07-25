@@ -88,7 +88,7 @@ class VerifyResult:
     describe and are otherwise None / empty so the formatter does not
     have to know the variant.
 
-    `output` is already redacted (via `_redact_secrets`) AND truncated to
+    `output` is already redacted (via `credentials.redact_secrets`) AND truncated to
     `_VERIFY_OUTPUT_BUDGET` bytes -- callers can post it verbatim. The
     redact pass runs before truncation so a secret straddling the cut
     cannot leak a partial value (see `_truncate_verify_output`).

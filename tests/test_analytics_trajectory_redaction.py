@@ -303,7 +303,7 @@ def _tool_result_body(record: dict) -> str:
 class RecordAgentExitTrajectoryRedactionTest(_RecordAgentExitTrajectorySupport):
     def test_secrets_redacted_in_every_field(self) -> None:
         # The secret env value must not survive in user_input, the tool_call
-        # input, the tool_result content, or the output. `_redact_secrets`
+        # input, the tool_result content, or the output. `redact_secrets`
         # reads the live os.environ, so set a secret-shaped var around the
         # call and assert it is masked everywhere.
         _, analytics = _reload()
@@ -333,7 +333,7 @@ class RecordAgentExitTrajectoryRedactionTest(_RecordAgentExitTrajectorySupport):
         # Regression: dict / list tool payloads are redacted leaf-by-leaf
         # BEFORE JSON serialization. A multiline secret env value would
         # otherwise have its newlines escaped by `json.dumps` (`\n` -> the
-        # two-char escape), leaving `_redact_secrets`' literal `str.replace`
+        # two-char escape), leaving `redact_secrets`' literal `str.replace`
         # unable to match the raw value -- so the secret would leak into
         # `steps[].content`. Redacting raw leaves first keeps it masked, for
         # both the dict tool_call input and the list tool_result content.
