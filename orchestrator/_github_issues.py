@@ -9,12 +9,8 @@ from typing import Any, Iterable, Optional
 from github.Issue import Issue
 from github.IssueComment import IssueComment
 
-from orchestrator import (
-    _github_events,
-    _github_queries,
-    config,
-)
-from orchestrator.github import labels
+from orchestrator import config
+from orchestrator.github import events, issues, labels
 from orchestrator.state_machine import (
     WorkflowLabel,
     coerce_workflow_label,
@@ -65,9 +61,9 @@ class GitHubIssueMixin:
         """Yield open issues plus recoverable closed workflow issues."""
         seen_numbers: set[int] = set()
         self._pollable_calls += 1
-        yield from _github_queries.iter_new_non_pr_issues(
+        yield from issues.iter_new_non_pr_issues(
             self.repo.get_issues(
-                **_github_queries.issue_query_options(
+                **issues.issue_query_options(
                     issue_state=_ISSUE_STATE_OPEN,
                     since=since,
                 ),
@@ -92,9 +88,9 @@ class GitHubIssueMixin:
             label_object = self._cached_label(label_name)
             if label_object is None:
                 continue
-            yield from _github_queries.iter_new_non_pr_issues(
+            yield from issues.iter_new_non_pr_issues(
                 self.repo.get_issues(
-                    **_github_queries.issue_query_options(
+                    **issues.issue_query_options(
                         issue_state="closed",
                         since=since,
                         label=label_object,
@@ -112,7 +108,7 @@ class GitHubIssueMixin:
         **extras: Any,
     ) -> None:
         """Record an event in memory and in the optional audit JSONL sink."""
-        event_record = _github_events.build_event_record(
+        event_record = events.build_event_record(
             repo=self._repo_slug,
             issue_number=issue_number,
             event=event,
@@ -122,7 +118,7 @@ class GitHubIssueMixin:
         self.recorded_events.append(event_record)
         if len(self.recorded_events) > _RECORDED_EVENTS_CAP:
             self.recorded_events = self.recorded_events[-_RECORDED_EVENTS_CAP:]
-        _github_events.write_event_record(event_record)
+        events.write_event_record(event_record)
 
     def comment(self, issue: Issue, body: str) -> IssueComment:
         """Post one issue comment."""

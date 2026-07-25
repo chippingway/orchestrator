@@ -3,21 +3,9 @@
 """Static compatibility inventory for ``orchestrator.github``."""
 from __future__ import annotations
 
-from orchestrator import (
-    _github_checks,
-    _github_events,
-    _github_internals,
-    _github_queries,
-    _github_reviews,
-)
+from orchestrator import _github_checks, _github_internals, _github_reviews
 
 GitHubClientBase = _github_internals.GitHubInternalsMixin
-
-iter_new_non_pr_issues = _github_queries.iter_new_non_pr_issues
-issue_query_options = _github_queries.issue_query_options
-append_event_line = _github_events.append_event_line
-write_event_record = _github_events.write_event_record
-build_event_record = _github_events.build_event_record
 
 CheckSurfaceRead = _github_checks.CheckSurfaceRead
 normalize_combined_status = _github_checks.normalize_combined_status

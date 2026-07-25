@@ -14,12 +14,14 @@ from orchestrator.github import pinned_state as _pinned_state
 
 
 # The github-package modules plus every client-mixin leaf between `_github_api`
-# and the `pinned_state` owner. The initializer binds the `labels` owner
-# eagerly, and `_github_issues` (the pinned-state mixin's base) imports the
-# package back for that label surface, so importing any leaf first must run the
-# initializer without re-entering a half-built one.
+# and the `pinned_state` owner. The initializer binds the `labels`, `events`,
+# and `issues` owners eagerly, and `_github_issues` (the pinned-state mixin's
+# base) imports the package back for those surfaces, so importing any leaf
+# first must run the initializer without re-entering a half-built one.
 _MODULES = (
     "orchestrator.github",
+    "orchestrator.github.events",
+    "orchestrator.github.issues",
     "orchestrator.github.labels",
     "orchestrator.github.pinned_state",
     "orchestrator.github.client",
@@ -35,14 +37,13 @@ _MODULES = (
 class CleanProcessImportTest(unittest.TestCase):
     """Each affected module imports standalone in a fresh interpreter.
 
-    The label and pinned-state owners are submodules of the same package whose
-    `__init__` binds `labels` eagerly and whose mixin chain imports the package
-    back for that surface, so importing the package, its
-    `client`/`labels`/`pinned_state` submodules, or any mixin leaf directly must
-    run the initializer without a partially-initialized-module error. A
-    subprocess per module gives each a clean `sys.modules` no other test has
-    already populated, exposing an import-order cycle a package-first suite run
-    would mask.
+    The owners are submodules of the same package whose `__init__` binds
+    `labels`, `events`, and `issues` eagerly and whose mixin chain imports the
+    package back for those surfaces, so importing the package, any of its
+    submodules, or any mixin leaf directly must run the initializer without a
+    partially-initialized-module error. A subprocess per module gives each a
+    clean `sys.modules` no other test has already populated, exposing an
+    import-order cycle a package-first suite run would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:

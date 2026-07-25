@@ -22,14 +22,14 @@ time.
 
 ## Audit event log (`EVENT_LOG_PATH`)
 
-Optional, opt-in JSONL sink. When `config.EVENT_LOG_PATH` is set, `github._write_event_record` appends one JSON object
-per audit event to that file inside `GitHubClient.emit_event`; when unset (the default) the helper short-circuits to a
-no-op. The fake `GitHubClient` in `tests/fakes.py` calls the same helper.
+Optional, opt-in JSONL sink. When `config.EVENT_LOG_PATH` is set, `github.events.write_event_record` appends one JSON
+object per audit event to that file inside `GitHubClient.emit_event`; when unset (the default) the helper
+short-circuits to a no-op. The fake `GitHubClient` in `tests/fakes.py` calls the same helper.
 
-**Schema.** Every record is built by `github.build_event_record` and carries `ts` (UTC ISO-8601 at second precision),
-`repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included when the
-emitter passes one (effectively always today). Extras whose value is `None` are dropped. `json.dumps` is called with
-`sort_keys=True` so on-disk order is stable across writers.
+**Schema.** Every record is built by `github.events.build_event_record` and carries `ts` (UTC ISO-8601 at second
+precision), `repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included
+when the emitter passes one (effectively always today). Extras whose value is `None` are dropped. `json.dumps` is
+called with `sort_keys=True` so on-disk order is stable across writers.
 
 **Event kinds.** Every kind is emitted through the single `GitHubClient.emit_event` chokepoint, which also appends to a
 capped in-memory tail (`recorded_events`, `_RECORDED_EVENTS_CAP = 500`) for tests and short-window debugging — the
@@ -94,7 +94,7 @@ switch off, emits none, so the default audit log is unchanged. The emission ride
 logs and is swallowed, never disturbing the baseline `agent_spawn` / `agent_exit` events. This is the per-invocation
 granularity surface; the rolled-up counts live in the `agent_exit` analytics record below.
 
-**No built-in rotation.** `_write_event_record` reopens the file in append mode for every event after
+**No built-in rotation.** `write_event_record` reopens the file in append mode for every event after
 `path.parent.mkdir(parents=True, exist_ok=True)`; there is no long-lived file descriptor, no size cap, no rename, and no
 compression. External rotation is operator-managed — pair `EVENT_LOG_PATH` with `logrotate` (or equivalent). Because
 each append re-resolves the path, create/rename-style rotation is as safe as `copytruncate`: the next event picks up the
