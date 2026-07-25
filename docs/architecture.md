@@ -122,6 +122,11 @@ orchestrator/
     commands.py         plain / hardened git execution, the argv hardening
                         prefixes, and the unsafe local-transport probe
     locks.py            per-target-root re-entrant lock registry and accessor
+    publication/
+      __init__.py       package marker only; callers import an owner directly
+      probes.py         subject vocabulary and predicates, ahead/behind counts,
+                        first-commit and recent-base subject reads
+      titles.py         subject-prefix inference and PR-title selection
     worktrees/
       __init__.py       package marker only; callers import an owner directly
       paths.py          slug sanitization, git-ref-safe branch segments, path
@@ -135,7 +140,7 @@ orchestrator/
   worktree_lifecycle.py lazy naming/creation/cleanup compatibility facade
   _worktree_*.py        creation, decomposition, cleanup, and terminal leaves
   branch_publication.py lazy branch-publication compatibility facade
-  _branch_*.py          probes, squash planning, rewriting, and publication
+  _branch_*.py          squash planning, rewriting, and publication leaves
   base_sync.py          lazy base-refresh/rebase compatibility facade
   _base_sync_*.py       refresh, typed rebase/recovery decisions, conflict
                         routing, persistence, and publication leaves
@@ -194,8 +199,11 @@ orchestrator/
 `workflow.py`, `worktrees.py`, `analytics.read`, and `dashboard.py` publish explicit sorted `__all__` inventories,
 `.pyi` surfaces, and immutable target registries. Resolution is lazy and cached on the facade, but the resolved object
 is the implementation object's exact identity. Existing direct imports, wildcard imports, and `patch.object` calls
-therefore keep working. Patches that need to intercept base-sync or publication internals still target their owning
-facade (`base_sync` or `branch_publication`), just as before the split. Config and analytics modules retain their
+therefore keep working. Patches that need to intercept base-sync internals still target the `base_sync` facade, just as
+before the split, and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
+`workflow`) because their callers read them off a facade. Inside `git/publication/`, though, the owners bind their
+collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes` -- so a patch that has to intercept
+what those helpers themselves call targets the owner module. Config and analytics modules retain their
 original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not silently rebind
 already-imported workflow leaves. The analytics package has its own import-only bootstrap so an explicit package reload
 still reparses sink settings and keeps stale package holders isolated as before.

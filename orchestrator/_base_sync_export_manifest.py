@@ -168,12 +168,12 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.branch_publication",
-        (("_branch_ahead_behind", "_branch_ahead_behind"),),
-    ),
-    *export_group(
         "orchestrator.comment_trust",
         (("filter_trusted", "filter_trusted"),),
+    ),
+    *export_group(
+        "orchestrator.git.publication.probes",
+        (("_branch_ahead_behind", "_branch_ahead_behind"),),
     ),
     *export_group(
         "orchestrator.git_plumbing",

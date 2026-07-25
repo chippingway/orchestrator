@@ -8,14 +8,11 @@ import unittest
 
 from tests import implementing_pr_test_support as support
 
-BUG_FALLBACK_ISSUE = support.BUG_FALLBACK_ISSUE
 CONVENTIONAL_ISSUE = support.CONVENTIONAL_ISSUE
 DEV_SESSION = support.DEV_SESSION
 DONE_MESSAGE = support.DONE_MESSAGE
-EMPTY_SUBJECT_ISSUE = support.EMPTY_SUBJECT_ISSUE
-SCOPED_CONVENTIONAL_ISSUE = support.SCOPED_CONVENTIONAL_ISSUE
+INFERRED_PREFIX_ISSUE = support.INFERRED_PREFIX_ISSUE
 SPARKLY_COMMIT_SUBJECT = support.SPARKLY_COMMIT_SUBJECT
-UNCONVENTIONAL_ISSUE = support.UNCONVENTIONAL_ISSUE
 _ConventionalTitleFixtureMixin = support._ConventionalTitleFixtureMixin
 _agent = support._agent
 
@@ -24,11 +21,11 @@ class ConventionalPrTitleTest(
     unittest.TestCase,
     _ConventionalTitleFixtureMixin,
 ):
-    """`_on_commits` derives the PR title from the agent's first commit
-    subject when it already follows the Conventional-Commits convention,
-    and falls back to a `<type>: <issue title>` form otherwise."""
+    """`_on_commits` opens the PR with the title the publication owner picks
+    from the agent's first commit subject and the inferred repo prefix, and
+    keeps traceability in the body."""
 
-    def test_uses_conventional_commit_subject(self) -> None:
+    def test_uses_selected_title_and_links_the_issue(self) -> None:
         gh, issue = self._seeded(issue_number=CONVENTIONAL_ISSUE)
 
         self._run_implementing(
@@ -48,8 +45,11 @@ class ConventionalPrTitleTest(
         # Traceability still in body.
         self.assertIn(f"Resolves #{issue.number}", pr.body)
 
-    def test_uses_scoped_conventional_subject(self) -> None:
-        gh, issue = self._seeded(issue_number=SCOPED_CONVENTIONAL_ISSUE)
+    def test_inferred_repo_prefix_reaches_the_title(self) -> None:
+        # First commit subject is unprefixed, so the handler must thread the
+        # prefix `_infer_subject_prefix` read from base history into the
+        # synthesized title instead of defaulting to `feat:`.
+        gh, issue = self._seeded(issue_number=INFERRED_PREFIX_ISSUE)
 
         self._run_implementing(
             gh,
@@ -58,58 +58,8 @@ class ConventionalPrTitleTest(
             has_new_commits=[False, True],
             dirty_files=(),
             push_branch=True,
-            # Conventional Commits also allow `<type>(<scope>): ...` and
-            # `<type>!:` for breaking changes; both must be accepted.
-            first_commit_subject="fix(api)!: drop legacy endpoint",
+            first_commit_subject="updated the listings",
+            fallback_prefix="career",
         )
 
-        self.assertEqual(gh.opened_prs[0].title, "fix(api)!: drop legacy endpoint")
-
-    def test_unconventional_falls_back_to_feat(self) -> None:
-        gh, issue = self._seeded(issue_number=UNCONVENTIONAL_ISSUE)
-
-        self._run_implementing(
-            gh,
-            issue,
-            run_agent=_agent(session_id=DEV_SESSION, last_message=DONE_MESSAGE),
-            has_new_commits=[False, True],
-            dirty_files=(),
-            push_branch=True,
-            first_commit_subject="updated stuff",
-        )
-
-        pr = gh.opened_prs[0]
-        # Fallback uses `feat:` (no bug label) and the issue title.
-        self.assertEqual(pr.title, SPARKLY_COMMIT_SUBJECT)
-        self.assertIn(f"Resolves #{issue.number}", pr.body)
-
-    def test_bug_label_falls_back_to_fix(self) -> None:
-        gh, issue = self._seeded(issue_number=BUG_FALLBACK_ISSUE, label_name="bug")
-
-        self._run_implementing(
-            gh,
-            issue,
-            run_agent=_agent(session_id=DEV_SESSION, last_message=DONE_MESSAGE),
-            has_new_commits=[False, True],
-            dirty_files=(),
-            push_branch=True,
-            first_commit_subject="fixed it",
-        )
-
-        # Bug label tips the fallback to `fix:`.
-        self.assertEqual(gh.opened_prs[0].title, "fix: add a sparkly thing")
-
-    def test_pr_title_fallback_when_no_commit_subject(self) -> None:
-        gh, issue = self._seeded(issue_number=EMPTY_SUBJECT_ISSUE)
-
-        self._run_implementing(
-            gh,
-            issue,
-            run_agent=_agent(session_id=DEV_SESSION, last_message=DONE_MESSAGE),
-            has_new_commits=[False, True],
-            dirty_files=(),
-            push_branch=True,
-            first_commit_subject="",
-        )
-
-        self.assertEqual(gh.opened_prs[0].title, SPARKLY_COMMIT_SUBJECT)
+        self.assertEqual(gh.opened_prs[0].title, "career: add a sparkly thing")
