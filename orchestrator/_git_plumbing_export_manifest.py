@@ -31,15 +31,6 @@ EXPORTS = (
             ("_git_auth_env", "_git_auth_env"),
             ("_git_auth_session", "_git_auth_session"),
             ("_resolved_git_token", "_resolved_git_token"),
-            ("_target_root_lock", "_target_root_lock"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._git_commands",
-        (
-            ("_git", "_git"),
-            ("_git_hardened", "_git_hardened"),
-            ("_unsafe_local_transport_config", "_unsafe_local_transport_config"),
         ),
     ),
     *export_group(
@@ -53,13 +44,7 @@ EXPORTS = (
         "orchestrator._git_plumbing_state",
         (
             ("_ASKPASS_MODE", "_ASKPASS_MODE"),
-            ("_AUTHED_GIT_PREFIX", "_AUTHED_GIT_PREFIX"),
             ("_FETCH", "_FETCH"),
-            ("_GIT", "_GIT"),
-            ("_GIT_NO_PROMPT_ENV", "_GIT_NO_PROMPT_ENV"),
-            ("_TARGET_ROOT_LOCKS", "_TARGET_ROOT_LOCKS"),
-            ("_TARGET_ROOT_LOCKS_LOCK", "_TARGET_ROOT_LOCKS_LOCK"),
-            ("_UNSAFE_TRANSPORT_CONFIG_RE", "_UNSAFE_TRANSPORT_CONFIG_RE"),
             ("log", "log"),
         ),
     ),
@@ -69,6 +54,26 @@ EXPORTS = (
             ("_push_branch", "_push_branch"),
             ("_push_with_auth", "_push_with_auth"),
             ("_remote_branch_sha", "_remote_branch_sha"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.commands",
+        (
+            ("_AUTHED_GIT_PREFIX", "_AUTHED_GIT_PREFIX"),
+            ("_GIT", "_GIT"),
+            ("_GIT_NO_PROMPT_ENV", "_GIT_NO_PROMPT_ENV"),
+            ("_UNSAFE_TRANSPORT_CONFIG_RE", "_UNSAFE_TRANSPORT_CONFIG_RE"),
+            ("_git", "_git"),
+            ("_git_hardened", "_git_hardened"),
+            ("_unsafe_local_transport_config", "_unsafe_local_transport_config"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.locks",
+        (
+            ("_TARGET_ROOT_LOCKS", "_TARGET_ROOT_LOCKS"),
+            ("_TARGET_ROOT_LOCKS_LOCK", "_TARGET_ROOT_LOCKS_LOCK"),
+            ("_target_root_lock", "_target_root_lock"),
         ),
     ),
     *export_group(

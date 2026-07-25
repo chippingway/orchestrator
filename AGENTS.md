@@ -59,7 +59,11 @@ orchestrator process is stateless.
   SHA-pinned merges, and idempotent head-branch deletion), the `reviews.py` owner (current-head review aggregation
   plus the review client mixin: approval and change-request verdicts and the unread conversation / inline / summary
   feedback watermarks), the `checks.py` owner (status / check-run normalization, failure-before-pending folding, and
-  the fail-closed check-read client mixin)), and stable runtime-core facades (`main.py`, `state_machine.py`).
+  the fail-closed check-read client mixin)), the git package (`git/`, whose `__init__.py` binds nothing so callers
+  import each owner directly -- the `commands.py` owner (plain / hardened git execution plus the unsafe local
+  transport probe) and the `locks.py` owner (the per-target-root re-entrant lock registry), with `git_plumbing.py`
+  kept as the forwarding facade for historical callers), and stable runtime-core facades (`main.py`,
+  `state_machine.py`).
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
   tests through the `tests/fakes.py` bridge. Stage-handler tests in
@@ -71,7 +75,7 @@ orchestrator process is stateless.
   respective focused modules, with shared fixtures in `tests/decomposition*_support.py`,
   `tests/question_*_support.py`, and `tests/documenting_*_support.py`; the resolving-conflict stage is split across
   `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_authed_fetch`, `_target_fetch`,
-  `_worktree_restore`, `_event_emission`, `_git_identity`, `_list_pollable`, `_routing`) plus the
+  `_worktree_restore`, `_event_emission`, `_list_pollable`, `_routing`) plus the
   `_handle_resolving_conflict` handler scenarios in focused modules (`_clean_rebase` for clean rebase routing,
   `_agent` for agent execution, `_resume` for awaiting-human resume paths, `_dirty` for dirty / rebase-in-progress
   parking, `_recovery` for recovery pushes, `_diverged` for stale / diverged worktree handling, `_publish` for
@@ -99,7 +103,8 @@ orchestrator process is stateless.
   tests in `tests/github/`. Scheduler-package tests live in `tests/scheduler/`: caps and duplicate-active gating,
   tracked claims, family exclusion, cap-exempt execution, skip logging, shutdown, submission models and `submit`
   compatibility, and import-cycle / public-surface checks, with their worker, coordination, log, and shutdown
-  helpers alongside.
+  helpers alongside. Git-package tests live in `tests/git/`: plain / hardened command envelopes and real-git
+  transport probing, target-root lock ownership, and import-cycle / package-surface checks.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

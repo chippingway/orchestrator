@@ -117,9 +117,14 @@ orchestrator/
   comment_trust.py      shared trust helpers (is_trusted_author /
                         filter_trusted) gating comment authors on the
                         ALLOWED_ISSUE_AUTHORS allowlist
+  git/
+    __init__.py         package marker only; callers import an owner directly
+    commands.py         plain / hardened git execution, the argv hardening
+                        prefixes, and the unsafe local-transport probe
+    locks.py            per-target-root re-entrant lock registry and accessor
   git_plumbing.py       lazy hardened-git compatibility facade
-  _git_*.py             immutable command fragments, target-root lock registry,
-                        auth, fetch, command, and push leaves
+  _git_*.py             immutable auth fragments plus the auth, fetch, and
+                        push leaves
   verify.py             lazy local-verification compatibility facade
   _verify_*.py          verify models, subprocess execution, and probes
   worktree_lifecycle.py lazy naming/creation/cleanup compatibility facade

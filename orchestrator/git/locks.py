@@ -28,3 +28,18 @@ class TargetRootLockRegistry:
     def clear(self) -> None:
         """Clear the compatibility-visible registry during isolated tests."""
         self._locks.clear()
+
+
+_TARGET_ROOT_LOCKS = TargetRootLockRegistry()
+
+_TARGET_ROOT_LOCKS_LOCK = _TARGET_ROOT_LOCKS.guard
+
+
+def _target_root_lock(target_root: Path) -> threading.RLock:
+    """Return the lock that serializes git plumbing against `target_root`.
+
+    The process-local registry creates locks lazily and retains each lock for
+    the target root's lifetime. Locks are re-entrant so a caller already
+    holding one can call a helper that acquires it again.
+    """
+    return _TARGET_ROOT_LOCKS.for_root(target_root)

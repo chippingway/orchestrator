@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _git_plumbing_state as _state
 from orchestrator import git_plumbing as _owner
+from orchestrator.git import commands as _commands
 
 Iterator = _owner.Iterator
 Optional = _owner.Optional
@@ -15,13 +16,10 @@ dataclass = _owner.dataclass
 os = _owner.os
 subprocess = _owner.subprocess
 tempfile = _owner.tempfile
-threading = _owner.threading
 _ASKPASS_MODE = _state._ASKPASS_MODE
 _FETCH = _state._FETCH
-_GIT = _state._GIT
-_GIT_NO_PROMPT_ENV = _state._GIT_NO_PROMPT_ENV
-_TARGET_ROOT_LOCKS = _state._TARGET_ROOT_LOCKS
-_TARGET_ROOT_LOCKS_LOCK = _state._TARGET_ROOT_LOCKS_LOCK
+_GIT = _commands._GIT
+_GIT_NO_PROMPT_ENV = _commands._GIT_NO_PROMPT_ENV
 log = _state.log
 
 
@@ -93,13 +91,3 @@ def _failed_fetch(stderr: str) -> subprocess.CompletedProcess:
     return subprocess.CompletedProcess(
         args=[_GIT, _FETCH], returncode=1, stdout="", stderr=stderr,
     )
-
-
-def _target_root_lock(target_root: Path) -> threading.RLock:
-    """Return the lock that serializes git plumbing against `target_root`.
-
-    The process-local registry creates locks lazily and retains each lock for
-    the target root's lifetime. Locks are re-entrant so a caller already
-    holding one can call a helper that acquires it again.
-    """
-    return _TARGET_ROOT_LOCKS.for_root(target_root)
