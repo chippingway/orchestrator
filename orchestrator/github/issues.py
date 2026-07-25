@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Shared issue-list filtering and PyGithub query options."""
+"""Issue-list filtering and PyGithub issue-query option construction."""
 from __future__ import annotations
 
 from datetime import datetime

@@ -10,9 +10,8 @@ from orchestrator.github import (
     PINNED_STATE_MARKER,
     PinnedState,
     WORKFLOW_LABELS,
-    _write_event_record,
-    build_event_record,
 )
+from orchestrator.github import events as _events
 from orchestrator.state_machine import (
     WorkflowLabel,
     coerce_workflow_label,
@@ -166,7 +165,7 @@ class _WorkflowStateService:
         stage: Optional[str] = None,
         **extras: Any,
     ) -> None:
-        record = build_event_record(
+        record = _events.build_event_record(
             repo=self._repo_slug,
             issue_number=issue_number,
             event=event,
@@ -174,7 +173,7 @@ class _WorkflowStateService:
             **extras,
         )
         self.recorded_events.append(record)
-        _write_event_record(record)
+        _events.write_event_record(record)
 
     def read_pinned_state(self, issue: FakeIssue) -> PinnedState:
         existing = self._pinned.get(issue.number)

@@ -2,20 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 """Stable PyGithub client surface for workflow and operator code.
 
-Issue, state-comment, pull-request, feedback, checks, and internal-query
-responsibilities live in focused mixin leaves. The label owner is
-self-contained -- it imports only ``state_machine`` and ``_static_alias`` --
-so its re-exports bind eagerly here. ``GitHubClient``, the pinned-state
-re-exports, and the query / event / check / review re-exports resolve lazily
-through the module ``__getattr__``: the pinned-state owner's mixin subclasses
-``_github_issues``, which imports this package for the label surface, and the
-inventory re-exports would pull the full mixin chain -- so binding either
-eagerly would let a leaf-first import re-enter a half-built initializer.
+Issue-client, state-comment, pull-request, feedback, checks, and
+internal-query responsibilities live in focused mixin leaves. The label, event,
+and issue-query owners are self-contained -- they reach no further than
+``state_machine``, ``_static_alias``, ``config``, and the PyGithub types -- so
+their re-exports bind eagerly here. ``GitHubClient``, the pinned-state
+re-exports, and the check / review re-exports resolve lazily through the module
+``__getattr__``: the pinned-state owner's mixin subclasses ``_github_issues``,
+which imports this package for the label surface, and the inventory re-exports
+would pull the full mixin chain -- so binding either eagerly would let a
+leaf-first import re-enter a half-built initializer.
 """
 from __future__ import annotations
 
 from typing import Any
 
+from orchestrator.github import events as _events
+from orchestrator.github import issues as _issues
 from orchestrator.github import labels as _labels
 
 WORKFLOW_LABEL_SPECS = _labels.WORKFLOW_LABEL_SPECS
@@ -27,6 +30,11 @@ CONTROL_LABEL_SPECS = _labels.CONTROL_LABEL_SPECS
 HARD_SKIP_CONTROL_LABELS = _labels.HARD_SKIP_CONTROL_LABELS
 issue_has_label = _labels.issue_has_label
 hard_skip_control_label = _labels.hard_skip_control_label
+_iter_new_non_pr_issues = _issues.iter_new_non_pr_issues
+_issue_query_options = _issues.issue_query_options
+_append_event_line = _events.append_event_line
+_write_event_record = _events.write_event_record
+build_event_record = _events.build_event_record
 
 _HTTP_FORBIDDEN = 403
 _HTTP_NOT_FOUND = 404
@@ -49,11 +57,6 @@ _PINNED_STATE_EXPORTS = (
 # of module globals so __getattr__ resolves each on first access, letting this
 # initializer finish before _github_api (and its mixin chain) is imported.
 _LAZY_API_EXPORTS = (
-    ("_iter_new_non_pr_issues", "iter_new_non_pr_issues"),
-    ("_issue_query_options", "issue_query_options"),
-    ("_append_event_line", "append_event_line"),
-    ("_write_event_record", "write_event_record"),
-    ("build_event_record", "build_event_record"),
     ("_CheckSurfaceRead", "CheckSurfaceRead"),
     ("_normalize_combined_status", "normalize_combined_status"),
     ("_normalize_check_runs", "normalize_check_runs"),

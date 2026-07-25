@@ -14,11 +14,11 @@
 #   explicit __all__ (WPS410) so `orchestrator.agents` stays the historical
 #   import site. WPS412 is waived for that import-time logic.
 # * orchestrator/github/__init__.py is the stable PyGithub client facade: it
-#   binds the self-contained label owner eagerly and resolves `GitHubClient`
-#   plus the pinned-state and composed mixin re-exports through a module
-#   `__getattr__` (WPS413) so a leaf-first import never re-enters a half-built
-#   initializer, keeping `orchestrator.github` the historical import site.
-#   WPS412 is waived for that import-time logic.
+#   binds the self-contained label, event, and issue-query owners eagerly and
+#   resolves `GitHubClient` plus the pinned-state and composed mixin re-exports
+#   through a module `__getattr__` (WPS413) so a leaf-first import never
+#   re-enters a half-built initializer, keeping `orchestrator.github` the
+#   historical import site. WPS412 is waived for that import-time logic.
 #
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
