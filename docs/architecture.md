@@ -69,13 +69,15 @@ orchestrator/
     client.py           authenticated `GitHubClient` over the mixin chain
     events.py           audit event record construction and the optional
                         JSONL sink
-    issues.py           non-PR issue filtering and issue-query options
+    issues.py           non-PR issue filtering, issue-query options, and the
+                        issue-client mixin (polling, label writes, events,
+                        comments, child creation)
     labels.py           self-contained workflow/control label vocabulary,
                         bootstrap specifications, and predicates
     pinned_state.py     authenticated pinned-state model, parser, and the
                         state / comment-watermark client mixin
-  _github_*.py          issue, PR, review, check, feedback, and composed
-                        client mixins
+  _github_*.py          PR, review, check, feedback, and composed client
+                        mixins
   agents/
     __init__.py         stable runner API plus process-termination re-export
     models.py           agent result / run-option / subprocess-result models

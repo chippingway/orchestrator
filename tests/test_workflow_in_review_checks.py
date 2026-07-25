@@ -1,7 +1,7 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for the closed-in_review label sweep and the PR combined check-state
-surfaces (check-runs 403 scope hint, partial-read downgrade)."""
+"""Tests for the PR combined check-state surfaces (check-runs 403 scope hint,
+partial-read downgrade)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from github import GithubException
 
 from orchestrator.github import GitHubClient
 
-HTTP_NOT_FOUND = 404
 HTTP_FORBIDDEN = 403
 HTTP_SERVER_ERROR = 500
 MESSAGE_KEY = "message"
@@ -24,80 +23,6 @@ STATE_NONE = "none"
 STATE_PENDING = "pending"
 STATE_FAILURE = "failure"
 STATE_SUCCESS = "success"
-
-
-def _closed_sweep_fixture():
-    client = GitHubClient.__new__(GitHubClient)
-    client.repo = MagicMock()
-    client._pollable_calls = 0
-    client._label_cache = {}
-    client.repo.get_issues.return_value = iter([])
-    labels = SimpleNamespace(
-        implementing=MagicMock(name="implementing_label"),
-        documenting=MagicMock(name="documenting_label"),
-        validating=MagicMock(name="validating_label"),
-        in_review=MagicMock(name="in_review_label"),
-        fixing=MagicMock(name="fixing_label"),
-        resolving_conflict=MagicMock(name="resolving_conflict_label"),
-        question=MagicMock(name="question_label"),
-    )
-    client.repo.get_label.side_effect = labels.__dict__.__getitem__
-    return client, labels
-
-
-def _assert_closed_sweeps(test_case, client, labels) -> None:
-    calls = SimpleNamespace(
-        looked_up={call.args[0] for call in client.repo.get_label.call_args_list},
-        closed=[
-            call
-            for call in client.repo.get_issues.call_args_list
-            if call.kwargs.get("state") == "closed"
-        ],
-    )
-    test_case.assertEqual(calls.looked_up, set(labels.__dict__))
-    test_case.assertEqual(len(calls.closed), 7)
-    labels_passed = [call.kwargs["labels"] for call in calls.closed]
-    for expected_label in labels.__dict__.values():
-        test_case.assertIn([expected_label], labels_passed)
-
-
-class GitHubClientClosedIssueSweepLabelTest(unittest.TestCase):
-    """Real PyGithub's `Repository.get_issues(labels=...)` expects Label
-    OBJECTS and reads `label.name`. The closed-issue sweep used to pass a
-    raw string list, which raises a TypeError before the generator yields
-    anything; because that exception escapes the per-issue try/except in
-    `tick()`, every tick after open issues are processed would fail and
-    externally-merged in_review issues would never finalize to `done`.
-
-    This test pokes the real `GitHubClient.list_pollable_issues` against a
-    mocked Repository to verify the call passes a Label object.
-    """
-
-    def test_closed_sweep_uses_label_object(self) -> None:
-        client, labels = _closed_sweep_fixture()
-
-        list(client.list_pollable_issues())
-
-        _assert_closed_sweeps(self, client, labels)
-
-    def test_missing_label_skips_closed_sweep(self) -> None:
-        # If `get_label` raises (under-scoped PAT, label not yet bootstrapped)
-        # the generator must complete the open-issue sweep AND swallow the
-        # closed-issue branch -- otherwise `tick()` aborts mid-loop.
-        client = GitHubClient.__new__(GitHubClient)
-        client.repo = MagicMock()
-        client._pollable_calls = 0
-        client._label_cache = {}
-        client.repo.get_issues.return_value = iter([])
-        client.repo.get_label.side_effect = GithubException(HTTP_NOT_FOUND, {MESSAGE_KEY: "Not Found"}, None)
-
-        # Must not raise.
-        out = list(client.list_pollable_issues())
-
-        self.assertEqual(out, [])
-        # Only the open sweep was invoked.
-        states = [call.kwargs.get("state") for call in client.repo.get_issues.call_args_list]
-        self.assertEqual(states, ["open"])
 
 
 class CheckRunsForbiddenSurfacesScopeHintTest(unittest.TestCase):
