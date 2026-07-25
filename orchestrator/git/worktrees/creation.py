@@ -1,16 +1,31 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Worktree creation."""
+"""Issue and PR worktree creation plus the unpushed-work probe they gate on.
+
+Both creators open with the same question -- does the worktree already on
+disk still carry commits the orchestrator never pushed? -- and
+`_has_new_commits` is the answer. The probe lives beside its only two
+callers because the reuse decision and the destructive `worktree remove`
+that follows it are one unit; the creators diverge only in which ref a
+missing local branch is restored from.
+"""
 from __future__ import annotations
 
-from orchestrator import _worktree_lifecycle_state as _state
-from orchestrator import worktree_lifecycle as _owner
+import logging
+from pathlib import Path
 
-Path = _owner.Path
-config = _owner.config
-log = _state.log
-_WORKTREE_ADD = _state._WORKTREE_ADD
-_WORKTREE_REMOVE_FORCE = _state._WORKTREE_REMOVE_FORCE
+from orchestrator import config
+from orchestrator.git import authentication, commands, locks
+from orchestrator.git.worktrees import paths, recovery
+
+# Named for the historical facade, not this module: operators filter the
+# rendered `orchestrator.worktree_lifecycle` prefix and attach handlers to
+# that logger, and the cleanup / terminal leaves still report through it.
+log = logging.getLogger("orchestrator.worktree_lifecycle")
+
+_WORKTREE_ADD = ("worktree", "add")
+
+_WORKTREE_REMOVE_FORCE = ("worktree", "remove", "--force")
 
 
 def _ensure_worktree(
@@ -34,35 +49,35 @@ def _ensure_worktree(
     threads cannot collide on `.git/config.lock`. The lock is released
     before the caller starts the long-running agent run.
     """
-    with _owner._target_root_lock(spec.target_root):
-        _owner._repo_worktrees_root(spec).mkdir(parents=True, exist_ok=True)
-        wt = _owner._worktree_path(spec, issue_number)
+    with locks._target_root_lock(spec.target_root):
+        paths._repo_worktrees_root(spec).mkdir(parents=True, exist_ok=True)
+        wt = paths._worktree_path(spec, issue_number)
         if branch is None:
-            branch = _owner._branch_name(spec, issue_number)
+            branch = paths._branch_name(spec, issue_number)
 
         if wt.exists():
-            if _owner._has_new_commits(spec, wt):
+            if _has_new_commits(spec, wt):
                 log.info(
                     "issue=#%d worktree has unpushed commits; reusing",
                     issue_number,
                 )
                 return wt
-            _owner._git(
+            commands._git(
                 *_WORKTREE_REMOVE_FORCE, str(wt),
                 cwd=spec.target_root,
             )
 
-        _owner._authed_target_fetch(spec, spec.base_branch)
+        authentication._authed_target_fetch(spec, spec.base_branch)
 
-        have_branch = _owner._git(
+        have_branch = commands._git(
             "rev-parse", "--verify", branch, cwd=spec.target_root
         ).returncode == 0
         if have_branch:
-            worktree_result = _owner._git(
+            worktree_result = commands._git(
                 *_WORKTREE_ADD, str(wt), branch, cwd=spec.target_root,
             )
         else:
-            worktree_result = _owner._git(
+            worktree_result = commands._git(
                 *_WORKTREE_ADD, "-b", branch, str(wt),
                 f"{spec.remote_name}/{spec.base_branch}",
                 cwd=spec.target_root,
@@ -100,20 +115,20 @@ def _ensure_pr_worktree(
     Serialized by the per-target_root lock for the same `.git/config.lock`
     reason described on `_ensure_worktree`.
     """
-    with _owner._target_root_lock(spec.target_root):
-        _owner._repo_worktrees_root(spec).mkdir(parents=True, exist_ok=True)
-        wt = _owner._worktree_path(spec, issue_number)
+    with locks._target_root_lock(spec.target_root):
+        paths._repo_worktrees_root(spec).mkdir(parents=True, exist_ok=True)
+        wt = paths._worktree_path(spec, issue_number)
         if branch is None:
-            branch = _owner._branch_name(spec, issue_number)
+            branch = paths._branch_name(spec, issue_number)
 
         if wt.exists():
-            if _owner._has_new_commits(spec, wt):
+            if _has_new_commits(spec, wt):
                 log.info(
                     "issue=#%d worktree has unpushed commits; reusing",
                     issue_number,
                 )
                 return wt
-            _owner._git(
+            commands._git(
                 *_WORKTREE_REMOVE_FORCE, str(wt),
                 cwd=spec.target_root,
             )
@@ -130,14 +145,14 @@ def _ensure_pr_worktree(
         # remote-tracking ref the `worktree add ... <remote>/<branch>`
         # fallback anchors on; the `+` prefix forces non-fast-forward
         # update against `--force-with-lease`-rewritten remote tips.
-        _owner._authed_target_fetch(spec, spec.base_branch)
-        _owner._authed_target_fetch(spec, branch)
+        authentication._authed_target_fetch(spec, spec.base_branch)
+        authentication._authed_target_fetch(spec, branch)
 
-        have_local = _owner._git(
+        have_local = commands._git(
             "rev-parse", "--verify", branch, cwd=spec.target_root,
         ).returncode == 0
         if have_local:
-            worktree_result = _owner._git(
+            worktree_result = commands._git(
                 *_WORKTREE_ADD, str(wt), branch, cwd=spec.target_root,
             )
         else:
@@ -145,7 +160,7 @@ def _ensure_pr_worktree(
             # from `<remote>/<base>` -- the dev's commits live on
             # `<remote>/<branch>` and rebuilding from base would discard
             # them.
-            worktree_result = _owner._git(
+            worktree_result = commands._git(
                 *_WORKTREE_ADD, "-b", branch, str(wt),
                 f"{spec.remote_name}/{branch}",
                 cwd=spec.target_root,
@@ -158,11 +173,11 @@ def _ensure_pr_worktree(
 
 
 def _has_new_commits(spec: config.RepoSpec, worktree: Path) -> bool:
-    commit_count_result = _owner._git(
+    commit_count_result = commands._git(
         "rev-list", "--count",
         f"{spec.remote_name}/{spec.base_branch}..HEAD",
         cwd=worktree,
     )
     if commit_count_result.returncode != 0:
         return False
-    return _owner._commit_count_from_stdout(commit_count_result) > 0
+    return recovery._commit_count_from_stdout(commit_count_result) > 0

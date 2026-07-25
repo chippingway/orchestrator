@@ -73,8 +73,11 @@ orchestrator process is stateless.
   `VERIFY_COMMANDS` sequencing the validating stage calls directly, with process registration and environment
   filtering borrowed from `agents/`), the `worktrees/` subpackage, whose `__init__.py` likewise binds nothing
   over the `paths.py` owner (slug sanitization, the git-ref-safe branch segment, branch / path derivation, and
-  the pinned / legacy branch resolver) and the `recovery.py` owner (candidate-branch discovery and the
-  unpushed-commit probes), and the `publication/` subpackage, whose `__init__.py` also binds nothing, over the
+  the pinned / legacy branch resolver), the `recovery.py` owner (candidate-branch discovery and the
+  unpushed-commit probes), the `creation.py` owner (the issue / PR worktree creators, their stale-worktree
+  reuse, and the new-commit probe the reuse turns on) and the `decomposition.py` owner (the decomposer scratch
+  checkout's path, detached creation, and best-effort removal), and the `publication/` subpackage, whose
+  `__init__.py` also binds nothing, over the
   `probes.py` owner (the conventional / repo-local subject vocabulary and predicates, ahead/behind counts,
   first-commit and recent-base subject reads) and the `titles.py` owner (subject-prefix inference from base
   history and PR-title selection), with `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, and
@@ -90,17 +93,17 @@ orchestrator process is stateless.
   `tests/test_workflow_implementing_*.py`, and the decomposition, question, and documenting stages across their
   respective focused modules, with shared fixtures in `tests/decomposition*_support.py`,
   `tests/question_*_support.py`, and `tests/documenting_*_support.py`; the resolving-conflict stage is split across
-  `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_worktree_restore`, `_event_emission`,
+  `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_event_emission`,
   `_list_pollable`, `_routing`) plus the `_handle_resolving_conflict` handler scenarios in focused modules
   (`_clean_rebase` for clean rebase routing, `_agent` for agent execution, `_resume` for awaiting-human resume
   paths, `_dirty` for dirty / rebase-in-progress parking, `_recovery` for recovery pushes, `_diverged` for stale /
   diverged worktree handling, `_publish` for already-rebased force-publish scenarios, `_publish_guard` for the
   publish-guard probe unit tests, `_drift` for hash-drift resume behavior), with resume fixtures in
   `tests/conflict_resume_test_support.py`); scheduler-dispatch,
-  base-sync, cleanup, and worktree-subsystem tests are split across
-  `tests/test_workflow_scheduler_*.py`, `tests/test_workflow_base_sync_*.py`,
-  `tests/test_workflow_cleanup*.py`, and `tests/test_workflow_worktree_*.py`, with subsystem-specific support in
-  `tests/scheduler_routing_*.py`, `tests/base_sync_*.py`, and `tests/worktree_*.py`; other facade-level helper tests
+  base-sync, and cleanup tests are split across
+  `tests/test_workflow_scheduler_*.py`, `tests/test_workflow_base_sync_*.py`, and
+  `tests/test_workflow_cleanup*.py`, with subsystem-specific support in
+  `tests/scheduler_routing_*.py` and `tests/base_sync_*.py`; other facade-level helper tests
   include (`tests/test_workflow_verdict_parsing.py`, `tests/test_workflow_prompt_redaction.py`,
   `tests/test_workflow_branch_publication*.py`, `tests/test_workflow_pickup.py`,
   `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_analytics.py`,
@@ -128,8 +131,12 @@ orchestrator process is stateless.
   bounded drains, fail-closed HEAD-baseline and fail-fast refusals, verify-time mutation detection, and
   import-cycle / layering / package-surface checks, plus the real-git verify-command fixture; the
   worktrees owners covered in `tests/git/worktrees/`: path derivation, git-ref-safe branch segments, pinned /
-  legacy branch resolution, real-git unpushed-commit probes, and import-cycle / package-surface checks, plus their
-  path and branch-fixture support modules; and the publication owners covered in `tests/git/publication/`: subject
+  legacy branch resolution, real-git unpushed-commit probes, issue / PR creation with stale-worktree reuse and
+  remote-branch restoration, the new-commit probe, decomposer path / creation / removal, per-target-root
+  serialization against both a blocking fake and a real bare remote, and import-cycle / package-surface checks,
+  plus their path, branch-fixture, faked-plumbing, and real-git support modules (the thread scaffolding those
+  serialization tests share with the authenticated-fetch one lives in `tests/git/concurrency_test_support.py`);
+  and the publication owners covered in `tests/git/publication/`: subject
   predicates, per-spec commit-subject reads, ahead/behind folding, prefix inference, PR-title selection, and
   import-cycle / package-surface checks, plus their git-double support module.
 - `docs/` — architecture, workflow, and configuration references.

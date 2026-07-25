@@ -1,18 +1,30 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Worktree decomposition."""
+"""Decomposer worktree lifecycle: path, fresh creation, and removal.
+
+The decomposer's scratch checkout is created and destroyed within one
+`_handle_decomposing` call, so creation and removal share this module and
+the path helper both of them resolve through. Nothing here reuses state
+across ticks -- that asymmetry with the per-issue creators in ``creation``
+is why the two lifecycles stay apart.
+"""
 from __future__ import annotations
 
-from orchestrator import _worktree_lifecycle_state as _state
-from orchestrator import worktree_lifecycle as _owner
+import logging
+from pathlib import Path
 
-Path = _owner.Path
-config = _owner.config
-log = _state.log
+from orchestrator import config
+from orchestrator.git import authentication, commands, locks
+from orchestrator.git.worktrees import paths
+
+# Named for the historical facade, not this module: operators filter the
+# rendered `orchestrator.worktree_lifecycle` prefix and attach handlers to
+# that logger, and the cleanup / terminal leaves still report through it.
+log = logging.getLogger("orchestrator.worktree_lifecycle")
 
 
 def _decompose_worktree_path(spec: config.RepoSpec, issue_number: int) -> Path:
-    return _owner._repo_worktrees_root(spec) / f"decompose-{issue_number}"
+    return paths._repo_worktrees_root(spec) / f"decompose-{issue_number}"
 
 
 def _ensure_decompose_worktree(spec: config.RepoSpec, issue_number: int) -> Path:
@@ -25,16 +37,16 @@ def _ensure_decompose_worktree(spec: config.RepoSpec, issue_number: int) -> Path
     Serialized by the per-target_root lock for the same `.git/config.lock`
     reason described on `_ensure_worktree`.
     """
-    with _owner._target_root_lock(spec.target_root):
-        _owner._repo_worktrees_root(spec).mkdir(parents=True, exist_ok=True)
-        wt = _owner._decompose_worktree_path(spec, issue_number)
+    with locks._target_root_lock(spec.target_root):
+        paths._repo_worktrees_root(spec).mkdir(parents=True, exist_ok=True)
+        wt = _decompose_worktree_path(spec, issue_number)
         if wt.exists():
-            _owner._git(
+            commands._git(
                 "worktree", "remove", "--force", str(wt),
                 cwd=spec.target_root,
             )
-        _owner._authed_target_fetch(spec, spec.base_branch)
-        worktree_result = _owner._git(
+        authentication._authed_target_fetch(spec, spec.base_branch)
+        worktree_result = commands._git(
             "worktree", "add", "--detach", str(wt),
             f"{spec.remote_name}/{spec.base_branch}",
             cwd=spec.target_root,
@@ -48,10 +60,10 @@ def _ensure_decompose_worktree(spec: config.RepoSpec, issue_number: int) -> Path
 
 def _run_decompose_worktree_removal(spec: config.RepoSpec, issue_number: int) -> None:
     """Force-remove the decomposer worktree under the parent lock if present."""
-    wt = _owner._decompose_worktree_path(spec, issue_number)
+    wt = _decompose_worktree_path(spec, issue_number)
     if wt.exists():
-        with _owner._target_root_lock(spec.target_root):
-            _owner._git(
+        with locks._target_root_lock(spec.target_root):
+            commands._git(
                 "worktree", "remove", "--force", str(wt),
                 cwd=spec.target_root,
             )
@@ -72,7 +84,7 @@ def _cleanup_decompose_worktree(spec: config.RepoSpec, issue_number: int) -> Non
     `.git/config.lock`.
     """
     try:
-        _owner._run_decompose_worktree_removal(spec, issue_number)
+        _run_decompose_worktree_removal(spec, issue_number)
     except Exception:
         log.exception(
             "issue=#%d failed to clean up decomposer worktree", issue_number,
