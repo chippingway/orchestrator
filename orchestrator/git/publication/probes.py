@@ -1,19 +1,37 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Branch probes."""
+"""Branch inspection: ahead/behind counts and commit-subject reads.
+
+The conventional-subject vocabulary lives here because every subject
+predicate is built from it: the Conventional type list, the regex that
+matches those types, and the broader repo-local prefix patterns are one
+family, so a type added to the list cannot drift from the regex that
+recognizes it.
+"""
 from __future__ import annotations
 
-from orchestrator import _branch_publication_state as _state
-from orchestrator import branch_publication as _owner
+import re
+from pathlib import Path
+from typing import List, Optional, Tuple
 
-List = _owner.List
-Optional = _owner.Optional
-Path = _owner.Path
-Tuple = _owner.Tuple
-config = _owner.config
-_CONVENTIONAL_RE = _state._CONVENTIONAL_RE
-_PREFIXED_RE = _state._PREFIXED_RE
-_PREFIX_TOKEN_RE = _state._PREFIX_TOKEN_RE
+from orchestrator import config
+from orchestrator.git import commands
+
+_CONVENTIONAL_TYPES = (
+    "feat", "fix", "chore", "docs", "refactor",
+    "test", "perf", "build", "ci", "style", "revert",
+)
+
+_CONVENTIONAL_TYPES_ALT = "|".join(_CONVENTIONAL_TYPES)
+
+_CONVENTIONAL_RE = re.compile(
+    rf"^(?:{_CONVENTIONAL_TYPES_ALT})"
+    r"(?:\([^)]+\))?!?:\s+\S",
+)
+
+_PREFIXED_RE = re.compile(r"^[a-z][a-z0-9-]*(?:\([^)]+\))?!?:\s+\S")
+
+_PREFIX_TOKEN_RE = re.compile(r"^([a-z][a-z0-9-]*)(?:\([^)]+\))?!?:\s+\S")
 
 
 def _parse_ahead_behind(parts: list[str]) -> Tuple[int, int]:
@@ -41,7 +59,7 @@ def _branch_ahead_behind(
     silently re-route the workflow; the caller's subsequent steps
     (the rebase attempt, the push) surface the underlying problem.
     """
-    comparison_result = _owner._git_hardened(
+    comparison_result = commands._git_hardened(
         "rev-list", "--left-right", "--count",
         f"refs/remotes/{spec.remote_name}/{branch}...HEAD",
         cwd=worktree,
@@ -52,7 +70,7 @@ def _branch_ahead_behind(
     if len(parts) != 2:
         return (0, 0)
     try:
-        return _owner._parse_ahead_behind(parts)
+        return _parse_ahead_behind(parts)
     except ValueError:
         return (0, 0)
 
@@ -66,7 +84,7 @@ def _first_commit_subject(spec: config.RepoSpec, worktree: Path) -> str:
     with mixed default branches (e.g. one repo on `main`, another on
     `master`) compares against the right remote.
     """
-    log_result = _owner._git(
+    log_result = commands._git(
         "log", "--reverse", "--format=%s",
         f"{spec.remote_name}/{spec.base_branch}..HEAD",
         cwd=worktree,
@@ -108,7 +126,7 @@ def _recent_base_subjects(
     are excluded so their `Merge pull request #...` subjects don't drown
     out the real prefix style.
     """
-    log_result = _owner._git(
+    log_result = commands._git(
         "log", "--no-merges", f"--max-count={limit}", "--format=%s",
         f"{spec.remote_name}/{spec.base_branch}",
         cwd=worktree,

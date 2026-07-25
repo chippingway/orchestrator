@@ -29,16 +29,24 @@ EXPORTS = (
     ),
     *export_group(
         "orchestrator.branch_publication",
+        (("_squash_and_force_push", "_squash_and_force_push"),),
+    ),
+    *export_group(
+        "orchestrator.git.publication.probes",
         (
             ("_CONVENTIONAL_RE", "_CONVENTIONAL_RE"),
             ("_branch_ahead_behind", "_branch_ahead_behind"),
             ("_first_commit_subject", "_first_commit_subject"),
-            ("_infer_subject_prefix", "_infer_subject_prefix"),
             ("_is_conventional_subject", "_is_conventional_subject"),
             ("_is_prefixed_subject", "_is_prefixed_subject"),
-            ("_pr_title_from_commit_or_issue", "_pr_title_from_commit_or_issue"),
             ("_recent_base_subjects", "_recent_base_subjects"),
-            ("_squash_and_force_push", "_squash_and_force_push"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.publication.titles",
+        (
+            ("_infer_subject_prefix", "_infer_subject_prefix"),
+            ("_pr_title_from_commit_or_issue", "_pr_title_from_commit_or_issue"),
         ),
     ),
     *export_group(
