@@ -1,29 +1,23 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Pinned and legacy branch resolution for in-flight issues."""
+
 from __future__ import annotations
 
 import unittest
-from pathlib import Path
 
-from orchestrator import workflow
+from orchestrator.git.worktrees import paths
 
-from tests.worktree_path_test_support import (
+from tests.git.worktrees.path_test_support import (
+    BRANCH_KEY,
+    LEGACY_BRANCH,
+    NAMESPACED_BRANCH,
+    PR_NUMBER,
     _migration_spec,
     _state,
 )
 
-BASE_BRANCH = "main"
-MIGRATION_REPO_SLUG = "geserdugarov/agent-orchestrator"
-MIGRATION_TARGET_ROOT = Path("/tmp/x")
-ALICE_REPO_SLUG = "alice/repo"
-LOCK_SUFFIX_SLUG = "owner/foo.lock"
-DOUBLE_DOT_SLUG = "owner/foo..bar"
-BRANCH_KEY = "branch"
-LEGACY_BRANCH = "orchestrator/issue-7"
-NAMESPACED_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-7"
-STAGE_LAYOUT_ISSUE_NUMBER = 11
-SHARED_BRANCH_ISSUE_NUMBER = 15
-PR_NUMBER = 42
+PR_NUMBER_KEY = "pr_number"
 
 
 class ResolveBranchNamePinnedTest(unittest.TestCase):
@@ -43,7 +37,7 @@ class ResolveBranchNamePinnedTest(unittest.TestCase):
         spec = _migration_spec()
         state = _state({BRANCH_KEY: LEGACY_BRANCH})
         self.assertEqual(
-            workflow._resolve_branch_name(state, spec, 7),
+            paths._resolve_branch_name(state, spec, 7),
             LEGACY_BRANCH,
         )
 
@@ -51,7 +45,7 @@ class ResolveBranchNamePinnedTest(unittest.TestCase):
         spec = _migration_spec()
         state = _state({})
         self.assertEqual(
-            workflow._resolve_branch_name(state, spec, 7),
+            paths._resolve_branch_name(state, spec, 7),
             NAMESPACED_BRANCH,
         )
 
@@ -65,7 +59,7 @@ class ResolveBranchNamePinnedTest(unittest.TestCase):
         spec = _migration_spec()
         state = _state({BRANCH_KEY: "feature/foreign-branch"})
         self.assertEqual(
-            workflow._resolve_branch_name(state, spec, 7),
+            paths._resolve_branch_name(state, spec, 7),
             NAMESPACED_BRANCH,
         )
 
@@ -79,7 +73,7 @@ class ResolveBranchNamePinnedTest(unittest.TestCase):
             }
         )
         self.assertEqual(
-            workflow._resolve_branch_name(state, spec, 9),
+            paths._resolve_branch_name(state, spec, 9),
             "orchestrator/geserdugarov__agent-orchestrator/issue-9",
         )
 
@@ -88,7 +82,7 @@ class ResolveBranchNamePinnedTest(unittest.TestCase):
         for bad in (None, PR_NUMBER, [LEGACY_BRANCH]):
             state = _state({BRANCH_KEY: bad})
             self.assertEqual(
-                workflow._resolve_branch_name(state, spec, 7),
+                paths._resolve_branch_name(state, spec, 7),
                 NAMESPACED_BRANCH,
                 f"bad pinned value {bad!r} did not fall back",
             )
@@ -106,9 +100,9 @@ class ResolveBranchNamePrMigrationTest(unittest.TestCase):
         # new slug-namespaced branch, push there, open a duplicate
         # PR, and orphan the original.
         spec = _migration_spec()
-        state = _state({"pr_number": PR_NUMBER})
+        state = _state({PR_NUMBER_KEY: PR_NUMBER})
         self.assertEqual(
-            workflow._resolve_branch_name(state, spec, 7),
+            paths._resolve_branch_name(state, spec, 7),
             LEGACY_BRANCH,
         )
 
@@ -121,12 +115,12 @@ class ResolveBranchNamePrMigrationTest(unittest.TestCase):
         spec = _migration_spec()
         state = _state(
             {
-                "pr_number": PR_NUMBER,
+                PR_NUMBER_KEY: PR_NUMBER,
                 BRANCH_KEY: LEGACY_BRANCH,
             }
         )
         self.assertEqual(
-            workflow._resolve_branch_name(state, spec, 7),
+            paths._resolve_branch_name(state, spec, 7),
             LEGACY_BRANCH,
         )
 
@@ -138,12 +132,12 @@ class ResolveBranchNamePrMigrationTest(unittest.TestCase):
         spec = _migration_spec()
         state = _state(
             {
-                "pr_number": PR_NUMBER,
+                PR_NUMBER_KEY: PR_NUMBER,
                 BRANCH_KEY: NAMESPACED_BRANCH,
             }
         )
         self.assertEqual(
-            workflow._resolve_branch_name(state, spec, 7),
+            paths._resolve_branch_name(state, spec, 7),
             NAMESPACED_BRANCH,
         )
 

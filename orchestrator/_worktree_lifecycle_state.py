@@ -4,15 +4,8 @@
 from __future__ import annotations
 
 import logging
-import re
 
 log = logging.getLogger('orchestrator.worktree_lifecycle')
-
-_SLUG_SAFE_RE = re.compile(r"[^A-Za-z0-9_.-]")
-
-_SAFE_CHAR = "_"
-
-_SLUG_DIGEST_LEN = 16
 
 _WORKTREE_ADD = ("worktree", "add")
 

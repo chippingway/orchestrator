@@ -31,7 +31,6 @@ EXPORTS = (
     *export_group(
         "orchestrator._worktree_creation",
         (
-            ("_commit_count_from_stdout", "_commit_count_from_stdout"),
             ("_ensure_pr_worktree", "_ensure_pr_worktree"),
             ("_ensure_worktree", "_ensure_worktree"),
             ("_has_new_commits", "_has_new_commits"),
@@ -48,16 +47,21 @@ EXPORTS = (
     ),
     *export_group(
         "orchestrator._worktree_lifecycle_state",
+        (("log", "log"),),
+    ),
+    *export_group(
+        "orchestrator._worktree_terminal",
+        (
+            ("_cleanup_question_worktree", "_cleanup_question_worktree"),
+            ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.paths",
         (
             ("_SAFE_CHAR", "_SAFE_CHAR"),
             ("_SLUG_DIGEST_LEN", "_SLUG_DIGEST_LEN"),
             ("_SLUG_SAFE_RE", "_SLUG_SAFE_RE"),
-            ("log", "log"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._worktree_paths",
-        (
             ("_branch_name", "_branch_name"),
             ("_repo_worktrees_root", "_repo_worktrees_root"),
             ("_resolve_branch_name", "_resolve_branch_name"),
@@ -68,18 +72,12 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._worktree_recovery",
+        "orchestrator.git.worktrees.recovery",
         (
             ("_branch_commit_count", "_branch_commit_count"),
             ("_branch_has_unpushed_commits", "_branch_has_unpushed_commits"),
             ("_candidate_issue_branches", "_candidate_issue_branches"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._worktree_terminal",
-        (
-            ("_cleanup_question_worktree", "_cleanup_question_worktree"),
-            ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
+            ("_commit_count_from_stdout", "_commit_count_from_stdout"),
         ),
     ),
     *export_group(

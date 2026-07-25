@@ -1,12 +1,19 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Worktree recovery."""
+"""Candidate-branch discovery and unpushed-commit probes.
+
+Every probe here inspects the parent clone rather than a per-issue
+worktree, so a caller can ask what a branch carries even when the worktree
+it belongs to is gone.
+"""
 from __future__ import annotations
 
-from orchestrator import worktree_lifecycle as _owner
+import subprocess
+from typing import Optional
 
-Optional = _owner.Optional
-config = _owner.config
+from orchestrator import config
+from orchestrator.git import commands, locks
+from orchestrator.git.worktrees import paths
 
 
 def _branch_has_unpushed_commits(
@@ -61,11 +68,11 @@ def _branch_has_unpushed_commits(
     `RLock` re-entry keeps callers that already hold the lock
     safe.
     """
-    candidates = _owner._candidate_issue_branches(spec, issue_number)
+    candidates = _candidate_issue_branches(spec, issue_number)
     base_ref = f"refs/remotes/{spec.remote_name}/{spec.base_branch}"
-    with _owner._target_root_lock(spec.target_root):
+    with locks._target_root_lock(spec.target_root):
         for branch in candidates:
-            count = _owner._branch_commit_count(spec, branch, base_ref)
+            count = _branch_commit_count(spec, branch, base_ref)
             if count > 0:
                 return branch
     return None
@@ -75,7 +82,7 @@ def _candidate_issue_branches(
     spec: config.RepoSpec, issue_number: int,
 ) -> tuple[str, ...]:
     """Return namespaced then legacy branch candidates without duplicates."""
-    namespaced = _owner._branch_name(spec, issue_number)
+    namespaced = paths._branch_name(spec, issue_number)
     legacy = f"orchestrator/issue-{issue_number}"
     if legacy == namespaced:
         return (namespaced,)
@@ -87,19 +94,24 @@ def _branch_commit_count(
 ) -> int:
     """Return commits unique to a local branch, or zero on probe failure."""
     local_ref = f"refs/heads/{branch}"
-    have_local = _owner._git(
+    have_local = commands._git(
         "rev-parse", "--verify", "--quiet", local_ref,
         cwd=spec.target_root,
     ).returncode == 0
     if not have_local:
         return 0
-    commit_count_result = _owner._git(
+    commit_count_result = commands._git(
         "rev-list", "--count", f"{base_ref}..{local_ref}",
         cwd=spec.target_root,
     )
     if commit_count_result.returncode != 0:
         return 0
     try:
-        return _owner._commit_count_from_stdout(commit_count_result)
+        return _commit_count_from_stdout(commit_count_result)
     except ValueError:
         return 0
+
+
+def _commit_count_from_stdout(count_result: subprocess.CompletedProcess) -> int:
+    """Parse a `git rev-list --count` result, treating empty output as zero."""
+    return int((count_result.stdout or "0").strip() or "0")

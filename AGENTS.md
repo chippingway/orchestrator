@@ -61,9 +61,12 @@ orchestrator process is stateless.
   feedback watermarks), the `checks.py` owner (status / check-run normalization, failure-before-pending folding, and
   the fail-closed check-read client mixin)), the git package (`git/`, whose `__init__.py` binds nothing so callers
   import each owner directly -- the `commands.py` owner (plain / hardened git execution plus the unsafe local
-  transport probe) and the `locks.py` owner (the per-target-root re-entrant lock registry), with `git_plumbing.py`
-  kept as the forwarding facade for historical callers), and stable runtime-core facades (`main.py`,
-  `state_machine.py`).
+  transport probe), the `locks.py` owner (the per-target-root re-entrant lock registry), and the `worktrees/`
+  subpackage, whose `__init__.py` likewise binds nothing over the `paths.py` owner (slug sanitization, the
+  git-ref-safe branch segment, branch / path derivation, and the pinned / legacy branch resolver) and the
+  `recovery.py` owner (candidate-branch discovery and the unpushed-commit probes), with `git_plumbing.py` and
+  `worktree_lifecycle.py` kept as the forwarding facades for historical callers), and stable runtime-core facades
+  (`main.py`, `state_machine.py`).
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
   tests through the `tests/fakes.py` bridge. Stage-handler tests in
@@ -104,7 +107,10 @@ orchestrator process is stateless.
   tracked claims, family exclusion, cap-exempt execution, skip logging, shutdown, submission models and `submit`
   compatibility, and import-cycle / public-surface checks, with their worker, coordination, log, and shutdown
   helpers alongside. Git-package tests live in `tests/git/`: plain / hardened command envelopes and real-git
-  transport probing, target-root lock ownership, and import-cycle / package-surface checks.
+  transport probing, target-root lock ownership, and import-cycle / package-surface checks, with the worktrees
+  owners covered in `tests/git/worktrees/`: path derivation, git-ref-safe branch segments, pinned / legacy branch
+  resolution, real-git unpushed-commit probes, and import-cycle / package-surface checks, plus their path and
+  branch-fixture support modules.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

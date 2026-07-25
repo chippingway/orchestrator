@@ -1,28 +1,27 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Slug sanitization plus worktree path and branch derivation."""
+
 from __future__ import annotations
 
 import unittest
 from pathlib import Path
 
-from orchestrator import config, workflow
+from orchestrator import config, worktree_lifecycle
+from orchestrator.git.worktrees import paths
 
-from tests.worktree_path_test_support import (
+from tests.git.worktrees.path_test_support import (
+    ALICE_REPO_SLUG,
+    BASE_BRANCH,
+    BOB_REPO_SLUG,
+    PR_NUMBER,
+    SHARED_BRANCH_ISSUE_NUMBER,
+    STAGE_LAYOUT_ISSUE_NUMBER,
+    _migration_spec,
     _spec,
 )
 
-BASE_BRANCH = "main"
-MIGRATION_REPO_SLUG = "geserdugarov/agent-orchestrator"
-MIGRATION_TARGET_ROOT = Path("/tmp/x")
-ALICE_REPO_SLUG = "alice/repo"
-LOCK_SUFFIX_SLUG = "owner/foo.lock"
-DOUBLE_DOT_SLUG = "owner/foo..bar"
-BRANCH_KEY = "branch"
-LEGACY_BRANCH = "orchestrator/issue-7"
-NAMESPACED_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-7"
-STAGE_LAYOUT_ISSUE_NUMBER = 11
-SHARED_BRANCH_ISSUE_NUMBER = 15
-PR_NUMBER = 42
+SHARED_CLONE_ROOT = Path("/tmp/shared-clone")
 
 
 class WorktreePathSlugNamespaceTest(unittest.TestCase):
@@ -35,9 +34,9 @@ class WorktreePathSlugNamespaceTest(unittest.TestCase):
 
     def test_distinct_slugs_same_number_never_collide(self) -> None:
         spec_a = _spec(ALICE_REPO_SLUG)
-        spec_b = _spec("bob/repo")
-        path_a = workflow._worktree_path(spec_a, 7)
-        path_b = workflow._worktree_path(spec_b, 7)
+        spec_b = _spec(BOB_REPO_SLUG)
+        path_a = paths._worktree_path(spec_a, 7)
+        path_b = paths._worktree_path(spec_b, 7)
 
         self.assertNotEqual(path_a, path_b)
         # Both must live under WORKTREES_DIR with the issue-N leaf.
@@ -48,10 +47,10 @@ class WorktreePathSlugNamespaceTest(unittest.TestCase):
 
     def test_decompose_path_also_namespaced_by_slug(self) -> None:
         spec_a = _spec(ALICE_REPO_SLUG)
-        spec_b = _spec("bob/repo")
+        spec_b = _spec(BOB_REPO_SLUG)
         self.assertNotEqual(
-            workflow._decompose_worktree_path(spec_a, 7),
-            workflow._decompose_worktree_path(spec_b, 7),
+            worktree_lifecycle._decompose_worktree_path(spec_a, 7),
+            worktree_lifecycle._decompose_worktree_path(spec_b, 7),
         )
 
     def test_stages_share_repo_namespace(self) -> None:
@@ -59,14 +58,16 @@ class WorktreePathSlugNamespaceTest(unittest.TestCase):
         # share the per-repo subdirectory so cleanup on the parent dir
         # also reaps the decomposer scratch.
         spec = _spec("owner/name")
-        impl = workflow._worktree_path(spec, STAGE_LAYOUT_ISSUE_NUMBER)
-        dec = workflow._decompose_worktree_path(spec, STAGE_LAYOUT_ISSUE_NUMBER)
+        impl = paths._worktree_path(spec, STAGE_LAYOUT_ISSUE_NUMBER)
+        dec = worktree_lifecycle._decompose_worktree_path(
+            spec, STAGE_LAYOUT_ISSUE_NUMBER,
+        )
         self.assertEqual(impl.parent, dec.parent)
 
 
 class SanitizeSlugTest(unittest.TestCase):
     def test_sanitize_slug_replaces_owner_separator(self) -> None:
-        self.assertEqual(workflow._sanitize_slug("owner/name"), "owner__name")
+        self.assertEqual(paths._sanitize_slug("owner/name"), "owner__name")
 
     def test_sanitize_slug_is_a_single_segment(self) -> None:
         # A directory name with `/` would split into nested directories,
@@ -77,17 +78,17 @@ class SanitizeSlugTest(unittest.TestCase):
             "name-only",
             "weird name with spaces",
         ):
-            cleaned = workflow._sanitize_slug(raw)
+            cleaned = paths._sanitize_slug(raw)
             self.assertNotIn("/", cleaned, f"slug={raw!r} -> {cleaned!r}")
 
     def test_sanitize_slug_no_leading_dot(self) -> None:
         # Hidden directories (.foo) hide the worktree from a casual
         # operator inspection; escape leading dots.
-        self.assertFalse(workflow._sanitize_slug(".dotfile/repo").startswith("."))
-        self.assertFalse(workflow._sanitize_slug("./repo").startswith("."))
+        self.assertFalse(paths._sanitize_slug(".dotfile/repo").startswith("."))
+        self.assertFalse(paths._sanitize_slug("./repo").startswith("."))
 
     def test_sanitize_slug_strips_unsafe_chars(self) -> None:
-        cleaned = workflow._sanitize_slug("owner@#$/name with spaces")
+        cleaned = paths._sanitize_slug("owner@#$/name with spaces")
         # No path separator, no shell-special chars; only [A-Za-z0-9_.-]
         for ch in cleaned:
             self.assertTrue(
@@ -98,17 +99,12 @@ class SanitizeSlugTest(unittest.TestCase):
     def test_sanitize_slug_empty_input_falls_back(self) -> None:
         # Empty would collapse `WORKTREES_DIR/<slug>/issue-N` into
         # `WORKTREES_DIR/issue-N`, reintroducing the cross-repo collision.
-        self.assertNotEqual(workflow._sanitize_slug(""), "")
-        self.assertNotEqual(workflow._sanitize_slug(""), ".")
+        self.assertNotEqual(paths._sanitize_slug(""), "")
+        self.assertNotEqual(paths._sanitize_slug(""), ".")
 
     def test_default_repo_spec_path_format(self) -> None:
         # Anchor the documented `<owner>__<name>/issue-N` layout.
-        spec = config.RepoSpec(
-            slug=MIGRATION_REPO_SLUG,
-            target_root=MIGRATION_TARGET_ROOT,
-            base_branch=BASE_BRANCH,
-        )
-        path = workflow._worktree_path(spec, 9)
+        path = paths._worktree_path(_migration_spec(), 9)
         self.assertEqual(
             path,
             config.WORKTREES_DIR / "geserdugarov__agent-orchestrator" / "issue-9",
@@ -126,41 +122,37 @@ class BranchNameSlugNamespaceTest(unittest.TestCase):
     def test_same_number_distinct_slugs_make_branches(self) -> None:
         spec_a = config.RepoSpec(
             slug="geserdugarov/lance-open-source",
-            target_root=Path("/tmp/shared-clone"),
+            target_root=SHARED_CLONE_ROOT,
             base_branch=BASE_BRANCH,
         )
         spec_b = config.RepoSpec(
             slug="geserdugarov/lance-private",
-            target_root=Path("/tmp/shared-clone"),
+            target_root=SHARED_CLONE_ROOT,
             base_branch=BASE_BRANCH,
         )
 
         self.assertNotEqual(
-            workflow._branch_name(spec_a, SHARED_BRANCH_ISSUE_NUMBER),
-            workflow._branch_name(spec_b, SHARED_BRANCH_ISSUE_NUMBER),
+            paths._branch_name(spec_a, SHARED_BRANCH_ISSUE_NUMBER),
+            paths._branch_name(spec_b, SHARED_BRANCH_ISSUE_NUMBER),
         )
 
     def test_branch_name_format(self) -> None:
-        spec = config.RepoSpec(
-            slug=MIGRATION_REPO_SLUG,
-            target_root=MIGRATION_TARGET_ROOT,
-            base_branch=BASE_BRANCH,
-        )
         self.assertEqual(
-            workflow._branch_name(spec, 9),
+            paths._branch_name(_migration_spec(), 9),
             "orchestrator/geserdugarov__agent-orchestrator/issue-9",
         )
 
     def test_branch_name_keeps_orchestrator_prefix(self) -> None:
         # `_cleanup_terminal_branch` relies on the `orchestrator/` prefix
         # to constrain what branches it is willing to delete.
-        for repo_slug in (ALICE_REPO_SLUG, "bob/repo", "weird name/x"):
-            spec = config.RepoSpec(
-                slug=repo_slug,
-                target_root=MIGRATION_TARGET_ROOT,
-                base_branch=BASE_BRANCH,
-            )
+        for repo_slug in (ALICE_REPO_SLUG, BOB_REPO_SLUG, "weird name/x"):
             self.assertTrue(
-                workflow._branch_name(spec, PR_NUMBER).startswith("orchestrator/"),
+                paths._branch_name(
+                    _spec(repo_slug), PR_NUMBER,
+                ).startswith("orchestrator/"),
                 repo_slug,
             )
+
+
+if __name__ == "__main__":
+    unittest.main()
