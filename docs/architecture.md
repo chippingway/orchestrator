@@ -212,7 +212,12 @@ before the split, and the publication helpers stay patchable by name on `branch_
 collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes` -- so a patch that has to intercept
 what those helpers themselves call targets the owner module. The verify leaves bind `git/verification/` the same way,
 so a patch that has to intercept the HEAD snapshot or the dirty-file scan targets
-`orchestrator.git.verification.probes` and not the `verify` facade. Config and analytics modules retain their
+`orchestrator.git.verification.probes` and not the `verify` facade. `git/authentication.py` binds the same way --
+the authenticated fetches reach `git.commands` and `git.locks` plus their own token, session, and refusal helpers
+directly, and the push leaf reads the askpass session and token lookup off that owner -- so a patch that has to
+intercept the transport probe, the target-root lock, or the session targets `orchestrator.git.authentication` and
+not `git_plumbing`; `_authed_fetch` / `_authed_target_fetch` themselves stay patchable by name on `git_plumbing`,
+`worktrees`, `base_sync`, and `workflow`. Config and analytics modules retain their
 original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not silently rebind
 already-imported workflow leaves. The analytics package has its own import-only bootstrap so an explicit package reload
 still reparses sink settings and keeps stale package holders isolated as before.
