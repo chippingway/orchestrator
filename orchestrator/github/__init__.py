@@ -3,15 +3,16 @@
 """Stable PyGithub client surface for workflow and operator code.
 
 Issue-client, state-comment, pull-request, feedback, checks, and
-internal-query responsibilities live in focused mixin leaves. The label, event,
-and issue-query owners are self-contained -- they reach no further than
-``state_machine``, ``_static_alias``, ``config``, and the PyGithub types -- so
-their re-exports bind eagerly here. ``GitHubClient``, the pinned-state
-re-exports, and the check / review re-exports resolve lazily through the module
-``__getattr__``: the pinned-state owner's mixin subclasses ``_github_issues``,
-which imports this package for the label surface, and the inventory re-exports
-would pull the full mixin chain -- so binding either eagerly would let a
-leaf-first import re-enter a half-built initializer.
+internal-query responsibilities live in focused mixin leaves. The label,
+event, and issue owners reach no further than ``state_machine``,
+``_static_alias``, ``config``, each other, and the PyGithub types, so their
+re-exports bind eagerly here. ``GitHubClient`` and the check / review
+re-exports resolve lazily through the module ``__getattr__``: the composed
+inventory pulls the full mixin chain, whose outer leaves import this package
+back for the label and pinned-state surfaces, so binding them eagerly would
+let a leaf-first import re-enter a half-built initializer. The pinned-state
+re-exports resolve the same way, keeping the durable-state owner off this
+initializer's import path.
 """
 from __future__ import annotations
 
@@ -42,8 +43,7 @@ _ISSUE_STATE_OPEN = "open"
 _RECORDED_EVENTS_CAP = 500
 
 # Facade name -> attribute on the pinned-state owner. Resolved lazily so the
-# initializer finishes before the pinned-state mixin (and its `_github_issues`
-# base, which imports this package) is imported.
+# durable-state owner is imported on first use rather than by this initializer.
 _PINNED_STATE_EXPORTS = (
     ("PINNED_STATE_MARKER", "PINNED_STATE_MARKER"),
     ("PINNED_STATE_RE", "PINNED_STATE_RE"),

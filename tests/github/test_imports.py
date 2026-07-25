@@ -15,9 +15,9 @@ from orchestrator.github import pinned_state as _pinned_state
 
 # The github-package modules plus every client-mixin leaf between `_github_api`
 # and the `pinned_state` owner. The initializer binds the `labels`, `events`,
-# and `issues` owners eagerly, and `_github_issues` (the pinned-state mixin's
-# base) imports the package back for those surfaces, so importing any leaf
-# first must run the initializer without re-entering a half-built one.
+# and `issues` owners eagerly, and the `issues` owner (the pinned-state mixin's
+# base) imports the package back for the label and event surfaces, so importing
+# any leaf first must run the initializer without re-entering a half-built one.
 _MODULES = (
     "orchestrator.github",
     "orchestrator.github.events",
@@ -30,7 +30,6 @@ _MODULES = (
     "orchestrator._github_feedback",
     "orchestrator._github_pull_checks",
     "orchestrator._github_pull_requests",
-    "orchestrator._github_issues",
 )
 
 
@@ -38,12 +37,13 @@ class CleanProcessImportTest(unittest.TestCase):
     """Each affected module imports standalone in a fresh interpreter.
 
     The owners are submodules of the same package whose `__init__` binds
-    `labels`, `events`, and `issues` eagerly and whose mixin chain imports the
-    package back for those surfaces, so importing the package, any of its
-    submodules, or any mixin leaf directly must run the initializer without a
-    partially-initialized-module error. A subprocess per module gives each a
-    clean `sys.modules` no other test has already populated, exposing an
-    import-order cycle a package-first suite run would mask.
+    `labels`, `events`, and `issues` eagerly, and both the `issues` owner and
+    the mixin chain import the package back for those surfaces, so importing
+    the package, any of its submodules, or any mixin leaf directly must run
+    the initializer without a partially-initialized-module error. A subprocess
+    per module gives each a clean `sys.modules` no other test has already
+    populated, exposing an import-order cycle a package-first suite run would
+    mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:

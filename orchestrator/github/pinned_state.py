@@ -12,7 +12,7 @@ from typing import Any, Optional
 from github.Issue import Issue
 from github.IssueComment import IssueComment
 
-from orchestrator._github_issues import GitHubIssueMixin
+from orchestrator.github.issues import GitHubIssueMixin
 
 log = logging.getLogger("orchestrator.github")
 
