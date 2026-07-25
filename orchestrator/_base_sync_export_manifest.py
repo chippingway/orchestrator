@@ -183,6 +183,13 @@ EXPORTS = (
         (("_branch_ahead_behind", "_branch_ahead_behind"),),
     ),
     *export_group(
+        "orchestrator.git.verification.probes",
+        (
+            ("_head_sha", "_head_sha"),
+            ("_worktree_dirty_files", "_worktree_dirty_files"),
+        ),
+    ),
+    *export_group(
         "orchestrator.git_plumbing",
         (
             ("_git", "_git"),
@@ -212,13 +219,6 @@ EXPORTS = (
     *export_group(
         "orchestrator.state_machine",
         (("WorkflowLabel", "WorkflowLabel"),),
-    ),
-    *export_group(
-        "orchestrator.verify",
-        (
-            ("_head_sha", "_head_sha"),
-            ("_worktree_dirty_files", "_worktree_dirty_files"),
-        ),
     ),
     *export_group(
         "orchestrator.workflow_messages",

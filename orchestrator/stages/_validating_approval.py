@@ -3,6 +3,7 @@
 """Validating approval."""
 from __future__ import annotations
 
+from orchestrator.git.verification import runner as _verify_runner
 from orchestrator.stages import validating as _owner
 
 _ReviewerRun = _owner._ReviewerRun
@@ -105,9 +106,7 @@ def _approved_work_verifies(
     state: PinnedState,
     reviewer_run: _ReviewerRun,
 ) -> bool:
-    from orchestrator import workflow as _wf
-
-    verify = _wf._run_verify_commands(
+    verify = _verify_runner._run_verify_commands(
         reviewer_run.wt, config.VERIFY_COMMANDS, config.VERIFY_TIMEOUT,
     )
     if verify.status == "ok":

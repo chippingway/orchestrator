@@ -133,7 +133,10 @@ orchestrator/
     verification/
       __init__.py       package marker only; callers import an owner directly
       models.py         VerifyResult statuses / fields and the output budget
+      output.py         redact-then-truncate pass over captured verify output
       probes.py         HEAD snapshot and hardened porcelain dirty-file scan
+      process.py        one command's group spawn / kill / drain and its verdict
+      runner.py         stripped child env and fail-fast command sequencing
     worktrees/
       __init__.py       package marker only; callers import an owner directly
       paths.py          slug sanitization, git-ref-safe branch segments, path
@@ -141,9 +144,7 @@ orchestrator/
       recovery.py       candidate-branch discovery and unpushed-commit probes
   git_plumbing.py       lazy hardened-git compatibility facade
   _git_*.py             the shared leaf logger and the push leaf
-  verify.py             lazy local-verification compatibility facade
-  _verify_*.py          verify-command execution, output redaction and
-                        truncation, and the shared logger
+  verify.py             lazy forwarding shell over git/verification/ owners
   worktree_lifecycle.py lazy naming/creation/cleanup compatibility facade
   _worktree_*.py        creation, decomposition, cleanup, and terminal leaves
   branch_publication.py lazy branch-publication compatibility facade
@@ -210,9 +211,10 @@ therefore keep working. Patches that need to intercept base-sync internals still
 before the split, and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
 `workflow`) because their callers read them off a facade. Inside `git/publication/`, though, the owners bind their
 collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes` -- so a patch that has to intercept
-what those helpers themselves call targets the owner module. The verify leaves bind `git/verification/` the same way,
-so a patch that has to intercept the HEAD snapshot or the dirty-file scan targets
-`orchestrator.git.verification.probes` and not the `verify` facade. `git/authentication.py` binds the same way --
+what those helpers themselves call targets the owner module. `git/verification/` is bound the same way -- `output`
+calls `models`, `process` calls `output` and `probes`, `runner` calls `process` -- and the validating approval gate
+reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or
+the dirty-file scan targets the owner module and not the `verify` shell. `git/authentication.py` binds the same way --
 the authenticated fetches reach `git.commands` and `git.locks` plus their own token, session, and refusal helpers
 directly, and the push leaf reads the askpass session and token lookup off that owner -- so a patch that has to
 intercept the transport probe, the target-root lock, or the session targets `orchestrator.git.authentication` and

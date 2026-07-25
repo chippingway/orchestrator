@@ -1,20 +1,30 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Verify process."""
+"""One verify command's subprocess lifecycle and its `VerifyResult` verdict.
+
+Spawning, group teardown, and bounded draining live beside the classification
+that reads their outcome because the verdict depends on how the shell was torn
+down: a timeout keeps only what the bounded drain rescued, while a completed
+command is judged on its exit code plus the worktree probes. The shell is
+started into its own process group and drained through the agent process owner,
+so the shutdown sweep reaches an in-flight verify child exactly as it reaches an
+agent run.
+"""
 from __future__ import annotations
 
-from orchestrator import verify as _owner
+import os
+import signal
+import subprocess
+from contextlib import suppress
+from pathlib import Path
+from typing import Optional
+
 from orchestrator.agents import processes as _processes
 from orchestrator.git.verification import models as _models
+from orchestrator.git.verification import output as _output
 from orchestrator.git.verification import probes as _probes
 
-VerifyResult = _models.VerifyResult
-Optional = _owner.Optional
-Path = _owner.Path
-os = _owner.os
-signal = _owner.signal
-subprocess = _owner.subprocess
-suppress = _owner.suppress
+_DRAIN_BUDGET_SECONDS = 5
 
 
 def _combine_output(stdout: str, stderr: str) -> str:
@@ -56,10 +66,10 @@ def _drain_verify_output(proc: subprocess.Popen) -> tuple[str, str]:
     the pipe fd open -- `proc.kill()` reaps the leader and a second bounded
     drain runs. Returns `("", "")` if both drains time out.
     """
-    drained = _processes.communicate_bounded(proc, 5)
+    drained = _processes.communicate_bounded(proc, _DRAIN_BUDGET_SECONDS)
     if drained is None:
         proc.kill()
-        drained = _processes.communicate_bounded(proc, 5)
+        drained = _processes.communicate_bounded(proc, _DRAIN_BUDGET_SECONDS)
     return ("", "") if drained is None else drained
 
 
@@ -81,15 +91,15 @@ def _spawn_verify_command(
 
 def _timeout_verify_result(
     proc: subprocess.Popen, command: str,
-) -> VerifyResult:
+) -> _models.VerifyResult:
     """Kill a timed-out verify group and retain its bounded partial output."""
-    _owner._kill_verify_group(proc)
-    partial_output = _owner._combine_output(*_owner._drain_verify_output(proc))
-    return VerifyResult(
+    _kill_verify_group(proc)
+    partial_output = _combine_output(*_drain_verify_output(proc))
+    return _models.VerifyResult(
         status="timeout",
         command=command,
         exit_code=None,
-        output=_owner._truncate_verify_output(partial_output),
+        output=_output._truncate_verify_output(partial_output),
     )
 
 
@@ -99,33 +109,33 @@ def _completed_verify_result(
     drained: tuple[str, str],
     worktree: Path,
     head_before: str,
-) -> Optional[VerifyResult]:
+) -> Optional[_models.VerifyResult]:
     """Classify one completed command, returning None only when it passed."""
-    combined_output = _owner._combine_output(*drained)
+    combined_output = _combine_output(*drained)
     if proc.returncode != 0:
-        return VerifyResult(
+        return _models.VerifyResult(
             status="failed",
             command=command,
             exit_code=proc.returncode,
-            output=_owner._truncate_verify_output(combined_output),
+            output=_output._truncate_verify_output(combined_output),
         )
     dirty_files = _probes._worktree_dirty_files(worktree)
     if dirty_files:
-        return VerifyResult(
+        return _models.VerifyResult(
             status="dirty",
             command=command,
             exit_code=proc.returncode,
-            output=_owner._truncate_verify_output(combined_output),
+            output=_output._truncate_verify_output(combined_output),
             dirty_files=tuple(dirty_files),
         )
     head_after = _probes._head_sha(worktree)
     if head_after == head_before:
         return None
-    return VerifyResult(
+    return _models.VerifyResult(
         status="head_changed",
         command=command,
         exit_code=proc.returncode,
-        output=_owner._truncate_verify_output(combined_output),
+        output=_output._truncate_verify_output(combined_output),
         head_before=head_before,
         head_after=head_after,
     )

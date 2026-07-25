@@ -1,19 +1,24 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Verify runner."""
+"""Sequencing owner for a configured `VERIFY_COMMANDS` run.
+
+This is the entry point the validating stage calls: it snapshots HEAD, builds
+the stripped child environment once, and runs the commands in order until one
+of them earns a refusal. Per-command spawning, teardown, and classification
+belong to the `process` owner; this module owns only the ordering and the
+fail-fast decision.
+"""
 from __future__ import annotations
 
-from orchestrator import verify as _owner
+import os
+from pathlib import Path
+from typing import Optional
+
+from orchestrator.agents import environment as _environment
 from orchestrator.agents import processes as _processes
-from orchestrator.config import credentials as _credentials
 from orchestrator.git.verification import models as _models
 from orchestrator.git.verification import probes as _probes
-
-VerifyResult = _models.VerifyResult
-Optional = _owner.Optional
-Path = _owner.Path
-os = _owner.os
-_VERIFY_OUTPUT_BUDGET = _models._VERIFY_OUTPUT_BUDGET
+from orchestrator.git.verification import process as _process
 
 
 def _run_verify_command(
@@ -22,14 +27,14 @@ def _run_verify_command(
     timeout: int,
     child_env: dict[str, str],
     head_before: str,
-) -> Optional[VerifyResult]:
+) -> Optional[_models.VerifyResult]:
     """Run and classify one command while registering its process group."""
-    proc = _owner._spawn_verify_command(worktree, command, child_env)
+    proc = _process._spawn_verify_command(worktree, command, child_env)
     with _processes.registered(proc):
         drained = _processes.communicate_bounded(proc, timeout)
         if drained is None:
-            return _owner._timeout_verify_result(proc, command)
-        return _owner._completed_verify_result(
+            return _process._timeout_verify_result(proc, command)
+        return _process._completed_verify_result(
             proc, command, drained, worktree, head_before,
         )
 
@@ -38,7 +43,7 @@ def _run_verify_commands(
     worktree: Path,
     commands: tuple[str, ...],
     timeout: int,
-) -> VerifyResult:
+) -> _models.VerifyResult:
     """Run each command sequentially in `worktree` with a bounded timeout.
 
     Empty `commands` (the default) short-circuits to ``status="ok"`` so the
@@ -48,7 +53,7 @@ def _run_verify_commands(
     merged so a failing build with all its diagnostics on stderr surfaces
     in one block in the park comment. The shell runs with a child
     environment stripped of GitHub credentials, production-secret-shaped
-    variables, AND the agent's own provider-auth keys (`_filter_agent_env`
+    variables, AND the agent's own provider-auth keys (`filter_agent_env`
     with `allow_provider_auth=False`) -- stricter than the agent-subprocess
     strip, because a verify command is operator-configured shell that
     executes the agent-produced code and a hostile dependency reading
@@ -68,7 +73,7 @@ def _run_verify_commands(
     verify-created commit.
     """
     if not commands:
-        return VerifyResult(status="ok")
+        return _models.VerifyResult(status="ok")
     # Snapshot HEAD so we can refuse any verify command that moves it.
     # An empty snapshot (an uninitialized repo or a `git rev-parse`
     # failure) means we cannot prove HEAD stability, so a later
@@ -92,33 +97,13 @@ def _run_verify_commands(
     # disk inside a wrapper script (`VERIFY_COMMANDS=./run-verify.sh`);
     # inline `KEY=value pytest ...` is unsafe because the failure park
     # comment publishes `verify.command` verbatim on the issue.
-    child_env = _owner._filter_agent_env(dict(os.environ), allow_provider_auth=False)
+    child_env = _environment.filter_agent_env(
+        dict(os.environ), allow_provider_auth=False,
+    )
     for command in commands:
-        failure = _owner._run_verify_command(
+        failure = _run_verify_command(
             worktree, command, timeout, child_env, head_before,
         )
         if failure is not None:
             return failure
-    return VerifyResult(status="ok")
-
-
-def _truncate_verify_output(text: str) -> str:
-    """Redact secrets, then keep the tail within `_VERIFY_OUTPUT_BUDGET`.
-
-    Redaction MUST happen before the truncation. `redact_secrets` does a
-    full-string `str.replace(value, "***")` against each candidate env
-    value; if the truncation cut sliced a secret in half first, the
-    surviving partial would no longer match the replace and would leak
-    verbatim in the park comment. Redacting first collapses any matched
-    secret to `***` before its bytes can straddle the cut.
-
-    The tail typically carries the actual failure (stack trace, assertion
-    diff, linter summary); the head is build noise. Identical convention
-    to `_format_stderr_diagnostics`.
-    """
-    if not text:
-        return ""
-    redacted = _credentials.redact_secrets(text)
-    if len(redacted) <= _VERIFY_OUTPUT_BUDGET:
-        return redacted
-    return redacted[-_VERIFY_OUTPUT_BUDGET:]
+    return _models.VerifyResult(status="ok")

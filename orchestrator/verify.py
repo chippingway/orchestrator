@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable facade for local verification and worktree state probes."""
+"""Forwarding shell for the `git.verification` owners' historical names."""
 from __future__ import annotations
 
 from orchestrator import _verify_exports

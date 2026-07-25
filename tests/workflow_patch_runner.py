@@ -5,13 +5,22 @@ from __future__ import annotations
 
 import contextlib
 from functools import partial
+from types import MappingProxyType
 from unittest.mock import patch
 
 from orchestrator import analytics, workflow
+from orchestrator.git.verification import runner as _verify_runner
 
 from tests.workflow_patch_builders import _build_workflow_mocks
 from tests.workflow_patch_models import _WorkflowRunContext
 from tests.workflow_repo_values import _TEST_SPEC
+
+# The validating approval gate calls the verification runner owner directly, so
+# its mock has to land on that owner -- patching the workflow facade would not
+# intercept the call.
+_OWNER_PATCH_TARGETS = MappingProxyType(
+    {"_run_verify_commands": _verify_runner},
+)
 
 
 def _patch_and_run(callable_, context: _WorkflowRunContext):
@@ -28,9 +37,11 @@ def _patch_and_run(callable_, context: _WorkflowRunContext):
             context.trajectory_log_path,
         ))
         for attribute, attribute_mock in workflow_mocks.items():
-            stack.enter_context(
-                patch.object(workflow, attribute, attribute_mock),
-            )
+            stack.enter_context(patch.object(
+                _OWNER_PATCH_TARGETS.get(attribute, workflow),
+                attribute,
+                attribute_mock,
+            ))
         callable_()
     return workflow_mocks
 
