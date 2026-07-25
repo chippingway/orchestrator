@@ -2,17 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 """Stable PyGithub client surface for workflow and operator code.
 
-Issue-client, state-comment, pull-request, feedback, checks, and
-internal-query responsibilities live in focused mixin leaves. The label,
-event, and issue owners reach no further than ``state_machine``,
-``_static_alias``, ``config``, each other, and the PyGithub types, so their
-re-exports bind eagerly here. ``GitHubClient`` and the check / review
-re-exports resolve lazily through the module ``__getattr__``: the composed
-inventory pulls the full mixin chain, whose outer leaves import this package
-back for the label and pinned-state surfaces, so binding them eagerly would
-let a leaf-first import re-enter a half-built initializer. The pinned-state
-re-exports resolve the same way, keeping the durable-state owner off this
-initializer's import path.
+Feedback, checks, and internal-query responsibilities live in focused mixin
+leaves outside the package, layered over the issue, pinned-state, and
+pull-request owners here. The label, event, and issue owners reach no further
+than ``state_machine``, ``_static_alias``, ``config``, each other, and the
+PyGithub types, so their re-exports bind eagerly here. ``GitHubClient`` and the
+check / review re-exports resolve lazily through the module ``__getattr__``:
+the composed inventory pulls the full mixin chain, whose outer leaves import
+this package back for the label and pinned-state surfaces, so binding them
+eagerly would let a leaf-first import re-enter a half-built initializer. The
+pinned-state re-exports resolve the same way, keeping the durable-state owner
+off this initializer's import path.
 """
 from __future__ import annotations
 
