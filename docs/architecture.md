@@ -214,7 +214,10 @@ collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes`
 what those helpers themselves call targets the owner module. `git/verification/` is bound the same way -- `output`
 calls `models`, `process` calls `output` and `probes`, `runner` calls `process` -- and the validating approval gate
 reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or
-the dirty-file scan targets the owner module and not the `verify` shell. `git/authentication.py` binds the same way --
+the dirty-file scan targets the owner module and not the `verify` shell. That gate is the runner's only caller, so
+`_run_verify_commands` is no longer re-exported by `workflow`; it stays on the `worktrees` hub next to `VerifyResult`
+and `_truncate_verify_output`, while `_head_sha` / `_worktree_dirty_files` remain on both facades for the stage leaves
+that read them off `workflow`. `git/authentication.py` binds the same way --
 the authenticated fetches reach `git.commands` and `git.locks` plus their own token, session, and refusal helpers
 directly, and the push leaf reads the askpass session and token lookup off that owner -- so a patch that has to
 intercept the transport probe, the target-root lock, or the session targets `orchestrator.git.authentication` and
