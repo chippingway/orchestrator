@@ -10,7 +10,7 @@ from functools import partial
 
 from orchestrator.scheduler import IssueScheduler
 
-from tests.scheduler_worker_helpers import _failing_worker
+from tests.scheduler.worker_helpers import _failing_worker
 
 SCHEDULER_LOGGER = "orchestrator.scheduler"
 WORKER_FAILURE = "worker exploded"

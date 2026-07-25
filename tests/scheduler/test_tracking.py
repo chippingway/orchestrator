@@ -16,10 +16,10 @@ from functools import partial
 
 from orchestrator.scheduler import IssueScheduler
 
-from tests.scheduler_coordination_helpers import (
+from tests.scheduler.coordination_helpers import (
     _tracked_worker,
 )
-from tests.scheduler_worker_helpers import (
+from tests.scheduler.worker_helpers import (
     _release_on_exit,
     _worker,
 )

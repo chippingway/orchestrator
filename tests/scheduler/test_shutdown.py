@@ -19,14 +19,14 @@ from unittest.mock import patch
 
 from orchestrator.scheduler import IssueScheduler
 
-from tests.scheduler_shutdown_helpers import (
+from tests.scheduler.shutdown_helpers import (
     _CallbackRegistrationRace,
     _ShutdownTrial,
 )
-from tests.scheduler_coordination_helpers import (
+from tests.scheduler.coordination_helpers import (
     _release_after,
 )
-from tests.scheduler_worker_helpers import (
+from tests.scheduler.worker_helpers import (
     _finishing_worker,
     _gated_failure,
     _release_on_exit,

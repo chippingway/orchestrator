@@ -18,10 +18,12 @@
 #   from their owner modules, and publishes its narrow public surface through
 #   an explicit __all__ (WPS410) so `orchestrator.github` stays the historical
 #   import site. WPS412 is waived for that import-time logic.
-# * orchestrator/scheduler/__init__.py defines `IssueScheduler` over the
-#   execution layers owned by `service` and the submission models owned by
-#   `models`, so its class definition and owner bindings are import-time logic
-#   that WPS412 is waived for.
+# * orchestrator/scheduler/__init__.py is the stable scheduler facade: it
+#   re-exports the concrete `IssueScheduler` from the `service` owner and the
+#   caller-facing `SubmissionRequest` from the `models` owner, and publishes its
+#   narrow public surface through an explicit __all__ (WPS410) so
+#   `orchestrator.scheduler` stays the historical import site. WPS412 is waived
+#   for that import-time logic.
 #
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
@@ -41,7 +43,7 @@ per-file-ignores =
     orchestrator/config/__init__.py:WPS412,WPS410
     orchestrator/agents/__init__.py:WPS412,WPS410
     orchestrator/github/__init__.py:WPS412,WPS410
-    orchestrator/scheduler/__init__.py:WPS412
+    orchestrator/scheduler/__init__.py:WPS412,WPS410
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/github/pull_requests.py:WPS214
