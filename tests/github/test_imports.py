@@ -14,7 +14,7 @@ from orchestrator.github import pinned_state as _pinned_state
 
 
 # The github-package modules plus every client-mixin leaf between `_github_api`
-# and the `pinned_state` owner. The initializer binds the `labels`, `events`,
+# and the `pull_requests` owner. The initializer binds the `labels`, `events`,
 # and `issues` owners eagerly, and the `issues` owner (the pinned-state mixin's
 # base) imports the package back for the label and event surfaces, so importing
 # any leaf first must run the initializer without re-entering a half-built one.
@@ -24,12 +24,12 @@ _MODULES = (
     "orchestrator.github.issues",
     "orchestrator.github.labels",
     "orchestrator.github.pinned_state",
+    "orchestrator.github.pull_requests",
     "orchestrator.github.client",
     "orchestrator._github_api",
     "orchestrator._github_internals",
     "orchestrator._github_feedback",
     "orchestrator._github_pull_checks",
-    "orchestrator._github_pull_requests",
 )
 
 

@@ -9,7 +9,7 @@ from github import GithubException
 from github.PullRequest import PullRequest
 
 from orchestrator import _github_checks, _github_reviews
-from orchestrator._github_pull_requests import GitHubPullRequestMixin
+from orchestrator.github.pull_requests import GitHubPullRequestMixin
 
 log = logging.getLogger("orchestrator.github")
 _HTTP_NOT_FOUND = 404

@@ -76,8 +76,9 @@ orchestrator/
                         bootstrap specifications, and predicates
     pinned_state.py     authenticated pinned-state model, parser, and the
                         state / comment-watermark client mixin
-  _github_*.py          PR, review, check, feedback, and composed client
-                        mixins
+    pull_requests.py    stateless PR status helpers plus the pull-request
+                        client mixin (lookup, creation, comments, labeling)
+  _github_*.py          review, check, feedback, and composed client mixins
   agents/
     __init__.py         stable runner API plus process-termination re-export
     models.py           agent result / run-option / subprocess-result models
