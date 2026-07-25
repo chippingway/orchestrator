@@ -67,6 +67,8 @@ orchestrator/
                         GitHubClient, pinned-state, review, and check
                         re-exports (leaf-first import safe)
     client.py           authenticated `GitHubClient` over the mixin chain
+    checks.py           status / check-run normalization, failure-before-pending
+                        folding, and the fail-closed check-read client mixin
     events.py           audit event record construction and the optional
                         JSONL sink
     issues.py           non-PR issue filtering, issue-query options, and the
@@ -78,10 +80,12 @@ orchestrator/
     pinned_state.py     authenticated pinned-state model, parser, and the
                         state / comment-watermark client mixin
     pull_requests.py    stateless PR status helpers plus the pull-request
-                        client mixin (lookup, creation, comments, labeling)
+                        client mixin (lookup, creation, comments, labeling,
+                        SHA-pinned merge, remote-branch delete)
     reviews.py          current-head review aggregation plus the review client
                         mixin (approval verdicts, unread feedback watermarks)
-  _github_*.py          check and composed client mixins
+  _github_internals.py  composed client mixin (worker-thread clone, cached
+                        label reads, stage-enter events)
   agents/
     __init__.py         stable runner API plus process-termination re-export
     models.py           agent result / run-option / subprocess-result models

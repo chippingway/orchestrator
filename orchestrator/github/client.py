@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Authenticated repository client composed from the mixin leaves.
 
-``GitHubClient`` subclasses the composed inventory base, so this module imports
-``_github_api`` -- and thus the full mixin chain -- at load time. It is imported
-lazily by ``orchestrator.github`` (through the package ``__getattr__``) rather
-than from the package initializer, so a chain leaf that reaches
-``orchestrator.github.pinned_state`` never re-enters the initializer mid-import.
+``GitHubClient`` subclasses the composed base, so this module imports
+``_github_internals`` -- and thus the full mixin chain -- at load time. It is
+imported lazily by ``orchestrator.github`` (through the package
+``__getattr__``) rather than from the package initializer, so a chain leaf that
+reaches ``orchestrator.github.pinned_state`` never re-enters the initializer
+mid-import.
 """
 from __future__ import annotations
 
@@ -16,10 +17,10 @@ from github import Auth, Github
 from github.Label import Label
 from github.Repository import Repository
 
-from orchestrator import _github_api, config
+from orchestrator import _github_internals, config
 
 
-class GitHubClient(_github_api.GitHubClientBase):
+class GitHubClient(_github_internals.GitHubInternalsMixin):
     """Authenticated repository client with a worker-safe clone seam."""
 
     def __init__(

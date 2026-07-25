@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """Stable PyGithub client surface for workflow and operator code.
 
-Check and internal-query responsibilities live in focused mixin leaves outside
-the package, composed with the review, label, issue, pinned-state, and
-pull-request owners here. The label, event, and issue owners reach no further
-than ``state_machine``, ``_static_alias``, ``config``, each other, and the
-PyGithub types, so their re-exports bind eagerly here. ``GitHubClient`` and the
-check re-exports resolve lazily through the module ``__getattr__``: the
-composed inventory pulls the full mixin chain, whose leaves import this package
-back for the label, review, and pinned-state surfaces, so binding them eagerly
-would let a leaf-first import re-enter a half-built initializer. The
-pinned-state and review re-exports resolve the same way, keeping the
-durable-state owner -- which the review owner reads the pinned marker from --
-off this initializer's import path.
+Client composition lives in one mixin leaf outside the package, layered over
+the check, review, label, issue, pinned-state, and pull-request owners here.
+The label, event, and issue owners reach no further than ``state_machine``,
+``_static_alias``, ``config``, each other, and the PyGithub types, so their
+re-exports bind eagerly here. ``GitHubClient`` resolves lazily through the
+module ``__getattr__``: it pulls the full mixin chain, whose leaves import this
+package back for the label, review, and pinned-state surfaces, so binding it
+eagerly would let a leaf-first import re-enter a half-built initializer. The
+pinned-state, review, and check re-exports resolve the same way, keeping the
+durable-state owner -- which the review owner reads the pinned marker from and
+the check owner inherits through the pull-request one -- off this initializer's
+import path.
 """
 from __future__ import annotations
 
@@ -65,26 +65,22 @@ _REVIEW_EXPORTS = (
     ("_is_actionable_review_summary", "is_actionable_review_summary"),
 )
 
-# Historical facade name -> attribute on the compatibility inventory. Kept out
-# of module globals so __getattr__ resolves each on first access, letting this
-# initializer finish before _github_api (and its mixin chain) is imported. Only
-# a listed name pulls the inventory: `from orchestrator.github import <owner>`
-# probes the package for an attribute of that name first, so importing the
-# chain on a miss would re-enter whichever leaf is mid-import.
-_LAZY_API_EXPORTS = (
+# Facade name -> attribute on the check owner, deferred because that owner
+# inherits the pull-request mixin and so reaches the durable-state owner.
+_CHECK_EXPORTS = (
     ("_CheckSurfaceRead", "CheckSurfaceRead"),
     ("_normalize_combined_status", "normalize_combined_status"),
     ("_normalize_check_runs", "normalize_check_runs"),
     ("_fold_check_states", "fold_check_states"),
-    ("_FAILED_CHECK_RUN_CONCLUSIONS", "failed_check_run_conclusions"),
-    ("_SUCCESSFUL_CHECK_RUN_CONCLUSIONS", "successful_check_run_conclusions"),
-    ("_CHECK_STATE_FAILURE", "check_state_failure"),
-    ("_CHECK_STATE_PENDING", "check_state_pending"),
+    ("_FAILED_CHECK_RUN_CONCLUSIONS", "FAILED_CHECK_RUN_CONCLUSIONS"),
+    ("_SUCCESSFUL_CHECK_RUN_CONCLUSIONS", "SUCCESSFUL_CHECK_RUN_CONCLUSIONS"),
+    ("_CHECK_STATE_FAILURE", "CHECK_STATE_FAILURE"),
+    ("_CHECK_STATE_PENDING", "CHECK_STATE_PENDING"),
 )
 
 
 def __getattr__(name: str) -> Any:
-    """Resolve GitHubClient, owner, and inventory re-exports lazily."""
+    """Resolve GitHubClient and the deferred owner re-exports lazily."""
     if name == "GitHubClient":
         from orchestrator.github import client
         return client.GitHubClient
@@ -96,8 +92,8 @@ def __getattr__(name: str) -> Any:
         if name == owner_name:
             from orchestrator.github import reviews
             return getattr(reviews, owner_attr)
-    for export_name, api_attr in _LAZY_API_EXPORTS:
-        if name == export_name:
-            from orchestrator import _github_api
-            return getattr(_github_api, api_attr)
+    for owner_name, owner_attr in _CHECK_EXPORTS:
+        if name == owner_name:
+            from orchestrator.github import checks
+            return getattr(checks, owner_attr)
     raise AttributeError(name)

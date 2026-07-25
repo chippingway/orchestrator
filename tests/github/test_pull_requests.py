@@ -17,11 +17,14 @@ from tests.fake_models import FakeLabel, FakePR
 _STATE_OPEN = "open"
 _STATE_CLOSED = "closed"
 _PR_NUMBER = 7
+_HTTP_NOT_FOUND = 404
+_HTTP_FORBIDDEN = 403
 _HTTP_SERVER_ERROR = 500
 _BRANCH = "orchestrator/issue-7"
 _BASE = "main"
 _OWNER_LOGIN = "geserdugarov"
 _LABEL_NAME = "community_contribution"
+_HEAD_SHA = "f00dcafe"
 
 # (merged, PyGithub state) -> the one state every workflow gate reads.
 _PR_STATE_CASES = (
@@ -29,6 +32,14 @@ _PR_STATE_CASES = (
     ((True, _STATE_CLOSED), "merged"),
     ((False, _STATE_CLOSED), _STATE_CLOSED),
     ((False, _STATE_OPEN), _STATE_OPEN),
+)
+
+# HTTP status the ref delete raises -> whether cleanup counts the branch gone.
+# A 404 means the repository's auto-delete already removed it on merge.
+_BRANCH_DELETE_CASES = (
+    (None, True),
+    (_HTTP_NOT_FOUND, True),
+    (_HTTP_FORBIDDEN, False),
 )
 
 
@@ -177,7 +188,11 @@ class PullRequestLookupTest(_PullRequestClientTestCase):
 
 
 class PullRequestWriteTest(_PullRequestClientTestCase):
-    """Creation, comments, and labeling hand GitHub the caller's payload."""
+    """Creation, comments, labeling, merge, and branch deletion.
+
+    Each write hands GitHub the caller's payload and reports back whether it
+    landed; none of them re-reads the pull request to double-check.
+    """
 
     def test_open_pr_sends_head_and_base(self) -> None:
         create_pull = self.gh.repo.create_pull
@@ -217,6 +232,59 @@ class PullRequestWriteTest(_PullRequestClientTestCase):
 
         pull_request.add_to_labels.assert_called_once_with(_LABEL_NAME)
         self.gh.repo.get_pull.assert_not_called()
+
+    def test_merge_pins_the_head_sha(self) -> None:
+        # Pinning the SHA makes GitHub reject the merge if the head moved
+        # since the caller read the checks and reviews it merged on.
+        pull_request = MagicMock()
+
+        self.assertTrue(self.gh.merge_pr(pull_request, sha=_HEAD_SHA))
+
+        pull_request.merge.assert_called_once_with(
+            sha=_HEAD_SHA,
+            merge_method="squash",
+        )
+
+    def test_merge_failure_is_reported_not_retried(self) -> None:
+        # A rejected merge (moved head, protected branch, lost race) is the
+        # caller's decision to make on the next tick, not ours to retry blind.
+        pull_request = MagicMock(number=_PR_NUMBER)
+        pull_request.merge.side_effect = GithubException(
+            _HTTP_FORBIDDEN,
+            {"message": "Required status check is expected"},
+            None,
+        )
+
+        merged = self.gh.merge_pr(pull_request, sha=_HEAD_SHA, method="merge")
+
+        self.assertFalse(merged)
+        pull_request.merge.assert_called_once_with(
+            sha=_HEAD_SHA,
+            merge_method="merge",
+        )
+
+    def test_branch_delete_reports_the_outcome(self) -> None:
+        for raised_status, expected in _BRANCH_DELETE_CASES:
+            with self.subTest(status=raised_status):
+                self._bind_ref_delete(raised_status)
+                self.assertEqual(
+                    self.gh.delete_remote_branch(_BRANCH),
+                    expected,
+                )
+                self.gh.repo.get_git_ref.assert_called_once_with(
+                    f"heads/{_BRANCH}",
+                )
+
+    def _bind_ref_delete(self, raised_status: Optional[int]) -> None:
+        self.gh.repo.get_git_ref.reset_mock()
+        git_ref = MagicMock()
+        if raised_status is not None:
+            git_ref.delete.side_effect = GithubException(
+                raised_status,
+                {"message": "no ref"},
+                None,
+            )
+        self.gh.repo.get_git_ref.return_value = git_ref
 
 
 class PullRequestMixinOwnerTest(unittest.TestCase):

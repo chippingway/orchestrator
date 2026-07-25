@@ -28,9 +28,16 @@
 # -- registration, bounded draining, timeout classification, and SIGTERM/SIGKILL
 # escalation -- so it carries 9 members past the same ceiling. Both single-owner
 # groupings are deliberate, so WPS202 is waived for those files.
+#
+# orchestrator/github/pull_requests.py owns the whole pull-request surface --
+# branch/base lookup, creation, comments, labeling, retrieval, the SHA-pinned
+# merge, and the head-branch delete -- so its client mixin carries 8 methods
+# past the WPS214 ceiling of 7. Splitting the merge-side mutations out would
+# hand the composed client two mixins for one owner, so WPS214 is waived here.
 per-file-ignores =
     orchestrator/config/__init__.py:WPS412,WPS410
     orchestrator/agents/__init__.py:WPS412,WPS410
     orchestrator/github/__init__.py:WPS412,WPS413
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
+    orchestrator/github/pull_requests.py:WPS214

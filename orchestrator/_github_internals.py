@@ -11,25 +11,23 @@ from github.Issue import Issue
 from github.Label import Label
 
 from orchestrator import analytics
-from orchestrator import _github_checks
-from orchestrator._github_pull_checks import GitHubPullChecksMixin
+from orchestrator.github.checks import GitHubChecksMixin
 from orchestrator.github.labels import GitHubLabelMixin
 from orchestrator.github.reviews import GitHubReviewMixin
 
 log = logging.getLogger("orchestrator.github")
-_HTTP_FORBIDDEN = 403
 
 
 class GitHubInternalsMixin(
     GitHubReviewMixin,
     GitHubLabelMixin,
-    GitHubPullChecksMixin,
+    GitHubChecksMixin,
 ):
-    """Internal seams used by polling, checks, and worker isolation.
+    """Internal seams used by polling, analytics, and worker isolation.
 
-    The review and label collaborators stand beside the pull-request chain
-    rather than inside it: neither needs a check or PR method, and keeping them
-    independent lets each own its surface without a leaf-to-leaf import.
+    The review and label collaborators stand beside the check / pull-request
+    chain rather than inside it: neither needs a check or PR method, and keeping
+    them independent lets each own its surface without a leaf-to-leaf import.
     """
 
     def _for_worker_thread(self):
@@ -75,52 +73,3 @@ class GitHubInternalsMixin(
             issue=issue_number,
             stage=stage,
         )
-
-    def _read_combined_status(
-        self,
-        head_sha: str,
-    ) -> _github_checks.CheckSurfaceRead:
-        """Read and normalize the legacy commit-status surface."""
-        try:
-            combined_status = (
-                self.repo.get_commit(head_sha).get_combined_status()
-            )
-        except GithubException as error:
-            log.warning(
-                "could not read combined status for %s (HTTP %s); ignoring",
-                head_sha,
-                error.status,
-            )
-            return _github_checks.CheckSurfaceRead(read_failed=True)
-        return _github_checks.CheckSurfaceRead(
-            state=_github_checks.normalize_combined_status(combined_status),
-        )
-
-    def _read_check_runs(
-        self,
-        head_sha: str,
-    ) -> _github_checks.CheckSurfaceRead:
-        """Read and normalize the check-runs surface."""
-        try:
-            return _github_checks.CheckSurfaceRead(
-                state=_github_checks.normalize_check_runs(
-                    self.repo.get_commit(head_sha).get_check_runs(),
-                ),
-            )
-        except GithubException as error:
-            if error.status == _HTTP_FORBIDDEN:
-                log.error(
-                    "could not read check-runs for %s (HTTP 403). The "
-                    "orchestrator PAT needs 'Checks: read' to evaluate "
-                    "GitHub Actions PRs. Without it, check_state is "
-                    "reported as 'none' on Actions-only PRs. Add the "
-                    "permission and restart.",
-                    head_sha,
-                )
-            else:
-                log.warning(
-                    "could not read check-runs for %s (HTTP %s); ignoring",
-                    head_sha,
-                    error.status,
-                )
-            return _github_checks.CheckSurfaceRead(read_failed=True)

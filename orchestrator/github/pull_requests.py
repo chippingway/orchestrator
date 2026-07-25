@@ -1,8 +1,9 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Pull-request lookup, labeling, and stateless status helpers."""
+"""Pull-request lookup, labeling, status helpers, and merge-side mutations."""
 from __future__ import annotations
 
+import logging
 from typing import Iterable, Optional
 
 from github import GithubException
@@ -12,7 +13,10 @@ from github.PullRequest import PullRequest
 from orchestrator.github.pinned_state import GitHubStateMixin
 from orchestrator._static_alias import StaticMethodAlias
 
+log = logging.getLogger("orchestrator.github")
+
 _ISSUE_STATE_OPEN = "open"
+_HTTP_NOT_FOUND = 404
 
 
 def pr_has_label(pr: PullRequest, label_name: str) -> bool:
@@ -49,7 +53,7 @@ PR_IS_MERGEABLE_METHOD = StaticMethodAlias(pr_is_mergeable)
 
 
 class GitHubPullRequestMixin(GitHubStateMixin):
-    """Core pull-request lookup and labeling methods."""
+    """Pull-request lookup, labeling, and merge-side mutation methods."""
 
     pr_has_label = PR_HAS_LABEL_METHOD
     pr_state = PR_STATE_METHOD
@@ -104,3 +108,39 @@ class GitHubPullRequestMixin(GitHubStateMixin):
     def get_pr(self, pr_number: int) -> PullRequest:
         """Return one pull request by repository number."""
         return self.repo.get_pull(pr_number)
+
+    def merge_pr(
+        self,
+        pr: PullRequest,
+        *,
+        sha: str,
+        method: str = "squash",
+    ) -> bool:
+        """Attempt one SHA-pinned merge without blind retries."""
+        try:
+            pr.merge(sha=sha, merge_method=method)
+        except GithubException as error:
+            log.warning(
+                "merge failed for PR #%s (HTTP %s): %s",
+                pr.number,
+                error.status,
+                error.data,
+            )
+            return False
+        return True
+
+    def delete_remote_branch(self, branch: str) -> bool:
+        """Delete a remote branch, treating an absent ref as success."""
+        try:
+            self.repo.get_git_ref(f"heads/{branch}").delete()
+        except GithubException as error:
+            if error.status == _HTTP_NOT_FOUND:
+                return True
+            log.warning(
+                "could not delete remote branch %r (HTTP %s): %s",
+                branch,
+                error.status,
+                error.data,
+            )
+            return False
+        return True

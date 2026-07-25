@@ -473,6 +473,11 @@ and publishes its narrow public surface through an explicit `__all__` (`WPS410`)
 `agents.backends` command modules (`codex`, `claude`) directly at dispatch time, so the facade carries no private
 backend re-exports. `WPS412` is waived for that import-time logic.
 
+`orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
+comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8
+methods past the ceiling of 7. Splitting the merge-side mutations out would hand the composed client two mixins for
+one owner, so the method count is waived there instead.
+
 Ruff and the line-length test enforce a repository-wide 120-column target set once as `line-length` under
 `[tool.ruff]` in [`../pyproject.toml`](../pyproject.toml). Ruff applies it to Python via the opted-in `E501` rule; the
 first-party [`../tests/test_line_length.py`](../tests/test_line_length.py) reads the same value and applies it to
