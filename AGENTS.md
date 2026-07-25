@@ -29,7 +29,8 @@ orchestrator process is stateless.
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
-  `_branch_*`, `_git_*`, `_verify_*`, `_worktree_*`, and stage-specific prefixes). The package also contains per-tick
+  `_branch_*`, `_git_*`, `_worktree_*`, and stage-specific prefixes) or, for `verify.py`, straight to the
+  `git/verification/` owners. The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
@@ -64,16 +65,21 @@ orchestrator process is stateless.
   transport probe), the `authentication.py` owner (per-repository token resolution, the askpass session and its
   detached environment, and the authenticated worktree / target-root fetches), the `locks.py` owner (the
   per-target-root re-entrant lock registry), the `verification/` subpackage over the `models.py` owner (the
-  `VerifyResult` statuses / fields and the output budget its `output` is truncated to) and the `probes.py` owner
-  (the HEAD snapshot and the hardened porcelain dirty-file scan, both run through `commands.py`), the
-  `worktrees/` subpackage, whose `__init__.py` likewise binds nothing over the `paths.py` owner (slug
-  sanitization, the git-ref-safe branch segment, branch / path derivation, and the pinned / legacy branch
-  resolver) and the `recovery.py` owner (candidate-branch discovery and the unpushed-commit probes), and the
-  `publication/` subpackage, whose `__init__.py` also binds nothing, over the `probes.py` owner (the
-  conventional / repo-local subject vocabulary and predicates, ahead/behind counts, first-commit and recent-base
-  subject reads) and the `titles.py` owner (subject-prefix inference from base history and PR-title selection),
-  with `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, and `branch_publication.py` kept as the forwarding
-  facades for historical callers), and stable runtime-core facades (`main.py`, `state_machine.py`).
+  `VerifyResult` statuses / fields and the output budget its `output` is truncated to), the `output.py` owner
+  (the redact-then-truncate pass that fills that field), the `probes.py` owner (the HEAD snapshot and the
+  hardened porcelain dirty-file scan, both run through `commands.py`), the `process.py` owner (one verify
+  command's process-group spawn, group kill, bounded drains, and the `VerifyResult` verdict it earns) and the
+  `runner.py` owner (the HEAD snapshot, the credential-stripped child environment, and the fail-fast
+  `VERIFY_COMMANDS` sequencing the validating stage calls directly, with process registration and environment
+  filtering borrowed from `agents/`), the `worktrees/` subpackage, whose `__init__.py` likewise binds nothing
+  over the `paths.py` owner (slug sanitization, the git-ref-safe branch segment, branch / path derivation, and
+  the pinned / legacy branch resolver) and the `recovery.py` owner (candidate-branch discovery and the
+  unpushed-commit probes), and the `publication/` subpackage, whose `__init__.py` also binds nothing, over the
+  `probes.py` owner (the conventional / repo-local subject vocabulary and predicates, ahead/behind counts,
+  first-commit and recent-base subject reads) and the `titles.py` owner (subject-prefix inference from base
+  history and PR-title selection), with `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, and
+  `branch_publication.py` kept as the forwarding facades for historical callers), and stable runtime-core
+  facades (`main.py`, `state_machine.py`).
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
   tests through the `tests/fakes.py` bridge. Stage-handler tests in
@@ -117,8 +123,10 @@ orchestrator process is stateless.
   transport probing, askpass session / environment construction and failed-fetch shaping, the authenticated
   worktree and target-root fetches, target-root lock ownership, and import-cycle / package-surface checks, plus
   their shared authentication fixtures, with the verification owners covered under `tests/git/verification/` —
-  result fields and statuses, HEAD and porcelain probing against a planted `core.fsmonitor`, verify-time mutation
-  detection, and import-cycle / layering / package-surface checks, plus the real-git verify-command fixture; the
+  result fields and statuses, HEAD and porcelain probing against a planted `core.fsmonitor`, command sequencing
+  and output budgeting, child-environment stripping and redaction-before-truncation, timeout group-kill and
+  bounded drains, fail-closed HEAD-baseline and fail-fast refusals, verify-time mutation detection, and
+  import-cycle / layering / package-surface checks, plus the real-git verify-command fixture; the
   worktrees owners covered in `tests/git/worktrees/`: path derivation, git-ref-safe branch segments, pinned /
   legacy branch resolution, real-git unpushed-commit probes, and import-cycle / package-surface checks, plus their
   path and branch-fixture support modules; and the publication owners covered in `tests/git/publication/`: subject

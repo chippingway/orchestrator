@@ -81,19 +81,19 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.git.verification.probes",
+        (
+            ("_head_sha", "_head_sha"),
+            ("_worktree_dirty_files", "_worktree_dirty_files"),
+        ),
+    ),
+    *export_group(
         "orchestrator.git_plumbing",
         (
             ("_GIT_NO_PROMPT_ENV", "_GIT_NO_PROMPT_ENV"),
             ("_git", "_git"),
             ("_git_hardened", "_git_hardened"),
             ("_push_branch", "_push_branch"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.verify",
-        (
-            ("_head_sha", "_head_sha"),
-            ("_worktree_dirty_files", "_worktree_dirty_files"),
         ),
     ),
     *export_group(

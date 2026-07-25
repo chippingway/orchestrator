@@ -8,19 +8,25 @@ from orchestrator._compat_exports import export_group
 
 EXPORTS = (
     *export_group(
-        "contextlib",
-        (("suppress", "suppress"),),
+        "orchestrator.git.verification.models",
+        (
+            ("VerifyResult", "VerifyResult"),
+            ("_VERIFY_OUTPUT_BUDGET", "_VERIFY_OUTPUT_BUDGET"),
+        ),
     ),
     *export_group(
-        "dataclasses",
-        (("dataclass", "dataclass"),),
+        "orchestrator.git.verification.output",
+        (("_truncate_verify_output", "_truncate_verify_output"),),
     ),
     *export_group(
-        "logging",
-        (("logging", None),),
+        "orchestrator.git.verification.probes",
+        (
+            ("_head_sha", "_head_sha"),
+            ("_worktree_dirty_files", "_worktree_dirty_files"),
+        ),
     ),
     *export_group(
-        "orchestrator._verify_process",
+        "orchestrator.git.verification.process",
         (
             ("_combine_output", "_combine_output"),
             ("_completed_verify_result", "_completed_verify_result"),
@@ -31,65 +37,11 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._verify_runner",
+        "orchestrator.git.verification.runner",
         (
             ("_run_verify_command", "_run_verify_command"),
             ("_run_verify_commands", "_run_verify_commands"),
-            ("_truncate_verify_output", "_truncate_verify_output"),
         ),
-    ),
-    *export_group(
-        "orchestrator._verify_state",
-        (("log", "log"),),
-    ),
-    *export_group(
-        "orchestrator.agents.environment",
-        (("_filter_agent_env", "filter_agent_env"),),
-    ),
-    *export_group(
-        "orchestrator.config.credentials",
-        (("_redact_secrets", "redact_secrets"),),
-    ),
-    *export_group(
-        "orchestrator.git.verification.models",
-        (
-            ("VerifyResult", "VerifyResult"),
-            ("_VERIFY_OUTPUT_BUDGET", "_VERIFY_OUTPUT_BUDGET"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.git.verification.probes",
-        (
-            ("_head_sha", "_head_sha"),
-            ("_worktree_dirty_files", "_worktree_dirty_files"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.git_plumbing",
-        (
-            ("_git", "_git"),
-            ("_git_hardened", "_git_hardened"),
-        ),
-    ),
-    *export_group(
-        "os",
-        (("os", None),),
-    ),
-    *export_group(
-        "pathlib",
-        (("Path", "Path"),),
-    ),
-    *export_group(
-        "signal",
-        (("signal", None),),
-    ),
-    *export_group(
-        "subprocess",
-        (("subprocess", None),),
-    ),
-    *export_group(
-        "typing",
-        (("Optional", "Optional"),),
     ),
 )
 EXPORTED_NAMES = None

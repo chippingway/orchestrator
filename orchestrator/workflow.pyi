@@ -130,7 +130,6 @@ _route_issue_to_handler: Any
 _run_agent_tracked: Any
 _run_parallel_tick: Any
 _run_sequential_tick: Any
-_run_verify_commands: Any
 _sanitize_branch_segment: Any
 _sanitize_slug: Any
 _squash_and_force_push: Any

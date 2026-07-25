@@ -8,9 +8,8 @@ import subprocess
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import verify
 from orchestrator.agents import processes
-from orchestrator.git.verification import probes
+from orchestrator.git.verification import probes, process, runner
 
 from tests.git.verification import command_helpers
 
@@ -52,7 +51,7 @@ class VerifyCommandMutationTest(
             "git add autofix.txt && "
             'git commit -q -m "chore: verify-time auto-fix"\''
         )
-        run = verify._run_verify_commands(self.worktree, (cmd,), 60)
+        run = runner._run_verify_commands(self.worktree, (cmd,), 60)
         self.assertEqual(run.status, VERIFY_HEAD_CHANGED)
         self.assertEqual(run.command, cmd)
         self.assertEqual(run.head_before, head_before)
@@ -72,7 +71,7 @@ class VerifyCommandMutationTest(
             "sh -c 'echo BUILD_LOG_LINE; touch leftover.txt'",  # leaves untracked file
             PASSING_COMMAND,  # should never run
         )
-        run = verify._run_verify_commands(self.worktree, cmds, 60)
+        run = runner._run_verify_commands(self.worktree, cmds, 60)
         self.assertEqual(run.status, VERIFY_DIRTY)
         # Named command is the SECOND command (the one that left the
         # tree dirty), NOT `commands[-1]`.
@@ -100,11 +99,11 @@ class VerifyCommandMutationTest(
 
         proc.communicate.side_effect = command_helpers.RegisteredCommunicate(proc, seen)
         with (
-            patch.object(verify.subprocess, "Popen", return_value=proc),
+            patch.object(process.subprocess, "Popen", return_value=proc),
             patch.object(probes, "_worktree_dirty_files", return_value=[]),
             patch.object(probes, "_head_sha", return_value="sha"),
         ):
-            run = verify._run_verify_commands(self.worktree, (PASSING_COMMAND,), 60)
+            run = runner._run_verify_commands(self.worktree, (PASSING_COMMAND,), 60)
 
         self.assertEqual(run.status, VERIFY_OK)
         self.assertTrue(
@@ -113,3 +112,7 @@ class VerifyCommandMutationTest(
         )
         with processes._running_procs_lock:
             self.assertNotIn(proc, processes._running_procs)
+
+
+if __name__ == "__main__":
+    unittest.main()
