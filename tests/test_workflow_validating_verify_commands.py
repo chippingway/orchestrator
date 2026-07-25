@@ -8,7 +8,7 @@ import unittest
 
 from orchestrator import workflow
 
-from tests import validating_verify_test_support as verify_support
+from tests.git.verification import command_helpers
 
 VERIFY_FAILED = "failed"
 VERIFY_TIMEOUT = "timeout"
@@ -21,7 +21,7 @@ LEFTOVER_FILE = "leftover.txt"
 
 
 class RunVerifyCommandsTest(
-    verify_support.VerifyCommandsFixtureMixin,
+    command_helpers.VerifyCommandsFixtureMixin,
     unittest.TestCase,
 ):
     """Run commands, enforce timeouts, and report dirty worktrees."""

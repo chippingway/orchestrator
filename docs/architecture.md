@@ -127,6 +127,10 @@ orchestrator/
       probes.py         subject vocabulary and predicates, ahead/behind counts,
                         first-commit and recent-base subject reads
       titles.py         subject-prefix inference and PR-title selection
+    verification/
+      __init__.py       package marker only; callers import an owner directly
+      models.py         VerifyResult statuses / fields and the output budget
+      probes.py         HEAD snapshot and hardened porcelain dirty-file scan
     worktrees/
       __init__.py       package marker only; callers import an owner directly
       paths.py          slug sanitization, git-ref-safe branch segments, path
@@ -136,7 +140,8 @@ orchestrator/
   _git_*.py             immutable auth fragments plus the auth, fetch, and
                         push leaves
   verify.py             lazy local-verification compatibility facade
-  _verify_*.py          verify models, subprocess execution, and probes
+  _verify_*.py          verify-command execution, output redaction and
+                        truncation, and the shared logger
   worktree_lifecycle.py lazy naming/creation/cleanup compatibility facade
   _worktree_*.py        creation, decomposition, cleanup, and terminal leaves
   branch_publication.py lazy branch-publication compatibility facade
@@ -203,7 +208,9 @@ therefore keep working. Patches that need to intercept base-sync internals still
 before the split, and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
 `workflow`) because their callers read them off a facade. Inside `git/publication/`, though, the owners bind their
 collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes` -- so a patch that has to intercept
-what those helpers themselves call targets the owner module. Config and analytics modules retain their
+what those helpers themselves call targets the owner module. The verify leaves bind `git/verification/` the same way,
+so a patch that has to intercept the HEAD snapshot or the dirty-file scan targets
+`orchestrator.git.verification.probes` and not the `verify` facade. Config and analytics modules retain their
 original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not silently rebind
 already-imported workflow leaves. The analytics package has its own import-only bootstrap so an explicit package reload
 still reparses sink settings and keeps stale package holders isolated as before.

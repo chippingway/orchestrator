@@ -1,15 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Worktree mutations a verify command leaves behind, seen through a real run."""
+
 from __future__ import annotations
 
 import subprocess
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import verify, workflow
+from orchestrator import verify
 from orchestrator.agents import processes
+from orchestrator.git.verification import probes
 
-from tests import validating_verify_test_support as verify_support
+from tests.git.verification import command_helpers
 
 VERIFY_HEAD_CHANGED = "head_changed"
 VERIFY_DIRTY = "dirty"
@@ -21,7 +24,7 @@ WORKTREE_FLAG = "-C"
 
 
 class VerifyCommandMutationTest(
-    verify_support.VerifyCommandsFixtureMixin,
+    command_helpers.VerifyCommandsFixtureMixin,
     unittest.TestCase,
 ):
     """Report verify-time commits, dirty output, and process registration."""
@@ -49,7 +52,7 @@ class VerifyCommandMutationTest(
             "git add autofix.txt && "
             'git commit -q -m "chore: verify-time auto-fix"\''
         )
-        run = workflow._run_verify_commands(self.worktree, (cmd,), 60)
+        run = verify._run_verify_commands(self.worktree, (cmd,), 60)
         self.assertEqual(run.status, VERIFY_HEAD_CHANGED)
         self.assertEqual(run.command, cmd)
         self.assertEqual(run.head_before, head_before)
@@ -69,7 +72,7 @@ class VerifyCommandMutationTest(
             "sh -c 'echo BUILD_LOG_LINE; touch leftover.txt'",  # leaves untracked file
             PASSING_COMMAND,  # should never run
         )
-        run = workflow._run_verify_commands(self.worktree, cmds, 60)
+        run = verify._run_verify_commands(self.worktree, cmds, 60)
         self.assertEqual(run.status, VERIFY_DIRTY)
         # Named command is the SECOND command (the one that left the
         # tree dirty), NOT `commands[-1]`.
@@ -95,11 +98,11 @@ class VerifyCommandMutationTest(
         proc.returncode = 0
         seen: dict[str, bool] = {}
 
-        proc.communicate.side_effect = verify_support.RegisteredCommunicate(proc, seen)
+        proc.communicate.side_effect = command_helpers.RegisteredCommunicate(proc, seen)
         with (
             patch.object(verify.subprocess, "Popen", return_value=proc),
-            patch.object(verify, "_worktree_dirty_files", return_value=[]),
-            patch.object(verify, "_head_sha", return_value="sha"),
+            patch.object(probes, "_worktree_dirty_files", return_value=[]),
+            patch.object(probes, "_head_sha", return_value="sha"),
         ):
             run = verify._run_verify_commands(self.worktree, (PASSING_COMMAND,), 60)
 

@@ -5,8 +5,10 @@ from __future__ import annotations
 
 from orchestrator import verify as _owner
 from orchestrator.agents import processes as _processes
+from orchestrator.git.verification import models as _models
+from orchestrator.git.verification import probes as _probes
 
-VerifyResult = _owner.VerifyResult
+VerifyResult = _models.VerifyResult
 Optional = _owner.Optional
 Path = _owner.Path
 os = _owner.os
@@ -107,7 +109,7 @@ def _completed_verify_result(
             exit_code=proc.returncode,
             output=_owner._truncate_verify_output(combined_output),
         )
-    dirty_files = _owner._worktree_dirty_files(worktree)
+    dirty_files = _probes._worktree_dirty_files(worktree)
     if dirty_files:
         return VerifyResult(
             status="dirty",
@@ -116,7 +118,7 @@ def _completed_verify_result(
             output=_owner._truncate_verify_output(combined_output),
             dirty_files=tuple(dirty_files),
         )
-    head_after = _owner._head_sha(worktree)
+    head_after = _probes._head_sha(worktree)
     if head_after == head_before:
         return None
     return VerifyResult(
