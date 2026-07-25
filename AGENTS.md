@@ -31,7 +31,10 @@ orchestrator process is stateless.
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
   `_branch_*`, `_git_*`, `_verify_*`, `_worktree_*`, and stage-specific prefixes). The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
-  recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler (`scheduler.py`),
+  recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
+  (`scheduler/`, whose `__init__.py` builds `IssueScheduler` over the `models.py` owner (typed submissions,
+  legacy-call binding, normalization) and the `service.py` owner (views, reservation, execution, and
+  completion handling)),
   the configuration package (`config/`, whose `__init__.py` binds each setting resolved by the `environment.py`
   `_SettingsResolver`, which draws on the `_dotenv.py` / `credentials.py` / `models.py` / `repositories.py` leaves),
   the agents package (`agents/`, whose `__init__.py` is the stable runner facade over the `models.py` /
@@ -90,7 +93,8 @@ orchestrator process is stateless.
   event, issue-query, issue-client (real-client polling and child creation), pollable-listing, pinned-state,
   pull-request (status helpers, writes, merges, branch deletion), review (head verdicts, actionable summaries,
   feedback watermarks), check (surface normalization, folding, fail-closed reads), and import-cycle / public-surface
-  tests in `tests/github/`.
+  tests in `tests/github/`. Scheduler-package submission-model and `submit` compatibility tests live in
+  `tests/scheduler/`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

@@ -284,7 +284,7 @@ The two caps below are the levers:
   proceeds; `enforce` raises; `off` disables it. The label *typo* guard is always strict regardless of this setting.
   Invalid values abort at startup.
 
-Both caps are enforced by a single `IssueScheduler` (`orchestrator/scheduler.py`) built once at startup and threaded
+Both caps are enforced by a single `IssueScheduler` (`orchestrator/scheduler/`) built once at startup and threaded
 through every `workflow.tick` call. New callers may pass a frozen `SubmissionRequest`; the historical
 `submit(repo_slug, issue_number, fn, *, ...)` positional/all-keyword API remains supported. A submit is skipped this
 tick (and retried next pass) when:
@@ -478,6 +478,10 @@ The github facade adds a third scope: `orchestrator/github/__init__.py` (`WPS412
 through an explicit `__all__` (`WPS410`); every other GitHub surface — labels, events, issues, pull requests, reviews,
 checks — is imported from its owner directly, so the facade carries no private re-exports. `WPS412` is waived for that
 import-time logic.
+
+The scheduler package adds a fourth scope: `orchestrator/scheduler/__init__.py` (`WPS412`) defines `IssueScheduler`
+over the execution layers owned by `service` and the submission models owned by `models`, so its class definition and
+owner bindings are import-time logic.
 
 `orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
 comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8

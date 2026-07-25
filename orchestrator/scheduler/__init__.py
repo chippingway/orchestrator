@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Process-local scheduler for concurrent per-issue handlers.
 
-``IssueScheduler`` coordinates two executor pools while the typed submission,
-state-inspection, reservation, and execution responsibilities live in focused
-private leaves. The historical positional/keyword ``submit`` API remains
+``IssueScheduler`` coordinates two executor pools while ``models`` owns the
+typed submissions and ``service`` owns the state-inspection, reservation, and
+execution layers. The historical positional/keyword ``submit`` API remains
 available beside ``SubmissionRequest``.
 """
 from __future__ import annotations
@@ -13,11 +13,11 @@ import threading
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
 
-from orchestrator import _scheduler_mixins, _scheduler_submission
+from orchestrator.scheduler import models, service
 
-SchedulerExecutionMixin = _scheduler_mixins.SchedulerExecutionMixin
-_Submission = _scheduler_submission.Submission
-SubmissionRequest = _scheduler_submission.SubmissionRequest
+SchedulerExecutionMixin = service.SchedulerExecutionMixin
+_Submission = models.Submission
+SubmissionRequest = models.SubmissionRequest
 
 _EXEMPT_POOL_WORKERS = 32
 

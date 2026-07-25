@@ -95,9 +95,11 @@ orchestrator/
     backends/           per-backend command construction and execution
       codex.py          Codex command construction, scratch output, execution
       claude.py         Claude command construction and execution
-  scheduler.py          stable `IssueScheduler` / `SubmissionRequest` surface
-  _scheduler_*.py       typed legacy-call binding, scheduler views,
-                        reservation, execution, and completion handling
+  scheduler/
+    __init__.py         stable `IssueScheduler` / `SubmissionRequest` surface
+    models.py           typed submissions, legacy-call binding, normalization
+    service.py          scheduler views, reservation, execution, and
+                        completion handling
   workflow.py           lazy compatibility facade for tick, dispatch, shared
                         helpers, and stage-handler patch points
   _workflow_export_manifest.py / _workflow_exports.py
