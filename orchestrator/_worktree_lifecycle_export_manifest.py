@@ -57,6 +57,10 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.git.authentication",
+        (("_authed_target_fetch", "_authed_target_fetch"),),
+    ),
+    *export_group(
         "orchestrator.git.worktrees.paths",
         (
             ("_SAFE_CHAR", "_SAFE_CHAR"),
@@ -83,7 +87,6 @@ EXPORTS = (
     *export_group(
         "orchestrator.git_plumbing",
         (
-            ("_authed_target_fetch", "_authed_target_fetch"),
             ("_git", "_git"),
             ("_target_root_lock", "_target_root_lock"),
         ),

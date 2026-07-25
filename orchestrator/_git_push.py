@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from orchestrator import _git_plumbing_state as _state
 from orchestrator import git_plumbing as _owner
-from orchestrator.git import commands as _commands
+from orchestrator.git import authentication as _authentication, commands as _commands
 
-_GitAuthSession = _owner._GitAuthSession
+_GitAuthSession = _authentication._GitAuthSession
 Optional = _owner.Optional
 Path = _owner.Path
 config = _owner.config
@@ -149,7 +149,7 @@ def _push_branch(
     # `~/.config/<owner>/<repo>/token` pushes with the right repo's token.
     # Single-repo deployments see identical behavior because
     # `_resolve_github_token(REPO)` returns the same value.
-    token = _owner._resolved_git_token(spec, "push")
+    token = _authentication._resolved_git_token(spec, "push")
     if not token:
         return False
     unsafe = _owner._unsafe_local_transport_config(worktree)
@@ -159,7 +159,7 @@ def _push_branch(
             "transport-hijacking config: %s", branch, unsafe,
         )
         return False
-    with _owner._git_auth_session(spec, token) as auth_session:
+    with _authentication._git_auth_session(spec, token) as auth_session:
         # An empty expected SHA means the remote ref must not exist, which
         # preserves the create-branch lease behavior.
         return _owner._push_with_auth(

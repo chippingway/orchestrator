@@ -172,14 +172,19 @@ EXPORTS = (
         (("filter_trusted", "filter_trusted"),),
     ),
     *export_group(
+        "orchestrator.git.authentication",
+        (
+            ("_authed_fetch", "_authed_fetch"),
+            ("_authed_target_fetch", "_authed_target_fetch"),
+        ),
+    ),
+    *export_group(
         "orchestrator.git.publication.probes",
         (("_branch_ahead_behind", "_branch_ahead_behind"),),
     ),
     *export_group(
         "orchestrator.git_plumbing",
         (
-            ("_authed_fetch", "_authed_fetch"),
-            ("_authed_target_fetch", "_authed_target_fetch"),
             ("_git", "_git"),
             ("_git_hardened", "_git_hardened"),
             ("_push_branch", "_push_branch"),

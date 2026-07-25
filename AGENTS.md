@@ -61,13 +61,15 @@ orchestrator process is stateless.
   feedback watermarks), the `checks.py` owner (status / check-run normalization, failure-before-pending folding, and
   the fail-closed check-read client mixin)), the git package (`git/`, whose `__init__.py` binds nothing so callers
   import each owner directly -- the `commands.py` owner (plain / hardened git execution plus the unsafe local
-  transport probe), the `locks.py` owner (the per-target-root re-entrant lock registry), the `verification/`
-  subpackage over the `models.py` owner (the `VerifyResult` statuses / fields and the output budget its `output` is
-  truncated to) and the `probes.py` owner (the HEAD snapshot and the hardened porcelain dirty-file scan, both run
-  through `commands.py`), the `worktrees/` subpackage, whose `__init__.py` likewise binds nothing over the
-  `paths.py` owner (slug sanitization, the git-ref-safe branch segment, branch / path derivation, and the pinned /
-  legacy branch resolver) and the `recovery.py` owner (candidate-branch discovery and the unpushed-commit probes),
-  and the `publication/` subpackage, whose `__init__.py` also binds nothing, over the `probes.py` owner (the
+  transport probe), the `authentication.py` owner (per-repository token resolution, the askpass session and its
+  detached environment, and the authenticated worktree / target-root fetches), the `locks.py` owner (the
+  per-target-root re-entrant lock registry), the `verification/` subpackage over the `models.py` owner (the
+  `VerifyResult` statuses / fields and the output budget its `output` is truncated to) and the `probes.py` owner
+  (the HEAD snapshot and the hardened porcelain dirty-file scan, both run through `commands.py`), the
+  `worktrees/` subpackage, whose `__init__.py` likewise binds nothing over the `paths.py` owner (slug
+  sanitization, the git-ref-safe branch segment, branch / path derivation, and the pinned / legacy branch
+  resolver) and the `recovery.py` owner (candidate-branch discovery and the unpushed-commit probes), and the
+  `publication/` subpackage, whose `__init__.py` also binds nothing, over the `probes.py` owner (the
   conventional / repo-local subject vocabulary and predicates, ahead/behind counts, first-commit and recent-base
   subject reads) and the `titles.py` owner (subject-prefix inference from base history and PR-title selection),
   with `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, and `branch_publication.py` kept as the forwarding
@@ -82,13 +84,13 @@ orchestrator process is stateless.
   `tests/test_workflow_implementing_*.py`, and the decomposition, question, and documenting stages across their
   respective focused modules, with shared fixtures in `tests/decomposition*_support.py`,
   `tests/question_*_support.py`, and `tests/documenting_*_support.py`; the resolving-conflict stage is split across
-  `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_authed_fetch`, `_target_fetch`,
-  `_worktree_restore`, `_event_emission`, `_list_pollable`, `_routing`) plus the
-  `_handle_resolving_conflict` handler scenarios in focused modules (`_clean_rebase` for clean rebase routing,
-  `_agent` for agent execution, `_resume` for awaiting-human resume paths, `_dirty` for dirty / rebase-in-progress
-  parking, `_recovery` for recovery pushes, `_diverged` for stale / diverged worktree handling, `_publish` for
-  already-rebased force-publish scenarios, `_publish_guard` for the publish-guard probe unit tests, `_drift` for
-  hash-drift resume behavior), with resume fixtures in `tests/conflict_resume_test_support.py`); scheduler-dispatch,
+  `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_worktree_restore`, `_event_emission`,
+  `_list_pollable`, `_routing`) plus the `_handle_resolving_conflict` handler scenarios in focused modules
+  (`_clean_rebase` for clean rebase routing, `_agent` for agent execution, `_resume` for awaiting-human resume
+  paths, `_dirty` for dirty / rebase-in-progress parking, `_recovery` for recovery pushes, `_diverged` for stale /
+  diverged worktree handling, `_publish` for already-rebased force-publish scenarios, `_publish_guard` for the
+  publish-guard probe unit tests, `_drift` for hash-drift resume behavior), with resume fixtures in
+  `tests/conflict_resume_test_support.py`); scheduler-dispatch,
   base-sync, cleanup, and worktree-subsystem tests are split across
   `tests/test_workflow_scheduler_*.py`, `tests/test_workflow_base_sync_*.py`,
   `tests/test_workflow_cleanup*.py`, and `tests/test_workflow_worktree_*.py`, with subsystem-specific support in
@@ -112,15 +114,16 @@ orchestrator process is stateless.
   tracked claims, family exclusion, cap-exempt execution, skip logging, shutdown, submission models and `submit`
   compatibility, and import-cycle / public-surface checks, with their worker, coordination, log, and shutdown
   helpers alongside. Git-package tests live in `tests/git/`: plain / hardened command envelopes and real-git
-  transport probing, target-root lock ownership, and import-cycle / package-surface checks, with the verification
-  owners covered under `tests/git/verification/` — result fields and statuses, HEAD and porcelain probing against
-  a planted `core.fsmonitor`, verify-time mutation detection, and import-cycle / layering / package-surface checks,
-  plus the real-git verify-command fixture; the worktrees owners covered in `tests/git/worktrees/`: path
-  derivation, git-ref-safe branch segments, pinned / legacy branch resolution, real-git unpushed-commit probes,
-  and import-cycle / package-surface checks, plus their path and branch-fixture support modules; and the
-  publication owners covered in `tests/git/publication/`: subject predicates, per-spec commit-subject reads,
-  ahead/behind folding, prefix inference, PR-title selection, and import-cycle / package-surface checks, plus
-  their git-double support module.
+  transport probing, askpass session / environment construction and failed-fetch shaping, the authenticated
+  worktree and target-root fetches, target-root lock ownership, and import-cycle / package-surface checks, plus
+  their shared authentication fixtures, with the verification owners covered under `tests/git/verification/` —
+  result fields and statuses, HEAD and porcelain probing against a planted `core.fsmonitor`, verify-time mutation
+  detection, and import-cycle / layering / package-surface checks, plus the real-git verify-command fixture; the
+  worktrees owners covered in `tests/git/worktrees/`: path derivation, git-ref-safe branch segments, pinned /
+  legacy branch resolution, real-git unpushed-commit probes, and import-cycle / package-surface checks, plus their
+  path and branch-fixture support modules; and the publication owners covered in `tests/git/publication/`: subject
+  predicates, per-spec commit-subject reads, ahead/behind folding, prefix inference, PR-title selection, and
+  import-cycle / package-surface checks, plus their git-double support module.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

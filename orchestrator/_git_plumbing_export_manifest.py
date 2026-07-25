@@ -24,29 +24,8 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._git_auth",
-        (
-            ("_GitAuthSession", "_GitAuthSession"),
-            ("_failed_fetch", "_failed_fetch"),
-            ("_git_auth_env", "_git_auth_env"),
-            ("_git_auth_session", "_git_auth_session"),
-            ("_resolved_git_token", "_resolved_git_token"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._git_fetch",
-        (
-            ("_authed_fetch", "_authed_fetch"),
-            ("_authed_target_fetch", "_authed_target_fetch"),
-        ),
-    ),
-    *export_group(
         "orchestrator._git_plumbing_state",
-        (
-            ("_ASKPASS_MODE", "_ASKPASS_MODE"),
-            ("_FETCH", "_FETCH"),
-            ("log", "log"),
-        ),
+        (("log", "log"),),
     ),
     *export_group(
         "orchestrator._git_push",
@@ -54,6 +33,20 @@ EXPORTS = (
             ("_push_branch", "_push_branch"),
             ("_push_with_auth", "_push_with_auth"),
             ("_remote_branch_sha", "_remote_branch_sha"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.authentication",
+        (
+            ("_ASKPASS_MODE", "_ASKPASS_MODE"),
+            ("_FETCH", "_FETCH"),
+            ("_GitAuthSession", "_GitAuthSession"),
+            ("_authed_fetch", "_authed_fetch"),
+            ("_authed_target_fetch", "_authed_target_fetch"),
+            ("_failed_fetch", "_failed_fetch"),
+            ("_git_auth_env", "_git_auth_env"),
+            ("_git_auth_session", "_git_auth_session"),
+            ("_resolved_git_token", "_resolved_git_token"),
         ),
     ),
     *export_group(
