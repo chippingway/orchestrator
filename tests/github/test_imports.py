@@ -13,13 +13,14 @@ from orchestrator.github import client as _github_client
 from orchestrator.github import pinned_state as _pinned_state
 
 
-# The github-package modules plus every client-mixin leaf between `_github_api`
-# and the package owners. The initializer binds the `labels`, `events`, and
-# `issues` owners eagerly, and the `issues`, `pinned_state`, and `reviews`
-# owners import the package back for the surfaces they build on, so importing
-# any leaf first must run the initializer without re-entering a half-built one.
+# The github-package modules plus the client-mixin leaf that composes them. The
+# initializer binds the `labels`, `events`, and `issues` owners eagerly, and the
+# `issues`, `pinned_state`, `reviews`, and `checks` owners import the package
+# back for the surfaces they build on, so importing any leaf first must run the
+# initializer without re-entering a half-built one.
 _MODULES = (
     "orchestrator.github",
+    "orchestrator.github.checks",
     "orchestrator.github.events",
     "orchestrator.github.issues",
     "orchestrator.github.labels",
@@ -27,9 +28,7 @@ _MODULES = (
     "orchestrator.github.pull_requests",
     "orchestrator.github.reviews",
     "orchestrator.github.client",
-    "orchestrator._github_api",
     "orchestrator._github_internals",
-    "orchestrator._github_pull_checks",
 )
 
 
@@ -39,7 +38,7 @@ class CleanProcessImportTest(unittest.TestCase):
     The owners are submodules of the same package whose `__init__` binds
     `labels`, `events`, and `issues` eagerly, and both the `issues` owner and
     the mixin chain import the package back for those surfaces, so importing
-    the package, any of its submodules, or any mixin leaf directly must run
+    the package, any of its submodules, or the composed leaf directly must run
     the initializer without a partially-initialized-module error. A subprocess
     per module gives each a clean `sys.modules` no other test has already
     populated, exposing an import-order cycle a package-first suite run would
