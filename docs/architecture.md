@@ -62,14 +62,16 @@ orchestrator/
   _workflow_labels.py   label enums and strict label-name coercion
   _state_transitions.py declared workflow transition graph
   github/
-    __init__.py         stable compatibility surface; eager pinned-state
-                        re-exports plus a lazy __getattr__ for GitHubClient
+    __init__.py         stable compatibility surface; eager label re-exports
+                        plus a lazy __getattr__ for GitHubClient, pinned-state,
                         and the inventory re-exports (leaf-first import safe)
     client.py           authenticated `GitHubClient` over the mixin chain
+    labels.py           self-contained workflow/control label vocabulary,
+                        bootstrap specifications, and predicates
     pinned_state.py     authenticated pinned-state model, parser, and the
                         state / comment-watermark client mixin
-  _github_*.py          labels, queries, issues, PRs, reviews, checks,
-                        feedback, events, and composed client mixins
+  _github_*.py          queries, issues, PRs, reviews, checks, feedback,
+                        events, and composed client mixins
   agents/
     __init__.py         stable runner API plus process-termination re-export
     models.py           agent result / run-option / subprocess-result models

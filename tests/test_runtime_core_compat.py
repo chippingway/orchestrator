@@ -12,10 +12,9 @@ from unittest.mock import MagicMock
 
 from orchestrator import (
     __version__ as imported_version,
-    _github_labels,
     _github_pull_requests,
 )
-from orchestrator.github import GitHubClient, PinnedState
+from orchestrator.github import GitHubClient, PinnedState, labels
 from orchestrator.scheduler import IssueScheduler, SubmissionRequest
 from orchestrator.state_machine import WorkflowLabel, coerce_workflow_label
 
@@ -27,7 +26,7 @@ _EXPECTED_SUBMIT_SIGNATURE = (
     "per_repo_cap=None)"
 )
 _STATIC_HELPERS = (
-    ("workflow_label", _github_labels.workflow_label),
+    ("workflow_label", labels.workflow_label),
     ("pr_has_label", _github_pull_requests.pr_has_label),
     ("pr_state", _github_pull_requests.pr_state),
     ("pr_is_mergeable", _github_pull_requests.pr_is_mergeable),

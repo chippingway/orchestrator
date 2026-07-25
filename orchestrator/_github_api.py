@@ -7,22 +7,11 @@ from orchestrator import (
     _github_checks,
     _github_events,
     _github_internals,
-    _github_labels,
     _github_queries,
     _github_reviews,
 )
 
 GitHubClientBase = _github_internals.GitHubInternalsMixin
-
-WORKFLOW_LABEL_SPECS = _github_labels.WORKFLOW_LABEL_SPECS
-WORKFLOW_LABELS = _github_labels.WORKFLOW_LABELS
-BACKLOG_LABEL = _github_labels.BACKLOG_LABEL
-PAUSED_LABEL = _github_labels.PAUSED_LABEL
-COMMUNITY_CONTRIBUTION_LABEL = _github_labels.COMMUNITY_CONTRIBUTION_LABEL
-CONTROL_LABEL_SPECS = _github_labels.CONTROL_LABEL_SPECS
-HARD_SKIP_CONTROL_LABELS = _github_labels.HARD_SKIP_CONTROL_LABELS
-issue_has_label = _github_labels.issue_has_label
-hard_skip_control_label = _github_labels.hard_skip_control_label
 
 iter_new_non_pr_issues = _github_queries.iter_new_non_pr_issues
 issue_query_options = _github_queries.issue_query_options
