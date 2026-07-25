@@ -32,6 +32,13 @@ EXPORTS = (
         (("_squash_and_force_push", "_squash_and_force_push"),),
     ),
     *export_group(
+        "orchestrator.git.authentication",
+        (
+            ("_authed_fetch", "_authed_fetch"),
+            ("_authed_target_fetch", "_authed_target_fetch"),
+        ),
+    ),
+    *export_group(
         "orchestrator.git.publication.probes",
         (
             ("_CONVENTIONAL_RE", "_CONVENTIONAL_RE"),
@@ -55,8 +62,6 @@ EXPORTS = (
             ("_GIT_NO_PROMPT_ENV", "_GIT_NO_PROMPT_ENV"),
             ("_TARGET_ROOT_LOCKS", "_TARGET_ROOT_LOCKS"),
             ("_TARGET_ROOT_LOCKS_LOCK", "_TARGET_ROOT_LOCKS_LOCK"),
-            ("_authed_fetch", "_authed_fetch"),
-            ("_authed_target_fetch", "_authed_target_fetch"),
             ("_git", "_git"),
             ("_git_hardened", "_git_hardened"),
             ("_push_branch", "_push_branch"),

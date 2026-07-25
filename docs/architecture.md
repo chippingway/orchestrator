@@ -119,6 +119,9 @@ orchestrator/
                         ALLOWED_ISSUE_AUTHORS allowlist
   git/
     __init__.py         package marker only; callers import an owner directly
+    authentication.py   per-repo token resolution, the askpass session and its
+                        detached environment, and the authenticated worktree /
+                        target-root fetches
     commands.py         plain / hardened git execution, the argv hardening
                         prefixes, and the unsafe local-transport probe
     locks.py            per-target-root re-entrant lock registry and accessor
@@ -137,8 +140,7 @@ orchestrator/
                         and branch derivation, pinned/legacy branch resolution
       recovery.py       candidate-branch discovery and unpushed-commit probes
   git_plumbing.py       lazy hardened-git compatibility facade
-  _git_*.py             immutable auth fragments plus the auth, fetch, and
-                        push leaves
+  _git_*.py             the shared leaf logger and the push leaf
   verify.py             lazy local-verification compatibility facade
   _verify_*.py          verify-command execution, output redaction and
                         truncation, and the shared logger

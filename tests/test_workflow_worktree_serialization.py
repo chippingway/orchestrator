@@ -17,10 +17,10 @@ from unittest.mock import patch
 
 from orchestrator import (
     config,
-    git_plumbing,
     worktree_lifecycle,
     worktrees,
 )
+from orchestrator.git import authentication
 
 from tests.worktree_serialization_support import (
     _ConcurrencyProbe,
@@ -143,7 +143,7 @@ class WorktreePlumbingSerializationTest(unittest.TestCase):
                 return_value="ghp-test",
             ),
             patch.object(
-                git_plumbing.subprocess,
+                authentication.subprocess,
                 "run",
                 side_effect=scenario.probe.subprocess_run,
             ),

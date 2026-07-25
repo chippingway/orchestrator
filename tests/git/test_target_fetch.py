@@ -1,28 +1,43 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Target-root authenticated fetch owned by the authentication module."""
+
 from __future__ import annotations
 
-import os
 import unittest
 from contextlib import ExitStack
-from pathlib import Path
-from unittest.mock import MagicMock, patch as mock_patch
+from unittest.mock import MagicMock, patch
 
-from orchestrator import config, git_plumbing, workflow
+from orchestrator import config
+from orchestrator.git import authentication
 
-from tests.workflow_helpers import (
+from tests.git.authentication_test_support import (
+    CACHE_BRANCH,
+    MAIN_BRANCH,
+    PRIVATE_REPO_SLUG,
+    SECRET_TOKEN,
+    SUBPROCESS_RUN,
+    TOKEN_RESOLVER,
+    _assert_hardened_fetch,
+    _spec,
+)
+from tests.workflow_git_helpers import (
     _GitRunRecorder,
-    _TEST_SPEC,
     _TokenResolver,
     _temp_git_repo_with_local_config,
 )
 
-PRIVATE_REPO_SLUG = "geserdugarov/lance-private"
-CACHE_BRANCH = "cache-branch"
-SUBPROCESS_RUN = "subprocess.run"
-TOKEN_RESOLVER = "_resolve_github_token"
-SECRET_TOKEN = "super-secret-token"
-MAIN_BRANCH = "main"
+PRIVATE_REMOTE = "private"
+SSL_VERIFY_KEY = "http.sslVerify"
+
+
+def _private_spec() -> config.RepoSpec:
+    """Return the `REPOS` shape whose remote namespace is not `origin`."""
+    return _spec(
+        PRIVATE_REPO_SLUG,
+        base_branch=CACHE_BRANCH,
+        remote_name=PRIVATE_REMOTE,
+    )
 
 
 class AuthedTargetFetchTest(unittest.TestCase):
@@ -47,30 +62,20 @@ class AuthedTargetFetchTest(unittest.TestCase):
         # for 'https://github.com'`.
         run_recorder = _GitRunRecorder()
         token_resolver = _TokenResolver()
+        repo = _private_spec()
 
-        repo = config.RepoSpec(
-            slug=PRIVATE_REPO_SLUG,
-            target_root=Path("/tmp/orchestrator-test-shared-clone"),
-            base_branch=CACHE_BRANCH,
-            remote_name="private",
-        )
         with (
-            mock_patch(SUBPROCESS_RUN, side_effect=run_recorder),
-            mock_patch.object(
-                workflow.config,
-                TOKEN_RESOLVER,
-                token_resolver,
-            ),
+            patch(SUBPROCESS_RUN, side_effect=run_recorder),
+            patch.object(config, TOKEN_RESOLVER, token_resolver),
         ):
-            fetch = workflow._authed_target_fetch(repo, CACHE_BRANCH)
+            fetch = authentication._authed_target_fetch(repo, CACHE_BRANCH)
 
         self.assertEqual(fetch.returncode, 0)
         # Token resolved exactly once -- for the spec's slug, NOT the
         # `remote_name` (which is just a local namespace label).
         self.assertEqual(token_resolver.slugs, [PRIVATE_REPO_SLUG])
-        env = run_recorder.env
         self.assertEqual(
-            env.get("GIT_TOKEN"),
+            run_recorder.env.get("GIT_TOKEN"),
             "ghp-token-for-geserdugarov-lance-private",
         )
         # Auth URL targets the spec's slug, NOT `remote_name`.
@@ -96,30 +101,12 @@ class AuthedTargetFetchTest(unittest.TestCase):
         run_recorder = _GitRunRecorder()
 
         with (
-            mock_patch(SUBPROCESS_RUN, side_effect=run_recorder),
-            mock_patch.object(
-                workflow.config,
-                TOKEN_RESOLVER,
-                return_value=SECRET_TOKEN,
-            ),
+            patch(SUBPROCESS_RUN, side_effect=run_recorder),
+            patch.object(config, TOKEN_RESOLVER, return_value=SECRET_TOKEN),
         ):
-            workflow._authed_target_fetch(_TEST_SPEC, MAIN_BRANCH)
+            authentication._authed_target_fetch(_spec(), MAIN_BRANCH)
 
-        env = run_recorder.env
-        self.assertIn("GIT_ASKPASS", env)
-        self.assertEqual(env.get("GIT_TOKEN"), SECRET_TOKEN)
-        # Token must NOT appear in argv (would surface in /proc/<pid>/cmdline).
-        for arg in run_recorder.args:
-            self.assertNotIn(SECRET_TOKEN, str(arg))
-        # Global/system git config detached so url rewrites planted in
-        # `~/.gitconfig` cannot redirect the fetch.
-        self.assertEqual(env.get("GIT_CONFIG_GLOBAL"), os.devnull)
-        self.assertEqual(env.get("GIT_CONFIG_SYSTEM"), os.devnull)
-        # Hooks / fsmonitor / credential helpers blocked via -c overrides.
-        argv = run_recorder.args
-        self.assertIn("core.hooksPath=/dev/null", argv)
-        self.assertIn("credential.helper=", argv)
-        self.assertIn("core.fsmonitor=", argv)
+        _assert_hardened_fetch(self, run_recorder, SECRET_TOKEN)
 
     def test_root_url_rewrite_rule_is_refused(self) -> None:
         # The agent has write access to linked worktrees, and a linked
@@ -137,14 +124,10 @@ class AuthedTargetFetchTest(unittest.TestCase):
         run_recorder = _GitRunRecorder(probe_result=rewrite_check)
 
         with (
-            mock_patch(SUBPROCESS_RUN, side_effect=run_recorder),
-            mock_patch.object(
-                workflow.config,
-                TOKEN_RESOLVER,
-                return_value=SECRET_TOKEN,
-            ),
+            patch(SUBPROCESS_RUN, side_effect=run_recorder),
+            patch.object(config, TOKEN_RESOLVER, return_value=SECRET_TOKEN),
         ):
-            fetch = workflow._authed_target_fetch(_TEST_SPEC, MAIN_BRANCH)
+            fetch = authentication._authed_target_fetch(_spec(), MAIN_BRANCH)
 
         # Only the rewrite probe ran; the token-bearing fetch did NOT.
         self.assertEqual(len(run_recorder.calls), 1)
@@ -154,8 +137,8 @@ class AuthedTargetFetchTest(unittest.TestCase):
         )
         self.assertNotEqual(fetch.returncode, 0)
         # And the token NEVER reached the (skipped) fetch subprocess env.
-        for arg in run_recorder.calls[0]:
-            self.assertNotIn(SECRET_TOKEN, str(arg))
+        for probe_argument in run_recorder.calls[0]:
+            self.assertNotIn(SECRET_TOKEN, str(probe_argument))
 
     def test_local_ssl_verify_disable_is_refused(self) -> None:
         # A linked worktree can disable TLS verification in the parent clone's
@@ -166,7 +149,7 @@ class AuthedTargetFetchTest(unittest.TestCase):
         log_capture = MagicMock()
         with ExitStack() as stack:
             repo = stack.enter_context(
-                _temp_git_repo_with_local_config([("http.sslVerify", "false")]),
+                _temp_git_repo_with_local_config([(SSL_VERIFY_KEY, "false")]),
             )
             spec = config.RepoSpec(
                 slug="geserdugarov/agent-orchestrator",
@@ -174,16 +157,12 @@ class AuthedTargetFetchTest(unittest.TestCase):
                 base_branch=MAIN_BRANCH,
             )
             stack.enter_context(
-                mock_patch.object(
-                    workflow.config,
-                    TOKEN_RESOLVER,
-                    return_value=SECRET_TOKEN,
-                ),
+                patch.object(config, TOKEN_RESOLVER, return_value=SECRET_TOKEN),
             )
             log_capture.records = stack.enter_context(
-                self.assertLogs(git_plumbing.log, level="ERROR"),
+                self.assertLogs(authentication.log, level="ERROR"),
             )
-            fetch = workflow._authed_target_fetch(spec, MAIN_BRANCH)
+            fetch = authentication._authed_target_fetch(spec, MAIN_BRANCH)
         self.assertNotEqual(fetch.returncode, 0)
         self.assertTrue(
             any("sslverify" in line.lower() for line in log_capture.records.output),
@@ -197,26 +176,18 @@ class AuthedTargetFetchTest(unittest.TestCase):
         # a generic "could not read Username".
         subprocess_run = MagicMock()
 
-        repo = config.RepoSpec(
-            slug=PRIVATE_REPO_SLUG,
-            target_root=Path("/tmp/orchestrator-test-shared-clone"),
-            base_branch=CACHE_BRANCH,
-            remote_name="private",
-        )
         log_capture = MagicMock()
         with ExitStack() as stack:
-            stack.enter_context(mock_patch(SUBPROCESS_RUN, subprocess_run))
+            stack.enter_context(patch(SUBPROCESS_RUN, subprocess_run))
             stack.enter_context(
-                mock_patch.object(
-                    workflow.config,
-                    TOKEN_RESOLVER,
-                    return_value="",
-                ),
+                patch.object(config, TOKEN_RESOLVER, return_value=""),
             )
             log_capture.records = stack.enter_context(
-                self.assertLogs(git_plumbing.log, level="ERROR"),
+                self.assertLogs(authentication.log, level="ERROR"),
             )
-            fetch = workflow._authed_target_fetch(repo, CACHE_BRANCH)
+            fetch = authentication._authed_target_fetch(
+                _private_spec(), CACHE_BRANCH,
+            )
 
         # Failed without ever shelling out.
         subprocess_run.assert_not_called()
