@@ -479,9 +479,11 @@ through an explicit `__all__` (`WPS410`); every other GitHub surface — labels,
 checks — is imported from its owner directly, so the facade carries no private re-exports. `WPS412` is waived for that
 import-time logic.
 
-The scheduler package adds a fourth scope: `orchestrator/scheduler/__init__.py` (`WPS412`) defines `IssueScheduler`
-over the execution layers owned by `service` and the submission models owned by `models`, so its class definition and
-owner bindings are import-time logic.
+The scheduler package adds a fourth scope: `orchestrator/scheduler/__init__.py` (`WPS412`, `WPS410`) re-exports the
+concrete `IssueScheduler` from the `service` owner and the caller-facing `SubmissionRequest` from the `models` owner,
+and publishes that narrow public surface through an explicit `__all__` (`WPS410`); the layers the scheduler is composed
+from stay private to `service`, so the facade carries no private re-exports. `WPS412` is waived for that import-time
+logic.
 
 `orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
 comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8

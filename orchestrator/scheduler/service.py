@@ -1,19 +1,33 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""State inspection, reservation, and execution layers for the scheduler."""
+"""The concrete ``IssueScheduler`` and the layers it is built from.
+
+The scheduler's responsibilities are split across three layers that only this
+module composes: read-only state inspection plus temporary claims, atomic slot
+admission and release, and worker dispatch with completion draining. Callers
+reach the composed ``IssueScheduler`` through the package facade.
+"""
 from __future__ import annotations
 
 import contextlib
 import logging
-from concurrent.futures import Future
+import threading
+from collections import defaultdict
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Iterator, Optional
 
 from orchestrator.scheduler import models
 
 log = logging.getLogger("orchestrator.scheduler")
 
+# The exempt pool is sized independently of ``global_cap`` so a tight cap (e.g.
+# ``global_cap=1``) does not transitively cap cap-exempt throughput across
+# repos. The bound is deliberately generous: exempt handlers are fast label /
+# dep-graph walks with no agent and no worktree.
+_EXEMPT_POOL_WORKERS = 32
 
-class SchedulerViewMixin:
+
+class _SchedulerViewMixin:
     """Read-only scheduler state and temporary active tracking."""
 
     @property
@@ -58,7 +72,7 @@ class SchedulerViewMixin:
                     self._tracked.discard(issue_key)
 
 
-class SchedulerReservationMixin(SchedulerViewMixin):
+class _SchedulerReservationMixin(_SchedulerViewMixin):
     """Atomic slot admission, logging, and release."""
 
     def _cap_skip_reason_locked(
@@ -159,7 +173,7 @@ class SchedulerReservationMixin(SchedulerViewMixin):
             self._family_active_repos.discard(submission.repo_slug)
 
 
-class SchedulerExecutionMixin(SchedulerReservationMixin):
+class _SchedulerExecutionMixin(_SchedulerReservationMixin):
     """Worker dispatch, completion draining, and shutdown coordination."""
 
     def submit(self, *args: Any, **kwargs: Any) -> bool:
@@ -228,4 +242,33 @@ class SchedulerExecutionMixin(SchedulerReservationMixin):
             self._completed.append(future)
 
 
-SchedulerExecutionMixin.submit.__signature__ = models._SUBMIT_METHOD_SIGNATURE
+class IssueScheduler(_SchedulerExecutionMixin):
+    """Long-lived scheduler shared by every repository polling tick."""
+
+    def __init__(
+        self,
+        *,
+        global_cap: int,
+        per_repo_cap: int,
+        thread_name_prefix: str = "orch-worker",
+    ) -> None:
+        self._global_cap = max(1, int(global_cap))
+        self._per_repo_cap = max(1, int(per_repo_cap))
+        self._executor = ThreadPoolExecutor(
+            max_workers=self._global_cap,
+            thread_name_prefix=thread_name_prefix,
+        )
+        self._exempt_executor = ThreadPoolExecutor(
+            max_workers=_EXEMPT_POOL_WORKERS,
+            thread_name_prefix=f"{thread_name_prefix}-exempt",
+        )
+        self._lock = threading.RLock()
+        self._active: set[tuple[str, int]] = set()
+        self._tracked: set[tuple[str, int]] = set()
+        self._per_repo_active: dict[str, int] = defaultdict(int)
+        self._family_active_repos: set[str] = set()
+        self._completed: list[Future] = []
+        self._closed = False
+
+
+IssueScheduler.submit.__signature__ = models._SUBMIT_METHOD_SIGNATURE

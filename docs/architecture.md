@@ -98,8 +98,8 @@ orchestrator/
   scheduler/
     __init__.py         stable `IssueScheduler` / `SubmissionRequest` surface
     models.py           typed submissions, legacy-call binding, normalization
-    service.py          scheduler views, reservation, execution, and
-                        completion handling
+    service.py          the concrete `IssueScheduler` over its view,
+                        reservation, and execution layers
   workflow.py           lazy compatibility facade for tick, dispatch, shared
                         helpers, and stage-handler patch points
   _workflow_export_manifest.py / _workflow_exports.py

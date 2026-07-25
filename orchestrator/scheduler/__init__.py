@@ -1,51 +1,29 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Process-local scheduler for concurrent per-issue handlers.
+"""Stable process-local scheduler surface for concurrent per-issue handlers.
 
-``IssueScheduler`` coordinates two executor pools while ``models`` owns the
-typed submissions and ``service`` owns the state-inspection, reservation, and
-execution layers. The historical positional/keyword ``submit`` API remains
-available beside ``SubmissionRequest``.
+Typed submissions, the historical positional/keyword ``submit`` binding, and
+field normalization live in the ``models`` owner; the concrete
+``IssueScheduler`` -- caps, tracked claims, the family mutex, worker dispatch,
+and shutdown -- lives in the ``service`` owner. This facade re-exports the
+narrow public surface (``__all__``): the scheduler and the caller-facing
+``SubmissionRequest``. The layers ``IssueScheduler`` is composed from belong to
+``service``, so this facade carries no private re-exports.
+
+Importing the ``service`` owner here pulls its sibling ``models`` import, which
+names a submodule rather than a facade attribute; a submodule import binds on
+the parent package even while this initializer is still running, so importing
+either owner first never needs a name this module has not bound yet.
 """
 from __future__ import annotations
 
-import threading
-from collections import defaultdict
-from concurrent.futures import Future, ThreadPoolExecutor
+from orchestrator.scheduler import models as _models
+from orchestrator.scheduler import service as _service
 
-from orchestrator.scheduler import models, service
+__all__ = (
+    "IssueScheduler",
+    "SubmissionRequest",
+)
 
-SchedulerExecutionMixin = service.SchedulerExecutionMixin
-_Submission = models.Submission
-SubmissionRequest = models.SubmissionRequest
-
-_EXEMPT_POOL_WORKERS = 32
-
-
-class IssueScheduler(SchedulerExecutionMixin):
-    """Long-lived scheduler shared by every repository polling tick."""
-
-    def __init__(
-        self,
-        *,
-        global_cap: int,
-        per_repo_cap: int,
-        thread_name_prefix: str = "orch-worker",
-    ) -> None:
-        self._global_cap = max(1, int(global_cap))
-        self._per_repo_cap = max(1, int(per_repo_cap))
-        self._executor = ThreadPoolExecutor(
-            max_workers=self._global_cap,
-            thread_name_prefix=thread_name_prefix,
-        )
-        self._exempt_executor = ThreadPoolExecutor(
-            max_workers=_EXEMPT_POOL_WORKERS,
-            thread_name_prefix=f"{thread_name_prefix}-exempt",
-        )
-        self._lock = threading.RLock()
-        self._active: set[tuple[str, int]] = set()
-        self._tracked: set[tuple[str, int]] = set()
-        self._per_repo_active: dict[str, int] = defaultdict(int)
-        self._family_active_repos: set[str] = set()
-        self._completed: list[Future] = []
-        self._closed = False
+IssueScheduler = _service.IssueScheduler
+SubmissionRequest = _models.SubmissionRequest

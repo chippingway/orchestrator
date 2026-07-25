@@ -18,11 +18,24 @@ _MODULES = (
     "orchestrator.scheduler.service",
 )
 
+# Owner-only names the facade must not resolve: the normalized submission and
+# its binding belong to `models`, the composition layers and the exempt pool
+# size to `service`. Code that needs one imports its owner directly.
+_OWNER_ONLY_NAMES = (
+    "Submission",
+    "bind_submission_request",
+    "normalize_submission",
+    "_SchedulerViewMixin",
+    "_SchedulerReservationMixin",
+    "_SchedulerExecutionMixin",
+    "_EXEMPT_POOL_WORKERS",
+)
+
 
 class CleanProcessImportTest(unittest.TestCase):
     """Each scheduler module imports standalone in a fresh interpreter.
 
-    The initializer reads the execution mixin off `service`, which imports the
+    The initializer reads `IssueScheduler` off `service`, which imports the
     sibling `models` owner back through the package, so importing either owner
     directly must run the initializer without a partially-initialized-module
     error. A subprocess per module gives each a clean `sys.modules` no other test
@@ -42,22 +55,30 @@ class CleanProcessImportTest(unittest.TestCase):
                 self.assertEqual(completed.returncode, 0, msg=completed.stderr)
 
 
-class OwnerReExportTest(unittest.TestCase):
-    def test_package_names_resolve_to_their_owners(self) -> None:
-        # The historical package names resolve to the owning module's objects
-        # rather than rebuilt copies, so patching an owner is observable.
-        self.assertIs(_scheduler.SubmissionRequest, _models.SubmissionRequest)
-        self.assertIs(_scheduler._Submission, _models.Submission)
-        self.assertIs(
-            _scheduler.SchedulerExecutionMixin,
-            _service.SchedulerExecutionMixin,
+class PublicSurfaceTest(unittest.TestCase):
+    """The facade publishes a narrow `__all__` backed by owner identities."""
+
+    def test_all_names_the_narrow_public_surface(self) -> None:
+        self.assertEqual(
+            _scheduler.__all__,
+            (
+                "IssueScheduler",
+                "SubmissionRequest",
+            ),
         )
 
-    def test_scheduler_inherits_the_execution_owner(self) -> None:
-        self.assertIn(
-            _service.SchedulerExecutionMixin,
-            _scheduler.IssueScheduler.__mro__,
-        )
+    def test_public_names_are_owner_re_exports(self) -> None:
+        # Each public name resolves to the owning module's object rather than a
+        # rebuilt copy, so a caller reaching through the facade sees the owner's
+        # definition.
+        self.assertIs(_scheduler.IssueScheduler, _service.IssueScheduler)
+        self.assertIs(_scheduler.SubmissionRequest, _models.SubmissionRequest)
+
+    def test_facade_hides_owner_only_names(self) -> None:
+        for owner_only_name in _OWNER_ONLY_NAMES:
+            with self.subTest(name=owner_only_name):
+                with self.assertRaises(AttributeError):
+                    getattr(_scheduler, owner_only_name)
 
 
 if __name__ == "__main__":

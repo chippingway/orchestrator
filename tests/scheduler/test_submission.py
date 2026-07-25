@@ -17,7 +17,7 @@ from functools import partial
 
 from orchestrator.scheduler import IssueScheduler
 
-from tests.scheduler_worker_helpers import (
+from tests.scheduler.worker_helpers import (
     _release_on_exit,
     _signaling_failure,
     _wait_until_inactive,

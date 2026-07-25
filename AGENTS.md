@@ -32,9 +32,10 @@ orchestrator process is stateless.
   `_branch_*`, `_git_*`, `_verify_*`, `_worktree_*`, and stage-specific prefixes). The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
-  (`scheduler/`, whose `__init__.py` builds `IssueScheduler` over the `models.py` owner (typed submissions,
-  legacy-call binding, normalization) and the `service.py` owner (views, reservation, execution, and
-  completion handling)),
+  (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
+  `SubmissionRequest`, re-exported from their owners -- over the `models.py` owner (typed submissions,
+  legacy-call binding, normalization) and the `service.py` owner (the concrete scheduler and its view,
+  reservation, and execution layers)),
   the configuration package (`config/`, whose `__init__.py` binds each setting resolved by the `environment.py`
   `_SettingsResolver`, which draws on the `_dotenv.py` / `credentials.py` / `models.py` / `repositories.py` leaves),
   the agents package (`agents/`, whose `__init__.py` is the stable runner facade over the `models.py` /
@@ -73,12 +74,12 @@ orchestrator process is stateless.
   `_agent` for agent execution, `_resume` for awaiting-human resume paths, `_dirty` for dirty / rebase-in-progress
   parking, `_recovery` for recovery pushes, `_diverged` for stale / diverged worktree handling, `_publish` for
   already-rebased force-publish scenarios, `_publish_guard` for the publish-guard probe unit tests, `_drift` for
-  hash-drift resume behavior), with resume fixtures in `tests/conflict_resume_test_support.py`); scheduler, base-sync,
-  cleanup, and worktree-subsystem tests are split across
-  `tests/test_scheduler_*.py`, `tests/test_workflow_scheduler_*.py`, `tests/test_workflow_base_sync_*.py`,
+  hash-drift resume behavior), with resume fixtures in `tests/conflict_resume_test_support.py`); scheduler-dispatch,
+  base-sync, cleanup, and worktree-subsystem tests are split across
+  `tests/test_workflow_scheduler_*.py`, `tests/test_workflow_base_sync_*.py`,
   `tests/test_workflow_cleanup*.py`, and `tests/test_workflow_worktree_*.py`, with subsystem-specific support in
-  `tests/scheduler_*.py`, `tests/base_sync_*.py`, and `tests/worktree_*.py`; other facade-level helper tests include
-  (`tests/test_workflow_verdict_parsing.py`, `tests/test_workflow_prompt_redaction.py`,
+  `tests/scheduler_routing_*.py`, `tests/base_sync_*.py`, and `tests/worktree_*.py`; other facade-level helper tests
+  include (`tests/test_workflow_verdict_parsing.py`, `tests/test_workflow_prompt_redaction.py`,
   `tests/test_workflow_branch_publication*.py`, `tests/test_workflow_pickup.py`,
   `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_analytics.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
@@ -93,8 +94,10 @@ orchestrator process is stateless.
   event, issue-query, issue-client (real-client polling and child creation), pollable-listing, pinned-state,
   pull-request (status helpers, writes, merges, branch deletion), review (head verdicts, actionable summaries,
   feedback watermarks), check (surface normalization, folding, fail-closed reads), and import-cycle / public-surface
-  tests in `tests/github/`. Scheduler-package submission-model and `submit` compatibility tests live in
-  `tests/scheduler/`.
+  tests in `tests/github/`. Scheduler-package tests live in `tests/scheduler/`: caps and duplicate-active gating,
+  tracked claims, family exclusion, cap-exempt execution, skip logging, shutdown, submission models and `submit`
+  compatibility, and import-cycle / public-surface checks, with their worker, coordination, log, and shutdown
+  helpers alongside.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in
