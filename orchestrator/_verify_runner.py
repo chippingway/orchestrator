@@ -3,16 +3,17 @@
 """Verify runner."""
 from __future__ import annotations
 
-from orchestrator import _verify_state as _state
 from orchestrator import verify as _owner
 from orchestrator.agents import processes as _processes
 from orchestrator.config import credentials as _credentials
+from orchestrator.git.verification import models as _models
+from orchestrator.git.verification import probes as _probes
 
-VerifyResult = _owner.VerifyResult
+VerifyResult = _models.VerifyResult
 Optional = _owner.Optional
 Path = _owner.Path
 os = _owner.os
-_VERIFY_OUTPUT_BUDGET = _state._VERIFY_OUTPUT_BUDGET
+_VERIFY_OUTPUT_BUDGET = _models._VERIFY_OUTPUT_BUDGET
 
 
 def _run_verify_command(
@@ -75,7 +76,7 @@ def _run_verify_commands(
     # missing baseline -- treat the unknown baseline as "" and accept
     # only an unchanged "" afterwards (which means no HEAD ever
     # existed). Anything else is a fail-closed park.
-    head_before = _owner._head_sha(worktree)
+    head_before = _probes._head_sha(worktree)
     # Strip GitHub credentials, production-secret-shaped variables,
     # write-credential locators (SSH-agent / askpass), AND the agent's
     # own provider-auth keys from the child environment. Verify commands

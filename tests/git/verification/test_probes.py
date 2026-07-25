@@ -1,5 +1,7 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""HEAD and dirty-file probing owned by the verification probe module."""
+
 from __future__ import annotations
 
 import os
@@ -8,9 +10,10 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
-from orchestrator import verify
+from orchestrator.git import commands
+from orchestrator.git.verification import probes
 
 from tests.workflow_helpers import TEST_BASE_BRANCH
 
@@ -20,42 +23,24 @@ GIT_CONFIG = "config"
 SEED_FILE = "seed"
 LEFTOVER_FILE = "leftover.txt"
 EXECUTABLE_MODE = 0o755
+HEAD_SHA = "f00dcafe"
+GIT_FAILURE = 128
+WORKTREE = Path("/tmp/orchestrator-test-verification-probes")
+
+# Porcelain v1 status lines and the paths they name.
+PORCELAIN_CASES = (
+    (" M src/app.py", ["src/app.py"]),
+    ("?? leftover.txt", ["leftover.txt"]),
+    ("R  old.py -> new.py", ["new.py"]),
+    ('?? "quoted path.txt"', ["quoted path.txt"]),
+    ("??", []),
+    (" M  ", []),
+)
 
 
-class DrainVerifyOutputTest(unittest.TestCase):
-    """`_drain_verify_output` reads a killed verify shell's buffered output.
-    The first bounded drain covers the normal case; if it wedges -- a
-    descendant that escaped the group is still holding the pipe fd open -- it
-    escalates to `proc.kill()` and one more bounded drain, then gives up with
-    empty output. Popen is faked so the wedged path is deterministic.
-    """
-
-    def test_first_drain_returns_without_extra_kill(self) -> None:
-        proc = MagicMock()
-        proc.communicate.return_value = ("out", "err")
-        self.assertEqual(verify._drain_verify_output(proc), ("out", "err"))
-        proc.kill.assert_not_called()
-
-    def test_wedged_drain_kills_then_returns_output(self) -> None:
-        proc = MagicMock()
-        proc.communicate.side_effect = [
-            subprocess.TimeoutExpired(cmd="verify", timeout=5),
-            ("late-out", "late-err"),
-        ]
-        self.assertEqual(
-            verify._drain_verify_output(proc),
-            ("late-out", "late-err"),
-        )
-        proc.kill.assert_called_once()
-
-    def test_both_drains_time_out_returns_empty(self) -> None:
-        proc = MagicMock()
-        proc.communicate.side_effect = subprocess.TimeoutExpired(
-            cmd="verify",
-            timeout=5,
-        )
-        self.assertEqual(verify._drain_verify_output(proc), ("", ""))
-        proc.kill.assert_called_once()
+def _completed(returncode: int, stdout: str) -> subprocess.CompletedProcess:
+    """Return a git result carrying the given exit status and stdout."""
+    return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout)
 
 
 def _run_git(*args: str, cwd: Path) -> None:
@@ -67,6 +52,47 @@ def _run_git(*args: str, cwd: Path) -> None:
         text=True,
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
     )
+
+
+class HeadShaProbeTest(unittest.TestCase):
+    """`_head_sha` snapshots HEAD so a verify-time commit can be detected."""
+
+    def test_reports_the_trimmed_rev_parse_output(self) -> None:
+        with patch.object(commands, "_git", return_value=_completed(0, f"{HEAD_SHA}\n")) as git:
+            self.assertEqual(probes._head_sha(WORKTREE), HEAD_SHA)
+            self.assertEqual(git.call_args.args, ("rev-parse", "HEAD"))
+            self.assertEqual(git.call_args.kwargs["cwd"], WORKTREE)
+
+    def test_unreadable_head_reports_no_snapshot(self) -> None:
+        # An uninitialized repo has no HEAD to read. The runner treats the
+        # empty baseline as "no HEAD ever existed" and accepts only an
+        # unchanged "" afterwards, so the probe must not invent a SHA.
+        with patch.object(commands, "_git", return_value=_completed(GIT_FAILURE, "fatal: bad revision")):
+            self.assertEqual(probes._head_sha(WORKTREE), "")
+
+
+class PorcelainParsingTest(unittest.TestCase):
+    """`_worktree_dirty_files` turns porcelain v1 lines into paths."""
+
+    def test_each_status_line_yields_its_path(self) -> None:
+        for line, expected in PORCELAIN_CASES:
+            with self.subTest(line=line):
+                with patch.object(commands, "_git_hardened", return_value=_completed(0, line)):
+                    self.assertEqual(probes._worktree_dirty_files(WORKTREE), expected)
+
+    def test_all_reported_paths_are_collected(self) -> None:
+        status = "\n".join(line for line, paths in PORCELAIN_CASES if paths)
+        with patch.object(commands, "_git_hardened", return_value=_completed(0, status)):
+            self.assertEqual(
+                probes._worktree_dirty_files(WORKTREE),
+                ["src/app.py", LEFTOVER_FILE, "new.py", "quoted path.txt"],
+            )
+
+    def test_failed_probe_reports_a_clean_tree(self) -> None:
+        # A probe that could not run proves nothing about the tree, and the
+        # callers that refuse to publish on dirtiness read the list directly.
+        with patch.object(commands, "_git_hardened", return_value=_completed(GIT_FAILURE, LEFTOVER_FILE)):
+            self.assertEqual(probes._worktree_dirty_files(WORKTREE), [])
 
 
 class WorktreeDirtyFilesHardeningTest(unittest.TestCase):
@@ -113,7 +139,7 @@ class WorktreeDirtyFilesHardeningTest(unittest.TestCase):
         )
         marker.unlink()
 
-        dirty = verify._worktree_dirty_files(self.work)
+        dirty = probes._worktree_dirty_files(self.work)
 
         # The real modification is still reported...
         self.assertIn(LEFTOVER_FILE, dirty)
@@ -123,3 +149,7 @@ class WorktreeDirtyFilesHardeningTest(unittest.TestCase):
             marker.exists() and marker.read_text(),
             "hardened dirty probe executed the planted core.fsmonitor",
         )
+
+
+if __name__ == "__main__":
+    unittest.main()

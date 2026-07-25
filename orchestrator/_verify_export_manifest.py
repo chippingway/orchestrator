@@ -20,14 +20,6 @@ EXPORTS = (
         (("logging", None),),
     ),
     *export_group(
-        "orchestrator._verify_models",
-        (
-            ("VerifyResult", "VerifyResult"),
-            ("_head_sha", "_head_sha"),
-            ("_worktree_dirty_files", "_worktree_dirty_files"),
-        ),
-    ),
-    *export_group(
         "orchestrator._verify_process",
         (
             ("_combine_output", "_combine_output"),
@@ -48,10 +40,7 @@ EXPORTS = (
     ),
     *export_group(
         "orchestrator._verify_state",
-        (
-            ("_VERIFY_OUTPUT_BUDGET", "_VERIFY_OUTPUT_BUDGET"),
-            ("log", "log"),
-        ),
+        (("log", "log"),),
     ),
     *export_group(
         "orchestrator.agents.environment",
@@ -60,6 +49,20 @@ EXPORTS = (
     *export_group(
         "orchestrator.config.credentials",
         (("_redact_secrets", "redact_secrets"),),
+    ),
+    *export_group(
+        "orchestrator.git.verification.models",
+        (
+            ("VerifyResult", "VerifyResult"),
+            ("_VERIFY_OUTPUT_BUDGET", "_VERIFY_OUTPUT_BUDGET"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.verification.probes",
+        (
+            ("_head_sha", "_head_sha"),
+            ("_worktree_dirty_files", "_worktree_dirty_files"),
+        ),
     ),
     *export_group(
         "orchestrator.git_plumbing",
