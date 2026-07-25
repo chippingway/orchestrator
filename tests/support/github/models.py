@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
-from tests.fake_model_helpers import _copy_issue_comments
+from tests.support.github.model_helpers import _copy_issue_comments
 
 
 _STATE_CLOSED = "closed"

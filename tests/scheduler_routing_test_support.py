@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config, workflow
-from orchestrator.github import BACKLOG_LABEL
+from orchestrator.github.labels import BACKLOG_LABEL
 from orchestrator.scheduler import IssueScheduler
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue

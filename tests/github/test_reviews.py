@@ -5,9 +5,8 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import github as _github
-from orchestrator.github import GitHubClient
 from orchestrator.github import reviews as _reviews
+from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PINNED_STATE_TEMPLATE
 
 from tests.fakes import FakeComment, FakePRReview, FakeUser
@@ -21,15 +20,6 @@ _REVIEWER = "alice"
 _OTHER_REVIEWER = "bob"
 _FEEDBACK_BODY = "please rename the helper"
 _PINNED_BODY = PINNED_STATE_TEMPLATE.format(payload='{"branch": "main"} ')
-
-# Historical facade name -> the owner attribute it must resolve to.
-_FACADE_REVIEW_NAMES = (
-    ("_REVIEW_CHANGES_REQUESTED", "REVIEW_CHANGES_REQUESTED"),
-    ("_review_state_for_head", "review_state_for_head"),
-    ("_latest_review_states_for_head", "latest_review_states_for_head"),
-    ("_record_latest_review", "record_latest_review"),
-    ("_is_actionable_review_summary", "is_actionable_review_summary"),
-)
 
 
 def _review(
@@ -253,20 +243,12 @@ class ReviewVerdictTest(_ReviewClientTestCase):
 
 
 class ReviewOwnershipTest(unittest.TestCase):
-    """The client and the facade both resolve to the `reviews` owner.
+    """The composed client resolves its review surface from the owner.
 
-    A caller reaching a review name through `orchestrator.github` sees the
-    owning module's object, so a monkeypatch on the owner stays observable
-    through the facade rather than resolving a divergent copy.
+    The verdict methods and the head-state aggregation reach the client through
+    the owner's mixin and static alias, so a monkeypatch on the owner stays
+    observable rather than hitting a divergent copy.
     """
-
-    def test_facade_names_are_owner_re_exports(self) -> None:
-        for facade_name, owner_attr in _FACADE_REVIEW_NAMES:
-            with self.subTest(name=facade_name):
-                self.assertIs(
-                    getattr(_github, facade_name),
-                    getattr(_reviews, owner_attr),
-                )
 
     def test_client_inherits_the_review_mixin_owner(self) -> None:
         self.assertIn(_reviews.GitHubReviewMixin, GitHubClient.__mro__)

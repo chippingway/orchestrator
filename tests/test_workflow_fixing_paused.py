@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
-from orchestrator.github import PAUSED_LABEL
+from orchestrator.github.labels import PAUSED_LABEL
 
 from tests.fakes import (
     FakeComment,

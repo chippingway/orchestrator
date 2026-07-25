@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from orchestrator import workflow
-from orchestrator.github import BACKLOG_LABEL, PAUSED_LABEL
+from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
 
 from tests.fakes import (
     FakeLabel,

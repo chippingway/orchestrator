@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 from github import GithubException
 
-from orchestrator.github import GitHubClient
+from orchestrator.github.client import GitHubClient
 
 _STATE_OPEN = "open"
 _STATE_CLOSED = "closed"

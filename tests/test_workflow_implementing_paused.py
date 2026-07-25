@@ -14,7 +14,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
-from orchestrator.github import PAUSED_LABEL
+from orchestrator.github.labels import PAUSED_LABEL
 
 from tests.fakes import (
     FakeComment,

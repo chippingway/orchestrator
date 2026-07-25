@@ -7,7 +7,8 @@ import pathlib
 import re
 import unittest
 
-from orchestrator import base_sync, github, workflow
+from orchestrator import base_sync, workflow
+from orchestrator.github import labels as _labels
 from orchestrator.state_machine import (
     ALLOWED_TRANSITIONS,
     ControlLabel,
@@ -56,12 +57,12 @@ class WorkflowLabelEnumTest(unittest.TestCase):
         self.assertIn(WorkflowLabel.FIXING, base_sync._PR_REFRESH_DETOUR_LABELS)
 
     def test_workflow_labels_frozenset_is_the_enum(self) -> None:
-        self.assertEqual(github.WORKFLOW_LABELS, frozenset(WorkflowLabel))
-        self.assertIn("question", github.WORKFLOW_LABELS)
+        self.assertEqual(_labels.WORKFLOW_LABELS, frozenset(WorkflowLabel))
+        self.assertIn("question", _labels.WORKFLOW_LABELS)
 
     def test_spec_table_is_exhaustive(self) -> None:
         self.assertEqual(
-            {spec[0] for spec in github.WORKFLOW_LABEL_SPECS},
+            {spec[0] for spec in _labels.WORKFLOW_LABEL_SPECS},
             set(WorkflowLabel),
         )
 
@@ -74,17 +75,17 @@ class WorkflowLabelEnumTest(unittest.TestCase):
             ControlLabel.COMMUNITY_CONTRIBUTION, "community_contribution",
         )
         for label in ControlLabel:
-            self.assertNotIn(label, github.WORKFLOW_LABELS)
+            self.assertNotIn(label, _labels.WORKFLOW_LABELS)
 
     def test_control_label_specs_are_exhaustive(self) -> None:
         self.assertEqual(
-            {spec[0] for spec in github.CONTROL_LABEL_SPECS},
+            {spec[0] for spec in _labels.CONTROL_LABEL_SPECS},
             set(ControlLabel),
         )
         # `community_contribution` is registered for bootstrap but is not a
         # hard skip: it coexists with the workflow rather than pausing it.
         self.assertNotIn(
-            github.COMMUNITY_CONTRIBUTION_LABEL, github.HARD_SKIP_CONTROL_LABELS
+            _labels.COMMUNITY_CONTRIBUTION_LABEL, _labels.HARD_SKIP_CONTROL_LABELS
         )
 
 
@@ -199,9 +200,9 @@ class TransitionGraphReachabilityTest(unittest.TestCase):
         # Drift meta-test: every `set_workflow_label(..., WorkflowLabel.X)`
         # target in the package must be an allowed target somewhere in the
         # table, so a new write site can't outrun the declared graph.
-        # `github` is a subpackage, so its grandparent is the orchestrator
-        # package root the drift scan must cover end to end.
-        package = pathlib.Path(github.__file__).parent.parent
+        # The label owner sits in the `github` subpackage, so its grandparent
+        # is the orchestrator package root the drift scan must cover end to end.
+        package = pathlib.Path(_labels.__file__).parent.parent
         emitted: set[WorkflowLabel] = set()
         for py_file in package.rglob("*.py"):
             for match in _LABEL_WRITE_PATTERN.finditer(py_file.read_text()):

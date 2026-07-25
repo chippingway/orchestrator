@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from tests.fake_models import FakePR
+from tests.support.github.models import FakePR
 
 
 _STATE_CLOSED = "closed"

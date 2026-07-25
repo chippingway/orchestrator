@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import unittest
-from unittest.mock import MagicMock, patch
 
-from orchestrator.github import PINNED_STATE_TEMPLATE, GitHubClient
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PINNED_STATE_TEMPLATE
 
 from tests.fakes import FakeComment, FakeUser, make_issue
 
@@ -207,29 +207,6 @@ class ReadPinnedStateRequiresStateOnlyBodyTest(unittest.TestCase):
 
         self.assertEqual(state.comment_id, _PINNED_COMMENT_ID)
         self.assertEqual(state.get(_BRANCH_KEY), REAL_BRANCH)
-
-
-class BotLoginResolutionTest(unittest.TestCase):
-    """The orchestrator login is resolved once at construction and threaded
-    into worker-thread clones so the parallel path issues no extra
-    `GET /user` per worker."""
-
-    def test_worker_clone_reuses_resolved_login(self) -> None:
-        with patch("orchestrator.github.client.Github") as GH, \
-             patch("orchestrator.github.client.Auth"):
-            gh_inst = GH.return_value
-            gh_inst.get_repo.return_value = MagicMock()
-            gh_inst.get_user.return_value = MagicMock(login=BOT)
-
-            client = GitHubClient(token="tok", repo_slug="o/r")
-            self.assertEqual(client._bot_login, BOT)
-            gh_inst.get_user.assert_called_once()
-
-            gh_inst.get_user.reset_mock()
-            worker = client._for_worker_thread()
-            self.assertEqual(worker._bot_login, BOT)
-            # Clone inherits the login instead of re-fetching it.
-            gh_inst.get_user.assert_not_called()
 
 
 if __name__ == "__main__":

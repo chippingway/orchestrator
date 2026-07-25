@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from orchestrator import analytics, workflow
-from orchestrator.github import BACKLOG_LABEL, PAUSED_LABEL
+from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow_helpers import (

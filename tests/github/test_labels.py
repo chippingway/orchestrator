@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Label vocabulary, predicates, and facade ownership for the github package."""
+"""Label vocabulary, predicates, bootstrap, and owner-targeted bindings."""
 from __future__ import annotations
 
 import importlib
@@ -9,9 +9,8 @@ from unittest.mock import MagicMock, patch
 
 from github import GithubException
 
-from orchestrator import github as _github
-from orchestrator.github import GitHubClient
 from orchestrator.github import labels as _labels
+from orchestrator.github.client import GitHubClient
 from orchestrator.state_machine import ControlLabel, WorkflowLabel
 
 from tests.fakes import FakeIssue, FakeLabel
@@ -19,21 +18,9 @@ from tests.fakes import FakeIssue, FakeLabel
 _HTTP_FORBIDDEN = 403
 _LABEL_SPECS = _labels.WORKFLOW_LABEL_SPECS + _labels.CONTROL_LABEL_SPECS
 
-_FACADE_LABEL_NAMES = (
-    "WORKFLOW_LABEL_SPECS",
-    "WORKFLOW_LABELS",
-    "BACKLOG_LABEL",
-    "PAUSED_LABEL",
-    "COMMUNITY_CONTRIBUTION_LABEL",
-    "CONTROL_LABEL_SPECS",
-    "HARD_SKIP_CONTROL_LABELS",
-    "issue_has_label",
-    "hard_skip_control_label",
-)
-
 # Workflow-facing facade -> the label names it re-exports. Each must resolve
-# through the `labels` owner, not the eager `orchestrator.github` copies, so a
-# monkeypatch on the owner stays observable through the facade.
+# through the `labels` owner rather than a copy, so a monkeypatch on the owner
+# stays observable through the facade.
 _LABEL_FACADE_BINDINGS = (
     ("orchestrator.workflow", "COMMUNITY_CONTRIBUTION_LABEL"),
     ("orchestrator.workflow", "hard_skip_control_label"),
@@ -71,25 +58,11 @@ _HARD_SKIP_CASES = (
 )
 
 
-class LabelFacadeOwnershipTest(unittest.TestCase):
-    """The package surface hands back the `labels` owner's own objects.
-
-    A caller reaching a label name through `orchestrator.github` sees the
-    owning module's object, so a monkeypatch on the owner stays observable
-    through the facade rather than resolving a divergent copy.
-    """
-
-    def test_facade_names_are_owner_re_exports(self) -> None:
-        for name in _FACADE_LABEL_NAMES:
-            with self.subTest(name=name):
-                self.assertIs(getattr(_github, name), getattr(_labels, name))
-
-
 class LabelFacadeBindingTest(unittest.TestCase):
     """Workflow-facing facades resolve label names from the `labels` owner.
 
-    `orchestrator.github` holds eager copies of the label surface, so a lazy
-    binding resolved through it would miss a monkeypatch on the owner. Targeting
+    A lazy binding declared against a module that only holds a copy of the label
+    surface would miss a monkeypatch on the owner. Targeting
     `orchestrator.github.labels` keeps each binding observing the owner's live
     attribute.
     """

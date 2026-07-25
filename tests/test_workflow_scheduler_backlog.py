@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import workflow
-from orchestrator.github import BACKLOG_LABEL, PAUSED_LABEL
+from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import (

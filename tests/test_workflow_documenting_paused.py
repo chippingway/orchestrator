@@ -16,7 +16,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config, workflow
-from orchestrator.github import PAUSED_LABEL
+from orchestrator.github.labels import PAUSED_LABEL
 
 from tests.fakes import (
     FakeComment,

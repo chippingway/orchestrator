@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
-from tests.fake_models import FakeComment, FakeIssue, FakePR
+from tests.support.github.models import FakeComment, FakeIssue, FakePR
 
 
 _LabelHistory = list[tuple[int, Optional[str]]]

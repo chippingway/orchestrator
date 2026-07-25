@@ -186,11 +186,8 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.github",
-        (
-            ("GitHubClient", "GitHubClient"),
-            ("PinnedState", "PinnedState"),
-        ),
+        "orchestrator.github.client",
+        (("GitHubClient", "GitHubClient"),),
     ),
     *export_group(
         "orchestrator.github.labels",
@@ -198,6 +195,10 @@ EXPORTS = (
             ("hard_skip_control_label", "hard_skip_control_label"),
             ("issue_has_label", "issue_has_label"),
         ),
+    ),
+    *export_group(
+        "orchestrator.github.pinned_state",
+        (("PinnedState", "PinnedState"),),
     ),
     *export_group(
         "orchestrator.scheduler",

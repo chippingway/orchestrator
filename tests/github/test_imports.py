@@ -13,36 +13,45 @@ from orchestrator.github import client as _github_client
 from orchestrator.github import pinned_state as _pinned_state
 
 
-# The github-package modules plus the client-mixin leaf that composes them. The
-# initializer binds the `labels`, `events`, and `issues` owners eagerly, and the
-# `issues`, `pinned_state`, `reviews`, and `checks` owners import the package
-# back for the surfaces they build on, so importing any leaf first must run the
+# The package and every owner module. The initializer imports the `client`
+# owner, which pulls the whole mixin chain, and chain leaves import the package
+# back for their sibling owners, so importing any owner first must run the
 # initializer without re-entering a half-built one.
 _MODULES = (
     "orchestrator.github",
     "orchestrator.github.checks",
+    "orchestrator.github.client",
     "orchestrator.github.events",
     "orchestrator.github.issues",
     "orchestrator.github.labels",
     "orchestrator.github.pinned_state",
     "orchestrator.github.pull_requests",
     "orchestrator.github.reviews",
-    "orchestrator.github.client",
-    "orchestrator._github_internals",
+)
+
+# Owner-only names the facade must not resolve: the domain surfaces each have an
+# owner module callers import directly.
+_OWNER_ONLY_NAMES = (
+    "PINNED_STATE_MARKER",
+    "WORKFLOW_LABELS",
+    "hard_skip_control_label",
+    "build_event_record",
+    "_iter_new_non_pr_issues",
+    "_review_state_for_head",
+    "_normalize_check_runs",
 )
 
 
 class CleanProcessImportTest(unittest.TestCase):
     """Each affected module imports standalone in a fresh interpreter.
 
-    The owners are submodules of the same package whose `__init__` binds
-    `labels`, `events`, and `issues` eagerly, and both the `issues` owner and
-    the mixin chain import the package back for those surfaces, so importing
-    the package, any of its submodules, or the composed leaf directly must run
-    the initializer without a partially-initialized-module error. A subprocess
-    per module gives each a clean `sys.modules` no other test has already
-    populated, exposing an import-order cycle a package-first suite run would
-    mask.
+    The owners are submodules of the same package, and both the `issues` owner
+    and the mixin chain the initializer imports reach back into the package for
+    their sibling owners, so importing the package or any of its submodules
+    directly must run the initializer without a partially-initialized-module
+    error. A subprocess per module gives each a clean `sys.modules` no other test
+    has already populated, exposing an import-order cycle a package-first suite
+    run would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:
@@ -57,38 +66,30 @@ class CleanProcessImportTest(unittest.TestCase):
                 self.assertEqual(completed.returncode, 0, msg=completed.stderr)
 
 
-class PinnedStateOwnershipTest(unittest.TestCase):
-    """The package surface is backed by the owning modules' identities.
+class PublicSurfaceTest(unittest.TestCase):
+    """The facade publishes a narrow `__all__` backed by owner identities."""
 
-    A caller reaching a name through `orchestrator.github` sees the owning
-    module's own object, so a monkeypatch on the owner stays observable through
-    the facade rather than resolving a divergent copy.
-    """
-
-    def test_pinned_names_are_owner_re_exports(self) -> None:
-        self.assertIs(_github.PinnedState, _pinned_state.PinnedState)
-        self.assertIs(
-            _github.PINNED_STATE_MARKER,
-            _pinned_state.PINNED_STATE_MARKER,
-        )
-        self.assertIs(_github.PINNED_STATE_RE, _pinned_state.PINNED_STATE_RE)
-        self.assertIs(
-            _github.PINNED_STATE_BODY_RE,
-            _pinned_state.PINNED_STATE_BODY_RE,
-        )
-        self.assertIs(
-            _github.PINNED_STATE_TEMPLATE,
-            _pinned_state.PINNED_STATE_TEMPLATE,
-        )
-        self.assertIs(
-            _github._pinned_state_from_comment,
-            _pinned_state.pinned_state_from_comment,
+    def test_all_names_the_narrow_public_surface(self) -> None:
+        self.assertEqual(
+            _github.__all__,
+            (
+                "GitHubClient",
+                "PinnedState",
+            ),
         )
 
-    def test_client_resolves_to_the_client_owner(self) -> None:
-        # `GitHubClient` is resolved lazily from `orchestrator.github.client`;
-        # the facade must hand back the owner's class, not a rebuilt copy.
+    def test_public_names_are_owner_re_exports(self) -> None:
+        # Each public name resolves to the owning module's object rather than a
+        # rebuilt copy, so a caller reaching through the facade sees the owner's
+        # definition.
         self.assertIs(_github.GitHubClient, _github_client.GitHubClient)
+        self.assertIs(_github.PinnedState, _pinned_state.PinnedState)
+
+    def test_facade_hides_owner_only_names(self) -> None:
+        for owner_only_name in _OWNER_ONLY_NAMES:
+            with self.subTest(name=owner_only_name):
+                with self.assertRaises(AttributeError):
+                    getattr(_github, owner_only_name)
 
     def test_client_inherits_the_state_mixin_owner(self) -> None:
         # The pinned-state read/write and comment-watermark methods reach the

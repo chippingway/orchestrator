@@ -473,6 +473,12 @@ and publishes its narrow public surface through an explicit `__all__` (`WPS410`)
 `agents.backends` command modules (`codex`, `claude`) directly at dispatch time, so the facade carries no private
 backend re-exports. `WPS412` is waived for that import-time logic.
 
+The github facade adds a third scope: `orchestrator/github/__init__.py` (`WPS412`, `WPS410`) re-exports the composed
+`GitHubClient` and the pinned durable-state model from their owner modules and publishes that narrow public surface
+through an explicit `__all__` (`WPS410`); every other GitHub surface — labels, events, issues, pull requests, reviews,
+checks — is imported from its owner directly, so the facade carries no private re-exports. `WPS412` is waived for that
+import-time logic.
+
 `orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
 comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8
 methods past the ceiling of 7. Splitting the merge-side mutations out would hand the composed client two mixins for

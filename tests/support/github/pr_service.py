@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
-from orchestrator.github import PINNED_STATE_MARKER
+from orchestrator.github.pinned_state import PINNED_STATE_MARKER
 
-from tests.fake_github_pr_helpers import (
+from tests.support.github.pr_helpers import (
     _pr_combined_check_state,
     _pr_has_changes_requested,
     _pr_has_label,
@@ -15,8 +15,8 @@ from tests.fake_github_pr_helpers import (
     _pr_is_mergeable,
     _pr_state,
 )
-from tests.fake_model_helpers import _review_has_feedback
-from tests.fake_models import (
+from tests.support.github.model_helpers import _review_has_feedback
+from tests.support.github.models import (
     FakeComment,
     FakeLabel,
     FakePR,

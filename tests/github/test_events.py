@@ -11,15 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator import github as _github
 from orchestrator.github import events as _events
-
-# Facade name -> the `events` owner attribute it must resolve to.
-_FACADE_EVENT_NAMES = (
-    ("_append_event_line", "append_event_line"),
-    ("_write_event_record", "write_event_record"),
-    ("build_event_record", "build_event_record"),
-)
 
 _TS_KEY = "ts"
 _REPO_SLUG = "geserdugarov/agent-orchestrator"
@@ -110,23 +102,6 @@ class WriteEventRecordTest(unittest.TestCase):
             _events.write_event_record(_record(_EVENT_NAME))
             warnings = captured.output
         self.assertIn("could not write event log", warnings[0])
-
-
-class EventFacadeOwnershipTest(unittest.TestCase):
-    """The package surface hands back the `events` owner's own objects.
-
-    A caller reaching an event helper through `orchestrator.github` sees the
-    owning module's function, so a monkeypatch on the owner stays observable
-    through the facade rather than resolving a divergent copy.
-    """
-
-    def test_facade_names_are_owner_re_exports(self) -> None:
-        for facade_name, owner_name in _FACADE_EVENT_NAMES:
-            with self.subTest(name=facade_name):
-                self.assertIs(
-                    getattr(_github, facade_name),
-                    getattr(_events, owner_name),
-                )
 
 
 if __name__ == "__main__":

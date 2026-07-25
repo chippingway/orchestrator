@@ -70,8 +70,9 @@ The facade pattern in `orchestrator/workflow.py` is load-bearing for tests. Get 
   live in `tests/test_workflow_<label>_routing.py` (backlog, question, documenting, fixing) and the
   remaining facade-level helpers (worktree serialization, drain-terminals, finalize-if-pr-merged,
   stage analytics) live in their own focused modules. Shared fixtures go in `tests/workflow_helpers.py`.
-- Prefer extending the in-memory fakes in `tests/fakes.py` over mocking PyGithub directly. New
-  behavior should land with tests in the matching stage file.
+- Prefer extending the in-memory fakes in `tests/support/github/` (reached through the
+  `tests/fakes.py` bridge) over mocking PyGithub directly. New behavior should land with tests in
+  the matching stage file.
 - Before finalizing tests, do a redundancy pass:
   - List each added/modified test and the distinct behavior it protects.
   - Merge tests that differ only by input shape or branch case into `pytest.mark.parametrize` cases

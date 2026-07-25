@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import github, worktrees
+from orchestrator import worktrees
+from orchestrator.github import labels as _labels
 from tests import fixing_routing_test_support as support
 from tests.implementing_fixing_test_cases import IssueScenario
 
@@ -32,13 +33,13 @@ class FixingLabelDefinitionTest(unittest.TestCase, _PatchedWorkflowMixin):
     """
 
     def test_label_is_recognized(self) -> None:
-        self.assertIn(LABEL_FIXING, github.WORKFLOW_LABELS)
+        self.assertIn(LABEL_FIXING, _labels.WORKFLOW_LABELS)
 
     def test_fixing_label_is_in_bootstrap_specs(self) -> None:
         # Label bootstrap iterates WORKFLOW_LABEL_SPECS; if the spec entry
         # is missing, `ensure_workflow_labels` would never create the
         # label on a fresh repo and operators would be unable to apply it.
-        names = [name for name, _, _ in github.WORKFLOW_LABEL_SPECS]
+        names = [name for name, _, _ in _labels.WORKFLOW_LABEL_SPECS]
         self.assertIn(LABEL_FIXING, names)
 
     def test_label_between_review_and_conflict(
@@ -48,7 +49,7 @@ class FixingLabelDefinitionTest(unittest.TestCase, _PatchedWorkflowMixin):
         # `in_review` when the PR has fresh feedback. The spec tuple
         # encodes the lifecycle ordering, so it must place `fixing` right
         # after `in_review`.
-        names = [name for name, _, _ in github.WORKFLOW_LABEL_SPECS]
+        names = [name for name, _, _ in _labels.WORKFLOW_LABEL_SPECS]
         in_review_idx = names.index("in_review")
         fixing_idx = names.index(LABEL_FIXING)
         self.assertEqual(fixing_idx, in_review_idx + 1)

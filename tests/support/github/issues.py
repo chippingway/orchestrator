@@ -6,21 +6,18 @@ from __future__ import annotations
 from typing import Any, Iterable, Optional
 
 from orchestrator import analytics, config
-from orchestrator.github import (
-    PINNED_STATE_MARKER,
-    PinnedState,
-    WORKFLOW_LABELS,
-)
 from orchestrator.github import events as _events
+from orchestrator.github.labels import WORKFLOW_LABELS
+from orchestrator.github.pinned_state import PINNED_STATE_MARKER, PinnedState
 from orchestrator.state_machine import (
     WorkflowLabel,
     coerce_workflow_label,
     guard_transition,
 )
 
-from tests.fake_model_helpers import _has_closed_sweep_label
-from tests.fake_github_state import _CommentHistory, _LabelHistory
-from tests.fake_models import FakeComment, FakeIssue, FakeLabel
+from tests.support.github.model_helpers import _has_closed_sweep_label
+from tests.support.github.state import _CommentHistory, _LabelHistory
+from tests.support.github.models import FakeComment, FakeIssue, FakeLabel
 
 
 _STATE_CLOSED = "closed"

@@ -28,11 +28,12 @@ EXPORTS = (
         (("filter_trusted", "filter_trusted"),),
     ),
     *export_group(
-        "orchestrator.github",
-        (
-            ("GitHubClient", "GitHubClient"),
-            ("PinnedState", "PinnedState"),
-        ),
+        "orchestrator.github.client",
+        (("GitHubClient", "GitHubClient"),),
+    ),
+    *export_group(
+        "orchestrator.github.pinned_state",
+        (("PinnedState", "PinnedState"),),
     ),
     *export_group(
         "orchestrator.stages._conflict_divergence",

@@ -102,7 +102,7 @@ def record_stage_enter(*, repo: str, issue: int, stage: str) -> None:
     event of the same name.
 
     Centralized so `GitHubClient._emit_stage_enter` and the in-memory fake
-    in `tests/fakes.py` agree on the record shape without re-inlining the
+    in `tests/support/github/` agree on the record shape without re-inlining the
     `build_record`/`append_record` pair. Disabled-sink behavior is
     inherited from `append_record` (no-op when the sink is off).
     """

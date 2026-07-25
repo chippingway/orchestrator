@@ -24,7 +24,7 @@ time.
 
 Optional, opt-in JSONL sink. When `config.EVENT_LOG_PATH` is set, `github.events.write_event_record` appends one JSON
 object per audit event to that file inside `GitHubClient.emit_event`; when unset (the default) the helper
-short-circuits to a no-op. The fake `GitHubClient` in `tests/fakes.py` calls the same helper.
+short-circuits to a no-op. The fake `GitHubClient` in `tests/support/github/` calls the same helper.
 
 **Schema.** Every record is built by `github.events.build_event_record` and carries `ts` (UTC ISO-8601 at second
 precision), `repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included
