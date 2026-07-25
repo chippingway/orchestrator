@@ -39,11 +39,13 @@ orchestrator process is stateless.
   registry and subprocess-group lifecycle (the facade re-exports only its `terminate_all_running`) and `runner.py`
   owning shared agent dispatch, result assembly, and spawn logging (re-exported as `run_agent`) -- and the
   per-backend command modules in the `backends/` subpackage (`backends/codex.py`, `backends/claude.py`)),
-  the github package (`github/`, whose `__init__.py` is the stable compatibility facade -- eager pinned-state
-  re-exports plus a lazy `__getattr__` that resolves `GitHubClient` (in `client.py`) and the inventory
-  re-exports so a leaf-first import never re-enters a half-built initializer -- over the `pinned_state.py`
-  owner (the authenticated pinned-state model, parser, and the state / comment-watermark client mixin) and the
-  composed `_github_*` client mixin leaves), and stable runtime-core facades (`main.py`, `state_machine.py`).
+  the github package (`github/`, whose `__init__.py` is the stable compatibility facade -- eager label re-exports
+  plus a lazy `__getattr__` that resolves `GitHubClient` (in `client.py`), the pinned-state re-exports, and the
+  inventory re-exports so a leaf-first import never re-enters a half-built initializer -- over the `labels.py` owner
+  (the self-contained workflow/control label vocabulary, bootstrap specifications, and predicates), the
+  `pinned_state.py` owner (the authenticated pinned-state model, parser, and the state / comment-watermark client
+  mixin), and the composed `_github_*` client mixin leaves), and stable runtime-core facades (`main.py`,
+  `state_machine.py`).
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory fakes in `tests/fakes.py`. Stage-handler tests in
   `tests/test_workflow_<stage>*.py` (the validating stage is split across review, controls, drift, handoff, pause,

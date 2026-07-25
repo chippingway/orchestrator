@@ -14,12 +14,13 @@ from orchestrator.github import pinned_state as _pinned_state
 
 
 # The github-package modules plus every client-mixin leaf between `_github_api`
-# and the `pinned_state` owner. Each mixin leaf imports the next, and
-# `_github_pull_requests` imports `orchestrator.github.pinned_state`, whose
-# submodule import runs the package initializer. Importing any leaf first must
-# therefore not re-enter a half-built initializer.
+# and the `pinned_state` owner. The initializer binds the `labels` owner
+# eagerly, and `_github_issues` (the pinned-state mixin's base) imports the
+# package back for that label surface, so importing any leaf first must run the
+# initializer without re-entering a half-built one.
 _MODULES = (
     "orchestrator.github",
+    "orchestrator.github.labels",
     "orchestrator.github.pinned_state",
     "orchestrator.github.client",
     "orchestrator._github_api",
@@ -34,10 +35,11 @@ _MODULES = (
 class CleanProcessImportTest(unittest.TestCase):
     """Each affected module imports standalone in a fresh interpreter.
 
-    The pinned-state owner is a submodule of the same package whose `__init__`
-    composes the client mixin chain that depends on it, so importing the
-    package, its `client`/`pinned_state` submodules, or any mixin leaf directly
-    must run the initializer without a partially-initialized-module error. A
+    The label and pinned-state owners are submodules of the same package whose
+    `__init__` binds `labels` eagerly and whose mixin chain imports the package
+    back for that surface, so importing the package, its
+    `client`/`labels`/`pinned_state` submodules, or any mixin leaf directly must
+    run the initializer without a partially-initialized-module error. A
     subprocess per module gives each a clean `sys.modules` no other test has
     already populated, exposing an import-order cycle a package-first suite run
     would mask.

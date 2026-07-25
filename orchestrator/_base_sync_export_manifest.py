@@ -190,6 +190,11 @@ EXPORTS = (
         (
             ("GitHubClient", "GitHubClient"),
             ("PinnedState", "PinnedState"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.github.labels",
+        (
             ("hard_skip_control_label", "hard_skip_control_label"),
             ("issue_has_label", "issue_has_label"),
         ),

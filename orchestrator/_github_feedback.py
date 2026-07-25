@@ -10,9 +10,9 @@ from github import GithubException
 from github.IssueComment import IssueComment
 from github.PullRequest import PullRequest
 
-from orchestrator import _github_labels, _github_reviews
+from orchestrator import _github_reviews
 from orchestrator._github_pull_checks import GitHubPullChecksMixin
-from orchestrator.github import pinned_state
+from orchestrator.github import labels, pinned_state
 
 log = logging.getLogger("orchestrator.github")
 
@@ -82,8 +82,8 @@ class GitHubFeedbackMixin(GitHubPullChecksMixin):
             )
             return
         label_specs = (
-            _github_labels.WORKFLOW_LABEL_SPECS
-            + _github_labels.CONTROL_LABEL_SPECS
+            labels.WORKFLOW_LABEL_SPECS
+            + labels.CONTROL_LABEL_SPECS
         )
         for name, color, description in label_specs:
             if name in existing_labels:

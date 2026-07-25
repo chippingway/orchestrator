@@ -11,10 +11,10 @@ from github.IssueComment import IssueComment
 
 from orchestrator import (
     _github_events,
-    _github_labels,
     _github_queries,
     config,
 )
+from orchestrator.github import labels
 from orchestrator.state_machine import (
     WorkflowLabel,
     coerce_workflow_label,
@@ -43,7 +43,7 @@ def set_workflow_label(
     kept_labels = [
         issue_label.name
         for issue_label in issue.labels
-        if issue_label.name not in _github_labels.WORKFLOW_LABELS
+        if issue_label.name not in labels.WORKFLOW_LABELS
     ]
     if new_workflow_label is not None:
         kept_labels.append(new_workflow_label)
@@ -55,7 +55,7 @@ def set_workflow_label(
 class GitHubIssueMixin:
     """Issue-facing methods shared by the concrete GitHub client."""
 
-    workflow_label = _github_labels.WORKFLOW_LABEL_METHOD
+    workflow_label = labels.WORKFLOW_LABEL_METHOD
     set_workflow_label = set_workflow_label
 
     def list_pollable_issues(

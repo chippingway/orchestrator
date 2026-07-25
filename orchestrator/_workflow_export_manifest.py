@@ -204,9 +204,14 @@ EXPORTS = (
     *export_group(
         "orchestrator.github",
         (
-            ("COMMUNITY_CONTRIBUTION_LABEL", "COMMUNITY_CONTRIBUTION_LABEL"),
             ("GitHubClient", "GitHubClient"),
             ("PinnedState", "PinnedState"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.github.labels",
+        (
+            ("COMMUNITY_CONTRIBUTION_LABEL", "COMMUNITY_CONTRIBUTION_LABEL"),
             ("hard_skip_control_label", "hard_skip_control_label"),
         ),
     ),
