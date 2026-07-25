@@ -26,7 +26,7 @@ class QuestionLabelRoutingTest(unittest.TestCase):
     """
 
     def test_label_is_recognized(self) -> None:
-        from orchestrator.github import WORKFLOW_LABELS
+        from orchestrator.github.labels import WORKFLOW_LABELS
 
         self.assertIn(LABEL_QUESTION, WORKFLOW_LABELS)
 
@@ -34,7 +34,7 @@ class QuestionLabelRoutingTest(unittest.TestCase):
         # Label bootstrap iterates WORKFLOW_LABEL_SPECS; if the spec entry
         # is missing, `ensure_workflow_labels` would never create the
         # label on a fresh repo and operators would be unable to apply it.
-        from orchestrator.github import WORKFLOW_LABEL_SPECS
+        from orchestrator.github.labels import WORKFLOW_LABEL_SPECS
 
         names = [name for name, _, _ in WORKFLOW_LABEL_SPECS]
         self.assertIn(LABEL_QUESTION, names)

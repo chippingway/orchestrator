@@ -7,14 +7,7 @@ import unittest
 from datetime import datetime
 from typing import Any
 
-from orchestrator import github as _github
 from orchestrator.github import issues as _issues
-
-# Facade name -> the `issues` owner attribute it must resolve to.
-_FACADE_QUERY_NAMES = (
-    ("_iter_new_non_pr_issues", "iter_new_non_pr_issues"),
-    ("_issue_query_options", "issue_query_options"),
-)
 
 _STATE_OPEN = "open"
 _STATE_CLOSED = "closed"
@@ -98,23 +91,6 @@ class IssueQueryOptionsTest(unittest.TestCase):
                 since=_SINCE,
             ),
         )
-
-
-class QueryFacadeOwnershipTest(unittest.TestCase):
-    """The package surface hands back the `issues` owner's own objects.
-
-    A caller reaching a query helper through `orchestrator.github` sees the
-    owning module's function, so a monkeypatch on the owner stays observable
-    through the facade rather than resolving a divergent copy.
-    """
-
-    def test_facade_names_are_owner_re_exports(self) -> None:
-        for facade_name, owner_name in _FACADE_QUERY_NAMES:
-            with self.subTest(name=facade_name):
-                self.assertIs(
-                    getattr(_github, facade_name),
-                    getattr(_issues, owner_name),
-                )
 
 
 if __name__ == "__main__":

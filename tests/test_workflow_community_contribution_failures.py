@@ -8,7 +8,7 @@ from functools import partial
 from unittest.mock import patch
 
 from orchestrator import config, workflow
-from orchestrator.github import COMMUNITY_CONTRIBUTION_LABEL
+from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
 
 from tests.fakes import FakeGitHubClient
 from tests.workflow_community_test_support import (

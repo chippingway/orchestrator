@@ -39,10 +39,11 @@ orchestrator process is stateless.
   registry and subprocess-group lifecycle (the facade re-exports only its `terminate_all_running`) and `runner.py`
   owning shared agent dispatch, result assembly, and spawn logging (re-exported as `run_agent`) -- and the
   per-backend command modules in the `backends/` subpackage (`backends/codex.py`, `backends/claude.py`)),
-  the github package (`github/`, whose `__init__.py` is the stable compatibility facade -- eager label, event, and
-  issue-query re-exports plus a lazy `__getattr__` that resolves `GitHubClient` (in `client.py`) and the
-  pinned-state, review, and check re-exports so a leaf-first import never re-enters a half-built
-  initializer -- over the `labels.py` owner (the workflow/control label vocabulary, bootstrap specifications,
+  the github package (`github/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- the composed
+  `GitHubClient` and the pinned durable-state model, re-exported from their owners; every other GitHub surface is
+  imported from its owner directly -- over the `client.py` owner (token resolution, PyGithub initialization, the
+  composed client class, its worker-thread clone, cached label reads, and the paired audit / analytics stage-enter
+  hook), the `labels.py` owner (the workflow/control label vocabulary, bootstrap specifications,
   predicates, and the label-bootstrap client mixin), the `events.py` owner (audit record construction and the
   optional JSONL sink), the `issues.py` owner (non-PR issue filtering, issue-query options, and the issue-client
   mixin: polling with the closed-issue sweep, guarded workflow-label writes, event emission, comments, and
@@ -52,10 +53,10 @@ orchestrator process is stateless.
   SHA-pinned merges, and idempotent head-branch deletion), the `reviews.py` owner (current-head review aggregation
   plus the review client mixin: approval and change-request verdicts and the unread conversation / inline / summary
   feedback watermarks), the `checks.py` owner (status / check-run normalization, failure-before-pending folding, and
-  the fail-closed check-read client mixin), and the composed `_github_internals.py` client-mixin leaf), and stable
-  runtime-core facades (`main.py`, `state_machine.py`).
+  the fail-closed check-read client mixin)), and stable runtime-core facades (`main.py`, `state_machine.py`).
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
-- `tests/` — pytest suite. In-memory fakes in `tests/fakes.py`. Stage-handler tests in
+- `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
+  tests through the `tests/fakes.py` bridge. Stage-handler tests in
   `tests/test_workflow_<stage>*.py` (the validating stage is split across review, controls, drift, handoff, pause,
   squash, verify, and watermark modules in `tests/test_workflow_validating_*.py`, with shared fixtures in
   `tests/validating_*_test_support.py`; the in_review stage is split across
@@ -78,18 +79,18 @@ orchestrator process is stateless.
   `tests/test_workflow_branch_publication*.py`, `tests/test_workflow_pickup.py`,
   `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_analytics.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
-  `tests/test_workflow_list_pollable.py`, `tests/test_workflow_tick_parallel.py`,
-  `tests/test_workflow_drift.py`,
+  `tests/test_workflow_tick_parallel.py`, `tests/test_workflow_drift.py`,
   `tests/test_workflow_backlog_routing.py`, `tests/test_workflow_question_routing.py`,
   `tests/test_workflow_documenting_routing.py`, `tests/test_workflow_fixing_routing.py`,
   `tests/test_workflow_in_review_fresh_feedback.py`, `tests/test_workflow_community_contribution.py`,
   `tests/test_workflow_stage_analytics.py`, `tests/test_workflow_finalize_pr_merged.py`,
   `tests/test_workflow_drain_terminals.py`); shared helpers in `tests/workflow_helpers.py`. Configuration-package
   tests live in `tests/config/`, agent-package owner / import-cycle tests in `tests/agents/`, and github-package
-  label (vocabulary, predicates, and bootstrap), event, issue-query, issue-client (real-client polling and child
-  creation), pinned-state, pull-request (status helpers, writes, merges, branch deletion), review (head verdicts,
-  actionable summaries, feedback watermarks), check (surface normalization, folding, fail-closed reads), and
-  import-cycle tests in `tests/github/`.
+  client (construction, token resolution, worker clone, label cache), label (vocabulary, predicates, and bootstrap),
+  event, issue-query, issue-client (real-client polling and child creation), pollable-listing, pinned-state,
+  pull-request (status helpers, writes, merges, branch deletion), review (head verdicts, actionable summaries,
+  feedback watermarks), check (surface normalization, folding, fail-closed reads), and import-cycle / public-surface
+  tests in `tests/github/`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in
@@ -119,7 +120,7 @@ dependency group in `pyproject.toml`; exact versions are pinned in `uv.lock`. CI
 `uv sync --locked`.
 
 Tests are the primary correctness gate. Add or update tests for any behavioral change. Prefer extending the in-memory
-fakes in `tests/fakes.py` over mocking PyGithub directly.
+fakes in `tests/support/github/` over mocking PyGithub directly.
 
 ## Code conventions
 

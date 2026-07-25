@@ -9,10 +9,10 @@ from unittest.mock import MagicMock
 
 from github import GithubException
 
-from orchestrator.github import GitHubClient
 from orchestrator.github import pull_requests as _pull_requests
+from orchestrator.github.client import GitHubClient
 
-from tests.fake_models import FakeLabel, FakePR
+from tests.support.github.models import FakeLabel, FakePR
 
 _STATE_OPEN = "open"
 _STATE_CLOSED = "closed"

@@ -14,7 +14,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator.github import PAUSED_LABEL
+from orchestrator.github.labels import PAUSED_LABEL
 
 from tests.fakes import FakeGitHubClient, FakeLabel, FakePR, make_issue
 from tests.workflow_helpers import _PatchedWorkflowMixin, _agent

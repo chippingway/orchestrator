@@ -10,9 +10,8 @@ from unittest.mock import MagicMock
 
 from github import GithubException
 
-from orchestrator import github as _github
-from orchestrator.github import GitHubClient
 from orchestrator.github import checks as _checks
+from orchestrator.github.client import GitHubClient
 
 _HEAD_SHA = "deadbeef"
 _LOGGER = "orchestrator.github"
@@ -24,18 +23,6 @@ _STATE_FAILURE = "failure"
 _STATE_SUCCESS = "success"
 _HTTP_FORBIDDEN = 403
 _HTTP_SERVER_ERROR = 500
-
-# Historical facade name -> the owner attribute it must resolve to.
-_FACADE_CHECK_NAMES = (
-    ("_CheckSurfaceRead", "CheckSurfaceRead"),
-    ("_normalize_combined_status", "normalize_combined_status"),
-    ("_normalize_check_runs", "normalize_check_runs"),
-    ("_fold_check_states", "fold_check_states"),
-    ("_FAILED_CHECK_RUN_CONCLUSIONS", "FAILED_CHECK_RUN_CONCLUSIONS"),
-    ("_SUCCESSFUL_CHECK_RUN_CONCLUSIONS", "SUCCESSFUL_CHECK_RUN_CONCLUSIONS"),
-    ("_CHECK_STATE_FAILURE", "CHECK_STATE_FAILURE"),
-    ("_CHECK_STATE_PENDING", "CHECK_STATE_PENDING"),
-)
 
 
 def _combined(state: str, total_count: int) -> SimpleNamespace:
@@ -217,20 +204,11 @@ class CombinedCheckStateTest(unittest.TestCase):
 
 
 class ChecksOwnershipTest(unittest.TestCase):
-    """The client and the facade both resolve to the `checks` owner.
+    """The composed client reads its check surface from the owner.
 
-    A caller reaching a check name through `orchestrator.github` sees the
-    owning module's object, so a monkeypatch on the owner stays observable
-    through the facade rather than resolving a divergent copy.
+    `pr_combined_check_state` reaches the client through the owner's mixin, so a
+    monkeypatch on the owner stays observable rather than hitting a copy.
     """
-
-    def test_facade_names_are_owner_re_exports(self) -> None:
-        for facade_name, owner_attr in _FACADE_CHECK_NAMES:
-            with self.subTest(name=facade_name):
-                self.assertIs(
-                    getattr(_github, facade_name),
-                    getattr(_checks, owner_attr),
-                )
 
     def test_client_inherits_the_checks_mixin_owner(self) -> None:
         self.assertIn(_checks.GitHubChecksMixin, GitHubClient.__mro__)

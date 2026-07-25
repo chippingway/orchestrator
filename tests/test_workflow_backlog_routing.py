@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
-from orchestrator.github import BACKLOG_LABEL
+from orchestrator.github.labels import BACKLOG_LABEL
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow_helpers import _TEST_SPEC

@@ -6,16 +6,16 @@ from __future__ import annotations
 from itertools import count
 from typing import Iterable
 
-from tests import fake_github_issue as issue_service
-from tests import fake_github_pr_service as pull_service
-from tests import fake_github_pr_views as pull_views
-from tests.fake_github_state import (
+from tests.support.github import issues as issue_service
+from tests.support.github import pr_service as pull_service
+from tests.support.github import pr_views as pull_views
+from tests.support.github.state import (
     _FakeEventHistory,
     _FakeIssueHistory,
     _FakePullHistory,
     _FakePullState,
 )
-from tests.fake_models import FakeIssue
+from tests.support.github.models import FakeIssue
 
 
 class _IssueViews(

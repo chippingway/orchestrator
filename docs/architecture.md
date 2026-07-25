@@ -62,11 +62,12 @@ orchestrator/
   _workflow_labels.py   label enums and strict label-name coercion
   _state_transitions.py declared workflow transition graph
   github/
-    __init__.py         stable compatibility surface; eager label, event, and
-                        issue-query re-exports plus a lazy __getattr__ for
-                        GitHubClient, pinned-state, review, and check
-                        re-exports (leaf-first import safe)
-    client.py           authenticated `GitHubClient` over the mixin chain
+    __init__.py         stable public surface (`__all__`): the composed
+                        `GitHubClient` and the pinned durable-state model,
+                        re-exported from their owner modules
+    client.py           authenticated `GitHubClient` over the mixin chain:
+                        token resolution, PyGithub setup, worker-thread clone,
+                        cached label reads, stage-enter events
     checks.py           status / check-run normalization, failure-before-pending
                         folding, and the fail-closed check-read client mixin
     events.py           audit event record construction and the optional
@@ -84,8 +85,6 @@ orchestrator/
                         SHA-pinned merge, remote-branch delete)
     reviews.py          current-head review aggregation plus the review client
                         mixin (approval verdicts, unread feedback watermarks)
-  _github_internals.py  composed client mixin (worker-thread clone, cached
-                        label reads, stage-enter events)
   agents/
     __init__.py         stable runner API plus process-termination re-export
     models.py           agent result / run-option / subprocess-result models

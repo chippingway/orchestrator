@@ -47,9 +47,12 @@ EXPORTS = (
         (("is_trusted_author", "is_trusted_author"),),
     ),
     *export_group(
-        "orchestrator.github",
+        "orchestrator.github.client",
+        (("GitHubClient", "GitHubClient"),),
+    ),
+    *export_group(
+        "orchestrator.github.pinned_state",
         (
-            ("GitHubClient", "GitHubClient"),
             ("PINNED_STATE_MARKER", "PINNED_STATE_MARKER"),
             ("PinnedState", "PinnedState"),
         ),
