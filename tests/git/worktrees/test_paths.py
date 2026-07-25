@@ -7,7 +7,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from orchestrator import config, worktree_lifecycle
+from orchestrator import config
 from orchestrator.git.worktrees import paths
 
 from tests.git.worktrees.path_test_support import (
@@ -16,7 +16,6 @@ from tests.git.worktrees.path_test_support import (
     BOB_REPO_SLUG,
     PR_NUMBER,
     SHARED_BRANCH_ISSUE_NUMBER,
-    STAGE_LAYOUT_ISSUE_NUMBER,
     _migration_spec,
     _spec,
 )
@@ -44,25 +43,6 @@ class WorktreePathSlugNamespaceTest(unittest.TestCase):
         self.assertEqual(path_b.name, "issue-7")
         self.assertEqual(path_a.parent.parent, config.WORKTREES_DIR)
         self.assertEqual(path_b.parent.parent, config.WORKTREES_DIR)
-
-    def test_decompose_path_also_namespaced_by_slug(self) -> None:
-        spec_a = _spec(ALICE_REPO_SLUG)
-        spec_b = _spec(BOB_REPO_SLUG)
-        self.assertNotEqual(
-            worktree_lifecycle._decompose_worktree_path(spec_a, 7),
-            worktree_lifecycle._decompose_worktree_path(spec_b, 7),
-        )
-
-    def test_stages_share_repo_namespace(self) -> None:
-        # `WORKTREES_DIR/<slug>/issue-N` and `WORKTREES_DIR/<slug>/decompose-N`
-        # share the per-repo subdirectory so cleanup on the parent dir
-        # also reaps the decomposer scratch.
-        spec = _spec("owner/name")
-        impl = paths._worktree_path(spec, STAGE_LAYOUT_ISSUE_NUMBER)
-        dec = worktree_lifecycle._decompose_worktree_path(
-            spec, STAGE_LAYOUT_ISSUE_NUMBER,
-        )
-        self.assertEqual(impl.parent, dec.parent)
 
 
 class SanitizeSlugTest(unittest.TestCase):

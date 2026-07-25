@@ -10,10 +10,12 @@ import unittest
 
 from orchestrator import worktree_lifecycle
 from orchestrator.git import worktrees as _worktrees_package
-from orchestrator.git.worktrees import paths, recovery
+from orchestrator.git.worktrees import creation, decomposition, paths, recovery
 
 _MODULES = (
     "orchestrator.git.worktrees",
+    "orchestrator.git.worktrees.creation",
+    "orchestrator.git.worktrees.decomposition",
     "orchestrator.git.worktrees.paths",
     "orchestrator.git.worktrees.recovery",
 )
@@ -23,6 +25,8 @@ _MODULES = (
 _OWNER_ONLY_NAMES = (
     "_branch_has_unpushed_commits",
     "_branch_name",
+    "_ensure_worktree",
+    "_decompose_worktree_path",
     "_resolve_branch_name",
     "_sanitize_slug",
     "_worktree_path",
@@ -36,9 +40,16 @@ _FACADE_FORWARDS = (
     ("_branch_has_unpushed_commits", recovery),
     ("_branch_name", paths),
     ("_candidate_issue_branches", recovery),
+    ("_cleanup_decompose_worktree", decomposition),
     ("_commit_count_from_stdout", recovery),
+    ("_decompose_worktree_path", decomposition),
+    ("_ensure_decompose_worktree", decomposition),
+    ("_ensure_pr_worktree", creation),
+    ("_ensure_worktree", creation),
+    ("_has_new_commits", creation),
     ("_repo_worktrees_root", paths),
     ("_resolve_branch_name", paths),
+    ("_run_decompose_worktree_removal", decomposition),
     ("_sanitize_branch_segment", paths),
     ("_sanitize_slug", paths),
     ("_slug_digest", paths),
@@ -49,11 +60,12 @@ _FACADE_FORWARDS = (
 class CleanProcessImportTest(unittest.TestCase):
     """Each owner imports standalone in a fresh interpreter.
 
-    Both owners depend only on the config, pinned-state, and git command /
-    lock owners, so importing either one first must not need a name a
-    half-run module has not defined yet. A subprocess per module gives each a
-    clean `sys.modules` no other test has already populated, exposing an
-    import-order cycle a facade-first suite run would mask.
+    Every owner depends only on config, pinned state, the git command /
+    lock / authentication owners, and its in-package siblings, so importing
+    any one of them first must not need a name a half-run module has not
+    defined yet. A subprocess per module gives each a clean `sys.modules` no
+    other test has already populated, exposing an import-order cycle a
+    facade-first suite run would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:

@@ -29,23 +29,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._worktree_creation",
-        (
-            ("_ensure_pr_worktree", "_ensure_pr_worktree"),
-            ("_ensure_worktree", "_ensure_worktree"),
-            ("_has_new_commits", "_has_new_commits"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._worktree_decomposition",
-        (
-            ("_cleanup_decompose_worktree", "_cleanup_decompose_worktree"),
-            ("_decompose_worktree_path", "_decompose_worktree_path"),
-            ("_ensure_decompose_worktree", "_ensure_decompose_worktree"),
-            ("_run_decompose_worktree_removal", "_run_decompose_worktree_removal"),
-        ),
-    ),
-    *export_group(
         "orchestrator._worktree_lifecycle_state",
         (("log", "log"),),
     ),
@@ -59,6 +42,23 @@ EXPORTS = (
     *export_group(
         "orchestrator.git.authentication",
         (("_authed_target_fetch", "_authed_target_fetch"),),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.creation",
+        (
+            ("_ensure_pr_worktree", "_ensure_pr_worktree"),
+            ("_ensure_worktree", "_ensure_worktree"),
+            ("_has_new_commits", "_has_new_commits"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.decomposition",
+        (
+            ("_cleanup_decompose_worktree", "_cleanup_decompose_worktree"),
+            ("_decompose_worktree_path", "_decompose_worktree_path"),
+            ("_ensure_decompose_worktree", "_ensure_decompose_worktree"),
+            ("_run_decompose_worktree_removal", "_run_decompose_worktree_removal"),
+        ),
     ),
     *export_group(
         "orchestrator.git.worktrees.paths",

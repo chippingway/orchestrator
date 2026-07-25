@@ -6,7 +6,3 @@ from __future__ import annotations
 import logging
 
 log = logging.getLogger('orchestrator.worktree_lifecycle')
-
-_WORKTREE_ADD = ("worktree", "add")
-
-_WORKTREE_REMOVE_FORCE = ("worktree", "remove", "--force")

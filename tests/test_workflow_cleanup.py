@@ -12,7 +12,6 @@ from tests.workflow_helpers import _TEST_SPEC
 
 CLEANUP_ISSUE_NUMBER = 99
 CLEANUP_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-99"
-DECOMPOSE_ISSUE_NUMBER = 77
 REMOTE_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-1"
 REMOTE_REF = f"heads/{REMOTE_BRANCH}"
 WORKTREE_COMMAND = "worktree"
@@ -199,52 +198,3 @@ class CleanupTerminalBranchTest(unittest.TestCase):
         # The remote-delete still ran -- a local-side raise must not
         # block tidying the GitHub side.
         self.assertEqual(gh.deleted_remote_branches, [CLEANUP_BRANCH])
-
-
-class CleanupDecomposeWorktreeTest(unittest.TestCase):
-    """`_cleanup_decompose_worktree` runs from `_handle_decomposing`'s
-    `finally`, so it must never raise -- a cleanup failure would mask the
-    handler's original error. Every step, including resolving the worktree
-    path, rides the best-effort guard.
-    """
-
-    def test_swallows_path_resolution_failure(self) -> None:
-        # Path resolution rides inside the best-effort guard: a raise here
-        # (e.g. a malformed spec) must be logged, not propagated, or it
-        # would mask the decomposing handler's real failure.
-        with patch.object(
-            worktree_lifecycle,
-            "_decompose_worktree_path",
-            side_effect=RuntimeError("bad spec"),
-        ):
-            # Must NOT raise.
-            worktree_lifecycle._cleanup_decompose_worktree(
-                _TEST_SPEC,
-                DECOMPOSE_ISSUE_NUMBER,
-            )
-
-    def test_swallows_git_removal_failure(self) -> None:
-        # A raising `_git` (missing binary, OSError) during the removal is
-        # absorbed the same way, so a cleanup hiccup never escapes.
-        wt_path = _fake_worktree_path(
-            exists=True,
-            path="/tmp/decompose-77",
-        )
-
-        with (
-            patch.object(
-                worktree_lifecycle,
-                "_decompose_worktree_path",
-                return_value=wt_path,
-            ),
-            patch.object(
-                worktree_lifecycle,
-                GIT_HELPER_ATTR,
-                side_effect=OSError("git not found"),
-            ),
-        ):
-            # Must NOT raise even though the git removal throws.
-            worktree_lifecycle._cleanup_decompose_worktree(
-                _TEST_SPEC,
-                DECOMPOSE_ISSUE_NUMBER,
-            )

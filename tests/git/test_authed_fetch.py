@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import threading
 import unittest
 from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
@@ -20,6 +21,12 @@ from tests.git.authentication_test_support import (
     _assert_hardened_fetch,
     _spec,
 )
+from tests.git.concurrency_test_support import (
+    PROBE_DELAY_SECONDS,
+    THREAD_TIMEOUT_SECONDS,
+    _ConcurrencyProbe,
+    _start_and_join,
+)
 from tests.workflow_git_helpers import (
     _GitRunRecorder,
     _TokenResolver,
@@ -28,6 +35,7 @@ from tests.workflow_git_helpers import (
 
 FORCED_MAIN_REFSPEC = "+refs/heads/main:refs/remotes/origin/main"
 HTTP_PROXY_KEY = "http.proxy"
+FETCH_WORKER_COUNT = 4
 
 
 def _clean_probe() -> MagicMock:
@@ -190,6 +198,46 @@ class AuthedFetchHardeningTest(unittest.TestCase):
         self.assertTrue(
             any(REPOSITORY_SLUG in line for line in log_capture.records.output),
             "expected slug 'acme/widgets' in log output, got {!r}".format(log_capture.records.output),
+        )
+
+
+class AuthedFetchSerializationTest(unittest.TestCase):
+    """`_authed_fetch` updates `refs/remotes/<remote>/<branch>` in the parent
+    clone's git directory, which every worktree of that clone shares. Two
+    concurrent fetches from different worktrees of one `target_root`
+    therefore race on `<branch>.lock` / `packed-refs.lock` and one can fail
+    with `Unable to create '...': File exists` -- `_handle_resolving_conflict`
+    fetches the base ref, the single most-contended one. The fetch
+    subprocess runs under the per-target_root lock to prevent it.
+    """
+
+    def test_fetch_serialized_per_root(self) -> None:
+        probe = _ConcurrencyProbe(delay=PROBE_DELAY_SECONDS)
+        worktree = TEMP_ROOT / "orchestrator-test-authed-fetch-worktree"
+
+        # A non-empty token keeps `_authed_fetch` from short-circuiting
+        # before it reaches the lock.
+        with (
+            patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
+            patch(SUBPROCESS_RUN, side_effect=probe.subprocess_run),
+        ):
+            threads = [
+                threading.Thread(
+                    target=authentication._authed_fetch,
+                    args=(_spec(), FORCED_MAIN_REFSPEC),
+                    kwargs={"cwd": worktree},
+                )
+                for _worker in range(FETCH_WORKER_COUNT)
+            ]
+            _start_and_join(threads, timeout=THREAD_TIMEOUT_SECONDS)
+            for thread in threads:
+                self.assertFalse(thread.is_alive())
+
+        self.assertEqual(
+            probe.maximum_in_flight,
+            1,
+            "concurrent fetches against one target_root were not "
+            "serialized; they race on refs/remotes/<remote>/<base> locks",
         )
 
 
