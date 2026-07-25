@@ -3,7 +3,7 @@
 """Static compatibility inventory for ``orchestrator.github``."""
 from __future__ import annotations
 
-from orchestrator import _github_checks, _github_internals, _github_reviews
+from orchestrator import _github_checks, _github_internals
 
 GitHubClientBase = _github_internals.GitHubInternalsMixin
 
@@ -17,8 +17,3 @@ successful_check_run_conclusions = (
 )
 check_state_failure = _github_checks._CHECK_STATE_FAILURE
 check_state_pending = _github_checks._CHECK_STATE_PENDING
-review_changes_requested = _github_reviews._REVIEW_CHANGES_REQUESTED
-review_state_for_head = _github_reviews._review_state_for_head
-latest_review_states_for_head = _github_reviews.latest_review_states_for_head
-record_latest_review = _github_reviews._record_latest_review
-is_actionable_review_summary = _github_reviews.is_actionable_review_summary
