@@ -1,0 +1,79 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""Real-git branch fixtures for the unpushed-commit probes."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+from orchestrator import config
+
+from tests.question_real_git_test_support import (
+    _run_git,
+    _seed_target_root,
+    _spec_for,
+)
+
+REAL_GIT_SLUG = "orch__realgit"
+GIT_BRANCH = "branch"
+GIT_COMMIT_MESSAGE_FLAG = "-m"
+GIT_REV_PARSE = "rev-parse"
+GIT_UPDATE_REF = "update-ref"
+
+
+@dataclass(frozen=True)
+class GitBranchFixture:
+    target: Path
+    base_sha: str
+    issue_number: int
+    branch: str
+
+    @property
+    def spec(self) -> config.RepoSpec:
+        return _spec_for(self.target)
+
+    def create(self) -> None:
+        _run_git(
+            GIT_BRANCH,
+            self.branch,
+            self.base_sha,
+            cwd=self.target,
+        )
+
+    def commit(self, message: str) -> None:
+        self.create()
+        tree = _run_git(
+            GIT_REV_PARSE,
+            "HEAD^{tree}",
+            cwd=self.target,
+        ).stdout.strip()
+        new_commit = _run_git(
+            "commit-tree",
+            tree,
+            "-p",
+            self.base_sha,
+            GIT_COMMIT_MESSAGE_FLAG,
+            message,
+            cwd=self.target,
+        ).stdout.strip()
+        _run_git(
+            GIT_UPDATE_REF,
+            f"refs/heads/{self.branch}",
+            new_commit,
+            cwd=self.target,
+        )
+
+
+def _seed_branch_fixture(
+    temp_root: Path,
+    issue_number: int,
+    branch: str,
+) -> GitBranchFixture:
+    target, base_sha = _seed_target_root(temp_root)
+    return GitBranchFixture(
+        target=target,
+        base_sha=base_sha,
+        issue_number=issue_number,
+        branch=branch,
+    )

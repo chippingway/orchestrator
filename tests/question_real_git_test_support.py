@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 
 from orchestrator import config
@@ -114,49 +113,6 @@ TRUSTED_WATERMARK_ISSUE_NUMBER = 72
 OUTSIDER_ONLY_ISSUE_NUMBER = 71
 
 
-@dataclass(frozen=True)
-class GitBranchFixture:
-    target: Path
-    base_sha: str
-    issue_number: int
-    branch: str
-
-    @property
-    def spec(self) -> config.RepoSpec:
-        return _spec_for(self.target)
-
-    def create(self) -> None:
-        _run_git(
-            GIT_BRANCH,
-            self.branch,
-            self.base_sha,
-            cwd=self.target,
-        )
-
-    def commit(self, message: str) -> None:
-        self.create()
-        tree = _run_git(
-            GIT_REV_PARSE,
-            "HEAD^{tree}",
-            cwd=self.target,
-        ).stdout.strip()
-        new_commit = _run_git(
-            "commit-tree",
-            tree,
-            "-p",
-            self.base_sha,
-            GIT_COMMIT_MESSAGE_FLAG,
-            message,
-            cwd=self.target,
-        ).stdout.strip()
-        _run_git(
-            GIT_UPDATE_REF,
-            f"refs/heads/{self.branch}",
-            new_commit,
-            cwd=self.target,
-        )
-
-
 def _git_env() -> dict:
     """Hermetic git env: detached from the operator's global / system
     config and with a deterministic author/committer so the test does
@@ -223,18 +179,4 @@ def _spec_for(target_root: Path) -> config.RepoSpec:
         target_root=target_root,
         base_branch="main",
         remote_name="origin",
-    )
-
-
-def _seed_branch_fixture(
-    temp_root: Path,
-    issue_number: int,
-    branch: str,
-) -> GitBranchFixture:
-    target, base_sha = _seed_target_root(temp_root)
-    return GitBranchFixture(
-        target=target,
-        base_sha=base_sha,
-        issue_number=issue_number,
-        branch=branch,
     )

@@ -1,19 +1,26 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Worktree paths."""
+"""Slug sanitization plus worktree path and branch-name derivation.
+
+The two sanitizers live together because the git-ref-safe one layers on the
+filesystem-safe one: a path segment and a branch segment for the same repo
+slug have to stay readable in tandem, and the injectivity hash that keeps
+them distinct is derived from the same untransformed slug.
+"""
 from __future__ import annotations
 
-from orchestrator import _worktree_lifecycle_state as _state
-from orchestrator import worktree_lifecycle as _owner
+import hashlib
+import re
+from pathlib import Path
 
-Path = _owner.Path
-PinnedState = _owner.PinnedState
-config = _owner.config
-hashlib = _owner.hashlib
-re = _owner.re
-_SAFE_CHAR = _state._SAFE_CHAR
-_SLUG_DIGEST_LEN = _state._SLUG_DIGEST_LEN
-_SLUG_SAFE_RE = _state._SLUG_SAFE_RE
+from orchestrator import config
+from orchestrator.github.pinned_state import PinnedState
+
+_SLUG_SAFE_RE = re.compile(r"[^A-Za-z0-9_.-]")
+
+_SAFE_CHAR = "_"
+
+_SLUG_DIGEST_LEN = 16
 
 
 def _sanitize_slug(slug: str) -> str:
@@ -83,7 +90,7 @@ def _sanitize_branch_segment(slug: str) -> str:
     surface, so it gets its own sanitizer rather than tightening the
     filesystem one and uglifying every common slug's worktree path.
     """
-    sanitized_path = _owner._sanitize_slug(slug)
+    sanitized_path = _sanitize_slug(slug)
     sanitized_segment = sanitized_path
     # `..` anywhere is forbidden. Collapse any run of dots to a single
     # `_` so a segment cannot smuggle the sequence past the trailing-
@@ -114,7 +121,7 @@ def _sanitize_branch_segment(slug: str) -> str:
     # without this, two `REPOS` entries sharing a `target_root`
     # would collide on the same branch and the slug-namespacing
     # fix would silently regress for those slug shapes.
-    digest = _owner._slug_digest(slug)
+    digest = _slug_digest(slug)
     return f"{sanitized_segment}__h{digest}"
 
 
@@ -136,7 +143,7 @@ def _branch_name(spec: config.RepoSpec, issue_number: int) -> str:
     check-ref-format` rejects.
     """
     return (
-        f"orchestrator/{_owner._sanitize_branch_segment(spec.slug)}"
+        f"orchestrator/{_sanitize_branch_segment(spec.slug)}"
         f"/issue-{issue_number}"
     )
 
@@ -184,7 +191,7 @@ def _resolve_branch_name(
         # existing PR rather than orphaning it on the new namespaced
         # branch.
         return f"orchestrator/issue-{issue_number}"
-    return _owner._branch_name(spec, issue_number)
+    return _branch_name(spec, issue_number)
 
 
 def _repo_worktrees_root(spec: config.RepoSpec) -> Path:
@@ -194,8 +201,8 @@ def _repo_worktrees_root(spec: config.RepoSpec) -> Path:
     issue-N / decompose-N segments live inside a sanitized-slug parent
     instead of directly under WORKTREES_DIR.
     """
-    return config.WORKTREES_DIR / _owner._sanitize_slug(spec.slug)
+    return config.WORKTREES_DIR / _sanitize_slug(spec.slug)
 
 
 def _worktree_path(spec: config.RepoSpec, issue_number: int) -> Path:
-    return _owner._repo_worktrees_root(spec) / f"issue-{issue_number}"
+    return _repo_worktrees_root(spec) / f"issue-{issue_number}"

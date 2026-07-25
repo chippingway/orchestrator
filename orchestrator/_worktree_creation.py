@@ -8,7 +8,6 @@ from orchestrator import worktree_lifecycle as _owner
 
 Path = _owner.Path
 config = _owner.config
-subprocess = _owner.subprocess
 log = _state.log
 _WORKTREE_ADD = _state._WORKTREE_ADD
 _WORKTREE_REMOVE_FORCE = _state._WORKTREE_REMOVE_FORCE
@@ -156,11 +155,6 @@ def _ensure_pr_worktree(
                 f"git worktree add failed: {worktree_result.stderr}"
             )
         return wt
-
-
-def _commit_count_from_stdout(count_result: subprocess.CompletedProcess) -> int:
-    """Parse a `git rev-list --count` result, treating empty output as zero."""
-    return int((count_result.stdout or "0").strip() or "0")
 
 
 def _has_new_commits(spec: config.RepoSpec, worktree: Path) -> bool:

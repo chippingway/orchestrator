@@ -122,13 +122,18 @@ orchestrator/
     commands.py         plain / hardened git execution, the argv hardening
                         prefixes, and the unsafe local-transport probe
     locks.py            per-target-root re-entrant lock registry and accessor
+    worktrees/
+      __init__.py       package marker only; callers import an owner directly
+      paths.py          slug sanitization, git-ref-safe branch segments, path
+                        and branch derivation, pinned/legacy branch resolution
+      recovery.py       candidate-branch discovery and unpushed-commit probes
   git_plumbing.py       lazy hardened-git compatibility facade
   _git_*.py             immutable auth fragments plus the auth, fetch, and
                         push leaves
   verify.py             lazy local-verification compatibility facade
   _verify_*.py          verify models, subprocess execution, and probes
   worktree_lifecycle.py lazy naming/creation/cleanup compatibility facade
-  _worktree_*.py        paths, creation, recovery, and cleanup leaves
+  _worktree_*.py        creation, decomposition, cleanup, and terminal leaves
   branch_publication.py lazy branch-publication compatibility facade
   _branch_*.py          probes, squash planning, rewriting, and publication
   base_sync.py          lazy base-refresh/rebase compatibility facade

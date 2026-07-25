@@ -1,16 +1,20 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Repo specs, slugs, and pinned states shared by the path-owner tests."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.git.worktrees import paths
 from orchestrator.github import PinnedState
 
 BASE_BRANCH = "main"
 MIGRATION_REPO_SLUG = "geserdugarov/agent-orchestrator"
 MIGRATION_TARGET_ROOT = Path("/tmp/x")
 ALICE_REPO_SLUG = "alice/repo"
+BOB_REPO_SLUG = "bob/repo"
 LOCK_SUFFIX_SLUG = "owner/foo.lock"
 DOUBLE_DOT_SLUG = "owner/foo..bar"
 BRANCH_KEY = "branch"
@@ -24,13 +28,13 @@ PR_NUMBER = 42
 def _spec(repo_slug: str) -> config.RepoSpec:
     return config.RepoSpec(
         slug=repo_slug,
-        target_root=Path(f"/tmp/{workflow._sanitize_slug(repo_slug)}-target"),
+        target_root=Path(f"/tmp/{paths._sanitize_slug(repo_slug)}-target"),
         base_branch=BASE_BRANCH,
     )
 
 
 def _branch(repo_slug: str, issue_number: int = 1) -> str:
-    return workflow._branch_name(_spec(repo_slug), issue_number)
+    return paths._branch_name(_spec(repo_slug), issue_number)
 
 
 def _migration_spec() -> config.RepoSpec:
