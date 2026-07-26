@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_state as _state
 from orchestrator import workflow as _owner
+from orchestrator.git.worktrees import terminal as _worktree_terminal
 
 Any = _owner.Any
 GitHubClient = _owner.GitHubClient
@@ -99,7 +100,7 @@ def _close_terminal_issue(
 
 
 def _cleanup_review_terminal(context: _ReviewTerminalContext) -> None:
-    _owner._cleanup_terminal_branch(
+    _worktree_terminal._cleanup_terminal_branch(
         context.gh,
         context.spec,
         context.issue.number,

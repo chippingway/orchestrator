@@ -3,6 +3,7 @@
 """Question handler."""
 from __future__ import annotations
 
+from orchestrator.git.worktrees import terminal as _worktree_terminal
 from orchestrator.stages import question as _owner
 
 _QuestionRun = _owner._QuestionRun
@@ -29,7 +30,7 @@ def _cleanup_question_run(run: _QuestionRun) -> None:
         return
     from orchestrator import workflow as _wf
 
-    _wf._cleanup_question_worktree(
+    _worktree_terminal._cleanup_question_worktree(
         run.spec,
         run.issue.number,
         branch=_wf._resolve_branch_name(

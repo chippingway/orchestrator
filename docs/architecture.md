@@ -139,6 +139,8 @@ orchestrator/
       runner.py         stripped child env and fail-fast command sequencing
     worktrees/
       __init__.py       package marker only; callers import an owner directly
+      cleanup.py        lock-held issue-worktree removal and local branch
+                        deletion behind their best-effort boundaries
       creation.py       issue / PR worktree creation, stale-worktree reuse, and
                         the new-commit probe the reuse decision turns on
       decomposition.py  decomposer scratch path, detached creation, and
@@ -146,13 +148,14 @@ orchestrator/
       paths.py          slug sanitization, git-ref-safe branch segments, path
                         and branch derivation, pinned/legacy branch resolution
       recovery.py       candidate-branch discovery and unpushed-commit probes
+      terminal.py       question-stage teardown and terminal local + remote
+                        branch cleanup composed from cleanup.py
   git_plumbing.py       lazy hardened-git compatibility facade forwarding to
                         the git/ owners
   _git_plumbing_export_manifest.py / _git_plumbing_exports.py
                         immutable historical inventory and lazy resolver hooks
   verify.py             lazy forwarding shell over git/verification/ owners
-  worktree_lifecycle.py lazy naming/creation/cleanup compatibility facade
-  _worktree_*.py        cleanup and terminal leaves plus the shared logger
+  worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners
   branch_publication.py lazy branch-publication compatibility facade
   _branch_*.py          squash planning, rewriting, and publication leaves
   base_sync.py          lazy base-refresh/rebase compatibility facade
@@ -230,11 +233,15 @@ or the remote-ref lease read targets `orchestrator.git.authentication` and not `
 `_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `git_plumbing`, `worktrees`,
 `base_sync`, and `workflow`, with `_push_branch` also reachable on `branch_publication`. The `git/worktrees/` owners
 bind the same way — the creators reach `git.commands`, `git.locks`, `git.authentication`, and their in-package
-`paths` / `recovery` siblings directly, and the decomposer lifecycle resolves its own path helper — so a patch that
-has to intercept the git plumbing, the authenticated fetch, the new-commit probe, or the worktree path a creator
-runs against targets `orchestrator.git.commands` / `orchestrator.git.authentication` / the owner module, not
-`worktree_lifecycle`; `_ensure_worktree`, `_ensure_pr_worktree`, `_has_new_commits`, and the decomposer helpers
-themselves stay patchable by name on `worktree_lifecycle`, `worktrees`, and `workflow`. Config and analytics modules
+`paths` / `recovery` siblings directly, the decomposer lifecycle resolves its own path helper, and `terminal`
+composes its local teardown from `cleanup` — so a patch that has to intercept the git plumbing, the authenticated
+fetch, the new-commit probe, or the worktree path one of them runs against targets `orchestrator.git.commands` /
+`orchestrator.git.authentication` / the owner module, not `worktree_lifecycle`. The question stage and the
+review-terminal actions call `terminal._cleanup_question_worktree` / `terminal._cleanup_terminal_branch` directly,
+so a mock for either one lands on the owner even though both names stay forwarded — straight off that owner — on
+`workflow`, `worktrees`, and `worktree_lifecycle` for compatibility. `_ensure_worktree`, `_ensure_pr_worktree`,
+`_has_new_commits`, and the decomposer helpers themselves stay patchable by name on `worktree_lifecycle`,
+`worktrees`, and `workflow`. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.

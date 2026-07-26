@@ -29,8 +29,8 @@ orchestrator process is stateless.
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
-  `_branch_*`, `_worktree_*`, and stage-specific prefixes) or, for `git_plumbing.py` and `verify.py`, straight to the
-  `git/` and `git/verification/` owners. The package also contains per-tick
+  `_branch_*`, and stage-specific prefixes) or, for `git_plumbing.py`, `verify.py`, and `worktree_lifecycle.py`,
+  straight to the `git/`, `git/verification/`, and `git/worktrees/` owners. The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
@@ -76,8 +76,10 @@ orchestrator process is stateless.
   over the `paths.py` owner (slug sanitization, the git-ref-safe branch segment, branch / path derivation, and
   the pinned / legacy branch resolver), the `recovery.py` owner (candidate-branch discovery and the
   unpushed-commit probes), the `creation.py` owner (the issue / PR worktree creators, their stale-worktree
-  reuse, and the new-commit probe the reuse turns on) and the `decomposition.py` owner (the decomposer scratch
-  checkout's path, detached creation, and best-effort removal), and the `publication/` subpackage, whose
+  reuse, and the new-commit probe the reuse turns on), the `decomposition.py` owner (the decomposer scratch
+  checkout's path, detached creation, and best-effort removal), the `cleanup.py` owner (best-effort issue-worktree
+  removal and local branch deletion under the target-root lock) and the `terminal.py` owner (the question-stage
+  teardown and the terminal local + remote branch cleanup composed from it), and the `publication/` subpackage, whose
   `__init__.py` also binds nothing, over the
   `probes.py` owner (the conventional / repo-local subject vocabulary and predicates, ahead/behind counts,
   first-commit and recent-base subject reads) and the `titles.py` owner (subject-prefix inference from base
@@ -100,10 +102,10 @@ orchestrator process is stateless.
   paths, `_dirty` for dirty / rebase-in-progress parking, `_recovery` for recovery pushes, `_diverged` for stale /
   diverged worktree handling, `_publish` for already-rebased force-publish scenarios, `_publish_guard` for the
   publish-guard probe unit tests, `_drift` for hash-drift resume behavior), with resume fixtures in
-  `tests/conflict_resume_test_support.py`); scheduler-dispatch,
-  base-sync, and cleanup tests are split across
-  `tests/test_workflow_scheduler_*.py`, `tests/test_workflow_base_sync_*.py`, and
-  `tests/test_workflow_cleanup*.py`, with subsystem-specific support in
+  `tests/conflict_resume_test_support.py`); scheduler-dispatch and
+  base-sync tests are split across
+  `tests/test_workflow_scheduler_*.py` and `tests/test_workflow_base_sync_*.py`,
+  with subsystem-specific support in
   `tests/scheduler_routing_*.py` and `tests/base_sync_*.py`; other facade-level helper tests
   include (`tests/test_workflow_verdict_parsing.py`, `tests/test_workflow_prompt_redaction.py`,
   `tests/test_workflow_pickup.py`,
@@ -134,10 +136,13 @@ orchestrator process is stateless.
   import-cycle / layering / package-surface checks, plus the real-git verify-command fixture; the
   worktrees owners covered in `tests/git/worktrees/`: path derivation, git-ref-safe branch segments, pinned /
   legacy branch resolution, real-git unpushed-commit probes, issue / PR creation with stale-worktree reuse and
-  remote-branch restoration, the new-commit probe, decomposer path / creation / removal, per-target-root
+  remote-branch restoration, the new-commit probe, decomposer path / creation / removal, lock-held worktree removal
+  and local branch deletion with their best-effort boundaries, question and PR-terminal teardown ordering against
+  both faked plumbing and a real worktree, per-target-root
   serialization against both a blocking fake and a real bare remote, and import-cycle / package-surface checks,
-  plus their path, branch-fixture, faked-plumbing, and real-git support modules (the thread scaffolding those
-  serialization tests share with the authenticated-fetch one lives in `tests/git/concurrency_test_support.py`);
+  plus their path, branch-fixture, faked-plumbing, terminal, and real-git support modules (the thread scaffolding
+  those serialization tests share with the authenticated-fetch one lives in
+  `tests/git/concurrency_test_support.py`);
   and the publication owners covered in `tests/git/publication/`: subject
   predicates, per-spec commit-subject reads, ahead/behind folding, prefix inference, PR-title selection, and
   import-cycle / package-surface checks, plus their git-double support module.

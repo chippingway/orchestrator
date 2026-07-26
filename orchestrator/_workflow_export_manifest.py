@@ -206,6 +206,13 @@ EXPORTS = (
         (("_redact_secrets", "redact_secrets"),),
     ),
     *export_group(
+        "orchestrator.git.worktrees.terminal",
+        (
+            ("_cleanup_question_worktree", "_cleanup_question_worktree"),
+            ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
+        ),
+    ),
+    *export_group(
         "orchestrator.github.client",
         (("GitHubClient", "GitHubClient"),),
     ),
@@ -358,8 +365,6 @@ EXPORTS = (
             ("_branch_has_unpushed_commits", "_branch_has_unpushed_commits"),
             ("_branch_name", "_branch_name"),
             ("_cleanup_decompose_worktree", "_cleanup_decompose_worktree"),
-            ("_cleanup_question_worktree", "_cleanup_question_worktree"),
-            ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
             ("_decompose_worktree_path", "_decompose_worktree_path"),
             ("_ensure_decompose_worktree", "_ensure_decompose_worktree"),
             ("_ensure_pr_worktree", "_ensure_pr_worktree"),

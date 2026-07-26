@@ -3,6 +3,7 @@
 """Question run."""
 from __future__ import annotations
 
+from orchestrator.git.worktrees import terminal as _worktree_terminal
 from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
 
@@ -118,7 +119,7 @@ def _finalize_closed_question(run: _QuestionRun) -> bool:
     # tracked alongside the terminal timestamp.
     _wf._post_issue_usage_verdict(run.gh, run.issue, run.state)
     run.gh.write_pinned_state(run.issue, run.state)
-    _wf._cleanup_question_worktree(
+    _worktree_terminal._cleanup_question_worktree(
         run.spec,
         run.issue.number,
         branch=_wf._resolve_branch_name(
