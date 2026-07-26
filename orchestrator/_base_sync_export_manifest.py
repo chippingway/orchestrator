@@ -28,16 +28,6 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._base_sync_eligibility",
-        (
-            ("_auto_rebase_label_is_eligible", "_auto_rebase_label_is_eligible"),
-            ("_auto_rebase_recovery_decision", "_auto_rebase_recovery_decision"),
-            ("_auto_rebase_retry_decision", "_auto_rebase_retry_decision"),
-            ("_normal_auto_rebase_can_start", "_normal_auto_rebase_can_start"),
-            ("_open_auto_rebase_pr", "_open_auto_rebase_pr"),
-        ),
-    ),
-    *export_group(
         "orchestrator._base_sync_pr",
         (
             ("_publish_auto_rebase_from_pr", "_publish_auto_rebase_from_pr"),
@@ -75,6 +65,16 @@ EXPORTS = (
             ("_authed_fetch", "_authed_fetch"),
             ("_authed_target_fetch", "_authed_target_fetch"),
             ("_push_branch", "_push_branch"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.eligibility",
+        (
+            ("_auto_rebase_label_is_eligible", "_auto_rebase_label_is_eligible"),
+            ("_auto_rebase_recovery_decision", "_auto_rebase_recovery_decision"),
+            ("_auto_rebase_retry_decision", "_auto_rebase_retry_decision"),
+            ("_normal_auto_rebase_can_start", "_normal_auto_rebase_can_start"),
+            ("_open_auto_rebase_pr", "_open_auto_rebase_pr"),
         ),
     ),
     *export_group(

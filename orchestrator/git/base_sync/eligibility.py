@@ -1,22 +1,41 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Base sync eligibility."""
+"""Whether one refresh-time PR rebase may run at all, asked in order.
+
+The questions between a behind-base PR worktree and a rewrite live together
+because the order they are asked in is the safety property. A label the
+refresh does not drive is rejected first, but not before a recovery anchor an
+earlier tick pinned is settled -- the owner that notices an anchor nobody will
+act on again is the one that has to clear it. An operator park is honored
+next, and a trusted reply that would release it is only *reported* from here:
+the park stays on disk until a rebase is actually attempted, so a later gate
+that early-returns cannot consume the operator's comment without acting on it.
+A PR that is no longer open, or cannot be read at all, belongs to the stage
+handler that finalizes it rather than to the refresh. Only then may crash
+recovery claim the tick, and only a clean worktree that is genuinely behind
+base earns a rebase of its own.
+"""
 from __future__ import annotations
 
-from orchestrator import base_sync as _owner
-from orchestrator.git.base_sync import state as _state
+from typing import Optional
 
-_AutoRebaseContext = _owner._AutoRebaseContext
-_AutoRebaseDecision = _owner._AutoRebaseDecision
-Optional = _owner.Optional
-PullRequest = _owner.PullRequest
-filter_trusted = _owner.filter_trusted
-_AUTO_REBASE_PARK_REASONS = _state._AUTO_REBASE_PARK_REASONS
-_AWAITING_HUMAN = _state._AWAITING_HUMAN
-_PARK_REASON = _state._PARK_REASON
-_PENDING_PUSH_SHA = _state._PENDING_PUSH_SHA
-_PR_REFRESH_DETOUR_LABELS = _state._PR_REFRESH_DETOUR_LABELS
-log = _state.log
+from github.PullRequest import PullRequest
+
+from orchestrator.comment_trust import filter_trusted
+from orchestrator.git.base_sync import recovery
+from orchestrator.git.base_sync.models import (
+    _AutoRebaseContext,
+    _AutoRebaseDecision,
+)
+from orchestrator.git.base_sync.state import (
+    _AUTO_REBASE_PARK_REASONS,
+    _AWAITING_HUMAN,
+    _PARK_REASON,
+    _PENDING_PUSH_SHA,
+    _PR_REFRESH_DETOUR_LABELS,
+    log,
+)
+from orchestrator.git.verification import probes as verification_probes
 
 
 def _auto_rebase_label_is_eligible(context: _AutoRebaseContext) -> bool:
@@ -24,7 +43,7 @@ def _auto_rebase_label_is_eligible(context: _AutoRebaseContext) -> bool:
     if context.label in _PR_REFRESH_DETOUR_LABELS:
         return True
     if context.pending_pre_rebase_sha:
-        _owner._recover_pending_auto_base_rebase(
+        recovery._recover_pending_auto_base_rebase(
             context.gh,
             context.spec,
             context.issue,
@@ -141,7 +160,7 @@ def _auto_rebase_recovery_decision(
     """Run pending crash recovery and retain only an uncommitted retry."""
     if not context.pending_pre_rebase_sha:
         return _AutoRebaseDecision(True, consumed_comment_id)
-    if _owner._recover_pending_auto_base_rebase(
+    if recovery._recover_pending_auto_base_rebase(
         context.gh,
         context.spec,
         context.issue,
@@ -161,7 +180,7 @@ def _auto_rebase_recovery_decision(
 
 def _normal_auto_rebase_can_start(context: _AutoRebaseContext) -> bool:
     """Apply the clean-tree probe before deciding whether base is behind."""
-    if _owner._worktree_dirty_files(context.worktree):
+    if verification_probes._worktree_dirty_files(context.worktree):
         log.debug(
             "issue=#%d skipping base sync: worktree has uncommitted changes",
             context.issue.number,

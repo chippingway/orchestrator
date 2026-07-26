@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Recovery contexts and a fake client shared by the base-sync owner tests."""
+"""Rebase contexts and a fake client shared by the base-sync owner tests."""
 
 from __future__ import annotations
 
@@ -12,7 +12,13 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.base_sync import models
 
-from tests.fakes import FakeGitHubClient, make_issue
+from tests.fakes import (
+    FakeComment,
+    FakeGitHubClient,
+    FakePR,
+    FakeUser,
+    make_issue,
+)
 
 ISSUE = 7
 
@@ -53,6 +59,10 @@ KEY_LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 GIT_HARDENED = "_git_hardened"
 
 GIT_FAILURE_EXIT_CODE = 128
+
+BEHIND_BY = 3
+
+HUMAN_COMMENT_BODY = "branch reconciled, please retry"
 
 
 def _git_result(
@@ -99,6 +109,64 @@ def _recovery_context(
         behind=behind,
         unparking_consumed_max=unparking_consumed_max,
     )
+
+
+def _sync_context(
+    *,
+    label: str = LABEL,
+    behind: int = BEHIND_BY,
+    pending_pre_rebase_sha: str | None = None,
+    comments: tuple = (),
+    **state_fields,
+) -> models._AutoRebaseContext:
+    """Seed issue #7 with PR #42 pinned and wrap it in a rebase context.
+
+    `comments` are `(id, login)` pairs appended to the issue thread, so a
+    park-release case names the reply it expects to be recognized; the PR
+    itself is registered by the caller that needs one readable.
+    """
+    gh = FakeGitHubClient()
+    issue = make_issue(ISSUE, label=label)
+    for comment_id, login in comments:
+        issue.comments.append(
+            FakeComment(
+                id=comment_id,
+                body=HUMAN_COMMENT_BODY,
+                user=FakeUser(login),
+            ),
+        )
+    gh.add_issue(issue)
+    gh.seed_state(
+        ISSUE, pr_number=PR_NUMBER, branch=BRANCH, **state_fields,
+    )
+    return models._AutoRebaseContext(
+        gh=gh,
+        spec=SPEC,
+        issue=issue,
+        state=gh.read_pinned_state(issue),
+        worktree=WORKTREE,
+        pr_number=PR_NUMBER,
+        behind=behind,
+        label=label,
+        pending_pre_rebase_sha=pending_pre_rebase_sha,
+    )
+
+
+def _add_pr(
+    gh: FakeGitHubClient,
+    *,
+    merged: bool = False,
+    pr_state: str = "open",
+) -> FakePR:
+    """Register PR #42 on the pinned head branch at the given state."""
+    pr = FakePR(
+        number=PR_NUMBER,
+        head_branch=BRANCH,
+        merged=merged,
+        state=pr_state,
+    )
+    gh.add_pr(pr)
+    return pr
 
 
 def _snapshot(

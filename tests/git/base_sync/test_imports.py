@@ -9,7 +9,7 @@ import sys
 import unittest
 
 from orchestrator import base_sync, git
-from orchestrator.git.base_sync import models, state
+from orchestrator.git.base_sync import eligibility, models, state
 from orchestrator.git.base_sync import (
     outcomes,
     persistence,
@@ -38,10 +38,12 @@ _RECOVERY_OWNER = "orchestrator.git.base_sync.recovery"
 
 _STARTUP_OWNER = "orchestrator.git.base_sync.startup"
 
+_ELIGIBILITY_OWNER = "orchestrator.git.base_sync.eligibility"
+
 _OWNERS = (
     _MODELS_OWNER, _PRE_PR_OWNER, _REFRESH_OWNER, _STATE_OWNER,
     _PERSISTENCE_OWNER, _OUTCOMES_OWNER, _SNAPSHOT_OWNER, _RECOVERY_OWNER,
-    _STARTUP_OWNER,
+    _STARTUP_OWNER, _ELIGIBILITY_OWNER,
 )
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS, "orchestrator.base_sync")
@@ -100,6 +102,7 @@ _OWNER_ONLY_NAMES = (
     "_AutoRebaseContext",
     "_AutoRebaseRequest",
     "_PENDING_PUSH_SHA",
+    "_auto_rebase_retry_decision",
     "_fetch_recovery_snapshot",
     "_park_dirty_recovery",
     "_recover_pending_auto_base_rebase",
@@ -128,6 +131,9 @@ _FACADE_FORWARDS = (
     ("_REVIEW_ROUND", state),
     ("_abort_recovery_unverified", snapshot),
     ("_already_published_recovery_notice", outcomes),
+    ("_auto_rebase_label_is_eligible", eligibility),
+    ("_auto_rebase_recovery_decision", eligibility),
+    ("_auto_rebase_retry_decision", eligibility),
     ("_base_sync_issue", refresh),
     ("_clear_ineligible_recovery", snapshot),
     ("_clear_unchanged_recovery", snapshot),
@@ -140,6 +146,8 @@ _FACADE_FORWARDS = (
     ("_issue_skips_base_sync", refresh),
     ("_issue_worktree_number", refresh),
     ("_merge_base_into_worktree", pre_pr),
+    ("_normal_auto_rebase_can_start", eligibility),
+    ("_open_auto_rebase_pr", eligibility),
     ("_park_auto_rebase_failure", persistence),
     ("_park_dirty_recovery", outcomes),
     ("_park_diverged_recovery", outcomes),

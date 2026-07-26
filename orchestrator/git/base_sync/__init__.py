@@ -13,11 +13,13 @@ remote head SHAs, and the divergence counts -- live in ``snapshot``, and the
 order those reads and answers are asked in lives in ``recovery``. ``refresh``
 drives one tick's base fetch, worktree discovery, and per-worktree routing;
 ``pre_pr`` owns the hardened rebase it runs on a branch nobody has pushed
-yet, and ``startup`` owns the pre-rebase anchor a pushed branch's rebase is
-begun from and the abort / route / park its failure takes. Callers import the
-owner they need directly, so this initializer binds nothing and importing
-``state`` or ``pre_pr`` never drags the PyGithub types ``models``,
-``refresh``, and ``startup`` annotate their fields with in.
+yet, ``eligibility`` owns the label, park, PR-state, recovery, and clean-tree
+gates a PR-having worktree clears before any rewrite is attempted, and
+``startup`` owns the pre-rebase anchor a pushed branch's rebase is begun from
+and the abort / route / park its failure takes. Callers import the owner they
+need directly, so this initializer binds nothing and importing ``state`` or
+``pre_pr`` never drags the PyGithub types ``models``, ``refresh``, and
+``startup`` annotate their fields with in.
 ``orchestrator.base_sync`` stays the historical facade for callers that
 reach these names through the workflow compatibility surface.
 """
