@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import usage as _usage
 
 _ChildScan = _owner._ChildScan
 GitHubClient = _owner.GitHubClient
@@ -47,7 +48,7 @@ def _handle_ready(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None
         return
     if state.get("pickup_comment_id") is None:
         if not state.get(_CREATED_AT):
-            state.set(_CREATED_AT, _wf._now_iso())
+            state.set(_CREATED_AT, _usage._now_iso())
         pickup = _comments._post_issue_comment(
             gh, issue, state,
             ":robot: orchestrator picking this up; starting implementation.",

@@ -7,6 +7,7 @@ from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _PreparedDevRun = _owner._PreparedDevRun
 GitHubClient = _owner.GitHubClient
@@ -61,7 +62,7 @@ def _retry_parked_dev_session(
     wt, agent_result, paused = _owner._resume_dev_with_text(
         gh, spec, issue, state, followup, pause_guard=True,
     )
-    state.set("last_agent_action_at", _wf._now_iso())
+    state.set("last_agent_action_at", _usage._now_iso())
     state.set(_BRANCH, _wf._resolve_branch_name(state, spec, issue.number))
     # A shutdown-killed or live-paused resume leaves durable state untouched so
     # the next process re-detects and re-runs the retry (mirrors the drift and

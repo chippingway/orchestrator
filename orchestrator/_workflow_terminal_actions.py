@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator import _workflow_state as _state
 from orchestrator import workflow as _owner
 from orchestrator.git.worktrees import terminal as _worktree_terminal
+from orchestrator.workflow.engine import usage as _usage
 
 Any = _owner.Any
 GitHubClient = _owner.GitHubClient
@@ -116,7 +117,7 @@ def _finalize_merged_pr(
     close_error: str,
     close_if_open_only: bool = False,
 ) -> None:
-    context.state.set("merged_at", _owner._now_iso())
+    context.state.set("merged_at", _usage._now_iso())
     context.gh.set_workflow_label(context.issue, WorkflowLabel.DONE)
     _owner._post_issue_usage_verdict(context.gh, context.issue, context.state)
     context.gh.write_pinned_state(context.issue, context.state)
@@ -140,7 +141,7 @@ def _finalize_merged_pr(
 
 
 def _finalize_rejected_pr(context: _ReviewTerminalContext) -> None:
-    context.state.set("closed_without_merge_at", _owner._now_iso())
+    context.state.set("closed_without_merge_at", _usage._now_iso())
     context.gh.set_workflow_label(context.issue, WorkflowLabel.REJECTED)
     _owner._post_issue_usage_verdict(context.gh, context.issue, context.state)
     context.gh.write_pinned_state(context.issue, context.state)
@@ -159,7 +160,7 @@ def _finalize_rejected_pr(context: _ReviewTerminalContext) -> None:
 
 
 def _finalize_closed_issue_with_open_pr(context: _ReviewTerminalContext) -> None:
-    context.state.set("closed_without_merge_at", _owner._now_iso())
+    context.state.set("closed_without_merge_at", _usage._now_iso())
     context.gh.set_workflow_label(context.issue, WorkflowLabel.REJECTED)
     _owner._post_issue_usage_verdict(context.gh, context.issue, context.state)
     context.gh.write_pinned_state(context.issue, context.state)

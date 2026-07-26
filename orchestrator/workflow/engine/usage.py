@@ -1,22 +1,46 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Workflow agent runs."""
+"""The accounting a tracked agent run is bookended by.
+
+`_run_agent_tracked` is the single spawn site every role goes through --
+decomposer, developer, reviewer, documenter, fixer, conflict resolver,
+question responder -- and the rest of this module is one part of the bookend
+it wraps that spawn in: the frozen request the caller describes the run with,
+the audit pair around it, the analytics record its exit earns, and the
+`skill_triggered` events that record's return value drives. They sit together
+because they share one `request`, so a field added for the audit event is
+already the field the record carries and the skill event repeats.
+
+The spawn itself is reached as ``_wf.run_agent`` rather than off
+`orchestrator.agents`: `run_agent` is the seam the stage tests replace to
+drive a handler without a CLI, and the facade attribute is what they patch.
+
+Everything after the spawn is fail-open. The record and the trajectory write
+behind it ride guards inside `analytics.record_agent_exit`, and the skill
+emission carries its own here, because none of it is worth a run whose
+`agent_spawn` / `agent_exit` events already fired. An exception out of the
+spawn is the deliberate exception: it propagates, leaving a spawn with no
+matching exit for the per-issue `tick()` catch to log.
+
+`_now_iso` sits here because the stamps it writes mark the same events. Every
+pinned-state timestamp a stage sets -- `last_agent_action_at`,
+`last_review_at`, `decomposed_at`, the terminal `merged_at` -- records when a
+run or its verdict landed, and one UTC, second-resolution ISO shape is what
+lets two ticks' stamps compare as plain strings.
+"""
 from __future__ import annotations
 
-from orchestrator import _workflow_state as _state
-from orchestrator import workflow as _owner
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
 
-AgentResult = _owner.AgentResult
-Any = _owner.Any
-GitHubClient = _owner.GitHubClient
-Optional = _owner.Optional
-Path = _owner.Path
-analytics = _owner.analytics
-dataclass = _owner.dataclass
-datetime = _owner.datetime
-time = _owner.time
-timezone = _owner.timezone
-log = _state.log
+from orchestrator import analytics
+from orchestrator import workflow as _wf
+from orchestrator._workflow_state import log
+from orchestrator.agents import AgentResult
+from orchestrator.github.client import GitHubClient
 
 
 def _now_iso() -> str:
@@ -82,7 +106,7 @@ def _record_tracked_agent_exit(
         duration_s=duration_s,
         review_round=request.review_round,
         retry_count=request.retry_count,
-        fallback_model=_owner._configured_model(request.backend, request.extra_args),
+        fallback_model=_configured_model(request.backend, request.extra_args),
         prompt=request.prompt,
         cwd=request.cwd,
     )
@@ -198,14 +222,14 @@ def _run_agent_tracked(
     # Forward only the kwargs the original call sites set so the
     # wrapper's run_agent invocation matches the pre-tracking signature
     # call-for-call (test fakes assert on `call.kwargs`).
-    agent_result = _owner.run_agent(
+    agent_result = _wf.run_agent(
         run_request.backend,
         run_request.prompt,
         run_request.cwd,
-        **_owner._agent_run_kwargs(run_request),
+        **_agent_run_kwargs(run_request),
     )
     duration_s = round(time.monotonic() - start, 3)
-    triggered_skills = _owner._record_tracked_agent_exit(
+    triggered_skills = _record_tracked_agent_exit(
         gh, issue_number, run_request, agent_result, duration_s,
     )
     # One `skill_triggered` audit event per distinct triggered skill, reusing
@@ -214,7 +238,7 @@ def _run_agent_tracked(
     # from the analytics layer. This is opt-in observability, so it rides its
     # own fail-open guard exactly like the skill parse does -- a bug here must
     # never break a run whose baseline audit events have already fired.
-    _owner._emit_triggered_skills(gh, issue_number, run_request, triggered_skills)
+    _emit_triggered_skills(gh, issue_number, run_request, triggered_skills)
     return agent_result
 
 

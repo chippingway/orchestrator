@@ -8,6 +8,7 @@ from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _DecomposerSession = _owner._DecomposerSession
 AgentResult = _owner.AgentResult
@@ -175,7 +176,7 @@ def _spawn_fresh_decomposer(
     # this issue. Storing the parsed backend alone would also
     # strip configured CLI args on subsequent resumes.
     state.set("decomposer_agent", session.spec)
-    decomposer_result = _wf._run_agent_tracked(
+    decomposer_result = _usage._run_agent_tracked(
         gh, issue.number,
         agent_role="decomposer",
         stage="decomposing",
@@ -259,12 +260,10 @@ def _finalize_single_decision(
     fields -- the single decision is already valid, so no cosmetic field
     should park it.
     """
-    from orchestrator import workflow as _wf
-
     _comments._post_issue_comment(
         gh, issue, state,
         _prompts._build_single_decision_comment(parsed),
     )
-    state.set("decomposed_at", _wf._now_iso())
+    state.set("decomposed_at", _usage._now_iso())
     gh.set_workflow_label(issue, WorkflowLabel.READY)
     gh.write_pinned_state(issue, state)

@@ -8,10 +8,11 @@ from unittest.mock import patch
 
 from orchestrator import analytics, workflow
 from orchestrator.agents import AgentResult
+from orchestrator.workflow.engine import usage as engine_usage
 
 from tests.fakes import FakeGitHubClient
 
-from tests import workflow_agent_analytics_test_support as support
+from tests.workflow.engine import usage_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX
@@ -93,7 +94,7 @@ class AgentAnalyticsModelFallbackTest(
                 stderr="",
             )
             github = FakeGitHubClient()
-            workflow._run_agent_tracked(
+            engine_usage._run_agent_tracked(
                 github,
                 _CODEX_FALLBACK_ISSUE_NUMBER,
                 agent_role=ROLE_DEVELOPER,
@@ -135,7 +136,7 @@ class AgentAnalyticsModelFallbackTest(
                 stderr="",
             )
             github = FakeGitHubClient()
-            workflow._run_agent_tracked(
+            engine_usage._run_agent_tracked(
                 github,
                 _CLAUDE_FALLBACK_ISSUE_NUMBER,
                 agent_role=ROLE_DEVELOPER,

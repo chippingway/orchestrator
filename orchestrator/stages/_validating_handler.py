@@ -8,6 +8,7 @@ from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _ReviewerDecision = _owner._ReviewerDecision
 _ReviewerRun = _owner._ReviewerRun
@@ -53,7 +54,7 @@ def _run_reviewer_round(
     # (no resume), so always overwriting the field with the current
     # config spec is the right behavior here.
     state.set("review_agent", config.REVIEW_AGENT_SPEC)
-    review = _wf._run_agent_tracked(
+    review = _usage._run_agent_tracked(
         gh, issue.number,
         agent_role="reviewer",
         stage="validating",
@@ -78,7 +79,7 @@ def _run_reviewer_round(
     _wf._accumulate_issue_usage(state, review.usage)
     if review.session_id:
         state.set("last_review_session_id", review.session_id)
-    state.set("last_review_at", _wf._now_iso())
+    state.set("last_review_at", _usage._now_iso())
 
     # Shutdown-sweep interruption: a reviewer run the orchestrator killed
     # mid-flight has no trustworthy verdict. Its empty output would otherwise

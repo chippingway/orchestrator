@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import usage as _usage
 
 _DocumentingContext = _owner._DocumentingContext
 GitHubClient = _owner.GitHubClient
@@ -31,7 +32,7 @@ def _drive_documenting_pass(ctx: _DocumentingContext):
     if run is None:
         return None
 
-    ctx.state.set("last_agent_action_at", _wf._now_iso())
+    ctx.state.set("last_agent_action_at", _usage._now_iso())
 
     # Shutdown-sweep interruption: a docs run the orchestrator killed
     # mid-flight has no trustworthy result (the recovered `ahead > 0` shape

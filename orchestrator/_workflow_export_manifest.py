@@ -52,18 +52,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._workflow_agent_runs",
-        (
-            ("_AgentRunRequest", "_AgentRunRequest"),
-            ("_agent_run_kwargs", "_agent_run_kwargs"),
-            ("_configured_model", "_configured_model"),
-            ("_emit_triggered_skills", "_emit_triggered_skills"),
-            ("_now_iso", "_now_iso"),
-            ("_record_tracked_agent_exit", "_record_tracked_agent_exit"),
-            ("_run_agent_tracked", "_run_agent_tracked"),
-        ),
-    ),
-    *export_group(
         "orchestrator._workflow_community",
         (
             ("_CommunityContribution", "_CommunityContribution"),
@@ -348,6 +336,18 @@ EXPORTS = (
             ("_build_question_prompt", "_build_question_prompt"),
             ("_build_review_prompt", "_build_review_prompt"),
             ("_build_single_decision_comment", "_build_single_decision_comment"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.engine.usage",
+        (
+            ("_AgentRunRequest", "_AgentRunRequest"),
+            ("_agent_run_kwargs", "_agent_run_kwargs"),
+            ("_configured_model", "_configured_model"),
+            ("_emit_triggered_skills", "_emit_triggered_skills"),
+            ("_now_iso", "_now_iso"),
+            ("_record_tracked_agent_exit", "_record_tracked_agent_exit"),
+            ("_run_agent_tracked", "_run_agent_tracked"),
         ),
     ),
     *export_group(

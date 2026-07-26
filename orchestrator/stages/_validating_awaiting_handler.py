@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import usage as _usage
 
 _AwaitingValidation = _owner._AwaitingValidation
 GitHubClient = _owner.GitHubClient
@@ -16,8 +17,6 @@ _OUTCOME_RETURN = _state._OUTCOME_RETURN
 
 
 def _resume_validating_awaiting_dev(context: _AwaitingValidation) -> str:
-    from orchestrator import workflow as _wf
-
     continue_action = (
         _messages._continue_command_action(context.comments, context.park_reason)
         if context.comments else "passthrough"
@@ -29,7 +28,7 @@ def _resume_validating_awaiting_dev(context: _AwaitingValidation) -> str:
     attempt = _owner._run_awaiting_dev(context, continue_action)
     if attempt is None:
         return _OUTCOME_RETURN
-    context.state.set("last_agent_action_at", _wf._now_iso())
+    context.state.set("last_agent_action_at", _usage._now_iso())
     if attempt.paused:
         return _OUTCOME_RETURN
     pushed = _owner._handle_dev_fix_result(

@@ -9,10 +9,11 @@ from unittest.mock import patch
 
 from orchestrator import analytics, workflow
 from orchestrator.agents import AgentResult
+from orchestrator.workflow.engine import usage as engine_usage
 
 from tests.fakes import FakeGitHubClient
 
-from tests import workflow_agent_analytics_test_support as support
+from tests.workflow.engine import usage_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX
@@ -61,7 +62,7 @@ def _run_skill_agent(
             stdout=stdout,
             stderr="",
         )
-        return workflow._run_agent_tracked(
+        return engine_usage._run_agent_tracked(
             gh, _SKILL_AGENT_ISSUE_NUMBER,
             agent_role=ROLE_DEVELOPER,
             stage=LABEL_IMPLEMENTING,
@@ -170,7 +171,7 @@ class SkillTriggeredEventTest(unittest.TestCase):
                 session_id="s", last_message="", exit_code=0,
                 timed_out=False, stdout="ignored-not-reparsed", stderr="",
             )
-            workflow._run_agent_tracked(
+            engine_usage._run_agent_tracked(
                 gh, _SKILL_REUSE_ISSUE_NUMBER,
                 agent_role=ROLE_REVIEWER,
                 stage=LABEL_VALIDATING,
@@ -188,7 +189,7 @@ class SkillTriggeredEventTest(unittest.TestCase):
         # events already fired: the loop's own guard logs and falls through,
         # and `_run_agent_tracked` still returns the AgentResult.
         gh = _RaisingOnSkillGitHubClient()
-        with self.assertLogs(workflow.log, level="ERROR"):
+        with self.assertLogs(engine_usage.log, level="ERROR"):
             agent_result = _run_skill_agent(
                 gh,
                 stdout=_claude_stdout_with_skills(skills=(_DEVELOP_SKILL,)),

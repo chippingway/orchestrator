@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import usage as _usage
 
 AgentResult = _owner.AgentResult
 GitHubClient = _owner.GitHubClient
@@ -130,7 +131,7 @@ def _resume_dev_on_validating_drift(
     # feedback. Mirrors `_resume_developer_on_human_reply`'s pre-spawn bump.
     _wf._mark_drift_comments_consumed(gh, issue, state)
     run = _owner._run_validating_drift(gh, spec, issue, state)
-    state.set("last_agent_action_at", _wf._now_iso())
+    state.set("last_agent_action_at", _usage._now_iso())
     if run.paused:
         # Live pause applied during the drift resume: the helper already
         # stopped before persisting the session id or clearing

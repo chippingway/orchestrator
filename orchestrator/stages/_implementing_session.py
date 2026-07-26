@@ -7,6 +7,7 @@ from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _DevResumePlan = _owner._DevResumePlan
 _DevSession = _owner._DevSession
@@ -112,7 +113,7 @@ def _check_and_increment_retry_budget(
 
     if window_start is None or now - window_start > timedelta(hours=24):
         # Window absent/corrupt/expired: open a new one.
-        state.set(_RETRY_WINDOW_START, _wf._now_iso())
+        state.set(_RETRY_WINDOW_START, _usage._now_iso())
         state.set(_RETRY_COUNT, 0)
         window_start_raw = state.get(_RETRY_WINDOW_START)
 

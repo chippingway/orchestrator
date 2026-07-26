@@ -7,6 +7,7 @@ from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import usage as _usage
 
 _AgentWork = _owner._AgentWork
 AgentResult = _owner.AgentResult
@@ -154,6 +155,6 @@ def _resume_dev_on_implementing_drift(
     )
     _wf._mark_drift_comments_consumed(gh, issue, state)
     drift = _owner._run_implementing_drift_resume(gh, spec, issue, state)
-    state.set("last_agent_action_at", _wf._now_iso())
+    state.set("last_agent_action_at", _usage._now_iso())
     state.set(_BRANCH, _wf._resolve_branch_name(state, spec, issue.number))
     _owner._dispose_implementing_drift(gh, spec, issue, state, drift)

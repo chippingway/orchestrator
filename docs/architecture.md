@@ -129,12 +129,16 @@ orchestrator/
                         the commit-style / foreground-only notes, the
                         empty-body placeholders, and the single-decision
                         comment
+      usage.py          the tracked agent run: the request model, the audit
+                        spawn/exit pair, the analytics record and its
+                        configured-model fallback, the `skill_triggered`
+                        emission, and the UTC stamp the stages write
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
   _workflow_*.py        tick/scheduling, dispatch, pickup, terminal routing,
-                        usage, and run-guard leaves
+                        per-issue usage totals, and run-guard leaves
   workflow_drift.py     lazy user-content-drift compatibility facade
   _workflow_drift_*.py  drift hashing and stage-route leaves
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
@@ -396,6 +400,22 @@ patch that has to intercept a built prompt, a shared note, or the single-decisio
 historical slice of those names to the owner's exact object. A prompt with only one caller stays with that caller:
 `_workflow_drift_routes.py` composes the drift-resume prompt beside the route that sends it and borrows just the two
 notes from here, so a patch aimed at that prompt still targets the drift leaf.
+
+`workflow/engine/usage.py` is bound the same way. It owns what a tracked agent run is bookended by: the frozen request
+a caller describes the run with, the `agent_spawn` / `agent_exit` audit pair, the analytics record the exit appends
+(carrying the model read out of `extra_args` as the parser's fallback, and forwarding the prompt and worktree the
+opt-in trajectory record is built from), and the `skill_triggered` events that record's return value drives. They
+share the one request object, so a field added for the audit event is already the field the record and the skill
+event repeat. `_now_iso` sits with them because the pinned-state stamps it writes — `last_agent_action_at`,
+`last_review_at`, `decomposed_at`, the terminal `merged_at` — all mark when a run or its verdict landed. Its own
+helpers call each other in-module, and every stage leaf that spawns an agent or stamps a run imports the owner, so a
+patch that has to intercept a tracked run, its exit record, or the emitted skill events targets
+`orchestrator.workflow.engine.usage`; `workflow` still resolves the whole group to the owner's exact object. The one
+name it deliberately reaches back through the facade for is `run_agent`: that is the seam the stage tests replace to
+drive a handler without a CLI, so `patch.object(workflow, "run_agent", ...)` stays the way to intercept the spawn
+itself. Everything after the spawn is fail-open — the record and trajectory guards live inside
+`analytics.record_agent_exit`, the skill emission carries its own here — because none of it is worth a run whose
+audit pair already fired; an exception out of the spawn is the deliberate exception and propagates.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

@@ -8,6 +8,7 @@ from orchestrator.stages import fixing as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _FixingContext = _owner._FixingContext
 _FixingFeedback = _owner._FixingFeedback
@@ -111,7 +112,7 @@ def _run_fixing_resume(
     wt, dev_result, paused = _wf._resume_dev_with_text(
         ctx.gh, ctx.spec, ctx.issue, ctx.state, followup, pause_guard=True,
     )
-    ctx.state.set("last_agent_action_at", _wf._now_iso())
+    ctx.state.set("last_agent_action_at", _usage._now_iso())
     ctx.state.set(
         "user_content_hash",
         _wf._compute_user_content_hash(

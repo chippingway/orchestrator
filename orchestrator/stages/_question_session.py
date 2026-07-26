@@ -7,6 +7,7 @@ from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 AgentResult = _owner.AgentResult
 GitHubClient = _owner.GitHubClient
@@ -25,7 +26,6 @@ _UNSAFE_QUESTION_PARKS = _state._UNSAFE_QUESTION_PARKS
 @dataclass
 class _QuestionRun:
     """Mutable cleanup policy and stable inputs for one question-stage tick."""
-
     gh: GitHubClient
     spec: config.RepoSpec
     issue: Issue
@@ -49,7 +49,6 @@ class _QuestionRun:
 @dataclass(frozen=True)
 class _QuestionSession:
     """Locked agent identity used by one question-agent invocation."""
-
     agent_spec: str
     backend: str
     extra_args: tuple[str, ...]
@@ -59,7 +58,6 @@ class _QuestionSession:
 @dataclass(frozen=True)
 class _QuestionOutcome:
     """Post-agent route and the cleanup policy it requires."""
-
     park_reason: str | None
     keep_worktree: bool
     answer: str = ""
@@ -170,9 +168,7 @@ def _execute_question_prompt(
     resume_session_id: str | None = None,
 ) -> AgentResult:
     """Run one question prompt and retain any session id it returns."""
-    from orchestrator import workflow as _wf
-
-    question_result = _wf._run_agent_tracked(
+    question_result = _usage._run_agent_tracked(
         run.gh,
         run.issue.number,
         agent_role=_QUESTION_STAGE,

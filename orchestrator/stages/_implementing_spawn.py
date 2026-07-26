@@ -7,6 +7,7 @@ from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _DevSession = _owner._DevSession
 _PreparedDevRun = _owner._PreparedDevRun
@@ -51,7 +52,7 @@ def _spawn_implementer(
         return None
     session = _DevSession(*_owner._read_dev_session(state))
     state.set(_DEV_AGENT, session.spec)
-    agent_result = _wf._run_agent_tracked(
+    agent_result = _usage._run_agent_tracked(
         gh,
         issue.number,
         agent_role="developer",
