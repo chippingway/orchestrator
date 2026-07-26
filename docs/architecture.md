@@ -127,6 +127,8 @@ orchestrator/
     locks.py            per-target-root re-entrant lock registry and accessor
     base_sync/
       __init__.py       package marker only; callers import an owner directly
+      conflicts.py      the counter, PR notice, audit event, and relabel a
+                        genuinely conflicted rebase is handed to its stage with
       eligibility.py    the label, park / trusted-retry, open-PR, recovery, and
                         clean-tree gates one PR sync clears before a rewrite
       guards.py         the no-op completion and the unreadable-HEAD, dirty-
@@ -137,6 +139,9 @@ orchestrator/
                         comparison, diverged, dirty, and failed-push answers
       persistence.py    auto-rebase parks, the reset-and-park tail, and the
                         state / notice / event writes a recovery finalizes with
+      pr.py             the order a PR-having worktree's gates, rebase, and
+                        publication are asked in, plus the legacy keyword
+                        signature the refresh still enters through
       pre_pr.py         hardened rebase / merge probes, rebase-in-progress
                         detection, and the aborting pre-PR local rebase
       publication.py    post-rebase HEAD / dirty checks, the lease-pinned
@@ -195,8 +200,9 @@ orchestrator/
   _branch_publication_export_manifest.py / _branch_publication_exports.py
                         immutable historical inventory and lazy resolver hooks
   base_sync.py          lazy base-refresh/rebase compatibility facade over the
-                        git/base_sync/ owners and the leaves below
-  _base_sync_*.py       the PR-route sync coordinator and its conflict routing
+                        git/base_sync/ owners
+  _base_sync_export_manifest.py / _base_sync_exports.py
+                        immutable historical inventory and lazy resolver hooks
   worktrees.py          lazy compatibility hub over the five worktree
                         subsystem facades above
   _worktrees_export_manifest.py / _worktrees_exports.py
@@ -252,7 +258,7 @@ orchestrator/
 `workflow.py`, `worktrees.py`, `analytics.read`, and `dashboard.py` publish explicit sorted `__all__` inventories,
 `.pyi` surfaces, and immutable target registries. Resolution is lazy and cached on the facade, but the resolved object
 is the implementation object's exact identity. Existing direct imports, wildcard imports, and `patch.object` calls
-therefore keep working. Base-sync names stay patchable on the `base_sync` facade for every leaf that reads them off it,
+therefore keep working. Base-sync names still resolve on the `base_sync` facade with their owner's exact identity,
 and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
 `workflow`) because their callers read them off a facade. Inside `git/publication/`, though, the owners bind their
 collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes`, `planning` calls `git.commands`,
@@ -283,14 +289,16 @@ so a mock for either one lands on the owner even though both names stay forwarde
 `workflow`, `worktrees`, and `worktree_lifecycle` for compatibility. `_ensure_worktree`, `_ensure_pr_worktree`,
 `_has_new_commits`, and the decomposer helpers themselves stay patchable by name on `worktree_lifecycle`,
 `worktrees`, and `workflow`. `git/base_sync/` binds the same way: `models` and `state` carry only data -- the
-frozen auto-rebase models and the pinned-state keys, park reasons, detour labels, and logger that the flat
-`_base_sync_*` leaves bind straight off `state` -- while its ten behavioral owners bind their collaborators.
+frozen auto-rebase models and the pinned-state keys, park reasons, detour labels, and logger every behavioral
+owner binds straight off `state` -- while its twelve behavioral owners bind their collaborators.
 On the refresh side, `refresh` reaches `git.authentication`, `git.commands`, `git.verification.probes`,
-`git.worktrees.paths`, and its `pre_pr` sibling directly, `pre_pr` reaches `git.commands`, `eligibility`
+`git.worktrees.paths`, and its `pre_pr` and `pr` siblings directly, `pre_pr` reaches `git.commands`, `pr`
+reaches `eligibility`, `startup`, and `publication` for the order it asks them in, `eligibility`
 reaches `comment_trust` for the trusted-reply filter, the verification probes for its clean-tree gate, and
 `recovery` for the interrupted rebase it settles before rejecting a label or starting a new one, and `startup`
-reaches `git.commands`, `git.verification.probes`, and its `pre_pr` and `persistence` siblings for the
-pre-rebase HEAD read, the rebase it anchors, the abort a failure runs, and the park it ends in.
+reaches `git.commands`, `git.verification.probes`, and its `pre_pr`, `persistence`, and `conflicts` siblings
+for the pre-rebase HEAD read, the rebase it anchors, the abort a failure runs, and the conflict route or park
+it ends in. `conflicts` itself reaches only `models`, `state`, and the label enum.
 `publication` reaches `git.verification.probes`, `git.worktrees.paths`, `git.authentication`, and its
 `guards` sibling for the post-rebase HEAD and dirty reads, the branch name, the lease-pinned push, and
 every refusal that precedes it, and `guards` reaches `persistence` for the reset-and-park tail three of
@@ -309,17 +317,16 @@ runs, the crash recovery an eligibility gate triggers, the hardened git command 
 helper an owner delegates to therefore targets
 `orchestrator.git.commands` / `orchestrator.git.authentication` / the probe owner / the owner module rather
 than `base_sync`. Every base-sync
-name still resolves on `base_sync` with the owner's exact identity, and a patch there reaches the flat
-`_base_sync_*` leaves that read it off the facade -- but not an owner-internal call site, so a test that has to
-intercept the per-worktree sync the refresh drives patches `refresh` and not the facade.
+name still resolves on `base_sync` with the owner's exact identity, so historical imports and the two
+keyword-call adapters keep working -- but nothing inside the package reads a collaborator back off the facade,
+so a test that has to intercept the per-worktree sync the refresh drives, the PR-aware coordinator it hands a
+worktree off to, or the conflict route a failed rebase takes patches `refresh` / `pr` / `conflicts` and not
+the facade.
 The collaborators these owners reach *upward* are call-time imports: `persistence` binds the park guard and
-the PR-comment poster straight off their owning modules, and `publication` binds the same poster for its
-auto-rebase notice, so a patch for either targets `orchestrator.workflow`
+the PR-comment poster straight off their owning modules, and `publication` and `conflicts` bind the same
+poster for their notices, so a patch for either targets `orchestrator.workflow`
 or `orchestrator.workflow_messages` -- the `base_sync` forward of `_post_pr_comment` still resolves, but it is
-not what these owners call.
-`refresh` and `startup` instead import the `base_sync` facade itself to reach `_sync_pr_worktree_to_base` and
-`_route_pr_worktree_to_resolving_conflict`, so the PR-aware coordinator and the conflict route stay patchable
-where every caller has always patched them. Config and analytics modules
+not what these owners call. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.

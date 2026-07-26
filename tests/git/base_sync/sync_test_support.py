@@ -9,7 +9,6 @@ import subprocess
 from types import MappingProxyType
 from unittest.mock import patch
 
-from orchestrator import base_sync
 from orchestrator.git import authentication, commands
 from orchestrator.git.base_sync import pre_pr, refresh
 from orchestrator.git.publication import probes as publication_probes
@@ -31,55 +30,22 @@ def _git_result(
     )
 
 
-# Keyword aliases -> every module attribute the alias has to replace. The
-# refresh, pre-PR, eligibility, startup, publication, and crash-recovery owners
-# read their collaborators off the owning modules while the remaining base-sync
-# leaves still read theirs off the `base_sync` facade, so a name both sides
-# call is listed on both sides -- patching one alone would leave half the flow
-# talking to real git.
+# Keyword alias -> the one module attribute the alias replaces. Every base-sync
+# owner reads its collaborators off the owning module, so each alias has a
+# single home and patching the `base_sync` facade would intercept nothing.
 _BASE_SYNC_TARGETS = MappingProxyType(
     {
-        "dirty": (
-            (base_sync, "_worktree_dirty_files"),
-            (verification_probes, "_worktree_dirty_files"),
-        ),
-        "rebase": (
-            (base_sync, "_rebase_base_into_worktree"),
-            (pre_pr, "_rebase_base_into_worktree"),
-        ),
-        "push": (
-            (base_sync, "_push_branch"),
-            (authentication, "_push_branch"),
-        ),
-        "head_sha": (
-            (base_sync, "_head_sha"),
-            (verification_probes, "_head_sha"),
-        ),
-        "git": ((base_sync, "_git"), (commands, "_git")),
-        "hardened": (
-            (base_sync, "_git_hardened"),
-            (commands, "_git_hardened"),
-        ),
-        "fetch": (
-            (base_sync, "_authed_fetch"),
-            (authentication, "_authed_fetch"),
-        ),
-        "ahead_behind": (
-            (base_sync, "_branch_ahead_behind"),
-            (publication_probes, "_branch_ahead_behind"),
-        ),
-        "target_fetch": (
-            (base_sync, "_authed_target_fetch"),
-            (authentication, "_authed_target_fetch"),
-        ),
-        "worktrees_root": (
-            (base_sync, "_repo_worktrees_root"),
-            (paths, "_repo_worktrees_root"),
-        ),
-        "sync": (
-            (base_sync, "_sync_worktree_with_base"),
-            (refresh, "_sync_worktree_with_base"),
-        ),
+        "dirty": (verification_probes, "_worktree_dirty_files"),
+        "rebase": (pre_pr, "_rebase_base_into_worktree"),
+        "push": (authentication, "_push_branch"),
+        "head_sha": (verification_probes, "_head_sha"),
+        "git": (commands, "_git"),
+        "hardened": (commands, "_git_hardened"),
+        "fetch": (authentication, "_authed_fetch"),
+        "ahead_behind": (publication_probes, "_branch_ahead_behind"),
+        "target_fetch": (authentication, "_authed_target_fetch"),
+        "worktrees_root": (paths, "_repo_worktrees_root"),
+        "sync": (refresh, "_sync_worktree_with_base"),
     }
 )
 
@@ -87,11 +53,11 @@ _BASE_SYNC_TARGETS = MappingProxyType(
 @contextlib.contextmanager
 def _patch_base_sync(**mocks):
     """Patch the base-sync collaborators named by keyword alias for the
-    block. Aliases resolve to the modules that read them via
-    `_BASE_SYNC_TARGETS`; each value is the object installed in their place.
+    block. Aliases resolve to the module that reads them via
+    `_BASE_SYNC_TARGETS`; each value is the object installed in its place.
     Only the named collaborators are patched."""
     with contextlib.ExitStack() as stack:
         for alias, mock in mocks.items():
-            for module, attribute in _BASE_SYNC_TARGETS[alias]:
-                stack.enter_context(patch.object(module, attribute, mock))
+            module, attribute = _BASE_SYNC_TARGETS[alias]
+            stack.enter_context(patch.object(module, attribute, mock))
         yield

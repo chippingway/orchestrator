@@ -13,12 +13,15 @@ remote head SHAs, and the divergence counts -- live in ``snapshot``, and the
 order those reads and answers are asked in lives in ``recovery``. ``refresh``
 drives one tick's base fetch, worktree discovery, and per-worktree routing;
 ``pre_pr`` owns the hardened rebase it runs on a branch nobody has pushed
-yet, ``eligibility`` owns the label, park, PR-state, recovery, and clean-tree
-gates a PR-having worktree clears before any rewrite is attempted, and
-``startup`` owns the pre-rebase anchor a pushed branch's rebase is begun from
-and the abort / route / park its failure takes. What a finished rebase is
-force-published with lives in ``publication``, and the refusals that keep it
-from being published at all live in ``guards``. Callers import the owner they
+yet, and ``pr`` owns the order a pushed branch's synchronization asks its
+owners in. Those owners are ``eligibility`` for the label, park, PR-state,
+recovery, and clean-tree gates a PR-having worktree clears before any rewrite
+is attempted, and ``startup`` for the pre-rebase anchor its rebase is begun
+from and the abort / route / park its failure takes. What a finished rebase is
+force-published with lives in ``publication``, the refusals that keep it from
+being published at all live in ``guards``, and the relabel, notice, and audit
+event a rebase that really conflicted is handed to its stage with live in
+``conflicts``. Callers import the owner they
 need directly, so this initializer binds nothing and importing ``state`` or
 ``pre_pr`` never drags the PyGithub types ``models``, ``refresh``, and
 ``startup`` annotate their fields with in.

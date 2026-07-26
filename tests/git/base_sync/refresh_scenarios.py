@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 from orchestrator import workflow
 
-from tests.base_sync_test_support import (
+from tests.git.base_sync.refresh_test_support import (
     AFTER_SHA,
     BEFORE_SHA,
     ISSUE,

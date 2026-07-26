@@ -7,12 +7,15 @@ from __future__ import annotations
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 from orchestrator import base_sync, git
 from orchestrator.git.base_sync import (
+    conflicts,
     eligibility,
     guards,
     models,
+    pr,
     publication,
     state,
 )
@@ -50,13 +53,25 @@ _PUBLICATION_OWNER = "orchestrator.git.base_sync.publication"
 
 _GUARDS_OWNER = "orchestrator.git.base_sync.guards"
 
+_PR_OWNER = "orchestrator.git.base_sync.pr"
+
+_CONFLICTS_OWNER = "orchestrator.git.base_sync.conflicts"
+
 _OWNERS = (
     _MODELS_OWNER, _PRE_PR_OWNER, _REFRESH_OWNER, _STATE_OWNER,
     _PERSISTENCE_OWNER, _OUTCOMES_OWNER, _SNAPSHOT_OWNER, _RECOVERY_OWNER,
     _STARTUP_OWNER, _ELIGIBILITY_OWNER, _PUBLICATION_OWNER, _GUARDS_OWNER,
+    _PR_OWNER, _CONFLICTS_OWNER,
 )
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS, "orchestrator.base_sync")
+
+# The lazy inventory and its resolver hooks are all `orchestrator/` still
+# carries for base sync; both are pure compatibility wiring with no behavior.
+_COMPATIBILITY_LEAVES = frozenset((
+    "_base_sync_export_manifest.py",
+    "_base_sync_exports.py",
+))
 
 # The state owner exists to spell out the pinned-state keys and the label
 # vocabulary one rebase attempt is routed by, so the label enum and the
@@ -84,10 +99,9 @@ _ALLOWED_ROOTS = (
 # entrypoint. The facade is the sharpest of those, because it resolves the very
 # names these owners define -- an owner that imported it would be reading its
 # own definitions back out. The collaborators that do live above this package
-# -- the park guard and the comment poster in the workflow engine, the PR-aware
-# coordinator the refresh hands a worktree off to, and the conflict router a
-# failed startup routes into -- are reached through call-time imports, which is
-# what keeps them out of this check.
+# -- the park guard and the comment poster in the workflow engine -- are
+# reached through call-time imports, which is what keeps them out of this
+# check.
 _FORBIDDEN_PREFIXES = (
     "orchestrator._base_sync",
     "orchestrator.base_sync",
@@ -119,7 +133,9 @@ _OWNER_ONLY_NAMES = (
     "_recover_pending_auto_base_rebase",
     "_refresh_base_and_worktrees",
     "_reset_clear_and_park",
+    "_route_pr_worktree_to_resolving_conflict",
     "_start_auto_rebase",
+    "_sync_pr_worktree_to_base",
     "log",
 )
 
@@ -174,6 +190,7 @@ _FACADE_FORWARDS = (
     ("_post_recovered_rebase_notice", persistence),
     ("_prepare_recovered_rebase_state", persistence),
     ("_publish_auto_rebase", publication),
+    ("_publish_auto_rebase_from_pr", pr),
     ("_pushed_recovery_notice", outcomes),
     ("_read_remote_recovery_head", snapshot),
     ("_rebase_base_into_worktree", pre_pr),
@@ -186,10 +203,14 @@ _FACADE_FORWARDS = (
     ("_reject_unknown_recovery_comparison", outcomes),
     ("_reset_clear_and_park", persistence),
     ("_retry_recovery_push", recovery),
+    ("_route_pr_worktree_conflict_context", conflicts),
+    ("_route_pr_worktree_to_resolving_conflict", conflicts),
     ("_route_recovered_rebase", persistence),
     ("_route_recovery_snapshot", recovery),
     ("_start_auto_rebase", startup),
     ("_sync_discovered_worktree", refresh),
+    ("_sync_pr_worktree_context", pr),
+    ("_sync_pr_worktree_to_base", pr),
     ("_sync_pre_pr_worktree", pre_pr),
     ("_sync_worktree_with_base", refresh),
     ("_worktree_behind_base", refresh),
@@ -262,6 +283,16 @@ class LayeringTest(unittest.TestCase):
 
 class PackageSurfaceTest(unittest.TestCase):
     """The initializer carries no bindings; `base_sync` forwards to owners."""
+
+    def test_no_flat_implementation_leaf_survives(self) -> None:
+        # Every behavior now has an owner in the package, so a flat module
+        # beyond the two compatibility hooks would be base sync re-flattening
+        # itself back onto the facade it is meant to be reachable through.
+        flat_layer = Path(base_sync.__file__).parent
+        flat_modules = {
+            leaf.name for leaf in flat_layer.glob("_base_sync_*.py")
+        }
+        self.assertEqual(flat_modules, _COMPATIBILITY_LEAVES)
 
     def test_initializer_exposes_no_owner_names(self) -> None:
         for owner_only_name in _OWNER_ONLY_NAMES:

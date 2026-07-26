@@ -28,16 +28,6 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._base_sync_pr",
-        (
-            ("_publish_auto_rebase_from_pr", "_publish_auto_rebase_from_pr"),
-            ("_route_pr_worktree_conflict_context", "_route_pr_worktree_conflict_context"),
-            ("_route_pr_worktree_to_resolving_conflict", "_route_pr_worktree_to_resolving_conflict"),
-            ("_sync_pr_worktree_context", "_sync_pr_worktree_context"),
-            ("_sync_pr_worktree_to_base", "_sync_pr_worktree_to_base"),
-        ),
-    ),
-    *export_group(
         "orchestrator.comment_trust",
         (("filter_trusted", "filter_trusted"),),
     ),
@@ -47,6 +37,13 @@ EXPORTS = (
             ("_authed_fetch", "_authed_fetch"),
             ("_authed_target_fetch", "_authed_target_fetch"),
             ("_push_branch", "_push_branch"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.conflicts",
+        (
+            ("_route_pr_worktree_conflict_context", "_route_pr_worktree_conflict_context"),
+            ("_route_pr_worktree_to_resolving_conflict", "_route_pr_worktree_to_resolving_conflict"),
         ),
     ),
     *export_group(
@@ -101,6 +98,14 @@ EXPORTS = (
             ("_prepare_recovered_rebase_state", "_prepare_recovered_rebase_state"),
             ("_reset_clear_and_park", "_reset_clear_and_park"),
             ("_route_recovered_rebase", "_route_recovered_rebase"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.pr",
+        (
+            ("_publish_auto_rebase_from_pr", "_publish_auto_rebase_from_pr"),
+            ("_sync_pr_worktree_context", "_sync_pr_worktree_context"),
+            ("_sync_pr_worktree_to_base", "_sync_pr_worktree_to_base"),
         ),
     ),
     *export_group(

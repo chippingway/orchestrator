@@ -7,13 +7,13 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-from tests.base_sync_scenarios import (
+from tests.git.base_sync.refresh_scenarios import (
     PUSH_PATCH,
     REBASE_PATCH,
     _clean_rebase_scenario,
     _scenario,
 )
-from tests.base_sync_test_support import (
+from tests.git.base_sync.refresh_test_support import (
     _RebaseAnchorRecorder,
     _RemoteHeadGit,
     _SyncWorktreeWithBaseFixture,
