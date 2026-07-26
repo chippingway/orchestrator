@@ -28,12 +28,13 @@ orchestrator process is stateless.
   facades (`stages/`), worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
-  route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
+  route historical imports and patch points to responsibility-named private leaves (`_workflow_*`
   and stage-specific prefixes) or straight to the git-package owners -- `git/` for
   `git_plumbing.py`, `git/verification/` for `verify.py`, `git/worktrees/` for `worktree_lifecycle.py`,
-  `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models, shared state, worktree
-  refresh, and rebase-eligibility gates plus the rebase startup, publication and its guards, and
-  crash-recovery probing, routing, outcomes, and persistence `base_sync.py` publishes. The package also
+  `git/publication/` for `branch_publication.py`, and `git/base_sync/` for every name `base_sync.py`
+  publishes: the models, shared state, worktree refresh, rebase-eligibility gates, the PR-route coordinator
+  and conflict routing, the rebase startup, publication and its guards, and
+  crash-recovery probing, routing, outcomes, and persistence. The package also
   contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
@@ -95,11 +96,15 @@ orchestrator process is stateless.
   subpackage, whose `__init__.py` binds nothing either, over the `models.py` owner (the frozen auto-rebase
   context / request / recovery-context / snapshot / decision / conflict-route dataclasses), the `state.py`
   owner (the pinned-state keys, park reasons, refresh detour labels, and the `orchestrator.base_sync` logger
-  the flat `_base_sync_*` leaves bind directly), the `pre_pr.py` owner (the hardened rebase / merge probes,
+  every behavioral owner binds directly), the `pre_pr.py` owner (the hardened rebase / merge probes,
   rebase-in-progress detection, and the abort-on-failure local rebase of a branch nobody has pushed), the
   `refresh.py` owner (the per-tick authenticated base fetch, worktree discovery, scheduler-claim and
   hard-skip / question / dirty-tree gates, and the per-worktree route to `pre_pr` or the PR-aware
-  coordinator), the `eligibility.py` owner (the refresh-driven label check that settles a stale recovery
+  coordinator), the `pr.py` owner (that coordinator: the order the gate, rebase, and publication owners are
+  asked in, plus the legacy keyword signature the refresh enters through), the `conflicts.py` owner (the
+  once-seeded round counter, PR notice, `conflict_round` event, and `resolving_conflict` relabel a genuinely
+  conflicted rebase is handed to its stage with), the `eligibility.py` owner (the refresh-driven label check
+  that settles a stale recovery
   anchor, the park-reason and trusted-retry-comment decision, the open-PR read that clears an anchor a
   terminal PR left behind, the crash-recovery precedence, and the clean-tree / behind-base start
   probe), the `startup.py` owner (the pre-rebase HEAD guard, the anchor and retry unpark persisted
@@ -114,8 +119,7 @@ orchestrator process is stateless.
   `snapshot.py` owner (the authenticated branch fetch, the local and remote head reads, the divergence
   counts, the anchor-clearing no-op exits, and the reset-and-park abort every unreadable read fails closed
   to) and the `recovery.py` owner (the order those reads and answers are asked in, the dirty-guarded
-  reissued push and the finalize it earns, plus the legacy keyword signature the flat leaves still enter
-  through), with
+  reissued push and the finalize it earns, plus its own legacy keyword signature), with
   `git_plumbing.py`, `verify.py`,
   `worktree_lifecycle.py`, `branch_publication.py`, and
   `base_sync.py` kept as the forwarding facades for historical callers), and stable runtime-core
@@ -136,11 +140,10 @@ orchestrator process is stateless.
   paths, `_dirty` for dirty / rebase-in-progress parking, `_recovery` for recovery pushes, `_diverged` for stale /
   diverged worktree handling, `_publish` for already-rebased force-publish scenarios, `_publish_guard` for the
   publish-guard probe unit tests, `_drift` for hash-drift resume behavior), with resume fixtures in
-  `tests/conflict_resume_test_support.py`); scheduler-dispatch and
-  base-sync tests are split across
-  `tests/test_workflow_scheduler_*.py` and `tests/test_workflow_base_sync_*.py`,
+  `tests/conflict_resume_test_support.py`); scheduler-dispatch tests are split across
+  `tests/test_workflow_scheduler_*.py`,
   with subsystem-specific support in
-  `tests/scheduler_routing_*.py` and `tests/base_sync_*.py`; other facade-level helper tests
+  `tests/scheduler_routing_*.py`; other facade-level helper tests
   include (`tests/test_workflow_verdict_parsing.py`, `tests/test_workflow_prompt_redaction.py`,
   `tests/test_workflow_pickup.py`,
   `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_analytics.py`,
@@ -199,8 +202,11 @@ orchestrator process is stateless.
   the fetch refspec / remote-head reads / divergence probing and their fail-closed exits, the order one
   comparison is routed to a single answer in and the guards the reissued push is leased behind, the recovery
   exits that cannot verify what the remote PR branch carries, real-git recovery of an unpushed rebase, a
-  landed push, an out-of-band remote update, and a dirty worktree, and import-cycle / layering /
-  package-surface checks, plus their collaborator patch table, real-git fixtures, anchor / clean / park
+  landed push, an out-of-band remote update, and a dirty worktree, the three ways an interrupted rebase
+  reaches `validating` again, the historical keyword calls the three compatibility adapters still accept, and
+  import-cycle / layering /
+  package-surface checks including the guard that no flat `_base_sync_*` implementation leaf returns, plus
+  their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.

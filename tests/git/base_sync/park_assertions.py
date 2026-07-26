@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from tests import base_sync_test_support as support
-from tests.base_sync_scenarios import PUSH_PATCH, REBASE_PATCH
+from tests.git.base_sync import refresh_test_support as support
+from tests.git.base_sync.refresh_scenarios import PUSH_PATCH, REBASE_PATCH
 
 
 def _assert_park_state(

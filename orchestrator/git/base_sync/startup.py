@@ -19,7 +19,7 @@ from github.PullRequest import PullRequest
 
 from orchestrator import config
 from orchestrator.git import commands
-from orchestrator.git.base_sync import persistence, pre_pr
+from orchestrator.git.base_sync import conflicts, persistence, pre_pr
 from orchestrator.git.base_sync.models import _AutoRebaseContext
 from orchestrator.git.base_sync.state import (
     _AWAITING_HUMAN,
@@ -87,13 +87,7 @@ def _handle_failed_auto_rebase(
         )
     context.state.set(_PENDING_PUSH_SHA, None)
     if conflicted_files:
-        # Lazy import: the conflict router is still a base-sync leaf reached
-        # through the compatibility facade, and that facade resolves the names
-        # this owner defines -- binding it at module scope would invert the
-        # direction the package is layered in.
-        from orchestrator import base_sync as _facade
-
-        _facade._route_pr_worktree_to_resolving_conflict(
+        conflicts._route_pr_worktree_to_resolving_conflict(
             context.gh,
             context.spec,
             context.issue,

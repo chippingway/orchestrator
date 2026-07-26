@@ -20,7 +20,11 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.git import authentication as _authentication, commands as _commands
-from orchestrator.git.base_sync import pre_pr as _pre_pr, state as _state
+from orchestrator.git.base_sync import (
+    pr as _pr,
+    pre_pr as _pre_pr,
+    state as _state,
+)
 from orchestrator.git.verification import probes as _probes
 from orchestrator.git.worktrees import paths as _paths
 from orchestrator.github import client as _client, labels as _labels
@@ -119,13 +123,7 @@ def _sync_worktree_with_base(
     if behind is None:
         return
     if pr_number is not None:
-        # The PR-aware coordinator is still a base-sync leaf reached through
-        # the compatibility facade, and that facade resolves the names this
-        # owner defines -- binding it at module scope would invert the
-        # direction the package is layered in.
-        from orchestrator import base_sync as _facade
-
-        _facade._sync_pr_worktree_to_base(
+        _pr._sync_pr_worktree_to_base(
             gh, spec, issue, state, worktree, int(pr_number), behind,
         )
         return
