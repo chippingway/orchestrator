@@ -1,20 +1,27 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""A real bare remote and topic branch the squash owners run against.
+
+The rewrite reaches git through hardened argv and env envelopes that a
+subprocess double would let pass unchecked, so these fixtures build an
+actual repository and stub only the network hop -- the authenticated push.
+"""
+
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 import tempfile
-from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from unittest import mock
 
-from orchestrator import branch_publication, config, workflow
+from orchestrator import config
+from orchestrator.git import authentication
+from orchestrator.git.publication import squash
 
 from tests.fakes import make_issue
-from tests.workflow_helpers import _TEST_SPEC
+from tests.git.publication.publication_helpers import _spec
 
 BASE_BRANCH_NAME = "main"
 GIT_AUTHOR_NAME = "GIT_AUTHOR_NAME"
@@ -29,7 +36,6 @@ GIT_MESSAGE_FLAG = "-m"
 REMOTE_NAME = "origin"
 GIT_LOG = "log"
 SUBJECT_FORMAT = "--pretty=%s"
-BASE_BRANCH_SETTING = "BASE_BRANCH"
 PUSH_BRANCH_HELPER = "_push_branch"
 GIT_RESET = "reset"
 HARD_RESET = "--hard"
@@ -92,8 +98,14 @@ def commit_files(
 
 class _SquashRepositoryFixtureMixin:
     def setUp(self) -> None:
-        self.tmpdir = Path(tempfile.mkdtemp(prefix="orch-squash-test-"))
-        self.addCleanup(shutil.rmtree, str(self.tmpdir), ignore_errors=True)
+        self.tmpdir = Path(
+            self.enterContext(
+                tempfile.TemporaryDirectory(
+                    prefix="orch-squash-test-",
+                    ignore_cleanup_errors=True,
+                ),
+            ),
+        )
         self._init_remote()
         self._seed_base()
         self.branch = "orchestrator/geserdugarov__agent-orchestrator/issue-9"
@@ -204,31 +216,19 @@ class _SquashScenarioMixin:
         **config_overrides,
     ) -> SquashRun:
         push_mock = mock.MagicMock(return_value=push_result)
-        with ExitStack() as patches:
-            patches.enter_context(
-                mock.patch.object(
-                    config,
-                    BASE_BRANCH_SETTING,
-                    BASE_BRANCH_NAME,
-                ),
+        self.enterContext(
+            mock.patch.object(authentication, PUSH_BRANCH_HELPER, push_mock),
+        )
+        for setting, setting_value in config_overrides.items():
+            self.enterContext(
+                mock.patch.object(config, setting, setting_value),
             )
-            patches.enter_context(
-                mock.patch.object(
-                    branch_publication,
-                    PUSH_BRANCH_HELPER,
-                    new=push_mock,
-                ),
-            )
-            for setting, setting_value in config_overrides.items():
-                patches.enter_context(
-                    mock.patch.object(config, setting, setting_value),
-                )
-            raw_result = workflow._squash_and_force_push(
-                _TEST_SPEC,
-                self.work,
-                self.branch,
-                issue or self._make_issue(),
-            )
+        raw_result = squash._squash_and_force_push(
+            _spec(base_branch=BASE_BRANCH_NAME, remote_name=REMOTE_NAME),
+            self.work,
+            self.branch,
+            issue or self._make_issue(),
+        )
         return SquashRun(*raw_result, push_mock=push_mock)
 
 

@@ -10,12 +10,14 @@ import unittest
 
 from orchestrator import branch_publication
 from orchestrator.git import publication as _publication_package
-from orchestrator.git.publication import planning, probes, titles
+from orchestrator.git.publication import planning, probes, rewrite, squash, titles
 
 _MODULES = (
     "orchestrator.git.publication",
     "orchestrator.git.publication.planning",
     "orchestrator.git.publication.probes",
+    "orchestrator.git.publication.rewrite",
+    "orchestrator.git.publication.squash",
     "orchestrator.git.publication.titles",
 )
 
@@ -27,6 +29,8 @@ _OWNER_ONLY_NAMES = (
     "_infer_subject_prefix",
     "_pr_title_from_commit_or_issue",
     "_prepare_squash",
+    "_rewrite_squash",
+    "_squash_and_force_push",
 )
 
 _FACADE_FORWARDS = (
@@ -35,6 +39,7 @@ _FACADE_FORWARDS = (
     ("_SquashPlan", planning),
     ("_SquashPreparationError", planning),
     ("_branch_ahead_behind", probes),
+    ("_create_squash_commit", rewrite),
     ("_first_commit_subject", probes),
     ("_infer_subject_prefix", titles),
     ("_is_conventional_subject", probes),
@@ -43,10 +48,16 @@ _FACADE_FORWARDS = (
     ("_pr_title_from_commit_or_issue", titles),
     ("_prepare_squash", planning),
     ("_recent_base_subjects", probes),
+    ("_rewrite_squash", rewrite),
+    ("_rollback_squash", rewrite),
+    ("_squash_and_force_push", squash),
     ("_squash_base_sha", planning),
+    ("_squash_commit_env", rewrite),
+    ("_squash_failure", rewrite),
     ("_squash_message", planning),
     ("_squash_subjects", planning),
     ("_subject_prefix", probes),
+    ("log", rewrite),
 )
 
 
@@ -54,11 +65,12 @@ class CleanProcessImportTest(unittest.TestCase):
     """Each owner imports standalone in a fresh interpreter.
 
     `probes` depends only on the config and git command owners, `titles` only
-    on `probes`, and `planning` on both of them plus the verification probes,
-    so importing any one of them first must not need a name a half-run module
-    has not defined yet. A subprocess per module gives each a clean
-    `sys.modules` no other test has already populated, exposing an
-    import-order cycle a facade-first suite run would mask.
+    on `probes`, `planning` on both of them plus the verification probes, and
+    `rewrite` / `squash` layer on top, so importing any one of them first must
+    not need a name a half-run module has not defined yet. A subprocess per
+    module gives each a clean `sys.modules` no other test has already
+    populated, exposing an import-order cycle a facade-first suite run would
+    mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:

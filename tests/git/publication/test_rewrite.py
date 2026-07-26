@@ -1,36 +1,26 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Commit identity, git hardening, and rollback on the `rewrite` owner."""
+
 from __future__ import annotations
 
 import unittest
 
-from tests import validating_squash_test_support as squash_support
+from tests.git.publication import squash_git_support as squash_support
 
 EXECUTABLE_MODE = 0o755
 GIT_LOG = "log"
 LAST_COMMIT = "-1"
-SCRATCH_FILE = "scratch.txt"
+AUTHOR_FORMAT = "--pretty=%an <%ae>"
+COMMITTER_FORMAT = "--pretty=%cn <%ce>"
+ORCHESTRATOR_IDENTITY = "orch-bot <orch-bot@example.com>"
 
 
-class SquashHelperRecoveryRealGitTest(
+class SquashRewriteRealGitTest(
     squash_support.SquashGitFixtureMixin,
     unittest.TestCase,
 ):
-    """Preserve branches and worktrees across no-op and failure paths."""
-
-    def test_squash_with_only_one_commit_is_a_no_op(self) -> None:
-        # Reset to a single commit on top of base.
-        self._rebuild_single_commit()
-        original_head = self._head_sha()
-
-        squash_run = self._squash()
-        self.assertTrue(squash_run.success)
-        self.assertEqual(squash_run.count, 0)
-        self.assertEqual(squash_run.sha, original_head)
-        # Single-commit branch must NOT trigger a push at all.
-        squash_run.push_mock.assert_not_called()
-        # HEAD unchanged.
-        self.assertEqual(self._head_sha(), original_head)
+    """Preserve branches and worktrees across the destructive rewrite."""
 
     def test_push_failure_rollback_restores_branch(self) -> None:
         # The whole point of saving original_head: a push failure after
@@ -107,59 +97,15 @@ class SquashHelperRecoveryRealGitTest(
         )
         self.assertTrue(squash_run.success, squash_run.error)
 
-        author = squash_support.run_git(
-            GIT_LOG,
-            LAST_COMMIT,
-            "--pretty=%an <%ae>",
-            cwd=self.work,
-        ).strip()
-        committer = squash_support.run_git(
-            GIT_LOG,
-            LAST_COMMIT,
-            "--pretty=%cn <%ce>",
-            cwd=self.work,
-        ).strip()
-        self.assertEqual(author, "orch-bot <orch-bot@example.com>")
-        self.assertEqual(committer, "orch-bot <orch-bot@example.com>")
-
-    def test_dirty_worktree_aborts_before_reset(self) -> None:
-        # An uncommitted change in the worktree (the agent left work
-        # behind) is a refuse-to-rewrite signal: the helper must abort
-        # WITHOUT touching HEAD so the dirty state is visible to the
-        # operator. Without the pre-reset dirty check the soft-reset
-        # would happen and the rollback would clobber the dirty changes.
-        original_head = self._head_sha()
-        (self.work / SCRATCH_FILE).write_text("uncommitted\n")
-
-        squash_run = self._squash()
-        self.assertFalse(squash_run.success)
-        self.assertIn("uncommitted", squash_run.error or "")
-        # HEAD untouched, dirty file preserved, no push attempted.
-        self.assertEqual(self._head_sha(), original_head)
-        self.assertTrue((self.work / SCRATCH_FILE).exists())
-        squash_run.push_mock.assert_not_called()
-
-    def test_dirty_single_commit_still_fails(self) -> None:
-        # The dirty-tree refusal is a precondition for the whole helper,
-        # not just the rewrite path. A one-commit branch (squash would
-        # be a no-op) with an uncommitted file must still fail so the
-        # caller parks awaiting_human; otherwise the manual merge could
-        # land the head with the operator's scratch invisible on the PR.
-        self._rebuild_single_commit()
-        original_head = self._head_sha()
-        (self.work / SCRATCH_FILE).write_text("uncommitted\n")
-
-        squash_run = self._squash()
-        self.assertFalse(squash_run.success)
-        self.assertIsNone(squash_run.sha)
-        self.assertEqual(squash_run.count, 0)
-        self.assertIn("uncommitted", squash_run.error or "")
-        # Single-commit + dirty path must NOT short-circuit to the
-        # no-op success branch. HEAD untouched, dirty file preserved,
-        # no push attempted.
-        self.assertEqual(self._head_sha(), original_head)
-        self.assertTrue((self.work / SCRATCH_FILE).exists())
-        squash_run.push_mock.assert_not_called()
+        for pretty in (AUTHOR_FORMAT, COMMITTER_FORMAT):
+            with self.subTest(pretty=pretty):
+                stamped = squash_support.run_git(
+                    GIT_LOG,
+                    LAST_COMMIT,
+                    pretty,
+                    cwd=self.work,
+                ).strip()
+                self.assertEqual(stamped, ORCHESTRATOR_IDENTITY)
 
     def _install_fsmonitor(self):
         marker = self.tmpdir / "fsmonitor_invocations.txt"
@@ -185,3 +131,7 @@ class SquashHelperRecoveryRealGitTest(
         )
         marker.unlink()
         return marker
+
+
+if __name__ == "__main__":
+    unittest.main()

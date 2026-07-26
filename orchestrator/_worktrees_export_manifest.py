@@ -28,10 +28,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.branch_publication",
-        (("_squash_and_force_push", "_squash_and_force_push"),),
-    ),
-    *export_group(
         "orchestrator.git.authentication",
         (
             ("_authed_fetch", "_authed_fetch"),
@@ -49,6 +45,10 @@ EXPORTS = (
             ("_is_prefixed_subject", "_is_prefixed_subject"),
             ("_recent_base_subjects", "_recent_base_subjects"),
         ),
+    ),
+    *export_group(
+        "orchestrator.git.publication.squash",
+        (("_squash_and_force_push", "_squash_and_force_push"),),
     ),
     *export_group(
         "orchestrator.git.publication.titles",
