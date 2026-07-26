@@ -28,24 +28,6 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._branch_publication_flow",
-        (("_squash_and_force_push", "_squash_and_force_push"),),
-    ),
-    *export_group(
-        "orchestrator._branch_publication_state",
-        (("log", "log"),),
-    ),
-    *export_group(
-        "orchestrator._branch_squash_rewrite",
-        (
-            ("_create_squash_commit", "_create_squash_commit"),
-            ("_rewrite_squash", "_rewrite_squash"),
-            ("_rollback_squash", "_rollback_squash"),
-            ("_squash_commit_env", "_squash_commit_env"),
-            ("_squash_failure", "_squash_failure"),
-        ),
-    ),
-    *export_group(
         "orchestrator.git.authentication",
         (("_push_branch", "_push_branch"),),
     ),
@@ -76,6 +58,21 @@ EXPORTS = (
             ("_recent_base_subjects", "_recent_base_subjects"),
             ("_subject_prefix", "_subject_prefix"),
         ),
+    ),
+    *export_group(
+        "orchestrator.git.publication.rewrite",
+        (
+            ("_create_squash_commit", "_create_squash_commit"),
+            ("_rewrite_squash", "_rewrite_squash"),
+            ("_rollback_squash", "_rollback_squash"),
+            ("_squash_commit_env", "_squash_commit_env"),
+            ("_squash_failure", "_squash_failure"),
+            ("log", "log"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.publication.squash",
+        (("_squash_and_force_push", "_squash_and_force_push"),),
     ),
     *export_group(
         "orchestrator.git.publication.titles",

@@ -1,16 +1,22 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Branch publication flow."""
+"""The composed squash-and-publish entry point stage handlers call.
+
+Sequencing the two halves is the whole job: `planning` runs every probe
+while the branch is still intact, and only a plan that survived it and
+carries more than one commit reaches the destructive `rewrite`. Keeping
+that order here means neither owner has to know when the other is safe
+to run.
+"""
 from __future__ import annotations
 
-from orchestrator import branch_publication as _owner
+from pathlib import Path
+from typing import Optional, Tuple
 
-_SquashPreparationError = _owner._SquashPreparationError
-Issue = _owner.Issue
-Optional = _owner.Optional
-Path = _owner.Path
-Tuple = _owner.Tuple
-config = _owner.config
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.git.publication import planning, rewrite
 
 
 def _squash_and_force_push(
@@ -39,9 +45,9 @@ def _squash_and_force_push(
     matches the per-step commits this squash replaces.
     """
     try:
-        plan = _owner._prepare_squash(spec, worktree, issue)
-    except _SquashPreparationError as error:
-        return _owner._squash_failure(str(error))
+        plan = planning._prepare_squash(spec, worktree, issue)
+    except planning._SquashPreparationError as error:
+        return rewrite._squash_failure(str(error))
     if len(plan.subjects) <= 1:
         return True, plan.original_head, 0, None
-    return _owner._rewrite_squash(spec, worktree, branch, issue, plan)
+    return rewrite._rewrite_squash(spec, worktree, branch, issue, plan)

@@ -29,7 +29,7 @@ orchestrator process is stateless.
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
-  `_branch_*`, and stage-specific prefixes) or straight to the git-package owners -- `git/` for
+  and stage-specific prefixes) or straight to the git-package owners -- `git/` for
   `git_plumbing.py`, `git/verification/` for `verify.py`, `git/worktrees/` for `worktree_lifecycle.py`,
   `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models and shared state
   `base_sync.py` publishes. The package also contains per-tick
@@ -85,8 +85,11 @@ orchestrator process is stateless.
   `__init__.py` also binds nothing, over the
   `probes.py` owner (the conventional / repo-local subject vocabulary and predicates, ahead/behind counts,
   first-commit and recent-base subject reads), the `titles.py` owner (subject-prefix inference from base
-  history and PR-title selection) and the `planning.py` owner (the pre-rewrite merge-base, HEAD, dirty-tree and
-  topic-subject probes, their preparation error, and the squash message they select), and the `base_sync/`
+  history and PR-title selection), the `planning.py` owner (the pre-rewrite merge-base, HEAD, dirty-tree and
+  topic-subject probes, their preparation error, and the squash message they select), the `rewrite.py` owner
+  (the soft reset, the orchestrator-identity squash commit, the lease-pinned force-push, and the rollback each
+  post-reset failure takes) and the `squash.py` owner (the plan-then-rewrite entry point stage handlers call),
+  and the `base_sync/`
   subpackage, whose `__init__.py` binds nothing either, over the `models.py` owner (the frozen auto-rebase
   context / request / recovery-context / snapshot / decision / conflict-route dataclasses) and the `state.py`
   owner (the pinned-state keys, park reasons, refresh detour labels, and the `orchestrator.base_sync` logger
@@ -153,8 +156,10 @@ orchestrator process is stateless.
   `tests/git/concurrency_test_support.py`);
   the publication owners covered in `tests/git/publication/`: subject
   predicates, per-spec commit-subject reads, ahead/behind folding, prefix inference, PR-title selection,
-  squash preparation errors and guard ordering with the message it selects, and
-  import-cycle / package-surface checks, plus their git-double support module; and the base-sync owners
+  squash preparation errors and guard ordering with the message it selects, real-git subject selection and
+  no-op / dirty-tree refusals, real-git commit identity, fsmonitor hardening and push-failure rollback, and
+  import-cycle / package-surface checks, plus their git-double and real-repository support modules; and the
+  base-sync owners
   covered in `tests/git/base_sync/`: request-to-context derivation, model defaults and frozen-ness, the
   published pinned-state keys / park reasons / detour labels / logger name, and import-cycle / layering /
   package-surface checks.
