@@ -337,10 +337,11 @@ not what these owners call. `orchestrator.workflow` is itself a package, and its
 the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/` or `workflow/state.py`, so
 importing the facade resolves no manifest target and pulls in neither the stage tree, the config and analytics
 graph behind the shared dependency bindings, nor the git and GitHub
-subsystems the targets sit on. That cost is what lets the GitHub and git layers import `workflow/state.py`
-for the label vocabulary they are typed by: `github/labels.py`, `github/issues.py`, and the `git/base_sync/`
-owners all bind the owner directly, and `state_machine.py` forwards the same objects for callers that still
-reach for the historical module. Config and analytics modules
+subsystems the targets sit on. An import that cheap is what lets the GitHub and git layers reach
+`workflow/state.py` for the label vocabulary they are typed by -- a submodule import runs the initializer first, so
+anything bound there would be a cost every one of them pays. `github/labels.py`, `github/issues.py`, and the
+`git/base_sync/` owners all bind that owner directly, and `state_machine.py` forwards its
+labels, graph, coercion, and guard for callers that still reach for the historical module. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.

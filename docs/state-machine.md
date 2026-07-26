@@ -68,8 +68,10 @@ Two guards run at `GitHubClient.set_workflow_label` (the single label-write chok
   a literal label that the next tick would treat as unlabeled-pickup. `create_child_issue` coerces each birth label the
   same way, so split children are born with only a valid workflow label and any control label is rejected.
 - **Transition guard (`WORKFLOW_TRANSITION_GUARD` = `off` / `warn` / `enforce`, default `warn`).** An illegal
-  `current → new` relabel is checked against `ALLOWED_TRANSITIONS`. `warn` logs and proceeds; `enforce` raises
-  `IllegalTransition`; `off` disables the check. A same-label re-set is always allowed.
+  `current → new` relabel is checked against `ALLOWED_TRANSITIONS`. `warn` logs the rejected edge through the
+  `orchestrator.state_machine` logger and proceeds; `enforce` raises `IllegalTransition`; `off` disables the check. A
+  same-label re-set is always allowed. That logger name is spelled out literally in the owner, so an operator log
+  filter selects on it regardless of which module the guard lives in.
 
 `ALLOWED_TRANSITIONS` is a forward spine (e.g. `implementing → validating → documenting`) plus interrupt / detour
 edges declared per-target. Operator relabels via the GitHub UI bypass both guards, so the guard never fights a human.
