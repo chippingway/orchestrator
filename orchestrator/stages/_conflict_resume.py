@@ -8,6 +8,7 @@ from orchestrator.stages import conflicts as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _ConflictContext = _owner._ConflictContext
 _ConflictResumeRun = _owner._ConflictResumeRun
@@ -171,5 +172,5 @@ def _run_conflict_resume(
     wt, conflict_result, paused = _wf._resume_dev_with_text(
         ctx.gh, ctx.spec, ctx.issue, ctx.state, followup, pause_guard=True,
     )
-    ctx.state.set("last_agent_action_at", _wf._now_iso())
+    ctx.state.set("last_agent_action_at", _usage._now_iso())
     return _ConflictResumeRun(worktree=wt, dev_result=conflict_result, paused=paused)

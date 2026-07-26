@@ -12,10 +12,11 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import analytics, workflow
 from orchestrator.agents import AgentResult
+from orchestrator.workflow.engine import usage as engine_usage
 
 from tests.fakes import FakeGitHubClient
 
-from tests import workflow_agent_analytics_test_support as support
+from tests.workflow.engine import usage_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 EVENT_AGENT_EXIT = support.EVENT_AGENT_EXIT
@@ -132,7 +133,7 @@ def _run_trajectory(
             stdout=stdout,
             stderr="",
         )
-        return workflow._run_agent_tracked(
+        return engine_usage._run_agent_tracked(
             gh, _TRAJECTORY_ISSUE_NUMBER,
             agent_role=ROLE_DEVELOPER,
             stage=LABEL_IMPLEMENTING,
@@ -163,7 +164,7 @@ class TrajectoryRecordingTest(unittest.TestCase):
                 session_id="s", last_message="", exit_code=0,
                 timed_out=False, stdout="", stderr="",
             )
-            workflow._run_agent_tracked(
+            engine_usage._run_agent_tracked(
                 gh, _PROMPT_FORWARDING_ISSUE_NUMBER,
                 agent_role=ROLE_DEVELOPER,
                 stage=LABEL_IMPLEMENTING,
@@ -244,7 +245,7 @@ class TrajectoryRecordingTest(unittest.TestCase):
                     stdout=_claude_stdout_with_skills(skills=(_DEVELOP_SKILL,)),
                     stderr="",
                 )
-                workflow._run_agent_tracked(
+                engine_usage._run_agent_tracked(
                     gh, _TRAJECTORY_FAILURE_ISSUE_NUMBER,
                     agent_role=ROLE_DEVELOPER,
                     stage=LABEL_IMPLEMENTING,
@@ -281,7 +282,7 @@ def _drive_trajectory_sink(
             ),
             stderr="",
         )
-        workflow._run_agent_tracked(
+        engine_usage._run_agent_tracked(
             gh, _TRAJECTORY_SINK_ISSUE_NUMBER,
             agent_role=ROLE_DEVELOPER,
             stage=LABEL_IMPLEMENTING,

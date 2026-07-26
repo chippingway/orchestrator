@@ -12,7 +12,7 @@ from orchestrator.agents import AgentResult
 
 from tests.fakes import FakeGitHubClient, FakeIssue, FakePR, make_issue
 
-from tests import workflow_agent_analytics_test_support as support
+from tests.workflow.engine import usage_test_support as support
 
 EVENT_AGENT_EXIT = support.EVENT_AGENT_EXIT
 EVENT_AGENT_SPAWN = support.EVENT_AGENT_SPAWN

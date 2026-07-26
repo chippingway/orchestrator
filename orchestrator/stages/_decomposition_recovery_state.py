@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import usage as _usage
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -75,14 +76,12 @@ def _seed_orphan_child_state(
 ) -> None:
     """Backfill `parent_number` (and creation stamp / unpark) on an orphan
     child so the parent's dependency walk can find it again."""
-    from orchestrator import workflow as _wf
-
     child_issue = gh.get_issue(int(child_number))
     child_state = gh.read_pinned_state(child_issue)
     if not child_state.get(_PARENT_NUMBER):
         child_state.set(_PARENT_NUMBER, issue.number)
         if not child_state.get(_CREATED_AT):
-            child_state.set(_CREATED_AT, _wf._now_iso())
+            child_state.set(_CREATED_AT, _usage._now_iso())
         child_state.set(_AWAITING_HUMAN, False)
         child_state.set(_PARK_REASON, None)
         gh.write_pinned_state(child_issue, child_state)

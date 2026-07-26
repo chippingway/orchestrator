@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator import _workflow_state as _state
 from orchestrator import workflow as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import usage as _usage
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -91,7 +92,7 @@ def _handle_pickup(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> Non
     if not _owner._pickup_author_allowed(spec, issue):
         return
     state = PinnedState()
-    state.set("created_at", _owner._now_iso())
+    state.set("created_at", _usage._now_iso())
     if config.DECOMPOSE:
         _owner._start_decomposing(gh, spec, issue, state)
     else:

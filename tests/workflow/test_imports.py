@@ -12,9 +12,12 @@ from pathlib import Path
 from orchestrator import _workflow_export_manifest
 from orchestrator import workflow as _workflow
 from orchestrator.workflow import engine as _engine
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    messages as _messages,
+    prompts as _prompts,
+    usage as _usage,
+)
 from tests.reexport_test_support import lazy_targets, resolve_target
 
 _MODULES = (
@@ -23,6 +26,7 @@ _MODULES = (
     "orchestrator.workflow.engine.comments",
     "orchestrator.workflow.engine.messages",
     "orchestrator.workflow.engine.prompts",
+    "orchestrator.workflow.engine.usage",
     "orchestrator.workflow.state",
 )
 
@@ -130,6 +134,7 @@ class PackageSurfaceTest(unittest.TestCase):
         self.assertIs(_engine.comments, _comments)
         self.assertIs(_engine.messages, _messages)
         self.assertIs(_engine.prompts, _prompts)
+        self.assertIs(_engine.usage, _usage)
         for name, bound in _engine.__dict__.items():
             if name.startswith("__"):
                 continue

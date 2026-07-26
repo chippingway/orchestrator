@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import usage as _usage
 
 _QuestionOutcome = _owner._QuestionOutcome
 _QuestionRun = _owner._QuestionRun
@@ -29,7 +30,7 @@ def _assess_question_outcome(
     if _wf._paused_during_agent_run(run.gh, run.issue):
         return _QuestionOutcome(None, run.keep_worktree)
 
-    run.state.set("last_question_at", _wf._now_iso())
+    run.state.set("last_question_at", _usage._now_iso())
     if not question_result.interrupted:
         _wf._accumulate_issue_usage(run.state, question_result.usage)
 

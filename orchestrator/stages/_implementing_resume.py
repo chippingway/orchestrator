@@ -10,6 +10,7 @@ from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _DevResumeOptions = _owner._DevResumeOptions
 _DevResumePlan = _owner._DevResumePlan
@@ -132,7 +133,7 @@ class _DevResumeContext:
         from orchestrator import workflow as _wf
 
         session = self.plan.session
-        agent_result = _wf._run_agent_tracked(
+        agent_result = _usage._run_agent_tracked(
             self.gh,
             self.issue.number,
             agent_role="developer",

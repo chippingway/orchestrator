@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import in_review as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import usage as _usage
 
 _DriftResume = _owner._DriftResume
 _InReviewContext = _owner._InReviewContext
@@ -44,7 +45,7 @@ def _route_feedback_to_fixing(
     from orchestrator import workflow as _wf
 
     state = ctx.state
-    state.set("pending_fix_at", _wf._now_iso())
+    state.set("pending_fix_at", _usage._now_iso())
     _owner._record_pending_fix_bookmarks(
         state, issue_space_new, review_space_new, review_summary_new,
     )
@@ -145,7 +146,7 @@ def _resume_dev_for_drift(
         _owner._build_drift_resume_prompt(ctx.issue, filter_trusted(unread_pr_conv)),
         pause_guard=True,
     )
-    ctx.state.set("last_agent_action_at", _wf._now_iso())
+    ctx.state.set("last_agent_action_at", _usage._now_iso())
     return _DriftResume(
         worktree=wt, dev_result=dev_result, paused=paused, before_sha=before_sha,
     )

@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import usage as _usage
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -47,7 +48,7 @@ def _complete_umbrella(
     _comments._post_issue_comment(gh, issue, state, close_body)
     state.set(_AWAITING_HUMAN, False)
     state.set(_PARK_REASON, None)
-    state.set("umbrella_resolved_at", _wf._now_iso())
+    state.set("umbrella_resolved_at", _usage._now_iso())
     gh.set_workflow_label(issue, WorkflowLabel.DONE)
     gh.write_pinned_state(issue, state)
     try:

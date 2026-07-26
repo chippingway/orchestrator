@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import usage as _usage
 
 _DecomposerSession = _owner._DecomposerSession
 AgentResult = _owner.AgentResult
@@ -76,7 +77,7 @@ def _resume_decomposer_on_human_reply(
     if not wt.exists():
         wt = _wf._ensure_decompose_worktree(spec, issue.number)
     session = _DecomposerSession(*_owner._read_decomposer_session(state))
-    decomposer_result = _wf._run_agent_tracked(
+    decomposer_result = _usage._run_agent_tracked(
         gh, issue.number,
         agent_role="decomposer",
         stage="decomposing",

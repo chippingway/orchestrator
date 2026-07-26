@@ -5,9 +5,10 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 
-from orchestrator.stages._decomposition_models import _DecomposerCleanup
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.stages._decomposition_models import _DecomposerCleanup
+from orchestrator.workflow.engine import usage as _usage
 
 _DecomposerRunPlan = _owner._DecomposerRunPlan
 AgentResult = _owner.AgentResult
@@ -49,7 +50,7 @@ def _settle_decomposer_run(
     if _wf._paused_during_agent_run(gh, issue):
         return True
 
-    state.set("last_agent_action_at", _wf._now_iso())
+    state.set("last_agent_action_at", _usage._now_iso())
     # Fold this run's usage into the per-issue counters at the convergence
     # of the fresh-spawn and awaiting-human resume branches, so a real
     # resume exit is counted exactly once and the no-new-comment resume

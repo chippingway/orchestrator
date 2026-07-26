@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import usage as _usage
 
 _AgentWork = _owner._AgentWork
 _PreparedDevRun = _owner._PreparedDevRun
@@ -111,7 +112,7 @@ def _handle_implementing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) 
     if prepared is None:
         return
 
-    state.set("last_agent_action_at", _wf._now_iso())
+    state.set("last_agent_action_at", _usage._now_iso())
 
     # Shutdown-sweep interruption: a run the orchestrator killed mid-flight
     # has no trustworthy result, so ignore it and return WITHOUT writing

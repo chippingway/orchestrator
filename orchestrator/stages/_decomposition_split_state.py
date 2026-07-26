@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import usage as _usage
 
 _SplitPlan = _owner._SplitPlan
 GitHubClient = _owner.GitHubClient
@@ -52,12 +53,10 @@ def _park_child_create_failure(
 def _persist_created_child(
     gh: GitHubClient, issue: Issue, state: PinnedState, plan: _SplitPlan,
 ) -> None:
-    from orchestrator import workflow as _wf
-
     state.set(_CHILDREN, [number for number, _ in plan.created])
     if plan.dep_graph:
         state.set("dep_graph", plan.dep_graph)
-    state.set("decomposed_at", _wf._now_iso())
+    state.set("decomposed_at", _usage._now_iso())
     gh.write_pinned_state(issue, state)
 
 
@@ -66,11 +65,9 @@ def _write_child_pinned_state(
 ) -> None:
     """Write a freshly-created child's initial pinned state (parent link and
     creation stamp)."""
-    from orchestrator import workflow as _wf
-
     child_state = PinnedState()
     child_state.set(_PARENT_NUMBER, parent_number)
-    child_state.set(_CREATED_AT, _wf._now_iso())
+    child_state.set(_CREATED_AT, _usage._now_iso())
     gh.write_pinned_state(new_issue, child_state)
 
 

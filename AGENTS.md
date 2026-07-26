@@ -43,7 +43,13 @@ orchestrator process is stateless.
   write, so it takes only the first) -- the single-caller drift-resume prompt stays on
   `_workflow_drift_routes.py` and borrows both -- the
   bounded conflicted-path listing, and the single-decision comment and its best-effort manifest
-  fields), per-stage lazy facades (`stages/`),
+  fields -- and over the `workflow/engine/usage.py` owner beside them: the single tracked-run site
+  every agent role spawns through, the frozen run request and the runner kwargs it forwards
+  selectively, the `agent_spawn` / `agent_exit` pair around the spawn, the analytics record its exit
+  appends (with the configured model read out of `extra_args` as the parser's fallback, and the
+  prompt and worktree the trajectory hooks ride on), the fail-open `skill_triggered` emission that
+  record's return value drives, and the UTC timestamp the stages stamp pinned state with), per-stage
+  lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
@@ -169,7 +175,7 @@ orchestrator process is stateless.
   with subsystem-specific support in
   `tests/scheduler_routing_*.py`; other facade-level helper tests
   include (`tests/test_workflow_pickup.py`,
-  `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_analytics.py`,
+  `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
   `tests/test_workflow_tick_parallel.py`, `tests/test_workflow_drift.py`,
   `tests/test_workflow_backlog_routing.py`, `tests/test_workflow_question_routing.py`,
@@ -234,8 +240,8 @@ orchestrator process is stateless.
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
   `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state`,
-  `engine/comments.py`, `engine/messages.py`, and `engine/prompts.py` owners, the guard that importing either the
-  facade or the state
+  `engine/comments.py`, `engine/messages.py`, `engine/prompts.py`, and `engine/usage.py` owners, the guard that
+  importing either the facade or the state
   owner resolves no manifest target and no
   dependency binding, the package-surface checks that the facade is the
   initializer, that the engine initializer binds only the submodules planted in it, and that a submodule
@@ -260,7 +266,14 @@ orchestrator process is stateless.
   carries only the second), the conflicted-path listing and its capped remainder, the empty reviewer-feedback
   fallback, and the three historical facades that still forward its names (`test_prompts.py`), plus the
   documentation prompt's own marker / diff-target / `plans/`-exclusion contract
-  (`test_prompts_documentation.py`).
+  (`test_prompts_documentation.py`). The tracked-run owner's coverage closes the directory: the single
+  analytics record a stage-driven run appends, its context / exit / usage fields and the prompt, stdout,
+  stderr, and secrets it must not carry (`test_usage.py`), the configured-model fallback filling only a
+  stream that omitted its own model (`test_usage_fallback.py`), the one-per-distinct-skill emission with
+  its default-off gate, args privacy, and fail-open guard (`test_usage_skills.py`), the opt-in trajectory
+  record and the pinned-off sink it must not write (`test_usage_trajectory.py`), and the `UsageMetrics`
+  surfaced on the returned result (`test_usage_metrics.py`), with the wire payloads and issue numbers all
+  five share in `tests/workflow/engine/usage_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

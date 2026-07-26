@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
+from orchestrator.workflow.engine import usage as _usage
 
 _ConflictContext = _owner._ConflictContext
 Optional = _owner.Optional
@@ -74,11 +75,9 @@ def _hand_resolved_round_to_validating(
     Docs do not run here: the single docs pass is deferred to the post-approval
     handoff to `documenting` in `_handle_validating`.
     """
-    from orchestrator import workflow as _wf
-
     ctx.state.set(_REVIEW_ROUND, 0)
     ctx.state.set(_CONFLICT_ROUND, conflict_round + 1)
-    ctx.state.set("last_conflict_resolved_at", _wf._now_iso())
+    ctx.state.set("last_conflict_resolved_at", _usage._now_iso())
     _owner._emit_conflict_round_incremented(
         ctx,
         pr_number=int(pr_number),

@@ -8,6 +8,7 @@ from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import usage as _usage
 
 _QuestionRun = _owner._QuestionRun
 AgentResult = _owner.AgentResult
@@ -115,7 +116,7 @@ def _finalize_closed_question(run: _QuestionRun) -> bool:
 
     if getattr(run.issue, "state", "open") != "closed":
         return False
-    run.state.set("question_closed_at", _wf._now_iso())
+    run.state.set("question_closed_at", _usage._now_iso())
     run.gh.set_workflow_label(run.issue, WorkflowLabel.DONE)
     # The receipt is posted before the single state write so its comment id is
     # tracked alongside the terminal timestamp.
