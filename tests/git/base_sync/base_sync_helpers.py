@@ -1,0 +1,153 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""Recovery contexts and a fake client shared by the base-sync owner tests."""
+
+from __future__ import annotations
+
+import contextlib
+import subprocess
+from pathlib import Path
+from unittest.mock import patch
+
+from orchestrator import config
+from orchestrator.git.base_sync import models
+
+from tests.fakes import FakeGitHubClient, make_issue
+
+ISSUE = 7
+
+PR_NUMBER = 42
+
+BRANCH = "orchestrator/acme__widget/issue-7"
+
+LABEL = "in_review"
+
+PRE_REBASE_SHA = "before-sha"
+
+RECOVERED_SHA = "rebased-sha"
+
+REMOTE_SHA = "remote-sha"
+
+WORKTREE = Path("/tmp/base-sync-owner-wt")
+
+SPEC = config.RepoSpec(
+    slug="acme/widget",
+    target_root=Path("/tmp/base-sync-owner-target"),
+    base_branch="main",
+)
+
+PARK_PUSH_FAILED = "auto_base_rebase_push_failed"
+
+PARK_DIRTY = "auto_base_rebase_dirty"
+
+KEY_AWAITING_HUMAN = "awaiting_human"
+
+KEY_PARK_REASON = "park_reason"
+
+KEY_PENDING_PUSH_SHA = "pending_auto_base_rebase_push_sha"
+
+KEY_REVIEW_ROUND = "review_round"
+
+KEY_LAST_ACTION_COMMENT_ID = "last_action_comment_id"
+
+GIT_HARDENED = "_git_hardened"
+
+GIT_FAILURE_EXIT_CODE = 128
+
+
+def _git_result(
+    *,
+    returncode: int = 0,
+    stdout: str = "",
+    stderr: str = "",
+) -> subprocess.CompletedProcess:
+    """Build a completed `git` result the owners read fields off."""
+    return subprocess.CompletedProcess(
+        args=["git"],
+        returncode=returncode,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+
+def _recovery_context(
+    *,
+    behind: int = 0,
+    unparking_consumed_max: int | None = None,
+    **state_fields,
+) -> models._AutoRebaseRecoveryContext:
+    """Seed issue #7 with PR #42 pinned and wrap it in a recovery context.
+
+    `state_fields` merge into the pinned state, so a test names only the
+    fields its case reads back.
+    """
+    gh = FakeGitHubClient()
+    issue = make_issue(ISSUE, label=LABEL)
+    gh.add_issue(issue)
+    gh.seed_state(
+        ISSUE, pr_number=PR_NUMBER, branch=BRANCH, **state_fields,
+    )
+    return models._AutoRebaseRecoveryContext(
+        gh=gh,
+        spec=SPEC,
+        issue=issue,
+        state=gh.read_pinned_state(issue),
+        worktree=WORKTREE,
+        pr_number=PR_NUMBER,
+        label=LABEL,
+        pending_pre_rebase_sha=PRE_REBASE_SHA,
+        behind=behind,
+        unparking_consumed_max=unparking_consumed_max,
+    )
+
+
+def _snapshot(
+    *,
+    local_head: str = RECOVERED_SHA,
+    remote_head: str = REMOTE_SHA,
+    ahead: int = 0,
+    behind: int = 0,
+) -> models._AutoRebaseRecoverySnapshot:
+    """Build the local/remote comparison an outcome is selected from."""
+    return models._AutoRebaseRecoverySnapshot(
+        branch=BRANCH,
+        local_head=local_head,
+        remote_head=remote_head,
+        ahead=ahead,
+        behind=behind,
+    )
+
+
+class _OrderedCall:
+    """Record one call on a shared log, then run the real one."""
+
+    def __init__(self, ordered: list[str], name: str, original) -> None:
+        self._ordered = ordered
+        self._name = name
+        self._original = original
+
+    def __call__(self, *args, **kwargs):
+        self._ordered.append(self._label(args))
+        return self._original(*args, **kwargs)
+
+    def _label(self, args) -> str:
+        # `emit_event` and `_git_hardened` each land more than once in a
+        # single sequence and take their subject first, so that argument is
+        # what tells the entries apart. Every other recorded call leads with
+        # an issue or a PR number instead.
+        if args and isinstance(args[0], str):
+            return f"{self._name}:{args[0]}"
+        return self._name
+
+
+@contextlib.contextmanager
+def _recorded_calls(ordered: list[str], gh, *names: str):
+    """Log the order `gh` receives `names`, still running each real call."""
+    with contextlib.ExitStack() as stack:
+        for name in names:
+            stack.enter_context(
+                patch.object(
+                    gh, name, _OrderedCall(ordered, name, getattr(gh, name)),
+                ),
+            )
+        yield

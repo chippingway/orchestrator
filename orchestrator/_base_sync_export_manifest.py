@@ -85,30 +85,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._base_sync_recovery_decisions",
-        (
-            ("_already_published_recovery_notice", "_already_published_recovery_notice"),
-            ("_finalize_already_published_recovery", "_finalize_already_published_recovery"),
-            ("_park_dirty_recovery", "_park_dirty_recovery"),
-            ("_park_diverged_recovery", "_park_diverged_recovery"),
-            ("_park_failed_recovery_push", "_park_failed_recovery_push"),
-            ("_pushed_recovery_notice", "_pushed_recovery_notice"),
-            ("_reject_unknown_recovery_comparison", "_reject_unknown_recovery_comparison"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._base_sync_recovery_persistence",
-        (
-            ("_emit_recovered_rebase_event", "_emit_recovered_rebase_event"),
-            ("_finalize_recovered_rebase", "_finalize_recovered_rebase"),
-            ("_park_auto_rebase_failure", "_park_auto_rebase_failure"),
-            ("_post_recovered_rebase_notice", "_post_recovered_rebase_notice"),
-            ("_prepare_recovered_rebase_state", "_prepare_recovered_rebase_state"),
-            ("_reset_clear_and_park", "_reset_clear_and_park"),
-            ("_route_recovered_rebase", "_route_recovered_rebase"),
-        ),
-    ),
-    *export_group(
         "orchestrator._base_sync_recovery_snapshot",
         (
             ("_abort_recovery_unverified", "_abort_recovery_unverified"),
@@ -161,6 +137,30 @@ EXPORTS = (
             ("_AutoRebaseRecoveryContext", "_AutoRebaseRecoveryContext"),
             ("_AutoRebaseRecoverySnapshot", "_AutoRebaseRecoverySnapshot"),
             ("_ConflictRouteContext", "_ConflictRouteContext"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.outcomes",
+        (
+            ("_already_published_recovery_notice", "_already_published_recovery_notice"),
+            ("_finalize_already_published_recovery", "_finalize_already_published_recovery"),
+            ("_park_dirty_recovery", "_park_dirty_recovery"),
+            ("_park_diverged_recovery", "_park_diverged_recovery"),
+            ("_park_failed_recovery_push", "_park_failed_recovery_push"),
+            ("_pushed_recovery_notice", "_pushed_recovery_notice"),
+            ("_reject_unknown_recovery_comparison", "_reject_unknown_recovery_comparison"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.persistence",
+        (
+            ("_emit_recovered_rebase_event", "_emit_recovered_rebase_event"),
+            ("_finalize_recovered_rebase", "_finalize_recovered_rebase"),
+            ("_park_auto_rebase_failure", "_park_auto_rebase_failure"),
+            ("_post_recovered_rebase_notice", "_post_recovered_rebase_notice"),
+            ("_prepare_recovered_rebase_state", "_prepare_recovered_rebase_state"),
+            ("_reset_clear_and_park", "_reset_clear_and_park"),
+            ("_route_recovered_rebase", "_route_recovered_rebase"),
         ),
     ),
     *export_group(
