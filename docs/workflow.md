@@ -32,7 +32,7 @@ authenticated on the host before the orchestrator starts.
 The stable stage-handler names live on lazy facades under `orchestrator/stages/`; responsibility-named leaves own
 entry checks, session execution, drift handling, persistence, and terminal routing (see the module map in
 [`architecture.md#top-level-layout`](architecture.md#top-level-layout)). Cross-stage calls still resolve through
-`workflow.py`, preserving the historical patch surface. The per-stage behavior is documented in
+`orchestrator.workflow`, preserving the historical patch surface. The per-stage behavior is documented in
 [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What follows is the role-specific glue.
 
 - **Dev session reuse.** The implementer session is spawned once in `_handle_implementing` and then resumed by

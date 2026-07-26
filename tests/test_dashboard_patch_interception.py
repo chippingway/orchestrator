@@ -116,7 +116,7 @@ class FacadePatchInterceptionTest(unittest.TestCase):
     """The moved page-pipeline resolves its siblings, the read-wave dispatch,
     and `PLOTLY_CONFIG` through the `orchestrator.dashboard` facade at call
     time, so `patch.object(dashboard, ...)` intercepts the running pipeline
-    (mirroring the workflow.py stage-handler facade). Identity re-export alone
+    (mirroring the `workflow` stage-handler facade). Identity re-export alone
     would not catch a stubbed rebind, so these drive the callers under a patch.
     """
 

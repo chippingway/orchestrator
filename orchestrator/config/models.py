@@ -18,8 +18,9 @@ class RepoSpec:
     """Per-repo identity threaded through the workflow.
 
     Replaces the global `REPO` / `TARGET_REPO_ROOT` / `BASE_BRANCH` reads
-    inside workflow.py so a future multi-repo loop can drive several repos
-    from one orchestrator process without touching module-level state.
+    inside `orchestrator.workflow` so a future multi-repo loop can drive
+    several repos from one orchestrator process without touching
+    module-level state.
 
     `remote_name` is the name of the git remote in `target_root` that points
     at this repo on GitHub. Defaults to `origin`; override when the local

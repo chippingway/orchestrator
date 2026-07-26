@@ -19,7 +19,7 @@ description: >-
 Before committing, run each of these and fix what they report:
 
 - `.venv/bin/python -m ruff check orchestrator tests` — recurring CI breakers:
-  - **F401** (unused import): if the name is meant to be a re-export from `workflow.py`, alias it with
+  - **F401** (unused import): if the name is meant to be a re-export from the `workflow` facade, alias it with
     `... as <name>` so ruff treats it as an explicit re-export instead of dead code.
   - **F541** (f-string without placeholders): use a plain string.
   - **F841** (unused local).
@@ -32,11 +32,12 @@ Before committing, run each of these and fix what they report:
   you branched from, and only then call it out in the PR as a baseline failure with the reproduction
   steps. Otherwise fix it.
 
-## Refactoring `workflow.py` and the stage modules
+## Refactoring the `workflow` facade and the stage modules
 
-The facade pattern in `orchestrator/workflow.py` is load-bearing for tests. Get the boundary right:
+The facade pattern in `orchestrator/workflow/__init__.py` is load-bearing for tests. Get the boundary
+right:
 
-- `workflow.py` re-exports stage handlers and cross-module helpers under their original names so
+- The facade re-exports stage handlers and cross-module helpers under their original names so
   `patch.object(workflow, "_foo", ...)` in tests keeps intercepting calls. **Every re-export must be
   aliased with `as <name>`** — bare `from .stages.implementing import _handle_implementing` will be
   stripped by ruff F401; `from .stages.implementing import _handle_implementing as _handle_implementing`
@@ -46,7 +47,7 @@ The facade pattern in `orchestrator/workflow.py` is load-bearing for tests. Get 
   `patch.object(workflow, "_foo", ...)` because the stage module captures the original reference.
 - Stage-private helpers (only used inside one stage module — e.g. `_bump_in_review_watermarks`,
   `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`) stay private to that stage
-  module. Do **not** re-export them from `workflow.py`. Re-exports are an intentional surface, not a
+  module. Do **not** re-export them from the facade. Re-exports are an intentional surface, not a
   blanket.
 - Preserve the public contract verbatim across a refactor: workflow labels, pinned-state JSON keys,
   comment marker text, watermark fields, event-emission shape. Live issues already carry these — a
@@ -55,7 +56,7 @@ The facade pattern in `orchestrator/workflow.py` is load-bearing for tests. Get 
 ## Tests
 
 - When you move a helper to a new module, either update the test's patch target to the new module
-  boundary, or keep the compatibility alias on `workflow.py` and patch through the facade. Pick one
+  boundary, or keep the compatibility alias on `orchestrator.workflow` and patch through the facade. Pick one
   approach per PR and be consistent.
 - Stage-handler tests live in `tests/test_workflow_<stage>.py` (`_conflicts`); the validating stage
   is split into focused `tests/test_workflow_validating_*.py` files (review loops + retry caps,
@@ -109,7 +110,7 @@ When you move a handler, helper, or constant, grep for the symbol across these f
 - `docs/architecture.md`
 - `docs/state-machine.md`
 - `docs/workflow.md`
-- the module docstrings at the top of `orchestrator/workflow.py`, `workflow_drift.py`,
+- the module docstrings at the top of `orchestrator/workflow/__init__.py`, `workflow_drift.py`,
   `workflow_messages.py`, `worktrees.py`, and `orchestrator/stages/*.py`
 
 Be precise about what is and isn't re-exported — overstated claims like "every helper is re-exported" get flagged.

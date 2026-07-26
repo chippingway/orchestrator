@@ -132,9 +132,10 @@ def _parse_agent_spec(name: str, spec: str) -> tuple[str, tuple[str, ...]]:
     """Parse a shell-like backend spec into (backend, extra_args).
 
     A thin binding over `environment.parse_agent_spec` on the config error
-    funnel. Reused at runtime by `workflow.py` to re-parse a spec persisted
-    to pinned state, so a legacy bare-backend value (`"codex"` / `"claude"`)
-    round-trips to `(backend, ())` and a full spec round-trips to its tokens.
+    funnel. Reused at runtime by `orchestrator.workflow` to re-parse a spec
+    persisted to pinned state, so a legacy bare-backend value (`"codex"` /
+    `"claude"`) round-trips to `(backend, ())` and a full spec round-trips
+    to its tokens.
     """
     return environment.parse_agent_spec(name, spec, _config_error)
 
@@ -263,7 +264,7 @@ CLAUDE_BIN: str = _RESOLVED["CLAUDE_BIN"]
 # Each spec is shell-like: the first token names the backend (`codex` /
 # `claude`), and any remaining tokens are forwarded as backend-CLI args
 # (model selection, reasoning effort, etc.) on every spawn for that role.
-# The `*_SPEC` constant holds the raw configured string -- workflow.py
+# The `*_SPEC` constant holds the raw configured string -- the workflow
 # persists it verbatim in pinned state so a config flip mid-flight cannot
 # change what backend+args run on an in-flight issue (the stored spec is
 # re-parsed on every resume; current config is only consulted for fresh
