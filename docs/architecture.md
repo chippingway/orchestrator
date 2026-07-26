@@ -101,8 +101,12 @@ orchestrator/
     models.py           typed submissions, legacy-call binding, normalization
     service.py          the concrete `IssueScheduler` over its view,
                         reservation, and execution layers
-  workflow.py           lazy compatibility facade for tick, dispatch, shared
-                        helpers, and stage-handler patch points
+  workflow/
+    __init__.py         lazy compatibility facade for tick, dispatch, shared
+                        helpers, and stage-handler patch points, plus its
+                        `__init__.pyi` static surface
+    engine/
+      __init__.py       package marker only; callers import an owner directly
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
@@ -255,11 +259,11 @@ orchestrator/
     _question_*.py      read-only session, run, outcomes, and handler routing
 ```
 
-`workflow.py`, `worktrees.py`, `analytics.read`, and `dashboard.py` publish explicit sorted `__all__` inventories,
-`.pyi` surfaces, and immutable target registries. Resolution is lazy and cached on the facade, but the resolved object
-is the implementation object's exact identity. Existing direct imports, wildcard imports, and `patch.object` calls
-therefore keep working. Base-sync names still resolve on the `base_sync` facade with their owner's exact identity,
-and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
+`workflow/__init__.py`, `worktrees.py`, `analytics.read`, and `dashboard.py` publish explicit sorted `__all__`
+inventories, `.pyi` surfaces, and immutable target registries. Resolution is lazy and cached on the facade, but the
+resolved object is the implementation object's exact identity. Existing direct imports, wildcard imports, and
+`patch.object` calls therefore keep working. Base-sync names still resolve on the `base_sync` facade with their
+owner's exact identity, and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
 `workflow`) because their callers read them off a facade. Inside `git/publication/`, though, the owners bind their
 collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes`, `planning` calls `git.commands`,
 both siblings, and the verification probes for its HEAD and dirty-file guards, `rewrite` calls `git.commands`,
@@ -407,8 +411,8 @@ external-merge sweeps, and the complete pinned-state JSON schema), see
 ## Stage handlers
 
 Each workflow label dispatches to a `_handle_<label>` function. The handlers live under `orchestrator/stages/` (see the
-module map above) and are re-exported from `workflow.py` so test patches against `workflow.<helper>` keep intercepting
-calls from inside a stage handler.
+module map above) and are re-exported from the `workflow` package initializer so test patches against
+`workflow.<helper>` keep intercepting calls from inside a stage handler.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked

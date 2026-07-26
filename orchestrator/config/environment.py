@@ -49,10 +49,10 @@ def parse_agent_spec(
     `claude`; anything else aborts at import so a typo cannot silently
     fall back to a default backend on next restart.
 
-    The same parser is reused at runtime by `workflow.py` to re-parse a
-    spec that was previously persisted to pinned state, so a legacy bare-
-    backend value (`"codex"` / `"claude"`) round-trips cleanly to
-    `(backend, ())` and a full spec with args round-trips to its tokens.
+    The same parser is reused at runtime by `orchestrator.workflow` to
+    re-parse a spec that was previously persisted to pinned state, so a
+    legacy bare-backend value (`"codex"` / `"claude"`) round-trips cleanly
+    to `(backend, ())` and a full spec with args round-trips to its tokens.
     """
     raw_spec = (agent_spec or "").strip()
     if not raw_spec:

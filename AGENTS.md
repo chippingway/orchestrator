@@ -24,8 +24,9 @@ orchestrator process is stateless.
 
 ## Repository layout
 
-- `orchestrator/` — Python package: tick loop and label-dispatch compatibility facade (`workflow.py`), per-stage lazy
-  facades (`stages/`), worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
+- `orchestrator/` — Python package: tick loop and label-dispatch compatibility facade (the `workflow/` package
+  initializer, with `workflow/engine/` reserved for its owners), per-stage lazy facades (`stages/`),
+  worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`
@@ -207,7 +208,10 @@ orchestrator process is stateless.
   import-cycle / layering /
   package-surface checks including the guard that no flat `_base_sync_*` implementation leaf returns, plus
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
-  assertions, and recovery-context / call-order support modules.
+  assertions, and recovery-context / call-order support modules. Workflow-package tests live in
+  `tests/workflow/`: the clean-process imports of the package and its `engine/` subpackage, the guard that
+  importing the facade resolves no manifest target, and the package-surface checks that the facade is the
+  initializer and that a submodule binding leaves its lazy hooks intact.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

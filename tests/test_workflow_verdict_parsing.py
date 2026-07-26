@@ -177,8 +177,8 @@ class ParseDocumentationMarkerGuardTest(unittest.TestCase):
 
 
 class VerdictParserReexportTest(unittest.TestCase):
-    """`workflow.py` re-exports the verdict parsers under their original
-    names so historical `from orchestrator.workflow import _parse_*` call
+    """`orchestrator.workflow` re-exports the verdict parsers under their
+    original names so historical `from orchestrator.workflow import _parse_*` call
     sites (and `patch.object(workflow, "_parse_*")` interception) keep
     working. The facade name must resolve to the same object the focused
     `workflow_messages` module defines."""

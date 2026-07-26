@@ -13,7 +13,7 @@ Reject (or request fixes) if any of these are red:
 
 - `ruff check orchestrator tests`. Common offenders to look for explicitly:
   - **F401** — unused import on the facade. If the import is intended as a re-export from
-    `workflow.py`, it must be aliased `from X import Y as Y`. A bare import will not survive ruff.
+    the `workflow` facade, it must be aliased `from X import Y as Y`. A bare import will not survive ruff.
   - **F541** — f-strings without placeholders, typically in newly-added test files.
   - **F841** — unused local in tests.
   - **E402** — import after non-import code.
@@ -40,9 +40,9 @@ For any refactor:
 
 ## Facade and module boundaries
 
-The compatibility surface on `orchestrator/workflow.py` is load-bearing. Confirm:
+The compatibility surface on `orchestrator/workflow/__init__.py` is load-bearing. Confirm:
 
-- New stage helpers that another stage module reaches for are re-exported from `workflow.py`, each
+- New stage helpers that another stage module reaches for are re-exported from the `workflow` facade, each
   aliased `... as <name>`. Stage-private helpers (only used inside one stage module —
   `_bump_in_review_watermarks`, `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`,
   etc.) should **not** be re-exported.
@@ -71,7 +71,7 @@ After any handler or helper move, grep the PR for stale pointers and request fix
 - `docs/architecture.md`
 - `docs/state-machine.md`
 - `docs/workflow.md`
-- module docstrings at the top of `workflow.py`, `workflow_drift.py`, `workflow_messages.py`,
+- module docstrings at the top of `workflow/__init__.py`, `workflow_drift.py`, `workflow_messages.py`,
   `worktrees.py`, `orchestrator/stages/*.py`
 
 Treat blanket statements like "every helper is re-exported" with suspicion — verify literally against the code.

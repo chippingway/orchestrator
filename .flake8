@@ -1,6 +1,6 @@
 [flake8]
 # WPS412 forbids logic in an __init__.py and WPS410 forbids module-level
-# metadata such as __all__. Four package initializers deliberately carry
+# metadata such as __all__. Five package initializers deliberately carry
 # import-time logic and are scoped exemptions here:
 #
 # * orchestrator/config/__init__.py invokes the `environment` resolver and
@@ -24,6 +24,13 @@
 #   narrow public surface through an explicit __all__ (WPS410) so
 #   `orchestrator.scheduler` stays the historical import site. WPS412 is waived
 #   for that import-time logic.
+# * orchestrator/workflow/__init__.py is the lazy workflow compatibility facade:
+#   it binds the shared config / analytics modules and installs the module-level
+#   `__getattr__` / `__dir__` hooks that resolve the export manifest, so
+#   `orchestrator.workflow` stays the historical import site and patch target
+#   for the whole inventory. WPS412 is waived for that import-time logic; the
+#   `__all__` it publishes is resolved lazily through the hooks rather than
+#   assigned in the initializer, so WPS410 does not apply.
 #
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
@@ -49,6 +56,7 @@ per-file-ignores =
     orchestrator/agents/__init__.py:WPS412,WPS410
     orchestrator/github/__init__.py:WPS412,WPS410
     orchestrator/scheduler/__init__.py:WPS412,WPS410
+    orchestrator/workflow/__init__.py:WPS412
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202
