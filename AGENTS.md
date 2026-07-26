@@ -166,9 +166,9 @@ orchestrator process is stateless.
   base-sync owners
   covered in `tests/git/base_sync/`: request-to-context derivation, model defaults and frozen-ness, the
   published pinned-state keys / park reasons / detour labels / logger name, the auto-rebase park and its
-  reset-and-park tail, the staged recovery state / notice / event / routing writes, the recovery notices and
-  the park, abort, and already-published outcomes, and import-cycle / layering / package-surface checks, plus
-  their recovery-context support module.
+  reset-and-park tail, the staged recovery state / notice / event / routing writes and the order the park and
+  finalize paths publish them in, the recovery notices and the park, abort, and already-published outcomes, and
+  import-cycle / layering / package-surface checks, plus their recovery-context and call-order support module.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

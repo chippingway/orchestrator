@@ -270,8 +270,12 @@ two recovery owners: `outcomes` calls its `persistence` sibling for the finalize
 and `persistence` calls `git.commands` for the reset and clean. A patch that has to intercept the hardened git
 command a park runs, or the finalize an outcome delegates to, therefore targets `orchestrator.git.commands` or
 the owner module rather than `base_sync`. The recovery helpers themselves stay patchable by name on `base_sync`,
-because the leaves that route into them still read them off that facade; so do the workflow-layer park guard
-and PR-comment poster `persistence` reaches through call-time imports. Config and analytics modules
+because the leaves that route into them still read them off that facade. The collaborators these two owners
+reach *upward* are the exception: `persistence` binds the park guard and the PR-comment poster, and `outcomes`
+the unverified-abort helper, through call-time imports, so a patch for any of the three targets
+`orchestrator.workflow`, `orchestrator.workflow_messages`, or `orchestrator._base_sync_recovery_snapshot`. The
+`base_sync` forwards of `_post_pr_comment` and `_abort_recovery_unverified` still resolve, but they are not
+what these owners call. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.
