@@ -1,5 +1,7 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Shared assertions for what a published, routed, or refused rebase leaves."""
+
 from __future__ import annotations
 
 from tests.base_sync_scenarios import PUSH_PATCH, REBASE_PATCH

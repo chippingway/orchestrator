@@ -9,7 +9,13 @@ import sys
 import unittest
 
 from orchestrator import base_sync, git
-from orchestrator.git.base_sync import eligibility, models, state
+from orchestrator.git.base_sync import (
+    eligibility,
+    guards,
+    models,
+    publication,
+    state,
+)
 from orchestrator.git.base_sync import (
     outcomes,
     persistence,
@@ -40,10 +46,14 @@ _STARTUP_OWNER = "orchestrator.git.base_sync.startup"
 
 _ELIGIBILITY_OWNER = "orchestrator.git.base_sync.eligibility"
 
+_PUBLICATION_OWNER = "orchestrator.git.base_sync.publication"
+
+_GUARDS_OWNER = "orchestrator.git.base_sync.guards"
+
 _OWNERS = (
     _MODELS_OWNER, _PRE_PR_OWNER, _REFRESH_OWNER, _STATE_OWNER,
     _PERSISTENCE_OWNER, _OUTCOMES_OWNER, _SNAPSHOT_OWNER, _RECOVERY_OWNER,
-    _STARTUP_OWNER, _ELIGIBILITY_OWNER,
+    _STARTUP_OWNER, _ELIGIBILITY_OWNER, _PUBLICATION_OWNER, _GUARDS_OWNER,
 )
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS, "orchestrator.base_sync")
@@ -105,6 +115,7 @@ _OWNER_ONLY_NAMES = (
     "_auto_rebase_retry_decision",
     "_fetch_recovery_snapshot",
     "_park_dirty_recovery",
+    "_publish_auto_rebase",
     "_recover_pending_auto_base_rebase",
     "_refresh_base_and_worktrees",
     "_reset_clear_and_park",
@@ -138,10 +149,13 @@ _FACADE_FORWARDS = (
     ("_clear_ineligible_recovery", snapshot),
     ("_clear_unchanged_recovery", snapshot),
     ("_complete_recovery_snapshot", snapshot),
+    ("_emit_auto_rebase_event", publication),
     ("_emit_recovered_rebase_event", persistence),
     ("_fetch_recovery_snapshot", snapshot),
     ("_finalize_already_published_recovery", outcomes),
+    ("_finalize_auto_rebase", publication),
     ("_finalize_recovered_rebase", persistence),
+    ("_finish_noop_auto_rebase", guards),
     ("_handle_failed_auto_rebase", startup),
     ("_issue_skips_base_sync", refresh),
     ("_issue_worktree_number", refresh),
@@ -149,12 +163,17 @@ _FACADE_FORWARDS = (
     ("_normal_auto_rebase_can_start", eligibility),
     ("_open_auto_rebase_pr", eligibility),
     ("_park_auto_rebase_failure", persistence),
+    ("_park_dirty_auto_rebase", guards),
     ("_park_dirty_recovery", outcomes),
     ("_park_diverged_recovery", outcomes),
+    ("_park_failed_auto_rebase_push", guards),
     ("_park_failed_recovery_push", outcomes),
+    ("_park_unreadable_post_rebase_head", guards),
     ("_park_unreadable_pre_rebase_head", startup),
+    ("_post_auto_rebase_notice", publication),
     ("_post_recovered_rebase_notice", persistence),
     ("_prepare_recovered_rebase_state", persistence),
+    ("_publish_auto_rebase", publication),
     ("_pushed_recovery_notice", outcomes),
     ("_read_remote_recovery_head", snapshot),
     ("_rebase_base_into_worktree", pre_pr),

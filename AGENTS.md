@@ -32,8 +32,9 @@ orchestrator process is stateless.
   and stage-specific prefixes) or straight to the git-package owners -- `git/` for
   `git_plumbing.py`, `git/verification/` for `verify.py`, `git/worktrees/` for `worktree_lifecycle.py`,
   `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models, shared state, worktree
-  refresh, and rebase-eligibility gates plus the rebase startup and crash-recovery probing, routing,
-  outcomes, and persistence `base_sync.py` publishes. The package also contains per-tick
+  refresh, and rebase-eligibility gates plus the rebase startup, publication and its guards, and
+  crash-recovery probing, routing, outcomes, and persistence `base_sync.py` publishes. The package also
+  contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
@@ -102,7 +103,10 @@ orchestrator process is stateless.
   anchor, the park-reason and trusted-retry-comment decision, the open-PR read that clears an anchor a
   terminal PR left behind, the crash-recovery precedence, and the clean-tree / behind-base start
   probe), the `startup.py` owner (the pre-rebase HEAD guard, the anchor and retry unpark persisted
-  before git runs, and the abort / conflict-route / park a failed rebase takes), the
+  before git runs, and the abort / conflict-route / park a failed rebase takes), the `publication.py` owner
+  (the post-rebase HEAD and dirty checks, the lease-pinned force-push they gate, and the notice, audit event,
+  `validating` route, and pinned-state write an accepted push earns), the `guards.py` owner (the no-op
+  completion plus the unreadable-HEAD, dirty-tree, and failed-push parks publication hands off to), the
   `persistence.py` owner (the auto-rebase park, the shared
   reset-and-park tail, and the pinned-state / notice / audit-event writes a recovered rebase finalizes and
   routes with), the `outcomes.py` owner (the two recovery notices plus the already-published,
@@ -189,12 +193,15 @@ orchestrator process is stateless.
   reset-and-park tail, the staged recovery state / notice / event / routing writes and the order the park and
   finalize paths publish them in, the recovery notices and the park, abort, and already-published outcomes,
   the anchor a normal rebase sets and every park clears, the abort / conflict / park routes a failed rebase
-  takes, the fetch refspec / remote-head reads / divergence probing and their fail-closed exits, the order one
+  takes, the notice / event / relabel a published clean rebase writes and the reset-and-park a rejected push
+  falls to, the PR states and counters a refresh leaves untouched, a real bare remote driving the PR-route
+  publish and its push-failure rollback,
+  the fetch refspec / remote-head reads / divergence probing and their fail-closed exits, the order one
   comparison is routed to a single answer in and the guards the reissued push is leased behind, the recovery
   exits that cannot verify what the remote PR branch carries, real-git recovery of an unpushed rebase, a
   landed push, an out-of-band remote update, and a dirty worktree, and import-cycle / layering /
-  package-surface checks, plus their collaborator patch table, real-git fixtures, anchor assertions, and
-  recovery-context / call-order support modules.
+  package-surface checks, plus their collaborator patch table, real-git fixtures, anchor / clean / park
+  assertions, and recovery-context / call-order support modules.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in
