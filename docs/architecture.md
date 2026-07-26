@@ -297,7 +297,7 @@ every refusal that precedes it, and `guards` reaches `persistence` for the reset
 its four exits end in. On the
 crash-recovery side, `recovery` calls `snapshot` for the reads, `outcomes` for the answers, `persistence` for
 the finalize a landed push earns, and `git.authentication` / the verification probes for the reissued push and
-the dirty scan guarding it; `snapshot` reaches `git.authentication`, `git.commands`, the publication and
+the dirty scan guarding it; `snapshot` reaches `git.authentication`, `git.commands`, the `git.publication` and
 verification probes, `git.worktrees.paths`, and `persistence` for the fetch, the `rev-parse` of the remote
 head, the divergence counts and the local HEAD read, the branch name, and the reset-and-park its abort ends
 in; `outcomes` calls its `persistence` sibling
