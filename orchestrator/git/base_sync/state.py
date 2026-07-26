@@ -1,10 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Shared immutable values for :mod:`orchestrator.base_sync` leaves."""
+"""Pinned-state keys, park reasons, and detour labels for one rebase attempt.
+
+These values are a public contract in two directions: the string keys and park
+reasons are already written into pinned-state comments on live issues, and the
+logger name is what operator log filters select on. Both are spelled out
+literally here rather than derived from the module path so that moving this
+owner cannot rename either one.
+"""
 from __future__ import annotations
 
-from orchestrator.state_machine import WorkflowLabel
 import logging
+
+from orchestrator.state_machine import WorkflowLabel
 
 log = logging.getLogger('orchestrator.base_sync')
 

@@ -38,17 +38,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._base_sync_models",
-        (
-            ("_AutoRebaseContext", "_AutoRebaseContext"),
-            ("_AutoRebaseDecision", "_AutoRebaseDecision"),
-            ("_AutoRebaseRequest", "_AutoRebaseRequest"),
-            ("_AutoRebaseRecoveryContext", "_AutoRebaseRecoveryContext"),
-            ("_AutoRebaseRecoverySnapshot", "_AutoRebaseRecoverySnapshot"),
-            ("_ConflictRouteContext", "_ConflictRouteContext"),
-        ),
-    ),
-    *export_group(
         "orchestrator._base_sync_pr",
         (
             ("_publish_auto_rebase_from_pr", "_publish_auto_rebase_from_pr"),
@@ -152,7 +141,30 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._base_sync_state",
+        "orchestrator.comment_trust",
+        (("filter_trusted", "filter_trusted"),),
+    ),
+    *export_group(
+        "orchestrator.git.authentication",
+        (
+            ("_authed_fetch", "_authed_fetch"),
+            ("_authed_target_fetch", "_authed_target_fetch"),
+            ("_push_branch", "_push_branch"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.models",
+        (
+            ("_AutoRebaseContext", "_AutoRebaseContext"),
+            ("_AutoRebaseDecision", "_AutoRebaseDecision"),
+            ("_AutoRebaseRequest", "_AutoRebaseRequest"),
+            ("_AutoRebaseRecoveryContext", "_AutoRebaseRecoveryContext"),
+            ("_AutoRebaseRecoverySnapshot", "_AutoRebaseRecoverySnapshot"),
+            ("_ConflictRouteContext", "_ConflictRouteContext"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.state",
         (
             ("_AUTO_REBASE_PARK_REASONS", "_AUTO_REBASE_PARK_REASONS"),
             ("_AWAITING_HUMAN", "_AWAITING_HUMAN"),
@@ -165,18 +177,6 @@ EXPORTS = (
             ("_REASON_AUTO_BASE_REBASE_PUSH_FAILED", "_REASON_AUTO_BASE_REBASE_PUSH_FAILED"),
             ("_REVIEW_ROUND", "_REVIEW_ROUND"),
             ("log", "log"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.comment_trust",
-        (("filter_trusted", "filter_trusted"),),
-    ),
-    *export_group(
-        "orchestrator.git.authentication",
-        (
-            ("_authed_fetch", "_authed_fetch"),
-            ("_authed_target_fetch", "_authed_target_fetch"),
-            ("_push_branch", "_push_branch"),
         ),
     ),
     *export_group(

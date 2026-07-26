@@ -29,8 +29,10 @@ orchestrator process is stateless.
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
-  `_branch_*`, and stage-specific prefixes) or, for `git_plumbing.py`, `verify.py`, and `worktree_lifecycle.py`,
-  straight to the `git/`, `git/verification/`, and `git/worktrees/` owners. The package also contains per-tick
+  `_branch_*`, and stage-specific prefixes) or straight to the git-package owners -- `git/` for
+  `git_plumbing.py`, `git/verification/` for `verify.py`, `git/worktrees/` for `worktree_lifecycle.py`,
+  `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models and shared state
+  `base_sync.py` publishes. The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
@@ -84,9 +86,13 @@ orchestrator process is stateless.
   `probes.py` owner (the conventional / repo-local subject vocabulary and predicates, ahead/behind counts,
   first-commit and recent-base subject reads), the `titles.py` owner (subject-prefix inference from base
   history and PR-title selection) and the `planning.py` owner (the pre-rewrite merge-base, HEAD, dirty-tree and
-  topic-subject probes, their preparation error, and the squash message they select), with `git_plumbing.py`,
-  `verify.py`, `worktree_lifecycle.py`, and
-  `branch_publication.py` kept as the forwarding facades for historical callers), and stable runtime-core
+  topic-subject probes, their preparation error, and the squash message they select), and the `base_sync/`
+  subpackage, whose `__init__.py` binds nothing either, over the `models.py` owner (the frozen auto-rebase
+  context / request / recovery-context / snapshot / decision / conflict-route dataclasses) and the `state.py`
+  owner (the pinned-state keys, park reasons, refresh detour labels, and the `orchestrator.base_sync` logger
+  the flat `_base_sync_*` leaves bind directly), with `git_plumbing.py`, `verify.py`,
+  `worktree_lifecycle.py`, `branch_publication.py`, and
+  `base_sync.py` kept as the forwarding facades for historical callers), and stable runtime-core
   facades (`main.py`, `state_machine.py`).
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
@@ -145,10 +151,13 @@ orchestrator process is stateless.
   plus their path, branch-fixture, faked-plumbing, terminal, and real-git support modules (the thread scaffolding
   those serialization tests share with the authenticated-fetch one lives in
   `tests/git/concurrency_test_support.py`);
-  and the publication owners covered in `tests/git/publication/`: subject
+  the publication owners covered in `tests/git/publication/`: subject
   predicates, per-spec commit-subject reads, ahead/behind folding, prefix inference, PR-title selection,
   squash preparation errors and guard ordering with the message it selects, and
-  import-cycle / package-surface checks, plus their git-double support module.
+  import-cycle / package-surface checks, plus their git-double support module; and the base-sync owners
+  covered in `tests/git/base_sync/`: request-to-context derivation, model defaults and frozen-ness, the
+  published pinned-state keys / park reasons / detour labels / logger name, and import-cycle / layering /
+  package-surface checks.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in
