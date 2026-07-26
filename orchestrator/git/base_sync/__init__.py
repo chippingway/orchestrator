@@ -16,7 +16,9 @@ drives one tick's base fetch, worktree discovery, and per-worktree routing;
 yet, ``eligibility`` owns the label, park, PR-state, recovery, and clean-tree
 gates a PR-having worktree clears before any rewrite is attempted, and
 ``startup`` owns the pre-rebase anchor a pushed branch's rebase is begun from
-and the abort / route / park its failure takes. Callers import the owner they
+and the abort / route / park its failure takes. What a finished rebase is
+force-published with lives in ``publication``, and the refusals that keep it
+from being published at all live in ``guards``. Callers import the owner they
 need directly, so this initializer binds nothing and importing ``state`` or
 ``pre_pr`` never drags the PyGithub types ``models``, ``refresh``, and
 ``startup`` annotate their fields with in.

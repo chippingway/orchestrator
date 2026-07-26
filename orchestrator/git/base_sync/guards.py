@@ -1,17 +1,28 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Base sync publish guards."""
+"""The refusals that stand between a finished rebase and its force-push.
+
+Each one answers the same question with "not this branch, not this tick":
+the rebased HEAD cannot be read, the rewrite moved nothing, the tree came
+back with uncommitted edits, or the lease push was rejected. Three of them
+end in the shared reset-and-park tail, because the pre-rebase SHA is the
+head the remote PR still carries -- publishing past any of them would leave
+the reviewer voting on a tree the PR does not have, and parking is what
+stops the same tick's stage handlers from reading the rewritten HEAD. The
+no-op exit is the one that is not a failure: nothing moved, so only the
+crash-recovery anchor has to be dropped.
+"""
 from __future__ import annotations
 
-from orchestrator import base_sync as _owner
-from orchestrator.git.base_sync import state as _state
-
-_AutoRebaseContext = _owner._AutoRebaseContext
-config = _owner.config
-_PENDING_PUSH_SHA = _state._PENDING_PUSH_SHA
-_REASON_AUTO_BASE_REBASE_FAILED = _state._REASON_AUTO_BASE_REBASE_FAILED
-_REASON_AUTO_BASE_REBASE_PUSH_FAILED = _state._REASON_AUTO_BASE_REBASE_PUSH_FAILED
-log = _state.log
+from orchestrator import config
+from orchestrator.git.base_sync import persistence
+from orchestrator.git.base_sync.models import _AutoRebaseContext
+from orchestrator.git.base_sync.state import (
+    _PENDING_PUSH_SHA,
+    _REASON_AUTO_BASE_REBASE_FAILED,
+    _REASON_AUTO_BASE_REBASE_PUSH_FAILED,
+    log,
+)
 
 
 def _park_unreadable_post_rebase_head(
@@ -26,7 +37,7 @@ def _park_unreadable_post_rebase_head(
     )
     spec = context.spec
     before_short = before_sha[:8]
-    _owner._reset_clear_and_park(
+    persistence._reset_clear_and_park(
         context,
         before_sha,
         message=(
@@ -71,7 +82,7 @@ def _park_dirty_auto_rebase(
         len(dirty_files),
     )
     spec = context.spec
-    _owner._reset_clear_and_park(
+    persistence._reset_clear_and_park(
         context,
         before_sha,
         message=(
@@ -99,7 +110,7 @@ def _park_failed_auto_rebase_push(
     """Reset and park after a force-with-lease rejection or push failure."""
     spec = context.spec
     before_short = (before_sha or "")[:8]
-    _owner._reset_clear_and_park(
+    persistence._reset_clear_and_park(
         context,
         before_sha,
         message=(

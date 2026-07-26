@@ -38,24 +38,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._base_sync_publish",
-        (
-            ("_emit_auto_rebase_event", "_emit_auto_rebase_event"),
-            ("_finalize_auto_rebase", "_finalize_auto_rebase"),
-            ("_post_auto_rebase_notice", "_post_auto_rebase_notice"),
-            ("_publish_auto_rebase", "_publish_auto_rebase"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._base_sync_publish_guards",
-        (
-            ("_finish_noop_auto_rebase", "_finish_noop_auto_rebase"),
-            ("_park_dirty_auto_rebase", "_park_dirty_auto_rebase"),
-            ("_park_failed_auto_rebase_push", "_park_failed_auto_rebase_push"),
-            ("_park_unreadable_post_rebase_head", "_park_unreadable_post_rebase_head"),
-        ),
-    ),
-    *export_group(
         "orchestrator.comment_trust",
         (("filter_trusted", "filter_trusted"),),
     ),
@@ -75,6 +57,15 @@ EXPORTS = (
             ("_auto_rebase_retry_decision", "_auto_rebase_retry_decision"),
             ("_normal_auto_rebase_can_start", "_normal_auto_rebase_can_start"),
             ("_open_auto_rebase_pr", "_open_auto_rebase_pr"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.guards",
+        (
+            ("_finish_noop_auto_rebase", "_finish_noop_auto_rebase"),
+            ("_park_dirty_auto_rebase", "_park_dirty_auto_rebase"),
+            ("_park_failed_auto_rebase_push", "_park_failed_auto_rebase_push"),
+            ("_park_unreadable_post_rebase_head", "_park_unreadable_post_rebase_head"),
         ),
     ),
     *export_group(
@@ -120,6 +111,15 @@ EXPORTS = (
             ("_rebase_in_progress", "_rebase_in_progress"),
             ("_rebase_state_exists", "_rebase_state_exists"),
             ("_sync_pre_pr_worktree", "_sync_pre_pr_worktree"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.publication",
+        (
+            ("_emit_auto_rebase_event", "_emit_auto_rebase_event"),
+            ("_finalize_auto_rebase", "_finalize_auto_rebase"),
+            ("_post_auto_rebase_notice", "_post_auto_rebase_notice"),
+            ("_publish_auto_rebase", "_publish_auto_rebase"),
         ),
     ),
     *export_group(

@@ -1,11 +1,13 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Real-git PR-route refresh: what `publication` pushes and what it rolls back."""
+
 from __future__ import annotations
 
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import base_sync
+from orchestrator.git import authentication
 
 from tests.fakes import FakeGitHubClient, FakePR, make_issue
 from tests.workflow_helpers import (
@@ -92,7 +94,7 @@ class RefreshPrRealGitTest(_RefreshBaseRealGitFixture, unittest.TestCase):
         )
 
     def _refresh_with_push(self, push) -> None:
-        with patch.object(base_sync, "_push_branch", side_effect=push):
+        with patch.object(authentication, "_push_branch", side_effect=push):
             self._refresh()
 
     def _assert_clean_rebase(
