@@ -35,7 +35,15 @@ orchestrator process is stateless.
   last-marker-wins review and documentation verdicts, the drift `ACK:` read, the `/orchestrator continue`
   recognition, park-reason classification, and guidance-free refusal, the Markdown blockquote every notice
   quotes through, and the redact-before-truncate stderr diagnostics a park comment and a log line
-  carry), per-stage lazy facades (`stages/`),
+  carry -- and over the `workflow/engine/prompts.py` owner beside those: the prompt builders the stages
+  share (implement, fresh-respawn preamble, review, documentation, fix, conflict resolution, question and
+  its followup, PR-comment followup, decompose), the shared issue-body / conversation header and its empty
+  placeholders, the foreground-only note every commit-producing prompt appends and the commit-style note
+  the subject-writing subset of them adds beside it (the conflict prompt replays subjects it did not
+  write, so it takes only the first) -- the single-caller drift-resume prompt stays on
+  `_workflow_drift_routes.py` and borrows both -- the
+  bounded conflicted-path listing, and the single-decision comment and its best-effort manifest
+  fields), per-stage lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
@@ -160,8 +168,7 @@ orchestrator process is stateless.
   `tests/test_workflow_scheduler_*.py`,
   with subsystem-specific support in
   `tests/scheduler_routing_*.py`; other facade-level helper tests
-  include (`tests/test_workflow_documentation_prompt.py`,
-  `tests/test_workflow_pickup.py`,
+  include (`tests/test_workflow_pickup.py`,
   `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_analytics.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
   `tests/test_workflow_tick_parallel.py`, `tests/test_workflow_drift.py`,
@@ -227,7 +234,8 @@ orchestrator process is stateless.
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
   `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state`,
-  `engine/comments.py`, and `engine/messages.py` owners, the guard that importing either the facade or the state
+  `engine/comments.py`, `engine/messages.py`, and `engine/prompts.py` owners, the guard that importing either the
+  facade or the state
   owner resolves no manifest target and no
   dependency binding, the package-surface checks that the facade is the
   initializer, that the engine initializer binds only the submodules planted in it, and that a submodule
@@ -246,7 +254,13 @@ orchestrator process is stateless.
   passthrough action per park reason, the refusal that consumes the command it answers, and the three
   historical facades that still forward its names (`test_messages.py`), plus the review and documentation
   marker parsers with the inline / nonfinal / punctuated variants they reject
-  (`test_messages_verdicts.py`).
+  (`test_messages_verdicts.py`). The prompt owner's coverage sits beside those: the shared header's body /
+  thread text and its empty placeholders across every builder that carries one, the repo-local commit-style
+  and foreground-only notes on every commit-producing prompt (the conflict prompt authors no subject, so it
+  carries only the second), the conflicted-path listing and its capped remainder, the empty reviewer-feedback
+  fallback, and the three historical facades that still forward its names (`test_prompts.py`), plus the
+  documentation prompt's own marker / diff-target / `plans/`-exclusion contract
+  (`test_prompts_documentation.py`).
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

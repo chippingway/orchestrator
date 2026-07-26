@@ -7,6 +7,7 @@ from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import prompts as _prompts
 
 _ConflictContext = _owner._ConflictContext
 _ConflictResumeRun = _owner._ConflictResumeRun
@@ -150,13 +151,13 @@ def _awaiting_human_followup(ctx: _ConflictContext) -> Optional[str]:
         "last_action_comment_id", max(comment.id for comment in new_comments),
     )
     if continue_action == "retry":
-        return f"{_wf._CONTINUE_RETRY_PROMPT}\n\n{_wf._FOREGROUND_ONLY_NOTE}"
+        return f"{_prompts._CONTINUE_RETRY_PROMPT}\n\n{_prompts._FOREGROUND_ONLY_NOTE}"
     joined = "\n\n".join(
         _comments._quote_comment_line(comment)
         for comment in new_comments
         if comment.body
     )
-    return f"{joined}\n\n{_wf._FOREGROUND_ONLY_NOTE}"
+    return f"{joined}\n\n{_prompts._FOREGROUND_ONLY_NOTE}"
 
 
 def _run_conflict_resume(

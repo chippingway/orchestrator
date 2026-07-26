@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import prompts as _prompts
 
 _PreparedDevRun = _owner._PreparedDevRun
 GitHubClient = _owner.GitHubClient
@@ -33,14 +34,15 @@ def _retry_parked_dev_session(
     dispose the result exactly like the awaiting-human resume path.
 
     Unlike the generic human-reply resume this does NOT feed the bare command
-    text to the dev (`_wf._CONTINUE_RETRY_PROMPT` instead): the poisoned session
-    already carries the issue context in its transcript, or `_resume_dev_with_text`
-    rotates it to a re-grounded fresh spawn. The command comment(s) are marked
-    consumed up front so the retry does not re-fire next tick -- every fresh
-    comment is a bare continue here (the classifier's retry precondition), so
-    this drops no guidance. `user_content_hash` is deliberately NOT refreshed:
-    a bare continue never shifts it, and masking it here would swallow a real
-    body edit that landed in the same window before the dev could see it.
+    text to the dev (`_prompts._CONTINUE_RETRY_PROMPT` instead): the poisoned
+    session already carries the issue context in its transcript, or
+    `_resume_dev_with_text` rotates it to a re-grounded fresh spawn. The
+    command comment(s) are marked consumed up front so the retry does not
+    re-fire next tick -- every fresh comment is a bare continue here (the
+    classifier's retry precondition), so this drops no guidance.
+    `user_content_hash` is deliberately NOT refreshed: a bare continue never
+    shifts it, and masking it here would swallow a real body edit that landed
+    in the same window before the dev could see it.
     """
     from orchestrator import workflow as _wf
 
@@ -55,7 +57,7 @@ def _retry_parked_dev_session(
             branch=_wf._resolve_branch_name(state, spec, issue.number),
         )
     before_sha = _wf._head_sha(wt)
-    followup = f"{_wf._CONTINUE_RETRY_PROMPT}\n\n{_wf._FOREGROUND_ONLY_NOTE}"
+    followup = f"{_prompts._CONTINUE_RETRY_PROMPT}\n\n{_prompts._FOREGROUND_ONLY_NOTE}"
     wt, agent_result, paused = _owner._resume_dev_with_text(
         gh, spec, issue, state, followup, pause_guard=True,
     )

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import prompts
 
 from tests.fakes import make_issue
 from tests.workflow_helpers import _TEST_SPEC
@@ -18,7 +18,7 @@ _DOCUMENTATION_ISSUE_NUMBER = 67100
 
 
 def _documentation_prompt() -> str:
-    return workflow._build_documentation_prompt(
+    return prompts._build_documentation_prompt(
         _TEST_SPEC,
         make_issue(
             _DOCUMENTATION_ISSUE_NUMBER,
@@ -59,18 +59,14 @@ class BuildDocumentationPromptTest(unittest.TestCase):
         self.assertIn("out of scope", prompt)
 
     def test_updated_case_does_not_require_prefix(self) -> None:
-        # The docs pass must no longer force the `docs:` Conventional-Commit
-        # type: the agent mirrors the repo's own recent commit style, so a
-        # project-specific prefix (`event:`, `career:`, ...) is allowed for a
-        # documentation update just as for any other commit.
+        # The docs pass must not force the `docs:` Conventional-Commit type:
+        # the agent mirrors the repo's own recent commit style (pinned in
+        # `test_prompts.py`), so a project-specific prefix (`event:`,
+        # `career:`, ...) is allowed for a documentation update just as for
+        # any other commit.
         prompt = _documentation_prompt()
         self.assertNotIn("docs:", prompt)
         self.assertNotIn('git commit -m "docs: <subject>"', prompt)
-        # Repo-local style is taught instead, and the subject-only rule is
-        # still enforced.
-        self.assertIn("git log", prompt)
-        self.assertIn("repository-local", prompt)
-        self.assertIn("subject line only", prompt)
 
     def test_specifies_machine_no_change_marker(self) -> None:
         prompt = _documentation_prompt()

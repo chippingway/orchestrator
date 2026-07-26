@@ -7,6 +7,7 @@ from orchestrator.git.worktrees import terminal as _worktree_terminal
 from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import prompts as _prompts
 
 _QuestionRun = _owner._QuestionRun
 AgentResult = _owner.AgentResult
@@ -71,7 +72,7 @@ def _spawn_fresh_question(run: _QuestionRun) -> AgentResult:
     # Persist the full spec before the spawn so a run that returns no session
     # id still locks future replies to the backend and args that actually ran.
     run.state.set(_QUESTION_AGENT_KEY, session.agent_spec)
-    prompt = _wf._build_question_prompt(
+    prompt = _prompts._build_question_prompt(
         run.spec,
         run.issue,
         _comments._recent_comments_text(run.issue),

@@ -20,25 +20,6 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._workflow_core_prompts",
-        (
-            ("_build_documentation_prompt", "_build_documentation_prompt"),
-            ("_build_fix_prompt", "_build_fix_prompt"),
-            ("_build_fresh_respawn_preamble", "_build_fresh_respawn_preamble"),
-            ("_build_implement_prompt", "_build_implement_prompt"),
-            ("_build_review_prompt", "_build_review_prompt"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_decompose_prompts",
-        (
-            ("_build_decompose_prompt", "_build_decompose_prompt"),
-            ("_build_single_decision_comment", "_build_single_decision_comment"),
-            ("_single_manifest_files", "_single_manifest_files"),
-            ("_single_manifest_text", "_single_manifest_text"),
-        ),
-    ),
-    *export_group(
         "orchestrator._workflow_manifest_cycles",
         (
             ("_dep_cycle_visit", "_dep_cycle_visit"),
@@ -71,24 +52,9 @@ EXPORTS = (
     *export_group(
         "orchestrator._workflow_messages_state",
         (
-            ("_COMMIT_STYLE_NOTE", "_COMMIT_STYLE_NOTE"),
-            ("_CONTINUE_RETRY_PROMPT", "_CONTINUE_RETRY_PROMPT"),
-            ("_FOREGROUND_ONLY_NOTE", "_FOREGROUND_ONLY_NOTE"),
             ("_MANIFEST_RE", "_MANIFEST_RE"),
             ("_MAX_CHILDREN", "_MAX_CHILDREN"),
-            ("_MAX_FILES_SHOWN", "_MAX_FILES_SHOWN"),
-            ("_NO_BODY", "_NO_BODY"),
-            ("_NO_PRIOR_COMMENTS", "_NO_PRIOR_COMMENTS"),
             ("_SECTION_SEP", "_SECTION_SEP"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_stage_prompts",
-        (
-            ("_build_conflict_resolution_prompt", "_build_conflict_resolution_prompt"),
-            ("_build_pr_comment_followup", "_build_pr_comment_followup"),
-            ("_build_question_followup_prompt", "_build_question_followup_prompt"),
-            ("_build_question_prompt", "_build_question_prompt"),
         ),
     ),
     *export_group(
@@ -157,6 +123,30 @@ EXPORTS = (
             ("_parse_review_verdict", "_parse_review_verdict"),
             ("_refuse_parked_continue", "_refuse_parked_continue"),
             ("_stderr_log_tail", "_stderr_log_tail"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.engine.prompts",
+        (
+            ("_COMMIT_STYLE_NOTE", "_COMMIT_STYLE_NOTE"),
+            ("_CONTINUE_RETRY_PROMPT", "_CONTINUE_RETRY_PROMPT"),
+            ("_FOREGROUND_ONLY_NOTE", "_FOREGROUND_ONLY_NOTE"),
+            ("_MAX_FILES_SHOWN", "_MAX_FILES_SHOWN"),
+            ("_NO_BODY", "_NO_BODY"),
+            ("_NO_PRIOR_COMMENTS", "_NO_PRIOR_COMMENTS"),
+            ("_build_conflict_resolution_prompt", "_build_conflict_resolution_prompt"),
+            ("_build_decompose_prompt", "_build_decompose_prompt"),
+            ("_build_documentation_prompt", "_build_documentation_prompt"),
+            ("_build_fix_prompt", "_build_fix_prompt"),
+            ("_build_fresh_respawn_preamble", "_build_fresh_respawn_preamble"),
+            ("_build_implement_prompt", "_build_implement_prompt"),
+            ("_build_pr_comment_followup", "_build_pr_comment_followup"),
+            ("_build_question_followup_prompt", "_build_question_followup_prompt"),
+            ("_build_question_prompt", "_build_question_prompt"),
+            ("_build_review_prompt", "_build_review_prompt"),
+            ("_build_single_decision_comment", "_build_single_decision_comment"),
+            ("_single_manifest_files", "_single_manifest_files"),
+            ("_single_manifest_text", "_single_manifest_text"),
         ),
     ),
     *export_group(

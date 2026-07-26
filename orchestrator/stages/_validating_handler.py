@@ -7,6 +7,7 @@ from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import prompts as _prompts
 
 _ReviewerDecision = _owner._ReviewerDecision
 _ReviewerRun = _owner._ReviewerRun
@@ -40,7 +41,7 @@ def _run_reviewer_round(
         branch=_wf._resolve_branch_name(state, spec, issue.number),
     )
     _, dev_backend_for_prompt, _, _ = _wf._read_dev_session(state)
-    review_prompt = _wf._build_review_prompt(
+    review_prompt = _prompts._build_review_prompt(
         spec, issue, _comments._recent_comments_text(issue),
         config.default_repo_specs(), dev_backend_for_prompt,
     )

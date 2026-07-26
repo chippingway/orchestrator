@@ -7,6 +7,7 @@ from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import prompts as _prompts
 
 _AwaitingDevAttempt = _owner._AwaitingDevAttempt
 _DevFixRun = _owner._DevFixRun
@@ -111,7 +112,7 @@ def _run_requested_fix(context: _RequestedChanges) -> _AwaitingDevAttempt:
         context.spec,
         context.issue,
         context.state,
-        _wf._build_fix_prompt(context.decision.feedback),
+        _prompts._build_fix_prompt(context.decision.feedback),
         stage=WorkflowLabel.FIXING,
         pause_guard=True,
     )
