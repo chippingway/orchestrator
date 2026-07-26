@@ -14,11 +14,13 @@ from unittest import mock
 from orchestrator import base_sync as _base_sync
 from orchestrator import config, workflow
 from tests import fakes, workflow_helpers
+from tests.git.base_sync import sync_test_support
 
 Path = pathlib.Path
 MagicMock = mock.MagicMock
 base_sync = _base_sync
 patch = mock.patch
+_patch_base_sync = sync_test_support._patch_base_sync
 FakeGitHubClient = fakes.FakeGitHubClient
 FakePR = fakes.FakePR
 FakePRRef = fakes.FakePRRef

@@ -8,12 +8,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from orchestrator import base_sync, workflow
+from orchestrator import workflow
 
 from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import (
-    LABEL_IMPLEMENTING,
-)
+from tests.git.base_sync.sync_test_support import _patch_base_sync
 
 from tests.scheduler_routing_workers import (
     _record_current_thread,
@@ -25,6 +23,7 @@ from tests.scheduler_routing_fakes import (
 )
 
 from tests.scheduler_routing_test_support import (
+    LABEL_IMPLEMENTING,
     _SchedulerWorkflowTest,
 )
 
@@ -169,20 +168,10 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
     @contextlib.contextmanager
     def _patched_refresh(self, refresh, processor):
         with (
-            patch.object(
-                base_sync,
-                "_authed_target_fetch",
-                return_value=refresh.fetch_result,
-            ),
-            patch.object(
-                base_sync,
-                "_repo_worktrees_root",
-                return_value=refresh.root,
-            ),
-            patch.object(
-                base_sync,
-                "_sync_worktree_with_base",
-                refresh.sync,
+            _patch_base_sync(
+                target_fetch=MagicMock(return_value=refresh.fetch_result),
+                worktrees_root=MagicMock(return_value=refresh.root),
+                sync=refresh.sync,
             ),
             patch.object(workflow, PROCESS_ISSUE, side_effect=processor),
         ):

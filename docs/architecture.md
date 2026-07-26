@@ -133,6 +133,10 @@ orchestrator/
                         comparison, diverged, dirty, and failed-push answers
       persistence.py    auto-rebase parks, the reset-and-park tail, and the
                         state / notice / event writes a recovery finalizes with
+      pre_pr.py         hardened rebase / merge probes, rebase-in-progress
+                        detection, and the aborting pre-PR local rebase
+      refresh.py        per-tick authenticated base fetch, worktree discovery,
+                        the sync gates, and the per-worktree route
       state.py          pinned-state keys, park reasons, refresh detour
                         labels, and the shared base-sync logger
     publication/
@@ -177,8 +181,8 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   base_sync.py          lazy base-refresh/rebase compatibility facade over the
                         git/base_sync/ owners and the leaves below
-  _base_sync_*.py       refresh, typed rebase/recovery decisions, conflict
-                        routing, snapshot, and publication leaves
+  _base_sync_*.py       typed rebase/recovery decisions, conflict routing,
+                        snapshot, and publication leaves
   worktrees.py          lazy compatibility hub over the five worktree
                         subsystem facades above
   _worktrees_export_manifest.py / _worktrees_exports.py
@@ -234,8 +238,8 @@ orchestrator/
 `workflow.py`, `worktrees.py`, `analytics.read`, and `dashboard.py` publish explicit sorted `__all__` inventories,
 `.pyi` surfaces, and immutable target registries. Resolution is lazy and cached on the facade, but the resolved object
 is the implementation object's exact identity. Existing direct imports, wildcard imports, and `patch.object` calls
-therefore keep working. Patches that need to intercept base-sync internals still target the `base_sync` facade, just as
-before the split, and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
+therefore keep working. Base-sync names stay patchable on the `base_sync` facade for every leaf that reads them off it,
+and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
 `workflow`) because their callers read them off a facade. Inside `git/publication/`, though, the owners bind their
 collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes`, `planning` calls `git.commands`,
 both siblings, and the verification probes for its HEAD and dirty-file guards, `rewrite` calls `git.commands`,
@@ -264,18 +268,23 @@ review-terminal actions call `terminal._cleanup_question_worktree` / `terminal._
 so a mock for either one lands on the owner even though both names stay forwarded — straight off that owner — on
 `workflow`, `worktrees`, and `worktree_lifecycle` for compatibility. `_ensure_worktree`, `_ensure_pr_worktree`,
 `_has_new_commits`, and the decomposer helpers themselves stay patchable by name on `worktree_lifecycle`,
-`worktrees`, and `workflow`. `git/base_sync/` holds the frozen auto-rebase models, the pinned-state keys,
-park reasons, detour labels, and logger that the flat `_base_sync_*` leaves bind straight off `state`, and the
-two recovery owners: `outcomes` calls its `persistence` sibling for the finalize and the reset-and-park tail,
-and `persistence` calls `git.commands` for the reset and clean. A patch that has to intercept the hardened git
-command a park runs, or the finalize an outcome delegates to, therefore targets `orchestrator.git.commands` or
-the owner module rather than `base_sync`. The recovery helpers themselves stay patchable by name on `base_sync`,
-because the leaves that route into them still read them off that facade. The collaborators these two owners
-reach *upward* are the exception: `persistence` binds the park guard and the PR-comment poster, and `outcomes`
-the unverified-abort helper, through call-time imports, so a patch for any of the three targets
-`orchestrator.workflow`, `orchestrator.workflow_messages`, or `orchestrator._base_sync_recovery_snapshot`. The
-`base_sync` forwards of `_post_pr_comment` and `_abort_recovery_unverified` still resolve, but they are not
-what these owners call. Config and analytics modules
+`worktrees`, and `workflow`. `git/base_sync/` binds the same way: `models` and `state` carry only data -- the
+frozen auto-rebase models and the pinned-state keys, park reasons, detour labels, and logger that the flat
+`_base_sync_*` leaves bind straight off `state` -- while its four behavioral owners bind their collaborators.
+`refresh` reaches `git.authentication`, `git.commands`, `git.verification.probes`, `git.worktrees.paths`, and
+its `pre_pr` sibling directly, `pre_pr` reaches `git.commands`, `outcomes` calls its `persistence` sibling for
+the finalize and the reset-and-park tail, and `persistence` calls `git.commands` for the reset and clean. A
+patch that has to intercept the base fetch, the worktree root, the dirty-file scan, the rev-list behind count,
+the rebase either sync path runs, the hardened git command a park runs, or the finalize an outcome delegates to
+therefore targets `orchestrator.git.commands` or the owner module rather than `base_sync`. The base-sync
+helpers themselves stay patchable by name on `base_sync`, because the leaves that route into them still read
+them off that facade. The collaborators these owners reach *upward* are call-time imports, and they split two
+ways: `persistence` binds the park guard and the PR-comment poster and `outcomes` the unverified-abort helper
+straight off their owning modules, so a patch for any of the three targets `orchestrator.workflow`,
+`orchestrator.workflow_messages`, or `orchestrator._base_sync_recovery_snapshot` -- the `base_sync` forwards of
+`_post_pr_comment` and `_abort_recovery_unverified` still resolve, but they are not what these owners call.
+`refresh` instead imports the `base_sync` facade itself to reach `_sync_pr_worktree_to_base`, so the PR-aware
+coordinator stays patchable where every caller has always patched it. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.

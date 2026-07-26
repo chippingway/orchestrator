@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
+from orchestrator import base_sync
 
 from tests.fakes import FakeGitHubClient, make_issue
+from tests.git.base_sync.sync_test_support import _patch_base_sync
 from tests.workflow_helpers import (
     LABEL_QUESTION,
     _TEST_SPEC,
@@ -127,27 +129,19 @@ class QuestionLabelBaseRefreshSkipTest(unittest.TestCase):
     """
 
     def test_question_labeled_issue_skips_base_sync(self) -> None:
-        from orchestrator import base_sync
-
         gh = FakeGitHubClient()
         issue = make_issue(BASE_REFRESH_ISSUE_NUMBER, label=LABEL_QUESTION)
         gh.add_issue(issue)
 
-        # The merge / rev-list helpers would shell out if reached;
+        # The rebase / rev-list helpers would shell out if reached;
         # patch them so a regression that lets the sync proceed
         # surfaces as a call on these mocks.
-        with (
-            patch.object(base_sync, "_git") as git_mock,
-            patch.object(
-                base_sync,
-                "_worktree_dirty_files",
-                return_value=[],
-            ),
-            patch.object(
-                base_sync,
-                "_merge_base_into_worktree",
-                return_value=(True, []),
-            ) as merge_mock,
+        git_mock = MagicMock()
+        rebase_mock = MagicMock(return_value=(True, []))
+        with _patch_base_sync(
+            git=git_mock,
+            dirty=MagicMock(return_value=[]),
+            rebase=rebase_mock,
         ):
             base_sync._sync_worktree_with_base(
                 gh,
@@ -156,7 +150,7 @@ class QuestionLabelBaseRefreshSkipTest(unittest.TestCase):
                 issue.number,
             )
 
-            # Neither the rev-list (used to decide whether to merge) nor
-            # the merge helper itself runs for a question-labeled issue.
-            git_mock.assert_not_called()
-            merge_mock.assert_not_called()
+        # Neither the rev-list (used to decide whether to rebase) nor
+        # the rebase helper itself runs for a question-labeled issue.
+        git_mock.assert_not_called()
+        rebase_mock.assert_not_called()

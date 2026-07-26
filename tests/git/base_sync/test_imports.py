@@ -9,9 +9,20 @@ import sys
 import unittest
 
 from orchestrator import base_sync, git
-from orchestrator.git.base_sync import models, outcomes, persistence, state
+from orchestrator.git.base_sync import (
+    models,
+    outcomes,
+    persistence,
+    pre_pr,
+    refresh,
+    state,
+)
 
 _MODELS_OWNER = "orchestrator.git.base_sync.models"
+
+_PRE_PR_OWNER = "orchestrator.git.base_sync.pre_pr"
+
+_REFRESH_OWNER = "orchestrator.git.base_sync.refresh"
 
 _STATE_OWNER = "orchestrator.git.base_sync.state"
 
@@ -20,7 +31,8 @@ _PERSISTENCE_OWNER = "orchestrator.git.base_sync.persistence"
 _OUTCOMES_OWNER = "orchestrator.git.base_sync.outcomes"
 
 _OWNERS = (
-    _MODELS_OWNER, _STATE_OWNER, _PERSISTENCE_OWNER, _OUTCOMES_OWNER,
+    _MODELS_OWNER, _PRE_PR_OWNER, _REFRESH_OWNER, _STATE_OWNER,
+    _PERSISTENCE_OWNER, _OUTCOMES_OWNER,
 )
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS, "orchestrator.base_sync")
@@ -28,7 +40,9 @@ _MODULES = ("orchestrator.git.base_sync", *_OWNERS, "orchestrator.base_sync")
 # The state owner exists to spell out the pinned-state keys and the label
 # vocabulary one rebase attempt is routed by, so the label enum and the
 # transition graph behind it are the only orchestrator modules it may reach.
-_STATE_ALLOWED_MODULES = (
+# The pre-PR owner adds only the git envelope its rebases run under and the
+# repository spec they read their base ref off.
+_ALLOWED_MODULES = (
     "orchestrator",
     "orchestrator._package_exports",
     "orchestrator._state_transitions",
@@ -36,19 +50,23 @@ _STATE_ALLOWED_MODULES = (
     "orchestrator.state_machine",
 )
 
-_STATE_ALLOWED_ROOT = "orchestrator.git"
+_ALLOWED_ROOTS = (
+    (_STATE_OWNER, ("orchestrator.git",)),
+    (_PRE_PR_OWNER, ("orchestrator.config", "orchestrator.git")),
+)
 
-# The model owner annotates its fields with the composed GitHub client, which
-# drags the analytics and usage graph in behind it, so an allowlist would not
-# describe it. What every owner owes is the direction of the dependency: none
-# may reach the base-sync leaves, the facade over them, the workflow engine and
-# its stage handlers, or an application entrypoint. The facade is the sharpest
-# of those, because it resolves the very names these owners define -- an owner
-# that imported it would be reading its own definitions back out. The two
-# collaborators that do live above this package -- the park guard and the
-# comment poster in the workflow engine, and the unverified-abort helper on a
-# base-sync leaf -- are reached through call-time imports, which is what keeps
-# them out of this check.
+# Every owner outside that layer annotates its fields and arguments with the
+# composed GitHub client, which drags the analytics and usage graph in behind
+# it, so an allowlist would not describe them. What every owner owes is the
+# direction of the dependency: none may reach the base-sync leaves, the facade
+# over them, the workflow engine and its stage handlers, or an application
+# entrypoint. The facade is the sharpest of those, because it resolves the very
+# names these owners define -- an owner that imported it would be reading its
+# own definitions back out. The collaborators that do live above this package
+# -- the park guard and the comment poster in the workflow engine, the
+# unverified-abort helper on a base-sync leaf, and the PR-aware coordinator the
+# refresh hands a worktree off to -- are reached through call-time imports,
+# which is what keeps them out of this check.
 _FORBIDDEN_PREFIXES = (
     "orchestrator._base_sync",
     "orchestrator.base_sync",
@@ -74,6 +92,7 @@ _OWNER_ONLY_NAMES = (
     "_AutoRebaseRequest",
     "_PENDING_PUSH_SHA",
     "_park_dirty_recovery",
+    "_refresh_base_and_worktrees",
     "_reset_clear_and_park",
     "log",
 )
@@ -96,9 +115,13 @@ _FACADE_FORWARDS = (
     ("_REASON_AUTO_BASE_REBASE_PUSH_FAILED", state),
     ("_REVIEW_ROUND", state),
     ("_already_published_recovery_notice", outcomes),
+    ("_base_sync_issue", refresh),
     ("_emit_recovered_rebase_event", persistence),
     ("_finalize_already_published_recovery", outcomes),
     ("_finalize_recovered_rebase", persistence),
+    ("_issue_skips_base_sync", refresh),
+    ("_issue_worktree_number", refresh),
+    ("_merge_base_into_worktree", pre_pr),
     ("_park_auto_rebase_failure", persistence),
     ("_park_dirty_recovery", outcomes),
     ("_park_diverged_recovery", outcomes),
@@ -106,9 +129,17 @@ _FACADE_FORWARDS = (
     ("_post_recovered_rebase_notice", persistence),
     ("_prepare_recovered_rebase_state", persistence),
     ("_pushed_recovery_notice", outcomes),
+    ("_rebase_base_into_worktree", pre_pr),
+    ("_rebase_in_progress", pre_pr),
+    ("_rebase_state_exists", pre_pr),
+    ("_refresh_base_and_worktrees", refresh),
     ("_reject_unknown_recovery_comparison", outcomes),
     ("_reset_clear_and_park", persistence),
     ("_route_recovered_rebase", persistence),
+    ("_sync_discovered_worktree", refresh),
+    ("_sync_pre_pr_worktree", pre_pr),
+    ("_sync_worktree_with_base", refresh),
+    ("_worktree_behind_base", refresh),
     ("log", state),
 )
 
@@ -149,12 +180,14 @@ class CleanProcessImportTest(unittest.TestCase):
 class LayeringTest(unittest.TestCase):
     """The owners import nothing from the base-sync leaves or above them."""
 
-    def test_state_owner_stays_in_label_layer(self) -> None:
-        for imported in _imported_orchestrator_modules(_STATE_OWNER):
-            self.assertTrue(
-                self._within_state_layers(imported),
-                f"the state owner reaches past the label vocabulary via {imported}",
-            )
+    def test_lower_owners_stay_in_their_layer(self) -> None:
+        for owner, allowed_roots in _ALLOWED_ROOTS:
+            with self.subTest(module=owner):
+                for imported in _imported_orchestrator_modules(owner):
+                    self.assertTrue(
+                        self._within_layers(imported, allowed_roots),
+                        f"{owner} reaches past its layer via {imported}",
+                    )
 
     def test_owners_stay_below_base_sync_leaves(self) -> None:
         for module in _OWNERS:
@@ -165,11 +198,12 @@ class LayeringTest(unittest.TestCase):
                         f"{module} inverts the dependency via {imported}",
                     )
 
-    def _within_state_layers(self, imported: str) -> bool:
-        if imported in _STATE_ALLOWED_MODULES:
+    def _within_layers(self, imported: str, allowed_roots: tuple) -> bool:
+        if imported in _ALLOWED_MODULES:
             return True
-        return imported == _STATE_ALLOWED_ROOT or imported.startswith(
-            f"{_STATE_ALLOWED_ROOT}.",
+        return any(
+            imported == root or imported.startswith(f"{root}.")
+            for root in allowed_roots
         )
 
 

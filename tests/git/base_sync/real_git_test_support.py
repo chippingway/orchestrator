@@ -9,7 +9,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import base_sync, config, workflow
+from orchestrator import config
+from orchestrator.git import authentication
+from orchestrator.git.base_sync import refresh
 
 from tests.fakes import FakeGitHubClient, FakePR, make_issue
 from tests.workflow_helpers import (
@@ -168,7 +170,7 @@ class _FixtureBuilder:
         fixture._gh = FakeGitHubClient()
         fixture._gh.add_issue(make_issue(7, label=LABEL_IMPLEMENTING))
         fixture._fetch_patch = patch.object(
-            base_sync,
+            authentication,
             "_authed_target_fetch",
             side_effect=_local_fetch,
         )
@@ -255,8 +257,8 @@ class _RefreshBaseRealGitFixture:
 
     def _refresh(self) -> None:
         with patch.object(
-            workflow.config,
+            config,
             WORKTREES_DIR_ATTR,
             self._tmpdir / WORKTREES_DIR_NAME,
         ):
-            workflow._refresh_base_and_worktrees(self._gh, self._spec)
+            refresh._refresh_base_and_worktrees(self._gh, self._spec)
