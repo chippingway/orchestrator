@@ -146,10 +146,6 @@ EXPORTS = (
         (("AgentResult", "AgentResult"),),
     ),
     *export_group(
-        "orchestrator.comment_trust",
-        (("is_trusted_author", "is_trusted_author"),),
-    ),
-    *export_group(
         "orchestrator.config.credentials",
         (
             ("_REDACT_MIN_VALUE_LEN", "_REDACT_MIN_VALUE_LEN"),
@@ -164,6 +160,10 @@ EXPORTS = (
     *export_group(
         "orchestrator.github.client",
         (("GitHubClient", "GitHubClient"),),
+    ),
+    *export_group(
+        "orchestrator.github.comments",
+        (("is_trusted_author", "is_trusted_author"),),
     ),
     *export_group(
         "orchestrator.github.pinned_state",

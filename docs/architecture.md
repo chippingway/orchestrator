@@ -69,6 +69,9 @@ orchestrator/
                         cached label reads, stage-enter events
     checks.py           status / check-run normalization, failure-before-pending
                         folding, and the fail-closed check-read client mixin
+    comments.py         comment-author trust policy (is_trusted_author /
+                        filter_trusted) gating comment authors on the
+                        ALLOWED_ISSUE_AUTHORS allowlist
     events.py           audit event record construction and the optional
                         JSONL sink
     issues.py           non-PR issue filtering, issue-query options, and the
@@ -120,9 +123,8 @@ orchestrator/
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
                         prompt, parser, and comment leaves
-  comment_trust.py      shared trust helpers (is_trusted_author /
-                        filter_trusted) gating comment authors on the
-                        ALLOWED_ISSUE_AUTHORS allowlist
+  comment_trust.py      forwarding surface for the `github/comments.py` trust
+                        helpers
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
@@ -300,7 +302,7 @@ owner binds straight off `state` -- while its twelve behavioral owners bind thei
 On the refresh side, `refresh` reaches `git.authentication`, `git.commands`, `git.verification.probes`,
 `git.worktrees.paths`, and its `pre_pr` and `pr` siblings directly, `pre_pr` reaches `git.commands`, `pr`
 reaches `eligibility`, `startup`, and `publication` for the order it asks them in, `eligibility`
-reaches `comment_trust` for the trusted-reply filter, the verification probes for its clean-tree gate, and
+reaches `github.comments` for the trusted-reply filter, the verification probes for its clean-tree gate, and
 `recovery` for the interrupted rebase it settles before rejecting a label or starting a new one, and `startup`
 reaches `git.commands`, `git.verification.probes`, and its `pre_pr`, `persistence`, and `conflicts` siblings
 for the pre-rebase HEAD read, the rebase it anchors, the abort a failure runs, and the conflict route or park

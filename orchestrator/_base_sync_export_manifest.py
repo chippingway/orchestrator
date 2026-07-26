@@ -28,10 +28,6 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator.comment_trust",
-        (("filter_trusted", "filter_trusted"),),
-    ),
-    *export_group(
         "orchestrator.git.authentication",
         (
             ("_authed_fetch", "_authed_fetch"),
@@ -205,6 +201,10 @@ EXPORTS = (
     *export_group(
         "orchestrator.github.client",
         (("GitHubClient", "GitHubClient"),),
+    ),
+    *export_group(
+        "orchestrator.github.comments",
+        (("filter_trusted", "filter_trusted"),),
     ),
     *export_group(
         "orchestrator.github.labels",

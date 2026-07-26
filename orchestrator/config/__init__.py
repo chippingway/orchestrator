@@ -245,7 +245,7 @@ HITL_MENTIONS: str = _RESOLVED["HITL_MENTIONS"]
 # preserves the legacy "anyone can trigger" behavior. Set this on a public
 # repo to keep random users from spending the orchestrator's compute budget
 # on useless tasks. When set this list is also the comment trust boundary
-# (see `comment_trust`): comments from authors outside it stay visible on
+# (see `github.comments`): comments from authors outside it stay visible on
 # GitHub but are dropped from agent prompts, the `user_content_hash` drift
 # signal, awaiting-human resume signals, and PR / `fixing` feedback, so an
 # outsider on a public repo cannot inject workflow-driving instructions.

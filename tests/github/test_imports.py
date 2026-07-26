@@ -8,8 +8,10 @@ import subprocess
 import sys
 import unittest
 
+from orchestrator import comment_trust as _comment_trust
 from orchestrator import github as _github
 from orchestrator.github import client as _github_client
+from orchestrator.github import comments as _comments
 from orchestrator.github import pinned_state as _pinned_state
 
 
@@ -21,6 +23,7 @@ _MODULES = (
     "orchestrator.github",
     "orchestrator.github.checks",
     "orchestrator.github.client",
+    "orchestrator.github.comments",
     "orchestrator.github.events",
     "orchestrator.github.issues",
     "orchestrator.github.labels",
@@ -36,10 +39,34 @@ _OWNER_ONLY_NAMES = (
     "WORKFLOW_LABELS",
     "hard_skip_control_label",
     "build_event_record",
+    "filter_trusted",
+    "is_trusted_author",
     "_iter_new_non_pr_issues",
     "_review_state_for_head",
     "_normalize_check_runs",
 )
+
+# The trust owner is what the git base-sync gates and the workflow stage leaves
+# both ask, so it has to stay reachable without any of them: the flat
+# `comment_trust` forwarding module the workflow layer historically owned, the
+# stage tree, the worktree and message facades, and the process entrypoint.
+_FORBIDDEN_PREFIXES = (
+    "orchestrator.comment_trust",
+    "orchestrator.main",
+    "orchestrator.stages",
+    "orchestrator.workflow_drift",
+    "orchestrator.workflow_messages",
+    "orchestrator.worktrees",
+)
+
+_LAYERING_SCRIPT = """
+import sys
+import {module}
+print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
+"""
+
+# Names the flat module forwards off the trust owner rather than rebuilding.
+_TRUST_FORWARDS = ("filter_trusted", "is_trusted_author")
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -66,6 +93,29 @@ class CleanProcessImportTest(unittest.TestCase):
                 self.assertEqual(completed.returncode, 0, msg=completed.stderr)
 
 
+class LayeringTest(unittest.TestCase):
+    """The trust owner reaches nothing above the GitHub domain."""
+
+    def test_trust_owner_stays_in_its_layer(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                _LAYERING_SCRIPT.format(module="orchestrator.github.comments"),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, msg=completed.stderr)
+        for imported in completed.stdout.split():
+            with self.subTest(imported=imported):
+                self.assertFalse(
+                    imported.startswith(_FORBIDDEN_PREFIXES),
+                    f"the trust owner inverts the dependency via {imported}",
+                )
+
+
 class PublicSurfaceTest(unittest.TestCase):
     """The facade publishes a narrow `__all__` backed by owner identities."""
 
@@ -90,6 +140,17 @@ class PublicSurfaceTest(unittest.TestCase):
             with self.subTest(name=owner_only_name):
                 with self.assertRaises(AttributeError):
                     getattr(_github, owner_only_name)
+
+    def test_flat_trust_module_forwards_to_the_owner(self) -> None:
+        # `comment_trust` stays the import site older callers and operator
+        # scripts reference, and it forwards rather than rebuilding, so a
+        # caller reaching through it gates on the owner's exact policy.
+        for forwarded_name in _TRUST_FORWARDS:
+            with self.subTest(name=forwarded_name):
+                self.assertIs(
+                    getattr(_comment_trust, forwarded_name),
+                    getattr(_comments, forwarded_name),
+                )
 
     def test_client_inherits_the_state_mixin_owner(self) -> None:
         # The pinned-state read/write and comment-watermark methods reach the
