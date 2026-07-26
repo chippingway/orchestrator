@@ -7,7 +7,10 @@ attempt is threaded through live in ``models``; the pinned-state keys, park
 reasons, detour labels, and the shared logger those attempts read and write
 live in ``state``; the pinned-state writes, notices, and audit events a
 recovered rebase publishes live in ``persistence``, and the terminal answers
-a verified recovery comparison produces live in ``outcomes``. ``refresh``
+a verified recovery comparison produces live in ``outcomes``. The reads that
+comparison is built from -- the authenticated branch fetch, the local and
+remote head SHAs, and the divergence counts -- live in ``snapshot``, and the
+order those reads and answers are asked in lives in ``recovery``. ``refresh``
 drives one tick's base fetch, worktree discovery, and per-worktree routing;
 ``pre_pr`` owns the hardened rebase it runs on a branch nobody has pushed
 yet. Callers import the owner they need directly, so this initializer binds

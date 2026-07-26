@@ -7,8 +7,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import _base_sync_recovery_snapshot
-from orchestrator.git.base_sync import outcomes, persistence
+from orchestrator.git.base_sync import outcomes, persistence, snapshot
 
 from tests.git.base_sync import base_sync_helpers as fixtures
 
@@ -137,7 +136,7 @@ class UnknownComparisonTest(unittest.TestCase):
     def test_abort_detail_names_both_heads(self) -> None:
         abort = MagicMock(return_value=True)
 
-        with patch.object(_base_sync_recovery_snapshot, ABORT_HELPER, abort):
+        with patch.object(snapshot, ABORT_HELPER, abort):
             aborted = outcomes._reject_unknown_recovery_comparison(
                 fixtures._recovery_context(), fixtures._snapshot(),
             )

@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from orchestrator import base_sync, workflow
+from orchestrator.git.base_sync import recovery
 from orchestrator.stages import implementing
 
 
@@ -51,8 +52,10 @@ class WorkflowCompatibilityAdapterTest(unittest.TestCase):
 
     def test_recovery_applies_historical_defaults(self) -> None:
         recover = Mock(return_value=True)
+        # The adapter routes into its own owner, so the patch lands there
+        # even though the call still enters through the `base_sync` facade.
         with patch.object(
-            base_sync,
+            recovery,
             "_recover_pending_auto_base_rebase_context",
             recover,
         ):

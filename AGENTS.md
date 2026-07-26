@@ -32,7 +32,8 @@ orchestrator process is stateless.
   and stage-specific prefixes) or straight to the git-package owners -- `git/` for
   `git_plumbing.py`, `git/verification/` for `verify.py`, `git/worktrees/` for `worktree_lifecycle.py`,
   `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models, shared state, and
-  worktree refresh / recovery outcomes / persistence `base_sync.py` publishes. The package also contains per-tick
+  worktree refresh plus crash-recovery probing, routing, outcomes, and persistence `base_sync.py` publishes.
+  The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
@@ -99,8 +100,13 @@ orchestrator process is stateless.
   hard-skip / question / dirty-tree gates, and the per-worktree route to `pre_pr` or the PR-aware
   coordinator), the `persistence.py` owner (the auto-rebase park, the shared
   reset-and-park tail, and the pinned-state / notice / audit-event writes a recovered rebase finalizes and
-  routes with) and the `outcomes.py` owner (the two recovery notices plus the already-published,
-  unknown-comparison, diverged, dirty, and failed-push answers one verified recovery resolves into), with
+  routes with), the `outcomes.py` owner (the two recovery notices plus the already-published,
+  unknown-comparison, diverged, dirty, and failed-push answers one verified recovery resolves into), the
+  `snapshot.py` owner (the authenticated branch fetch, the local and remote head reads, the divergence
+  counts, the anchor-clearing no-op exits, and the reset-and-park abort every unreadable read fails closed
+  to) and the `recovery.py` owner (the order those reads and answers are asked in, the dirty-guarded
+  reissued push and the finalize it earns, plus the legacy keyword signature the flat leaves still enter
+  through), with
   `git_plumbing.py`, `verify.py`,
   `worktree_lifecycle.py`, `branch_publication.py`, and
   `base_sync.py` kept as the forwarding facades for historical callers), and stable runtime-core
@@ -174,9 +180,12 @@ orchestrator process is stateless.
   and the gates that end a sync early, a real bare remote driving the clean / no-op / conflicting / dirty
   pre-PR paths end to end, the auto-rebase park and its
   reset-and-park tail, the staged recovery state / notice / event / routing writes and the order the park and
-  finalize paths publish them in, the recovery notices and the park, abort, and already-published outcomes, and
-  import-cycle / layering / package-surface checks, plus their collaborator patch table, real-git fixture, and
-  recovery-context and call-order support module.
+  finalize paths publish them in, the recovery notices and the park, abort, and already-published outcomes,
+  the fetch refspec / remote-head reads / divergence probing and their fail-closed exits, the order one
+  comparison is routed to a single answer in and the guards the reissued push is leased behind, real-git
+  recovery of an unpushed rebase, a landed push, an out-of-band remote update, and a dirty worktree, and
+  import-cycle / layering / package-surface checks, plus their collaborator patch table, real-git fixtures,
+  and recovery-context / call-order support modules.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in
