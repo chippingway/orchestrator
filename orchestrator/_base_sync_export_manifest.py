@@ -66,15 +66,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._base_sync_start",
-        (
-            ("_handle_failed_auto_rebase", "_handle_failed_auto_rebase"),
-            ("_park_unreadable_pre_rebase_head", "_park_unreadable_pre_rebase_head"),
-            ("_record_auto_rebase_attempt", "_record_auto_rebase_attempt"),
-            ("_start_auto_rebase", "_start_auto_rebase"),
-        ),
-    ),
-    *export_group(
         "orchestrator.comment_trust",
         (("filter_trusted", "filter_trusted"),),
     ),
@@ -161,6 +152,15 @@ EXPORTS = (
             ("_complete_recovery_snapshot", "_complete_recovery_snapshot"),
             ("_fetch_recovery_snapshot", "_fetch_recovery_snapshot"),
             ("_read_remote_recovery_head", "_read_remote_recovery_head"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.startup",
+        (
+            ("_handle_failed_auto_rebase", "_handle_failed_auto_rebase"),
+            ("_park_unreadable_pre_rebase_head", "_park_unreadable_pre_rebase_head"),
+            ("_record_auto_rebase_attempt", "_record_auto_rebase_attempt"),
+            ("_start_auto_rebase", "_start_auto_rebase"),
         ),
     ),
     *export_group(

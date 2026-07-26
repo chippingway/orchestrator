@@ -1,20 +1,34 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Base sync start."""
+"""Anchoring one auto-rebase, and the two ways starting it can end badly.
+
+The pre-rebase SHA is the whole reason these three helpers live together. It
+is the lease a later force-push is pinned to and the anchor a crashed tick is
+recovered from, so it has to be readable before git is allowed to move HEAD
+and pinned before the rewrite runs -- an attempt that mutated the worktree
+first and recorded the anchor second would leave a tick that died in between
+with a rewritten branch nobody can compare against. Reading it fails closed,
+and a rebase that then fails is aborted back onto it before the outcome is
+routed: conflicted files are the dev agent's work, anything else is a park.
+"""
 from __future__ import annotations
 
-from orchestrator import base_sync as _owner
-from orchestrator.git.base_sync import state as _state
+from typing import Optional
 
-_AutoRebaseContext = _owner._AutoRebaseContext
-Optional = _owner.Optional
-PullRequest = _owner.PullRequest
-config = _owner.config
-_AWAITING_HUMAN = _state._AWAITING_HUMAN
-_PARK_REASON = _state._PARK_REASON
-_PENDING_PUSH_SHA = _state._PENDING_PUSH_SHA
-_REASON_AUTO_BASE_REBASE_FAILED = _state._REASON_AUTO_BASE_REBASE_FAILED
-log = _state.log
+from github.PullRequest import PullRequest
+
+from orchestrator import config
+from orchestrator.git import commands
+from orchestrator.git.base_sync import persistence, pre_pr
+from orchestrator.git.base_sync.models import _AutoRebaseContext
+from orchestrator.git.base_sync.state import (
+    _AWAITING_HUMAN,
+    _PARK_REASON,
+    _PENDING_PUSH_SHA,
+    _REASON_AUTO_BASE_REBASE_FAILED,
+    log,
+)
+from orchestrator.git.verification import probes
 
 
 def _park_unreadable_pre_rebase_head(context: _AutoRebaseContext) -> None:
@@ -25,7 +39,7 @@ def _park_unreadable_pre_rebase_head(context: _AutoRebaseContext) -> None:
         context.issue.number,
     )
     spec = context.spec
-    _owner._park_auto_rebase_failure(
+    persistence._park_auto_rebase_failure(
         context.gh,
         context.issue,
         context.state,
@@ -64,7 +78,7 @@ def _handle_failed_auto_rebase(
     conflicted_files: list[str],
 ) -> None:
     """Abort a failed rebase, then route conflicts or park other failures."""
-    abort = _owner._git_hardened("rebase", "--abort", cwd=context.worktree)
+    abort = commands._git_hardened("rebase", "--abort", cwd=context.worktree)
     if abort.returncode != 0:
         log.warning(
             "issue=#%d base rebase failed and abort failed: %s",
@@ -73,7 +87,13 @@ def _handle_failed_auto_rebase(
         )
     context.state.set(_PENDING_PUSH_SHA, None)
     if conflicted_files:
-        _owner._route_pr_worktree_to_resolving_conflict(
+        # Lazy import: the conflict router is still a base-sync leaf reached
+        # through the compatibility facade, and that facade resolves the names
+        # this owner defines -- binding it at module scope would invert the
+        # direction the package is layered in.
+        from orchestrator import base_sync as _facade
+
+        _facade._route_pr_worktree_to_resolving_conflict(
             context.gh,
             context.spec,
             context.issue,
@@ -93,7 +113,7 @@ def _handle_failed_auto_rebase(
         context.issue.number,
     )
     spec = context.spec
-    _owner._park_auto_rebase_failure(
+    persistence._park_auto_rebase_failure(
         context.gh,
         context.issue,
         context.state,
@@ -119,15 +139,15 @@ def _start_auto_rebase(
     consumed_comment_id: Optional[int],
 ) -> Optional[str]:
     """Anchor and execute the rebase, returning the known pre-rebase SHA."""
-    before_sha = _owner._head_sha(context.worktree) or ""
+    before_sha = probes._head_sha(context.worktree) or ""
     if not before_sha:
-        _owner._park_unreadable_pre_rebase_head(context)
+        _park_unreadable_pre_rebase_head(context)
         return None
-    _owner._record_auto_rebase_attempt(context, before_sha, consumed_comment_id)
-    succeeded, conflicted_files = _owner._rebase_base_into_worktree(
+    _record_auto_rebase_attempt(context, before_sha, consumed_comment_id)
+    succeeded, conflicted_files = pre_pr._rebase_base_into_worktree(
         context.spec, context.worktree,
     )
     if not succeeded:
-        _owner._handle_failed_auto_rebase(context, pr, conflicted_files)
+        _handle_failed_auto_rebase(context, pr, conflicted_files)
         return None
     return before_sha
