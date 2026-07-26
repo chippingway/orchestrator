@@ -36,10 +36,10 @@ capped in-memory tail (`recorded_events`, `_RECORDED_EVENTS_CAP = 500`) for test
 file is the durable record.
 
 - `stage_enter` — `set_workflow_label` (via `_emit_stage_enter`) for every label flip; extras: `stage`.
-- `agent_spawn` / `agent_exit` — `workflow._run_agent_tracked` wraps every `run_agent` call (decomposer, implementer,
-  reviewer, dev-resume, conflict-resolution dev); extras: `agent` (backend), `agent_role`, `review_round`,
-  `retry_count`. `session_id` and `agent_exit`-only fields are described below.
-- `skill_triggered` — `workflow._run_agent_tracked` after `agent_exit`, **only when `TRACK_SKILL_TRIGGERS` is on**
+- `agent_spawn` / `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`) wraps every `run_agent` call
+  (decomposer, implementer, reviewer, dev-resume, conflict-resolution dev); extras: `agent` (backend), `agent_role`,
+  `review_round`, `retry_count`. `session_id` and `agent_exit`-only fields are described below.
+- `skill_triggered` — `_run_agent_tracked` after `agent_exit`, **only when `TRACK_SKILL_TRIGGERS` is on**
   (default off); one event per distinct skill the run triggered; extras: `agent` (backend), `agent_role`,
   `review_round`, `retry_count`, `skill` (the triggered skill name). Reuses the list `record_agent_exit` already parsed;
   off-switch installs emit none.
@@ -149,8 +149,8 @@ JSONL file is the raw foundation layer for the Postgres aggregation step.
 - `stage_evaluation` — `workflow._process_issue` dispatcher (try/except/finally wrapper); carries `stage`,
   `duration_s` (handler wall-clock), `result` (`"ok"` / `"error"`); omitted for `backlog`- / `paused`-skipped issues
   (no handler runs).
-- `agent_exit` — `workflow._run_agent_tracked`; one record per tracked agent invocation; agent context + parsed token
-  / model / cost details (see below).
+- `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`); one record per tracked agent invocation; agent
+  context + parsed token / model / cost details (see below).
 - `repo_skill_catalog` — `orchestrator.skill_catalog._emit_repo_skill_catalog`, driven once per tick per spec by
   `workflow.tick`; repo-level (not issue-scoped, so `issue` is the sentinel `0`); carries `base_branch`, `remote_name`,
   `skills_available` (deduped `SKILL.md` skill names on the base ref), and optional `skill_paths` (name → source
@@ -186,9 +186,9 @@ time.
 
 ### `agent_exit` records
 
-`workflow._run_agent_tracked` appends a single `event="agent_exit"` analytics record after every tracked agent run,
-distinct from (and in addition to) the audit `agent_spawn` / `agent_exit` events on `EVENT_LOG_PATH`. Each record
-carries:
+`_run_agent_tracked` (in `workflow/engine/usage.py`) appends a single `event="agent_exit"` analytics record after
+every tracked agent run, distinct from (and in addition to) the audit `agent_spawn` / `agent_exit` events on
+`EVENT_LOG_PATH`. Each record carries:
 
 - **Context** — `repo`, `issue`, `stage`, `agent_role`, `backend`, `review_round`, `retry_count`, `duration_s`,
   `exit_code`, `timed_out`.
@@ -346,14 +346,15 @@ Postgres aggregation, or the dashboard.
 **Producer: `record_agent_exit`.** After the baseline `agent_exit` analytics record (and the opt-in skill parse) are
 produced, `record_agent_exit` calls `_maybe_record_trajectory`, which — only when `TRAJECTORY_LOG_PATH` is enabled —
 parses the run's trajectory from the same stdout (`usage.parse_agent_trajectory`), redacts and truncates it, and appends
-one `event="agent_trajectory"` record. `workflow._run_agent_tracked` forwards its orchestrator-built `prompt` so it can
-land as the redacted `user_input`; `record_agent_exit` also threads through the `UsageMetrics` it already parsed for the
-baseline record so the trajectory can carry a denormalized `run_usage` summary without a re-parse. The whole block rides
-its **own** inner fail-open `try/except`: a parser, redactor, or sink failure logs (`log.exception`) and is swallowed,
-so it can never drop the baseline `agent_exit` usage / cost record or the `skill_triggered` audit events, all of which
-were already produced before it runs. With the sink off (the default) the block is a no-op before any parse work — the
-prompt is never read into a record and the `agent_exit` shape is byte-for-byte unchanged. `main._run_tick` does not yet
-call `prune_trajectory_records`, so trajectory retention stays operator-driven for now.
+one `event="agent_trajectory"` record. `_run_agent_tracked` (in `workflow/engine/usage.py`) forwards its
+orchestrator-built `prompt` so it can land as the redacted `user_input`; `record_agent_exit` also threads through the
+`UsageMetrics` it already parsed for the baseline record so the trajectory can carry a denormalized `run_usage` summary
+without a re-parse. The whole block rides its **own** inner fail-open `try/except`: a parser, redactor, or sink
+failure logs (`log.exception`) and is swallowed, so it can never drop the baseline `agent_exit` usage / cost record or
+the `skill_triggered` audit events, all of which were already produced before it runs. With the sink off (the default)
+the block is a no-op before any parse work — the prompt is never read into a record and the `agent_exit` shape is
+byte-for-byte unchanged. `main._run_tick` does not yet call `prune_trajectory_records`, so trajectory retention stays
+operator-driven for now.
 
 **Record shape.** One `agent_trajectory` record per tracked run carries the standard envelope (`ts`, `repo`, `issue`,
 `event`, `stage`) plus correlation context (`agent_role`, `backend`, `session_id`, `review_round`, `retry_count`) and
@@ -1222,9 +1223,10 @@ When usage is present but the model SKU does not match any priced family, the pa
 empty stream — or one with no usage frames at all — yields `"no-usage"`.
 
 **Resilience.** Malformed JSON lines (banner text, truncated frames, partial flushes) are silently skipped so a single
-bad line never invalidates the rest of the stream. `workflow._run_agent_tracked` calls `parse_agent_usage` after every
-tracked agent run and appends the parsed counts to the [analytics sink](#analytics-sink-analytics_log_path) under
-`event="agent_exit"`; a parser exception is caught and downgraded to a `log.exception`.
+bad line never invalidates the rest of the stream. `_run_agent_tracked` (in `workflow/engine/usage.py`) calls
+`parse_agent_usage` after every tracked agent run and appends the parsed counts to the
+[analytics sink](#analytics-sink-analytics_log_path) under `event="agent_exit"`; a parser exception is caught and
+downgraded to a `log.exception`.
 
 **Terminal verdict surface.** Beyond the analytics sink, `workflow._accumulate_issue_usage` folds each run's
 `UsageMetrics` into per-issue counters on the pinned state (`issue_agent_runs` / `issue_total_tokens` /
