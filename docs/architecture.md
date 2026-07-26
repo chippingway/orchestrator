@@ -127,6 +127,8 @@ orchestrator/
     locks.py            per-target-root re-entrant lock registry and accessor
     base_sync/
       __init__.py       package marker only; callers import an owner directly
+      eligibility.py    the label, park / trusted-retry, open-PR, recovery, and
+                        clean-tree gates one PR sync clears before a rewrite
       models.py         frozen auto-rebase contexts, requests, recovery
                         snapshots, and decisions
       outcomes.py       recovery notices plus the already-published, unknown-
@@ -189,8 +191,8 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   base_sync.py          lazy base-refresh/rebase compatibility facade over the
                         git/base_sync/ owners and the leaves below
-  _base_sync_*.py       typed rebase/recovery decisions, conflict routing,
-                        and publication leaves
+  _base_sync_*.py       PR-coordinator and conflict routing, rebase start, and
+                        publication leaves
   worktrees.py          lazy compatibility hub over the five worktree
                         subsystem facades above
   _worktrees_export_manifest.py / _worktrees_exports.py
@@ -278,9 +280,11 @@ so a mock for either one lands on the owner even though both names stay forwarde
 `_has_new_commits`, and the decomposer helpers themselves stay patchable by name on `worktree_lifecycle`,
 `worktrees`, and `workflow`. `git/base_sync/` binds the same way: `models` and `state` carry only data -- the
 frozen auto-rebase models and the pinned-state keys, park reasons, detour labels, and logger that the flat
-`_base_sync_*` leaves bind straight off `state` -- while its seven behavioral owners bind their collaborators.
+`_base_sync_*` leaves bind straight off `state` -- while its eight behavioral owners bind their collaborators.
 On the refresh side, `refresh` reaches `git.authentication`, `git.commands`, `git.verification.probes`,
-`git.worktrees.paths`, and its `pre_pr` sibling directly, `pre_pr` reaches `git.commands`, and `startup`
+`git.worktrees.paths`, and its `pre_pr` sibling directly, `pre_pr` reaches `git.commands`, `eligibility`
+reaches `comment_trust` for the trusted-reply filter, the verification probes for its clean-tree gate, and
+`recovery` for the interrupted rebase it settles before rejecting a label, and `startup`
 reaches `git.commands`, `git.verification.probes`, and its `pre_pr` and `persistence` siblings for the
 pre-rebase HEAD read, the rebase it anchors, the abort a failure runs, and the park it ends in. On the
 crash-recovery side, `recovery` calls `snapshot` for the reads, `outcomes` for the answers, `persistence` for
@@ -292,7 +296,8 @@ in; `outcomes` calls its `persistence` sibling
 for the finalize and the reset-and-park tail and `snapshot` for the unverified abort; and `persistence` calls
 `git.commands` for the reset and clean. A patch that has to intercept the base fetch, the worktree root, the
 dirty-file scan, the rev-list behind count, the pre-rebase HEAD read, the rebase either sync path runs, the
-hardened git command a park, a rebase abort, or a `rev-parse` runs, the authenticated push, or the sibling
+crash recovery an eligibility gate triggers, the hardened git command a park, a rebase abort, or a
+`rev-parse` runs, the authenticated push, or the sibling
 helper an owner delegates to therefore targets
 `orchestrator.git.commands` / `orchestrator.git.authentication` / the probe owner / the owner module rather
 than `base_sync`. Every base-sync

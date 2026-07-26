@@ -32,10 +32,11 @@ def _git_result(
 
 
 # Keyword aliases -> every module attribute the alias has to replace. The
-# refresh, pre-PR, startup, and crash-recovery owners read their collaborators
-# off the owning modules while the remaining base-sync leaves still read theirs
-# off the `base_sync` facade, so a name both sides call is listed on both sides --
-# patching one alone would leave half the flow talking to real git.
+# refresh, pre-PR, eligibility, startup, and crash-recovery owners read their
+# collaborators off the owning modules while the remaining base-sync leaves
+# still read theirs off the `base_sync` facade, so a name both sides call is
+# listed on both sides -- patching one alone would leave half the flow talking
+# to real git.
 _BASE_SYNC_TARGETS = MappingProxyType(
     {
         "dirty": (

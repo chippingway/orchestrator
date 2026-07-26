@@ -31,9 +31,9 @@ orchestrator process is stateless.
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
   and stage-specific prefixes) or straight to the git-package owners -- `git/` for
   `git_plumbing.py`, `git/verification/` for `verify.py`, `git/worktrees/` for `worktree_lifecycle.py`,
-  `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models, shared state, and
-  worktree refresh plus rebase startup and crash-recovery probing, routing, outcomes, and persistence
-  `base_sync.py` publishes. The package also contains per-tick
+  `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models, shared state, worktree
+  refresh, and rebase-eligibility gates plus the rebase startup and crash-recovery probing, routing,
+  outcomes, and persistence `base_sync.py` publishes. The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
@@ -98,7 +98,10 @@ orchestrator process is stateless.
   rebase-in-progress detection, and the abort-on-failure local rebase of a branch nobody has pushed), the
   `refresh.py` owner (the per-tick authenticated base fetch, worktree discovery, scheduler-claim and
   hard-skip / question / dirty-tree gates, and the per-worktree route to `pre_pr` or the PR-aware
-  coordinator), the `startup.py` owner (the pre-rebase HEAD guard, the anchor and retry unpark persisted
+  coordinator), the `eligibility.py` owner (the refresh-driven label check that settles a stale recovery
+  anchor, the park-reason and trusted-retry-comment decision, the open-PR read that clears an anchor a
+  terminal PR left behind, the crash-recovery precedence, and the clean-tree / behind-base start
+  probe), the `startup.py` owner (the pre-rebase HEAD guard, the anchor and retry unpark persisted
   before git runs, and the abort / conflict-route / park a failed rebase takes), the
   `persistence.py` owner (the auto-rebase park, the shared
   reset-and-park tail, and the pinned-state / notice / audit-event writes a recovered rebase finalizes and
@@ -179,7 +182,9 @@ orchestrator process is stateless.
   covered in `tests/git/base_sync/`: request-to-context derivation, model defaults and frozen-ness, the
   published pinned-state keys / park reasons / detour labels / logger name, the hardened rebase and its
   conflicted-path list, rebase-state probing, the aborting pre-PR rebase, the per-tick fetch / discovery
-  and the gates that end a sync early, a real bare remote driving the clean / no-op / conflicting / dirty
+  and the gates that end a sync early, the hard-skip controls / handler-owned label / terminal PR that end
+  one worktree's sync before a rewrite, the label, park-and-trusted-retry, open-PR, recovery-precedence, and
+  clean-tree eligibility decisions, a real bare remote driving the clean / no-op / conflicting / dirty
   pre-PR paths end to end, the auto-rebase park and its
   reset-and-park tail, the staged recovery state / notice / event / routing writes and the order the park and
   finalize paths publish them in, the recovery notices and the park, abort, and already-published outcomes,
