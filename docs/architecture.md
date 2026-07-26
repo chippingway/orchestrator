@@ -138,7 +138,8 @@ orchestrator/
       probes.py         subject vocabulary and predicates, ahead/behind counts,
                         first-commit and recent-base subject reads
       rewrite.py        soft reset, orchestrator-identity commit, lease
-                        force-push, and the rollback each failure takes
+                        force-push, and the rollback each post-reset failure
+                        takes
       squash.py         plan-then-rewrite entry point stage handlers call
       titles.py         subject-prefix inference and PR-title selection
     verification/
@@ -247,7 +248,9 @@ the authenticated fetches and the push reach `git.commands` and `git.locks` plus
 refusal helpers directly -- so a patch that has to intercept the transport probe, the target-root lock, the session,
 or the remote-ref lease read targets `orchestrator.git.authentication` and not `git_plumbing`; `_authed_fetch` /
 `_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `git_plumbing`, `worktrees`,
-`base_sync`, and `workflow`, with `_push_branch` also reachable on `branch_publication`. The `git/worktrees/` owners
+`base_sync`, and `workflow`, and `_push_branch` stays resolvable on `branch_publication` too -- but the squash
+rewrite reads it off `git.authentication`, so a mock that has to intercept that force-push targets the owner and
+not the facade. The `git/worktrees/` owners
 bind the same way — the creators reach `git.commands`, `git.locks`, `git.authentication`, and their in-package
 `paths` / `recovery` siblings directly, the decomposer lifecycle resolves its own path helper, and `terminal`
 composes its local teardown from `cleanup` — so a patch that has to intercept the git plumbing, the authenticated
