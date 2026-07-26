@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import messages as _messages
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -81,7 +82,7 @@ def _park_verify_failure(
     # that case is the redact-before-truncate pass inside the runner.
     output = verify.output or ""
     if output.strip():
-        quoted = _wf._as_blockquote(output.rstrip())
+        quoted = _messages._as_blockquote(output.rstrip())
         message = f"{message}\n\n_Verify output (tail):_\n\n{quoted}"
 
     _wf._park_awaiting_human(gh, issue, state, message, reason=reason)

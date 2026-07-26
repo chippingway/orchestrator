@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _FixingContext = _owner._FixingContext
 _FixingFeedback = _owner._FixingFeedback
@@ -156,14 +157,14 @@ def _fixing_ack_fast_path(
     """
     from orchestrator import workflow as _wf
 
-    ack_reason = _wf._drift_ack_reason(dev_result.last_message or "")
+    ack_reason = _messages._drift_ack_reason(dev_result.last_message or "")
     if not ack_reason or (
         after_sha and _wf._stranded_fix_unpushed(ctx.spec, wt, ctx.state, ctx.issue)
     ):
         return False
     _owner._advance_consumed_watermarks(ctx.state, feedback)
     _owner._clear_pending_fix_bookmarks(ctx.state)
-    quoted = _wf._as_blockquote(ack_reason)
+    quoted = _messages._as_blockquote(ack_reason)
     _comments._post_issue_comment(
         ctx.gh, ctx.issue, ctx.state,
         ":speech_balloon: dev session reports the PR feedback needs "

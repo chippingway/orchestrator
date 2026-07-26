@@ -1,24 +1,114 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Workflow verdicts."""
+"""What the orchestrator reads out of an agent's last message, and the stderr
+diagnostics it writes back when that message is not enough.
+
+The read side is the marker vocabulary the stage prompts promise and the stage
+handlers act on: a review verdict, a documentation no-change verdict, a drift
+acknowledgement, and the operator's `/orchestrator continue`. Each marker takes
+the LAST match, so one quoted from a template earlier in a long message loses
+to the concluding line, and prose that merely sounds like an outcome ("no
+changes needed") stays `_VERDICT_UNKNOWN` -- the caller parks a human in rather
+than guessing. `/orchestrator continue` is the one marker a human writes, so it
+also owns the refusal posted when that command arrives without the guidance the
+park is actually waiting on.
+
+The write side is the stderr block a park comment and a log line carry. Both
+run the shared redactor over the raw stderr BEFORE trimming it to either
+budget, because a secret straddling the cut would otherwise survive the
+redaction pass as a partial value.
+"""
 from __future__ import annotations
 
-from orchestrator import _workflow_messages_state as _state
-from orchestrator import workflow_messages as _owner
+import re
+from typing import Optional, Tuple
+
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.agents import AgentResult
+from orchestrator.config import credentials as _credentials
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Optional = _owner.Optional
-PinnedState = _owner.PinnedState
-Tuple = _owner.Tuple
-_CONTINUE_NEEDS_GUIDANCE_MSG = _state._CONTINUE_NEEDS_GUIDANCE_MSG
-_CONTINUE_PARK_REASONS = _state._CONTINUE_PARK_REASONS
-_DOC_VERDICT_RE = _state._DOC_VERDICT_RE
-_DRIFT_ACK_RE = _state._DRIFT_ACK_RE
-_ORCHESTRATOR_CONTINUE_RE = _state._ORCHESTRATOR_CONTINUE_RE
-_VERDICT_RE = _state._VERDICT_RE
-_VERDICT_UNKNOWN = _state._VERDICT_UNKNOWN
+_STDERR_TAIL_BUDGET = 1024
+
+_VERDICT_UNKNOWN = "unknown"
+
+_VERDICT_RE = re.compile(
+    r"VERDICT:\s*(APPROVED|CHANGES_REQUESTED)\b",
+    re.IGNORECASE,
+)
+
+_DOC_VERDICT_RE = re.compile(
+    r"(?:^|\n)[ \t]*DOCS:[ \t]*NO_CHANGE[ \t]*\r?\n?\s*\Z",
+    re.IGNORECASE,
+)
+
+_DRIFT_ACK_RE = re.compile(r"^\s*ACK:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
+
+_CONTINUE_PARK_REASONS = frozenset(("agent_silent", "agent_timeout"))
+
+_ORCHESTRATOR_CONTINUE_RE = re.compile(
+    r"^[ \t]*/orchestrator[ \t]+continue[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+_CONTINUE_NEEDS_GUIDANCE_MSG = (
+    f"{config.HITL_MENTIONS} `/orchestrator continue` needs your actual "
+    "guidance here: this park is waiting on a real answer (an agent question, "
+    "or a worktree it could not finish), not a generic continue. Reply with "
+    "the specific change to make, or relabel the issue, to proceed."
+)
+
+
+def _as_blockquote(text: str) -> str:
+    """Render `text` as a Markdown blockquote (each line prefixed with `> `)."""
+    prefixed = text.replace("\n", "\n> ")
+    return f"> {prefixed}"
+
+
+def _format_stderr_diagnostics(
+    agent_result: AgentResult, label: str = "Agent",
+) -> str:
+    r"""Render a stderr/exit-code diagnostic block to append to a park comment.
+
+    Returns "" when the agent produced no stderr -- callers can concatenate
+    unconditionally without a trailing dead section. Otherwise returns a
+    block beginning with two newlines so it slots cleanly after an existing
+    `_Last … message:_` body.
+
+    Redaction happens on the raw stderr before any trimming: a multi-line
+    secret env value (e.g. an SSH/PEM key whose env-var value ends in `\\n`)
+    echoed at the end of stderr would otherwise have its trailing newline
+    stripped first, so `str.replace` would no longer find the env value
+    verbatim and the secret would leak.
+    """
+    tail = _credentials.redact_secrets(agent_result.stderr or "").rstrip()
+    if not tail:
+        return ""
+    if len(tail) > _STDERR_TAIL_BUDGET:
+        tail = tail[-_STDERR_TAIL_BUDGET:]
+    quoted = _as_blockquote(tail)
+    return (
+        f"\n\n_{label} stderr (last 1KB):_\n\n{quoted}\n\n"
+        f"_{label} exit code:_ {agent_result.exit_code}"
+    )
+
+
+def _stderr_log_tail(agent_result: AgentResult, max_chars: int = 400) -> str:
+    r"""Short stderr tail for log lines -- tighter than the park-comment cap
+    so a single WARNING fits on one screen.
+
+    Redact before trimming for the same reason as `_format_stderr_diagnostics`:
+    a multi-line secret value ending in `\\n` would not match `str.replace`
+    if `rstrip` ate the trailing newline first.
+    """
+    tail = _credentials.redact_secrets(agent_result.stderr or "").rstrip()
+    if len(tail) > max_chars:
+        tail = tail[-max_chars:]
+    return tail
 
 
 def _parse_review_verdict(last_message: str) -> Tuple[str, str]:
@@ -132,10 +222,10 @@ def _continue_command_action(new_comments: list, park_reason) -> str:
         resume / drift path handles the comments (and feeds that guidance to
         the dev).
     """
-    if not _owner._parse_orchestrator_continue(new_comments):
+    if not _parse_orchestrator_continue(new_comments):
         return "passthrough"
     if not all(
-        _owner._is_bare_orchestrator_continue(comment) for comment in new_comments
+        _is_bare_orchestrator_continue(comment) for comment in new_comments
     ):
         return "passthrough"
     if park_reason in _CONTINUE_PARK_REASONS:

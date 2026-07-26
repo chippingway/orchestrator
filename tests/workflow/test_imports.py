@@ -13,12 +13,14 @@ from orchestrator import _workflow_export_manifest
 from orchestrator import workflow as _workflow
 from orchestrator.workflow import engine as _engine
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 from tests.reexport_test_support import lazy_targets, resolve_target
 
 _MODULES = (
     "orchestrator.workflow",
     "orchestrator.workflow.engine",
     "orchestrator.workflow.engine.comments",
+    "orchestrator.workflow.engine.messages",
     "orchestrator.workflow.state",
 )
 
@@ -124,6 +126,7 @@ class PackageSurfaceTest(unittest.TestCase):
         # make the initializer a second identity for that owner and charge every
         # importer of one owner for the imports of all the others.
         self.assertIs(_engine.comments, _comments)
+        self.assertIs(_engine.messages, _messages)
         for name, bound in _engine.__dict__.items():
             if name.startswith("__"):
                 continue

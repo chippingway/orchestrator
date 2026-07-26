@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _documenting_state as _state
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import messages as _messages
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -136,9 +137,9 @@ def _refuse_parked_continue_command(
     )
     if not new_comments:
         return False
-    if _wf._continue_command_action(new_comments, park_reason) != "refuse":
+    if _messages._continue_command_action(new_comments, park_reason) != "refuse":
         return False
-    _wf._refuse_parked_continue(gh, issue, state)
+    _messages._refuse_parked_continue(gh, issue, state)
     gh.write_pinned_state(issue, state)
     return True
 

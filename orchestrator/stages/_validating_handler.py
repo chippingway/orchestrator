@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _ReviewerDecision = _owner._ReviewerDecision
 _ReviewerRun = _owner._ReviewerRun
@@ -121,7 +122,7 @@ def _dispatch_reviewer_result(
         gh.write_pinned_state(issue, state)
         return
 
-    verdict, body = _wf._parse_review_verdict(review.last_message)
+    verdict, body = _messages._parse_review_verdict(review.last_message)
     decision = _ReviewerDecision(reviewer_run, verdict, body)
     gh.emit_event(
         "review_verdict",

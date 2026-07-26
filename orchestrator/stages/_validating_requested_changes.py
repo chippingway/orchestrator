@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _AwaitingDevAttempt = _owner._AwaitingDevAttempt
 _DevFixRun = _owner._DevFixRun
@@ -39,14 +40,14 @@ def _park_reviewer_no_verdict(
     from orchestrator import workflow as _wf
 
     raw = (review.last_message or "").strip() or "(reviewer produced no final message)"
-    quoted = _wf._as_blockquote(raw)
+    quoted = _messages._as_blockquote(raw)
     silent_crash = (
         not (review.last_message or "").strip() and review.exit_code != 0
     )
     diag = (
         ""
         if (review.last_message or "").strip()
-        else _wf._format_stderr_diagnostics(review, "Reviewer")
+        else _messages._format_stderr_diagnostics(review, "Reviewer")
     )
     _wf._park_awaiting_human(
         gh, issue, state,
@@ -61,7 +62,7 @@ def _park_reviewer_no_verdict(
         "issue=#%s reviewer emitted no VERDICT; exit_code=%d "
         "timed_out=%s stderr_tail=%r",
         issue.number, review.exit_code, review.timed_out,
-        _wf._stderr_log_tail(review),
+        _messages._stderr_log_tail(review),
     )
     gh.write_pinned_state(issue, state)
 

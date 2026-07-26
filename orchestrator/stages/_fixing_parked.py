@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
+from orchestrator.workflow.engine import messages as _messages
 
 _FixingContext = _owner._FixingContext
 _FixingFeedback = _owner._FixingFeedback
@@ -133,7 +134,7 @@ def _dispatch_parked_fixing(
     # routes so a session-failure park (`agent_silent` / `agent_timeout`) never
     # resumes the dev on the bare command text. A "replay" or "refuse"
     # decision owns the tick; a "passthrough" returns None and falls through.
-    if _wf._parse_orchestrator_continue(feedback.issue_space):
+    if _messages._parse_orchestrator_continue(feedback.issue_space):
         decision = _owner._dispatch_continue_command(ctx, feedback)
         if decision is not None:
             return decision

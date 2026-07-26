@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import conflicts as _owner
+from orchestrator.workflow.engine import messages as _messages
 
 _ConflictContext = _owner._ConflictContext
 _ConflictResumeRun = _owner._ConflictResumeRun
@@ -101,7 +102,7 @@ def _park_stalled_conflict_result(
     raw = dev_result.last_message.strip()
     quoted = ""
     if raw:
-        quoted = f"\n\nAgent output:\n\n{_wf._as_blockquote(raw)}"
+        quoted = f"\n\nAgent output:\n\n{_messages._as_blockquote(raw)}"
     _owner._park_conflict(
         ctx,
         f"{config.HITL_MENTIONS} rebase is still in progress after the "

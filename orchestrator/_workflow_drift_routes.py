@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator import _workflow_drift_state as _state
 from orchestrator import workflow_drift as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -32,7 +33,7 @@ def _build_user_content_change_prompt(
     """
     title = (issue.title or "").strip() or f"#{issue.number}"
     body = (issue.body or "").strip() or "(no body)"
-    quoted = _owner._as_blockquote(body)
+    quoted = _messages._as_blockquote(body)
     convo = comments_text or "(no prior comments)"
     return (
         "The human edited the issue while you were working on it. Re-read the "

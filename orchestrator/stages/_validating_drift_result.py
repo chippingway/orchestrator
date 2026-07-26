@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _DevFixRun = _owner._DevFixRun
 GitHubClient = _owner.GitHubClient
@@ -27,9 +28,7 @@ _REVIEW_ROUND = _state._REVIEW_ROUND
 def _post_drift_ack(
     gh: GitHubClient, issue: Issue, state: PinnedState, reason: str,
 ) -> None:
-    from orchestrator import workflow as _wf
-
-    quoted = _wf._as_blockquote(reason)
+    quoted = _messages._as_blockquote(reason)
     _comments._post_issue_comment(
         gh, issue, state,
         ":speech_balloon: dev session reports the existing work "
@@ -53,7 +52,7 @@ def _dispose_user_content_change_result(
         _owner._park_dev_fix_timeout(gh, issue, state, run.before_sha)
         return _OUTCOME_PARKED
     if not _owner._dev_fix_is_publishable(spec, issue, state, run):
-        ack_reason = _wf._drift_ack_reason(
+        ack_reason = _messages._drift_ack_reason(
             run.agent_result.last_message or "",
         )
         if ack_reason:

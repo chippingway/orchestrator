@@ -45,6 +45,13 @@
 # policy: the marker the writer stamps is what the reader filters on, and
 # splitting them would let the pair drift apart, so WPS202 is waived.
 #
+# orchestrator/workflow/engine/messages.py is one owner for the whole agent
+# message contract -- the markers read out of a last message and the stderr
+# diagnostics written back when there is nothing usable in it -- so it carries
+# 10 members past the same ceiling. Each marker is a small strict parser, and
+# the prompt that promises one is the prompt that also promises the park the
+# others fall to, so WPS202 is waived.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -72,6 +79,7 @@ per-file-ignores =
     orchestrator/workflow/__init__.py:WPS412
     orchestrator/workflow/state.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
+    orchestrator/workflow/engine/messages.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

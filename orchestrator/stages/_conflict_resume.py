@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _ConflictContext = _owner._ConflictContext
 _ConflictResumeRun = _owner._ConflictResumeRun
@@ -139,10 +140,10 @@ def _awaiting_human_followup(ctx: _ConflictContext) -> Optional[str]:
     park_reason = ctx.state.get("park_reason")
     continue_action = (
         "passthrough" if park_reason in _wf._AUTO_REBASE_PARK_REASONS
-        else _wf._continue_command_action(new_comments, park_reason)
+        else _messages._continue_command_action(new_comments, park_reason)
     )
     if continue_action == "refuse":
-        _wf._refuse_parked_continue(ctx.gh, ctx.issue, ctx.state)
+        _messages._refuse_parked_continue(ctx.gh, ctx.issue, ctx.state)
         ctx.gh.write_pinned_state(ctx.issue, ctx.state)
         return None
     ctx.state.set(

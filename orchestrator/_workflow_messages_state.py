@@ -3,7 +3,6 @@
 """Shared immutable values for :mod:`orchestrator.workflow_messages` leaves."""
 from __future__ import annotations
 
-from orchestrator import config
 import re
 
 _FOREGROUND_ONLY_NOTE = (
@@ -28,11 +27,7 @@ _COMMIT_STYLE_NOTE = (
     "`git commit -m \"<subject>\"` with a single `-m`."
 )
 
-_STDERR_TAIL_BUDGET = 1024
-
 _SECTION_SEP = "\n\n"
-
-_VERDICT_UNKNOWN = "unknown"
 
 _NO_BODY = "(no body)"
 
@@ -40,38 +35,12 @@ _NO_PRIOR_COMMENTS = "(no prior comments)"
 
 _MAX_FILES_SHOWN = 20
 
-_VERDICT_RE = re.compile(
-    r"VERDICT:\s*(APPROVED|CHANGES_REQUESTED)\b",
-    re.IGNORECASE,
-)
-
-_DOC_VERDICT_RE = re.compile(
-    r"(?:^|\n)[ \t]*DOCS:[ \t]*NO_CHANGE[ \t]*\r?\n?\s*\Z",
-    re.IGNORECASE,
-)
-
-_DRIFT_ACK_RE = re.compile(r"^\s*ACK:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
-
-_CONTINUE_PARK_REASONS = frozenset(("agent_silent", "agent_timeout"))
-
-_ORCHESTRATOR_CONTINUE_RE = re.compile(
-    r"^[ \t]*/orchestrator[ \t]+continue[ \t]*$",
-    re.IGNORECASE | re.MULTILINE,
-)
-
 _CONTINUE_RETRY_PROMPT = (
     "Resuming after a session/usage limit or a silent session failure. "
     "Re-read the issue requirements and the conversation in your transcript, "
     "then CONTINUE the work already in progress and COMMIT any remaining "
     "changes in your current worktree. Do NOT push -- the orchestrator pushes "
     "and re-runs the reviewer."
-)
-
-_CONTINUE_NEEDS_GUIDANCE_MSG = (
-    f"{config.HITL_MENTIONS} `/orchestrator continue` needs your actual "
-    "guidance here: this park is waiting on a real answer (an agent question, "
-    "or a worktree it could not finish), not a generic continue. Reply with "
-    "the specific change to make, or relabel the issue, to proceed."
 )
 
 _MANIFEST_RE = re.compile(

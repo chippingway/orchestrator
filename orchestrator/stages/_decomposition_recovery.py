@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _DecomposerSession = _owner._DecomposerSession
 AgentResult = _owner.AgentResult
@@ -208,13 +209,13 @@ def _park_unparsed_manifest(
     if error is None:
         stripped = last_msg.strip()
         raw = stripped or "(decomposer produced no final message)"
-        quoted = _wf._as_blockquote(raw)
+        quoted = _messages._as_blockquote(raw)
         # Only attach stderr diagnostics on the silent path -- a
         # real content question from the decomposer doesn't need
         # the operator wading through subprocess noise.
         diag = (
             "" if stripped
-            else _wf._format_stderr_diagnostics(
+            else _messages._format_stderr_diagnostics(
                 decomposer_result, "Decomposer",
             )
         )
@@ -231,10 +232,10 @@ def _park_unparsed_manifest(
                 issue.number,
                 decomposer_result.exit_code,
                 decomposer_result.timed_out,
-                _wf._stderr_log_tail(decomposer_result),
+                _messages._stderr_log_tail(decomposer_result),
             )
     else:
-        quoted = _wf._as_blockquote(last_msg.strip())
+        quoted = _messages._as_blockquote(last_msg.strip())
         _wf._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} decomposer manifest invalid "

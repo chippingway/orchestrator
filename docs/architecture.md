@@ -119,6 +119,10 @@ orchestrator/
       comments.py       the orchestrator marker and capped id ledger both
                         comment posters write, the trusted-author thread read
                         every prompt quotes, and the tracked-repos block
+      messages.py       the markers read out of an agent's last message
+                        (review / documentation verdicts, drift ack,
+                        `/orchestrator continue` and its refusal) and the
+                        redact-before-truncate stderr diagnostics
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
@@ -129,7 +133,7 @@ orchestrator/
   _workflow_drift_*.py  drift hashing and stage-route leaves
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
-                        prompt and parser leaves
+                        prompt and manifest-parsing leaves
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
@@ -360,6 +364,17 @@ for the name on a facade. So a patch that has to intercept a posted issue or PR 
 the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`; `workflow`,
 `workflow_messages`, `workflow_drift`, and `base_sync` each still resolve their historical slice of those names to the
 owner's exact object for callers outside the package.
+
+`workflow/engine/messages.py` is bound the same way. It owns both halves of what an agent's last message is worth:
+the strict markers read out of it -- the review and documentation verdicts, the drift `ACK:`, and the operator's
+`/orchestrator continue` together with the refusal a guidance-free one earns -- and the stderr block a park comment or
+log line carries when there was no usable message at all. Its own parsers call each other in-module, and the workflow
+and stage leaves that read a verdict, quote a blockquote, or classify a continue import the owner. So a patch that has
+to intercept a verdict parse, an ack read, a continue classification or refusal, or a stderr diagnostic targets
+`orchestrator.workflow.engine.messages`; `workflow`, `workflow_messages`, and `workflow_drift` each still resolve
+their historical slice of those names to the owner's exact object. The implementing stage keeps its own
+`_as_blockquote` on `stages/_implementing_session_read.py`, so a patch aimed at that stage's quoting still targets the
+stage leaf.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

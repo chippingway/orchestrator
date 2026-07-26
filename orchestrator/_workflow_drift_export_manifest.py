@@ -66,6 +66,13 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.workflow.engine.messages",
+        (
+            ("_as_blockquote", "_as_blockquote"),
+            ("_is_bare_orchestrator_continue", "_is_bare_orchestrator_continue"),
+        ),
+    ),
+    *export_group(
         "orchestrator.workflow.state",
         (("WorkflowLabel", "WorkflowLabel"),),
     ),
@@ -74,8 +81,6 @@ EXPORTS = (
         (
             ("_COMMIT_STYLE_NOTE", "_COMMIT_STYLE_NOTE"),
             ("_FOREGROUND_ONLY_NOTE", "_FOREGROUND_ONLY_NOTE"),
-            ("_as_blockquote", "_as_blockquote"),
-            ("_is_bare_orchestrator_continue", "_is_bare_orchestrator_continue"),
         ),
     ),
     *export_group(

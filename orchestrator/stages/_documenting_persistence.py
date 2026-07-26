@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import documenting as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _DocumentingContext = _owner._DocumentingContext
 PinnedState = _owner.PinnedState
@@ -65,13 +66,11 @@ def _push_docs_and_advance(
 def _documenting_no_change_note(body: str) -> str:
     """Build the `DOCS: NO_CHANGE` PR notice, quoting the agent's
     justification when it supplied one."""
-    from orchestrator import workflow as _wf
-
     justification = body.strip()
     base = ":books: documenting pass: no docs changes required."
     if not justification:
         return base
-    quoted = _wf._as_blockquote(justification)
+    quoted = _messages._as_blockquote(justification)
     return f"{base}\n\n{quoted}"
 
 

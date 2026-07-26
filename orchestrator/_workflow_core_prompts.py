@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator import _workflow_messages_state as _state
 from orchestrator import workflow_messages as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 Issue = _owner.Issue
 config = _owner.config
@@ -169,7 +170,7 @@ def _build_documentation_prompt(
 
 def _build_fix_prompt(review_feedback: str) -> str:
     feedback = review_feedback.strip() or "(reviewer left no detail)"
-    quoted = _owner._as_blockquote(feedback)
+    quoted = _messages._as_blockquote(feedback)
     return (
         "An automated reviewer requested changes on your implementation. Address each item "
         "below, then COMMIT the fix in your current worktree. Do NOT push -- the orchestrator "

@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _FixingContext = _owner._FixingContext
 _FixingFeedback = _owner._FixingFeedback
@@ -146,7 +147,7 @@ def _handle_continue_command(
     park_reason = ctx.state.get(_PARK_REASON)
     batch = (
         _owner._reconstruct_pending_fix_batch(ctx.gh, ctx.issue, ctx.pr, ctx.state)
-        if park_reason in _wf._CONTINUE_PARK_REASONS else []
+        if park_reason in _messages._CONTINUE_PARK_REASONS else []
     )
     if batch:
         _wf._drop_poisoned_dev_session(ctx.state)
@@ -164,14 +165,14 @@ def _handle_continue_command(
         return "replay", batch + feedback.all_items
 
     if all(
-        _wf._is_bare_orchestrator_continue(comment)
+        _messages._is_bare_orchestrator_continue(comment)
         for comment in feedback.all_items
     ):
         # Content-free continue with nothing else to act on. Consume only the
         # command comment(s) (`feedback.all_items` is all bare commands here,
         # so `continue_cmds` covers them) so the refusal is not re-posted every
         # tick, then stay parked with a reason.
-        continue_cmds = _wf._parse_orchestrator_continue(feedback.issue_space)
+        continue_cmds = _messages._parse_orchestrator_continue(feedback.issue_space)
         command_feedback = _FixingFeedback(
             issue_space=continue_cmds,
             review_comments=[],
@@ -179,7 +180,7 @@ def _handle_continue_command(
             all_items=continue_cmds,
         )
         _owner._advance_consumed_watermarks(ctx.state, command_feedback)
-        if park_reason in _wf._CONTINUE_PARK_REASONS:
+        if park_reason in _messages._CONTINUE_PARK_REASONS:
             message = (
                 f"{config.HITL_MENTIONS} `/orchestrator continue`: no "
                 "preserved PR-feedback batch is on file to replay for this "
