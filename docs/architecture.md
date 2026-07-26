@@ -36,7 +36,10 @@ The workflow, worktree, analytics-read, and dashboard subsystems expose stable l
 manifests. Their implementations live in responsibility-named private leaves, while facade lookups preserve every
 historical import and object identity. Leaves call through the owning facade at runtime where patch interception is
 part of the compatibility contract, so `patch.object(workflow, "<helper>", ...)` still intercepts calls made from
-other workflow and stage leaves.
+other workflow and stage leaves. Once a responsibility has been lifted into an owner module, though, its in-repo
+callers bind that owner directly and a patch has to target it instead — the facade keeps resolving the name for
+outside callers but is no longer on the call path. Each of those boundaries is named where its owner is described
+below.
 
 ```
 orchestrator/
