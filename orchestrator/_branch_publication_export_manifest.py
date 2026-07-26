@@ -36,17 +36,6 @@ EXPORTS = (
         (("log", "log"),),
     ),
     *export_group(
-        "orchestrator._branch_squash_plan",
-        (
-            ("_SquashPlan", "_SquashPlan"),
-            ("_SquashPreparationError", "_SquashPreparationError"),
-            ("_prepare_squash", "_prepare_squash"),
-            ("_squash_base_sha", "_squash_base_sha"),
-            ("_squash_message", "_squash_message"),
-            ("_squash_subjects", "_squash_subjects"),
-        ),
-    ),
-    *export_group(
         "orchestrator._branch_squash_rewrite",
         (
             ("_create_squash_commit", "_create_squash_commit"),
@@ -59,6 +48,17 @@ EXPORTS = (
     *export_group(
         "orchestrator.git.authentication",
         (("_push_branch", "_push_branch"),),
+    ),
+    *export_group(
+        "orchestrator.git.publication.planning",
+        (
+            ("_SquashPlan", "_SquashPlan"),
+            ("_SquashPreparationError", "_SquashPreparationError"),
+            ("_prepare_squash", "_prepare_squash"),
+            ("_squash_base_sha", "_squash_base_sha"),
+            ("_squash_message", "_squash_message"),
+            ("_squash_subjects", "_squash_subjects"),
+        ),
     ),
     *export_group(
         "orchestrator.git.publication.probes",

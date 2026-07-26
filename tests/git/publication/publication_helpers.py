@@ -33,6 +33,16 @@ def _spec(
     )
 
 
+def _git_result(
+    *,
+    returncode: int = 0,
+    stdout: str = "",
+    stderr: str = "",
+) -> MagicMock:
+    """One canned command-owner return for a scripted sequence of calls."""
+    return MagicMock(returncode=returncode, stdout=stdout, stderr=stderr)
+
+
 class _GitRecorder:
     """Command-owner double recording argv and replaying one canned result."""
 

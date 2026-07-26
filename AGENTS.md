@@ -82,8 +82,10 @@ orchestrator process is stateless.
   teardown and the terminal local + remote branch cleanup composed from it), and the `publication/` subpackage, whose
   `__init__.py` also binds nothing, over the
   `probes.py` owner (the conventional / repo-local subject vocabulary and predicates, ahead/behind counts,
-  first-commit and recent-base subject reads) and the `titles.py` owner (subject-prefix inference from base
-  history and PR-title selection), with `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, and
+  first-commit and recent-base subject reads), the `titles.py` owner (subject-prefix inference from base
+  history and PR-title selection) and the `planning.py` owner (the pre-rewrite merge-base, HEAD, dirty-tree and
+  topic-subject probes, their preparation error, and the squash message they select), with `git_plumbing.py`,
+  `verify.py`, `worktree_lifecycle.py`, and
   `branch_publication.py` kept as the forwarding facades for historical callers), and stable runtime-core
   facades (`main.py`, `state_machine.py`).
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
@@ -144,7 +146,8 @@ orchestrator process is stateless.
   those serialization tests share with the authenticated-fetch one lives in
   `tests/git/concurrency_test_support.py`);
   and the publication owners covered in `tests/git/publication/`: subject
-  predicates, per-spec commit-subject reads, ahead/behind folding, prefix inference, PR-title selection, and
+  predicates, per-spec commit-subject reads, ahead/behind folding, prefix inference, PR-title selection,
+  squash preparation errors and guard ordering with the message it selects, and
   import-cycle / package-surface checks, plus their git-double support module.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
