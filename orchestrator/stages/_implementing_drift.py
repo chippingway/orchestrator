@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 _AgentWork = _owner._AgentWork
 AgentResult = _owner.AgentResult
@@ -131,7 +132,7 @@ def _dispose_implementing_drift(
     elif drift.agent_result.timed_out:
         _owner._park_agent_timeout(gh, issue, state, drift.before_sha)
     else:
-        ack_reason = _wf._drift_ack_reason(
+        ack_reason = _messages._drift_ack_reason(
             drift.agent_result.last_message or "",
         )
         if ack_reason:

@@ -31,7 +31,11 @@ orchestrator process is stateless.
   `workflow/engine/comments.py` owner in the subpackage reserved for its remaining owners: the hidden
   orchestrator marker and the capped tracked-comment id ledger both posting helpers write, the
   trusted-author filter and quoting every prompt reads the issue thread through, and the capped
-  tracked-repository awareness block), per-stage lazy facades (`stages/`),
+  tracked-repository awareness block -- and over the `workflow/engine/messages.py` owner beside it: the
+  last-marker-wins review and documentation verdicts, the drift `ACK:` read, the `/orchestrator continue`
+  recognition, park-reason classification, and guidance-free refusal, the Markdown blockquote every notice
+  quotes through, and the redact-before-truncate stderr diagnostics a park comment and a log line
+  carry), per-stage lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
@@ -156,7 +160,7 @@ orchestrator process is stateless.
   `tests/test_workflow_scheduler_*.py`,
   with subsystem-specific support in
   `tests/scheduler_routing_*.py`; other facade-level helper tests
-  include (`tests/test_workflow_verdict_parsing.py`, `tests/test_workflow_prompt_redaction.py`,
+  include (`tests/test_workflow_documentation_prompt.py`,
   `tests/test_workflow_pickup.py`,
   `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_analytics.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
@@ -222,8 +226,8 @@ orchestrator process is stateless.
   package-surface checks including the guard that no flat `_base_sync_*` implementation leaf returns, plus
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
-  `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state` and
-  `engine/comments.py` owners, the guard that importing either the facade or the state
+  `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state`,
+  `engine/comments.py`, and `engine/messages.py` owners, the guard that importing either the facade or the state
   owner resolves no manifest target and no
   dependency binding, the package-surface checks that the facade is the
   initializer, that the engine initializer binds only the submodules planted in it, and that a submodule
@@ -236,7 +240,13 @@ orchestrator process is stateless.
   and the four historical facades that still forward its names (`test_comments.py`), plus the tracked-repos
   gate, listing, cap, framing, and absent secret fields (`test_comments_tracked_repos.py`). The injected-comment
   thread those filter tests share with the top-level prompt-builder and drift-hash ones lives in
-  `tests/comment_trust_test_support.py`.
+  `tests/comment_trust_test_support.py`. The message owner's coverage lives beside them: the
+  redact-before-truncate stderr block and log tail, the `ACK:` marker's last-wins read and its refusal of
+  unmarked prose, `/orchestrator continue` recognition and bare-vs-guided classification, the retry / refuse /
+  passthrough action per park reason, the refusal that consumes the command it answers, and the three
+  historical facades that still forward its names (`test_messages.py`), plus the review and documentation
+  marker parsers with the inline / nonfinal / punctuated variants they reject
+  (`test_messages_verdicts.py`).
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

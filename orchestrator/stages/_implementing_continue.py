@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import messages as _messages
 
 _PreparedDevRun = _owner._PreparedDevRun
 GitHubClient = _owner.GitHubClient
@@ -98,9 +99,7 @@ def _handle_parked_continue_command(
     if decision is None:
         return False
     if decision.action == "refuse":
-        from orchestrator import workflow as _wf
-
-        _wf._refuse_parked_continue(gh, issue, state)
+        _messages._refuse_parked_continue(gh, issue, state)
         gh.write_pinned_state(issue, state)
     else:
         _owner._retry_parked_dev_session(
@@ -131,7 +130,7 @@ def _parked_continue_decision(
     )
     if not comments:
         return None
-    action = _wf._continue_command_action(comments, park_reason)
+    action = _messages._continue_command_action(comments, park_reason)
     if action == "passthrough":
         return None
     return _ParkedContinueDecision(action, comments)

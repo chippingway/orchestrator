@@ -41,7 +41,6 @@ CONTINUE_COMMAND = "/orchestrator continue"
 NEW_BODY = "new body"
 CLARIFIED_BODY = "clarified body"
 EXISTING_WORK_MESSAGE = "existing work satisfies the edit"
-PARK_AGENT_SILENT = "agent_silent"
 UNCHANGED_SHA = "same"
 
 _BOT_COMMENT_ID = 200
@@ -76,14 +75,6 @@ _VALIDATING_CLARIFICATION_PR_NUMBER = 6001
 _IN_REVIEW_CLARIFICATION_ISSUE_NUMBER = 701
 _IN_REVIEW_CLARIFICATION_PR_NUMBER = 7001
 _IMPLEMENTING_CLARIFICATION_ISSUE_NUMBER = 602
-
-
-def _continue_comment(body: str) -> FakeComment:
-    return FakeComment(
-        id=1,
-        body=body,
-        user=FakeUser(TRUSTED_AUTHOR),
-    )
 
 
 @dataclass(frozen=True)

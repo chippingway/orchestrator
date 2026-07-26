@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator import _workflow_drift_state as _state
 from orchestrator import workflow_drift as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -48,7 +49,7 @@ def _comment_body_for_hash(
     body = issue_comment.body or ""
     if include_bare_continue:
         return body
-    if _owner._is_bare_orchestrator_continue(issue_comment):
+    if _messages._is_bare_orchestrator_continue(issue_comment):
         return None
     return body
 

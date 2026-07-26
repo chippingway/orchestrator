@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import messages as _messages
 
 _DocumentingContext = _owner._DocumentingContext
 _DocumentingRun = _owner._DocumentingRun
@@ -47,9 +48,7 @@ def _dispose_documenting_clean(
     asked a question. The explicit `DOCS: NO_CHANGE` marker is the only signal
     that confirms the diff was checked and nothing was needed; anything else
     parks via `_on_question`."""
-    from orchestrator import workflow as _wf
-
-    verdict, body = _wf._parse_documentation_verdict(
+    verdict, body = _messages._parse_documentation_verdict(
         documentation_result.last_message or "",
     )
     if verdict == "no_change":

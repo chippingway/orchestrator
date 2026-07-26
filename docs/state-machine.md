@@ -480,7 +480,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        answer (any other `park_reason`) consumes the command and posts a refusal (`_refuse_parked_continue`) once, then
        stays parked (no per-tick loop). A comment carrying the command *alongside* genuine guidance falls through to the
        normal drift/resume path so the guidance drives the dev (`_continue_command_action` returns `passthrough`). The
-       classifier + parser + refusal live in `workflow_messages` and are shared with `_handle_fixing` and
+       classifier + parser + refusal live in `workflow/engine/messages.py` and are shared with `_handle_fixing` and
        `_handle_documenting`; a bare continue is also dropped from `_compute_user_content_hash` (see above).
   2. Otherwise ensure a per-issue worktree at `<WORKTREES_DIR>/<owner>__<name>/issue-<n>` on branch
      `orchestrator/<owner>__<name>/issue-<n>` (the slug-namespaced branch keeps two RepoSpecs sharing a `target_root`

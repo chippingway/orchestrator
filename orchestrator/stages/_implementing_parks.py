@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 AgentResult = _owner.AgentResult
 GitHubClient = _owner.GitHubClient
@@ -97,7 +98,7 @@ def _park_silent_failure(
     """
     from orchestrator import workflow as _wf
 
-    diag = _wf._format_stderr_diagnostics(agent_result, "Agent")
+    diag = _messages._format_stderr_diagnostics(agent_result, "Agent")
     _comments._post_issue_comment(
         gh, issue, state,
         f"{config.HITL_MENTIONS} agent produced no output (likely a "
@@ -107,7 +108,7 @@ def _park_silent_failure(
         "issue=#%s agent produced no output; exit_code=%d "
         "timed_out=%s stderr_tail=%r",
         issue.number, agent_result.exit_code, agent_result.timed_out,
-        _wf._stderr_log_tail(agent_result),
+        _messages._stderr_log_tail(agent_result),
     )
     _owner._mark_agent_silent_park(state)
     return "agent_silent"

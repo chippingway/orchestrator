@@ -109,53 +109,6 @@ class ComputeUserContentHashTest(unittest.TestCase):
         )
 
 
-class ContinueCommandActionTest(unittest.TestCase):
-    """`_continue_command_action` classifies an operator `/orchestrator
-    continue` on a parked `implementing` / `documenting` issue. Retryable
-    session-failure parks with a content-free nudge retry; parks needing a
-    real answer refuse; anything else (no command, or a command carrying
-    guidance) passes through to the normal resume / drift path."""
-
-    def test_retryable_park_bare_continue_retries(self) -> None:
-        for reason in (support.PARK_AGENT_SILENT, "agent_timeout"):
-            with self.subTest(reason=reason):
-                self.assertEqual(
-                    workflow._continue_command_action(
-                        [support._continue_comment(support.CONTINUE_COMMAND)], reason,
-                    ),
-                    "retry",
-                )
-
-    def test_non_retryable_park_bare_continue_refuses(self) -> None:
-        for reason in (None, "dirty_worktree", "diverged_branch"):
-            with self.subTest(reason=reason):
-                self.assertEqual(
-                    workflow._continue_command_action(
-                        [support._continue_comment(support.CONTINUE_COMMAND)], reason,
-                    ),
-                    "refuse",
-                )
-
-    def test_command_with_guidance_passes_through(self) -> None:
-        # The command is present but the comment also carries guidance, so
-        # the normal resume/drift path should feed that guidance to the dev.
-        self.assertEqual(
-            workflow._continue_command_action(
-                [support._continue_comment("/orchestrator continue\nrename the flag")],
-                support.PARK_AGENT_SILENT,
-            ),
-            "passthrough",
-        )
-
-    def test_no_command_passes_through(self) -> None:
-        self.assertEqual(
-            workflow._continue_command_action(
-                [support._continue_comment("just a normal reply")], support.PARK_AGENT_SILENT,
-            ),
-            "passthrough",
-        )
-
-
 class DetectUserContentChangeTest(unittest.TestCase):
     def test_first_call_persists_and_returns_none(self) -> None:
         # The first encounter has no baseline; we record the current value

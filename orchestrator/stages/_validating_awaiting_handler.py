@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import messages as _messages
 
 _AwaitingValidation = _owner._AwaitingValidation
 GitHubClient = _owner.GitHubClient
@@ -18,11 +19,11 @@ def _resume_validating_awaiting_dev(context: _AwaitingValidation) -> str:
     from orchestrator import workflow as _wf
 
     continue_action = (
-        _wf._continue_command_action(context.comments, context.park_reason)
+        _messages._continue_command_action(context.comments, context.park_reason)
         if context.comments else "passthrough"
     )
     if continue_action == "refuse":
-        _wf._refuse_parked_continue(context.gh, context.issue, context.state)
+        _messages._refuse_parked_continue(context.gh, context.issue, context.state)
         context.gh.write_pinned_state(context.issue, context.state)
         return _OUTCOME_RETURN
     attempt = _owner._run_awaiting_dev(context, continue_action)

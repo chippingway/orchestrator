@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator import _workflow_messages_state as _state
 from orchestrator import workflow_messages as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import messages as _messages
 
 Issue = _owner.Issue
 config = _owner.config
@@ -100,7 +101,7 @@ def _build_question_followup_prompt(comments: list) -> str:
     body = _SECTION_SEP.join(
         _comments._quote_comment_line(comment) for comment in comments
     )
-    quoted = _owner._as_blockquote(body)
+    quoted = _messages._as_blockquote(body)
     return (
         "The human replied on the issue thread. Continue the discussion "
         "and answer their reply.\n\n"
@@ -122,7 +123,7 @@ def _build_pr_comment_followup(comments: list) -> str:
     body = _SECTION_SEP.join(
         _comments._quote_comment_line(comment) for comment in comments
     )
-    quoted = _owner._as_blockquote(body)
+    quoted = _messages._as_blockquote(body)
     return (
         "New comments arrived on the open PR for this issue. Address each item, "
         "then COMMIT the fix in your current worktree. Do NOT push -- the "

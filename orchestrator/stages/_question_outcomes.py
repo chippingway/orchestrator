@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
+from orchestrator.workflow.engine import messages as _messages
 
 _QuestionOutcome = _owner._QuestionOutcome
 _QuestionRun = _owner._QuestionRun
@@ -94,7 +95,7 @@ def _park_silent_question(
 ) -> None:
     from orchestrator import workflow as _wf
 
-    diagnostics = _wf._format_stderr_diagnostics(
+    diagnostics = _messages._format_stderr_diagnostics(
         question_result, "Question agent",
     )
     _owner._park_question(
@@ -110,7 +111,7 @@ def _park_silent_question(
         run.issue.number,
         question_result.exit_code,
         question_result.timed_out,
-        _wf._stderr_log_tail(question_result),
+        _messages._stderr_log_tail(question_result),
     )
 
 
