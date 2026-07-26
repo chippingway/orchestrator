@@ -1,5 +1,7 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Shared assertions for the anchor a parked auto-rebase must leave behind."""
+
 from __future__ import annotations
 
 from tests import base_sync_test_support as support
