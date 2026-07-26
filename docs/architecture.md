@@ -106,7 +106,8 @@ orchestrator/
                         helpers, and stage-handler patch points, plus its
                         `__init__.pyi` static surface
     engine/
-      __init__.py       package marker only; callers import an owner directly
+      __init__.py       package marker only; reserved for the tick, dispatch,
+                        and shared-helper owners
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
@@ -331,7 +332,10 @@ The collaborators these owners reach *upward* are call-time imports: `persistenc
 the PR-comment poster straight off their owning modules, and `publication` and `conflicts` bind the same
 poster for their notices, so a patch for either targets `orchestrator.workflow`
 or `orchestrator.workflow_messages` -- the `base_sync` forward of `_post_pr_comment` still resolves, but it is
-not what these owners call. Config and analytics modules
+not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
+the lazy hooks and the two dependency bindings live there, and nothing in it reaches into `workflow/engine/`, so
+importing the facade resolves no manifest target and pulls in neither the stage tree nor the git and GitHub
+subsystems the targets sit on. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.
