@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
+from orchestrator.workflow.engine import prompts as _prompts
 
 _ConflictContext = _owner._ConflictContext
 Path = _owner.Path
@@ -121,10 +122,8 @@ def _resolve_conflicts_with_agent(
     `before_sha`). Returns without touching durable state when a live
     pause lands mid-run.
     """
-    from orchestrator import workflow as _wf
-
     spec = ctx.spec
-    fix_prompt = _wf._build_conflict_resolution_prompt(
+    fix_prompt = _prompts._build_conflict_resolution_prompt(
         f"{spec.remote_name}/{spec.base_branch}", conflicted_files,
     )
     run = _owner._run_conflict_resume(ctx, fix_prompt)

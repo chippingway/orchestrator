@@ -7,6 +7,7 @@ from orchestrator import _workflow_drift_state as _state
 from orchestrator import workflow_drift as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import prompts as _prompts
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -44,7 +45,7 @@ def _build_user_content_change_prompt(
         f"Updated issue title: {title!r}\n\n"
         f"Updated issue body:\n\n{quoted}\n\n"
         f"Conversation so far:\n{convo}\n\n"
-        f"{_owner._COMMIT_STYLE_NOTE}\n\n"
+        f"{_prompts._COMMIT_STYLE_NOTE}\n\n"
         "If your existing commits already satisfy the new requirements and "
         "no further code change is needed, end your final message with "
         "EXACTLY this marker, alone on its own line:\n\n"
@@ -55,7 +56,7 @@ def _build_user_content_change_prompt(
         "clarification question or are unsure, do NOT use `ACK:`; reply "
         "with the question and the orchestrator will park awaiting a human "
         "reply (same as a regular agent question).\n\n"
-        f"{_owner._FOREGROUND_ONLY_NOTE}"
+        f"{_prompts._FOREGROUND_ONLY_NOTE}"
     )
 
 

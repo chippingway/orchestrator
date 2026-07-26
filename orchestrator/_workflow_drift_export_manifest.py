@@ -73,15 +73,15 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.workflow.state",
-        (("WorkflowLabel", "WorkflowLabel"),),
-    ),
-    *export_group(
-        "orchestrator.workflow_messages",
+        "orchestrator.workflow.engine.prompts",
         (
             ("_COMMIT_STYLE_NOTE", "_COMMIT_STYLE_NOTE"),
             ("_FOREGROUND_ONLY_NOTE", "_FOREGROUND_ONLY_NOTE"),
         ),
+    ),
+    *export_group(
+        "orchestrator.workflow.state",
+        (("WorkflowLabel", "WorkflowLabel"),),
     ),
     *export_group(
         "typing",

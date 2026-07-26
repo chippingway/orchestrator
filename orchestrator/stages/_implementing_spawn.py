@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import prompts as _prompts
 
 _DevSession = _owner._DevSession
 _PreparedDevRun = _owner._PreparedDevRun
@@ -56,7 +57,7 @@ def _spawn_implementer(
         agent_role="developer",
         stage=_IMPLEMENTING_STAGE,
         backend=session.backend,
-        prompt=_wf._build_implement_prompt(
+        prompt=_prompts._build_implement_prompt(
             spec,
             issue,
             _comments._recent_comments_text(issue),

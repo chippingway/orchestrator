@@ -7,6 +7,7 @@ from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import prompts as _prompts
 
 _FixingContext = _owner._FixingContext
 _FixingFeedback = _owner._FixingFeedback
@@ -204,7 +205,7 @@ def _resume_fixing_and_dispatch_result(
     # (plus any new feedback that came with the command), not the command
     # text -- the whole point of the command is to not lose the review
     # feedback the parked session never addressed.
-    followup = _wf._build_pr_comment_followup(
+    followup = _prompts._build_pr_comment_followup(
         feedback.all_items if replay_batch is None else replay_batch
     )
     run = _owner._run_fixing_resume(ctx, followup)

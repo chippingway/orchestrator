@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import prompts as _prompts
 
 AgentResult = _owner.AgentResult
 GitHubClient = _owner.GitHubClient
@@ -153,14 +154,12 @@ def _build_question_resume_prompt(
     first-tick run would, with the human's reply visible in the conversation
     block via `_recent_comments_text`.
     """
-    from orchestrator import workflow as _wf
-
     if question_session_id is None:
-        return _wf._build_question_prompt(
+        return _prompts._build_question_prompt(
             spec, issue, _comments._recent_comments_text(issue),
             config.default_repo_specs(),
         )
-    return _wf._build_question_followup_prompt(new_comments)
+    return _prompts._build_question_followup_prompt(new_comments)
 
 
 def _execute_question_prompt(

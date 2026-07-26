@@ -7,6 +7,7 @@ from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import prompts as _prompts
 
 _DecomposerSession = _owner._DecomposerSession
 AgentResult = _owner.AgentResult
@@ -179,7 +180,7 @@ def _spawn_fresh_decomposer(
         agent_role="decomposer",
         stage="decomposing",
         backend=session.backend,
-        prompt=_wf._build_decompose_prompt(
+        prompt=_prompts._build_decompose_prompt(
             spec, issue, _comments._recent_comments_text(issue),
             config.default_repo_specs(),
         ),
@@ -262,7 +263,7 @@ def _finalize_single_decision(
 
     _comments._post_issue_comment(
         gh, issue, state,
-        _wf._build_single_decision_comment(parsed),
+        _prompts._build_single_decision_comment(parsed),
     )
     state.set("decomposed_at", _wf._now_iso())
     gh.set_workflow_label(issue, WorkflowLabel.READY)

@@ -123,17 +123,23 @@ orchestrator/
                         (review / documentation verdicts, drift ack,
                         `/orchestrator continue` and its refusal) and the
                         redact-before-truncate stderr diagnostics
+      prompts.py        the prompt builders the stages share (implement,
+                        respawn, review, documentation, fix, conflict, question
+                        and its followup, PR-comment followup, decompose) plus
+                        the commit-style / foreground-only notes, the
+                        empty-body placeholders, and the single-decision
+                        comment
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
   _workflow_*.py        tick/scheduling, dispatch, pickup, terminal routing,
-                        prompts, usage, and run-guard leaves
+                        usage, and run-guard leaves
   workflow_drift.py     lazy user-content-drift compatibility facade
   _workflow_drift_*.py  drift hashing and stage-route leaves
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
-                        prompt and manifest-parsing leaves
+                        manifest-parsing leaves and the values they share
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
@@ -375,6 +381,21 @@ to intercept a verdict parse, an ack read, a continue classification or refusal,
 their historical slice of those names to the owner's exact object. The implementing stage keeps its own
 `_as_blockquote` on `stages/_implementing_session_read.py`, so a patch aimed at that stage's quoting still targets the
 stage leaf.
+
+`workflow/engine/prompts.py` is bound the same way. It owns the prompt builders the stages share, and the reason they
+sit together is that they share their parts: one header carrying the issue body and the trust-filtered thread text, one
+foreground-only note appended by whichever of them can end in a commit, one commit-style note on the subset of those
+whose agent also writes a subject (the conflict prompt takes the first without the second -- it replays subjects an
+earlier commit already carried), and one set of placeholders for an empty body or thread. Each marker a prompt
+promises -- `VERDICT:`, `DOCS: NO_CHANGE`, `ACK:`, the
+fenced manifest -- is parsed by `engine/messages.py` or the manifest leaves, so the prompt and the parser that reads
+its answer are edited as a pair. It reaches `comments.py` for the thread text and the tracked-repos block and
+`messages.py` for the blockquote, and the stage leaves that build a prompt or append a note import the owner. So a
+patch that has to intercept a built prompt, a shared note, or the single-decision comment targets
+`orchestrator.workflow.engine.prompts`; `workflow`, `workflow_messages`, and `workflow_drift` each still resolve their
+historical slice of those names to the owner's exact object. A prompt with only one caller stays with that caller:
+`_workflow_drift_routes.py` composes the drift-resume prompt beside the route that sends it and borrows just the two
+notes from here, so a patch aimed at that prompt still targets the drift leaf.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

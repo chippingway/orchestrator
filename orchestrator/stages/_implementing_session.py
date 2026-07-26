@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import prompts as _prompts
 
 _DevResumePlan = _owner._DevResumePlan
 _DevSession = _owner._DevSession
@@ -213,14 +214,12 @@ def _build_dev_spawn_prompt(
     the block builder returns "" -- otherwise the composed prompt would list
     the tracked repos twice.
     """
-    from orchestrator import workflow as _wf
-
     if not fresh:
         return followup_text
     preamble_specs = (
         [] if followup_has_tracked_repos else config.default_repo_specs()
     )
-    preamble = _wf._build_fresh_respawn_preamble(
+    preamble = _prompts._build_fresh_respawn_preamble(
         spec, issue, _comments._recent_comments_text(issue), preamble_specs,
     )
     return f"{preamble}\n\n{followup_text}"

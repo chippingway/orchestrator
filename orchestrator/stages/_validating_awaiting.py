@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import prompts as _prompts
 
 _DevFixRun = _owner._DevFixRun
 AgentResult = _owner.AgentResult
@@ -148,7 +149,7 @@ def _resume_awaiting_dev_agent(
             pause_guard=True,
         )
     context.consume_comments()
-    followup = f"{_wf._CONTINUE_RETRY_PROMPT}\n\n{_wf._FOREGROUND_ONLY_NOTE}"
+    followup = f"{_prompts._CONTINUE_RETRY_PROMPT}\n\n{_prompts._FOREGROUND_ONLY_NOTE}"
     return _wf._resume_dev_with_text(
         context.gh,
         context.spec,
