@@ -282,8 +282,9 @@ On the refresh side, `refresh` reaches `git.authentication`, `git.commands`, `gi
 crash-recovery side, `recovery` calls `snapshot` for the reads, `outcomes` for the answers, `persistence` for
 the finalize a landed push earns, and `git.authentication` / the verification probes for the reissued push and
 the dirty scan guarding it; `snapshot` reaches `git.authentication`, `git.commands`, the publication and
-verification probes, `git.worktrees.paths`, and `persistence` for the fetch, the `rev-parse`, the divergence
-counts, the branch name, and the reset-and-park its abort ends in; `outcomes` calls its `persistence` sibling
+verification probes, `git.worktrees.paths`, and `persistence` for the fetch, the `rev-parse` of the remote
+head, the divergence counts and the local HEAD read, the branch name, and the reset-and-park its abort ends
+in; `outcomes` calls its `persistence` sibling
 for the finalize and the reset-and-park tail and `snapshot` for the unverified abort; and `persistence` calls
 `git.commands` for the reset and clean. A patch that has to intercept the base fetch, the worktree root, the
 dirty-file scan, the rev-list behind count, the rebase either sync path runs, the hardened git command a park
