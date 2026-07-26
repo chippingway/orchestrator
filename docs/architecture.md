@@ -317,8 +317,9 @@ runs, the crash recovery an eligibility gate triggers, the hardened git command 
 helper an owner delegates to therefore targets
 `orchestrator.git.commands` / `orchestrator.git.authentication` / the probe owner / the owner module rather
 than `base_sync`. Every base-sync
-name still resolves on `base_sync` with the owner's exact identity, so historical imports and the two
-keyword-call adapters keep working -- but nothing inside the package reads a collaborator back off the facade,
+name still resolves on `base_sync` with the owner's exact identity, so historical imports and the three
+keyword-call adapters -- the PR sync in `pr`, the conflict route in `conflicts`, and the crash recovery in
+`recovery` -- keep working; but nothing inside the package reads a collaborator back off the facade,
 so a test that has to intercept the per-worktree sync the refresh drives, the PR-aware coordinator it hands a
 worktree off to, or the conflict route a failed rebase takes patches `refresh` / `pr` / `conflicts` and not
 the facade.
