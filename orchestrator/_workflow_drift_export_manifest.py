@@ -43,12 +43,12 @@ EXPORTS = (
         (("_USER_CONTENT_HASH", "_USER_CONTENT_HASH"),),
     ),
     *export_group(
-        "orchestrator.comment_trust",
-        (("is_trusted_author", "is_trusted_author"),),
-    ),
-    *export_group(
         "orchestrator.github.client",
         (("GitHubClient", "GitHubClient"),),
+    ),
+    *export_group(
+        "orchestrator.github.comments",
+        (("is_trusted_author", "is_trusted_author"),),
     ),
     *export_group(
         "orchestrator.github.pinned_state",

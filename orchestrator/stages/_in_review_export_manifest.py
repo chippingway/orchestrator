@@ -27,12 +27,12 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator.comment_trust",
-        (("filter_trusted", "filter_trusted"),),
-    ),
-    *export_group(
         "orchestrator.github.client",
         (("GitHubClient", "GitHubClient"),),
+    ),
+    *export_group(
+        "orchestrator.github.comments",
+        (("filter_trusted", "filter_trusted"),),
     ),
     *export_group(
         "orchestrator.github.pinned_state",

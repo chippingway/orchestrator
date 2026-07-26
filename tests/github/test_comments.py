@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.comment_trust import filter_trusted, is_trusted_author
+from orchestrator.github.comments import filter_trusted, is_trusted_author
 
 from tests.fakes import FakeComment, FakeUser
 

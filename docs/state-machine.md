@@ -304,7 +304,7 @@ Non-human content is filtered six ways:
   requirements content, so it must not shift the hash and route the nudge through drift handling instead of the stage's
   intentional session-limit retry (a comment carrying the command *alongside* genuine guidance is not bare, so it still
   shifts the hash);
-- untrusted authors via `comment_trust.is_trusted_author` when `ALLOWED_ISSUE_AUTHORS` is set (opt-in; empty allowlist
+- untrusted authors via `github.comments.is_trusted_author` when `ALLOWED_ISSUE_AUTHORS` is set (opt-in; empty allowlist
   trusts everyone), so an outsider's comment cannot shift the hash and re-trigger drift on a public repo. The same trust
   helpers filter the conversation text fed to agent prompts: `_recent_comments_text` (implement / review /
   documentation / decompose / question / drift-resume); the awaiting-human resume paths that quote new replies

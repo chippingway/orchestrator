@@ -69,7 +69,10 @@ orchestrator process is stateless.
   SHA-pinned merges, and idempotent head-branch deletion), the `reviews.py` owner (current-head review aggregation
   plus the review client mixin: approval and change-request verdicts and the unread conversation / inline / summary
   feedback watermarks), the `checks.py` owner (status / check-run normalization, failure-before-pending folding, and
-  the fail-closed check-read client mixin)), the git package (`git/`, whose `__init__.py` binds nothing so callers
+  the fail-closed check-read client mixin), and the `comments.py` owner (the comment-author trust policy the git
+  base-sync gates and the workflow stage leaves both filter through: the `ALLOWED_ISSUE_AUTHORS` allowlist, its
+  trust-all empty default, and the case-insensitive login match that gates bots like any other
+  author)), the git package (`git/`, whose `__init__.py` binds nothing so callers
   import each owner directly -- the `commands.py` owner (plain / hardened git execution plus the unsafe local
   transport probe), the `authentication.py` owner (per-repository token resolution, the askpass session and its
   detached environment, the authenticated worktree / target-root fetches, and the lease-pinned hardened push), the
@@ -127,8 +130,9 @@ orchestrator process is stateless.
   `git_plumbing.py`, `verify.py`,
   `worktree_lifecycle.py`, `branch_publication.py`, and
   `base_sync.py` kept as the forwarding facades for historical callers), the stable runtime-core
-  facade (`main.py`), and `state_machine.py`, which forwards the historical typed-state compatibility
-  surface off the `workflow/state.py` owner without rebuilding any of it.
+  facade (`main.py`), and the two root modules that forward a historical compatibility surface off a package owner
+  without rebuilding any of it: `state_machine.py` over `workflow/state.py`, and `comment_trust.py` over
+  `github/comments.py`.
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
   tests through the `tests/fakes.py` bridge. Stage-handler tests in
@@ -163,7 +167,9 @@ orchestrator process is stateless.
   client (construction, token resolution, worker clone, label cache), label (vocabulary, predicates, and bootstrap),
   event, issue-query, issue-client (real-client polling and child creation), pollable-listing, pinned-state,
   pull-request (status helpers, writes, merges, branch deletion), review (head verdicts, actionable summaries,
-  feedback watermarks), check (surface normalization, folding, fail-closed reads), and import-cycle / public-surface
+  feedback watermarks), check (surface normalization, folding, fail-closed reads), comment-trust (the empty-allowlist
+  trust-all default, case-insensitive login matching, missing users, bots, and preserved input order), and
+  import-cycle / layering / public-surface
   tests in `tests/github/`. Scheduler-package tests live in `tests/scheduler/`: caps and duplicate-active gating,
   tracked claims, family exclusion, cap-exempt execution, skip logging, shutdown, submission models and `submit`
   compatibility, and import-cycle / public-surface checks, with their worker, coordination, log, and shutdown

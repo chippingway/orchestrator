@@ -21,7 +21,6 @@ from typing import Optional
 
 from github.PullRequest import PullRequest
 
-from orchestrator.comment_trust import filter_trusted
 from orchestrator.git.base_sync import recovery
 from orchestrator.git.base_sync.models import (
     _AutoRebaseContext,
@@ -36,6 +35,7 @@ from orchestrator.git.base_sync.state import (
     log,
 )
 from orchestrator.git.verification import probes as verification_probes
+from orchestrator.github.comments import filter_trusted
 
 
 def _auto_rebase_label_is_eligible(context: _AutoRebaseContext) -> bool:

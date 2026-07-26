@@ -189,7 +189,7 @@ Every PR opened by the orchestrator is AI-generated, so the policy is the workfl
 The orchestrator feeds issue- and PR-thread comments to coding agents as workflow-driving instructions. On a public
 repo that is a prompt-injection surface: any account can post a comment that steers an agent, resumes a parked session,
 or re-triggers work. `ALLOWED_ISSUE_AUTHORS` is the operator's control. It defaults unset; setting it to the maintainer
-logins turns the pickup allowlist into a comment trust boundary enforced by the shared `comment_trust` helpers
+logins turns the pickup allowlist into a comment trust boundary enforced by the shared `github/comments.py` helpers
 (`is_trusted_author` / `filter_trusted`). The env-var reference is in
 [`configuration.md#agent-roles`](configuration.md#agent-roles); the full per-surface filter list is in
 [`state-machine.md#user-content-drift-detection`](state-machine.md#user-content-drift-detection).
