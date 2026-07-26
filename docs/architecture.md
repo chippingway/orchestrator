@@ -191,8 +191,8 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   base_sync.py          lazy base-refresh/rebase compatibility facade over the
                         git/base_sync/ owners and the leaves below
-  _base_sync_*.py       PR-coordinator and conflict routing, rebase start, and
-                        publication leaves
+  _base_sync_*.py       PR-coordinator and conflict routing plus the rebase
+                        publication and park-guard leaves
   worktrees.py          lazy compatibility hub over the five worktree
                         subsystem facades above
   _worktrees_export_manifest.py / _worktrees_exports.py
@@ -284,7 +284,7 @@ frozen auto-rebase models and the pinned-state keys, park reasons, detour labels
 On the refresh side, `refresh` reaches `git.authentication`, `git.commands`, `git.verification.probes`,
 `git.worktrees.paths`, and its `pre_pr` sibling directly, `pre_pr` reaches `git.commands`, `eligibility`
 reaches `comment_trust` for the trusted-reply filter, the verification probes for its clean-tree gate, and
-`recovery` for the interrupted rebase it settles before rejecting a label, and `startup`
+`recovery` for the interrupted rebase it settles before rejecting a label or starting a new one, and `startup`
 reaches `git.commands`, `git.verification.probes`, and its `pre_pr` and `persistence` siblings for the
 pre-rebase HEAD read, the rebase it anchors, the abort a failure runs, and the park it ends in. On the
 crash-recovery side, `recovery` calls `snapshot` for the reads, `outcomes` for the answers, `persistence` for
