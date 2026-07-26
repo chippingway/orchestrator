@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from orchestrator.state_machine import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger('orchestrator.base_sync')
 

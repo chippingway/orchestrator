@@ -20,7 +20,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.state_machine import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel
 
 
 @dataclass(frozen=True)

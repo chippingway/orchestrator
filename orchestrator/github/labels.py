@@ -10,7 +10,7 @@ from github import GithubException
 from github.Issue import Issue
 
 from orchestrator._static_alias import StaticMethodAlias
-from orchestrator.state_machine import ControlLabel, WorkflowLabel
+from orchestrator.workflow.state import ControlLabel, WorkflowLabel
 
 log = logging.getLogger("orchestrator.github")
 

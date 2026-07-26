@@ -16,8 +16,23 @@ from orchestrator.github import (
     pull_requests,
 )
 from orchestrator.state_machine import WorkflowLabel, coerce_workflow_label
+from orchestrator.workflow import state as workflow_state
 
 _VALIDATING_LABEL = "validating"
+_STATE_MACHINE_FORWARDS = (
+    "ALLOWED_TRANSITIONS",
+    "ControlLabel",
+    "IllegalTransition",
+    "WorkflowLabel",
+    "_DETOUR_TO_RESOLVING",
+    "coerce_workflow_label",
+    "guard_transition",
+    "is_allowed_transition",
+    "log",
+)
+# The `from __future__` binding and the owner alias the forwards are read off.
+_MODULE_INTERNALS = frozenset(("annotations", "_state"))
+_STATE_MACHINE_FACADE = importlib.import_module("orchestrator.state_machine")
 _STATIC_HELPERS = (
     ("workflow_label", labels.workflow_label),
     ("pr_has_label", pull_requests.pr_has_label),
@@ -93,6 +108,30 @@ class GitHubStaticHelperCompatibilityTest(unittest.TestCase):
                     getattr(github_client, attribute_name),
                     module_function,
                 )
+
+
+class StateMachineForwardTest(unittest.TestCase):
+    """`state_machine` forwards the typed-state owner and defines nothing."""
+
+    def test_every_name_is_the_owner_object(self) -> None:
+        for forwarded_name in _STATE_MACHINE_FORWARDS:
+            with self.subTest(name=forwarded_name):
+                self.assertIs(
+                    getattr(_STATE_MACHINE_FACADE, forwarded_name),
+                    getattr(workflow_state, forwarded_name),
+                )
+
+    def test_module_defines_nothing_of_its_own(self) -> None:
+        # A locally defined name here would be a second definition of the graph
+        # or guard live issues already run on, drifting from the owner silently.
+        published = {
+            name
+            for name in _STATE_MACHINE_FACADE.__dict__
+            if not name.startswith("__")
+        }
+        self.assertEqual(
+            published - _MODULE_INTERNALS, set(_STATE_MACHINE_FORWARDS),
+        )
 
 
 class WorkflowLabelInputCompatibilityTest(unittest.TestCase):

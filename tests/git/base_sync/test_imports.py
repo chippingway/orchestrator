@@ -74,16 +74,21 @@ _COMPATIBILITY_LEAVES = frozenset((
 ))
 
 # The state owner exists to spell out the pinned-state keys and the label
-# vocabulary one rebase attempt is routed by, so the label enum and the
-# transition graph behind it are the only orchestrator modules it may reach.
-# The pre-PR owner adds only the git envelope its rebases run under and the
-# repository spec they read their base ref off.
+# vocabulary one rebase attempt is routed by, so the workflow package's `state`
+# owner -- plus the initializer and the export-hook leaves an import of it
+# plants -- are the only orchestrator modules it may reach. Every owner is typed
+# by that vocabulary, so this is also the exempt set the forbidden-prefix check
+# below drops before it looks for an inverted dependency. The pre-PR owner adds
+# only the git envelope its rebases run under and the repository spec they read
+# their base ref off.
 _ALLOWED_MODULES = (
     "orchestrator",
+    "orchestrator._compat_exports",
     "orchestrator._package_exports",
-    "orchestrator._state_transitions",
-    "orchestrator._workflow_labels",
-    "orchestrator.state_machine",
+    "orchestrator._workflow_export_manifest",
+    "orchestrator._workflow_exports",
+    "orchestrator.workflow",
+    "orchestrator.workflow.state",
 )
 
 _ALLOWED_ROOTS = (
@@ -95,15 +100,18 @@ _ALLOWED_ROOTS = (
 # composed GitHub client, which drags the analytics and usage graph in behind
 # it, so an allowlist would not describe them. What every owner owes is the
 # direction of the dependency: none may reach the base-sync leaves, the facade
-# over them, the workflow engine and its stage handlers, or an application
-# entrypoint. The facade is the sharpest of those, because it resolves the very
-# names these owners define -- an owner that imported it would be reading its
-# own definitions back out. The collaborators that do live above this package
-# -- the park guard and the comment poster in the workflow engine -- are
-# reached through call-time imports, which is what keeps them out of this
-# check.
+# over them, the workflow engine and its leaves and stage handlers, or an
+# application entrypoint. The workflow inventory is the sharpest of those,
+# because it resolves the very names these owners define -- an owner that read
+# one back off the facade would be importing its own definitions. Resolving any
+# inventory name imports the leaf that holds it, which is what these prefixes
+# catch past the label owner the exempt set above allows. The collaborators that
+# do live above this package -- the park guard and the comment poster in the
+# workflow engine -- are reached through call-time imports, which is what keeps
+# them out of this check.
 _FORBIDDEN_PREFIXES = (
     "orchestrator._base_sync",
+    "orchestrator._workflow",
     "orchestrator.base_sync",
     "orchestrator.cli",
     "orchestrator.main",
@@ -266,11 +274,18 @@ class LayeringTest(unittest.TestCase):
     def test_owners_stay_below_base_sync_leaves(self) -> None:
         for module in _OWNERS:
             with self.subTest(module=module):
-                for imported in _imported_orchestrator_modules(module):
+                for imported in self._imports_past_the_label_owner(module):
                     self.assertFalse(
                         imported.startswith(_FORBIDDEN_PREFIXES),
                         f"{module} inverts the dependency via {imported}",
                     )
+
+    def _imports_past_the_label_owner(self, module: str) -> list[str]:
+        return [
+            imported
+            for imported in _imported_orchestrator_modules(module)
+            if imported not in _ALLOWED_MODULES
+        ]
 
     def _within_layers(self, imported: str, allowed_roots: tuple) -> bool:
         if imported in _ALLOWED_MODULES:

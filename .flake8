@@ -25,12 +25,18 @@
 #   `orchestrator.scheduler` stays the historical import site. WPS412 is waived
 #   for that import-time logic.
 # * orchestrator/workflow/__init__.py is the lazy workflow compatibility facade:
-#   it binds the shared config / analytics modules and installs the module-level
-#   `__getattr__` / `__dir__` hooks that resolve the export manifest, so
-#   `orchestrator.workflow` stays the historical import site and patch target
-#   for the whole inventory. WPS412 is waived for that import-time logic; the
-#   `__all__` it publishes is resolved lazily through the hooks rather than
-#   assigned in the initializer, so WPS410 does not apply.
+#   it installs the module-level `__getattr__` / `__dir__` hooks that resolve the
+#   export manifest, so `orchestrator.workflow` stays the historical import site
+#   and patch target for the whole inventory. WPS412 is waived for that
+#   import-time logic; the `__all__` it publishes is resolved lazily through the
+#   hooks rather than assigned in the initializer, so WPS410 does not apply.
+#
+# orchestrator/workflow/state.py is one owner for the typed workflow state --
+# the label and control vocabularies, the transition graph keyed by them, and
+# the coercion and guard every label write passes through -- so it carries 11
+# members past the WPS202 ceiling of 7. Splitting the graph away from the labels
+# it is keyed by, or the guard away from the graph it reads, would put the state
+# machine back across the flat leaves this owner replaces, so WPS202 is waived.
 #
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
@@ -57,6 +63,7 @@ per-file-ignores =
     orchestrator/github/__init__.py:WPS412,WPS410
     orchestrator/scheduler/__init__.py:WPS412,WPS410
     orchestrator/workflow/__init__.py:WPS412
+    orchestrator/workflow/state.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

@@ -299,12 +299,12 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.state_machine",
-        (("WorkflowLabel", "WorkflowLabel"),),
-    ),
-    *export_group(
         "orchestrator.usage",
         (("UsageMetrics", "UsageMetrics"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.state",
+        (("WorkflowLabel", "WorkflowLabel"),),
     ),
     *export_group(
         "orchestrator.workflow_drift",

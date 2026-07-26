@@ -54,7 +54,8 @@ Three non-workflow **control labels** modify behavior without occupying the work
 
 ### Typed states and the transition guard
 
-The label vocabulary is defined once in [`orchestrator/state_machine.py`](../orchestrator/state_machine.py):
+The label vocabulary is defined once in [`orchestrator/workflow/state.py`](../orchestrator/workflow/state.py), which
+`orchestrator/state_machine.py` forwards for historical callers:
 `WorkflowLabel` (a `StrEnum`) is the single source of truth for workflow states, and `ControlLabel` holds the modifiers
 above. Because `StrEnum` members *are* their wire strings, GitHub labels and pinned-state JSON are unchanged — the
 enum just gives the names one authoritative definition.

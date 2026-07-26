@@ -121,7 +121,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.state_machine",
+        "orchestrator.workflow.state",
         (("WorkflowLabel", "WorkflowLabel"),),
     ),
     *export_group(

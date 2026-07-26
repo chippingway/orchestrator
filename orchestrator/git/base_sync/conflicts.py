@@ -23,7 +23,7 @@ from orchestrator.git.base_sync.state import (
     _REVIEW_ROUND,
     log,
 )
-from orchestrator.state_machine import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel
 
 _CONFLICT_ROUTE_SIGNATURE = inspect.Signature((
     inspect.Parameter("gh", inspect.Parameter.POSITIONAL_OR_KEYWORD),
