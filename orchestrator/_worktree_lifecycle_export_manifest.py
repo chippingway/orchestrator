@@ -20,28 +20,18 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._worktree_cleanup",
+        "orchestrator.git.authentication",
+        (("_authed_target_fetch", "_authed_target_fetch"),),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.cleanup",
         (
             ("_delete_local_issue_branch", "_delete_local_issue_branch"),
             ("_remove_issue_worktree", "_remove_issue_worktree"),
             ("_run_issue_worktree_removal", "_run_issue_worktree_removal"),
             ("_run_local_branch_deletion", "_run_local_branch_deletion"),
+            ("log", "log"),
         ),
-    ),
-    *export_group(
-        "orchestrator._worktree_lifecycle_state",
-        (("log", "log"),),
-    ),
-    *export_group(
-        "orchestrator._worktree_terminal",
-        (
-            ("_cleanup_question_worktree", "_cleanup_question_worktree"),
-            ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.git.authentication",
-        (("_authed_target_fetch", "_authed_target_fetch"),),
     ),
     *export_group(
         "orchestrator.git.worktrees.creation",
@@ -82,6 +72,13 @@ EXPORTS = (
             ("_branch_has_unpushed_commits", "_branch_has_unpushed_commits"),
             ("_candidate_issue_branches", "_candidate_issue_branches"),
             ("_commit_count_from_stdout", "_commit_count_from_stdout"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.terminal",
+        (
+            ("_cleanup_question_worktree", "_cleanup_question_worktree"),
+            ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
         ),
     ),
     *export_group(

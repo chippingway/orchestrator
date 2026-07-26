@@ -10,14 +10,23 @@ import unittest
 
 from orchestrator import worktree_lifecycle
 from orchestrator.git import worktrees as _worktrees_package
-from orchestrator.git.worktrees import creation, decomposition, paths, recovery
+from orchestrator.git.worktrees import (
+    cleanup,
+    creation,
+    decomposition,
+    paths,
+    recovery,
+    terminal,
+)
 
 _MODULES = (
     "orchestrator.git.worktrees",
+    "orchestrator.git.worktrees.cleanup",
     "orchestrator.git.worktrees.creation",
     "orchestrator.git.worktrees.decomposition",
     "orchestrator.git.worktrees.paths",
     "orchestrator.git.worktrees.recovery",
+    "orchestrator.git.worktrees.terminal",
 )
 
 # The initializer binds nothing, so each name stays reachable only through its
@@ -25,8 +34,10 @@ _MODULES = (
 _OWNER_ONLY_NAMES = (
     "_branch_has_unpushed_commits",
     "_branch_name",
+    "_cleanup_terminal_branch",
     "_ensure_worktree",
     "_decompose_worktree_path",
+    "_remove_issue_worktree",
     "_resolve_branch_name",
     "_sanitize_slug",
     "_worktree_path",
@@ -41,15 +52,21 @@ _FACADE_FORWARDS = (
     ("_branch_name", paths),
     ("_candidate_issue_branches", recovery),
     ("_cleanup_decompose_worktree", decomposition),
+    ("_cleanup_question_worktree", terminal),
+    ("_cleanup_terminal_branch", terminal),
     ("_commit_count_from_stdout", recovery),
     ("_decompose_worktree_path", decomposition),
+    ("_delete_local_issue_branch", cleanup),
     ("_ensure_decompose_worktree", decomposition),
     ("_ensure_pr_worktree", creation),
     ("_ensure_worktree", creation),
     ("_has_new_commits", creation),
+    ("_remove_issue_worktree", cleanup),
     ("_repo_worktrees_root", paths),
     ("_resolve_branch_name", paths),
     ("_run_decompose_worktree_removal", decomposition),
+    ("_run_issue_worktree_removal", cleanup),
+    ("_run_local_branch_deletion", cleanup),
     ("_sanitize_branch_segment", paths),
     ("_sanitize_slug", paths),
     ("_slug_digest", paths),

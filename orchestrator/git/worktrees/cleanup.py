@@ -1,13 +1,25 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Worktree cleanup."""
+"""Per-issue worktree removal and local branch deletion.
+
+The two teardown steps share this module because git refuses to delete a
+branch that is still checked out, so every caller runs them as one ordered
+pair. Each step splits into a bare runner and a best-effort wrapper: the
+wrapper owns the exception boundary, which lets a caller tear down the
+next surface even when this one failed.
+"""
 from __future__ import annotations
 
-from orchestrator import _worktree_lifecycle_state as _state
-from orchestrator import worktree_lifecycle as _owner
+import logging
 
-config = _owner.config
-log = _state.log
+from orchestrator import config
+from orchestrator.git import commands, locks
+from orchestrator.git.worktrees import paths
+
+# Named for the historical facade, not this module: operators filter the
+# rendered `orchestrator.worktree_lifecycle` prefix and attach handlers to
+# that logger, so every owner in this package reports through it.
+log = logging.getLogger("orchestrator.worktree_lifecycle")
 
 
 def _run_issue_worktree_removal(
@@ -15,11 +27,11 @@ def _run_issue_worktree_removal(
 ) -> None:
     """Force-remove one issue worktree under the parent lock, logging a
     non-zero git result."""
-    worktree = _owner._worktree_path(spec, issue_number)
+    worktree = paths._worktree_path(spec, issue_number)
     if not worktree.exists():
         return
-    with _owner._target_root_lock(spec.target_root):
-        remove_result = _owner._git(
+    with locks._target_root_lock(spec.target_root):
+        remove_result = commands._git(
             "worktree", "remove", "--force", str(worktree),
             cwd=spec.target_root,
         )
@@ -37,7 +49,7 @@ def _remove_issue_worktree(
 ) -> None:
     """Best-effort removal of one issue worktree under the parent lock."""
     try:
-        _owner._run_issue_worktree_removal(spec, issue_number, log_prefix)
+        _run_issue_worktree_removal(spec, issue_number, log_prefix)
     except Exception:
         log.exception(
             "issue=#%d %sworktree remove raised", issue_number, log_prefix,
@@ -49,14 +61,14 @@ def _run_local_branch_deletion(
 ) -> None:
     """Delete one local issue branch under the parent lock (no-op when the
     branch is absent), logging a non-zero git result."""
-    with _owner._target_root_lock(spec.target_root):
-        have_local = _owner._git(
+    with locks._target_root_lock(spec.target_root):
+        have_local = commands._git(
             "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}",
             cwd=spec.target_root,
         ).returncode == 0
         if not have_local:
             return
-        delete_result = _owner._git(
+        delete_result = commands._git(
             "branch", "-D", branch, cwd=spec.target_root,
         )
     if delete_result.returncode != 0:
@@ -78,7 +90,7 @@ def _delete_local_issue_branch(
 ) -> None:
     """Best-effort deletion of one local issue branch under the parent lock."""
     try:
-        _owner._run_local_branch_deletion(spec, issue_number, branch, log_prefix)
+        _run_local_branch_deletion(spec, issue_number, branch, log_prefix)
     except Exception:
         log.exception(
             "issue=#%d %slocal branch %r delete raised",

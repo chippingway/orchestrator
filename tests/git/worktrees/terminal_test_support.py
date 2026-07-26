@@ -1,12 +1,15 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""A real worktree plus local branch for the question-cleanup test."""
+
 from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestrator import config, worktrees
+from orchestrator import config
+from orchestrator.git.worktrees import paths
 
 from tests.question_real_git_test_support import (
     _git_env,
@@ -53,7 +56,7 @@ def _seed_cleanup_fixture(
     target, base_sha = _seed_target_root(temp_root)
     branch = _issue_branch(issue_number, slug=REAL_GIT_SLUG)
     spec = _spec_for(target)
-    worktree = worktrees._worktree_path(spec, issue_number)
+    worktree = paths._worktree_path(spec, issue_number)
     if create_worktree:
         worktree.parent.mkdir(parents=True, exist_ok=True)
         _run_git(

@@ -19,7 +19,7 @@ from orchestrator.git.worktrees import paths
 
 # Named for the historical facade, not this module: operators filter the
 # rendered `orchestrator.worktree_lifecycle` prefix and attach handlers to
-# that logger, and the cleanup / terminal leaves still report through it.
+# that logger, so every owner in this package reports through it.
 log = logging.getLogger("orchestrator.worktree_lifecycle")
 
 

@@ -1,14 +1,25 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Worktree terminal."""
+"""Cleanup for an issue that will not be worked in its worktree again.
+
+Both entry points compose the same local teardown from ``cleanup`` and
+differ only in what the stage left behind: the question stage never
+pushed, so it has no remote side to reap, while a terminal PR does.
+Keeping them together keeps that single divergence visible instead of
+duplicating the local ordering in two stages.
+"""
 from __future__ import annotations
 
-from orchestrator import _worktree_lifecycle_state as _state
-from orchestrator import worktree_lifecycle as _owner
+import logging
 
-GitHubClient = _owner.GitHubClient
-config = _owner.config
-log = _state.log
+from orchestrator import config
+from orchestrator.git.worktrees import cleanup, paths
+from orchestrator.github.client import GitHubClient
+
+# Named for the historical facade, not this module: operators filter the
+# rendered `orchestrator.worktree_lifecycle` prefix and attach handlers to
+# that logger, so every owner in this package reports through it.
+log = logging.getLogger("orchestrator.worktree_lifecycle")
 
 
 def _cleanup_question_worktree(
@@ -49,9 +60,9 @@ def _cleanup_question_worktree(
     `.git/config.lock` reason described on `_ensure_worktree`.
     """
     if branch is None:
-        branch = _owner._branch_name(spec, issue_number)
-    _owner._remove_issue_worktree(spec, issue_number, log_prefix="question ")
-    _owner._delete_local_issue_branch(
+        branch = paths._branch_name(spec, issue_number)
+    cleanup._remove_issue_worktree(spec, issue_number, log_prefix="question ")
+    cleanup._delete_local_issue_branch(
         spec, issue_number, branch, log_prefix="question ",
     )
 
@@ -98,12 +109,12 @@ def _cleanup_terminal_branch(
     (no local git plumbing) and stays outside the lock.
     """
     if branch is None:
-        branch = _owner._branch_name(spec, issue_number)
+        branch = paths._branch_name(spec, issue_number)
 
     # Each helper contains its own exception boundary so a local failure
     # cannot skip the next cleanup surface.
-    _owner._remove_issue_worktree(spec, issue_number)
-    _owner._delete_local_issue_branch(spec, issue_number, branch)
+    cleanup._remove_issue_worktree(spec, issue_number)
+    cleanup._delete_local_issue_branch(spec, issue_number, branch)
 
     try:
         gh.delete_remote_branch(branch)
