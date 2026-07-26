@@ -48,16 +48,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._base_sync_pre_pr",
-        (
-            ("_base_sync_issue", "_base_sync_issue"),
-            ("_issue_skips_base_sync", "_issue_skips_base_sync"),
-            ("_sync_pre_pr_worktree", "_sync_pre_pr_worktree"),
-            ("_sync_worktree_with_base", "_sync_worktree_with_base"),
-            ("_worktree_behind_base", "_worktree_behind_base"),
-        ),
-    ),
-    *export_group(
         "orchestrator._base_sync_publish",
         (
             ("_emit_auto_rebase_event", "_emit_auto_rebase_event"),
@@ -93,18 +83,6 @@ EXPORTS = (
             ("_complete_recovery_snapshot", "_complete_recovery_snapshot"),
             ("_fetch_recovery_snapshot", "_fetch_recovery_snapshot"),
             ("_read_remote_recovery_head", "_read_remote_recovery_head"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._base_sync_refresh",
-        (
-            ("_issue_worktree_number", "_issue_worktree_number"),
-            ("_merge_base_into_worktree", "_merge_base_into_worktree"),
-            ("_rebase_base_into_worktree", "_rebase_base_into_worktree"),
-            ("_rebase_in_progress", "_rebase_in_progress"),
-            ("_rebase_state_exists", "_rebase_state_exists"),
-            ("_refresh_base_and_worktrees", "_refresh_base_and_worktrees"),
-            ("_sync_discovered_worktree", "_sync_discovered_worktree"),
         ),
     ),
     *export_group(
@@ -161,6 +139,28 @@ EXPORTS = (
             ("_prepare_recovered_rebase_state", "_prepare_recovered_rebase_state"),
             ("_reset_clear_and_park", "_reset_clear_and_park"),
             ("_route_recovered_rebase", "_route_recovered_rebase"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.pre_pr",
+        (
+            ("_merge_base_into_worktree", "_merge_base_into_worktree"),
+            ("_rebase_base_into_worktree", "_rebase_base_into_worktree"),
+            ("_rebase_in_progress", "_rebase_in_progress"),
+            ("_rebase_state_exists", "_rebase_state_exists"),
+            ("_sync_pre_pr_worktree", "_sync_pre_pr_worktree"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.refresh",
+        (
+            ("_base_sync_issue", "_base_sync_issue"),
+            ("_issue_skips_base_sync", "_issue_skips_base_sync"),
+            ("_issue_worktree_number", "_issue_worktree_number"),
+            ("_refresh_base_and_worktrees", "_refresh_base_and_worktrees"),
+            ("_sync_discovered_worktree", "_sync_discovered_worktree"),
+            ("_sync_worktree_with_base", "_sync_worktree_with_base"),
+            ("_worktree_behind_base", "_worktree_behind_base"),
         ),
     ),
     *export_group(

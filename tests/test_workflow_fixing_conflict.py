@@ -13,8 +13,7 @@ LABEL_RESOLVING_CONFLICT = support.LABEL_RESOLVING_CONFLICT
 LABEL_VALIDATING = support.LABEL_VALIDATING
 MagicMock = support.MagicMock
 _FixingConflictFixtureMixin = support._FixingConflictFixtureMixin
-base_sync = support.base_sync
-patch = support.patch
+_patch_base_sync = support._patch_base_sync
 workflow = support.workflow
 
 
@@ -28,20 +27,14 @@ class FixingConflictDetourTest(
         # the pending-fix bookmarks and in_review watermarks must
         # survive the relabel.
         self._seed_fixing_with_pending_feedback()
-        merge = MagicMock(return_value=(True, []))
+        rebase = MagicMock(return_value=(True, []))
         push = MagicMock(return_value=True)
-        head_sha = MagicMock(side_effect=["before", "after"])
-        git_mock = patch.object(
-            base_sync,
-            "_git",
-            return_value=self._git_result(stdout="3\n"),
-        )
-        with (
-            patch.object(base_sync, "_worktree_dirty_files", return_value=[]),
-            patch.object(base_sync, "_rebase_base_into_worktree", merge),
-            patch.object(base_sync, "_push_branch", push),
-            patch.object(base_sync, "_head_sha", head_sha),
-            git_mock,
+        with _patch_base_sync(
+            dirty=MagicMock(return_value=[]),
+            rebase=rebase,
+            push=push,
+            head_sha=MagicMock(side_effect=["before", "after"]),
+            git=MagicMock(return_value=self._git_result(stdout="3\n")),
         ):
             workflow._sync_worktree_with_base(
                 self.gh,
@@ -61,22 +54,14 @@ class FixingConflictDetourTest(
         # The pending-fix bookmarks and watermarks must survive that
         # relabel too.
         self._seed_fixing_with_pending_feedback()
-        merge = MagicMock(return_value=(False, ["src/feature.py"]))
         push = MagicMock()
-        head_sha = MagicMock(return_value="before")
-        hardened = MagicMock(return_value=self._git_result())
-        git_mock = patch.object(
-            base_sync,
-            "_git",
-            return_value=self._git_result(stdout="3\n"),
-        )
-        with (
-            patch.object(base_sync, "_worktree_dirty_files", return_value=[]),
-            patch.object(base_sync, "_rebase_base_into_worktree", merge),
-            patch.object(base_sync, "_push_branch", push),
-            patch.object(base_sync, "_head_sha", head_sha),
-            patch.object(base_sync, "_git_hardened", hardened),
-            git_mock,
+        with _patch_base_sync(
+            dirty=MagicMock(return_value=[]),
+            rebase=MagicMock(return_value=(False, ["src/feature.py"])),
+            push=push,
+            head_sha=MagicMock(return_value="before"),
+            hardened=MagicMock(return_value=self._git_result()),
+            git=MagicMock(return_value=self._git_result(stdout="3\n")),
         ):
             workflow._sync_worktree_with_base(
                 self.gh,

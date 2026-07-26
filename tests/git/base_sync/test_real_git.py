@@ -5,23 +5,13 @@ from __future__ import annotations
 import unittest
 
 
-from tests.base_sync_real_git_support import (
+from tests.git.base_sync.real_git_test_support import (
     _RefreshBaseRealGitFixture,
 )
 
-REPO_SLUG = "acme/widget"
-BASE_BRANCH = "main"
-PR_BRANCH = "orchestrator/acme__widget/issue-7"
-KEY_CONFLICT_ROUND = "conflict_round"
-KEY_REVIEW_ROUND = "review_round"
-GIT_COMMAND = "git"
-ADD_COMMAND = "add"
-PUSH_COMMAND = "push"
-ORIGIN_REMOTE = "origin"
-WORKTREES_DIR_NAME = "worktrees"
-WORKTREES_DIR_ATTR = "WORKTREES_DIR"
 EXTRA_FILENAME = "extra.txt"
-PR_NUMBER = 42
+FEATURE_SUBJECT = "feat: add feature"
+SCRATCH_FILENAME = "scratch.py"
 
 
 class RefreshPrePrRealGitTest(_RefreshBaseRealGitFixture, unittest.TestCase):
@@ -35,7 +25,7 @@ class RefreshPrePrRealGitTest(_RefreshBaseRealGitFixture, unittest.TestCase):
         self.assertTrue((self._wt / EXTRA_FILENAME).exists())
         self.assertEqual(
             self._git("log", "-1", "--format=%s", cwd=self._wt).strip(),
-            "feat: add feature",
+            FEATURE_SUBJECT,
         )
         self.assertTrue(self._is_clean())
 
@@ -58,10 +48,14 @@ class RefreshPrePrRealGitTest(_RefreshBaseRealGitFixture, unittest.TestCase):
         self._advance_base(conflicting=False)
         # Plant an uncommitted edit in the worktree -- mirrors a mid-flight
         # agent edit. The base rebase must NOT run.
-        (self._wt / "scratch.py").write_text("scratch\n")
+        (self._wt / SCRATCH_FILENAME).write_text("scratch\n")
         head_before = self._wt_head()
         self._refresh()
         self.assertEqual(head_before, self._wt_head())
         # Untracked file still present, nothing else was added.
-        self.assertTrue((self._wt / "scratch.py").exists())
+        self.assertTrue((self._wt / SCRATCH_FILENAME).exists())
         self.assertFalse((self._wt / EXTRA_FILENAME).exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

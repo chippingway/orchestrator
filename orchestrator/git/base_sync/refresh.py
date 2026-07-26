@@ -1,87 +1,32 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Base sync refresh."""
+"""The per-tick base refresh: which worktrees sync, and by which route.
+
+One authenticated fetch of `origin/<base>` per spec feeds every issue
+worktree that survived the previous tick, so the gates that decide whether a
+worktree may be touched at all belong together: an in-flight scheduler claim,
+a dispatcher hard-skip, the read-only question stage, an unreadable issue,
+and a dirty pre-PR tree each end the sync before any rewrite is attempted.
+What survives is routed by whether pinned state already carries a PR --
+`pre_pr` rebases the local branch nobody has pushed yet, while the PR-aware
+coordinator has to keep the pushed head and the reviewer's SHA in step.
+"""
 from __future__ import annotations
 
-from orchestrator import base_sync as _owner
-from orchestrator.git.base_sync import state as _state
+from pathlib import Path
+from typing import Optional
 
-GitHubClient = _owner.GitHubClient
-IssueScheduler = _owner.IssueScheduler
-Optional = _owner.Optional
-Path = _owner.Path
-Tuple = _owner.Tuple
-config = _owner.config
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.git import authentication as _authentication, commands as _commands
+from orchestrator.git.base_sync import pre_pr as _pre_pr, state as _state
+from orchestrator.git.verification import probes as _probes
+from orchestrator.git.worktrees import paths as _paths
+from orchestrator.github import client as _client, labels as _labels
+from orchestrator.scheduler import IssueScheduler
+
 log = _state.log
-
-
-def _rebase_base_into_worktree(
-    spec: config.RepoSpec, worktree: Path
-) -> Tuple[bool, list[str]]:
-    """Run `git rebase origin/<base>` in the worktree.
-
-    Returns `(succeeded, conflicted_files)`. On success, `conflicted_files`
-    is empty -- whether the rebase was a no-op or replayed commits is the
-    caller's job to detect via the HEAD-SHA delta. On failure, the
-    conflicted-file list is the unmerged paths from
-    `git diff --name-only --diff-filter=U`; an empty list means the rebase
-    failed for a non-conflict reason (hooks, permissions, etc.) and the
-    caller should park rather than ask the agent to resolve nothing.
-
-    Both subprocess calls run under `_git_hardened`: the diff is
-    read-only but still executes inside an agent-writable worktree, so
-    a planted hooksPath / fsmonitor would otherwise execute attacker
-    code under the orchestrator's UID at diff time.
-    """
-    rebase_result = _owner._git_hardened(
-        "rebase",
-        f"{spec.remote_name}/{spec.base_branch}", cwd=worktree,
-    )
-    if rebase_result.returncode == 0:
-        return True, []
-    conflicted = _owner._git_hardened(
-        "diff", "--name-only", "--diff-filter=U", cwd=worktree,
-    )
-    files = [
-        line.strip() for line in (conflicted.stdout or "").splitlines()
-        if line.strip()
-    ]
-    return False, files
-
-
-def _merge_base_into_worktree(
-    spec: config.RepoSpec, worktree: Path
-) -> Tuple[bool, list[str]]:
-    """Compatibility alias for older patches/imports.
-
-    TODO(remove after 2026-08-24): drop once out-of-repo patches have moved
-    to `_rebase_base_into_worktree`.
-    """
-    return _owner._rebase_base_into_worktree(spec, worktree)
-
-
-def _rebase_state_exists(worktree: Path, state_dir: str) -> bool:
-    """Resolve one git rebase-state path and report whether it exists."""
-    git_path_result = _owner._git_hardened(
-        "rev-parse", "--git-path", state_dir, cwd=worktree,
-    )
-    if git_path_result.returncode != 0:
-        return False
-    path = (git_path_result.stdout or "").strip()
-    if not path:
-        return False
-    state_path = Path(path)
-    if not state_path.is_absolute():
-        state_path = worktree / state_path
-    return state_path.exists()
-
-
-def _rebase_in_progress(worktree: Path) -> bool:
-    """Return True when the worktree still has an unfinished rebase."""
-    return any(
-        _owner._rebase_state_exists(worktree, state_dir)
-        for state_dir in ("rebase-merge", "rebase-apply")
-    )
 
 
 def _issue_worktree_number(worktree: Path) -> Optional[int]:
@@ -94,8 +39,102 @@ def _issue_worktree_number(worktree: Path) -> Optional[int]:
         return None
 
 
+def _base_sync_issue(
+    gh: _client.GitHubClient, issue_number: int,
+) -> Optional[Issue]:
+    """Return the issue for a worktree, or None when it is not retrievable."""
+    try:
+        return gh.get_issue(issue_number)
+    except Exception:
+        log.debug(
+            "issue=#%d not retrievable; skipping base sync", issue_number,
+        )
+        return None
+
+
+def _issue_skips_base_sync(issue: Issue, issue_number: int) -> bool:
+    """Apply dispatcher hard-skips and the question-stage read-only gate."""
+    skip_label = _labels.hard_skip_control_label(issue)
+    if skip_label is not None:
+        log.debug(
+            "issue=#%d has %r; skipping base sync",
+            issue_number,
+            skip_label,
+        )
+        return True
+    if not _labels.issue_has_label(issue, "question"):
+        return False
+    log.debug(
+        "issue=#%d has 'question' label; skipping base sync "
+        "(read-only stage)",
+        issue_number,
+    )
+    return True
+
+
+def _worktree_behind_base(
+    spec: config.RepoSpec, worktree: Path, issue_number: int,
+) -> Optional[int]:
+    """Return the base lag, or None when the comparison cannot be read."""
+    base_ref = f"{spec.remote_name}/{spec.base_branch}"
+    behind_result = _commands._git(
+        "rev-list", "--count", f"HEAD..{base_ref}", cwd=worktree,
+    )
+    if behind_result.returncode != 0:
+        log.debug(
+            "issue=#%d skipping base sync: rev-list failed: %s",
+            issue_number,
+            (behind_result.stderr or "").strip(),
+        )
+        return None
+    try:
+        return int((behind_result.stdout or "0").strip() or "0")
+    except ValueError:
+        return None
+
+
+def _sync_worktree_with_base(
+    gh: _client.GitHubClient, spec: config.RepoSpec, worktree: Path, issue_number: int,
+) -> None:
+    """Bring one per-issue worktree up to date with the configured base.
+
+    Pre-PR worktrees are rebased locally when clean. PR worktrees always
+    reach the PR-aware coordinator so a pinned crash-recovery anchor is
+    honored even when local HEAD already contains the latest base.
+    """
+    issue = _base_sync_issue(gh, issue_number)
+    if issue is None or _issue_skips_base_sync(issue, issue_number):
+        return
+
+    state = gh.read_pinned_state(issue)
+    pr_number = state.get("pr_number")
+    if pr_number is None and _probes._worktree_dirty_files(worktree):
+        log.debug(
+            "issue=#%d skipping base sync: worktree has uncommitted changes",
+            issue_number,
+        )
+        return
+
+    behind = _worktree_behind_base(spec, worktree, issue_number)
+    if behind is None:
+        return
+    if pr_number is not None:
+        # The PR-aware coordinator is still a base-sync leaf reached through
+        # the compatibility facade, and that facade resolves the names this
+        # owner defines -- binding it at module scope would invert the
+        # direction the package is layered in.
+        from orchestrator import base_sync as _facade
+
+        _facade._sync_pr_worktree_to_base(
+            gh, spec, issue, state, worktree, int(pr_number), behind,
+        )
+        return
+    if behind:
+        _pre_pr._sync_pre_pr_worktree(spec, worktree, issue_number, behind)
+
+
 def _sync_discovered_worktree(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     worktree: Path,
     issue_number: int,
@@ -111,7 +150,7 @@ def _sync_discovered_worktree(
         )
         return
     try:
-        _owner._sync_worktree_with_base(gh, spec, worktree, issue_number)
+        _sync_worktree_with_base(gh, spec, worktree, issue_number)
     except Exception:
         log.exception(
             "repo=%s issue=#%d base sync failed; continuing",
@@ -120,7 +159,7 @@ def _sync_discovered_worktree(
 
 
 def _refresh_base_and_worktrees(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     *,
     scheduler: Optional[IssueScheduler] = None,
@@ -186,7 +225,7 @@ def _refresh_base_and_worktrees(
     guarantee. `None` preserves the legacy behavior so direct test
     invocations that supply no scheduler still refresh every worktree.
     """
-    fetch_r = _owner._authed_target_fetch(spec, spec.base_branch)
+    fetch_r = _authentication._authed_target_fetch(spec, spec.base_branch)
     if fetch_r.returncode != 0:
         log.warning(
             "repo=%s base fetch of %s/%s failed: %s",
@@ -195,13 +234,13 @@ def _refresh_base_and_worktrees(
         )
         return
 
-    root = _owner._repo_worktrees_root(spec)
+    root = _paths._repo_worktrees_root(spec)
     if not root.exists():
         return
 
     for worktree in sorted(root.iterdir()):
-        issue_number = _owner._issue_worktree_number(worktree)
+        issue_number = _issue_worktree_number(worktree)
         if issue_number is not None:
-            _owner._sync_discovered_worktree(
+            _sync_discovered_worktree(
                 gh, spec, worktree, issue_number, scheduler,
             )

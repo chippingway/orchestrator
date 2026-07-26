@@ -2,14 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-import contextlib
-import subprocess
 from pathlib import Path
-from types import MappingProxyType
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from orchestrator import base_sync, config, workflow
-from orchestrator.git import commands
+from orchestrator import config, workflow
 
 from tests.fakes import (
     FakeComment,
@@ -20,6 +16,10 @@ from tests.fakes import (
     FakePRRef,
     FakeUser,
     make_issue,
+)
+from tests.git.base_sync.sync_test_support import (
+    _git_result as _git_result,
+    _patch_base_sync as _patch_base_sync,
 )
 
 # --- Shared base-sync fixture literals -----------------------------------
@@ -92,20 +92,6 @@ MISSING_ISSUE_NUMBER = 9999
 NEW_REBASED_SHA = "new-rebased-sha"
 
 
-def _git_result(
-    *,
-    returncode: int = 0,
-    stdout: str = "",
-    stderr: str = "",
-) -> subprocess.CompletedProcess:
-    return subprocess.CompletedProcess(
-        args=["git"],
-        returncode=returncode,
-        stdout=stdout,
-        stderr=stderr,
-    )
-
-
 class _RemoteHeadGit:
     def __init__(
         self,
@@ -149,51 +135,6 @@ class _RebaseAnchorRecorder:
             self._gh.pinned_data(ISSUE).get(KEY_PENDING_PUSH_SHA),
         )
         return True, []
-
-
-# Keyword aliases -> the `base_sync` collaborators these tests patch. Kept in
-# one place so a helper rename lands here instead of in every `with` block.
-_BASE_SYNC_TARGETS = MappingProxyType(
-    {
-        "dirty": "_worktree_dirty_files",
-        REBASE_COMMAND: "_rebase_base_into_worktree",
-        "push": "_push_branch",
-        "head_sha": "_head_sha",
-        "git": "_git",
-        "hardened": "_git_hardened",
-        "fetch": "_authed_fetch",
-        "ahead_behind": "_branch_ahead_behind",
-        "target_fetch": "_authed_target_fetch",
-        "worktrees_root": "_repo_worktrees_root",
-        "sync": "_sync_worktree_with_base",
-    }
-)
-
-# Helpers the flow also reaches on their owning module, so a facade-only patch
-# would leave part of it running the real thing: the auto-rebase park path
-# calls `_git_hardened` on the git command owner, which would otherwise run a
-# real `reset --hard` against the fictional worktree these fixtures name.
-_OWNER_MODULES = MappingProxyType(
-    {
-        "_git_hardened": commands,
-    }
-)
-
-
-@contextlib.contextmanager
-def _patch_base_sync(**mocks):
-    """Patch the `base_sync` collaborators named by keyword alias for the
-    block. Aliases resolve to the module's private helpers via
-    `_BASE_SYNC_TARGETS`; each value is the object installed in its place.
-    Only the named collaborators are patched."""
-    with contextlib.ExitStack() as stack:
-        for alias, mock in mocks.items():
-            helper = _BASE_SYNC_TARGETS[alias]
-            stack.enter_context(patch.object(base_sync, helper, mock))
-            owner = _OWNER_MODULES.get(helper)
-            if owner is not None:
-                stack.enter_context(patch.object(owner, helper, mock))
-        yield
 
 
 class _SyncWorktreeWithBaseFixture:

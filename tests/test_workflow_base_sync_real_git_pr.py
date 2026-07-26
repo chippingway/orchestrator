@@ -15,22 +15,16 @@ from tests.workflow_helpers import (
     STATE_OPEN,
 )
 
-from tests.base_sync_real_git_support import (
+from tests.git.base_sync.real_git_test_support import (
     _LocalBranchPusher,
     _RefreshBaseRealGitFixture,
 )
 
-REPO_SLUG = "acme/widget"
-BASE_BRANCH = "main"
 PR_BRANCH = "orchestrator/acme__widget/issue-7"
 KEY_CONFLICT_ROUND = "conflict_round"
 KEY_REVIEW_ROUND = "review_round"
-GIT_COMMAND = "git"
-ADD_COMMAND = "add"
 PUSH_COMMAND = "push"
 ORIGIN_REMOTE = "origin"
-WORKTREES_DIR_NAME = "worktrees"
-WORKTREES_DIR_ATTR = "WORKTREES_DIR"
 EXTRA_FILENAME = "extra.txt"
 PR_NUMBER = 42
 
