@@ -10,10 +10,11 @@ import unittest
 
 from orchestrator import branch_publication
 from orchestrator.git import publication as _publication_package
-from orchestrator.git.publication import probes, titles
+from orchestrator.git.publication import planning, probes, titles
 
 _MODULES = (
     "orchestrator.git.publication",
+    "orchestrator.git.publication.planning",
     "orchestrator.git.publication.probes",
     "orchestrator.git.publication.titles",
 )
@@ -25,11 +26,14 @@ _OWNER_ONLY_NAMES = (
     "_first_commit_subject",
     "_infer_subject_prefix",
     "_pr_title_from_commit_or_issue",
+    "_prepare_squash",
 )
 
 _FACADE_FORWARDS = (
     ("_CONVENTIONAL_RE", probes),
     ("_CONVENTIONAL_TYPES", probes),
+    ("_SquashPlan", planning),
+    ("_SquashPreparationError", planning),
     ("_branch_ahead_behind", probes),
     ("_first_commit_subject", probes),
     ("_infer_subject_prefix", titles),
@@ -37,7 +41,11 @@ _FACADE_FORWARDS = (
     ("_is_prefixed_subject", probes),
     ("_parse_ahead_behind", probes),
     ("_pr_title_from_commit_or_issue", titles),
+    ("_prepare_squash", planning),
     ("_recent_base_subjects", probes),
+    ("_squash_base_sha", planning),
+    ("_squash_message", planning),
+    ("_squash_subjects", planning),
     ("_subject_prefix", probes),
 )
 
@@ -45,10 +53,11 @@ _FACADE_FORWARDS = (
 class CleanProcessImportTest(unittest.TestCase):
     """Each owner imports standalone in a fresh interpreter.
 
-    `probes` depends only on the config and git command owners and `titles`
-    only on `probes`, so importing either one first must not need a name a
-    half-run module has not defined yet. A subprocess per module gives each a
-    clean `sys.modules` no other test has already populated, exposing an
+    `probes` depends only on the config and git command owners, `titles` only
+    on `probes`, and `planning` on both of them plus the verification probes,
+    so importing any one of them first must not need a name a half-run module
+    has not defined yet. A subprocess per module gives each a clean
+    `sys.modules` no other test has already populated, exposing an
     import-order cycle a facade-first suite run would mask.
     """
 

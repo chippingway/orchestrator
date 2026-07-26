@@ -127,6 +127,8 @@ orchestrator/
     locks.py            per-target-root re-entrant lock registry and accessor
     publication/
       __init__.py       package marker only; callers import an owner directly
+      planning.py       merge-base, HEAD, dirty and subject preconditions plus
+                        the squash message they select
       probes.py         subject vocabulary and predicates, ahead/behind counts,
                         first-commit and recent-base subject reads
       titles.py         subject-prefix inference and PR-title selection
@@ -157,7 +159,7 @@ orchestrator/
   verify.py             lazy forwarding shell over git/verification/ owners
   worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners
   branch_publication.py lazy branch-publication compatibility facade
-  _branch_*.py          squash planning, rewriting, and publication leaves
+  _branch_*.py          squash rewriting and publication-flow leaves
   base_sync.py          lazy base-refresh/rebase compatibility facade
   _base_sync_*.py       refresh, typed rebase/recovery decisions, conflict
                         routing, persistence, and publication leaves
@@ -219,7 +221,8 @@ is the implementation object's exact identity. Existing direct imports, wildcard
 therefore keep working. Patches that need to intercept base-sync internals still target the `base_sync` facade, just as
 before the split, and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
 `workflow`) because their callers read them off a facade. Inside `git/publication/`, though, the owners bind their
-collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes` -- so a patch that has to intercept
+collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes`, and `planning` calls `git.commands`,
+both siblings, and the verification probes for its HEAD and dirty-file guards -- so a patch that has to intercept
 what those helpers themselves call targets the owner module. `git/verification/` is bound the same way -- `output`
 calls `models`, `process` calls `output` and `probes`, `runner` calls `process` -- and the validating approval gate
 reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or

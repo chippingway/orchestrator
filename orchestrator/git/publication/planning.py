@@ -1,14 +1,24 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Branch squash plan."""
+"""Squash planning: the preconditions gathered before the branch rewrite.
+
+Every probe here runs while the original branch is still intact, so a
+failure raises `_SquashPreparationError` and the caller aborts with nothing
+to undo. The plan also pins `original_head` -- the rollback target and the
+lease the force-push is made with -- so the rewrite never has to re-read a
+HEAD its own reset has already moved.
+"""
 from __future__ import annotations
 
-from orchestrator import branch_publication as _owner
+from dataclasses import dataclass
+from pathlib import Path
 
-Issue = _owner.Issue
-Path = _owner.Path
-config = _owner.config
-dataclass = _owner.dataclass
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.git import commands
+from orchestrator.git.publication import probes, titles
+from orchestrator.git.verification import probes as verification_probes
 
 
 class _SquashPreparationError(RuntimeError):
@@ -28,7 +38,9 @@ class _SquashPlan:
 def _squash_base_sha(spec: config.RepoSpec, worktree: Path) -> str:
     """Return the topic branch merge base or raise a preparation error."""
     base_ref = f"{spec.remote_name}/{spec.base_branch}"
-    merge_base_result = _owner._git("merge-base", base_ref, "HEAD", cwd=worktree)
+    merge_base_result = commands._git(
+        "merge-base", base_ref, "HEAD", cwd=worktree,
+    )
     if merge_base_result.returncode != 0:
         detail = (merge_base_result.stderr or "").strip()
         raise _SquashPreparationError(f"merge-base failed: {detail}")
@@ -40,7 +52,7 @@ def _squash_base_sha(spec: config.RepoSpec, worktree: Path) -> str:
 
 def _squash_subjects(worktree: Path, base_sha: str) -> tuple[str, ...]:
     """Return ordered topic-commit subjects or raise on an unreadable log."""
-    log_result = _owner._git(
+    log_result = commands._git(
         "log", "--reverse", "--pretty=%s", f"{base_sha}..HEAD",
         cwd=worktree,
     )
@@ -62,10 +74,10 @@ def _squash_message(
 ) -> str:
     """Build the subject-only message for a multi-commit squash."""
     first_subject = subjects[0]
-    if _owner._is_prefixed_subject(first_subject):
+    if probes._is_prefixed_subject(first_subject):
         return f"{first_subject}\n"
-    fallback_prefix = _owner._infer_subject_prefix(spec, worktree, issue)
-    subject = _owner._pr_title_from_commit_or_issue(
+    fallback_prefix = titles._infer_subject_prefix(spec, worktree, issue)
+    subject = titles._pr_title_from_commit_or_issue(
         issue, first_subject, fallback_prefix,
     )
     return f"{subject}\n"
@@ -75,15 +87,15 @@ def _prepare_squash(
     spec: config.RepoSpec, worktree: Path, issue: Issue,
 ) -> _SquashPlan:
     """Collect every precondition before the branch rewrite begins."""
-    base_sha = _owner._squash_base_sha(spec, worktree)
-    original_head = _owner._head_sha(worktree)
+    base_sha = _squash_base_sha(spec, worktree)
+    original_head = verification_probes._head_sha(worktree)
     if not original_head:
         raise _SquashPreparationError("could not read original HEAD")
-    if _owner._worktree_dirty_files(worktree):
+    if verification_probes._worktree_dirty_files(worktree):
         raise _SquashPreparationError("worktree has uncommitted changes")
-    subjects = _owner._squash_subjects(worktree, base_sha)
+    subjects = _squash_subjects(worktree, base_sha)
     message = (
-        _owner._squash_message(spec, worktree, issue, subjects)
+        _squash_message(spec, worktree, issue, subjects)
         if len(subjects) > 1
         else ""
     )
