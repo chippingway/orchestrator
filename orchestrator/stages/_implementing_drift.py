@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _AgentWork = _owner._AgentWork
 AgentResult = _owner.AgentResult
@@ -72,7 +73,7 @@ def _run_implementing_drift_resume(
     worktree = _owner._ensure_resume_worktree(spec, issue, state)
     before_sha = _wf._head_sha(worktree)
     followup = _wf._build_user_content_change_prompt(
-        issue, _wf._recent_comments_text(issue),
+        issue, _comments._recent_comments_text(issue),
     )
     resumed = _owner._resume_dev_with_text(
         gh, spec, issue, state, followup, pause_guard=True,
@@ -99,10 +100,8 @@ def _implementing_drift_run(
 def _post_implementing_drift_ack(
     gh: GitHubClient, issue: Issue, state: PinnedState, reason: str,
 ) -> None:
-    from orchestrator import workflow as _wf
-
     quoted = _owner._as_blockquote(reason)
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         ":speech_balloon: dev session reports the existing "
         f"work satisfies the edit:\n\n{quoted}",
@@ -147,7 +146,7 @@ def _resume_dev_on_implementing_drift(
 ) -> None:
     from orchestrator import workflow as _wf
 
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         ":pencil2: issue body changed; resuming dev session with "
         "the updated requirements.",

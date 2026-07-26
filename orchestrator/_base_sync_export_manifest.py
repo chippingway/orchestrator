@@ -222,12 +222,12 @@ EXPORTS = (
         (("IssueScheduler", "IssueScheduler"),),
     ),
     *export_group(
-        "orchestrator.workflow.state",
-        (("WorkflowLabel", "WorkflowLabel"),),
+        "orchestrator.workflow.engine.comments",
+        (("_post_pr_comment", "_post_pr_comment"),),
     ),
     *export_group(
-        "orchestrator.workflow_messages",
-        (("_post_pr_comment", "_post_pr_comment"),),
+        "orchestrator.workflow.state",
+        (("WorkflowLabel", "WorkflowLabel"),),
     ),
     *export_group(
         "orchestrator.worktree_lifecycle",

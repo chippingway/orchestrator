@@ -20,17 +20,6 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._workflow_comments",
-        (
-            ("_build_tracked_repos_context", "_build_tracked_repos_context"),
-            ("_orchestrator_ids", "_orchestrator_ids"),
-            ("_post_issue_comment", "_post_issue_comment"),
-            ("_post_pr_comment", "_post_pr_comment"),
-            ("_track_orchestrator_comment", "_track_orchestrator_comment"),
-            ("_with_orch_marker", "_with_orch_marker"),
-        ),
-    ),
-    *export_group(
         "orchestrator._workflow_core_prompts",
         (
             ("_build_documentation_prompt", "_build_documentation_prompt"),
@@ -103,21 +92,10 @@ EXPORTS = (
             ("_NO_BODY", "_NO_BODY"),
             ("_NO_PRIOR_COMMENTS", "_NO_PRIOR_COMMENTS"),
             ("_ORCHESTRATOR_CONTINUE_RE", "_ORCHESTRATOR_CONTINUE_RE"),
-            ("_ORCH_COMMENT_ID_CAP", "_ORCH_COMMENT_ID_CAP"),
-            ("_ORCH_COMMENT_MARKER", "_ORCH_COMMENT_MARKER"),
             ("_SECTION_SEP", "_SECTION_SEP"),
             ("_STDERR_TAIL_BUDGET", "_STDERR_TAIL_BUDGET"),
-            ("_TRACKED_REPOS_CAP", "_TRACKED_REPOS_CAP"),
             ("_VERDICT_RE", "_VERDICT_RE"),
             ("_VERDICT_UNKNOWN", "_VERDICT_UNKNOWN"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_prompt_comments",
-        (
-            ("_prompt_comment_chunk", "_prompt_comment_chunk"),
-            ("_quote_comment_line", "_quote_comment_line"),
-            ("_recent_comments_text", "_recent_comments_text"),
         ),
     ),
     *export_group(
@@ -168,6 +146,23 @@ EXPORTS = (
     *export_group(
         "orchestrator.github.pinned_state",
         (("PinnedState", "PinnedState"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.engine.comments",
+        (
+            ("_ORCH_COMMENT_ID_CAP", "_ORCH_COMMENT_ID_CAP"),
+            ("_ORCH_COMMENT_MARKER", "_ORCH_COMMENT_MARKER"),
+            ("_TRACKED_REPOS_CAP", "_TRACKED_REPOS_CAP"),
+            ("_build_tracked_repos_context", "_build_tracked_repos_context"),
+            ("_orchestrator_ids", "_orchestrator_ids"),
+            ("_post_issue_comment", "_post_issue_comment"),
+            ("_post_pr_comment", "_post_pr_comment"),
+            ("_prompt_comment_chunk", "_prompt_comment_chunk"),
+            ("_quote_comment_line", "_quote_comment_line"),
+            ("_recent_comments_text", "_recent_comments_text"),
+            ("_track_orchestrator_comment", "_track_orchestrator_comment"),
+            ("_with_orch_marker", "_with_orch_marker"),
+        ),
     ),
     *export_group(
         "os",

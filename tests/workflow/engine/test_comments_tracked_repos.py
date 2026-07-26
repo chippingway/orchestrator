@@ -14,7 +14,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import config, workflow, workflow_messages
+from orchestrator import config
+from orchestrator.workflow.engine import comments
 
 
 _LANCE_SLUG = "owner/lance"
@@ -44,10 +45,8 @@ def _build_context(
 ) -> str:
     # Patch the exact config module the builder reads so the result is
     # deterministic regardless of ambient config reloads.
-    with patch.object(
-        workflow_messages.config, "EXPOSE_TRACKED_REPOS", expose,
-    ):
-        return workflow._build_tracked_repos_context(current, specs)
+    with patch.object(comments.config, "EXPOSE_TRACKED_REPOS", expose):
+        return comments._build_tracked_repos_context(current, specs)
 
 
 class BuildTrackedReposContextGateTest(unittest.TestCase):

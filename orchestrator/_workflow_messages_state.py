@@ -6,10 +6,6 @@ from __future__ import annotations
 from orchestrator import config
 import re
 
-_ORCH_COMMENT_ID_CAP = 500
-
-_ORCH_COMMENT_MARKER = "<!--orchestrator-comment-->"
-
 _FOREGROUND_ONLY_NOTE = (
     "IMPORTANT: your session terminates the moment you finish responding -- "
     "nothing keeps running between turns, and a later resume starts a fresh "
@@ -31,8 +27,6 @@ _COMMIT_STYLE_NOTE = (
     "description / body and no `Co-Authored-By:` (or other) trailer. Use "
     "`git commit -m \"<subject>\"` with a single `-m`."
 )
-
-_TRACKED_REPOS_CAP = 20
 
 _STDERR_TAIL_BUDGET = 1024
 

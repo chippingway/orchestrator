@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.git.worktrees import terminal as _worktree_terminal
 from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _QuestionRun = _owner._QuestionRun
 AgentResult = _owner.AgentResult
@@ -73,7 +74,7 @@ def _spawn_fresh_question(run: _QuestionRun) -> AgentResult:
     prompt = _wf._build_question_prompt(
         run.spec,
         run.issue,
-        _wf._recent_comments_text(run.issue),
+        _comments._recent_comments_text(run.issue),
         config.default_repo_specs(),
     )
     return _owner._execute_question_prompt(run, session, prompt, worktree)

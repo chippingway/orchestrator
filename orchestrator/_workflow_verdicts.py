@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_messages_state as _state
 from orchestrator import workflow_messages as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -155,7 +156,7 @@ def _refuse_parked_continue(
     next tick and the refusal is not re-posted every poll). `awaiting_human`
     stays set. Mutates in-memory state only; the caller writes pinned state.
     """
-    _owner._post_issue_comment(gh, issue, state, _CONTINUE_NEEDS_GUIDANCE_MSG)
+    _comments._post_issue_comment(gh, issue, state, _CONTINUE_NEEDS_GUIDANCE_MSG)
     latest = gh.latest_comment_id(issue)
     if latest is not None:
         state.set("last_action_comment_id", latest)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_state as _state
 from orchestrator import workflow as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 AgentResult = _owner.AgentResult
 GitHubClient = _owner.GitHubClient
@@ -106,7 +107,7 @@ def _park_awaiting_human(
     here (callers that need a transient reason re-set it themselves -- see
     above), so passing a reason does not change observable behavior.
     """
-    _owner._post_issue_comment(gh, issue, state, message)
+    _comments._post_issue_comment(gh, issue, state, message)
     state.set("awaiting_human", True)
     state.set("park_reason", None)
     latest = gh.latest_comment_id(issue)

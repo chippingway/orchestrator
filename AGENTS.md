@@ -27,8 +27,11 @@ orchestrator process is stateless.
 - `orchestrator/` — Python package: tick loop and label-dispatch compatibility facade (the `workflow/` package
   initializer, over the `workflow/state.py` owner -- the workflow / control label vocabularies and their wire
   strings, the strict label coercion and its legacy `value=` adapter, the declared transition graph, and the
-  warn-or-raise guard plus the `orchestrator.state_machine` logger it warns through -- with `workflow/engine/`
-  reserved for its remaining owners), per-stage lazy facades (`stages/`),
+  warn-or-raise guard plus the `orchestrator.state_machine` logger it warns through -- and over the
+  `workflow/engine/comments.py` owner in the subpackage reserved for its remaining owners: the hidden
+  orchestrator marker and the capped tracked-comment id ledger both posting helpers write, the
+  trusted-author filter and quoting every prompt reads the issue thread through, and the capped
+  tracked-repository awareness block), per-stage lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
@@ -219,13 +222,21 @@ orchestrator process is stateless.
   package-surface checks including the guard that no flat `_base_sync_*` implementation leaf returns, plus
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
-  `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and its `state`
-  owner, the guard that importing either the facade or that owner resolves no manifest target and no
+  `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state` and
+  `engine/comments.py` owners, the guard that importing either the facade or the state
+  owner resolves no manifest target and no
   dependency binding, the package-surface checks that the facade is the
-  initializer and that a submodule binding leaves its lazy hooks intact, and the state owner's own
+  initializer, that the engine initializer binds only the submodules planted in it, and that a submodule
+  binding leaves its lazy hooks intact, and the state owner's own
   coverage — the label wire strings and their typo-guarded coercion, the transition table and its
   reachability / terminal-liveness invariants (`test_state.py`), and the per-mode guard decisions, terminal
-  edges, preserved logger name, and `set_workflow_label` wiring (`test_state_guards.py`).
+  edges, preserved logger name, and `set_workflow_label` wiring (`test_state_guards.py`). The comment owner's
+  coverage lives in `tests/workflow/engine/`: the shared id ledger both posting surfaces append to with its
+  marker, idempotent wrap, and eviction cap, the allowlist filter and `@author` quoting the thread read applies,
+  and the four historical facades that still forward its names (`test_comments.py`), plus the tracked-repos
+  gate, listing, cap, framing, and absent secret fields (`test_comments_tracked_repos.py`). The injected-comment
+  thread those filter tests share with the top-level prompt-builder and drift-hash ones lives in
+  `tests/comment_trust_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

@@ -112,18 +112,21 @@ orchestrator/
                         declared transition graph, and the transition guard
     engine/
       __init__.py       package marker only; reserved for the tick, dispatch,
-                        and shared-helper owners
+                        and remaining shared-helper owners
+      comments.py       the orchestrator marker and capped id ledger both
+                        comment posters write, the trusted-author thread read
+                        every prompt quotes, and the tracked-repos block
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
   _workflow_*.py        tick/scheduling, dispatch, pickup, terminal routing,
-                        prompts, comments, usage, and run-guard leaves
+                        prompts, usage, and run-guard leaves
   workflow_drift.py     lazy user-content-drift compatibility facade
   _workflow_drift_*.py  drift hashing and stage-route leaves
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
-                        prompt, parser, and comment leaves
+                        prompt and parser leaves
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
@@ -332,8 +335,8 @@ worktree off to, or the conflict route a failed rebase takes patches `refresh` /
 the facade.
 The collaborators these owners reach *upward* are call-time imports: `persistence` binds the park guard and
 the PR-comment poster straight off their owning modules, and `publication` and `conflicts` bind the same
-poster for their notices, so a patch for either targets `orchestrator.workflow`
-or `orchestrator.workflow_messages` -- the `base_sync` forward of `_post_pr_comment` still resolves, but it is
+poster for their notices, so a patch for either targets `orchestrator.workflow.engine.comments` -- the
+`base_sync` and `workflow_messages` forwards of `_post_pr_comment` still resolve, but they are
 not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
 the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/` or `workflow/state.py`, so
 importing the facade resolves no manifest target and pulls in neither the stage tree, the config and analytics
@@ -346,6 +349,14 @@ labels, graph, coercion, and guard for callers that still reach for the historic
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.
+
+`workflow/engine/comments.py` is bound the same way. Its own helpers call each other directly -- both posters stamp the
+marker and append to the id ledger in-module, and the thread read applies the per-comment trust filter in-module -- and
+the workflow and stage leaves that post a comment, quote one, or read the thread import the owner rather than reaching
+for the name on a facade. So a patch that has to intercept a posted issue or PR comment, the tracked-repos block, or
+the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`; `workflow`,
+`workflow_messages`, `workflow_drift`, and `base_sync` each still resolve their historical slice of those names to the
+owner's exact object for callers outside the package.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

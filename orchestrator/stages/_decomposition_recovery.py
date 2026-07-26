@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DecomposerSession = _owner._DecomposerSession
 AgentResult = _owner.AgentResult
@@ -111,7 +112,7 @@ def _route_disabled_to_implementing(
 
     if config.DECOMPOSE:
         return False
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         ":robot: decomposition is disabled; routing this issue "
         "to implementation.",
@@ -178,7 +179,7 @@ def _spawn_fresh_decomposer(
         stage="decomposing",
         backend=session.backend,
         prompt=_wf._build_decompose_prompt(
-            spec, issue, _wf._recent_comments_text(issue),
+            spec, issue, _comments._recent_comments_text(issue),
             config.default_repo_specs(),
         ),
         cwd=wt,
@@ -258,7 +259,7 @@ def _finalize_single_decision(
     """
     from orchestrator import workflow as _wf
 
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         _wf._build_single_decision_comment(parsed),
     )

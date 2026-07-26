@@ -1,18 +1,42 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Workflow comments."""
+"""Every comment the orchestrator posts, and every comment it reads back.
+
+The write side stamps ``_ORCH_COMMENT_MARKER`` onto each body and records the
+returned id in pinned state, because recognizing the orchestrator's own
+messages later needs both: the id list is exact but bounded by
+``_ORCH_COMMENT_ID_CAP``, and the marker survives eviction from it. Neither can
+be replaced by author-login matching -- a PAT shared with a human reviewer's
+account would have that reviewer's real comments swallowed as bot noise.
+
+The read side is the one choke point every conversation-carrying agent prompt
+draws its thread text from, so the ``ALLOWED_ISSUE_AUTHORS`` trust filter is
+applied here. An untrusted author's comment is dropped whole rather than
+trimmed, which is what keeps an outsider on a public repo from steering a
+coding agent through the issue thread.
+
+The tracked-repository awareness block sits beside the thread read because both
+are bounded, non-secret context folded into the same agent prompts.
+"""
 from __future__ import annotations
 
-from orchestrator import _workflow_messages_state as _state
-from orchestrator import workflow_messages as _owner
+from typing import Optional
 
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-config = _owner.config
-_ORCH_COMMENT_ID_CAP = _state._ORCH_COMMENT_ID_CAP
-_ORCH_COMMENT_MARKER = _state._ORCH_COMMENT_MARKER
-_TRACKED_REPOS_CAP = _state._TRACKED_REPOS_CAP
+from github.Issue import Issue
+
+from orchestrator import config
+# The blank line between quoted comments is the paragraph break the prompt
+# builders assemble their own sections with, so it keeps one definition.
+from orchestrator._workflow_messages_state import _SECTION_SEP
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.comments import is_trusted_author
+from orchestrator.github.pinned_state import PinnedState
+
+_ORCH_COMMENT_ID_CAP = 500
+
+_ORCH_COMMENT_MARKER = "<!--orchestrator-comment-->"
+
+_TRACKED_REPOS_CAP = 20
 
 
 def _build_tracked_repos_context(
@@ -105,10 +129,10 @@ def _post_issue_comment(
     hash can identify bot comments by marker (id-cap-resistant) in
     addition to by id (works for tracked-and-not-yet-evicted comments).
     """
-    issue_comment = gh.comment(issue, _owner._with_orch_marker(body))
+    issue_comment = gh.comment(issue, _with_orch_marker(body))
     cid = getattr(issue_comment, "id", None)
     if cid is not None:
-        _owner._track_orchestrator_comment(state, int(cid))
+        _track_orchestrator_comment(state, int(cid))
     return issue_comment
 
 
@@ -129,8 +153,52 @@ def _post_pr_comment(
     surfaces keeps the filter rules uniform and avoids accidental
     inconsistency when a future tweak does start reading PR comments.
     """
-    pr_comment = gh.pr_comment(pr_number, _owner._with_orch_marker(body))
+    pr_comment = gh.pr_comment(pr_number, _with_orch_marker(body))
     cid = getattr(pr_comment, "id", None)
     if cid is not None:
-        _owner._track_orchestrator_comment(state, int(cid))
+        _track_orchestrator_comment(state, int(cid))
     return pr_comment
+
+
+def _quote_comment_line(comment: object, label: str = "") -> str:
+    """Quote one already-selected comment as `@author[label]: body`.
+
+    Shared by the resume/followup prompt builders and the stage handlers that
+    fold fresh issue or PR comments into an agent prompt; `label` inserts a
+    surface tag (e.g. ` (PR comment)`) after the author.
+    """
+    author = comment.user.login if comment.user else "user"
+    body = comment.body or ""
+    return f"@{author}{label}: {body}"
+
+
+def _prompt_comment_chunk(issue_comment: object) -> Optional[str]:
+    """Format one trusted, non-state issue comment for an agent prompt."""
+    body = getattr(issue_comment, "body", None) or ""
+    if "<!--orchestrator-state" in body:
+        return None
+    user = getattr(issue_comment, "user", None)
+    if not is_trusted_author(user):
+        return None
+    login = user.login if user else "user"
+    return f"@{login}: {body}"
+
+
+def _recent_comments_text(issue: Issue, max_chars: int = 4000) -> str:
+    """Conversation text fed to every agent prompt (implement, review,
+    documentation, decompose, question, and the drift-resume prompt).
+
+    An untrusted author's comment is dropped whole -- its body and any URLs
+    it contains never reach the prompt -- so once `ALLOWED_ISSUE_AUTHORS`
+    is set an outsider on a public repo cannot smuggle workflow-driving
+    instructions into a coding agent through the issue thread. With no
+    allowlist configured `is_trusted_author` trusts every author, so the
+    default single-user deployment sees the full thread unchanged.
+    """
+    chunks: list[str] = []
+    for issue_comment in issue.get_comments():
+        chunk = _prompt_comment_chunk(issue_comment)
+        if chunk is not None:
+            chunks.append(chunk)
+    text = _SECTION_SEP.join(chunks)
+    return text[-max_chars:] if len(text) > max_chars else text

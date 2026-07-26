@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_messages_state as _state
 from orchestrator import workflow_messages as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 Issue = _owner.Issue
 config = _owner.config
@@ -66,7 +67,7 @@ def _build_question_prompt(
     """
     body = issue.body or _NO_BODY
     convo = comments_text or _NO_PRIOR_COMMENTS
-    tracked = _owner._build_tracked_repos_context(spec, specs)
+    tracked = _comments._build_tracked_repos_context(spec, specs)
     tracked_block = f"{tracked}\n\n" if tracked else ""
     return (
         f"You are answering a standing question on GitHub issue "
@@ -97,7 +98,7 @@ def _build_question_followup_prompt(comments: list) -> str:
     deciding to "just implement the fix".
     """
     body = _SECTION_SEP.join(
-        _owner._quote_comment_line(comment) for comment in comments
+        _comments._quote_comment_line(comment) for comment in comments
     )
     quoted = _owner._as_blockquote(body)
     return (
@@ -119,7 +120,7 @@ def _build_pr_comment_followup(comments: list) -> str:
     "rename foo to bar" reads as freeform chatter without context.
     """
     body = _SECTION_SEP.join(
-        _owner._quote_comment_line(comment) for comment in comments
+        _comments._quote_comment_line(comment) for comment in comments
     )
     quoted = _owner._as_blockquote(body)
     return (

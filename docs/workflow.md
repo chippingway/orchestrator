@@ -69,8 +69,9 @@ For the per-`park_reason` semantics and the implementing-side relabel guard (`qu
 When the orchestrator drives more than one repo (`REPOS`) and `EXPOSE_TRACKED_REPOS` is on (the default), the
 reasoning-prompt builders prepend a compact, read-only awareness block naming the *other* repos this process tracks. It
 lets an agent implementing an issue in one repo know that a sibling repo is also monitored and where its source is
-checked out locally. The block is built once by `_build_tracked_repos_context(current, specs)` in `workflow_messages.py`
-from `config.default_repo_specs()` — no GitHub round-trip, no pinned state, no new config surface.
+checked out locally. The block is built once by `_build_tracked_repos_context(current, specs)` in
+`workflow/engine/comments.py` from `config.default_repo_specs()` — no GitHub round-trip, no pinned state, no new
+config surface.
 
 Shape of the block:
 

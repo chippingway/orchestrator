@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _PRWork = _owner._PRWork
 AgentResult = _owner.AgentResult
@@ -120,7 +121,7 @@ def _reuse_or_open_pr(
         title=_owner._derive_pr_title(spec, issue, work.worktree),
         body=_owner._build_pr_body(state, issue, work.agent_result),
     )
-    _wf._post_issue_comment(gh, issue, state, f":sparkles: PR opened: #{pr.number}")
+    _comments._post_issue_comment(gh, issue, state, f":sparkles: PR opened: #{pr.number}")
     gh.emit_event(
         "pr_opened",
         issue_number=issue.number,

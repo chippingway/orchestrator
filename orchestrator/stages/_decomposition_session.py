@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DecomposerSession = _owner._DecomposerSession
 AgentResult = _owner.AgentResult
@@ -99,11 +100,9 @@ def _decomposer_followup(
     )
     if not comments:
         return None
-    from orchestrator import workflow as _wf
-
     state.set(_LAST_ACTION_COMMENT_ID, max(comment.id for comment in comments))
     return "\n\n".join(
-        _wf._quote_comment_line(comment)
+        _comments._quote_comment_line(comment)
         for comment in comments if comment.body
     )
 
@@ -136,7 +135,7 @@ def _reset_decomposing_on_drift(
     new_hash = _wf._detect_user_content_change(gh, issue, state)
     if new_hash is None:
         return
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         _owner._decomposition_drift_notice(list(state.get(_CHILDREN) or [])),
     )

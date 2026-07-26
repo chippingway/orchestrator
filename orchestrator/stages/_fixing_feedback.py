@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import fixing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _FixingFeedback = _owner._FixingFeedback
 GitHubClient = _owner.GitHubClient
@@ -32,18 +33,16 @@ def _new_issue_space_feedback(gh: GitHubClient, issue: Issue, pr, state) -> list
     dropped last (see `filter_trusted`) so an outsider's comment never resumes
     the dev or extends the debounce window; an empty allowlist trusts everyone.
     """
-    from orchestrator import workflow as _wf
-
     issue_wm = state.get("pr_last_comment_id")
     if issue_wm is None:
         issue_wm = state.get("last_action_comment_id")
-    orchestrator_ids = _wf._orchestrator_ids(state)
+    orchestrator_ids = _comments._orchestrator_ids(state)
     unread = [
         comment
         for comment in list(gh.comments_after(issue, issue_wm))
         + list(gh.pr_conversation_comments_after(pr, issue_wm))
         if comment.id not in orchestrator_ids
-        and _wf._ORCH_COMMENT_MARKER not in (comment.body or "")
+        and _comments._ORCH_COMMENT_MARKER not in (comment.body or "")
     ]
     return filter_trusted(sorted(unread, key=lambda comment: comment.id))
 

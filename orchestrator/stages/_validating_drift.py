@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 AgentResult = _owner.AgentResult
 GitHubClient = _owner.GitHubClient
@@ -42,7 +43,7 @@ def _run_validating_drift(
         )
     before_sha = _wf._head_sha(worktree)
     followup = _wf._build_user_content_change_prompt(
-        issue, _wf._recent_comments_text(issue),
+        issue, _comments._recent_comments_text(issue),
     )
     worktree, agent_result, paused = _wf._resume_dev_with_text(
         gh, spec, issue, state, followup, pause_guard=True,
@@ -119,7 +120,7 @@ def _resume_dev_on_validating_drift(
     if _owner._defer_validating_drift(state):
         return False
 
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         ":pencil2: issue body changed; resuming dev session.",
     )

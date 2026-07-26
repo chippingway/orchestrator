@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _ChildScan = _owner._ChildScan
 GitHubClient = _owner.GitHubClient
@@ -47,7 +48,7 @@ def _handle_ready(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None
     if state.get("pickup_comment_id") is None:
         if not state.get(_CREATED_AT):
             state.set(_CREATED_AT, _wf._now_iso())
-        pickup = _wf._post_issue_comment(
+        pickup = _comments._post_issue_comment(
             gh, issue, state,
             ":robot: orchestrator picking this up; starting implementation.",
         )
@@ -113,9 +114,7 @@ def _handle_empty_blocked_parent(
 def _complete_blocked_parent(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> None:
-    from orchestrator import workflow as _wf
-
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         ":white_check_mark: all children resolved; ready for implementation.",
     )

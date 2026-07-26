@@ -58,6 +58,14 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.workflow.engine.comments",
+        (
+            ("_ORCH_COMMENT_MARKER", "_ORCH_COMMENT_MARKER"),
+            ("_orchestrator_ids", "_orchestrator_ids"),
+            ("_post_issue_comment", "_post_issue_comment"),
+        ),
+    ),
+    *export_group(
         "orchestrator.workflow.state",
         (("WorkflowLabel", "WorkflowLabel"),),
     ),
@@ -66,11 +74,8 @@ EXPORTS = (
         (
             ("_COMMIT_STYLE_NOTE", "_COMMIT_STYLE_NOTE"),
             ("_FOREGROUND_ONLY_NOTE", "_FOREGROUND_ONLY_NOTE"),
-            ("_ORCH_COMMENT_MARKER", "_ORCH_COMMENT_MARKER"),
             ("_as_blockquote", "_as_blockquote"),
             ("_is_bare_orchestrator_continue", "_is_bare_orchestrator_continue"),
-            ("_orchestrator_ids", "_orchestrator_ids"),
-            ("_post_issue_comment", "_post_issue_comment"),
         ),
     ),
     *export_group(

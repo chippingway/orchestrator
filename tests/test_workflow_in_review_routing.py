@@ -10,7 +10,8 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from orchestrator import config, workflow, workflow_messages
+from orchestrator import config
+from orchestrator.workflow.engine import comments as _comments
 
 from tests.fakes import (
     FakeComment,
@@ -48,6 +49,11 @@ LABEL_FIXING = "fixing"
 DEBOUNCE_SETTING = "IN_REVIEW_DEBOUNCE_SECONDS"
 
 
+# Bound before the patch below replaces the attribute, so the wrapper reaches
+# the real poster instead of calling itself.
+_REAL_POST_ISSUE_COMMENT = _comments._post_issue_comment
+
+
 class _PostWithConcurrentComment:
     def __init__(self, comment):
         self.comment = comment
@@ -55,7 +61,7 @@ class _PostWithConcurrentComment:
     def __call__(self, gh, issue, state, body):
         if READY_MESSAGE in body:
             issue.comments.append(self.comment)
-        return workflow_messages._post_issue_comment(gh, issue, state, body)
+        return _REAL_POST_ISSUE_COMMENT(gh, issue, state, body)
 
 
 class _InReviewRoutingFixtureMixin(_PatchedWorkflowMixin):
@@ -342,7 +348,7 @@ class InReviewReadyPingRoutingTest(
             created_at=datetime.now(timezone.utc) - timedelta(hours=1),
         )
         with patch.object(
-            workflow,
+            _comments,
             "_post_issue_comment",
             _PostWithConcurrentComment(human_comment),
         ):

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _PreparedDevRun = _owner._PreparedDevRun
 GitHubClient = _owner.GitHubClient
@@ -39,7 +40,7 @@ def _handle_pre_session_drift(
         gh.write_pinned_state(issue, state)
         return True
     if state.get(_AWAITING_HUMAN):
-        _wf._post_issue_comment(
+        _comments._post_issue_comment(
             gh, issue, state,
             ":pencil2: issue content changed; clearing the park and "
             "spawning a fresh dev run against the updated requirements.",

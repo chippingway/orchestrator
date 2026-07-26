@@ -13,6 +13,7 @@ from unittest import mock
 
 from orchestrator import base_sync as _base_sync
 from orchestrator import config, workflow
+from orchestrator.workflow.engine import comments as _comments
 from tests import fakes, workflow_helpers
 from tests.git.base_sync import sync_test_support
 
@@ -246,7 +247,7 @@ class _FixingWorktreeDriftFixtureMixin:
             )
             stack.enter_context(
                 patch.object(
-                    workflow,
+                    _comments,
                     "_post_pr_comment",
                     self.post,
                 )

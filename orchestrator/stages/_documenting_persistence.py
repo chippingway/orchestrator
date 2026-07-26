@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DocumentingContext = _owner._DocumentingContext
 PinnedState = _owner.PinnedState
@@ -27,7 +28,7 @@ def _post_docs_notice(ctx: _DocumentingContext, note: str) -> None:
     from orchestrator import workflow as _wf
 
     try:
-        _wf._post_pr_comment(ctx.gh, int(ctx.pr_number), ctx.state, note)
+        _comments._post_pr_comment(ctx.gh, int(ctx.pr_number), ctx.state, note)
     except Exception:
         _wf.log.exception(
             "issue=#%s could not post docs notice to PR #%s",

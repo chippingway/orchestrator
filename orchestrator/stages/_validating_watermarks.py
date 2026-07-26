@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 Any = _owner.Any
 GitHubClient = _owner.GitHubClient
@@ -25,11 +26,9 @@ def _watermark_comment_pairs(
 
 
 def _is_orchestrator_comment(comment, orchestrator_ids: set[int]) -> bool:
-    from orchestrator import workflow as _wf
-
     return (
         comment.id in orchestrator_ids
-        or _wf._ORCH_COMMENT_MARKER in (getattr(comment, "body", None) or "")
+        or _comments._ORCH_COMMENT_MARKER in (getattr(comment, "body", None) or "")
     )
 
 
@@ -158,9 +157,7 @@ def _latest_pr_comment_ids(
     when this returns None so the in_review legacy migration cannot then
     advance past human inline feedback either.
     """
-    from orchestrator import workflow as _wf
-
-    orchestrator_ids = _wf._orchestrator_ids(state)
+    orchestrator_ids = _comments._orchestrator_ids(state)
     # `last_action_comment_id` doubles as a "consumed through" marker:
     # both park comments and post-resume bumps land here, so any issue
     # comment with id <= this value has either been posted by the

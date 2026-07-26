@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _FixingContext = _owner._FixingContext
 Optional = _owner.Optional
@@ -83,7 +84,7 @@ def _post_fixing_conflict_notice(
     from orchestrator import workflow as _wf
 
     try:
-        _wf._post_pr_comment(
+        _comments._post_pr_comment(
             ctx.gh, pr_number, ctx.state,
             f":mag: PR worktree is out of sync ({drift_reason}) and the `fixing` "
             "fix-loop is parked on a stuck transient condition that the "

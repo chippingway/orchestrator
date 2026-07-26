@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator import workflow as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -122,4 +123,4 @@ def _post_issue_usage_verdict(
     """
     verdict = _owner._format_issue_usage_verdict(state)
     if verdict:
-        _owner._post_issue_comment(gh, issue, state, verdict)
+        _comments._post_issue_comment(gh, issue, state, verdict)

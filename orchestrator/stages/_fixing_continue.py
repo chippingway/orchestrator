@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _FixingContext = _owner._FixingContext
 _FixingFeedback = _owner._FixingFeedback
@@ -193,7 +194,7 @@ def _handle_continue_command(
                 "a generic continue. Reply with the specific change to make, "
                 "or relabel the issue, to proceed."
             )
-        _wf._post_issue_comment(ctx.gh, ctx.issue, ctx.state, message)
+        _comments._post_issue_comment(ctx.gh, ctx.issue, ctx.state, message)
         return "refuse", None
 
     # The command came WITH genuine guidance on a park with no replayable

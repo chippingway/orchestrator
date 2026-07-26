@@ -33,14 +33,14 @@ def _post_auto_rebase_notice(
     after_sha: str,
 ) -> None:
     """Post the best-effort PR notice for a published clean rebase."""
-    # Lazy import: the comment helpers sit in the workflow layer above this
-    # package, so binding them at module load would point an owner back at
-    # the compatibility surface that resolves this module's own names.
-    from orchestrator import workflow_messages as _messages
+    # Lazy import: the comment owner sits in the workflow layer above this
+    # package, so binding it at module load would make every git-side
+    # import pay for the GitHub client and prompt state it pulls in.
+    from orchestrator.workflow.engine import comments as _comments
     spec = context.spec
     after_short = after_sha[:8]
     try:
-        _messages._post_pr_comment(
+        _comments._post_pr_comment(
             context.gh,
             context.pr_number,
             context.state,

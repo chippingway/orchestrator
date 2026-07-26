@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _documenting_state as _state
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DocumentingContext = _owner._DocumentingContext
 WorkflowLabel = _owner.WorkflowLabel
@@ -200,7 +201,7 @@ def _announce_documenting_drift(
     from orchestrator import workflow as _wf
 
     ctx.state.set("user_content_hash", new_hash)
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         ctx.gh, ctx.issue, ctx.state,
         ":pencil2: issue body changed; routing back to "
         "`validating` so the reviewer re-evaluates the "

@@ -38,6 +38,13 @@
 # it is keyed by, or the guard away from the graph it reads, would put the state
 # machine back across the flat leaves this owner replaces, so WPS202 is waived.
 #
+# orchestrator/workflow/engine/comments.py is one owner for both directions of
+# the issue/PR comment surface -- the marker and id bookkeeping every posted
+# comment goes through, and the trust-filtered read the agent prompts quote --
+# so it carries 9 members past the same ceiling. The two directions are one
+# policy: the marker the writer stamps is what the reader filters on, and
+# splitting them would let the pair drift apart, so WPS202 is waived.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -64,6 +71,7 @@ per-file-ignores =
     orchestrator/scheduler/__init__.py:WPS412,WPS410
     orchestrator/workflow/__init__.py:WPS412
     orchestrator/workflow/state.py:WPS202
+    orchestrator/workflow/engine/comments.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

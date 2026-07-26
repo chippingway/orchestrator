@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import in_review as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _InReviewContext = _owner._InReviewContext
 GitHubClient = _owner.GitHubClient
@@ -82,7 +83,7 @@ def _handle_mergeable_gate(ctx: _InReviewContext) -> None:
     # id-set filter excludes it without needing the watermark to move; a
     # concurrent human comment naturally surfaces below the unchanged watermark.
     if ctx.state.get("ready_ping_sha") != head_sha:
-        _wf._post_issue_comment(
+        _comments._post_issue_comment(
             ctx.gh, ctx.issue, ctx.state,
             f":bell: {config.HITL_MENTIONS} PR #{pr_number} is ready "
             "for review/merge.",

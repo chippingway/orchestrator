@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.git.verification import runner as _verify_runner
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _ReviewerRun = _owner._ReviewerRun
 GitHubClient = _owner.GitHubClient
@@ -51,7 +52,7 @@ def _seed_in_review_handoff_watermarks(
     # session over an informational orchestrator post.
     if squashed_count > 1:
         try:
-            _wf._post_pr_comment(
+            _comments._post_pr_comment(
                 gh, int(pr_number), state,
                 f":package: squashed {squashed_count} commits "
                 "to 1 after approval",
@@ -127,7 +128,7 @@ def _post_approval_comment(
     if reviewer_run.pr_number is None:
         return
     try:
-        _wf._post_pr_comment(
+        _comments._post_pr_comment(
             gh,
             int(reviewer_run.pr_number),
             state,

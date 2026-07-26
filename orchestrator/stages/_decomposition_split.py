@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _SplitPlan = _owner._SplitPlan
 GitHubClient = _owner.GitHubClient
@@ -56,10 +57,8 @@ def _finalize_split(
     final parent-state write, so a crash here cannot leave a runnable
     orphan child against a `decomposing`-labeled parent.
     """
-    from orchestrator import workflow as _wf
-
     summary_intro, final_label = _owner._split_summary(plan)
-    _wf._post_issue_comment(gh, issue, state, summary_intro)
+    _comments._post_issue_comment(gh, issue, state, summary_intro)
     gh.set_workflow_label(issue, final_label)
     gh.write_pinned_state(issue, state)
     _owner._activate_initial_split_children(gh, issue, plan)
