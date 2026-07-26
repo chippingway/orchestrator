@@ -276,9 +276,11 @@ its `pre_pr` sibling directly, `pre_pr` reaches `git.commands`, `outcomes` calls
 the finalize and the reset-and-park tail, and `persistence` calls `git.commands` for the reset and clean. A
 patch that has to intercept the base fetch, the worktree root, the dirty-file scan, the rev-list behind count,
 the rebase either sync path runs, the hardened git command a park runs, or the finalize an outcome delegates to
-therefore targets `orchestrator.git.commands` or the owner module rather than `base_sync`. The base-sync
-helpers themselves stay patchable by name on `base_sync`, because the leaves that route into them still read
-them off that facade. The collaborators these owners reach *upward* are call-time imports, and they split two
+therefore targets `orchestrator.git.commands` or the owner module rather than `base_sync`. Every base-sync
+name still resolves on `base_sync` with the owner's exact identity, and a patch there reaches the flat
+`_base_sync_*` leaves that read it off the facade -- but not an owner-internal call site, so a test that has to
+intercept the per-worktree sync the refresh drives patches `refresh` and not the facade.
+The collaborators these owners reach *upward* are call-time imports, and they split two
 ways: `persistence` binds the park guard and the PR-comment poster and `outcomes` the unverified-abort helper
 straight off their owning modules, so a patch for any of the three targets `orchestrator.workflow`,
 `orchestrator.workflow_messages`, or `orchestrator._base_sync_recovery_snapshot` -- the `base_sync` forwards of
