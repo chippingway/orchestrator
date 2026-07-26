@@ -60,6 +60,7 @@ orchestrator/
     repositories.py     REPOS entry parsing, validation, and default-spec
                         construction
   state_machine.py      forwarding-only surface over `workflow/state.py`
+  comment_trust.py      forwarding-only surface over `github/comments.py`
   github/
     __init__.py         stable public surface (`__all__`): the composed
                         `GitHubClient` and the pinned durable-state model,
@@ -123,8 +124,6 @@ orchestrator/
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
                         prompt, parser, and comment leaves
-  comment_trust.py      forwarding surface for the `github/comments.py` trust
-                        helpers
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
