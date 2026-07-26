@@ -12,7 +12,7 @@ from github.Label import Label
 
 from orchestrator import config
 from orchestrator.github import events, labels
-from orchestrator.state_machine import (
+from orchestrator.workflow.state import (
     WorkflowLabel,
     coerce_workflow_label,
     guard_transition,

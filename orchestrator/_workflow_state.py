@@ -3,7 +3,7 @@
 """Shared immutable values for :mod:`orchestrator.workflow` leaves."""
 from __future__ import annotations
 
-from orchestrator.state_machine import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel
 from types import MappingProxyType
 from typing import Mapping
 from typing import Optional

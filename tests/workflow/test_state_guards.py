@@ -7,7 +7,8 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
-from orchestrator.state_machine import (
+from orchestrator.workflow import state as _state
+from orchestrator.workflow.state import (
     IllegalTransition,
     WorkflowLabel,
     guard_transition,
@@ -20,6 +21,7 @@ from tests.fakes import FakeGitHubClient, make_issue
 _VALIDATING_LABEL = "validating"
 _GUARD_ENFORCE = "enforce"
 _GUARD_CONFIG_NAME = "WORKFLOW_TRANSITION_GUARD"
+_GUARD_LOGGER_NAME = "orchestrator.state_machine"
 
 
 def _guarded_issue():
@@ -143,7 +145,7 @@ class GuardModeTest(unittest.TestCase):
     calls. `off` no-ops, `warn` logs+proceeds, `enforce` raises."""
 
     def test_off_never_raises_or_logs(self) -> None:
-        with self.assertNoLogs("orchestrator.state_machine", level="WARNING"):
+        with self.assertNoLogs(_GUARD_LOGGER_NAME, level="WARNING"):
             guard_transition(
                 WorkflowLabel.VALIDATING, WorkflowLabel.IN_REVIEW, "off",
             )
@@ -151,7 +153,7 @@ class GuardModeTest(unittest.TestCase):
     def test_warn_logs_but_proceeds(self) -> None:
         warning_mock = MagicMock()
         with patch(
-            "orchestrator.state_machine.log.warning",
+            "orchestrator.workflow.state.log.warning",
             warning_mock,
         ):
             guard_transition(
@@ -181,6 +183,13 @@ class GuardModeTest(unittest.TestCase):
         )  # no raise
 
 
+class GuardLoggerTest(unittest.TestCase):
+    """The warn-mode logger keeps the name operator filters select on."""
+
+    def test_logger_name(self) -> None:
+        self.assertEqual(_state.log.name, _GUARD_LOGGER_NAME)
+
+
 class SetWorkflowLabelGuardWiringTest(unittest.TestCase):
     """The guard is wired through `set_workflow_label` (the single
     chokepoint), driven by `config.WORKFLOW_TRANSITION_GUARD`."""
@@ -196,7 +205,7 @@ class SetWorkflowLabelGuardWiringTest(unittest.TestCase):
     def test_warn_allows_illegal_relabel(self) -> None:
         gh, issue = _guarded_issue()
         with patch.object(config, _GUARD_CONFIG_NAME, "warn"):
-            with self.assertLogs("orchestrator.state_machine", level="WARNING"):
+            with self.assertLogs(_GUARD_LOGGER_NAME, level="WARNING"):
                 gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
         self.assertEqual(gh.workflow_label(issue), WorkflowLabel.IN_REVIEW)
 

@@ -17,23 +17,34 @@ from tests.reexport_test_support import lazy_targets, resolve_target
 _MODULES = (
     "orchestrator.workflow",
     "orchestrator.workflow.engine",
+    "orchestrator.workflow.state",
 )
 
-# Manifest targets, so importing the facade must leave every one of them out of
-# `sys.modules`: the dispatcher, the tick loop, the stage handlers, and the
-# worktree and GitHub subsystems those reach.
+# Manifest targets and what they resolve to, so importing the facade must leave
+# every one of them out of `sys.modules`: the dispatcher, the tick loop, the
+# stage handlers, the worktree and GitHub subsystems those reach, and the
+# analytics and config packages behind the shared dependency bindings.
 _DEFERRED_MODULES = (
     "orchestrator._workflow_dispatch",
     "orchestrator._workflow_tick",
+    "orchestrator.analytics",
+    "orchestrator.config",
     "orchestrator.github",
     "orchestrator.stages",
     "orchestrator.workflow.engine",
     "orchestrator.worktrees",
 )
 
+# The `state` owner is what the GitHub and git layers below the engine are typed
+# by, so an import of it has to cost no more than the initializer it runs.
+_LAZY_IMPORTS = (
+    "orchestrator.workflow",
+    "orchestrator.workflow.state",
+)
+
 _LAZINESS_PROBE = (
     "import sys;"
-    "import orchestrator.workflow;"
+    "import {module};"
     "print(' '.join(name for name in {names!r} if name in sys.modules))"
 )
 
@@ -43,7 +54,7 @@ _PROBE_EXPORTS = ("_handle_ready", "contextlib")
 
 
 class CleanProcessImportTest(unittest.TestCase):
-    """The package and its engine subpackage each import standalone.
+    """The package, its engine subpackage, and its state owner import alone.
 
     The initializer installs hooks that resolve the export manifest, and the
     leaves those hooks reach import `orchestrator.workflow` back at call time.
@@ -65,14 +76,23 @@ class CleanProcessImportTest(unittest.TestCase):
 
     def test_import_resolves_no_target(self) -> None:
         # The package boundary is where an accidental eager binding is cheapest
-        # to add and hardest to notice: a submodule import in the initializer
-        # would drag the whole stage tree into every `orchestrator.workflow`
-        # import, which the flat suite could never observe.
+        # to add and hardest to notice: a submodule or dependency import in the
+        # initializer would drag the stage tree or the analytics graph into every
+        # `orchestrator.workflow` import -- and into the GitHub and git layers
+        # that import the state owner beside it -- which the flat suite could
+        # never observe.
+        for module in _LAZY_IMPORTS:
+            with self.subTest(module=module):
+                self._assert_nothing_resolved(module)
+
+    def _assert_nothing_resolved(self, module: str) -> None:
         completed = subprocess.run(
             [
                 sys.executable,
                 "-c",
-                _LAZINESS_PROBE.format(names=_DEFERRED_MODULES),
+                _LAZINESS_PROBE.format(
+                    module=module, names=_DEFERRED_MODULES,
+                ),
             ],
             capture_output=True,
             text=True,

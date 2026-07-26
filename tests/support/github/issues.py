@@ -9,7 +9,7 @@ from orchestrator import analytics, config
 from orchestrator.github import events as _events
 from orchestrator.github.labels import WORKFLOW_LABELS
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER, PinnedState
-from orchestrator.state_machine import (
+from orchestrator.workflow.state import (
     WorkflowLabel,
     coerce_workflow_label,
     guard_transition,

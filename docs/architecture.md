@@ -59,9 +59,7 @@ orchestrator/
     models.py           `RepoSpec` / `RepoEnvEntry` repository-config types
     repositories.py     REPOS entry parsing, validation, and default-spec
                         construction
-  state_machine.py      stable typed-label and transition-guard surface
-  _workflow_labels.py   label enums and strict label-name coercion
-  _state_transitions.py declared workflow transition graph
+  state_machine.py      forwarding-only surface over `workflow/state.py`
   github/
     __init__.py         stable public surface (`__all__`): the composed
                         `GitHubClient` and the pinned durable-state model,
@@ -105,6 +103,9 @@ orchestrator/
     __init__.py         lazy compatibility facade for tick, dispatch, shared
                         helpers, and stage-handler patch points, plus its
                         `__init__.pyi` static surface
+    state.py            typed workflow state: the `WorkflowLabel` /
+                        `ControlLabel` vocabularies, strict label coercion, the
+                        declared transition graph, and the transition guard
     engine/
       __init__.py       package marker only; reserved for the tick, dispatch,
                         and shared-helper owners
@@ -333,9 +334,13 @@ the PR-comment poster straight off their owning modules, and `publication` and `
 poster for their notices, so a patch for either targets `orchestrator.workflow`
 or `orchestrator.workflow_messages` -- the `base_sync` forward of `_post_pr_comment` still resolves, but it is
 not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
-the lazy hooks and the two dependency bindings live there, and nothing in it reaches into `workflow/engine/`, so
-importing the facade resolves no manifest target and pulls in neither the stage tree nor the git and GitHub
-subsystems the targets sit on. Config and analytics modules
+the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/` or `workflow/state.py`, so
+importing the facade resolves no manifest target and pulls in neither the stage tree, the config and analytics
+graph behind the shared dependency bindings, nor the git and GitHub
+subsystems the targets sit on. That cost is what lets the GitHub and git layers import `workflow/state.py`
+for the label vocabulary they are typed by: `github/labels.py`, `github/issues.py`, and the `git/base_sync/`
+owners all bind the owner directly, and `state_machine.py` forwards the same objects for callers that still
+reach for the historical module. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.

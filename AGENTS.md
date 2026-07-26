@@ -25,7 +25,10 @@ orchestrator process is stateless.
 ## Repository layout
 
 - `orchestrator/` — Python package: tick loop and label-dispatch compatibility facade (the `workflow/` package
-  initializer, with `workflow/engine/` reserved for its owners), per-stage lazy facades (`stages/`),
+  initializer, over the `workflow/state.py` owner -- the workflow / control label vocabularies and their wire
+  strings, the strict label coercion and its legacy `value=` adapter, the declared transition graph, and the
+  warn-or-raise guard plus the `orchestrator.state_machine` logger it warns through -- with `workflow/engine/`
+  reserved for its remaining owners), per-stage lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
@@ -123,8 +126,9 @@ orchestrator process is stateless.
   reissued push and the finalize it earns, plus its own legacy keyword signature), with
   `git_plumbing.py`, `verify.py`,
   `worktree_lifecycle.py`, `branch_publication.py`, and
-  `base_sync.py` kept as the forwarding facades for historical callers), and stable runtime-core
-  facades (`main.py`, `state_machine.py`).
+  `base_sync.py` kept as the forwarding facades for historical callers), the stable runtime-core
+  facade (`main.py`), and `state_machine.py`, which forwards the historical typed-state compatibility
+  surface off the `workflow/state.py` owner without rebuilding any of it.
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
   tests through the `tests/fakes.py` bridge. Stage-handler tests in
@@ -209,9 +213,13 @@ orchestrator process is stateless.
   package-surface checks including the guard that no flat `_base_sync_*` implementation leaf returns, plus
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
-  `tests/workflow/`: the clean-process imports of the package and its `engine/` subpackage, the guard that
-  importing the facade resolves no manifest target, and the package-surface checks that the facade is the
-  initializer and that a submodule binding leaves its lazy hooks intact.
+  `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and its `state`
+  owner, the guard that importing either the facade or that owner resolves no manifest target and no
+  dependency binding, the package-surface checks that the facade is the
+  initializer and that a submodule binding leaves its lazy hooks intact, and the state owner's own
+  coverage — the label wire strings and their typo-guarded coercion, the transition table and its
+  reachability / terminal-liveness invariants (`test_state.py`), and the per-mode guard decisions, terminal
+  edges, preserved logger name, and `set_workflow_label` wiring (`test_state_guards.py`).
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from orchestrator.git.base_sync import models
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.state_machine import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel
 
 _PENDING_FIELD = "pending_auto_base_rebase_push_sha"
 

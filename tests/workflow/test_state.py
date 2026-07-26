@@ -1,5 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Label vocabulary, strict coercion, and the declared transition graph."""
 from __future__ import annotations
 
 import json
@@ -9,7 +10,7 @@ import unittest
 
 from orchestrator import base_sync, workflow
 from orchestrator.github import labels as _labels
-from orchestrator.state_machine import (
+from orchestrator.workflow.state import (
     ALLOWED_TRANSITIONS,
     ControlLabel,
     WorkflowLabel,

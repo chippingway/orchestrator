@@ -11,7 +11,7 @@ from github import GithubException
 
 from orchestrator.github import labels as _labels
 from orchestrator.github.client import GitHubClient
-from orchestrator.state_machine import ControlLabel, WorkflowLabel
+from orchestrator.workflow.state import ControlLabel, WorkflowLabel
 
 from tests.fakes import FakeIssue, FakeLabel
 
