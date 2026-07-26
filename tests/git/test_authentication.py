@@ -36,12 +36,12 @@ def _auth_env(*, include_identity: bool) -> dict[str, str]:
 
 
 class RefusalChannelTest(unittest.TestCase):
-    """Refusals keep reaching the channel operators already watch.
+    """Refusals reach the channel operators already watch.
 
     Operators filter on the rendered `orchestrator.git_plumbing` prefix and
-    attach handlers to that logger, and the push leaf logs its own transport
-    refusal there, so moving these fetches into the package must not split
-    the two halves of one security story across two logger names.
+    attach handlers to that logger, so every fetch and push refusal this
+    owner emits has to render under that name rather than a package-derived
+    one.
     """
 
     def test_shares_the_plumbing_logger(self) -> None:

@@ -29,8 +29,8 @@ orchestrator process is stateless.
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
-  `_branch_*`, `_git_*`, `_worktree_*`, and stage-specific prefixes) or, for `verify.py`, straight to the
-  `git/verification/` owners. The package also contains per-tick
+  `_branch_*`, `_worktree_*`, and stage-specific prefixes) or, for `git_plumbing.py` and `verify.py`, straight to the
+  `git/` and `git/verification/` owners. The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
@@ -63,7 +63,8 @@ orchestrator process is stateless.
   the fail-closed check-read client mixin)), the git package (`git/`, whose `__init__.py` binds nothing so callers
   import each owner directly -- the `commands.py` owner (plain / hardened git execution plus the unsafe local
   transport probe), the `authentication.py` owner (per-repository token resolution, the askpass session and its
-  detached environment, and the authenticated worktree / target-root fetches), the `locks.py` owner (the
+  detached environment, the authenticated worktree / target-root fetches, and the lease-pinned hardened push), the
+  `locks.py` owner (the
   per-target-root re-entrant lock registry), the `verification/` subpackage over the `models.py` owner (the
   `VerifyResult` statuses / fields and the output budget its `output` is truncated to), the `output.py` owner
   (the redact-then-truncate pass that fills that field), the `probes.py` owner (the HEAD snapshot and the
@@ -105,7 +106,7 @@ orchestrator process is stateless.
   `tests/test_workflow_cleanup*.py`, with subsystem-specific support in
   `tests/scheduler_routing_*.py` and `tests/base_sync_*.py`; other facade-level helper tests
   include (`tests/test_workflow_verdict_parsing.py`, `tests/test_workflow_prompt_redaction.py`,
-  `tests/test_workflow_branch_publication*.py`, `tests/test_workflow_pickup.py`,
+  `tests/test_workflow_pickup.py`,
   `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_analytics.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
   `tests/test_workflow_tick_parallel.py`, `tests/test_workflow_drift.py`,
@@ -124,7 +125,8 @@ orchestrator process is stateless.
   compatibility, and import-cycle / public-surface checks, with their worker, coordination, log, and shutdown
   helpers alongside. Git-package tests live in `tests/git/`: plain / hardened command envelopes and real-git
   transport probing, askpass session / environment construction and failed-fetch shaping, the authenticated
-  worktree and target-root fetches, target-root lock ownership, and import-cycle / package-surface checks, plus
+  worktree and target-root fetches, the push's lease decisions / per-repository token / transport refusals,
+  target-root lock ownership, and import-cycle / package-surface checks, plus
   their shared authentication fixtures, with the verification owners covered under `tests/git/verification/` —
   result fields and statuses, HEAD and porcelain probing against a planted `core.fsmonitor`, command sequencing
   and output budgeting, child-environment stripping and redaction-before-truncation, timeout group-kill and

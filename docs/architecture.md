@@ -120,8 +120,8 @@ orchestrator/
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
-                        detached environment, and the authenticated worktree /
-                        target-root fetches
+                        detached environment, the authenticated worktree /
+                        target-root fetches, and the hardened lease push
     commands.py         plain / hardened git execution, the argv hardening
                         prefixes, and the unsafe local-transport probe
     locks.py            per-target-root re-entrant lock registry and accessor
@@ -146,8 +146,10 @@ orchestrator/
       paths.py          slug sanitization, git-ref-safe branch segments, path
                         and branch derivation, pinned/legacy branch resolution
       recovery.py       candidate-branch discovery and unpushed-commit probes
-  git_plumbing.py       lazy hardened-git compatibility facade
-  _git_*.py             the shared leaf logger and the push leaf
+  git_plumbing.py       lazy hardened-git compatibility facade forwarding to
+                        the git/ owners
+  _git_plumbing_export_manifest.py / _git_plumbing_exports.py
+                        immutable historical inventory and lazy resolver hooks
   verify.py             lazy forwarding shell over git/verification/ owners
   worktree_lifecycle.py lazy naming/creation/cleanup compatibility facade
   _worktree_*.py        cleanup and terminal leaves plus the shared logger
@@ -222,20 +224,20 @@ the dirty-file scan targets the owner module and not the `verify` shell. That ga
 `_run_verify_commands` is no longer re-exported by `workflow`; it stays on the `worktrees` hub next to `VerifyResult`
 and `_truncate_verify_output`, while `_head_sha` / `_worktree_dirty_files` remain on both facades for the stage leaves
 that read them off `workflow`. `git/authentication.py` binds the same way --
-the authenticated fetches reach `git.commands` and `git.locks` plus their own token, session, and refusal helpers
-directly, and the push leaf reads the askpass session and token lookup off that owner -- so a patch that has to
-intercept the transport probe, the target-root lock, or the session targets `orchestrator.git.authentication` and
-not `git_plumbing`; `_authed_fetch` / `_authed_target_fetch` themselves stay patchable by name on `git_plumbing`,
-`worktrees`, `base_sync`, and `workflow`. The `git/worktrees/` owners bind the same way — the creators reach
-`git.commands`, `git.locks`, `git.authentication`, and their in-package `paths` / `recovery` siblings directly,
-and the decomposer lifecycle resolves its own path helper — so a patch that has to intercept the git plumbing,
-the authenticated fetch, the new-commit probe, or the worktree path a creator runs against targets
-`orchestrator.git.commands` / `orchestrator.git.authentication` / the owner module, not `worktree_lifecycle`;
-`_ensure_worktree`, `_ensure_pr_worktree`, `_has_new_commits`, and the decomposer helpers themselves stay
-patchable by name on `worktree_lifecycle`, `worktrees`, and `workflow`. Config and analytics modules retain their
-original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not silently rebind
-already-imported workflow leaves. The analytics package has its own import-only bootstrap so an explicit package reload
-still reparses sink settings and keeps stale package holders isolated as before.
+the authenticated fetches and the push reach `git.commands` and `git.locks` plus their own token, session, lease, and
+refusal helpers directly -- so a patch that has to intercept the transport probe, the target-root lock, the session,
+or the remote-ref lease read targets `orchestrator.git.authentication` and not `git_plumbing`; `_authed_fetch` /
+`_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `git_plumbing`, `worktrees`,
+`base_sync`, and `workflow`, with `_push_branch` also reachable on `branch_publication`. The `git/worktrees/` owners
+bind the same way — the creators reach `git.commands`, `git.locks`, `git.authentication`, and their in-package
+`paths` / `recovery` siblings directly, and the decomposer lifecycle resolves its own path helper — so a patch that
+has to intercept the git plumbing, the authenticated fetch, the new-commit probe, or the worktree path a creator
+runs against targets `orchestrator.git.commands` / `orchestrator.git.authentication` / the owner module, not
+`worktree_lifecycle`; `_ensure_worktree`, `_ensure_pr_worktree`, `_has_new_commits`, and the decomposer helpers
+themselves stay patchable by name on `worktree_lifecycle`, `worktrees`, and `workflow`. Config and analytics modules
+retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
+silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
+explicit package reload still reparses sink settings and keeps stale package holders isolated as before.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

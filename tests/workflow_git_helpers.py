@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Git transport helpers shared by workflow hardening tests."""
+"""Git transport helpers shared by the git-package hardening tests."""
 from __future__ import annotations
 
 import contextlib

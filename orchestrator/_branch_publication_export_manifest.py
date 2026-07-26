@@ -57,6 +57,10 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.git.authentication",
+        (("_push_branch", "_push_branch"),),
+    ),
+    *export_group(
         "orchestrator.git.publication.probes",
         (
             ("_CONVENTIONAL_RE", "_CONVENTIONAL_RE"),
@@ -93,7 +97,6 @@ EXPORTS = (
             ("_GIT_NO_PROMPT_ENV", "_GIT_NO_PROMPT_ENV"),
             ("_git", "_git"),
             ("_git_hardened", "_git_hardened"),
-            ("_push_branch", "_push_branch"),
         ),
     ),
     *export_group(

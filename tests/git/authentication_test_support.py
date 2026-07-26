@@ -13,6 +13,7 @@ SUBPROCESS_RUN = "subprocess.run"
 TOKEN_RESOLVER = "_resolve_github_token"
 MAIN_BRANCH = "main"
 TEMP_ROOT = Path("/tmp")
+WORKTREE = Path("/tmp/orchestrator-test-worktree")
 AUTH_URL_PREFIX = "https://x-access-token@github.com/"
 
 REPOSITORY_SLUG = "acme/widgets"

@@ -17,7 +17,6 @@ _MODULES = (
     "orchestrator.git.authentication",
     "orchestrator.git.commands",
     "orchestrator.git.locks",
-    "orchestrator._git_push",
     "orchestrator.git_plumbing",
 )
 
@@ -30,6 +29,7 @@ _OWNER_ONLY_NAMES = (
     "_git",
     "_git_auth_session",
     "_git_hardened",
+    "_push_branch",
     "_target_root_lock",
     "_unsafe_local_transport_config",
 )
@@ -51,21 +51,25 @@ _FACADE_FORWARDS = (
     ("_git_auth_env", authentication),
     ("_git_auth_session", authentication),
     ("_git_hardened", commands),
+    ("_push_branch", authentication),
+    ("_push_with_auth", authentication),
+    ("_remote_branch_sha", authentication),
     ("_resolved_git_token", authentication),
     ("_target_root_lock", locks),
     ("_unsafe_local_transport_config", commands),
+    ("log", authentication),
 )
 
 
 class CleanProcessImportTest(unittest.TestCase):
     """Each git module imports standalone in a fresh interpreter.
 
-    The push leaf reaches the package for its auth session and command
-    constants while still binding the `git_plumbing` facade, so importing it
-    first must not need a name a half-run module has not defined yet. A
-    subprocess per module gives each a clean `sys.modules` no other test has
-    already populated, exposing an import-order cycle a package-first suite run
-    would mask.
+    The owners bind their in-package collaborators eagerly while
+    `git_plumbing` forwards back to them, so importing any one of them first
+    must not need a name a half-run module has not defined yet. A subprocess
+    per module gives each a clean `sys.modules` no other test has already
+    populated, exposing an import-order cycle a package-first suite run would
+    mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:
