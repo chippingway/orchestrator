@@ -28,17 +28,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "tests.workflow_git_helpers",
-        (
-            ("_GitRunRecorder", "_GitRunRecorder"),
-            (
-                "_temp_git_repo_with_local_config",
-                "_temp_git_repo_with_local_config",
-            ),
-            ("_TokenResolver", "_TokenResolver"),
-        ),
-    ),
-    *export_group(
         "tests.workflow_other_labels",
         (
             ("LABEL_BLOCKED", "LABEL_BLOCKED"),

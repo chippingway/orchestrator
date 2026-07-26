@@ -31,8 +31,13 @@
 # 11 members past the WPS202 ceiling of 7. orchestrator/agents/processes.py is
 # one owner for the shared process registry and the subprocess-group lifecycle
 # -- registration, bounded draining, timeout classification, and SIGTERM/SIGKILL
-# escalation -- so it carries 9 members past the same ceiling. Both single-owner
-# groupings are deliberate, so WPS202 is waived for those files.
+# escalation -- so it carries 9 members past the same ceiling.
+# orchestrator/git/authentication.py owns everything the PAT travels through --
+# per-repository token resolution, the askpass session and its detached
+# environment, the two authenticated fetches, and the lease-pinned push -- so it
+# carries 10 members past the same ceiling. Splitting any of them out would put
+# a raw token on a module boundary. All three single-owner groupings are
+# deliberate, so WPS202 is waived for those files.
 #
 # orchestrator/github/pull_requests.py owns the whole pull-request surface --
 # branch/base lookup, creation, comments, labeling, retrieval, the SHA-pinned
@@ -46,4 +51,5 @@ per-file-ignores =
     orchestrator/scheduler/__init__.py:WPS412,WPS410
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
+    orchestrator/git/authentication.py:WPS202
     orchestrator/github/pull_requests.py:WPS214
