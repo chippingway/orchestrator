@@ -66,26 +66,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._base_sync_recovery",
-        (
-            ("_recover_pending_auto_base_rebase", "_recover_pending_auto_base_rebase"),
-            ("_recover_pending_auto_base_rebase_context", "_recover_pending_auto_base_rebase_context"),
-            ("_retry_recovery_push", "_retry_recovery_push"),
-            ("_route_recovery_snapshot", "_route_recovery_snapshot"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._base_sync_recovery_snapshot",
-        (
-            ("_abort_recovery_unverified", "_abort_recovery_unverified"),
-            ("_clear_ineligible_recovery", "_clear_ineligible_recovery"),
-            ("_clear_unchanged_recovery", "_clear_unchanged_recovery"),
-            ("_complete_recovery_snapshot", "_complete_recovery_snapshot"),
-            ("_fetch_recovery_snapshot", "_fetch_recovery_snapshot"),
-            ("_read_remote_recovery_head", "_read_remote_recovery_head"),
-        ),
-    ),
-    *export_group(
         "orchestrator._base_sync_start",
         (
             ("_handle_failed_auto_rebase", "_handle_failed_auto_rebase"),
@@ -152,6 +132,15 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.git.base_sync.recovery",
+        (
+            ("_recover_pending_auto_base_rebase", "_recover_pending_auto_base_rebase"),
+            ("_recover_pending_auto_base_rebase_context", "_recover_pending_auto_base_rebase_context"),
+            ("_retry_recovery_push", "_retry_recovery_push"),
+            ("_route_recovery_snapshot", "_route_recovery_snapshot"),
+        ),
+    ),
+    *export_group(
         "orchestrator.git.base_sync.refresh",
         (
             ("_base_sync_issue", "_base_sync_issue"),
@@ -161,6 +150,17 @@ EXPORTS = (
             ("_sync_discovered_worktree", "_sync_discovered_worktree"),
             ("_sync_worktree_with_base", "_sync_worktree_with_base"),
             ("_worktree_behind_base", "_worktree_behind_base"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.snapshot",
+        (
+            ("_abort_recovery_unverified", "_abort_recovery_unverified"),
+            ("_clear_ineligible_recovery", "_clear_ineligible_recovery"),
+            ("_clear_unchanged_recovery", "_clear_unchanged_recovery"),
+            ("_complete_recovery_snapshot", "_complete_recovery_snapshot"),
+            ("_fetch_recovery_snapshot", "_fetch_recovery_snapshot"),
+            ("_read_remote_recovery_head", "_read_remote_recovery_head"),
         ),
     ),
     *export_group(

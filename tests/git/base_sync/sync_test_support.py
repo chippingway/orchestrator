@@ -12,7 +12,8 @@ from unittest.mock import patch
 from orchestrator import base_sync
 from orchestrator.git import authentication, commands
 from orchestrator.git.base_sync import pre_pr, refresh
-from orchestrator.git.verification import probes
+from orchestrator.git.publication import probes as publication_probes
+from orchestrator.git.verification import probes as verification_probes
 from orchestrator.git.worktrees import paths
 
 
@@ -31,29 +32,41 @@ def _git_result(
 
 
 # Keyword aliases -> every module attribute the alias has to replace. The
-# refresh and pre-PR owners bind their collaborators at import time while the
-# remaining base-sync leaves still read theirs off the `base_sync` facade, so
-# a name both sides call is listed on both sides -- patching one alone would
-# leave half the flow talking to real git.
+# refresh, pre-PR, and crash-recovery owners bind their collaborators at
+# import time while the remaining base-sync leaves still read theirs off the
+# `base_sync` facade, so a name both sides call is listed on both sides --
+# patching one alone would leave half the flow talking to real git.
 _BASE_SYNC_TARGETS = MappingProxyType(
     {
         "dirty": (
             (base_sync, "_worktree_dirty_files"),
-            (probes, "_worktree_dirty_files"),
+            (verification_probes, "_worktree_dirty_files"),
         ),
         "rebase": (
             (base_sync, "_rebase_base_into_worktree"),
             (pre_pr, "_rebase_base_into_worktree"),
         ),
-        "push": ((base_sync, "_push_branch"),),
-        "head_sha": ((base_sync, "_head_sha"),),
+        "push": (
+            (base_sync, "_push_branch"),
+            (authentication, "_push_branch"),
+        ),
+        "head_sha": (
+            (base_sync, "_head_sha"),
+            (verification_probes, "_head_sha"),
+        ),
         "git": ((base_sync, "_git"), (commands, "_git")),
         "hardened": (
             (base_sync, "_git_hardened"),
             (commands, "_git_hardened"),
         ),
-        "fetch": ((base_sync, "_authed_fetch"),),
-        "ahead_behind": ((base_sync, "_branch_ahead_behind"),),
+        "fetch": (
+            (base_sync, "_authed_fetch"),
+            (authentication, "_authed_fetch"),
+        ),
+        "ahead_behind": (
+            (base_sync, "_branch_ahead_behind"),
+            (publication_probes, "_branch_ahead_behind"),
+        ),
         "target_fetch": (
             (base_sync, "_authed_target_fetch"),
             (authentication, "_authed_target_fetch"),

@@ -14,7 +14,9 @@ from orchestrator.git.base_sync import (
     outcomes,
     persistence,
     pre_pr,
+    recovery,
     refresh,
+    snapshot,
     state,
 )
 
@@ -30,9 +32,13 @@ _PERSISTENCE_OWNER = "orchestrator.git.base_sync.persistence"
 
 _OUTCOMES_OWNER = "orchestrator.git.base_sync.outcomes"
 
+_SNAPSHOT_OWNER = "orchestrator.git.base_sync.snapshot"
+
+_RECOVERY_OWNER = "orchestrator.git.base_sync.recovery"
+
 _OWNERS = (
     _MODELS_OWNER, _PRE_PR_OWNER, _REFRESH_OWNER, _STATE_OWNER,
-    _PERSISTENCE_OWNER, _OUTCOMES_OWNER,
+    _PERSISTENCE_OWNER, _OUTCOMES_OWNER, _SNAPSHOT_OWNER, _RECOVERY_OWNER,
 )
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS, "orchestrator.base_sync")
@@ -63,10 +69,9 @@ _ALLOWED_ROOTS = (
 # entrypoint. The facade is the sharpest of those, because it resolves the very
 # names these owners define -- an owner that imported it would be reading its
 # own definitions back out. The collaborators that do live above this package
-# -- the park guard and the comment poster in the workflow engine, the
-# unverified-abort helper on a base-sync leaf, and the PR-aware coordinator the
-# refresh hands a worktree off to -- are reached through call-time imports,
-# which is what keeps them out of this check.
+# -- the park guard and the comment poster in the workflow engine, and the
+# PR-aware coordinator the refresh hands a worktree off to -- are reached
+# through call-time imports, which is what keeps them out of this check.
 _FORBIDDEN_PREFIXES = (
     "orchestrator._base_sync",
     "orchestrator.base_sync",
@@ -91,7 +96,9 @@ _OWNER_ONLY_NAMES = (
     "_AutoRebaseContext",
     "_AutoRebaseRequest",
     "_PENDING_PUSH_SHA",
+    "_fetch_recovery_snapshot",
     "_park_dirty_recovery",
+    "_recover_pending_auto_base_rebase",
     "_refresh_base_and_worktrees",
     "_reset_clear_and_park",
     "log",
@@ -114,9 +121,14 @@ _FACADE_FORWARDS = (
     ("_REASON_AUTO_BASE_REBASE_FAILED", state),
     ("_REASON_AUTO_BASE_REBASE_PUSH_FAILED", state),
     ("_REVIEW_ROUND", state),
+    ("_abort_recovery_unverified", snapshot),
     ("_already_published_recovery_notice", outcomes),
     ("_base_sync_issue", refresh),
+    ("_clear_ineligible_recovery", snapshot),
+    ("_clear_unchanged_recovery", snapshot),
+    ("_complete_recovery_snapshot", snapshot),
     ("_emit_recovered_rebase_event", persistence),
+    ("_fetch_recovery_snapshot", snapshot),
     ("_finalize_already_published_recovery", outcomes),
     ("_finalize_recovered_rebase", persistence),
     ("_issue_skips_base_sync", refresh),
@@ -129,13 +141,18 @@ _FACADE_FORWARDS = (
     ("_post_recovered_rebase_notice", persistence),
     ("_prepare_recovered_rebase_state", persistence),
     ("_pushed_recovery_notice", outcomes),
+    ("_read_remote_recovery_head", snapshot),
     ("_rebase_base_into_worktree", pre_pr),
     ("_rebase_in_progress", pre_pr),
     ("_rebase_state_exists", pre_pr),
+    ("_recover_pending_auto_base_rebase", recovery),
+    ("_recover_pending_auto_base_rebase_context", recovery),
     ("_refresh_base_and_worktrees", refresh),
     ("_reject_unknown_recovery_comparison", outcomes),
     ("_reset_clear_and_park", persistence),
+    ("_retry_recovery_push", recovery),
     ("_route_recovered_rebase", persistence),
+    ("_route_recovery_snapshot", recovery),
     ("_sync_discovered_worktree", refresh),
     ("_sync_pre_pr_worktree", pre_pr),
     ("_sync_worktree_with_base", refresh),
