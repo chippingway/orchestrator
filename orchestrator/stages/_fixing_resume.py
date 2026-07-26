@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _FixingContext = _owner._FixingContext
 _FixingFeedback = _owner._FixingFeedback
@@ -112,7 +113,7 @@ def _run_fixing_resume(
     ctx.state.set(
         "user_content_hash",
         _wf._compute_user_content_hash(
-            ctx.issue, _wf._orchestrator_ids(ctx.state),
+            ctx.issue, _comments._orchestrator_ids(ctx.state),
         ),
     )
     after_sha = None if dev_result.timed_out else _wf._head_sha(wt)
@@ -163,7 +164,7 @@ def _fixing_ack_fast_path(
     _owner._advance_consumed_watermarks(ctx.state, feedback)
     _owner._clear_pending_fix_bookmarks(ctx.state)
     quoted = _wf._as_blockquote(ack_reason)
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         ctx.gh, ctx.issue, ctx.state,
         ":speech_balloon: dev session reports the PR feedback needs "
         f"no change:\n\n{quoted}\n\nReturning to `in_review`.",

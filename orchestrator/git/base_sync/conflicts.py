@@ -40,16 +40,16 @@ _CONFLICT_ROUTE_SIGNATURE = inspect.Signature((
 
 def _post_conflict_route_notice(context: _ConflictRouteContext) -> None:
     """Announce the conflicted rebase on the PR, best effort."""
-    # Lazy import: the comment helpers sit in the workflow layer above this
-    # package, so binding them at module load would point an owner back at
-    # the compatibility surface that resolves this module's own names.
-    from orchestrator import workflow_messages as _messages
+    # Lazy import: the comment owner sits in the workflow layer above this
+    # package, so binding it at module load would make every git-side
+    # import pay for the GitHub client and prompt state it pulls in.
+    from orchestrator.workflow.engine import comments as _comments
     base_ref = "/".join((
         context.spec.remote_name,
         context.spec.base_branch,
     ))
     try:
-        _messages._post_pr_comment(
+        _comments._post_pr_comment(
             context.gh, context.pr_number, context.state,
             f":mag: PR is {context.behind} commit(s) behind "
             f"`{base_ref}` and the auto "

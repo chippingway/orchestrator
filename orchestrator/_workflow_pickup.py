@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_state as _state
 from orchestrator import workflow as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -44,14 +45,14 @@ def _record_pickup_comment(state: PinnedState, pickup) -> None:
 def _start_decomposing(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
 ) -> None:
-    pickup = _owner._post_issue_comment(
+    pickup = _comments._post_issue_comment(
         gh, issue, state,
         ":robot: orchestrator picking this up; decomposing.",
     )
     _owner._record_pickup_comment(state, pickup)
     state.set(
         "user_content_hash",
-        _owner._compute_user_content_hash(issue, _owner._orchestrator_ids(state)),
+        _owner._compute_user_content_hash(issue, _comments._orchestrator_ids(state)),
     )
     gh.set_workflow_label(issue, WorkflowLabel.DECOMPOSING)
     gh.write_pinned_state(issue, state)
@@ -64,7 +65,7 @@ def _start_implementing(
     # Legacy path with DECOMPOSE=off: skip decomposition entirely and route
     # the unlabeled issue straight to implementing, exactly as the
     # bootstrap-milestone code did.
-    pickup = _owner._post_issue_comment(
+    pickup = _comments._post_issue_comment(
         gh, issue, state,
         ":robot: orchestrator picking this up. Decomposition stage is "
         "disabled; going straight to implementation.",
@@ -79,7 +80,7 @@ def _start_implementing(
     _owner._record_pickup_comment(state, pickup)
     state.set(
         "user_content_hash",
-        _owner._compute_user_content_hash(issue, _owner._orchestrator_ids(state)),
+        _owner._compute_user_content_hash(issue, _comments._orchestrator_ids(state)),
     )
     gh.set_workflow_label(issue, WorkflowLabel.IMPLEMENTING)
     gh.write_pinned_state(issue, state)

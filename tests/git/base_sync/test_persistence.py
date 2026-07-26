@@ -7,9 +7,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow_messages
 from orchestrator.git import commands
 from orchestrator.git.base_sync import persistence
+from orchestrator.workflow.engine import comments
 
 from tests.git.base_sync import base_sync_helpers as fixtures
 from tests.git.base_sync.base_sync_helpers import _OrderedCall, _recorded_calls
@@ -261,7 +261,7 @@ class PostRecoveredRebaseNoticeTest(unittest.TestCase):
         context = fixtures._recovery_context()
         raising = MagicMock(side_effect=RuntimeError("GitHub is down"))
 
-        with patch.object(workflow_messages, POST_PR_COMMENT, raising):
+        with patch.object(comments, POST_PR_COMMENT, raising):
             persistence._post_recovered_rebase_notice(context, NOTICE)
 
         raising.assert_called_once()

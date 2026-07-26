@@ -8,6 +8,7 @@ from typing import Any
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DevResumeOptions = _owner._DevResumeOptions
 _DevResumePlan = _owner._DevResumePlan
@@ -307,7 +308,7 @@ def _resume_developer_on_human_reply(
     from orchestrator import workflow as _wf
 
     followup = "\n\n".join(
-        _wf._quote_comment_line(comment)
+        _comments._quote_comment_line(comment)
         for comment in new_comments if comment.body
     )
     followup = f"{followup}\n\n{_wf._FOREGROUND_ONLY_NOTE}"

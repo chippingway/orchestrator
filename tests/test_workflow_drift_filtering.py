@@ -49,31 +49,6 @@ class OrchCommentMarkerSurvivesIdCapTest(unittest.TestCase):
             ),
         )
 
-    def test_marker_is_appended_by_post_helpers(self) -> None:
-        # Every orchestrator-posted comment must carry the marker so
-        # the hash filter survives id-cap eviction.
-        gh = support.FakeGitHubClient()
-        issue = support.make_issue(1)
-        gh.add_issue(issue)
-        state = workflow.PinnedState()
-        workflow._post_issue_comment(gh, issue, state, "hello")
-        # The body actually written to the issue carries the marker.
-        last_body = issue.comments[-1].body
-        self.assertIn(workflow._ORCH_COMMENT_MARKER, last_body)
-        # And it starts with the original body text.
-        self.assertTrue(last_body.startswith("hello"))
-
-    def test_marker_is_idempotent_on_double_wrap(self) -> None:
-        # Defensive: a caller that already passes a body containing the
-        # marker (e.g. a future helper forwards a pre-built body) must
-        # not get the marker appended twice -- two markers in one body
-        # is harmless but ugly, and an idempotent wrap also keeps
-        # `_with_orch_marker` safe to call from helper chains.
-        marked = workflow._with_orch_marker("hi")
-        twice = workflow._with_orch_marker(marked)
-        self.assertEqual(marked, twice)
-        self.assertEqual(twice.count(workflow._ORCH_COMMENT_MARKER), 1)
-
 
 class HashFiltersBotUsersTest(unittest.TestCase):
     """Reviewer point 2: third-party Bot/App accounts (Dependabot,

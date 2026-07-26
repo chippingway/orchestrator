@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_drift_state as _state
 from orchestrator import workflow_drift as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -24,7 +25,7 @@ def _is_hidden_comment(
     orchestrator markers, orchestrator-authored IDs, bots, and untrusted
     authors."""
     body = issue_comment.body or ""
-    if PINNED_STATE_MARKER in body or _owner._ORCH_COMMENT_MARKER in body:
+    if PINNED_STATE_MARKER in body or _comments._ORCH_COMMENT_MARKER in body:
         return True
     comment_id = getattr(issue_comment, "id", None)
     if comment_id is not None and int(comment_id) in orchestrator_ids:
@@ -138,7 +139,7 @@ def _detect_user_content_change(
     no drift. This keeps a bare continue outstanding at deploy time from firing
     one false "issue body/content changed" route.
     """
-    orchestrator_ids = _owner._orchestrator_ids(state)
+    orchestrator_ids = _comments._orchestrator_ids(state)
     current = _owner._compute_user_content_hash(issue, orchestrator_ids)
     prior = state.get(_USER_CONTENT_HASH)
     if not isinstance(prior, str):

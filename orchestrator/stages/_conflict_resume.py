@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _ConflictContext = _owner._ConflictContext
 _ConflictResumeRun = _owner._ConflictResumeRun
@@ -31,7 +32,7 @@ def _resume_on_user_content_change(
     from orchestrator import workflow as _wf
 
     ctx.state.set("user_content_hash", new_hash)
-    _wf._post_pr_comment(
+    _comments._post_pr_comment(
         ctx.gh, int(pr_number), ctx.state,
         ":pencil2: issue body changed; resuming dev session.",
     )
@@ -43,7 +44,7 @@ def _resume_on_user_content_change(
     wt = _owner._ensure_conflict_worktree(ctx)
     before_sha = _wf._head_sha(wt)
     followup = _wf._build_user_content_change_prompt(
-        ctx.issue, _wf._recent_comments_text(ctx.issue),
+        ctx.issue, _comments._recent_comments_text(ctx.issue),
     )
     run = _owner._run_conflict_resume(ctx, followup)
     # Shutdown-sweep interruption: ignore the partial result and return WITHOUT
@@ -150,7 +151,7 @@ def _awaiting_human_followup(ctx: _ConflictContext) -> Optional[str]:
     if continue_action == "retry":
         return f"{_wf._CONTINUE_RETRY_PROMPT}\n\n{_wf._FOREGROUND_ONLY_NOTE}"
     joined = "\n\n".join(
-        _wf._quote_comment_line(comment)
+        _comments._quote_comment_line(comment)
         for comment in new_comments
         if comment.body
     )

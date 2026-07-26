@@ -12,11 +12,13 @@ from pathlib import Path
 from orchestrator import _workflow_export_manifest
 from orchestrator import workflow as _workflow
 from orchestrator.workflow import engine as _engine
+from orchestrator.workflow.engine import comments as _comments
 from tests.reexport_test_support import lazy_targets, resolve_target
 
 _MODULES = (
     "orchestrator.workflow",
     "orchestrator.workflow.engine",
+    "orchestrator.workflow.engine.comments",
     "orchestrator.workflow.state",
 )
 
@@ -54,7 +56,7 @@ _PROBE_EXPORTS = ("_handle_ready", "contextlib")
 
 
 class CleanProcessImportTest(unittest.TestCase):
-    """The package, its engine subpackage, and its state owner import alone.
+    """The package, its subpackage, and each owner beneath them import alone.
 
     The initializer installs hooks that resolve the export manifest, and the
     leaves those hooks reach import `orchestrator.workflow` back at call time.
@@ -103,7 +105,7 @@ class CleanProcessImportTest(unittest.TestCase):
 
 
 class PackageSurfaceTest(unittest.TestCase):
-    """The initializer is the facade; the engine subpackage binds nothing."""
+    """The initializer is the facade; the engine subpackage owns no names."""
 
     def test_facade_lives_in_the_package_initializer(self) -> None:
         # The manifest keys its resolver on `orchestrator.workflow` and the
@@ -117,12 +119,18 @@ class PackageSurfaceTest(unittest.TestCase):
         self.assertTrue(initializer.with_suffix(".pyi").is_file())
 
     def test_engine_initializer_binds_nothing(self) -> None:
-        bound = [
-            name
-            for name in _engine.__dict__
-            if not name.startswith("__")
-        ]
-        self.assertEqual(bound, [])
+        # Importing an owner plants it in the package namespace, so a submodule
+        # is the only thing allowed to appear here. A re-export beside it would
+        # make the initializer a second identity for that owner and charge every
+        # importer of one owner for the imports of all the others.
+        self.assertIs(_engine.comments, _comments)
+        for name, bound in _engine.__dict__.items():
+            if name.startswith("__"):
+                continue
+            with self.subTest(name=name):
+                self.assertEqual(
+                    getattr(bound, "__name__", None), f"{_engine.__name__}.{name}",
+                )
 
     def test_submodule_keeps_lazy_hooks(self) -> None:
         # Importing a submodule plants it in the package namespace the hooks

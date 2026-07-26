@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _AwaitingDevAttempt = _owner._AwaitingDevAttempt
 _DevFixRun = _owner._DevFixRun
@@ -74,7 +75,7 @@ def _post_reviewer_feedback(context: _RequestedChanges) -> None:
     round_display = reviewer_run.round_n + 1
     feedback = context.decision.feedback
     try:
-        reviewer_comment = _wf._post_pr_comment(
+        reviewer_comment = _comments._post_pr_comment(
             context.gh,
             int(reviewer_run.pr_number),
             context.state,

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DevFixRun = _owner._DevFixRun
 AgentResult = _owner.AgentResult
@@ -65,8 +66,6 @@ class _AwaitingValidation:
 def _review_cap_awaiting_action(
     context: _AwaitingValidation,
 ) -> Optional[str]:
-    from orchestrator import workflow as _wf
-
     if context.park_reason != _REASON_REVIEW_CAP:
         return None
     if not context.comments:
@@ -77,7 +76,7 @@ def _review_cap_awaiting_action(
     context.consume_comments()
     additional_rounds, error = command
     if error is not None:
-        _wf._post_issue_comment(
+        _comments._post_issue_comment(
             context.gh,
             context.issue,
             context.state,
@@ -88,7 +87,7 @@ def _review_cap_awaiting_action(
     new_round = max(0, config.MAX_REVIEW_ROUNDS - additional_rounds)
     context.state.set(_REVIEW_ROUND, new_round)
     context.clear_park()
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         context.gh,
         context.issue,
         context.state,

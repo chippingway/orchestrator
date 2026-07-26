@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DevSession = _owner._DevSession
 _PreparedDevRun = _owner._PreparedDevRun
@@ -58,7 +59,7 @@ def _spawn_implementer(
         prompt=_wf._build_implement_prompt(
             spec,
             issue,
-            _wf._recent_comments_text(issue),
+            _comments._recent_comments_text(issue),
             config.default_repo_specs(),
         ),
         cwd=worktree,

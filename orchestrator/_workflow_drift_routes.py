@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_drift_state as _state
 from orchestrator import workflow_drift as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -142,6 +143,6 @@ def _route_drift_to_decomposing(
     Caller writes pinned state (`gh.write_pinned_state`) after returning.
     """
     notice = _owner._drift_to_decomposing_notice(orphan_children)
-    _owner._post_issue_comment(gh, issue, state, notice)
+    _comments._post_issue_comment(gh, issue, state, notice)
     _owner._reset_decomposition_for_drift(state, new_hash)
     gh.set_workflow_label(issue, WorkflowLabel.DECOMPOSING)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _documenting_state as _state
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DocumentingContext = _owner._DocumentingContext
 _DocumentingRun = _owner._DocumentingRun
@@ -77,7 +78,7 @@ def _documentation_prompt(ctx: _DocumentingContext) -> str:
     from orchestrator import workflow as _wf
 
     return _wf._build_documentation_prompt(
-        ctx.spec, ctx.issue, _wf._recent_comments_text(ctx.issue),
+        ctx.spec, ctx.issue, _comments._recent_comments_text(ctx.issue),
         config.default_repo_specs(),
     )
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _in_review_state as _state
 from orchestrator.stages import in_review as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _InReviewContext = _owner._InReviewContext
 Optional = _owner.Optional
@@ -34,13 +35,11 @@ def _drop_orchestrator_comments(comments, orchestrator_ids) -> list:
     body marker: older state can miss an id, and the bounded id list can
     eventually evict it, but the marker stays on the GitHub comment.
     """
-    from orchestrator import workflow as _wf
-
     return [
         comment
         for comment in comments
         if comment.id not in orchestrator_ids
-        and _wf._ORCH_COMMENT_MARKER not in (comment.body or "")
+        and _comments._ORCH_COMMENT_MARKER not in (comment.body or "")
     ]
 
 
@@ -91,9 +90,7 @@ def _scan_fresh_pr_feedback(ctx: _InReviewContext):
     orchestrator marker/id filtering is layered underneath it. An empty
     allowlist trusts everyone, so the default deployment is unchanged.
     """
-    from orchestrator import workflow as _wf
-
-    orchestrator_ids = _wf._orchestrator_ids(ctx.state)
+    orchestrator_ids = _comments._orchestrator_ids(ctx.state)
     issue_space_new = _owner._fresh_issue_space(ctx, orchestrator_ids)
     review_space_new = filter_trusted(sorted(
         ctx.gh.pr_inline_comments_after(

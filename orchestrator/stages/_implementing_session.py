@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DevResumePlan = _owner._DevResumePlan
 _DevSession = _owner._DevSession
@@ -220,7 +221,7 @@ def _build_dev_spawn_prompt(
         [] if followup_has_tracked_repos else config.default_repo_specs()
     )
     preamble = _wf._build_fresh_respawn_preamble(
-        spec, issue, _wf._recent_comments_text(issue), preamble_specs,
+        spec, issue, _comments._recent_comments_text(issue), preamble_specs,
     )
     return f"{preamble}\n\n{followup_text}"
 

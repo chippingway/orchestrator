@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 AgentResult = _owner.AgentResult
 GitHubClient = _owner.GitHubClient
@@ -49,10 +50,8 @@ def _park_session_limit(
     (`agent_session_limit`) for observability -- the pinned `park_reason` stays
     `agent_silent` (the control field `/orchestrator continue` keys off).
     """
-    from orchestrator import workflow as _wf
-
     quoted = _owner._as_blockquote(raw)
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         f"{config.HITL_MENTIONS} agent hit a session/usage limit and "
         "stopped; retry with `/orchestrator continue` once it "
@@ -66,10 +65,8 @@ def _park_real_question(
     gh: GitHubClient, issue: Issue, state: PinnedState, raw: str
 ) -> str:
     """Park a genuine agent clarification question awaiting a human reply."""
-    from orchestrator import workflow as _wf
-
     quoted = _owner._as_blockquote(raw)
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         f"{config.HITL_MENTIONS} agent needs your input to proceed:\n\n{quoted}",
     )
@@ -101,7 +98,7 @@ def _park_silent_failure(
     from orchestrator import workflow as _wf
 
     diag = _wf._format_stderr_diagnostics(agent_result, "Agent")
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         f"{config.HITL_MENTIONS} agent produced no output (likely a "
         f"session-resume failure); manual intervention needed.{diag}",
@@ -154,9 +151,7 @@ def _on_dirty_worktree(
     to the human and resume the codex session on their reply, identical to the
     question path.
     """
-    from orchestrator import workflow as _wf
-
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state, _owner._dirty_worktree_message(agent_result, dirty),
     )
     state.set(_AWAITING_HUMAN, True)

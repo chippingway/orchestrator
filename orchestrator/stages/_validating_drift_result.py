@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DevFixRun = _owner._DevFixRun
 GitHubClient = _owner.GitHubClient
@@ -29,7 +30,7 @@ def _post_drift_ack(
     from orchestrator import workflow as _wf
 
     quoted = _wf._as_blockquote(reason)
-    _wf._post_issue_comment(
+    _comments._post_issue_comment(
         gh, issue, state,
         ":speech_balloon: dev session reports the existing work "
         f"satisfies the edit:\n\n{quoted}",

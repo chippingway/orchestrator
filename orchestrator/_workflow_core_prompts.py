@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator import _workflow_messages_state as _state
 from orchestrator import workflow_messages as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 Issue = _owner.Issue
 config = _owner.config
@@ -22,7 +23,7 @@ def _build_implement_prompt(
 ) -> str:
     body = issue.body or _NO_BODY
     convo = comments_text or _NO_PRIOR_COMMENTS
-    tracked = _owner._build_tracked_repos_context(spec, specs)
+    tracked = _comments._build_tracked_repos_context(spec, specs)
     tracked_block = f"{tracked}\n\n" if tracked else ""
     return (
         f"You are the implementer for GitHub issue #{issue.number}: {issue.title!r}.\n\n"
@@ -59,7 +60,7 @@ def _build_fresh_respawn_preamble(
     """
     body = issue.body or _NO_BODY
     convo = comments_text or _NO_PRIOR_COMMENTS
-    tracked = _owner._build_tracked_repos_context(spec, specs)
+    tracked = _comments._build_tracked_repos_context(spec, specs)
     tracked_block = f"{tracked}\n\n" if tracked else ""
     return (
         f"You are resuming work on GitHub issue #{issue.number}: {issue.title!r}. "
@@ -87,7 +88,7 @@ def _build_review_prompt(
     body = issue.body or _NO_BODY
     convo = comments_text or _NO_PRIOR_COMMENTS
     base_ref = f"{spec.remote_name}/{spec.base_branch}"
-    tracked = _owner._build_tracked_repos_context(spec, specs)
+    tracked = _comments._build_tracked_repos_context(spec, specs)
     tracked_block = f"{tracked}\n\n" if tracked else ""
     return (
         f"You are an automated code reviewer for GitHub issue #{issue.number}: {issue.title!r}. "
@@ -128,7 +129,7 @@ def _build_documentation_prompt(
     body = issue.body or _NO_BODY
     convo = comments_text or _NO_PRIOR_COMMENTS
     base_ref = f"{spec.remote_name}/{spec.base_branch}"
-    tracked = _owner._build_tracked_repos_context(spec, specs)
+    tracked = _comments._build_tracked_repos_context(spec, specs)
     tracked_block = f"{tracked}\n\n" if tracked else ""
     return (
         f"You are the documentation pass for GitHub issue #{issue.number}: "

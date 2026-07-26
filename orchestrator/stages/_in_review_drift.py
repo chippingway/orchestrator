@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import in_review as _owner
+from orchestrator.workflow.engine import comments as _comments
 
 _DriftResume = _owner._DriftResume
 _InReviewContext = _owner._InReviewContext
@@ -49,7 +50,7 @@ def _route_feedback_to_fixing(
     )
     state.set(
         "user_content_hash",
-        _wf._compute_user_content_hash(ctx.issue, _wf._orchestrator_ids(state)),
+        _wf._compute_user_content_hash(ctx.issue, _comments._orchestrator_ids(state)),
     )
     # If we were parked awaiting human, the comment that triggered this route is
     # the human signal -- clear the park flags so the fixing handler is not
@@ -68,10 +69,10 @@ def _build_drift_resume_prompt(issue: Issue, unread_pr_conv: list) -> str:
     """
     from orchestrator import workflow as _wf
 
-    comments_text = _wf._recent_comments_text(issue)
+    comments_text = _comments._recent_comments_text(issue)
     if unread_pr_conv:
         pr_block = "\n\n".join(
-            _wf._quote_comment_line(comment, label=" (PR comment)")
+            _comments._quote_comment_line(comment, label=" (PR comment)")
             for comment in unread_pr_conv
         )
         prefix = f"{comments_text}\n\n" if comments_text else ""
@@ -93,10 +94,8 @@ def _drift_unread_pr_conv(ctx: _InReviewContext) -> list:
     what stops a concurrent PR comment from being silently dropped. Orchestrator
     id / marker filtering mirrors the regular in_review comment scan.
     """
-    from orchestrator import workflow as _wf
-
     issue_wm = _owner._issue_side_watermark(ctx.state)
-    orchestrator_ids = _wf._orchestrator_ids(ctx.state)
+    orchestrator_ids = _comments._orchestrator_ids(ctx.state)
     return _owner._drop_orchestrator_comments(
         ctx.gh.pr_conversation_comments_after(ctx.pr, issue_wm), orchestrator_ids,
     )
@@ -134,7 +133,7 @@ def _resume_dev_for_drift(
     """
     from orchestrator import workflow as _wf
 
-    _wf._post_pr_comment(
+    _comments._post_pr_comment(
         ctx.gh, int(ctx.pr_number), ctx.state,
         ":pencil2: issue body changed; resuming dev session.",
     )
