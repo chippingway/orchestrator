@@ -125,6 +125,12 @@ orchestrator/
     commands.py         plain / hardened git execution, the argv hardening
                         prefixes, and the unsafe local-transport probe
     locks.py            per-target-root re-entrant lock registry and accessor
+    base_sync/
+      __init__.py       package marker only; callers import an owner directly
+      models.py         frozen auto-rebase contexts, requests, recovery
+                        snapshots, and decisions
+      state.py          pinned-state keys, park reasons, refresh detour
+                        labels, and the shared base-sync logger
     publication/
       __init__.py       package marker only; callers import an owner directly
       planning.py       merge-base, HEAD, dirty and subject preconditions plus
@@ -160,7 +166,8 @@ orchestrator/
   worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners
   branch_publication.py lazy branch-publication compatibility facade
   _branch_*.py          squash rewriting and publication-flow leaves
-  base_sync.py          lazy base-refresh/rebase compatibility facade
+  base_sync.py          lazy base-refresh/rebase compatibility facade over the
+                        git/base_sync/ owners and the leaves below
   _base_sync_*.py       refresh, typed rebase/recovery decisions, conflict
                         routing, persistence, and publication leaves
   worktrees.py          lazy compatibility hub over the five worktree
@@ -244,7 +251,10 @@ review-terminal actions call `terminal._cleanup_question_worktree` / `terminal._
 so a mock for either one lands on the owner even though both names stay forwarded — straight off that owner — on
 `workflow`, `worktrees`, and `worktree_lifecycle` for compatibility. `_ensure_worktree`, `_ensure_pr_worktree`,
 `_has_new_commits`, and the decomposer helpers themselves stay patchable by name on `worktree_lifecycle`,
-`worktrees`, and `workflow`. Config and analytics modules
+`worktrees`, and `workflow`. `git/base_sync/` carries only data -- the frozen auto-rebase models and the
+pinned-state keys, park reasons, detour labels, and logger that the flat `_base_sync_*` leaves bind straight
+off `state` -- so it adds no patch seam of its own, and the collaborators those leaves call stay patchable by
+name on `base_sync`. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.

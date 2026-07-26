@@ -6,8 +6,8 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from orchestrator import _base_sync_state as _state
 from orchestrator import base_sync as _owner
+from orchestrator.git.base_sync import state as _state
 
 _AutoRebaseContext = _owner._AutoRebaseContext
 _AutoRebaseRequest = _owner._AutoRebaseRequest

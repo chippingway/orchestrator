@@ -3,8 +3,8 @@
 """Base sync recovery decisions."""
 from __future__ import annotations
 
-from orchestrator import _base_sync_state as _state
 from orchestrator import base_sync as _owner
+from orchestrator.git.base_sync import state as _state
 
 _AutoRebaseRecoveryContext = _owner._AutoRebaseRecoveryContext
 _AutoRebaseRecoverySnapshot = _owner._AutoRebaseRecoverySnapshot

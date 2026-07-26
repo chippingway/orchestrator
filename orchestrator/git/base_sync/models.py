@@ -1,18 +1,26 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Base sync models."""
+"""Frozen inputs and decisions threaded through one auto-rebase attempt.
+
+The contexts live together because they are one another's continuations: the
+legacy request derives a context, that context is what every publish and park
+helper receives, and the recovery context is the same attempt re-read from
+pinned state after a crash. Keeping them in one owner is what stops the fields
+a resumed attempt carries from drifting away from the fields the interrupted
+one recorded.
+"""
 from __future__ import annotations
 
-from orchestrator import base_sync as _owner
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Optional = _owner.Optional
-Path = _owner.Path
-PinnedState = _owner.PinnedState
-WorkflowLabel = _owner.WorkflowLabel
-config = _owner.config
-dataclass = _owner.dataclass
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.state_machine import WorkflowLabel
 
 
 @dataclass(frozen=True)
