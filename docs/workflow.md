@@ -86,7 +86,7 @@ Shape of the block:
   prompt. So the same block is safe in both the write-granting prompts (implementer / documentation) and the read-only
   prompts (reviewer / decomposer / question).
 
-Which prompts carry it:
+Which prompts carry it (every builder below lives in `workflow/engine/prompts.py`):
 
 - **Embedded** in `_build_implement_prompt`, `_build_documentation_prompt`, `_build_review_prompt`,
   `_build_decompose_prompt`, `_build_question_prompt`, and `_build_fresh_respawn_preamble`. The fresh-respawn preamble
