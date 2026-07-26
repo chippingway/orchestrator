@@ -9,13 +9,19 @@ import sys
 import unittest
 
 from orchestrator import base_sync, git
-from orchestrator.git.base_sync import models, state
+from orchestrator.git.base_sync import models, outcomes, persistence, state
 
 _MODELS_OWNER = "orchestrator.git.base_sync.models"
 
 _STATE_OWNER = "orchestrator.git.base_sync.state"
 
-_OWNERS = (_MODELS_OWNER, _STATE_OWNER)
+_PERSISTENCE_OWNER = "orchestrator.git.base_sync.persistence"
+
+_OUTCOMES_OWNER = "orchestrator.git.base_sync.outcomes"
+
+_OWNERS = (
+    _MODELS_OWNER, _STATE_OWNER, _PERSISTENCE_OWNER, _OUTCOMES_OWNER,
+)
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS, "orchestrator.base_sync")
 
@@ -34,11 +40,15 @@ _STATE_ALLOWED_ROOT = "orchestrator.git"
 
 # The model owner annotates its fields with the composed GitHub client, which
 # drags the analytics and usage graph in behind it, so an allowlist would not
-# describe it. What both owners owe is the direction of the dependency: neither
+# describe it. What every owner owes is the direction of the dependency: none
 # may reach the base-sync leaves, the facade over them, the workflow engine and
 # its stage handlers, or an application entrypoint. The facade is the sharpest
 # of those, because it resolves the very names these owners define -- an owner
-# that imported it would be reading its own definitions back out.
+# that imported it would be reading its own definitions back out. The two
+# collaborators that do live above this package -- the park guard and the
+# comment poster in the workflow engine, and the unverified-abort helper on a
+# base-sync leaf -- are reached through call-time imports, which is what keeps
+# them out of this check.
 _FORBIDDEN_PREFIXES = (
     "orchestrator._base_sync",
     "orchestrator.base_sync",
@@ -63,6 +73,8 @@ _OWNER_ONLY_NAMES = (
     "_AutoRebaseContext",
     "_AutoRebaseRequest",
     "_PENDING_PUSH_SHA",
+    "_park_dirty_recovery",
+    "_reset_clear_and_park",
     "log",
 )
 
@@ -83,6 +95,20 @@ _FACADE_FORWARDS = (
     ("_REASON_AUTO_BASE_REBASE_FAILED", state),
     ("_REASON_AUTO_BASE_REBASE_PUSH_FAILED", state),
     ("_REVIEW_ROUND", state),
+    ("_already_published_recovery_notice", outcomes),
+    ("_emit_recovered_rebase_event", persistence),
+    ("_finalize_already_published_recovery", outcomes),
+    ("_finalize_recovered_rebase", persistence),
+    ("_park_auto_rebase_failure", persistence),
+    ("_park_dirty_recovery", outcomes),
+    ("_park_diverged_recovery", outcomes),
+    ("_park_failed_recovery_push", outcomes),
+    ("_post_recovered_rebase_notice", persistence),
+    ("_prepare_recovered_rebase_state", persistence),
+    ("_pushed_recovery_notice", outcomes),
+    ("_reject_unknown_recovery_comparison", outcomes),
+    ("_reset_clear_and_park", persistence),
+    ("_route_recovered_rebase", persistence),
     ("log", state),
 )
 

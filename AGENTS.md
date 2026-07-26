@@ -31,8 +31,8 @@ orchestrator process is stateless.
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`, `_base_sync_*`,
   and stage-specific prefixes) or straight to the git-package owners -- `git/` for
   `git_plumbing.py`, `git/verification/` for `verify.py`, `git/worktrees/` for `worktree_lifecycle.py`,
-  `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models and shared state
-  `base_sync.py` publishes. The package also contains per-tick
+  `git/publication/` for `branch_publication.py`, and `git/base_sync/` for the models, shared state, and
+  recovery outcomes / persistence `base_sync.py` publishes. The package also contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
@@ -91,9 +91,13 @@ orchestrator process is stateless.
   post-reset failure takes) and the `squash.py` owner (the plan-then-rewrite entry point stage handlers call),
   and the `base_sync/`
   subpackage, whose `__init__.py` binds nothing either, over the `models.py` owner (the frozen auto-rebase
-  context / request / recovery-context / snapshot / decision / conflict-route dataclasses) and the `state.py`
+  context / request / recovery-context / snapshot / decision / conflict-route dataclasses), the `state.py`
   owner (the pinned-state keys, park reasons, refresh detour labels, and the `orchestrator.base_sync` logger
-  the flat `_base_sync_*` leaves bind directly), with `git_plumbing.py`, `verify.py`,
+  the flat `_base_sync_*` leaves bind directly), the `persistence.py` owner (the auto-rebase park, the shared
+  reset-and-park tail, and the pinned-state / notice / audit-event writes a recovered rebase finalizes and
+  routes with) and the `outcomes.py` owner (the two recovery notices plus the already-published,
+  unknown-comparison, diverged, dirty, and failed-push answers one verified recovery resolves into), with
+  `git_plumbing.py`, `verify.py`,
   `worktree_lifecycle.py`, `branch_publication.py`, and
   `base_sync.py` kept as the forwarding facades for historical callers), and stable runtime-core
   facades (`main.py`, `state_machine.py`).
@@ -161,8 +165,10 @@ orchestrator process is stateless.
   import-cycle / package-surface checks, plus their git-double and real-repository support modules; and the
   base-sync owners
   covered in `tests/git/base_sync/`: request-to-context derivation, model defaults and frozen-ness, the
-  published pinned-state keys / park reasons / detour labels / logger name, and import-cycle / layering /
-  package-surface checks.
+  published pinned-state keys / park reasons / detour labels / logger name, the auto-rebase park and its
+  reset-and-park tail, the staged recovery state / notice / event / routing writes, the recovery notices and
+  the park, abort, and already-published outcomes, and import-cycle / layering / package-surface checks, plus
+  their recovery-context support module.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

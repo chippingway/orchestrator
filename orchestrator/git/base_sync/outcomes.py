@@ -1,16 +1,27 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Base sync recovery decisions."""
+"""The terminal answers a verified crash-recovery comparison can produce.
+
+One interrupted auto-rebase resolves into exactly one of these: the rewrite
+was already published, the comparison is unclassifiable, the remote moved
+out of band, the worktree is dirty, or the reissued push failed. Each one
+either finalizes through ``persistence`` or resets HEAD onto the pre-rebase
+anchor and parks, so keeping them in one owner is what makes the set
+enumerable -- an outcome that neither routed nor parked would leave the
+issue holding an anchor no later tick can act on.
+"""
 from __future__ import annotations
 
-from orchestrator import base_sync as _owner
-from orchestrator.git.base_sync import state as _state
-
-_AutoRebaseRecoveryContext = _owner._AutoRebaseRecoveryContext
-_AutoRebaseRecoverySnapshot = _owner._AutoRebaseRecoverySnapshot
-config = _owner.config
-_REASON_AUTO_BASE_REBASE_PUSH_FAILED = _state._REASON_AUTO_BASE_REBASE_PUSH_FAILED
-log = _state.log
+from orchestrator import config
+from orchestrator.git.base_sync import persistence
+from orchestrator.git.base_sync.models import (
+    _AutoRebaseRecoveryContext,
+    _AutoRebaseRecoverySnapshot,
+)
+from orchestrator.git.base_sync.state import (
+    _REASON_AUTO_BASE_REBASE_PUSH_FAILED,
+    log,
+)
 
 
 def _already_published_recovery_notice(
@@ -64,11 +75,11 @@ def _finalize_already_published_recovery(
     snapshot: _AutoRebaseRecoverySnapshot,
 ) -> bool:
     """Finalize state after confirming that the interrupted push landed."""
-    return _owner._finalize_recovered_rebase(
+    return persistence._finalize_recovered_rebase(
         context,
         local_head=snapshot.local_head,
         method="crash_recovery_relabel_only",
-        notice=_owner._already_published_recovery_notice(
+        notice=_already_published_recovery_notice(
             context, snapshot.local_head,
         ),
     )
@@ -79,6 +90,11 @@ def _reject_unknown_recovery_comparison(
     snapshot: _AutoRebaseRecoverySnapshot,
 ) -> bool:
     """Park when unequal heads cannot be classified as ahead or behind."""
+    # Lazy import: the unverified-abort path still sits on a `base_sync`
+    # leaf, and that leaf reads its own collaborators off the compatibility
+    # surface that resolves this module's names, so binding it at module
+    # load would aim an owner back through its own facade.
+    from orchestrator import _base_sync_recovery_snapshot as _snapshot
     log.warning(
         "issue=#%d auto-rebase recovery: local HEAD (`%s`) differs "
         "from remote PR head (`%s`) but `_branch_ahead_behind` "
@@ -90,7 +106,7 @@ def _reject_unknown_recovery_comparison(
     )
     local_short = snapshot.local_head[:8]
     remote_short = snapshot.remote_head[:8]
-    return _owner._abort_recovery_unverified(
+    return _snapshot._abort_recovery_unverified(
         context,
         f"local HEAD `{local_short}` differs from remote "
         f"PR head `{remote_short}` but "
@@ -109,7 +125,7 @@ def _park_diverged_recovery(
     spec = context.spec
     local_short = snapshot.local_head[:8]
     pre_rebase_short = context.pending_pre_rebase_sha[:8]
-    _owner._reset_clear_and_park(
+    persistence._reset_clear_and_park(
         context,
         context.pending_pre_rebase_sha,
         message=(
@@ -137,7 +153,7 @@ def _park_dirty_recovery(
     """Reset and clean a recovered rebase that carries worktree changes."""
     local_short = snapshot.local_head[:8]
     pre_rebase_short = context.pending_pre_rebase_sha[:8]
-    _owner._reset_clear_and_park(
+    persistence._reset_clear_and_park(
         context,
         context.pending_pre_rebase_sha,
         message=(
@@ -164,7 +180,7 @@ def _park_failed_recovery_push(
     """Restore the anchor after a recovered force-push fails."""
     local_short = snapshot.local_head[:8]
     pre_rebase_short = context.pending_pre_rebase_sha[:8]
-    _owner._reset_clear_and_park(
+    persistence._reset_clear_and_park(
         context,
         context.pending_pre_rebase_sha,
         message=(

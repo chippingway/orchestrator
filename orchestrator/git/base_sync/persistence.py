@@ -1,22 +1,36 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Base sync recovery persistence."""
+"""Durable writes, notices, and audit events a recovered rebase leaves behind.
+
+The park side and the finalize side live together because both publish the
+same surfaces in the same order: the comment, then the audit event, then --
+for a finalize that routes -- the relabel, and only last the
+`write_pinned_state` the whole sequence commits through. Every field either
+one sets before that write is staged in memory, so a tick that dies partway
+leaves the recovery anchor pinned and the next tick re-derives the same
+outcome from it instead of resuming a half-finished one. Both sides hinge on
+that anchor: parking clears it after resetting HEAD back onto it, finalizing
+clears it once the rewrite is confirmed published.
+"""
 from __future__ import annotations
 
-from orchestrator import base_sync as _owner
-from orchestrator.git.base_sync import state as _state
+from github.Issue import Issue
 
-_AutoRebaseContext = _owner._AutoRebaseContext
-_AutoRebaseRecoveryContext = _owner._AutoRebaseRecoveryContext
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-_AUTO_REBASE_PARK_REASONS = _state._AUTO_REBASE_PARK_REASONS
-_AWAITING_HUMAN = _state._AWAITING_HUMAN
-_PARK_REASON = _state._PARK_REASON
-_PENDING_PUSH_SHA = _state._PENDING_PUSH_SHA
-_REVIEW_ROUND = _state._REVIEW_ROUND
-log = _state.log
+from orchestrator.git import commands
+from orchestrator.git.base_sync.models import (
+    _AutoRebaseContext,
+    _AutoRebaseRecoveryContext,
+)
+from orchestrator.git.base_sync.state import (
+    _AUTO_REBASE_PARK_REASONS,
+    _AWAITING_HUMAN,
+    _PARK_REASON,
+    _PENDING_PUSH_SHA,
+    _REVIEW_ROUND,
+    log,
+)
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
 
 
 def _park_auto_rebase_failure(
@@ -42,9 +56,10 @@ def _park_auto_rebase_failure(
     recovery branch keys off the same set to decide whether a new
     human comment on this issue is the "retry now" signal.
     """
-    # Lazy import: `workflow` imports `base_sync` at module load time,
-    # so a top-level `from . import workflow` would be a circular
-    # import. Stage modules use the same late-bind pattern.
+    # Lazy import: the park guard lives in the workflow engine above this
+    # package, and that engine imports `base_sync` at module load time, so
+    # a top-level import here would be circular. Stage modules use the same
+    # late-bind pattern.
     from orchestrator import workflow as _wf
     assert reason in _AUTO_REBASE_PARK_REASONS, (
         f"_park_auto_rebase_failure called with reason={reason!r}, "
@@ -81,7 +96,7 @@ def _reset_clear_and_park(
     and it still lands even if the worktree is left on an unexpected SHA
     for the operator to inspect.
     """
-    reset = _owner._git_hardened(
+    reset = commands._git_hardened(
         "reset", "--hard", reset_sha, cwd=context.worktree,
     )
     if reset.returncode != 0:
@@ -94,7 +109,7 @@ def _reset_clear_and_park(
             (reset.stderr or "").strip(),
         )
     if clean:
-        cleaned = _owner._git_hardened("clean", "-fd", cwd=context.worktree)
+        cleaned = commands._git_hardened("clean", "-fd", cwd=context.worktree)
         if cleaned.returncode != 0:
             log.error(
                 "issue=#%d auto-rebase recovery: `git clean -fd` after "
@@ -102,7 +117,7 @@ def _reset_clear_and_park(
                 context.issue.number, (cleaned.stderr or "").strip(),
             )
     context.state.set(_PENDING_PUSH_SHA, None)
-    _owner._park_auto_rebase_failure(
+    _park_auto_rebase_failure(
         context.gh,
         context.issue,
         context.state,
@@ -129,8 +144,12 @@ def _post_recovered_rebase_notice(
     context: _AutoRebaseRecoveryContext, notice: str,
 ) -> None:
     """Post the recovery notice without blocking state finalization."""
+    # Lazy import: the comment helpers sit in the workflow layer above this
+    # package, so binding them at module load would point an owner back at
+    # the compatibility surface that resolves this module's own names.
+    from orchestrator import workflow_messages as _messages
     try:
-        _owner._post_pr_comment(
+        _messages._post_pr_comment(
             context.gh, context.pr_number, context.state, notice,
         )
     except Exception:
@@ -199,7 +218,7 @@ def _finalize_recovered_rebase(
     notice: str,
 ) -> bool:
     """Finalize a recovered push and route it according to current base lag."""
-    _owner._prepare_recovered_rebase_state(context)
-    _owner._post_recovered_rebase_notice(context, notice)
-    _owner._emit_recovered_rebase_event(context, local_head, method)
-    return _owner._route_recovered_rebase(context, local_head, method)
+    _prepare_recovered_rebase_state(context)
+    _post_recovered_rebase_notice(context, notice)
+    _emit_recovered_rebase_event(context, local_head, method)
+    return _route_recovered_rebase(context, local_head, method)

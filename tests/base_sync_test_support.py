@@ -9,6 +9,7 @@ from types import MappingProxyType
 from unittest.mock import MagicMock, patch
 
 from orchestrator import base_sync, config, workflow
+from orchestrator.git import commands
 
 from tests.fakes import (
     FakeComment,
@@ -168,6 +169,16 @@ _BASE_SYNC_TARGETS = MappingProxyType(
     }
 )
 
+# Helpers the flow also reaches on their owning module, so a facade-only patch
+# would leave part of it running the real thing: the auto-rebase park path
+# calls `_git_hardened` on the git command owner, which would otherwise run a
+# real `reset --hard` against the fictional worktree these fixtures name.
+_OWNER_MODULES = MappingProxyType(
+    {
+        "_git_hardened": commands,
+    }
+)
+
 
 @contextlib.contextmanager
 def _patch_base_sync(**mocks):
@@ -177,7 +188,11 @@ def _patch_base_sync(**mocks):
     Only the named collaborators are patched."""
     with contextlib.ExitStack() as stack:
         for alias, mock in mocks.items():
-            stack.enter_context(patch.object(base_sync, _BASE_SYNC_TARGETS[alias], mock))
+            helper = _BASE_SYNC_TARGETS[alias]
+            stack.enter_context(patch.object(base_sync, helper, mock))
+            owner = _OWNER_MODULES.get(helper)
+            if owner is not None:
+                stack.enter_context(patch.object(owner, helper, mock))
         yield
 
 
