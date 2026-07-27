@@ -525,7 +525,9 @@ module map above) and are re-exported from the `workflow` package initializer so
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked
 dev session with the updated body (implementing, validating, in_review, resolving_conflict), or unwinds back to
-`validating` without resuming dev (documenting). `_handle_fixing` and `_handle_question` deliberately skip the drift
+`validating` without resuming dev (documenting). Both halves of that hook sit on the `workflow/engine/drift.py` owner
+the stage leaves import directly, so a patch aimed at the hook targets the owner rather than the facade.
+`_handle_fixing` and `_handle_question` deliberately skip the drift
 hook — see [`state-machine.md#user-content-drift-detection`](state-machine.md#user-content-drift-detection) for the
 per-handler routing.
 
