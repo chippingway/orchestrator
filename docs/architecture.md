@@ -625,8 +625,12 @@ external-merge sweeps, and the complete pinned-state JSON schema), see
 ## Stage handlers
 
 Each workflow label dispatches to a `_handle_<label>` function. The handlers live under `orchestrator/stages/` (see the
-module map above) and are re-exported from the `workflow` package initializer so test patches against
-`workflow.<helper>` keep intercepting calls from inside a stage handler.
+module map above), and the dispatcher reaches one by importing the stage facade its label is paired with in
+`_STAGE_HANDLER_TARGETS` and reading the handler off that module, so a patch that has to intercept the dispatch targets
+the stage facade rather than `workflow`. The `workflow` package initializer still re-exports every handler under its
+original name, and that is the edge the stage-to-stage calls resolve through — `_handle_implementing` from the
+decomposition recovery and blocked paths, `_handle_dev_fix_result` from the fixing resume — so a patch aimed at one of
+those keeps targeting the facade.
 
 `orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time. A migrated stage takes
 its own name in that package and keeps the lazy hooks it already publishes; the `orchestrator/stages/<stage>.py` it
