@@ -62,7 +62,10 @@ orchestrator process is stateless.
   because the handler's own snapshot predates the run -- beside the awaiting-human park that
   publishes one instead: its HITL comment, `awaiting_human` flag, cleared park reason,
   action-comment watermark ratchet, and `park_awaiting_human` event, with the pinned-state write
-  left to the handler in all three cases), per-stage
+  left to the handler in all three cases -- and over the empty `workflow/stages/` package beside that
+  subpackage, the destination the per-label stage facades migrate to one at a time: it binds nothing,
+  a migrated stage keeps the lazy hooks it already publishes, and the `stages/<stage>.py` it vacates
+  stays behind as a temporary forwarder reading every name back off the owner), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -259,7 +262,7 @@ orchestrator process is stateless.
   `engine/usage.py` owners, the guard that
   importing either the facade or the state
   owner resolves no manifest target and no
-  dependency binding, the package-surface checks that the facade is the
+  dependency binding — the `stages/` destination included — the package-surface checks that the facade is the
   initializer, that the engine initializer binds only the submodules planted in it, and that a submodule
   binding leaves its lazy hooks intact, and the state owner's own
   coverage — the label wire strings and their typo-guarded coercion, the transition table and its
@@ -305,7 +308,11 @@ orchestrator process is stateless.
   guard owner's coverage closes the directory: the mid-run hard skip read off a freshly fetched issue at
   the decomposer, reviewer, and question spawn sites, and the children, relabel, comment, session id, and
   watermark none of them may leave behind (`test_guards_paused.py`); the per-stage `_paused` modules and each
-  stage's own interrupted cases keep the dispositions those refusals are wrapped in.
+  stage's own interrupted cases keep the dispositions those refusals are wrapped in. The mirrored
+  `tests/workflow/stages/` directory holds what the migration destination owes before any stage lands there: its
+  clean-process import, the layering guard that the package costs the facade above it and nothing else, and the
+  surface checks that its initializer binds only submodules and that `orchestrator.stages` stays the module the
+  handlers resolve off (`test_imports.py`).
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in
