@@ -7,7 +7,7 @@ from typing import Optional
 
 from orchestrator import workflow
 
-from tests.decomposition_test_support import (
+from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comments_for_issue,
     _labels_for_issue,
     _run_with_logs,

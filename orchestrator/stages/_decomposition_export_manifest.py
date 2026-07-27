@@ -36,7 +36,7 @@ EXPORTS = (
         (("PinnedState", "PinnedState"),),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_activation",
+        "orchestrator.workflow.stages.decomposition.activation",
         (
             ("_ChildActivation", "_ChildActivation"),
             ("_activate_ready_children", "_activate_ready_children"),
@@ -45,17 +45,16 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_blocked",
+        "orchestrator.workflow.stages.decomposition.blocked",
         (
             ("_complete_blocked_parent", "_complete_blocked_parent"),
             ("_handle_blocked", "_handle_blocked"),
             ("_handle_empty_blocked_parent", "_handle_empty_blocked_parent"),
             ("_handle_ready", "_handle_ready"),
-            ("_usable_child_scan", "_usable_child_scan"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_models",
+        "orchestrator.workflow.stages.decomposition.models",
         (
             ("_ChildScan", "_ChildScan"),
             ("_DecomposerRunPlan", "_DecomposerRunPlan"),
@@ -64,7 +63,15 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_parent_scan",
+        "orchestrator.workflow.stages.decomposition.outcomes",
+        (
+            ("_dispatch_decomposer_manifest", "_dispatch_decomposer_manifest"),
+            ("_finalize_single_decision", "_finalize_single_decision"),
+            ("_park_unparsed_manifest", "_park_unparsed_manifest"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.decomposition.parents",
         (
             ("_manually_closed_children", "_manually_closed_children"),
             ("_park_manually_closed_children", "_park_manually_closed_children"),
@@ -72,72 +79,59 @@ EXPORTS = (
             ("_read_child_labels", "_read_child_labels"),
             ("_remaining_manually_closed", "_remaining_manually_closed"),
             ("_route_parent_drift", "_route_parent_drift"),
+            ("_usable_child_scan", "_usable_child_scan"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_recovery",
+        "orchestrator.workflow.stages.decomposition.recovery",
         (
-            ("_finalize_single_decision", "_finalize_single_decision"),
-            ("_park_unparsed_manifest", "_park_unparsed_manifest"),
-            ("_recover_stale_manifest", "_recover_stale_manifest"),
-            ("_route_disabled_to_implementing", "_route_disabled_to_implementing"),
-            ("_spawn_fresh_decomposer", "_spawn_fresh_decomposer"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.stages._decomposition_recovery_state",
-        (
-            ("_clear_decomposition_manifest", "_clear_decomposition_manifest"),
-            ("_decomposition_drift_notice", "_decomposition_drift_notice"),
-            ("_issue_ref_list", "_issue_ref_list"),
             ("_park_incomplete_decomposition", "_park_incomplete_decomposition"),
+            ("_recover_stale_manifest", "_recover_stale_manifest"),
             ("_repair_recovered_child", "_repair_recovered_child"),
             ("_repair_recovered_children", "_repair_recovered_children"),
             ("_seed_orphan_child_state", "_seed_orphan_child_state"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_run",
+        "orchestrator.workflow.stages.decomposition.run",
         (
-            ("_dispatch_decomposer_manifest", "_dispatch_decomposer_manifest"),
             ("_handle_decomposing", "_handle_decomposing"),
             ("_prepare_decomposer_run", "_prepare_decomposer_run"),
             ("_process_decomposer_run", "_process_decomposer_run"),
+            ("_route_disabled_to_implementing", "_route_disabled_to_implementing"),
             ("_settle_decomposer_run", "_settle_decomposer_run"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_session",
+        "orchestrator.workflow.stages.decomposition.session",
         (
+            ("_clear_decomposition_manifest", "_clear_decomposition_manifest"),
             ("_decomposer_followup", "_decomposer_followup"),
+            ("_decomposition_drift_notice", "_decomposition_drift_notice"),
             ("_read_decomposer_session", "_read_decomposer_session"),
             ("_reset_decomposing_on_drift", "_reset_decomposing_on_drift"),
             ("_resume_decomposer_on_human_reply", "_resume_decomposer_on_human_reply"),
+            ("_spawn_fresh_decomposer", "_spawn_fresh_decomposer"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_split",
+        "orchestrator.workflow.stages.decomposition.split",
         (
             ("_activate_initial_split_children", "_activate_initial_split_children"),
-            ("_create_child_issues", "_create_child_issues"),
-            ("_finalize_split", "_finalize_split"),
-            ("_split_summary", "_split_summary"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.stages._decomposition_split_state",
-        (
             ("_child_initial_labels", "_child_initial_labels"),
+            ("_create_child_issues", "_create_child_issues"),
             ("_create_planned_child", "_create_planned_child"),
+            ("_finalize_split", "_finalize_split"),
             ("_park_child_create_failure", "_park_child_create_failure"),
             ("_persist_created_child", "_persist_created_child"),
             ("_prepare_split_plan", "_prepare_split_plan"),
             ("_seed_created_child", "_seed_created_child"),
+            ("_split_summary", "_split_summary"),
             ("_write_child_pinned_state", "_write_child_pinned_state"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_state",
+        "orchestrator.workflow.stages.decomposition.state",
         (
             ("_AWAITING_HUMAN", "_AWAITING_HUMAN"),
             ("_CHILDREN", "_CHILDREN"),
@@ -148,10 +142,11 @@ EXPORTS = (
             ("_PARENT_NUMBER", "_PARENT_NUMBER"),
             ("_PARK_REASON", "_PARK_REASON"),
             ("_UMBRELLA", "_UMBRELLA"),
+            ("_issue_ref_list", "_issue_ref_list"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._decomposition_umbrella",
+        "orchestrator.workflow.stages.decomposition.umbrella",
         (
             ("_complete_umbrella", "_complete_umbrella"),
             ("_handle_empty_umbrella", "_handle_empty_umbrella"),

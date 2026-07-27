@@ -1,28 +1,36 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Decomposition blocked."""
+"""A parent waiting on its children, and the issue that is done waiting.
+
+`blocked` is a poll: read the children, park on one the orchestrator cannot
+interpret, release the ones whose dependencies are satisfied, and flip the
+parent to `ready` once every child is `done`. A parent with no recorded
+children at all did not get here through a split, so it parks rather than
+guessing -- the label was almost certainly applied by hand.
+
+`ready` is the other end, and it is the entry point for both an auto-created
+child and a parent whose decomposer voted `single`. It seeds the same pickup
+anchor the unlabeled-issue start writes, then ratchets `last_action_comment_id`
+past every comment currently on the thread. That ratchet is what keeps
+decomposing-era feedback from being replayed as fresh PR feedback later: the
+implementer reads the whole thread at spawn, so by the time the PR reaches
+`in_review` those comments are already incorporated, and the watermark seed
+would otherwise resume the developer and bounce the PR back out of review.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _decomposition_state as _state
-from orchestrator.stages import decomposition as _owner
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
-
-_ChildScan = _owner._ChildScan
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Optional = _owner.Optional
-PinnedState = _owner.PinnedState
-WorkflowLabel = _owner.WorkflowLabel
-config = _owner.config
-_AWAITING_HUMAN = _state._AWAITING_HUMAN
-_CHILDREN = _state._CHILDREN
-_CREATED_AT = _state._CREATED_AT
-_DONE = _state._DONE
-_LAST_ACTION_COMMENT_ID = _state._LAST_ACTION_COMMENT_ID
-_PARENT_NUMBER = _state._PARENT_NUMBER
-_PARK_REASON = _state._PARK_REASON
+from orchestrator.workflow.stages.decomposition import activation as _activation
+from orchestrator.workflow.stages.decomposition import parents as _parents
+from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _handle_ready(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
@@ -45,11 +53,11 @@ def _handle_ready(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None
     # locked decomposer session, so the next `_handle_decomposing` tick's
     # half-finished recovery branch does not fire and just flip the issue
     # back to `blocked` without re-running the decomposer.
-    if _owner._route_parent_drift(gh, issue, state):
+    if _parents._route_parent_drift(gh, issue, state):
         return
     if state.get("pickup_comment_id") is None:
-        if not state.get(_CREATED_AT):
-            state.set(_CREATED_AT, _usage._now_iso())
+        if not state.get(_state._CREATED_AT):
+            state.set(_state._CREATED_AT, _usage._now_iso())
         pickup = _comments._post_issue_comment(
             gh, issue, state,
             ":robot: orchestrator picking this up; starting implementation.",
@@ -72,35 +80,18 @@ def _handle_ready(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None
     # value, so it's a transient marker for the in-progress handoff only.
     latest = gh.latest_comment_id(issue)
     if isinstance(latest, int):
-        prior = state.get(_LAST_ACTION_COMMENT_ID)
+        prior = state.get(_state._LAST_ACTION_COMMENT_ID)
         if not isinstance(prior, int) or latest > prior:
-            state.set(_LAST_ACTION_COMMENT_ID, latest)
+            state.set(_state._LAST_ACTION_COMMENT_ID, latest)
     gh.set_workflow_label(issue, WorkflowLabel.IMPLEMENTING)
     gh.write_pinned_state(issue, state)
     _wf._handle_implementing(gh, spec, issue)
 
 
-def _usable_child_scan(
-    gh: GitHubClient,
-    spec: config.RepoSpec,
-    issue: Issue,
-    state: PinnedState,
-    children: list,
-) -> Optional[_ChildScan]:
-    scan = _owner._read_child_labels(gh, issue, children)
-    if scan is None:
-        return None
-    if _owner._park_rejected_children(gh, issue, state, scan.labels):
-        return None
-    if _owner._park_manually_closed_children(gh, spec, issue, state, scan):
-        return None
-    return scan
-
-
 def _handle_empty_blocked_parent(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> None:
-    if state.get(_PARENT_NUMBER) or state.get(_AWAITING_HUMAN):
+    if state.get(_state._PARENT_NUMBER) or state.get(_state._AWAITING_HUMAN):
         return
     _guards._park_awaiting_human(
         gh, issue, state,
@@ -118,8 +109,8 @@ def _complete_blocked_parent(
         gh, issue, state,
         ":white_check_mark: all children resolved; ready for implementation.",
     )
-    state.set(_AWAITING_HUMAN, False)
-    state.set(_PARK_REASON, None)
+    state.set(_state._AWAITING_HUMAN, False)
+    state.set(_state._PARK_REASON, None)
     gh.set_workflow_label(issue, WorkflowLabel.READY)
     gh.write_pinned_state(issue, state)
 
@@ -141,21 +132,23 @@ def _handle_blocked(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> No
     handlers do not write across parent/child boundaries.
     """
     state = gh.read_pinned_state(issue)
-    children = state.get(_CHILDREN) or []
+    children = state.get(_state._CHILDREN) or []
 
-    if _owner._route_parent_drift(gh, issue, state):
+    if _parents._route_parent_drift(gh, issue, state):
         return
 
     if not children:
-        _owner._handle_empty_blocked_parent(gh, issue, state)
+        _handle_empty_blocked_parent(gh, issue, state)
         return
 
-    scan = _owner._usable_child_scan(gh, spec, issue, state, children)
+    scan = _parents._usable_child_scan(gh, spec, issue, state, children)
     if scan is None:
         return
-    if all(label == _DONE for label in scan.labels.values()):
-        _owner._complete_blocked_parent(gh, issue, state)
+    if all(label == _state._DONE for label in scan.labels.values()):
+        _complete_blocked_parent(gh, issue, state)
         return
 
-    held = _owner._activate_ready_children(gh, issue, state, scan)
-    _owner._log_held_children(issue, "blocked", children, scan.labels, held)
+    held = _activation._activate_ready_children(gh, issue, state, scan)
+    _activation._log_held_children(
+        issue, "blocked", children, scan.labels, held,
+    )

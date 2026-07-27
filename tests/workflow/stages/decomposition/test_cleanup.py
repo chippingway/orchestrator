@@ -6,7 +6,7 @@ import unittest
 
 from orchestrator import workflow
 
-from tests.decomposition_test_support import _comment_with_marker
+from tests.workflow.stages.decomposition.decomposition_test_support import _comment_with_marker
 from tests.fakes import (
     FakeGitHubClient,
     make_issue,

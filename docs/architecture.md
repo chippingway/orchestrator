@@ -162,6 +162,39 @@ orchestrator/
     stages/
       __init__.py       package marker only; the destination the per-label
                         stage facades under `orchestrator/stages/` migrate to
+      decomposition/
+        __init__.py     package marker only; callers import an owner directly
+        state.py        the pinned-state field names the owners share, the
+                        held-child alias, and the issue-reference renderer
+        models.py       the run plan and its worktree policy, the locked
+                        session, the split plan, and the child scan
+        manifest.py     the fenced-block envelope rules, the JSON decode, and
+                        the parse entry point the stage routes on
+        validation.py   what a `split` payload must satisfy: the child cap the
+                        decompose prompt states, each child's shape, and the
+                        acyclicity of the graph they declare
+        session.py      the locked decomposer session: the spec read, the
+                        fresh spawn that pins it, the human-reply resume, and
+                        the drift reset that retires it
+        run.py          one `decomposing` tick: the drift / recovery / kill
+                        switch order before the agent, and the pause, dirty
+                        worktree, and interruption checks after it
+        outcomes.py     the three dispositions of a finished reply: the
+                        unparsed park, the `single` finalize, and the `split`
+                        hand-off
+        recovery.py     what a tick that died mid-split left behind: the
+                        stale-manifest markers, the orphan-child repair, and
+                        the incomplete park
+        split.py        the crash-safe order a `split` manifest becomes child
+                        issues in, and the summary / label / activation tail
+        parents.py      the fresh child scan, the rejected and manually-closed
+                        parks it earns, and the parent's own drift reroute
+        activation.py   the dep-graph walk that releases the next children and
+                        the held-dependency line it logs
+        blocked.py      the `blocked` poll and the `ready` handoff to
+                        implementing with its consumed-comment ratchet
+        umbrella.py     the `umbrella` poll and the close its all-done branch
+                        earns instead of an implementation pass
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
@@ -171,8 +204,8 @@ orchestrator/
                         attribute and its open / closed values
   workflow_drift.py     lazy user-content-drift compatibility facade
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
-  _workflow_messages_*.py
-                        manifest-parsing leaves and the values they share
+  _workflow_messages_state.py
+                        the section separator its prompt leaves share
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
@@ -300,8 +333,6 @@ orchestrator/
                         under `workflow/stages/`
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
-    _decomposition_*.py decomposer runs/sessions, child routing, recovery,
-                        cleanup, blocked parents, and umbrella handling
     _implementing_*.py  handler entry, sessions, typed resume, recovery,
                         publication, drift, and post-agent dispositions
     _documenting_*.py   preconditions, run, persistence, drift, and outcomes
@@ -427,9 +458,11 @@ foreground-only note appended by whichever of them can end in a commit, one comm
 whose agent also writes a subject (the conflict prompt takes the first without the second -- it replays subjects an
 earlier commit already carried), and one set of placeholders for an empty body or thread. Each marker a prompt
 promises -- `VERDICT:`, `DOCS: NO_CHANGE`, `ACK:`, the
-fenced manifest -- is parsed by `engine/messages.py` or the manifest leaves, so the prompt and the parser that reads
-its answer are edited as a pair. It reaches `comments.py` for the thread text and the tracked-repos block and
-`messages.py` for the blockquote, and the stage leaves that build a prompt or append a note import the owner. So a
+fenced manifest -- is parsed by `engine/messages.py` or the decomposition stage's manifest owners, so the prompt and
+the parser that reads its answer are edited as a pair; the child cap the decompose prompt states is read straight off
+`workflow/stages/decomposition/validation.py` so the two cannot disagree. It reaches `comments.py` for the thread text
+and the tracked-repos block and `messages.py` for the blockquote, and the stage leaves that build a prompt or append a
+note import the owner. So a
 patch that has to intercept a built prompt, a shared note, or the single-decision comment targets
 `orchestrator.workflow.engine.prompts`; `workflow`, `workflow_messages`, and `workflow_drift` each still resolve their
 historical slice of those names to the owner's exact object. A prompt with only one caller stays with that caller:
@@ -505,11 +538,11 @@ routes to the stage it was committed to rather than an unlabeled one it would gr
 stamp, so a patch that has to intercept the allowlist, either start, or the pickup-comment record targets
 `orchestrator.workflow.engine.pickup`; `workflow` still resolves all five names to the owner's exact object. The
 stage handler it dispatches in the same tick is reached through a call-time import of
-`orchestrator/stages/decomposition.py` or `orchestrator/stages/implementing.py` — the stage tree imports this
+`workflow/stages/decomposition/run.py` or `orchestrator/stages/implementing.py` — the stage tree imports this
 subpackage, so binding either at module scope would point that edge back at itself — which also makes the stage
-facade, not `workflow`, the target for a patch that has to intercept the dispatch. Either facade keeps answering
-once it migrates to `workflow/stages/`, because the forwarder it leaves behind reads the handler back off the new
-owner.
+module, not `workflow`, the target for a patch that has to intercept the dispatch. A migrated stage is named by
+the owner its handler lives on rather than by the forwarder it left behind, so that patch target is the same one
+`_STAGE_HANDLER_TARGETS` names.
 
 `workflow/engine/terminals.py` is bound the same way. It owns how an issue stops being worked. Three conditions
 end one — the linked PR merged (`done`), the linked PR closed unmerged (`rejected`), and a human closed the issue
@@ -654,21 +687,36 @@ external-merge sweeps, and the complete pinned-state JSON schema), see
 
 ## Stage handlers
 
-Each workflow label dispatches to a `_handle_<label>` function. The handlers live under `orchestrator/stages/` (see the
-module map above), and the dispatcher reaches one by importing the stage facade its label is paired with in
-`_STAGE_HANDLER_TARGETS` and reading the handler off that module, so a patch that has to intercept the dispatch targets
-the stage facade rather than `workflow`. The `workflow` package initializer still re-exports every handler under its
-original name, and that is the edge the stage-to-stage calls resolve through — `_handle_implementing` from the
-decomposition recovery and blocked paths, `_handle_dev_fix_result` from the fixing resume — so a patch aimed at one of
-those keeps targeting the facade.
+Each workflow label dispatches to a `_handle_<label>` function. The handlers live under `orchestrator/stages/` and
+`orchestrator/workflow/stages/` (see the module map above), and the dispatcher reaches one by importing the module its
+label is paired with in `_STAGE_HANDLER_TARGETS` and reading the handler off it, so a patch that has to intercept the
+dispatch targets that module rather than `workflow`. The `workflow` package initializer still re-exports every handler
+under its original name, and that is the edge the stage-to-stage calls resolve through — `_handle_implementing` from
+the decomposition recovery and blocked paths, `_handle_dev_fix_result` from the fixing resume — so a patch aimed at one
+of those keeps targeting the facade.
 
-`orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time. A migrated stage takes
-its own name in that package and keeps the lazy hooks it already publishes; the `orchestrator/stages/<stage>.py` it
-vacates stays behind as a temporary forwarder that reads every name back off the owner rather than rebuilding one, so
-both import sites hand back the same object and a `patch.object` against either is what the other resolves. A forwarder
-is dropped once the callers it serves name the owner. Like `workflow/engine/`, the new package binds nothing in its
-initializer -- the dispatcher resolves one handler per issue, so an eager binding there would charge that import for
-every other stage's leaves and for the worktree and GitHub subsystems they reach.
+`orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time; `decomposition` is the
+first to arrive. A migrated stage becomes a subpackage of responsibility-named owners there, and the
+`orchestrator/stages/<stage>.py` it vacates stays behind as a temporary forwarder that reads every name back off those
+owners rather than rebuilding one, so both import sites hand back the same object. What the forwarder does not cover is
+dispatch: `_STAGE_HANDLER_TARGETS` names the owner a migrated handler lives on, and so does the same-tick start in
+`workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
+is dropped once the callers it serves name the owner. Like `workflow/engine/`, the new package and each stage
+subpackage inside it bind nothing in their initializers -- the dispatcher resolves one handler per issue, so an eager
+binding there would charge that import for every other stage's leaves and for the worktree and GitHub subsystems they
+reach.
+
+The decomposition owners bind their collaborators directly. `manifest` calls `validation` for the split rules,
+`run` calls `session`, `recovery`, and `outcomes` for the order a tick asks them in, `outcomes` calls `manifest` and
+`split`, `blocked` and `umbrella` both call `parents` for the child scan and `activation` for the dep-graph walk, and
+every one of them reaches `workflow/engine/` for the comment poster, the run guards, the prompts, and the usage
+counters. So a patch that has to intercept the manifest parse, a child scan, or the split writer targets the owner
+module. The seams that stay on the facade are the ones a stage does not own: `_handle_implementing`, the decompose
+worktree helpers, `_has_new_commits` / `_worktree_dirty_files`, and `_check_and_increment_retry_budget` are read as
+`_wf` attributes at call time, and the whole historical inventory still resolves on `orchestrator.stages.decomposition`
+with the owner's exact identity. `_MAX_CHILDREN` runs the other way: the cap lives with the validator that rejects past
+it and `workflow/engine/prompts.py` reads it back, so the bound the decomposer is told and the bound it is judged
+against cannot drift apart.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked

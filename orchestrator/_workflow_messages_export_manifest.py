@@ -20,42 +20,8 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._workflow_manifest_cycles",
-        (
-            ("_dep_cycle_visit", "_dep_cycle_visit"),
-            ("_has_dep_cycle", "_has_dep_cycle"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_manifest_fields",
-        (
-            ("_decode_manifest", "_decode_manifest"),
-            ("_extract_manifest_payload", "_extract_manifest_payload"),
-            ("_is_nonempty_text", "_is_nonempty_text"),
-            ("_manifest_child_dependencies", "_manifest_child_dependencies"),
-            ("_manifest_child_text_error", "_manifest_child_text_error"),
-            ("_manifest_umbrella_error", "_manifest_umbrella_error"),
-            ("_split_manifest_children", "_split_manifest_children"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_manifest_validation",
-        (
-            ("_is_valid_dependency", "_is_valid_dependency"),
-            ("_manifest_child_error", "_manifest_child_error"),
-            ("_manifest_children_error", "_manifest_children_error"),
-            ("_manifest_validation_error", "_manifest_validation_error"),
-            ("_parse_manifest", "_parse_manifest"),
-            ("_split_manifest_error", "_split_manifest_error"),
-        ),
-    ),
-    *export_group(
         "orchestrator._workflow_messages_state",
-        (
-            ("_MANIFEST_RE", "_MANIFEST_RE"),
-            ("_MAX_CHILDREN", "_MAX_CHILDREN"),
-            ("_SECTION_SEP", "_SECTION_SEP"),
-        ),
+        (("_SECTION_SEP", "_SECTION_SEP"),),
     ),
     *export_group(
         "orchestrator.agents",
@@ -147,6 +113,33 @@ EXPORTS = (
             ("_build_single_decision_comment", "_build_single_decision_comment"),
             ("_single_manifest_files", "_single_manifest_files"),
             ("_single_manifest_text", "_single_manifest_text"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.decomposition.manifest",
+        (
+            ("_MANIFEST_RE", "_MANIFEST_RE"),
+            ("_decode_manifest", "_decode_manifest"),
+            ("_extract_manifest_payload", "_extract_manifest_payload"),
+            ("_manifest_validation_error", "_manifest_validation_error"),
+            ("_parse_manifest", "_parse_manifest"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.decomposition.validation",
+        (
+            ("_MAX_CHILDREN", "_MAX_CHILDREN"),
+            ("_dep_cycle_visit", "_dep_cycle_visit"),
+            ("_has_dep_cycle", "_has_dep_cycle"),
+            ("_is_nonempty_text", "_is_nonempty_text"),
+            ("_is_valid_dependency", "_is_valid_dependency"),
+            ("_manifest_child_dependencies", "_manifest_child_dependencies"),
+            ("_manifest_child_error", "_manifest_child_error"),
+            ("_manifest_child_text_error", "_manifest_child_text_error"),
+            ("_manifest_children_error", "_manifest_children_error"),
+            ("_manifest_umbrella_error", "_manifest_umbrella_error"),
+            ("_split_manifest_children", "_split_manifest_children"),
+            ("_split_manifest_error", "_split_manifest_error"),
         ),
     ),
     *export_group(

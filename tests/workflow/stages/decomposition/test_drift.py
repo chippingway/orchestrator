@@ -6,7 +6,7 @@ import unittest
 
 from orchestrator import workflow
 
-from tests.decomposition_test_support import (
+from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comment_with_marker,
     _comments_for_issue,
 )

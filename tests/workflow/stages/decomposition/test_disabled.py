@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from orchestrator import config, workflow
 
-from tests.decomposition_test_support import (
+from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comments_for_issue,
     _labels_for_issue,
     _seed_blocked_children,
@@ -34,7 +34,7 @@ from tests.workflow_helpers import (
     _manifest,
 )
 
-from tests.decomposition_decomposing_test_support import (
+from tests.workflow.stages.decomposition.decomposing_test_support import (
     _DecomposingWorkflowMixin,
 )
 

@@ -1,23 +1,42 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Decomposition parent scan."""
+"""What a decomposed parent reads off its children before it acts on them.
+
+The scan is one fresh read of every recorded child's issue and workflow label.
+It can be a fresh read because the dispatcher serializes `decomposing`,
+`blocked`, and `umbrella` into a single bucket on one worker thread, so a
+child's own label flip cannot land between this read and the writes that follow
+it. A read that raises abandons the whole tick for this parent rather than
+acting on a partial picture -- the next poll retries.
+
+Two child states end the parent's tick instead of advancing it, and both park
+idempotently so they do not re-comment every tick. A `rejected` child is a
+human decision the parent cannot interpret. A child closed without a terminal
+label is invisible to the closed-issue sweep, so its label is frozen wherever
+it was at close and the parent would otherwise wait on it forever -- except
+when the close was an external merge, which is why each candidate is retried
+against the PR-merge finalize before it counts as manually closed.
+
+A parent also re-checks the human's requirements here. Its own body may have
+been edited while children were running, and unlike an implementing issue there
+is no later stage to notice; the reroute back to `decomposing` re-derives the
+manifest against what the body says now.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _decomposition_state as _state
-from orchestrator.stages import decomposition as _owner
+from typing import Optional
+
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator._workflow_state import log
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import terminals as _terminals
-
-_ChildScan = _owner._ChildScan
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Optional = _owner.Optional
-PinnedState = _owner.PinnedState
-config = _owner.config
-_AWAITING_HUMAN = _state._AWAITING_HUMAN
-_CHILDREN = _state._CHILDREN
-_DONE = _state._DONE
+from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.stages.decomposition.models import _ChildScan
 
 
 def _route_parent_drift(
@@ -44,7 +63,7 @@ def _route_parent_drift(
     new_hash = _drift._detect_user_content_change(gh, issue, state)
     if new_hash is None:
         return False
-    orphans = list(state.get(_CHILDREN) or [])
+    orphans = list(state.get(_state._CHILDREN) or [])
     _drift._route_drift_to_decomposing(gh, issue, state, new_hash, orphans)
     gh.write_pinned_state(issue, state)
     return True
@@ -62,15 +81,13 @@ def _read_child_labels(
     / umbrella within a tick, so a child's own label flip cannot race this
     read.
     """
-    from orchestrator import workflow as _wf
-
     child_labels: dict[int, Optional[str]] = {}
     child_issues: dict[int, Issue] = {}
     for child_number in children:
         try:
             child_issue = gh.get_issue(int(child_number))
         except Exception:
-            _wf.log.exception(
+            log.exception(
                 "issue=#%s could not read child #%d", issue.number, child_number,
             )
             return None
@@ -95,9 +112,9 @@ def _park_rejected_children(
     ]
     if not rejected:
         return False
-    if state.get(_AWAITING_HUMAN):
+    if state.get(_state._AWAITING_HUMAN):
         return True
-    rejected_refs = _owner._issue_ref_list(rejected)
+    rejected_refs = _state._issue_ref_list(rejected)
     _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} child issue(s) rejected: "
@@ -107,6 +124,31 @@ def _park_rejected_children(
     )
     gh.write_pinned_state(issue, state)
     return True
+
+
+def _manually_closed_children(scan: _ChildScan) -> list[int]:
+    return [
+        number for number, child_issue in scan.issues.items()
+        if getattr(child_issue, "state", "open") == "closed"
+        and scan.labels.get(number) not in (_state._DONE, "rejected", "in_review")
+    ]
+
+
+def _remaining_manually_closed(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    scan: _ChildScan,
+    candidates: list[int],
+) -> list[int]:
+    remaining: list[int] = []
+    for number in candidates:
+        child_issue = scan.issues[number]
+        child_state = gh.read_pinned_state(child_issue)
+        if _terminals._finalize_if_pr_merged(gh, spec, child_issue, child_state):
+            scan.labels[number] = _state._DONE
+        else:
+            remaining.append(number)
+    return remaining
 
 
 def _park_manually_closed_children(
@@ -133,16 +175,16 @@ def _park_manually_closed_children(
     that the closed-in_review sweep finalizes on the next tick, NOT a manual
     override.
     """
-    manually_closed = _owner._manually_closed_children(scan)
+    manually_closed = _manually_closed_children(scan)
     if manually_closed:
-        manually_closed = _owner._remaining_manually_closed(
+        manually_closed = _remaining_manually_closed(
             gh, spec, scan, manually_closed,
         )
     if not manually_closed:
         return False
-    if state.get(_AWAITING_HUMAN):
+    if state.get(_state._AWAITING_HUMAN):
         return True
-    closed_refs = _owner._issue_ref_list(manually_closed)
+    closed_refs = _state._issue_ref_list(manually_closed)
     _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} child issue(s) closed without reaching "
@@ -155,26 +197,18 @@ def _park_manually_closed_children(
     return True
 
 
-def _manually_closed_children(scan: _ChildScan) -> list[int]:
-    return [
-        number for number, child_issue in scan.issues.items()
-        if getattr(child_issue, "state", "open") == "closed"
-        and scan.labels.get(number) not in (_DONE, "rejected", "in_review")
-    ]
-
-
-def _remaining_manually_closed(
+def _usable_child_scan(
     gh: GitHubClient,
     spec: config.RepoSpec,
-    scan: _ChildScan,
-    candidates: list[int],
-) -> list[int]:
-    remaining: list[int] = []
-    for number in candidates:
-        child_issue = scan.issues[number]
-        child_state = gh.read_pinned_state(child_issue)
-        if _terminals._finalize_if_pr_merged(gh, spec, child_issue, child_state):
-            scan.labels[number] = _DONE
-        else:
-            remaining.append(number)
-    return remaining
+    issue: Issue,
+    state: PinnedState,
+    children: list,
+) -> Optional[_ChildScan]:
+    scan = _read_child_labels(gh, issue, children)
+    if scan is None:
+        return None
+    if _park_rejected_children(gh, issue, state, scan.labels):
+        return None
+    if _park_manually_closed_children(gh, spec, issue, state, scan):
+        return None
+    return scan

@@ -1,16 +1,22 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Decomposition models."""
+"""The carriers one decomposition tick hands between its owners.
+
+Each of these exists because the value it carries has to survive a boundary
+the call stack alone would lose it across: the worktree policy a run decides
+before it can raise, the agent identity a resume is locked to, the children a
+split has already created when the next one fails, and the child labels a
+parent scan read once and several branches then ask about.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import decomposition as _owner
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
-AgentResult = _owner.AgentResult
-Issue = _owner.Issue
-Optional = _owner.Optional
-Tuple = _owner.Tuple
-config = _owner.config
-dataclass = _owner.dataclass
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.agents import AgentResult
 
 
 @dataclass

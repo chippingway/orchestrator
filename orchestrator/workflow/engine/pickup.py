@@ -73,8 +73,9 @@ def _start_decomposing(
 ) -> None:
     # The handler is reached through a call-time import: the stage tree imports
     # this subpackage, so binding it at module scope would point that edge back
-    # at itself.
-    from orchestrator.stages.decomposition import _handle_decomposing
+    # at itself. A migrated stage is named by its owner rather than the
+    # forwarder it left behind, so a patch here lands where dispatch patches.
+    from orchestrator.workflow.stages.decomposition.run import _handle_decomposing
 
     pickup = _comments._post_issue_comment(
         gh, issue, state,

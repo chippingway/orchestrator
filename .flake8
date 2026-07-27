@@ -111,6 +111,21 @@
 # splitting them would let two copies of that order drift apart. WPS202 is
 # waived.
 #
+# The decomposition stage owners under orchestrator/workflow/stages/ pay two
+# ceilings between them. `split.py` carries 11 members past the WPS202 ceiling
+# of 7 and `validation.py` carries 11 too: the order the split writes children
+# in IS its crash-safety contract -- a create hoisted away from the parent-state
+# flush that follows it reads as safe from either module -- and every rule a
+# `split` payload must satisfy is checked before the first irreversible
+# `create_child_issue`, so the bound, the child shapes, and the graph they form
+# are one gate rather than three. Six of the owners also name more than the
+# WPS201 ceiling of 12 imports -- `blocked.py`, `outcomes.py`, `run.py`,
+# `session.py`, `split.py`, and `umbrella.py` -- because a stage owner is typed
+# by the whole span it acts on: the issue and client it reads, the pinned state
+# and labels it writes, the engine's comment, guard, prompt, and usage surfaces
+# it publishes through, and the sibling owners it hands off to. WPS201 and
+# WPS202 are waived for those files.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -145,6 +160,13 @@ per-file-ignores =
     orchestrator/workflow/engine/terminals.py:WPS202
     orchestrator/workflow/engine/tick.py:WPS201,WPS202
     orchestrator/workflow/engine/usage.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/blocked.py:WPS201
+    orchestrator/workflow/stages/decomposition/outcomes.py:WPS201
+    orchestrator/workflow/stages/decomposition/run.py:WPS201
+    orchestrator/workflow/stages/decomposition/session.py:WPS201
+    orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/umbrella.py:WPS201
+    orchestrator/workflow/stages/decomposition/validation.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

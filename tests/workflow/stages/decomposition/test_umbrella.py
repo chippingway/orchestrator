@@ -7,10 +7,10 @@ from typing import Optional
 from unittest.mock import patch
 
 from orchestrator import workflow
-from orchestrator.stages import decomposition as _decomposition
 from orchestrator.workflow.engine import dispatch as _dispatch
+from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
 
-from tests.decomposition_test_support import (
+from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comments_for_issue,
     _labels_for_issue,
     _run_with_logs,
@@ -94,7 +94,7 @@ def _dispatch_umbrella(
     gh: FakeGitHubClient,
     issue: FakeIssue,
 ):
-    with patch.object(_decomposition, "_handle_umbrella") as umbrella_handler:
+    with patch.object(_umbrella, "_handle_umbrella") as umbrella_handler:
         _dispatch._process_issue(gh, _TEST_SPEC, issue)
         return umbrella_handler
 
