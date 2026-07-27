@@ -751,11 +751,10 @@ of those keeps targeting the facade.
 `implementing`, and `documenting` have arrived. A migrated stage becomes a subpackage of responsibility-named owners
 there, and the `orchestrator/stages/<stage>.py` it vacates stays behind as a temporary forwarder that reads every name
 back off those owners rather than rebuilding one, so both import sites hand back the same object. Identity is all a
-forwarder carries:
-it caches each name it resolved, so a `patch.object` intercepts the lookup site it lands on rather than both, and the
-owner is the site orchestrator code reads. Dispatch makes that explicit: `_STAGE_HANDLER_TARGETS` names the owner a
-migrated handler lives on, and so does the same-tick start in `workflow/engine/pickup.py`, so a patch meant to intercept
-a dispatched handler has to land on the owner. A forwarder
+forwarder carries: it caches each name it resolved, so a `patch.object` intercepts the lookup site it lands on rather
+than both, and the owner is the site orchestrator code reads. Dispatch makes that explicit: `_STAGE_HANDLER_TARGETS`
+names the owner a migrated handler lives on, and so does the same-tick start in `workflow/engine/pickup.py`, so a
+patch meant to intercept a dispatched handler has to land on the owner. A forwarder
 is dropped once the callers it serves name the owner. Like `workflow/engine/`, the new package and each stage
 subpackage inside it bind nothing in their initializers -- the dispatcher resolves one handler per issue, so an eager
 binding there would charge that import for every other stage's leaves and for the worktree and GitHub subsystems they
@@ -800,9 +799,12 @@ to `parks`, and `publication` calls `handoff` for the `pr_last_comment_id` ratch
 relabel. `state` and `models` reach nothing, so the wire keys and the carriers are decidable without a client. This
 stage owns no dev session of its own: the resume, the session read, and the question / dirty-tree parks are imported
 from `workflow/stages/implementing/` directly, so a patch that has to intercept one lands on that owner. The seams
-that stay on the facade are the ones neither stage owns — the worktree, fetch, git, and push helpers plus validating's
-`_latest_pr_comment_ids` are read as `_wf` attributes at call time — and the whole historical inventory still resolves
-on `orchestrator.stages.documenting` with the owner's exact identity.
+that stay on the facade are the ones neither stage owns — the worktree, fetch, git, and push helpers, validating's
+`_latest_pr_comment_ids`, and base-sync's `_AUTO_REBASE_PARK_REASONS` are read as `_wf` attributes at call time. That
+last one is why both precondition reads consult it before they act: a park the pre-tick refresh owns is one whose
+retry nudge belongs to `_sync_pr_worktree_to_base`, so the docs stage stays silent rather than answering a comment
+addressed to the rebase loop. The whole historical inventory still resolves on `orchestrator.stages.documenting` with
+the owner's exact identity.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked
