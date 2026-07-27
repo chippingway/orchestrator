@@ -10,10 +10,10 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator.stages import implementing as _implementing
 from orchestrator.stages import question as _question
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.engine import pickup as _pickup
+from orchestrator.workflow.stages.implementing import handler as _implementing
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import LABEL_QUESTION, _TEST_SPEC

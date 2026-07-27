@@ -69,7 +69,7 @@ orchestrator process is stateless.
   route -- and the four writes both starts publish in one order: the greeting whose id anchors
   `pickup_comment_id`, the `user_content_hash` baseline computed with that id filtered out, the
   workflow label, and the pinned state, with the chosen stage handler called in the same tick
-  through a call-time import of its `orchestrator/stages/` facade -- and over the
+  through a call-time import of the owner it lives on -- and over the
   `workflow/engine/terminals.py` owner beside them: the three arcs an issue stops on --
   merged PR, PR closed unmerged, and a human-closed issue over an open PR -- sharing one tail of
   terminal stamp, terminal label, usage receipt, and single pinned-state write, with the `pr_merged` /
@@ -96,7 +96,7 @@ orchestrator process is stateless.
   bounded pool whose materialized partition folds the whole family bucket into one task so it
   holds a single slot, both wrapping each issue in its own try/except, with
   `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog` deliberately read off the facade
-  because those are the seams the tick tests replace -- and over the empty `workflow/stages/` package
+  because those are the seams the tick tests replace -- and over the `workflow/stages/` package
   beside that subpackage, the destination the per-label stage facades migrate to one at a time: it
   binds nothing, a migrated stage arrives as its own subpackage of responsibility-named owners, the
   `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading every name back off
@@ -122,7 +122,22 @@ orchestrator process is stateless.
   (the fresh child scan the family bucket makes safe, the rejected and manually-closed parks, and
   the parent's own drift reroute), the `activation.py` owner (the dep-graph walk and the
   held-dependency line it logs), and the `blocked.py` / `umbrella.py` handlers (the poll they share,
-  and the `ready` handoff versus the close their all-done branches differ by)), per-stage
+  and the `ready` handoff versus the close their all-done branches differ by) -- and over the
+  `workflow/stages/implementing/` subpackage beside it, whose owners split one tick along the
+  decisions it makes: the order those decisions are asked in (`handler.py`), whether anything runs at
+  all -- the awaiting-human route, the recovered-worktree shortcut, and the retry-gated fresh spawn
+  (`spawn.py`); the locked dev session -- what the pinned state says it is and what a run's own text
+  says about its health (`session_read.py`), the three retirements and the per-issue 24h spawn cap
+  (`session.py`), the two resume entry points and the historical call shape they keep (`resume.py`),
+  one resume with its poisoned-session retry (`execution.py`), and the checkout it runs in
+  (`worktree.py`); what a finished run leaves behind -- the `before_sha` disposition and the timeout
+  park's own recovery (`disposition.py`), the four HITL parks (`parks.py`), and the push / PR /
+  validating handoff (`publication.py`); and the four signals that arrive between runs -- a body edit
+  and its `ACK:` (`drift.py`), a pre-session edit and a quiet timeout (`drift_preflight.py`),
+  `/orchestrator continue` on a parked issue (`continue_command.py`), and the question relabel guards
+  (`question_relabel.py`) -- over the frozen records they hand each other (`models.py`) and the
+  pinned-state keys and CLI markers they share (`state.py`), with the worktree, git, and push helpers
+  still reached through the `workflow` facade at call time), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -235,10 +250,10 @@ orchestrator process is stateless.
   `tests/test_workflow_<stage>*.py` (the validating stage is split across review, controls, drift, handoff, pause,
   squash, verify, and watermark modules in `tests/test_workflow_validating_*.py`, with shared fixtures in
   `tests/validating_*_test_support.py`; the in_review stage is split across
-  `tests/test_workflow_in_review_*.py`; the implementing stage across
-  `tests/test_workflow_implementing_*.py`, and the question and documenting stages across their
-  respective focused modules, with shared fixtures in
-  `tests/question_*_support.py` and `tests/documenting_*_support.py`; the resolving-conflict stage is split across
+  `tests/test_workflow_in_review_*.py`; the implementing stage has moved beside its owners into
+  `tests/workflow/stages/implementing/`, and the decomposition, question, and documenting stages across their
+  respective focused modules, with shared fixtures in `tests/decomposition*_support.py`,
+  `tests/question_*_support.py`, and `tests/documenting_*_support.py`; the resolving-conflict stage is split across
   `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_event_emission`,
   `_list_pollable`, `_routing`) plus the `_handle_resolving_conflict` handler scenarios in focused modules
   (`_clean_rebase` for clean rebase routing, `_agent` for agent execution, `_resume` for awaiting-human resume
@@ -411,6 +426,20 @@ orchestrator process is stateless.
   `test_park.py`, `test_persistence.py`, `test_write_ordering.py`, `test_finalize.py`, `test_cleanup.py`,
   `test_usage.py`, `test_worktree.py`, `test_full_spec.py`), with shared fixtures in
   `tests/workflow/stages/decomposition/decomposition_test_support.py` and `decomposing_test_support.py`.
+  `tests/workflow/stages/implementing/` holds the stage beside it: the same import, layering, and initializer guards
+  for its own package plus the forwarding checks that no manifest target names a flat `_implementing_*` leaf and that
+  both historical import sites hand back the owner's exact object, and the dispatch check that the label table and the
+  pickup start name the handler owner (`test_imports.py`); the stage scenarios beside it -- fresh runs and parks
+  (`test_fresh.py`), timeout disposition and its recovery (`test_timeout.py`), the live-pause guard
+  (`test_paused.py`), PR titles / reuse / body capping (`test_pr_*.py`), the retry cap and the locked backend
+  (`test_retry.py`, `test_backend.py`), session rotation, staleness, overflow, quota, and silence
+  (`test_rotation.py`, `test_stale_session.py`, `test_overflow.py`, `test_session_limit.py`,
+  `test_silent_session.py`), a body edit and its continue route (`test_drift*.py`), full-spec persistence
+  (`test_full_spec_*.py`), and the terminal arcs (`test_terminal*.py`) -- with shared fixtures in
+  `drift_test_support.py`, `fresh_test_support.py`, `pr_test_support.py`, `retry_test_support.py`, and
+  `terminal_test_support.py`; the two fixtures the flat suite still shares stay in `tests/`
+  (`implementing_fixing_test_cases.py` for the fixing scenarios, `implementing_full_spec_test_support.py` for the
+  decomposer full-spec mixin).
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

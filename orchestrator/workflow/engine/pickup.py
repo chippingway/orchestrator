@@ -97,7 +97,7 @@ def _start_implementing(
     # Legacy path with DECOMPOSE=off: skip decomposition entirely and route
     # the unlabeled issue straight to implementing, exactly as the
     # bootstrap-milestone code did.
-    from orchestrator.stages.implementing import _handle_implementing
+    from orchestrator.workflow.stages.implementing.handler import _handle_implementing
 
     pickup = _comments._post_issue_comment(
         gh, issue, state,

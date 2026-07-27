@@ -12,10 +12,10 @@ from unittest.mock import patch
 
 from orchestrator.stages import (
     documenting as _documenting,
-    implementing as _implementing,
     validating as _validating,
 )
 from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
+from orchestrator.workflow.stages.implementing import handler as _implementing
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import _TEST_SPEC

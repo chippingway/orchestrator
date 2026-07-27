@@ -4,8 +4,10 @@
 
 The owners live in :mod:`orchestrator.workflow.stages.decomposition`; every
 name here is read back off one of them rather than rebuilt, so both import
-sites hand back the same object and a `patch.object` against either is what
-the other resolves. Dropped once the callers it serves name the owner instead.
+sites hand back the same object. Identity is all this module carries: it caches
+what it resolved, so a `patch.object` intercepts the lookup site it lands on
+rather than both, and the owner is the site orchestrator code and the dispatch
+table read. Dropped once the callers it serves name the owner instead.
 """
 from __future__ import annotations
 

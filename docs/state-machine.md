@@ -291,8 +291,8 @@ it round-trips to `spec="codex"` with no args so an older orchestrator's pin kee
   and run that stage's handler in the same tick, so an unlabeled issue's first tick ends inside its second stage.
 
 The allowlist, both routes, and the order they publish the comment, hash, label, and pinned state in all live in
-`workflow/engine/pickup.py`; the same-tick handler call is a call-time import of the chosen stage's module — the
-`decomposition` owner under `workflow/stages/` for one route, the flat `orchestrator/stages/` facade for the other.
+`workflow/engine/pickup.py`; the same-tick handler call is a call-time import of the chosen stage's owner under
+`workflow/stages/` — `decomposition/run.py` for one route, `implementing/handler.py` for the other.
 
 ### User-content drift detection
 

@@ -11,9 +11,9 @@ from unittest.mock import patch
 
 from orchestrator import config, workflow
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.stages import implementing
 from orchestrator.workflow.engine import pickup
 from orchestrator.workflow.stages.decomposition import run as _decomposing
+from orchestrator.workflow.stages.implementing import handler as _implementing
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import _PatchedWorkflowMixin, _TEST_SPEC, _agent
@@ -185,7 +185,7 @@ class PickupOwnerPatchTest(unittest.TestCase):
             ),
             (
                 pickup._start_implementing,
-                implementing,
+                _implementing,
                 "_handle_implementing",
                 _IMPLEMENTING_LABEL,
             ),
