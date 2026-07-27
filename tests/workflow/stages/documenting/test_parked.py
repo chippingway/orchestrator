@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import MagicMock
 
-from tests.documenting_assertion_test_support import _pr_comment_text
+
 from tests.workflow_helpers import (
     _agent,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_test_support import (
-    _BasicDocumentingFixture,
+from tests.workflow.stages.documenting.documenting_scenario_test_support import (
+    _ParkedDocumentingFixture,
 )
 
 DOCUMENTING = "documenting"
@@ -131,78 +132,82 @@ PARK_COMMENT_ID = 950
 HUMAN_REPLY_ID = 1100
 
 
-class HandleDocumentingRecoveryTest(unittest.TestCase, _BasicDocumentingFixture):
-    """Restart recovery: a previous tick committed docs but crashed
-    before the push lands."""
+class HandleDocumentingParkedSilenceTest(unittest.TestCase, _ParkedDocumentingFixture):
+    """Already-parked issues must not re-post the park comment on
+    every poll. The fetch + behind branches in particular would
+    otherwise spam the issue with `fetch_failed` / `diverged_branch`
+    notices each tick while the operator drafts a reply."""
 
-    issue_number = 301
-    pr_number = 31
-
-    def test_recovered_commits_push_without_spawn(self) -> None:
-        gh, issue = self._seeded()
+    def test_no_comments_skip_fetch(
+        self,
+    ) -> None:
+        gh, issue = self._seeded(park_reason=PARK_AGENT_QUESTION)
         mocks = self._run_documenting(
             gh,
             issue,
             run_agent=_agent(),
             push_branch=True,
-            # _head_sha is called once to record docs_checked_sha after
-            # the push.
-            head_shas=[SHA_RECOVERED],
-            branch_ahead_behind=(1, 0),
+            head_shas=[],
+            branch_ahead_behind=(0, 0),
         )
 
-        # The agent must NOT be spawned -- the recovered commits are
-        # enough to advance.
+        # No fetch, no agent spawn, no posted comments. The original
+        # park is preserved verbatim.
+        mocks[AUTHED_FETCH].assert_not_called()
+        mocks["_ensure_pr_worktree"].assert_not_called()
         mocks[RUN_AGENT].assert_not_called()
-        mocks[PUSH_BRANCH].assert_called_once()
-        self.assertIn((self.issue_number, IN_REVIEW), gh.label_history)
-        state = gh.pinned_data(self.issue_number)
-        self.assertEqual(state.get(DOCS_VERDICT), VERDICT_UPDATED)
-        self.assertEqual(state.get(DOCS_CHECKED_SHA), SHA_RECOVERED)
-        self.assertIn("recovered docs commit", _pr_comment_text(gh))
+        self.assertEqual(gh.posted_comments, [])
+        self.assertEqual(gh.posted_pr_comments, [])
+        self.assertEqual(gh.write_state_calls, 0)
 
-    def test_recovery_push_failure_parks_push_failed(self) -> None:
-        gh, issue = self._seeded()
-        mocks = self._run_documenting(
-            gh,
-            issue,
-            run_agent=_agent(),
-            push_branch=False,
-            # The recovery branch falls through to the unified
-            # commit/dirty/push block, which reads `after_sha`.
-            head_shas=[SHA_RECOVERED],
-            branch_ahead_behind=(1, 0),
-        )
-
-        mocks[RUN_AGENT].assert_not_called()
-        self.assertNotIn((self.issue_number, IN_REVIEW), gh.label_history)
-        self.assertNotIn((self.issue_number, VALIDATING), gh.label_history)
-        state = gh.pinned_data(self.issue_number)
-        self.assertTrue(state.get(AWAITING_HUMAN))
-        self.assertEqual(state.get(PARK_REASON), PARK_PUSH_FAILED)
-
-    def test_dirty_recovery_parks_without_push(self) -> None:
-        # A previous tick committed docs AND left some files
-        # uncommitted, then crashed. The recovery branch must NOT push:
-        # the push would publish an incomplete branch (the dirty files
-        # would silently disappear from what the reviewer agent sees).
-        gh, issue = self._seeded()
+    def test_fetch_error_does_not_repark(
+        self,
+    ) -> None:
+        # If the fetch would have failed on this tick, the parked
+        # issue must still stay silent -- the fetch call must not
+        # even fire.
+        gh, issue = self._seeded(park_reason=PARK_AGENT_QUESTION)
         mocks = self._run_documenting(
             gh,
             issue,
             run_agent=_agent(),
             push_branch=True,
-            dirty_files=["docs/dirty.md"],
-            head_shas=[SHA_RECOVERED],
-            branch_ahead_behind=(1, 0),
+            head_shas=[],
+            branch_ahead_behind=(0, 0),
+            authed_fetch_result=MagicMock(
+                returncode=1,
+                stdout="",
+                stderr="would-fail",
+            ),
         )
 
-        mocks[RUN_AGENT].assert_not_called()
-        mocks[PUSH_BRANCH].assert_not_called()
-        self.assertNotIn((self.issue_number, IN_REVIEW), gh.label_history)
-        self.assertNotIn((self.issue_number, VALIDATING), gh.label_history)
-        state = gh.pinned_data(self.issue_number)
-        self.assertTrue(state.get(AWAITING_HUMAN))
-        last_comment = gh.posted_comments[-1][1]
-        self.assertIn(UNCOMMITTED_CHANGE, last_comment)
-        self.assertIn("docs/dirty.md", last_comment)
+        mocks[AUTHED_FETCH].assert_not_called()
+        self.assertEqual(gh.posted_comments, [])
+        # The original park reason survives untouched.
+        self.assertEqual(
+            gh.pinned_data(self.issue_number).get(PARK_REASON),
+            PARK_AGENT_QUESTION,
+        )
+
+    def test_divergence_does_not_repark(
+        self,
+    ) -> None:
+        # Same shape for a behind-remote tick.
+        gh, issue = self._seeded(park_reason=PARK_DIRTY)
+        mocks = self._run_documenting(
+            gh,
+            issue,
+            run_agent=_agent(),
+            push_branch=True,
+            head_shas=[],
+            branch_ahead_behind=(0, 3),
+        )
+
+        mocks["_branch_ahead_behind"].assert_not_called()
+        self.assertEqual(gh.posted_comments, [])
+        # Park reason is preserved -- we did NOT clobber it with
+        # `diverged_branch`.
+        self.assertEqual(
+            gh.pinned_data(self.issue_number).get(PARK_REASON),
+            PARK_DIRTY,
+        )

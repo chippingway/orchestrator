@@ -1,23 +1,46 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Documenting run."""
+"""Getting the branch ready, and the three shapes one docs pass arrives in.
+
+The remote-tracking ref is refreshed before the ahead/behind check because the
+eventual push is `--force-with-lease` against the LOCAL view of the remote: a
+stale ref reads "in sync" and the lease then clobbers a PR head somebody else
+moved. Being behind is refused outright for the same reason.
+
+Which shape runs is decided in priority order. An awaiting-human park belongs
+to the human's reply, and it reruns the FULL documentation prompt rather than a
+followup built from the new comments alone -- a `fetch_failed` or `agent_timeout`
+resume may be the first time this session sees the docs contract at all, and a
+session that only remembers `DOCS: NO_CHANGE` from an earlier spawn would
+advance the issue without ever checking the diff. A worktree already ahead of
+the remote is a push an earlier tick was interrupted before finishing, so it
+synthesizes a result and spawns nothing. Everything else is a fresh pass.
+
+Both spawning shapes persist `docs_checked_sha` BEFORE the run, because a
+no-change verdict afterwards is only trustworthy against the head the agent was
+actually handed, and both go through the shared dev resume rather than a bare
+agent call so the docs pass participates in session rotation and overflow
+recovery instead of replaying the whole transcript untracked.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _documenting_state as _state
-from orchestrator.stages import documenting as _owner
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator import config
+from orchestrator._workflow_state import log
+from orchestrator.agents import AgentResult
+from orchestrator.github.comments import filter_trusted
+from orchestrator.workflow.engine import comments as _comments, prompts as _prompts
+from orchestrator.workflow.stages.documenting import (
+    models as _models,
+    parks as _parks,
+    state as _state,
+)
+from orchestrator.workflow.stages.implementing import (
+    resume as _dev_resume,
+    session_read as _dev_session_read,
+)
 
-_DocumentingContext = _owner._DocumentingContext
-_DocumentingRun = _owner._DocumentingRun
-AgentResult = _owner.AgentResult
-config = _owner.config
-filter_trusted = _owner.filter_trusted
-_AWAITING_HUMAN = _state._AWAITING_HUMAN
-_LAST_ACTION_COMMENT_ID = _state._LAST_ACTION_COMMENT_ID
 
-
-def _prepare_documenting_worktree(ctx: _DocumentingContext, wt):
+def _prepare_documenting_worktree(ctx: _models._DocumentingContext, wt):
     """Refresh `<remote>/<branch>` and guard against a diverged worktree.
 
     Refresh the remote-tracking ref BEFORE the ahead/behind check. A
@@ -41,11 +64,11 @@ def _prepare_documenting_worktree(ctx: _DocumentingContext, wt):
         cwd=wt,
     )
     if fetch_branch.returncode != 0:
-        _wf.log.error(
+        log.error(
             "issue=#%d documenting branch fetch failed: %s",
             ctx.issue.number, (fetch_branch.stderr or "").strip(),
         )
-        _owner._park_documenting(
+        _parks._park_documenting(
             ctx,
             f"{config.HITL_MENTIONS} `git fetch {spec.remote_name} "
             f"{branch}` failed during documenting; see orchestrator logs.",
@@ -59,7 +82,7 @@ def _prepare_documenting_worktree(ctx: _DocumentingContext, wt):
         # we never saw, so pushing local state (even a clean recovery
         # push) would overwrite them. Refuse to act -- the same shape
         # `_handle_resolving_conflict`'s diverged-branch guard uses.
-        _owner._park_documenting(
+        _parks._park_documenting(
             ctx,
             f"{config.HITL_MENTIONS} worktree on `{branch}` is {ahead} "
             f"ahead and {behind} behind `{spec.remote_name}/{branch}`; "
@@ -72,7 +95,7 @@ def _prepare_documenting_worktree(ctx: _DocumentingContext, wt):
     return ahead
 
 
-def _documentation_prompt(ctx: _DocumentingContext) -> str:
+def _documentation_prompt(ctx: _models._DocumentingContext) -> str:
     """Build the FULL documentation prompt (issue body + recent comments +
     the `DOCS: NO_CHANGE` marker contract) shared by the resume and fresh
     docs runs."""
@@ -82,7 +105,7 @@ def _documentation_prompt(ctx: _DocumentingContext) -> str:
     )
 
 
-def _resume_documenting_dev(ctx: _DocumentingContext, wt, ahead: int):
+def _resume_documenting_dev(ctx: _models._DocumentingContext, wt, ahead: int):
     """Awaiting-human resume: rerun the FULL documentation prompt.
 
     The generic `_resume_developer_on_human_reply` helper builds the followup
@@ -108,12 +131,15 @@ def _resume_documenting_dev(ctx: _DocumentingContext, wt, ahead: int):
     # consumed, so an outsider reply trailing a trusted one is left unconsumed;
     # an all-untrusted batch reads as "no new reply".
     new_comments = filter_trusted(
-        ctx.gh.comments_after(ctx.issue, ctx.state.get(_LAST_ACTION_COMMENT_ID)),
+        ctx.gh.comments_after(
+            ctx.issue, ctx.state.get(_state._LAST_ACTION_COMMENT_ID),
+        ),
     )
     if not new_comments:
         return None
     ctx.state.set(
-        _LAST_ACTION_COMMENT_ID, max(comment.id for comment in new_comments),
+        _state._LAST_ACTION_COMMENT_ID,
+        max(comment.id for comment in new_comments),
     )
     # Anchor `before_sha` from the just-fetched PR worktree BEFORE the resume
     # so the post-spawn check sees a real difference if (and only if) the
@@ -122,15 +148,17 @@ def _resume_documenting_dev(ctx: _DocumentingContext, wt, ahead: int):
     # on this resume relies on this watermark to identify the confirmed commit.
     before_sha = _wf._head_sha(wt)
     ctx.state.set("docs_checked_sha", before_sha or "")
-    wt, documentation_result, paused = _wf._resume_dev_with_text(
-        ctx.gh, ctx.spec, ctx.issue, ctx.state, _owner._documentation_prompt(ctx),
+    wt, documentation_result, paused = _dev_resume._resume_dev_with_text(
+        ctx.gh, ctx.spec, ctx.issue, ctx.state, _documentation_prompt(ctx),
         followup_has_tracked_repos=True,
         pause_guard=True,
     )
-    return _DocumentingRun(wt, documentation_result, before_sha, False, paused, ahead)
+    return _models._DocumentingRun(
+        wt, documentation_result, before_sha, False, paused, ahead,
+    )
 
 
-def _recovered_documenting_run(ctx: _DocumentingContext, wt, ahead: int):
+def _recovered_documenting_run(ctx: _models._DocumentingContext, wt, ahead: int):
     """Recovered worktree: a previous tick committed docs but crashed before
     the push. Synthesize a non-interrupted result and skip the agent spawn so
     the unified commit/dirty/push disposition ships it.
@@ -142,14 +170,12 @@ def _recovered_documenting_run(ctx: _DocumentingContext, wt, ahead: int):
     against the still-valid approved body. Empty `before_sha` makes the
     post-spawn check treat the recovered HEAD as a fresh commit.
     """
-    from orchestrator import workflow as _wf
-
-    _wf.log.info(
+    log.info(
         "issue=#%d documenting: %d recovered docs commit(s); "
         "skipping agent spawn and pushing",
         ctx.issue.number, ahead,
     )
-    _, _, _, dev_sid = _wf._read_dev_session(ctx.state)
+    _, _, _, dev_sid = _dev_session_read._read_dev_session(ctx.state)
     documentation_result = AgentResult(
         session_id=dev_sid,
         last_message=(
@@ -162,10 +188,12 @@ def _recovered_documenting_run(ctx: _DocumentingContext, wt, ahead: int):
     )
     # No agent ran this tick (dispatch already gated the label at tick start),
     # so there is no live-pause window to observe here.
-    return _DocumentingRun(wt, documentation_result, "", True, False, ahead)
+    return _models._DocumentingRun(
+        wt, documentation_result, "", True, False, ahead,
+    )
 
 
-def _fresh_documenting_run(ctx: _DocumentingContext, wt, ahead: int):
+def _fresh_documenting_run(ctx: _models._DocumentingContext, wt, ahead: int):
     """Fresh docs pass: snapshot `before_sha`, persist the pre-spawn
     watermarks, and resume the dev session with the docs prompt.
 
@@ -183,18 +211,20 @@ def _fresh_documenting_run(ctx: _DocumentingContext, wt, ahead: int):
 
     before_sha = _wf._head_sha(wt)
     ctx.state.set("docs_checked_sha", before_sha or "")
-    dev_spec, _, _, _ = _wf._read_dev_session(ctx.state)
+    dev_spec, _, _, _ = _dev_session_read._read_dev_session(ctx.state)
     ctx.state.set("dev_agent", dev_spec)
-    wt, documentation_result, paused = _wf._resume_dev_with_text(
-        ctx.gh, ctx.spec, ctx.issue, ctx.state, _owner._documentation_prompt(ctx),
+    wt, documentation_result, paused = _dev_resume._resume_dev_with_text(
+        ctx.gh, ctx.spec, ctx.issue, ctx.state, _documentation_prompt(ctx),
         followup_has_tracked_repos=True,
         pause_guard=True,
     )
     ctx.state.set("branch", ctx.branch)
-    return _DocumentingRun(wt, documentation_result, before_sha, False, paused, ahead)
+    return _models._DocumentingRun(
+        wt, documentation_result, before_sha, False, paused, ahead,
+    )
 
 
-def _run_documenting_dev(ctx: _DocumentingContext, wt, ahead: int):
+def _run_documenting_dev(ctx: _models._DocumentingContext, wt, ahead: int):
     """Run the docs pass and return its `_DocumentingRun` for disposition.
 
     Three entry shapes, in priority order:
@@ -206,8 +236,8 @@ def _run_documenting_dev(ctx: _DocumentingContext, wt, ahead: int):
     Returns a `_DocumentingRun`, or None when an awaiting-human resume finds
     no new comments and the tick should end without disposition.
     """
-    if ctx.state.get(_AWAITING_HUMAN):
-        return _owner._resume_documenting_dev(ctx, wt, ahead)
+    if ctx.state.get(_state._AWAITING_HUMAN):
+        return _resume_documenting_dev(ctx, wt, ahead)
     if ahead > 0:
-        return _owner._recovered_documenting_run(ctx, wt, ahead)
-    return _owner._fresh_documenting_run(ctx, wt, ahead)
+        return _recovered_documenting_run(ctx, wt, ahead)
+    return _fresh_documenting_run(ctx, wt, ahead)

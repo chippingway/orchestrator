@@ -5,20 +5,20 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-from tests.documenting_drift_recovery_test_support import (
+from tests.workflow.stages.documenting.documenting_drift_recovery_test_support import (
     _assert_pending_state,
     _assert_reset_failure_park,
     _assert_silent_pending,
     _run_drift_failure,
     _seed_pending_unwind,
 )
-from tests.documenting_drift_test_support import (
+from tests.workflow.stages.documenting.documenting_drift_test_support import (
     _run_with_git,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_scenario_test_support import (
+from tests.workflow.stages.documenting.documenting_scenario_test_support import (
     _DocumentingDriftFixture,
 )
 

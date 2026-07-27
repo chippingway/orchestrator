@@ -1,74 +1,33 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Documenting models."""
+"""The relabel to `in_review`, and the watermark that has to precede it.
+
+Both docs outcomes -- a pushed commit and a confirmed no-change -- leave the
+approval, squash, and PR watermarks validating wrote untouched and advance to
+`in_review`. What they cannot leave untouched is `pr_last_comment_id`. The
+awaiting-human resume advances `last_action_comment_id` past the human reply it
+fed into the docs prompt, but in_review scans `comments_after(issue,
+pr_last_comment_id)` and only falls back to `last_action_comment_id` when that
+field is None. A `pr_last_comment_id` validating seeded BEFORE the reply would
+therefore replay it as fresh PR feedback and bounce the issue to `fixing` over
+work the dev already did.
+
+The ratchet reuses validating's own seed-walk so a PR-conversation comment
+sitting between the old watermark and the consumed-through threshold is not
+swallowed: the walk stops at the first unread non-orchestrator comment on
+either surface, and the consumed-through bound applies to the issue thread
+only. `max` keeps a higher in_review watermark from regressing, and a PR fetch
+failure is best-effort -- the handoff still advances, and in_review's own
+rescan is debounced and correct on its own.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _documenting_state as _state
-from orchestrator.stages import documenting as _owner
-from orchestrator.workflow.engine import guards as _guards
+from github.Issue import Issue
 
-AgentResult = _owner.AgentResult
-Any = _owner.Any
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-WorkflowLabel = _owner.WorkflowLabel
-config = _owner.config
-dataclass = _owner.dataclass
-_PARK_REASON = _state._PARK_REASON
-
-
-@dataclass(frozen=True)
-class _DocumentingContext:
-    """The per-tick `documenting` invocation handles plus the resolved
-    `branch` and pinned `pr_number`, bundled so the drift-unwind,
-    worktree-prep, docs run, and disposition helpers thread them as a single
-    value instead of up to six positional arguments (mirrors fixing's
-    `_FixingContext`). `branch` and `pr_number` are tick-invariant once
-    `_handle_documenting`'s missing-`pr_number` guard has passed, so every
-    consumer downstream of the guards reads them off the context.
-    """
-    gh: GitHubClient
-    spec: config.RepoSpec
-    issue: Issue
-    state: PinnedState
-    branch: str
-    pr_number: Any
-
-
-@dataclass(frozen=True)
-class _DocumentingRun:
-    """The outcome of one documenting attempt: the worktree the pass ran in,
-    the agent result, the HEAD before the run, whether it was the
-    recovered-commit shortcut (no agent spawned), whether an operator paused
-    mid-run, and the worktree's ahead count vs. `<remote>/<branch>`. `ahead`
-    is threaded to the disposition so a no-change verdict over a recovered
-    commit still pushes it.
-    """
-    worktree: Any
-    agent_result: AgentResult
-    before_sha: str
-    recovered: bool
-    paused: bool
-    ahead: int
-
-
-def _park_documenting(
-    ctx: _DocumentingContext, message: str, reason: str,
-) -> None:
-    """Park the docs pass awaiting a human and re-stamp the durable
-    `park_reason`.
-
-    `_park_awaiting_human` clears `park_reason` by contract; re-set the
-    durable tag so future ticks / dashboards can branch on it -- documenting's
-    awaiting-human resume also reads it to distinguish stale park flags after
-    a relabel. Writes pinned state; the caller returns unconditionally.
-    """
-    _guards._park_awaiting_human(
-        ctx.gh, ctx.issue, ctx.state, message, reason=reason,
-    )
-    ctx.state.set(_PARK_REASON, reason)
-    ctx.gh.write_pinned_state(ctx.issue, ctx.state)
+from orchestrator._workflow_state import log
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _ratchet_in_review_watermark_for_final_docs(
@@ -111,7 +70,7 @@ def _ratchet_in_review_watermark_for_final_docs(
     try:
         pr = gh.get_pr(int(pr_number))
     except Exception as error:
-        _wf.log.warning(
+        log.warning(
             "issue=#%s could not fetch PR #%s to ratchet "
             "`pr_last_comment_id` on the final-docs handoff: %s",
             issue.number, pr_number, error,
@@ -140,7 +99,7 @@ def _advance_after_docs_push(
     in-review issue-comment watermark ratcheted past anything the
     awaiting-human resume already consumed.
     """
-    _owner._ratchet_in_review_watermark_for_final_docs(gh, issue, state)
+    _ratchet_in_review_watermark_for_final_docs(gh, issue, state)
     gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
 
 
@@ -153,5 +112,5 @@ def _advance_after_docs_no_change(
     issue-comment watermark past any issue-thread reply the
     awaiting-human resume already consumed, and advance to `in_review`.
     """
-    _owner._ratchet_in_review_watermark_for_final_docs(gh, issue, state)
+    _ratchet_in_review_watermark_for_final_docs(gh, issue, state)
     gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)

@@ -6,11 +6,11 @@ from unittest.mock import MagicMock
 
 from orchestrator import workflow
 
-from tests.documenting_drift_test_support import (
+from tests.workflow.stages.documenting.documenting_drift_test_support import (
     DriftRunCapture,
     _run_with_git,
 )
-from tests.documenting_test_support import _branch
+from tests.workflow.stages.documenting.documenting_test_support import _branch
 from tests.fakes import make_issue
 
 DOCUMENTING = "documenting"

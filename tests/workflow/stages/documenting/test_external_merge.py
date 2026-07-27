@@ -5,18 +5,22 @@ from __future__ import annotations
 import unittest
 
 
+from tests.fakes import (
+    FakeGitHubClient,
+    FakePR,
+    FakePRRef,
+    make_issue,
+)
 from tests.workflow_helpers import (
+    _TEST_SPEC,
     _agent,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_scenario_test_support import (
-    _ContinueDocumentingFixture,
-)
-from tests.documenting_assertion_test_support import (
-    _agent_prompt,
-    _issue_comment_text,
+from tests.workflow.stages.documenting.documenting_test_support import (
+    _branch,
+    _DocumentingWorkflowMixin,
 )
 
 DOCUMENTING = "documenting"
@@ -135,78 +139,51 @@ PARK_COMMENT_ID = 950
 HUMAN_REPLY_ID = 1100
 
 
-class HandleDocumentingContinueCommandTest(unittest.TestCase, _ContinueDocumentingFixture):
-    """`/orchestrator continue` on a parked `documenting` issue is an operator
-    command, not requirements drift (issue #729, the #717 shape). A retryable
-    session-failure park reruns the docs pass without the spurious "issue body
-    changed; routing back to `validating`" notice; a park needing a real answer
-    refuses."""
+class HandleDocumentingExternalMergeTest(unittest.TestCase, _DocumentingWorkflowMixin):
+    """A human merged the PR before the docs pass ran. The handler must
+    short-circuit to `done` without fetching the branch or spawning the
+    docs agent.
+    """
 
-    def test_bare_continue_reruns_without_drift(self) -> None:
-        # The #717 shape: parked `agent_silent` docs pass, human posts exactly
-        # `/orchestrator continue`. The docs pass reruns (full documentation
-        # prompt) with no "issue body changed" / "routing back to validating"
-        # notice, and the issue is NOT rerouted to `validating`.
-        gh, issue = self._seed(
-            CONTINUE_ISSUE_NUMBER,
-            park_reason=PARK_AGENT_SILENT,
+    def test_external_merge_finalizes_to_done(self) -> None:
+        gh = FakeGitHubClient()
+        issue = make_issue(EXTERNAL_MERGE_ISSUE_NUMBER, label=DOCUMENTING)
+        gh.add_issue(issue)
+        pr = FakePR(
+            number=EXTERNAL_MERGE_PR_NUMBER,
+            head_branch=_branch(EXTERNAL_MERGE_ISSUE_NUMBER),
+            head=FakePRRef(sha="cafe1234"),
+            merged=True,
+            state="closed",
         )
-
-        mocks = self._run_documenting(
-            gh,
-            issue,
-            run_agent=_agent(
-                session_id=DEV_SESSION,
-                last_message="docs: documented the flag",
-            ),
-            push_branch=True,
-            head_shas=[SHA_BEFORE, SHA_AFTER],
-            branch_ahead_behind=(0, 0),
+        gh.add_pr(pr)
+        gh.seed_state(
+            EXTERNAL_MERGE_ISSUE_NUMBER,
+            pr_number=EXTERNAL_MERGE_PR_NUMBER,
+            branch=_branch(EXTERNAL_MERGE_ISSUE_NUMBER),
+            dev_agent="claude",
+            dev_session_id=DEV_SESSION,
         )
-
-        # The docs pass reran on the full documentation prompt.
-        mocks[RUN_AGENT].assert_called_once()
-        prompt = _agent_prompt(mocks)
-        self.assertIn("DOCS: NO_CHANGE", prompt)
-        # No drift notice, and no reroute to validating.
-        comment_text = _issue_comment_text(gh, CONTINUE_ISSUE_NUMBER)
-        self.assertNotIn(USER_CONTENT_CHANGED, comment_text)
-        self.assertNotIn("routing back to", comment_text)
-        self.assertNotIn(
-            (CONTINUE_ISSUE_NUMBER, VALIDATING),
-            gh.label_history,
-        )
-        # The commit advanced the issue to in_review; command consumed.
-        self.assertIn((CONTINUE_ISSUE_NUMBER, IN_REVIEW), gh.label_history)
-        self.assertEqual(
-            gh.pinned_data(CONTINUE_ISSUE_NUMBER).get(LAST_ACTION_COMMENT_ID),
-            CONTINUE_COMMENT_ID,
-        )
-
-    def test_bare_continue_on_question_park_refuses(self) -> None:
-        # A real docs-agent question parks with `park_reason=None`. A
-        # content-free continue carries no answer, so refuse and stay parked
-        # -- no docs rerun, no reroute.
-        gh, issue = self._seed(QUESTION_CONTINUE_ISSUE_NUMBER, park_reason=None)
 
         mocks = self._run_documenting(
             gh,
             issue,
             run_agent=_agent(),
-            branch_ahead_behind=(0, 0),
         )
 
-        mocks[RUN_AGENT].assert_not_called()
         self.assertIn(
-            "needs your actual guidance",
-            _issue_comment_text(gh, QUESTION_CONTINUE_ISSUE_NUMBER),
-        )
-        self.assertNotIn(
-            (QUESTION_CONTINUE_ISSUE_NUMBER, VALIDATING),
+            (EXTERNAL_MERGE_ISSUE_NUMBER, "done"),
             gh.label_history,
         )
-        self.assertNotIn(
-            (QUESTION_CONTINUE_ISSUE_NUMBER, IN_REVIEW),
-            gh.label_history,
+        self.assertIn(
+            "merged_at",
+            gh.pinned_data(EXTERNAL_MERGE_ISSUE_NUMBER),
         )
-        self.assertTrue(gh.pinned_data(QUESTION_CONTINUE_ISSUE_NUMBER).get(AWAITING_HUMAN))
+        self.assertTrue(issue.closed)
+        mocks[RUN_AGENT].assert_not_called()
+        mocks["_cleanup_terminal_branch"].assert_called_once_with(
+            gh,
+            _TEST_SPEC,
+            EXTERNAL_MERGE_ISSUE_NUMBER,
+            branch=_branch(EXTERNAL_MERGE_ISSUE_NUMBER),
+        )

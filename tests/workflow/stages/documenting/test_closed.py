@@ -3,17 +3,24 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock
 
 
+from tests.fakes import (
+    FakeGitHubClient,
+    FakePR,
+    FakePRRef,
+    make_issue,
+)
 from tests.workflow_helpers import (
+    _TEST_SPEC,
     _agent,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_scenario_test_support import (
-    _ParkedDocumentingFixture,
+from tests.workflow.stages.documenting.documenting_test_support import (
+    _branch,
+    _DocumentingWorkflowMixin,
 )
 
 DOCUMENTING = "documenting"
@@ -132,82 +139,52 @@ PARK_COMMENT_ID = 950
 HUMAN_REPLY_ID = 1100
 
 
-class HandleDocumentingParkedSilenceTest(unittest.TestCase, _ParkedDocumentingFixture):
-    """Already-parked issues must not re-post the park comment on
-    every poll. The fetch + behind branches in particular would
-    otherwise spam the issue with `fetch_failed` / `diverged_branch`
-    notices each tick while the operator drafts a reply."""
+class HandleDocumentingClosedIssueTest(unittest.TestCase, _DocumentingWorkflowMixin):
+    """Closed `documenting` issues yielded by the new closed-issue sweep
+    must NOT spawn the docs agent. The handler flips to `rejected`
+    after the external-merge finalize returns False; the closed-PR-
+    without-merge variant additionally runs branch cleanup.
+    """
 
-    def test_no_comments_skip_fetch(
-        self,
-    ) -> None:
-        gh, issue = self._seeded(park_reason=PARK_AGENT_QUESTION)
+    def test_closed_pr_runs_cleanup(self) -> None:
+        gh = FakeGitHubClient()
+        issue = make_issue(CLOSED_ISSUE_NUMBER, label=DOCUMENTING)
+        issue.closed = True
+        gh.add_issue(issue)
+        pr = FakePR(
+            number=CLOSED_PR_NUMBER,
+            head_branch=_branch(CLOSED_ISSUE_NUMBER),
+            head=FakePRRef(sha="cafe1234"),
+            merged=False,
+            state="closed",
+        )
+        gh.add_pr(pr)
+        gh.seed_state(
+            CLOSED_ISSUE_NUMBER,
+            pr_number=CLOSED_PR_NUMBER,
+            branch=_branch(CLOSED_ISSUE_NUMBER),
+            dev_agent="claude",
+            dev_session_id=DEV_SESSION,
+        )
+
         mocks = self._run_documenting(
             gh,
             issue,
             run_agent=_agent(),
-            push_branch=True,
-            head_shas=[],
-            branch_ahead_behind=(0, 0),
         )
 
-        # No fetch, no agent spawn, no posted comments. The original
-        # park is preserved verbatim.
-        mocks[AUTHED_FETCH].assert_not_called()
-        mocks["_ensure_pr_worktree"].assert_not_called()
+        self.assertIn(
+            (CLOSED_ISSUE_NUMBER, "rejected"),
+            gh.label_history,
+        )
+        self.assertIn(
+            "closed_without_merge_at",
+            gh.pinned_data(CLOSED_ISSUE_NUMBER),
+        )
         mocks[RUN_AGENT].assert_not_called()
-        self.assertEqual(gh.posted_comments, [])
-        self.assertEqual(gh.posted_pr_comments, [])
-        self.assertEqual(gh.write_state_calls, 0)
-
-    def test_fetch_error_does_not_repark(
-        self,
-    ) -> None:
-        # If the fetch would have failed on this tick, the parked
-        # issue must still stay silent -- the fetch call must not
-        # even fire.
-        gh, issue = self._seeded(park_reason=PARK_AGENT_QUESTION)
-        mocks = self._run_documenting(
+        mocks["_cleanup_terminal_branch"].assert_called_once_with(
             gh,
-            issue,
-            run_agent=_agent(),
-            push_branch=True,
-            head_shas=[],
-            branch_ahead_behind=(0, 0),
-            authed_fetch_result=MagicMock(
-                returncode=1,
-                stdout="",
-                stderr="would-fail",
-            ),
-        )
-
-        mocks[AUTHED_FETCH].assert_not_called()
-        self.assertEqual(gh.posted_comments, [])
-        # The original park reason survives untouched.
-        self.assertEqual(
-            gh.pinned_data(self.issue_number).get(PARK_REASON),
-            PARK_AGENT_QUESTION,
-        )
-
-    def test_divergence_does_not_repark(
-        self,
-    ) -> None:
-        # Same shape for a behind-remote tick.
-        gh, issue = self._seeded(park_reason=PARK_DIRTY)
-        mocks = self._run_documenting(
-            gh,
-            issue,
-            run_agent=_agent(),
-            push_branch=True,
-            head_shas=[],
-            branch_ahead_behind=(0, 3),
-        )
-
-        mocks["_branch_ahead_behind"].assert_not_called()
-        self.assertEqual(gh.posted_comments, [])
-        # Park reason is preserved -- we did NOT clobber it with
-        # `diverged_branch`.
-        self.assertEqual(
-            gh.pinned_data(self.issue_number).get(PARK_REASON),
-            PARK_DIRTY,
+            _TEST_SPEC,
+            CLOSED_ISSUE_NUMBER,
+            branch=_branch(CLOSED_ISSUE_NUMBER),
         )

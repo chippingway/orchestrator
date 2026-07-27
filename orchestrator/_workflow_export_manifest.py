@@ -124,10 +124,6 @@ EXPORTS = (
         (("_handle_resolving_conflict", "_handle_resolving_conflict"),),
     ),
     *export_group(
-        "orchestrator.stages.documenting",
-        (("_handle_documenting", "_handle_documenting"),),
-    ),
-    *export_group(
         "orchestrator.stages.fixing",
         (("_handle_fixing", "_handle_fixing"),),
     ),
@@ -332,6 +328,10 @@ EXPORTS = (
     *export_group(
         "orchestrator.workflow.stages.decomposition.umbrella",
         (("_handle_umbrella", "_handle_umbrella"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.documenting.handler",
+        (("_handle_documenting", "_handle_documenting"),),
     ),
     *export_group(
         "orchestrator.workflow.stages.implementing.handler",

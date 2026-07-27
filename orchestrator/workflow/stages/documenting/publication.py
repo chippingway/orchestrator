@@ -1,15 +1,32 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Documenting persistence."""
+"""What a docs pass leaves on the PR, and the order it is written in.
+
+Both surviving outcomes end the same way -- stamp the watermarks, post the
+notice, hand off -- but the push comes first and gates everything after it. A
+failed push parks instead of advancing, because a `docs_verdict` stamped over
+a commit that never reached the remote would tell the next tick the docs are
+published when the reviewer would never see them in the diff. That is also why
+a `DOCS: NO_CHANGE` verdict over a recovered commit still routes through the
+push path rather than the clean one.
+
+`docs_checked_sha` records the head the verdict was formed against and the
+silent-park counter is reset alongside it, so a park streak that predates a
+successful pass cannot later rotate a healthy session. The PR notice itself is
+best-effort: a comment failure must not strand an issue whose branch is already
+published and whose state is already stamped.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import documenting as _owner
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import messages as _messages
-
-_DocumentingContext = _owner._DocumentingContext
-PinnedState = _owner.PinnedState
-config = _owner.config
+from orchestrator import config
+from orchestrator._workflow_state import log
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import comments as _comments, messages as _messages
+from orchestrator.workflow.stages.documenting import (
+    handoff as _handoff,
+    models as _models,
+    parks as _parks,
+)
 
 
 def _stamp_docs_verdict(
@@ -23,22 +40,20 @@ def _stamp_docs_verdict(
     state.set("silent_park_count", 0)
 
 
-def _post_docs_notice(ctx: _DocumentingContext, note: str) -> None:
+def _post_docs_notice(ctx: _models._DocumentingContext, note: str) -> None:
     """Post a docs-pass notice on the PR, best-effort (a comment failure must
     not block the handoff)."""
-    from orchestrator import workflow as _wf
-
     try:
         _comments._post_pr_comment(ctx.gh, int(ctx.pr_number), ctx.state, note)
     except Exception:
-        _wf.log.exception(
+        log.exception(
             "issue=#%s could not post docs notice to PR #%s",
             ctx.issue.number, ctx.pr_number,
         )
 
 
 def _push_docs_and_advance(
-    ctx: _DocumentingContext, wt, after_sha: str, notice: str,
+    ctx: _models._DocumentingContext, wt, after_sha: str, notice: str,
 ) -> None:
     """Push docs commit(s) and hand off to `in_review`.
 
@@ -50,16 +65,16 @@ def _push_docs_and_advance(
     from orchestrator import workflow as _wf
 
     if not _wf._push_branch(ctx.spec, wt, ctx.branch):
-        _owner._park_documenting(
+        _parks._park_documenting(
             ctx,
             f"{config.HITL_MENTIONS} git push failed; see "
             "orchestrator logs.",
             "push_failed",
         )
         return
-    _owner._stamp_docs_verdict(ctx.state, after_sha, "updated")
-    _owner._post_docs_notice(ctx, notice)
-    _owner._advance_after_docs_push(ctx.gh, ctx.issue, ctx.state)
+    _stamp_docs_verdict(ctx.state, after_sha, "updated")
+    _post_docs_notice(ctx, notice)
+    _handoff._advance_after_docs_push(ctx.gh, ctx.issue, ctx.state)
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 
 
@@ -75,7 +90,7 @@ def _documenting_no_change_note(body: str) -> str:
 
 
 def _route_documenting_no_change(
-    ctx: _DocumentingContext, wt, ahead: int, after_sha: str, body: str,
+    ctx: _models._DocumentingContext, wt, ahead: int, after_sha: str, body: str,
 ) -> None:
     """Route a `DOCS: NO_CHANGE` verdict to `in_review`.
 
@@ -87,7 +102,7 @@ def _route_documenting_no_change(
     pinned state; the caller returns unconditionally.
     """
     if ahead > 0:
-        _owner._push_docs_and_advance(
+        _push_docs_and_advance(
             ctx, wt, after_sha,
             ":books: documenting pass: pushed recovered docs "
             "commit(s) after no-change confirmation.",
@@ -99,9 +114,9 @@ def _route_documenting_no_change(
     # there leaves it correct); setting it here too makes the post-condition
     # explicit and covers any future entry path that bypasses them.
     # `after_sha == before_sha` in this branch by construction (no commit).
-    _owner._stamp_docs_verdict(ctx.state, after_sha, "no_change")
-    _owner._post_docs_notice(ctx, _owner._documenting_no_change_note(body))
-    _owner._advance_after_docs_no_change(ctx.gh, ctx.issue, ctx.state)
+    _stamp_docs_verdict(ctx.state, after_sha, "no_change")
+    _post_docs_notice(ctx, _documenting_no_change_note(body))
+    _handoff._advance_after_docs_no_change(ctx.gh, ctx.issue, ctx.state)
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 
 
