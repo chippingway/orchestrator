@@ -730,8 +730,10 @@ those are the seams the tick tests replace to drive a pass without a git remote 
 `patch.object(workflow, ...)` stays the way to intercept either.
 
 Stage-private helpers stay private to the stage that owns them (`_bump_in_review_watermarks`,
-`_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`
-are re-exported from the facade because more than one stage reaches for them.
+`_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). A helper more than one stage reaches for is
+re-exported from the facade as well, and that export is the edge an unmigrated caller resolves through; between
+migrated stages the borrower names the lender's owner instead, so fixing's quiet window imports `_comment_created_at`
+from `in_review/watermarks.py` even though `workflow` answers with the same object.
 
 ## Workflow labels
 
