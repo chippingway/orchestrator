@@ -7,6 +7,7 @@ from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import terminals as _terminals
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -120,10 +121,8 @@ def _finalize_validating_terminal(
     back to `in_review`. The in_review / fixing handlers carry equivalent
     terminal checks.
     """
-    from orchestrator import workflow as _wf
-
-    if _wf._finalize_if_pr_merged(gh, spec, issue, state):
+    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
         return True
-    if _wf._finalize_if_issue_closed(gh, spec, issue, state):
+    if _terminals._finalize_if_issue_closed(gh, spec, issue, state):
         return True
     return False

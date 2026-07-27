@@ -141,6 +141,10 @@ orchestrator/
                         the commit-style / foreground-only notes, the
                         empty-body placeholders, and the single-decision
                         comment
+      terminals.py      how an issue stops being worked: the merged, rejected,
+                        and human-closed arcs with their stamps, receipts,
+                        events, issue close, and branch cleanup, plus the
+                        PR-holding drain and the two entry-time finalizers
       usage.py          the tracked agent run: the request model, the audit
                         spawn/exit pair, the analytics record and its
                         configured-model fallback, the `skill_triggered`
@@ -154,7 +158,7 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
-  _workflow_*.py        tick/scheduling, dispatch, and terminal-routing leaves
+  _workflow_*.py        tick/scheduling and dispatch leaves
   workflow_drift.py     lazy user-content-drift compatibility facade
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
@@ -327,8 +331,9 @@ bind the same way — the creators reach `git.commands`, `git.locks`, `git.authe
 `paths` / `recovery` siblings directly, the decomposer lifecycle resolves its own path helper, and `terminal`
 composes its local teardown from `cleanup` — so a patch that has to intercept the git plumbing, the authenticated
 fetch, the new-commit probe, or the worktree path one of them runs against targets `orchestrator.git.commands` /
-`orchestrator.git.authentication` / the owner module, not `worktree_lifecycle`. The question stage and the
-review-terminal actions call `terminal._cleanup_question_worktree` / `terminal._cleanup_terminal_branch` directly,
+`orchestrator.git.authentication` / the owner module, not `worktree_lifecycle`. The question stage and
+`workflow/engine/terminals.py` call `terminal._cleanup_question_worktree` / `terminal._cleanup_terminal_branch`
+directly — the terminal owner reading its branch name off `worktrees.paths` first —
 so a mock for either one lands on the owner even though both names stay forwarded — straight off that owner — on
 `workflow`, `worktrees`, and `worktree_lifecycle` for compatibility. `_ensure_worktree`, `_ensure_pr_worktree`,
 `_has_new_commits`, and the decomposer helpers themselves stay patchable by name on `worktree_lifecycle`,
@@ -495,6 +500,24 @@ subpackage, so binding either at module scope would point that edge back at itse
 facade, not `workflow`, the target for a patch that has to intercept the dispatch. Either facade keeps answering
 once it migrates to `workflow/stages/`, because the forwarder it leaves behind reads the handler back off the new
 owner.
+
+`workflow/engine/terminals.py` is bound the same way. It owns how an issue stops being worked. Three conditions
+end one — the linked PR merged (`done`), the linked PR closed unmerged (`rejected`), and a human closed the issue
+while its PR is still open (`rejected` too) — and what they share is the tail rather than the condition: a terminal
+stamp (`merged_at` / `closed_without_merge_at`), a terminal label, the cumulative usage receipt, and one
+`write_pinned_state`, in that order, so the receipt's comment id rides the state the stamp is written with. Branch
+cleanup sits outside that tail on purpose: it runs on the two arcs where the PR is gone and the branch is dead
+weight, and is withheld on the open-PR arc — along with its `pr_closed_without_merge` emit — so an operator can
+still reopen or salvage what the closed issue left behind. The two entry points differ only in who fetched the PR:
+`_drain_review_pr_terminals` takes one the caller already holds (`in_review`, `fixing`, `resolving_conflict`, with
+`pr=None` a deliberate no-op so fixing's own fetch failure passes through), while `_finalize_if_pr_merged` and
+`_finalize_if_issue_closed` fetch their own at handler entry for `implementing`, `documenting`, `validating`, and
+the umbrella / blocked child aggregation — which is why each owns its fetch-failure answer, the merged check
+leaving the issue alone and the closed-issue check deferring the tick so a transient failure cannot label a
+merged-PR issue `rejected`. Its own helpers call each other in-module and reach `usage.py` for the stamp and the
+receipt and `git.worktrees` for the branch name and the cleanup, and every stage leaf that drains or finalizes a
+terminal imports the owner, so a patch that has to intercept an arc, a drain, or an entry-time finalize targets
+`orchestrator.workflow.engine.terminals`; `workflow` still resolves the whole group to the owner's exact object.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

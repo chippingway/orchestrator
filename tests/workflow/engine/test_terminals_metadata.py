@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from tests import workflow_drain_test_support as support
+from tests.workflow.engine import terminals_test_support as support
 
 
 class DrainReviewPrMetadataTest(unittest.TestCase, support._DrainTestMixin):

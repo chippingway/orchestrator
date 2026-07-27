@@ -62,18 +62,25 @@ orchestrator process is stateless.
   because the handler's own snapshot predates the run -- beside the awaiting-human park that
   publishes one instead: its HITL comment, `awaiting_human` flag, cleared park reason,
   action-comment watermark ratchet, and `park_awaiting_human` event, with the pinned-state write
-  left to the handler in all three cases -- and over the `workflow/engine/pickup.py` owner closing
-  the subpackage: the two decisions an unlabeled issue's first tick makes -- the
+  left to the handler in all three cases -- and over the `workflow/engine/pickup.py` owner beside
+  them: the two decisions an unlabeled issue's first tick makes -- the
   case-insensitive `ALLOWED_ISSUE_AUTHORS` filter that answers whether the orchestrator picks it up
   at all, and the `DECOMPOSE` switch that picks `decomposing` or the legacy straight-to-implementing
   route -- and the four writes both starts publish in one order: the greeting whose id anchors
   `pickup_comment_id`, the `user_content_hash` baseline computed with that id filtered out, the
   workflow label, and the pinned state, with the chosen stage handler called in the same tick
-  through a call-time import of its `orchestrator/stages/` facade -- and over the empty `workflow/stages/` package
-  beside that subpackage, the destination the per-label stage facades migrate to one at a time: it
-  binds nothing, a migrated stage keeps the lazy hooks it already publishes, and the
-  `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading every name back off
-  the owner), per-stage
+  through a call-time import of its `orchestrator/stages/` facade -- and over the
+  `workflow/engine/terminals.py` owner closing the subpackage: the three arcs an issue stops on --
+  merged PR, PR closed unmerged, and a human-closed issue over an open PR -- sharing one tail of
+  terminal stamp, terminal label, usage receipt, and single pinned-state write, with the `pr_merged` /
+  `pr_closed_without_merge` payloads, the issue close, and the local + remote branch cleanup the two
+  PR-gone arcs alone earn, reached either through the drain the PR-holding stages hand their own PR
+  to or through the pair of entry-time finalizers that fetch their own and answer a failed fetch by
+  leaving the issue alone and by deferring the tick respectively -- and over the empty
+  `workflow/stages/` package beside that subpackage, the destination the per-label stage facades
+  migrate to one at a time: it binds nothing, a migrated stage keeps the lazy hooks it already
+  publishes, and the `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading
+  every name back off the owner), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -206,8 +213,7 @@ orchestrator process is stateless.
   `tests/test_workflow_backlog_routing.py`, `tests/test_workflow_question_routing.py`,
   `tests/test_workflow_documenting_routing.py`, `tests/test_workflow_fixing_routing.py`,
   `tests/test_workflow_in_review_fresh_feedback.py`, `tests/test_workflow_community_contribution.py`,
-  `tests/test_workflow_stage_analytics.py`, `tests/test_workflow_finalize_pr_merged.py`,
-  `tests/test_workflow_drain_terminals.py`); shared helpers in `tests/workflow_helpers.py`. Configuration-package
+  `tests/test_workflow_stage_analytics.py`); shared helpers in `tests/workflow_helpers.py`. Configuration-package
   tests live in `tests/config/`, agent-package owner / import-cycle tests in `tests/agents/`, and github-package
   client (construction, token resolution, worker clone, label cache), label (vocabulary, predicates, and bootstrap),
   event, issue-query, issue-client (real-client polling and child creation), pollable-listing, pinned-state,
@@ -266,7 +272,7 @@ orchestrator process is stateless.
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
   `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state`,
   `engine/comments.py`, `engine/drift.py`, `engine/guards.py`, `engine/messages.py`, `engine/pickup.py`,
-  `engine/prompts.py`, and
+  `engine/prompts.py`, `engine/terminals.py`, and
   `engine/usage.py` owners, the guard that
   importing either the facade or the state
   owner resolves no manifest target and no
@@ -317,10 +323,20 @@ orchestrator process is stateless.
   the decomposer, reviewer, and question spawn sites, and the children, relabel, comment, session id, and
   watermark none of them may leave behind (`test_guards_paused.py`); the per-stage `_paused` modules and each
   stage's own interrupted cases keep the dispositions those refusals are wrapped in. The pickup owner's
-  coverage closes the directory: the decompose-off route to implementing, the allowlist's silent skip and
+  coverage follows: the decompose-off route to implementing, the allowlist's silent skip and
   its case-insensitive and empty-list matches, the start each `DECOMPOSE` setting selects on the owner, the
   label and anchors each start has already published by the time it dispatches the stage owner in the same
-  tick, and the facade that still forwards its five names (`test_pickup.py`). The mirrored
+  tick, and the facade that still forwards its five names (`test_pickup.py`). The terminal owner's
+  coverage closes the directory: the merged, closed-unmerged, and human-closed arcs with the stamp, label,
+  event payload, issue close, and branch cleanup each earns (`test_terminals_drain.py`), the two states that
+  fire no arc at all -- a `None` PR and an open PR under an open issue (`test_terminals_no_op.py`), the
+  already-closed issue a merged arc must not re-close and the tracked receipt every arc posts before its
+  write (`test_terminals_receipts.py`), the `conflict_round` a `resolving_conflict` event coerces and the
+  other stages leave absent (`test_terminals_metadata.py`), and the entry-time merged-PR finalizer with its
+  no-`pr_number` / open-PR / closed-unmerged negatives, its open- and already-closed-issue finalizes, and the
+  receipt it skips on an empty meter (`test_terminals_finalize.py`), with the scenario models, issue numbers,
+  and drain / cleanup / receipt assertions the first four share in
+  `tests/workflow/engine/terminals_test_support.py`. The mirrored
   `tests/workflow/stages/` directory holds what the migration destination owes before any stage lands there: its
   clean-process import, the layering guard that the package costs the facade above it and nothing else, and the
   surface checks that its initializer binds only submodules and that `orchestrator.stages` stays the module the

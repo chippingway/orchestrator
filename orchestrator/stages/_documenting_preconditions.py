@@ -7,6 +7,7 @@ from orchestrator.stages import _documenting_state as _state
 from orchestrator.stages import documenting as _owner
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import terminals as _terminals
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -33,11 +34,9 @@ def _finalize_documenting_terminal(
     Returns True when the issue was routed to a terminal state and the
     caller must return.
     """
-    from orchestrator import workflow as _wf
-
-    if _wf._finalize_if_pr_merged(gh, spec, issue, state):
+    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
         return True
-    if _wf._finalize_if_issue_closed(gh, spec, issue, state):
+    if _terminals._finalize_if_issue_closed(gh, spec, issue, state):
         return True
     return False
 

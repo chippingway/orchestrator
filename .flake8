@@ -77,6 +77,15 @@
 # reason the hash exists, and a filter loosened without the route that fires on
 # it is a re-decompose nobody asked for, so WPS202 is waived.
 #
+# orchestrator/workflow/engine/terminals.py is one owner for every way an issue
+# stops being worked -- the merged, rejected, and human-closed arcs, the shared
+# context and cleanup they run through, and the two entry points the stages
+# reach them by -- so it carries 13 members past the same ceiling. The arcs
+# share one tail (terminal stamp, terminal label, usage receipt, single pinned
+# write) and differ only in what the PR's own state permits afterwards, so
+# splitting them would let two copies of that order drift apart. WPS202 is
+# waived.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -107,6 +116,7 @@ per-file-ignores =
     orchestrator/workflow/engine/drift.py:WPS202
     orchestrator/workflow/engine/messages.py:WPS202
     orchestrator/workflow/engine/prompts.py:WPS202
+    orchestrator/workflow/engine/terminals.py:WPS202
     orchestrator/workflow/engine/usage.py:WPS201,WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202

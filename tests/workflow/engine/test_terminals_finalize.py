@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
 from orchestrator.github import PinnedState
+from orchestrator.workflow.engine import terminals
 
 from tests.fakes import (
     FakeGitHubClient,
@@ -82,7 +82,7 @@ class FinalizeIfPrMergedTest(unittest.TestCase, _PatchedWorkflowMixin):
         gh.add_issue(issue)
         mocks = self._run(
             lambda: self.assertFalse(
-                workflow._finalize_if_pr_merged(
+                terminals._finalize_if_pr_merged(
                     gh, _TEST_SPEC, issue, PinnedState()
                 )
             ),
@@ -111,7 +111,7 @@ class FinalizeIfPrMergedTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         mocks = self._run(
             lambda: self.assertFalse(
-                workflow._finalize_if_pr_merged(
+                terminals._finalize_if_pr_merged(
                     gh, _TEST_SPEC, issue, state
                 )
             ),
@@ -144,7 +144,7 @@ class FinalizeIfPrMergedTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         mocks = self._run(
             lambda: self.assertFalse(
-                workflow._finalize_if_pr_merged(
+                terminals._finalize_if_pr_merged(
                     gh, _TEST_SPEC, issue, state
                 )
             ),
@@ -183,7 +183,7 @@ class FinalizeMergedPrTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         mocks = self._run(
             lambda: self.assertTrue(
-                workflow._finalize_if_pr_merged(
+                terminals._finalize_if_pr_merged(
                     gh, _TEST_SPEC, issue, state
                 )
             ),
@@ -233,7 +233,7 @@ class FinalizeMergedPrTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         self._run(
             lambda: self.assertTrue(
-                workflow._finalize_if_pr_merged(
+                terminals._finalize_if_pr_merged(
                     gh, _TEST_SPEC, issue, state
                 )
             ),
@@ -269,7 +269,7 @@ class FinalizeMergedPrTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
 
         self._run(
-            lambda: workflow._finalize_if_pr_merged(
+            lambda: terminals._finalize_if_pr_merged(
                 gh, _TEST_SPEC, issue, state
             ),
             run_agent=_agent(),
@@ -313,7 +313,7 @@ class FinalizeMergedPrTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
 
         self._run(
-            lambda: workflow._finalize_if_pr_merged(
+            lambda: terminals._finalize_if_pr_merged(
                 gh, _TEST_SPEC, issue, state
             ),
             run_agent=_agent(),

@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
 from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import terminals as _terminals
 
 AgentResult = _owner.AgentResult
 Any = _owner.Any
@@ -118,7 +119,7 @@ def _fixing_preflight(gh: GitHubClient, spec: config.RepoSpec, issue: Issue, sta
                 "branch; falling through", issue.number, pr_number,
             )
             pr = None
-        if _wf._drain_review_pr_terminals(
+        if _terminals._drain_review_pr_terminals(
             gh, spec, issue, state, pr, stage="fixing",
         ):
             return None

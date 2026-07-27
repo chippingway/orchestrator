@@ -7,6 +7,7 @@ from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import terminals as _terminals
 
 _ChildScan = _owner._ChildScan
 GitHubClient = _owner.GitHubClient
@@ -168,13 +169,11 @@ def _remaining_manually_closed(
     scan: _ChildScan,
     candidates: list[int],
 ) -> list[int]:
-    from orchestrator import workflow as _wf
-
     remaining: list[int] = []
     for number in candidates:
         child_issue = scan.issues[number]
         child_state = gh.read_pinned_state(child_issue)
-        if _wf._finalize_if_pr_merged(gh, spec, child_issue, child_state):
+        if _terminals._finalize_if_pr_merged(gh, spec, child_issue, child_state):
             scan.labels[number] = _DONE
         else:
             remaining.append(number)

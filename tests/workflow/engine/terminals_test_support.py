@@ -5,8 +5,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from orchestrator import workflow
 from orchestrator.github import PinnedState
+from orchestrator.workflow.engine import terminals
 
 from tests import fakes as _fakes
 from tests import workflow_event_values as _events
@@ -101,7 +101,7 @@ class _DrainTerminalCall:
         self.was_drained = False
 
     def __call__(self) -> None:
-        self.was_drained = workflow._drain_review_pr_terminals(
+        self.was_drained = terminals._drain_review_pr_terminals(
             self._context.gh,
             _TEST_SPEC,
             self._context.issue,
