@@ -372,9 +372,9 @@ one for any of the notices targets `orchestrator.workflow.engine.comments` -- th
 `workflow` forward of `_park_awaiting_human` and the `base_sync` and `workflow_messages` forwards of
 `_post_pr_comment` still resolve, but they are
 not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
-the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/` or `workflow/state.py`, so
-importing the facade resolves no manifest target and pulls in neither the stage tree, the config and analytics
-graph behind the shared dependency bindings, nor the git and GitHub
+the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/`, `workflow/stages/`, or
+`workflow/state.py`, so importing the facade resolves no manifest target and pulls in neither the stage tree, the
+config and analytics graph behind the shared dependency bindings, nor the git and GitHub
 subsystems the targets sit on. An import that cheap is what lets the GitHub and git layers reach
 `workflow/state.py` for the label vocabulary they are typed by -- a submodule import runs the initializer first, so
 anything bound there would be a cost every one of them pays. `github/labels.py`, `github/issues.py`, and the
