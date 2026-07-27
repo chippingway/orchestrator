@@ -17,6 +17,7 @@ from orchestrator.workflow.engine import (
     drift as _drift,
     guards as _guards,
     messages as _messages,
+    pickup as _pickup,
     prompts as _prompts,
     usage as _usage,
 )
@@ -29,6 +30,7 @@ _MODULES = (
     "orchestrator.workflow.engine.drift",
     "orchestrator.workflow.engine.guards",
     "orchestrator.workflow.engine.messages",
+    "orchestrator.workflow.engine.pickup",
     "orchestrator.workflow.engine.prompts",
     "orchestrator.workflow.engine.usage",
     "orchestrator.workflow.state",
@@ -141,6 +143,7 @@ class PackageSurfaceTest(unittest.TestCase):
         self.assertIs(_engine.drift, _drift)
         self.assertIs(_engine.guards, _guards)
         self.assertIs(_engine.messages, _messages)
+        self.assertIs(_engine.pickup, _pickup)
         self.assertIs(_engine.prompts, _prompts)
         self.assertIs(_engine.usage, _usage)
         for name, bound in _engine.__dict__.items():
