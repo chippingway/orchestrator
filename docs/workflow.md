@@ -33,8 +33,10 @@ The stable stage-handler names live on lazy facades under `orchestrator/stages/`
 entry checks, session execution, drift handling, persistence, and terminal routing (see the module map in
 [`architecture.md#top-level-layout`](architecture.md#top-level-layout)). Cross-stage calls still resolve through
 `orchestrator.workflow`, preserving the historical patch surface. Those facades move to
-`orchestrator/workflow/stages/` one stage at a time; the module each migrated stage vacates stays behind as a
-temporary forwarder onto its new owner, so both import sites keep handing back the same handler. The per-stage
+`orchestrator/workflow/stages/` one stage at a time — `decomposition` is the first, and its `decomposing` / `ready` /
+`blocked` / `umbrella` handlers now live on owners in `orchestrator/workflow/stages/decomposition/`. The module each
+migrated stage vacates stays behind as a temporary forwarder onto those owners, so both import sites keep handing back
+the same handler; the dispatcher and the same-tick pickup start name the owner directly. The per-stage
 behavior is documented in
 [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What follows is the role-specific glue.
 
