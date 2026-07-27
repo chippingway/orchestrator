@@ -31,8 +31,11 @@ authenticated on the host before the orchestrator starts.
 
 The stable stage-handler names live on lazy facades under `orchestrator/stages/`; responsibility-named leaves own
 entry checks, session execution, drift handling, persistence, and terminal routing (see the module map in
-[`architecture.md#top-level-layout`](architecture.md#top-level-layout)). Cross-stage calls still resolve through
-`orchestrator.workflow`, preserving the historical patch surface. Those facades move to
+[`architecture.md#top-level-layout`](architecture.md#top-level-layout)). A cross-stage call into a stage that has not
+migrated yet still resolves through `orchestrator.workflow`, preserving the historical patch surface; between migrated
+stages the caller names the owner it borrows instead — documenting and validating both reach the implementing dev
+resume, session read, and question / dirty-tree parks, and documenting reaches validating's watermark walk — so a
+patch meant to intercept one of those has to land on the owner. Those facades move to
 `orchestrator/workflow/stages/` one stage at a time — `decomposition`, `implementing`, `documenting`, and
 `validating` have gone, so the `decomposing` / `ready` / `blocked` / `umbrella` handlers live on owners in
 `orchestrator/workflow/stages/decomposition/`, `_handle_implementing` on owners in
