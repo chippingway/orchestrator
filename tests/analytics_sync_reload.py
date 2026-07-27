@@ -15,6 +15,7 @@ from types import ModuleType
 from unittest.mock import patch
 
 from tests.analytics_sync_payloads import write_jsonl, write_raw_lines
+from tests.import_world_helpers import CONFIG_MODULE, restored_import_world
 
 
 LOG_PATH_ENV = "ANALYTICS_LOG_PATH"
@@ -38,13 +39,19 @@ def hermetic_environment(extra: dict[str, str] | None = None) -> dict[str, str]:
 def reload_sync(
     environment: dict[str, str] | None = None,
 ) -> tuple[ModuleType, ModuleType]:
-    """Reload analytics and sync against one hermetic environment."""
-    with patch.dict(os.environ, hermetic_environment(environment), clear=True):
-        sys.modules.pop("orchestrator.config", None)
-        sys.modules.pop("orchestrator.analytics", None)
-        sys.modules.pop(SYNC_MODULE, None)
-        analytics = importlib.import_module("orchestrator.analytics")
-        analytics_sync = importlib.import_module(SYNC_MODULE)
+    """Reload analytics and sync against one hermetic environment.
+
+    The returned pair is the hermetic reload; `orchestrator.config` is put back
+    so a later test that first imports a module binding it still binds the same
+    object every earlier importer holds.
+    """
+    with restored_import_world():
+        with patch.dict(os.environ, hermetic_environment(environment), clear=True):
+            sys.modules.pop(CONFIG_MODULE, None)
+            sys.modules.pop("orchestrator.analytics", None)
+            sys.modules.pop(SYNC_MODULE, None)
+            analytics = importlib.import_module("orchestrator.analytics")
+            analytics_sync = importlib.import_module(SYNC_MODULE)
     return analytics, analytics_sync
 
 

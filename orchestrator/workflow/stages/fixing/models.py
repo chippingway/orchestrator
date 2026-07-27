@@ -1,0 +1,77 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""The records one fixing tick hands between its owners.
+
+`_FixingContext` is the tick itself, and the PR inside it is the live one the
+preflight fetched once at the top: re-reading it per owner would let the
+terminal check, the drift comparison against `pr.head.sha`, and the conflict
+notice come from three different fetches of a PR a human may be closing.
+
+`_FixingFeedback` keeps the three surfaces apart as well as concatenated,
+because the two consumers need opposite shapes: the prompt reads `all_items` in
+one order, while the watermark ratchet has to advance each surface only to the
+max id consumed on that surface.
+
+`_ParkedFixingDecision` is how a parked tick answers without the caller having
+to re-derive it: `stop` says the tick is fully handled, and `replay_batch`
+carries the preserved feedback an accepted `/orchestrator continue` resumes on
+instead of the per-tick rescan.
+
+`_FixingResumeRun` carries what the disposition cannot re-derive after the run:
+the worktree it actually ran in (the resolve may have recreated it), whether an
+operator paused mid-run, and the HEAD on both sides -- the only thing that
+tells a pushed fix from a no-commit acknowledgement.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Optional
+
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.agents import AgentResult
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+
+
+@dataclass(frozen=True)
+class _FixingFeedback:
+    issue_space: list
+    review_comments: list
+    review_summaries: list
+    all_items: list
+
+
+@dataclass(frozen=True)
+class _ParkedFixingDecision:
+    stop: bool
+    replay_batch: Optional[list] = None
+
+
+@dataclass(frozen=True)
+class _FixingContext:
+    """The per-tick `fixing` invocation handles, bundled so the parked-dispatch,
+    validating-recovery, continue-command, resume, and reconcile helpers thread
+    them as a single value instead of five positional arguments (mirrors
+    validating's `_RequestedChanges`). `pr` is the live PR the preflight
+    fetched this tick; not every consumer reads it.
+    """
+    gh: GitHubClient
+    spec: config.RepoSpec
+    issue: Issue
+    state: PinnedState
+    pr: Any
+
+
+@dataclass(frozen=True)
+class _FixingResumeRun:
+    """The outcome of one locked dev resume: the worktree it ran in, the agent
+    result, whether an operator paused mid-run, and the HEAD before/after.
+    """
+    worktree: Path
+    dev_result: AgentResult
+    paused: bool
+    before_sha: Optional[str]
+    after_sha: Optional[str]

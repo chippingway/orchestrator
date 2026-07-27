@@ -71,12 +71,16 @@ right:
   refused continue, interruption / live pause, drift unwind, final-docs watermarks), the validating
   stage into focused `tests/workflow/stages/validating/test_*.py` files beside its owners (review
   loops + retry caps, operator controls, live pause, handoff, squash, terminal, verify + its
-  refusals, drift, watermarks), and the
+  refusals, drift, watermarks), the fixing stage into focused
+  `tests/workflow/stages/fixing/test_*.py` files beside its owners (label + dispatcher routing, PR
+  terminals, feedback rescan + trust gate, quiet window, resume outcomes, session retirement, replay
+  batch + reviewer anchor, `/orchestrator continue` on both routes, parked dispatch, conflict
+  reroute, stranded commit, mid-tick comment, live pause, borrowed-owner boundaries), and the
   decomposition stage into focused
   `tests/test_workflow_decomposition_*.py` files
   (manifest parsing, decomposing/ready/blocked/umbrella stage handlers, child issue creation, hash
   drift, stale manifest cleanup, child merged-PR finalize). Per-label dispatcher / routing tests
-  live in `tests/test_workflow_<label>_routing.py` (backlog, question, fixing) and the
+  live in `tests/test_workflow_<label>_routing.py` (backlog, question) and the
   remaining facade-level helpers (worktree serialization, drain-terminals, finalize-if-pr-merged,
   stage analytics) live in their own focused modules. Shared fixtures go in `tests/workflow_helpers.py`.
 - Prefer extending the in-memory fakes in `tests/support/github/` (reached through the

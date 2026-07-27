@@ -10,6 +10,8 @@ import sys
 from types import ModuleType
 from unittest.mock import patch
 
+from tests.import_world_helpers import CONFIG_MODULE, restored_import_world
+
 
 SKIP_DOTENV_ENV = "ORCHESTRATOR_SKIP_DOTENV"
 TOKEN_FILE_ENV = "ORCHESTRATOR_TOKEN_FILE"
@@ -18,7 +20,7 @@ ANALYTICS_READ_MODULE = "orchestrator.analytics.read"
 DASHBOARD_MODULE = "orchestrator.dashboard"
 THEME_MODULE = "orchestrator.dashboard_theme"
 _RELOAD_POP_MODULES = (
-    "orchestrator.config",
+    CONFIG_MODULE,
     ANALYTICS_READ_MODULE,
     "orchestrator.analytics",
     "orchestrator.dashboard_state",
@@ -48,12 +50,18 @@ def hermetic_environment(extra: dict[str, str] | None = None) -> dict[str, str]:
 def reload_dashboard(
     environment: dict[str, str] | None = None,
 ) -> tuple[ModuleType, ModuleType]:
-    """Load analytics and every dashboard leaf against one environment."""
-    with patch.dict(os.environ, hermetic_environment(environment), clear=True):
-        for module_name in _RELOAD_POP_MODULES:
-            sys.modules.pop(module_name, None)
-        analytics = importlib.import_module("orchestrator.analytics")
-        dashboard = importlib.import_module(DASHBOARD_MODULE)
+    """Load analytics and every dashboard leaf against one environment.
+
+    The returned pair is the hermetic reload; `orchestrator.config` is put back
+    so a later test that first imports a module binding it still binds the same
+    object every earlier importer holds.
+    """
+    with restored_import_world():
+        with patch.dict(os.environ, hermetic_environment(environment), clear=True):
+            for module_name in _RELOAD_POP_MODULES:
+                sys.modules.pop(module_name, None)
+            analytics = importlib.import_module("orchestrator.analytics")
+            dashboard = importlib.import_module(DASHBOARD_MODULE)
     return analytics, dashboard
 
 

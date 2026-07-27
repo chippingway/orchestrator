@@ -15,6 +15,14 @@ import os
 import sys
 from unittest.mock import patch
 
+from tests.import_world_helpers import CONFIG_MODULE, restored_import_world
+
+_RELOADED_MODULES = (
+    CONFIG_MODULE,
+    "orchestrator.analytics",
+    "orchestrator.analytics.read",
+)
+
 # The stand-in Postgres DSN every read-model test wires into
 # `ANALYTICS_DB_URL`; only its presence matters, the fake connection
 # never dials it.
@@ -43,18 +51,22 @@ def _reload(env: dict[str, str] | None = None):
     env to land. `config` is popped too so `analytics.__init__`'s
     `from .. import config` reloads against the patched env (it
     still reads `LOG_DIR` for the JSONL default).
+
+    The returned pair is the hermetic reload; `orchestrator.config` is put back
+    so a later test that first imports a module binding it still binds the same
+    object every earlier importer holds.
     """
-    with patch.dict(os.environ, _hermetic_env(env), clear=True):
-        sys.modules.pop("orchestrator.config", None)
-        sys.modules.pop("orchestrator.analytics.read", None)
-        sys.modules.pop("orchestrator.analytics", None)
-        # `import_module` re-imports off `sys.modules`, so popping the
-        # entries above forces a fresh load against the patched env; a
-        # `from orchestrator import analytics` would instead rebind the
-        # stale package attribute and skip the reload.
-        analytics = importlib.import_module("orchestrator.analytics")
-        analytics_read = importlib.import_module("orchestrator.analytics.read")
-        return analytics, analytics_read
+    with restored_import_world():
+        with patch.dict(os.environ, _hermetic_env(env), clear=True):
+            for module_name in _RELOADED_MODULES:
+                sys.modules.pop(module_name, None)
+            # `import_module` re-imports off `sys.modules`, so popping the
+            # entries above forces a fresh load against the patched env; a
+            # `from orchestrator import analytics` would instead rebind the
+            # stale package attribute and skip the reload.
+            analytics = importlib.import_module("orchestrator.analytics")
+            analytics_read = importlib.import_module("orchestrator.analytics.read")
+    return analytics, analytics_read
 
 
 def _reload_read(db_url: str = _POSTGRES_URL):
