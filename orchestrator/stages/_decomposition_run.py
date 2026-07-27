@@ -62,7 +62,7 @@ def _settle_decomposer_run(
     # clean-interrupted case is additionally short-circuited by the
     # `_ignore_if_interrupted` guard in `_handle_decomposing`.
     if not decomposer_result.interrupted:
-        _wf._accumulate_issue_usage(state, decomposer_result.usage)
+        _usage._accumulate_issue_usage(state, decomposer_result.usage)
 
     if decomposer_result.timed_out:
         _wf._park_awaiting_human(

@@ -48,7 +48,9 @@ orchestrator process is stateless.
   selectively, the `agent_spawn` / `agent_exit` pair around the spawn, the analytics record its exit
   appends (with the configured model read out of `extra_args` as the parser's fallback, and the
   prompt and worktree the trajectory hooks ride on), the fail-open `skill_triggered` emission that
-  record's return value drives, and the UTC timestamp the stages stamp pinned state with), per-stage
+  record's return value drives, the per-issue run / token / cost / cost-source counters that record's
+  parsed usage is folded into and the terminal receipt line and tracked comment read back off them,
+  and the UTC timestamp the stages stamp pinned state with), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -273,7 +275,11 @@ orchestrator process is stateless.
   its default-off gate, args privacy, and fail-open guard (`test_usage_skills.py`), the opt-in trajectory
   record and the pinned-off sink it must not write (`test_usage_trajectory.py`), and the `UsageMetrics`
   surfaced on the returned result (`test_usage_metrics.py`), with the wire payloads and issue numbers all
-  five share in `tests/workflow/engine/usage_test_support.py`.
+  five share in `tests/workflow/engine/usage_test_support.py`. The same owner's per-issue meter closes the
+  directory: the token formula that excludes codex's cached tokens, the cost and cost-source aggregates, the
+  `(est.)` / `unknown` / zero-run verdict slots, and the developer, resume, and reviewer run sites whose
+  interrupted runs persist nothing (`test_usage_accumulator.py`), with the poisoned-then-fresh resume fixture
+  in `tests/workflow/engine/usage_accumulator_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

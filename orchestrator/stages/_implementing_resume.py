@@ -155,7 +155,7 @@ class _DevResumeContext:
             review_round=self.state.get("review_round", 0),
             retry_count=self.state.get(_RETRY_COUNT),
         )
-        _wf._accumulate_issue_usage(self.state, agent_result.usage)
+        _usage._accumulate_issue_usage(self.state, agent_result.usage)
         paused = (
             self.options.pause_guard
             and _wf._paused_during_agent_run(self.gh, self.issue)

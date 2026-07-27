@@ -32,7 +32,7 @@ def _assess_question_outcome(
 
     run.state.set("last_question_at", _usage._now_iso())
     if not question_result.interrupted:
-        _wf._accumulate_issue_usage(run.state, question_result.usage)
+        _usage._accumulate_issue_usage(run.state, question_result.usage)
 
     if question_result.timed_out:
         return _QuestionOutcome(_QUESTION_TIMEOUT, True)

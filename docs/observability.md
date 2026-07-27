@@ -1228,10 +1228,11 @@ bad line never invalidates the rest of the stream. `_run_agent_tracked` (in `wor
 [analytics sink](#analytics-sink-analytics_log_path) under `event="agent_exit"`; a parser exception is caught and
 downgraded to a `log.exception`.
 
-**Terminal verdict surface.** Beyond the analytics sink, `workflow._accumulate_issue_usage` folds each run's
+**Terminal verdict surface.** Beyond the analytics sink, `_accumulate_issue_usage` (in `workflow/engine/usage.py`,
+beside `_run_agent_tracked`) folds each run's
 `UsageMetrics` into per-issue counters on the pinned state (`issue_agent_runs` / `issue_total_tokens` /
 `issue_total_cost_usd` / `issue_cost_sources`; see [state-machine.md](state-machine.md#pinned-state)). When an
-issue reaches a terminal, `workflow._format_issue_usage_verdict` renders those counters into one visible receipt line
+issue reaches a terminal, `_format_issue_usage_verdict` renders those counters into one visible receipt line
 posted on the issue thread — `:receipt: this issue: N agent runs · T tokens · $X.XX`, with `(est.)` appended when any
 run's cost was `estimated` and the figure collapsed to `unknown` when an `unknown-price` run leaves the total
 incomplete. The PR merged / rejected finalizers and the closed-`question` terminal post it as a standalone tracked
