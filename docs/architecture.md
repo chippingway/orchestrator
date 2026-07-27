@@ -676,9 +676,9 @@ exemption is what keeps that serialization from deadlocking — a bucket whose e
 and global caps. Only issue numbers cross a thread boundary; `_refetch_and_process` mints a per-worker client and
 refetches against it, because PyGithub's `Issue` and the `Requester` chain behind it are not documented thread-safe.
 Its own helpers call each other in-module, and each handler is reached through a call-time import of the module
-`_STAGE_HANDLER_TARGETS` pairs with its label — four of the twelve entries name `orchestrator/stages/` facades, seven
-name decomposition, documenting, implementing, and validating owners under `workflow/stages/`, and the twelfth names
-the `pickup` sibling an unlabeled issue starts on. That table stays owner-private,
+`_STAGE_HANDLER_TARGETS` pairs with its label — three of the twelve entries name `orchestrator/stages/` facades, eight
+name decomposition, documenting, implementing, validating, and in_review owners under `workflow/stages/`, and the
+twelfth names the `pickup` sibling an unlabeled issue starts on. That table stays owner-private,
 because the facade's inventory is the historical surface rather than a mirror of the owner: what `workflow` publishes
 is `_ISSUE_HANDLER_NAMES`, the label → handler-name half of it, derived from the table so the two cannot disagree
 about which labels route. The import is deferred because the stage tree imports this subpackage, so binding one at
@@ -889,11 +889,12 @@ it writes are deliberately not watermarks — the fixing handler re-reads the sa
 `drift` reads the PR conversation before the ratchet can leap past it, resumes the dev, and hands both outcomes back to
 `validating` with `review_round` reset. `merge_gate` is last and never merges: an unmergeable PR parks for a human
 (no `resolving_conflict` route from this stage) and a mergeable, approved, unvetoed head earns one HITL ping per head
-SHA. `watermarks`, `models`, and `state` reach no client, so the ratchet, the carriers, and the wire key are decidable
-without one. So a patch that has to intercept the scan, the route, the resume, or the ping targets the owner module.
+SHA. `models` and `state` reach nothing at all and `watermarks` reaches no further than the client it is handed, so
+the carriers, the wire key, and both the ratchet and the legacy seed are decidable without a worktree or an agent. So a
+patch that has to intercept the scan, the route, the resume, or the ping targets the owner module.
 This stage owns no dev machinery either: the resume comes from `workflow/stages/implementing/` and the body-edit
 disposition from `workflow/stages/validating/drift_outcomes.py`, so a patch on one of those lands on the owner. The
-seams that stay on the facade are the ones the stage does not own — the worktree, git, and push helpers plus
+seams that stay on the facade are the ones the stage does not own — the worktree and HEAD helpers plus
 base-sync's `_AUTO_REBASE_PARK_REASONS`, which is what tells a park the rebase loop owns from one this stage may
 answer — and the whole historical inventory still resolves on `orchestrator.stages.in_review` with the owner's exact
 identity. Two of its names keep resolving on `workflow` as well: `_handle_in_review` for the stage-to-stage edge and
