@@ -154,10 +154,10 @@ JSONL file is the raw foundation layer for the Postgres aggregation step.
   (no handler runs).
 - `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`); one record per tracked agent invocation; agent
   context + parsed token / model / cost details (see below).
-- `repo_skill_catalog` — `orchestrator.skill_catalog._emit_repo_skill_catalog`, driven once per tick per spec by
-  `workflow.tick`; repo-level (not issue-scoped, so `issue` is the sentinel `0`); carries `base_branch`, `remote_name`,
-  `skills_available` (deduped `SKILL.md` skill names on the base ref), and optional `skill_paths` (name → source
-  paths) — see below.
+- `repo_skill_catalog` — `orchestrator.skill_catalog._emit_repo_skill_catalog`, driven once per tick per spec by the
+  tick owner (in `workflow/engine/tick.py`, reachable as `workflow.tick`); repo-level (not issue-scoped, so `issue` is
+  the sentinel `0`); carries `base_branch`, `remote_name`, `skills_available` (deduped `SKILL.md` skill names on the
+  base ref), and optional `skill_paths` (name → source paths) — see below.
 
 **Append.** `analytics.append_record(record)` reopens the file in append mode for every record after
 `path.parent.mkdir(parents=True, exist_ok=True)`. An `OSError` is caught and downgraded to a `log.warning`.
@@ -322,7 +322,8 @@ and per-skill cohorts. See the [read model](#read-model-orchestratoranalyticsrea
 ### `repo_skill_catalog` records
 
 `orchestrator/skill_catalog.py` appends one repo-level `event="repo_skill_catalog"` analytics record per tick per spec,
-driven from `workflow.tick` after `_refresh_base_and_worktrees` has fetched `<remote_name>/<base_branch>`. It enumerates
+driven from `workflow/engine/tick.py` after `_refresh_base_and_worktrees` has fetched `<remote_name>/<base_branch>`,
+before the scheduler / in-tick split so it fires once per tick on either dispatch path. It enumerates
 the `SKILL.md` definitions the *target repo* carries on its base ref via `git -C <target_root> ls-tree -r --name-only
 <remote_name>/<base_branch> .agents/skills .claude/skills`, keeps only direct `<root>/<name>/SKILL.md` definitions (a
 `SKILL.md` nested deeper — e.g. `.claude/skills/.system/<name>/SKILL.md` — is ignored, matching the names-only
