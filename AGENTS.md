@@ -51,12 +51,18 @@ orchestrator process is stateless.
   record's return value drives, the per-issue run / token / cost / cost-source counters that record's
   parsed usage is folded into and the terminal receipt line and tracked comment read back off them,
   and the UTC timestamp the stages stamp pinned state with -- and over the
-  `workflow/engine/drift.py` owner closing the subpackage: the user-content hash and the six filters
+  `workflow/engine/drift.py` owner beside them: the user-content hash and the six filters
   that keep an orchestrator, bot, untrusted, or bare-continue comment from shifting it, the
   first-encounter baseline write and the legacy-baseline absorption, the drift-resume prompt and its
   `ACK:` contract, the consumed-comment watermark ratchet the resume paths bump, and the
   decomposition reset, orphan-naming notice, and `decomposing` relabel a pre-implementation drift is
-  rerouted with), per-stage
+  rerouted with -- and over the `workflow/engine/guards.py` owner closing the subpackage: the two
+  refusals every agent-running stage puts between a finished run and its disposition -- the
+  shutdown-interruption read off the result, and the hard-skip label read off a freshly fetched issue
+  because the handler's own snapshot predates the run -- beside the awaiting-human park that
+  publishes one instead: its HITL comment, `awaiting_human` flag, cleared park reason,
+  action-comment watermark ratchet, and `park_awaiting_human` event, with the pinned-state write
+  left to the handler in all three cases), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -249,7 +255,8 @@ orchestrator process is stateless.
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
   `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state`,
-  `engine/comments.py`, `engine/messages.py`, `engine/prompts.py`, and `engine/usage.py` owners, the guard that
+  `engine/comments.py`, `engine/drift.py`, `engine/guards.py`, `engine/messages.py`, `engine/prompts.py`, and
+  `engine/usage.py` owners, the guard that
   importing either the facade or the state
   owner resolves no manifest target and no
   dependency binding, the package-surface checks that the facade is the
@@ -286,15 +293,19 @@ orchestrator process is stateless.
   token formula that excludes codex's cached tokens, the cost and cost-source aggregates, the
   `(est.)` / `unknown` / zero-run verdict slots, and the developer, resume, and reviewer run sites whose
   interrupted runs persist nothing (`test_usage_accumulator.py`), with the poisoned-then-fresh resume fixture
-  in `tests/workflow/engine/usage_accumulator_test_support.py`. The drift owner's coverage closes the
-  directory: the title / body / comment hash, its first-encounter baseline write, the legacy bare-continue
+  in `tests/workflow/engine/usage_accumulator_test_support.py`. The drift owner's coverage follows: the
+  title / body / comment hash, its first-encounter baseline write, the legacy bare-continue
   baseline it absorbs and the real edit it still reports, and the two facades that forward its names
   (`test_drift.py`), the evicted-id and third-party-bot comments the hash must stay stable across
   (`test_drift_filtering.py`), the pickup hash seed, the resume prompt's quoted conversation, the durable
   baseline a no-op tick still writes, and the `ACK:` that must not park (`test_drift_routing.py`), the
   unmarked clarification that must (`test_drift_parking.py`), and the `last_action_comment_id` ratchet each
   stage's drift path leaves behind (`test_drift_watermarks.py`), with the issue numbers and the
-  prior-versus-current hash fixture all five share in `tests/workflow/engine/drift_test_support.py`.
+  prior-versus-current hash fixture all five share in `tests/workflow/engine/drift_test_support.py`. The
+  guard owner's coverage closes the directory: the mid-run hard skip read off a freshly fetched issue at
+  the decomposer, reviewer, and question spawn sites, and the children, relabel, comment, session id, and
+  watermark none of them may leave behind (`test_guards_paused.py`); the per-stage `_paused` modules and each
+  stage's own interrupted cases keep the dispositions those refusals are wrapped in.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

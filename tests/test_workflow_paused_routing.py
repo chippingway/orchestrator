@@ -11,7 +11,8 @@ un-pause command -- `/orchestrator continue` is unrelated, replaying specific
 `awaiting_human` parked retry flows rather than clearing `paused`. Applying
 `paused` while an agent is mid-run is honored after the run returns, before its
 post-agent side effects; those live-guard cases live in
-`test_workflow_paused_agent_guard.py` and the per-stage `_paused` modules."""
+`tests/workflow/engine/test_guards_paused.py` and the per-stage `_paused`
+modules."""
 from __future__ import annotations
 
 import unittest

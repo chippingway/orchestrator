@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.git.verification import runner as _verify_runner
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 
 _ReviewerRun = _owner._ReviewerRun
 GitHubClient = _owner.GitHubClient
@@ -145,9 +146,7 @@ def _post_approval_comment(
 def _park_squash_failure(
     gh: GitHubClient, issue: Issue, state: PinnedState, error,
 ) -> None:
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh,
         issue,
         state,

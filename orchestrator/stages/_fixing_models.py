@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
+from orchestrator.workflow.engine import guards as _guards
 
 AgentResult = _owner.AgentResult
 Any = _owner.Any
@@ -67,11 +68,9 @@ def _park_fixing_without_pr(gh: GitHubClient, issue: Issue, state) -> None:
     route. Park once and surface to a human -- the dev-resume path needs the
     PR to push a fix. A no-op when the issue is already awaiting human input.
     """
-    from orchestrator import workflow as _wf
-
     if state.get(_AWAITING_HUMAN):
         return
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} `fixing` without a pinned "
         "`pr_number`; manual relabeling suspected. Set the workflow "

@@ -124,6 +124,9 @@ orchestrator/
                         comments out of it, the dev-resume prompt and consumed
                         watermark one drift earns, and the decomposition reset
                         and notice the pre-implementation route takes
+      guards.py         what a finished agent run may leave behind: the
+                        shutdown-interruption and freshly-read hard-skip
+                        refusals, and the awaiting-human park beside them
       messages.py       the markers read out of an agent's last message
                         (review / documentation verdicts, drift ack,
                         `/orchestrator continue` and its refusal) and the
@@ -144,8 +147,8 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
-  _workflow_*.py        tick/scheduling, dispatch, pickup, terminal routing,
-                        and run-guard leaves
+  _workflow_*.py        tick/scheduling, dispatch, pickup, and terminal-routing
+                        leaves
   workflow_drift.py     lazy user-content-drift compatibility facade
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
@@ -358,8 +361,10 @@ worktree off to, or the conflict route a failed rebase takes patches `refresh` /
 the facade.
 The collaborators these owners reach *upward* are call-time imports: `persistence` binds the park guard and
 the PR-comment poster straight off their owning modules, and `publication` and `conflicts` bind the same
-poster for their notices, so a patch for either targets `orchestrator.workflow.engine.comments` -- the
-`base_sync` and `workflow_messages` forwards of `_post_pr_comment` still resolve, but they are
+poster for their notices, so a patch for the park targets `orchestrator.workflow.engine.guards` and one for
+any of the notices targets `orchestrator.workflow.engine.comments` -- the
+`workflow` forward of `_park_awaiting_human` and the `base_sync` and `workflow_messages` forwards of
+`_post_pr_comment` still resolve, but they are
 not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
 the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/` or `workflow/state.py`, so
 importing the facade resolves no manifest target and pulls in neither the stage tree, the config and analytics
@@ -443,6 +448,21 @@ two shared notes, and every stage leaf that hashes, detects, resumes, or reroute
 has to intercept a hash, a drift detection, the resume prompt or its watermark bump, or the decomposition reroute
 targets `orchestrator.workflow.engine.drift`; `workflow` resolves the five names it published and `workflow_drift`
 resolves the whole group to the owner's exact object.
+
+`workflow/engine/guards.py` is bound the same way. It owns what a finished agent run is allowed to leave behind.
+Two of its three helpers decline a run: `_ignore_if_interrupted` reads the shutdown sweep's kill off the result,
+and `_paused_during_agent_run` re-reads `paused` / `backlog` off a **freshly fetched** issue, because the
+dispatcher screened those labels once at tick start and the handler has been holding that snapshot for as long as
+the agent ran. Both answer by returning True and letting the caller `return` without writing, so the pinned-state
+mutations it staged in memory are simply dropped and the next tick re-derives the run from durable state. The
+third, `_park_awaiting_human`, publishes one instead — the HITL comment, `awaiting_human`, a cleared
+`park_reason`, the `last_action_comment_id` ratchet, and the `park_awaiting_human` event — and still leaves
+`gh.write_pinned_state` to its caller, which is the rule all three share and the reason they sit together. It
+reaches `comments.py` for the park comment, and every stage leaf that runs an agent or parks one imports the
+owner, so a patch that has to intercept an interruption check, a mid-run pause check, or a park targets
+`orchestrator.workflow.engine.guards`; `workflow` still resolves all three names to the owner's exact object for
+callers outside the package. The base-sync `persistence` owner reaches the park through a call-time import
+instead, which is what keeps a workflow-layer module out of its import graph.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

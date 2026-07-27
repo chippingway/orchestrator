@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 
 _SplitPlan = _owner._SplitPlan
@@ -40,7 +41,7 @@ def _park_child_create_failure(
         "issue=#%s could not create child %d (%r)",
         issue.number, idx, child.get("title"),
     )
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} could not create child issue index={idx} "
         f"({child.get('title')!r}); manual intervention needed (check "
@@ -87,7 +88,7 @@ def _seed_created_child(
             "issue=#%s could not seed pinned state on child #%d",
             issue.number, new_issue.number,
         )
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} created child #{new_issue.number} "
             f"({child.get('title')!r}) but could not seed its pinned state "

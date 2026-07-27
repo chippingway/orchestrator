@@ -91,14 +91,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._workflow_run_guards",
-        (
-            ("_ignore_if_interrupted", "_ignore_if_interrupted"),
-            ("_park_awaiting_human", "_park_awaiting_human"),
-            ("_paused_during_agent_run", "_paused_during_agent_run"),
-        ),
-    ),
-    *export_group(
         "orchestrator._workflow_scheduler",
         (
             ("_dispatch_via_scheduler", "_dispatch_via_scheduler"),
@@ -303,6 +295,14 @@ EXPORTS = (
             ("_detect_user_content_change", "_detect_user_content_change"),
             ("_mark_drift_comments_consumed", "_mark_drift_comments_consumed"),
             ("_route_drift_to_decomposing", "_route_drift_to_decomposing"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.engine.guards",
+        (
+            ("_ignore_if_interrupted", "_ignore_if_interrupted"),
+            ("_park_awaiting_human", "_park_awaiting_human"),
+            ("_paused_during_agent_run", "_paused_during_agent_run"),
         ),
     ),
     *export_group(

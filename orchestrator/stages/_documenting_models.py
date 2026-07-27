@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _documenting_state as _state
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import guards as _guards
 
 AgentResult = _owner.AgentResult
 Any = _owner.Any
@@ -63,9 +64,7 @@ def _park_documenting(
     awaiting-human resume also reads it to distinguish stale park flags after
     a relabel. Writes pinned state; the caller returns unconditionally.
     """
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         ctx.gh, ctx.issue, ctx.state, message, reason=reason,
     )
     ctx.state.set(_PARK_REASON, reason)

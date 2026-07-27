@@ -8,6 +8,7 @@ from contextlib import ExitStack
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.stages._decomposition_models import _DecomposerCleanup
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 
 _DecomposerRunPlan = _owner._DecomposerRunPlan
@@ -36,8 +37,6 @@ def _settle_decomposer_run(
     preserve the worktree) stays inline in `_handle_decomposing` so
     `keep_worktree` is set BEFORE the park's side effects run.
     """
-    from orchestrator import workflow as _wf
-
     # Live pause: an operator applied `paused` / `backlog` while the
     # decomposer ran (fresh spawn or awaiting-human resume). Dispatch only
     # saw the pre-run labels, so re-check a freshly fetched issue and return
@@ -47,7 +46,7 @@ def _settle_decomposer_run(
     # decomposer once the label is removed. The read-only decompose worktree
     # is torn down by the caller's `finally` as on any normal exit and
     # recreated on the re-run.
-    if _wf._paused_during_agent_run(gh, issue):
+    if _guards._paused_during_agent_run(gh, issue):
         return True
 
     state.set("last_agent_action_at", _usage._now_iso())
@@ -65,7 +64,7 @@ def _settle_decomposer_run(
         _usage._accumulate_issue_usage(state, decomposer_result.usage)
 
     if decomposer_result.timed_out:
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} decomposer timed out after "
             f"{config.AGENT_TIMEOUT}s, manual intervention needed.",
@@ -169,7 +168,7 @@ def _process_decomposer_run(
     wt = _wf._decompose_worktree_path(spec, issue.number)
     if _wf._has_new_commits(spec, wt) or _wf._worktree_dirty_files(wt):
         run_plan.keep_worktree = True
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} decomposer left commits or "
             "uncommitted changes in the worktree, but it must be "
@@ -181,7 +180,7 @@ def _process_decomposer_run(
 
     # An interrupted run has no trustworthy manifest. The read-only check
     # stays first so changes left by a killed run remain available to inspect.
-    if _wf._ignore_if_interrupted(issue, decomposer_result):
+    if _guards._ignore_if_interrupted(issue, decomposer_result):
         return
 
     _owner._dispatch_decomposer_manifest(gh, issue, state, decomposer_result)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 
 GitHubClient = _owner.GitHubClient
@@ -56,9 +57,7 @@ def _park_incomplete_decomposition(
     expected,
     children: list,
 ) -> None:
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} decomposition crashed mid-way: "
         f"{len(children)} of {expected} children recorded (an orphan child "
@@ -99,7 +98,7 @@ def _repair_recovered_child(
             "issue=#%s could not repair orphan child #%s during "
             "decomposition recovery", issue.number, child_number,
         )
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} could not repair child #{child_number} "
             "during decomposition recovery (seed `parent_number` on its "

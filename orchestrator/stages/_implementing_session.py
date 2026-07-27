@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
 
@@ -95,7 +96,6 @@ def _check_and_increment_retry_budget(
     Caller writes pinned state after this returns; on the False branch we have
     already parked, so caller's pinned-state write commits the park.
     """
-    from orchestrator import workflow as _wf
     from datetime import datetime, timedelta, timezone
 
     cap = config.MAX_RETRIES_PER_DAY
@@ -119,7 +119,7 @@ def _check_and_increment_retry_budget(
 
     count = int(state.get(_RETRY_COUNT) or 0)
     if count >= cap:
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} hit retry cap ({cap}/day) for "
             f"{stage}; manual intervention needed. "

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
@@ -67,7 +68,7 @@ def _retry_parked_dev_session(
     # A shutdown-killed or live-paused resume leaves durable state untouched so
     # the next process re-detects and re-runs the retry (mirrors the drift and
     # fresh-spawn dispositions).
-    if _wf._ignore_if_interrupted(issue, agent_result):
+    if _guards._ignore_if_interrupted(issue, agent_result):
         return
     if paused:
         return

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 
 _ConflictContext = _owner._ConflictContext
@@ -21,9 +22,7 @@ def _park_conflict(ctx: _ConflictContext, message: str, *, reason: str) -> None:
     matching `write_pinned_state`; routing them through here keeps the two
     from drifting apart across the handler's many exits.
     """
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(ctx.gh, ctx.issue, ctx.state, message, reason=reason)
+    _guards._park_awaiting_human(ctx.gh, ctx.issue, ctx.state, message, reason=reason)
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 
 

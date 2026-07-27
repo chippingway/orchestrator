@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 
 GitHubClient = _owner.GitHubClient
@@ -66,8 +67,6 @@ def _park_verify_failure(
     `verify_timeout`, or `verify_dirty`) so dashboards and future
     transient-recovery logic can branch on the failure mode.
     """
-    from orchestrator import workflow as _wf
-
     reason = _VERIFY_STATUS_TO_REASON.get(verify.status, "verify_failed")
     detail = _owner._verify_failure_detail(verify)
 
@@ -85,7 +84,7 @@ def _park_verify_failure(
         quoted = _messages._as_blockquote(output.rstrip())
         message = f"{message}\n\n_Verify output (tail):_\n\n{quoted}"
 
-    _wf._park_awaiting_human(gh, issue, state, message, reason=reason)
+    _guards._park_awaiting_human(gh, issue, state, message, reason=reason)
     state.set(_PARK_REASON, reason)
 
 

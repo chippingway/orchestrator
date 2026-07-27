@@ -30,7 +30,8 @@ Three non-workflow **control labels** modify behavior without occupying the work
   sync), differing only in intent: `backlog` is a "not yet" hold on a fresh issue, `paused` freezes an already
   in-flight one without discarding its state. Removing it resumes processing on the next tick. Because those skip points
   read the issue's labels at tick start, every stage that runs an agent additionally re-checks a freshly fetched issue
-  right after the run returns (`_paused_during_agent_run`, alongside each stage's `interrupted` short-circuit): the
+  right after the run returns (`_paused_during_agent_run`, alongside each stage's `interrupted` short-circuit —
+  both live on the `workflow/engine/guards.py` owner the stage leaves import directly): the
   dev-agent stages that resume committed work (`implementing`, `in_review`, `fixing`, `resolving_conflict`, the
   `validating` drift / awaiting-human / reviewer-change dev resumes, and the `documenting` initial and follow-up docs
   passes) and the read-only agent stages (the decomposer run in `decomposing`, fresh spawn and awaiting-human resume;
@@ -209,7 +210,8 @@ into a few groups:
 - **PR / branch.** `branch`, `pr_number`, `review_round`, `conflict_round`.
 - **Drift baseline.** `user_content_hash` — SHA-256 over title + body + non-orchestrator comments; updated whenever
   the orchestrator reacts to a human edit.
-- **HITL park.** `awaiting_human`, `last_action_comment_id`, `park_reason`. `_park_awaiting_human` sets
+- **HITL park.** `awaiting_human`, `last_action_comment_id`, `park_reason`. `_park_awaiting_human` (on the same
+  `workflow/engine/guards.py` owner as the two run refusals) sets
   `awaiting_human=True` and clears `park_reason` to `None`; a handler that needs the reason to survive into the next
   tick explicitly re-sets it after the park call. Park reasons that route via `_park_auto_rebase_failure`
   (`auto_base_rebase_failed` / `auto_base_rebase_dirty` / `auto_base_rebase_push_failed`) are owned by the per-tick

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _documenting_state as _state
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 
 GitHubClient = _owner.GitHubClient
@@ -53,11 +54,9 @@ def _park_documenting_without_pr(
     by `awaiting_human` mirrors `_handle_in_review`'s missing-pr-number
     guard.
     """
-    from orchestrator import workflow as _wf
-
     if state.get(_AWAITING_HUMAN):
         return
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} `documenting` without a pinned "
         "`pr_number`; the documenting stage runs against an existing "

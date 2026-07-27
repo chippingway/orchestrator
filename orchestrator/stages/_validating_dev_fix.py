@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
+from orchestrator.workflow.engine import guards as _guards
 
 _DevFixRun = _owner._DevFixRun
 GitHubClient = _owner.GitHubClient
@@ -54,9 +55,7 @@ def _stranded_fix_unpushed(
 def _park_dev_fix_timeout(
     gh: GitHubClient, issue: Issue, state: PinnedState, before_sha: str,
 ) -> None:
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} agent timed out after {config.AGENT_TIMEOUT}s, "
         "manual intervention needed.",
@@ -98,7 +97,7 @@ def _publish_dev_fix(
     branch = _wf._resolve_branch_name(state, spec, issue.number)
     if _wf._push_branch(spec, run.worktree, branch):
         return True
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} git push failed; see orchestrator logs.",
         reason=_REASON_PUSH_FAILED,

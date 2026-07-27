@@ -7,6 +7,7 @@ from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.engine import guards as _guards
 
 _PreparedDevRun = _owner._PreparedDevRun
 GitHubClient = _owner.GitHubClient
@@ -28,7 +29,7 @@ def _handle_pre_session_drift(
 
     worktree = _wf._worktree_path(spec, issue.number)
     if _wf._has_new_commits(spec, worktree):
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} issue body changed but the "
             "worktree carries unpushed commits from a previous tick "

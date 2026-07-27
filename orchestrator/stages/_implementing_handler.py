@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 
 _AgentWork = _owner._AgentWork
@@ -92,8 +93,6 @@ def _handle_detected_implementing_drift(
 
 
 def _handle_implementing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
-    from orchestrator import workflow as _wf
-
     state = gh.read_pinned_state(issue)
     if _owner._implementing_preflight(gh, spec, issue, state):
         return
@@ -119,7 +118,7 @@ def _handle_implementing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) 
     # mutations in `_prepare_dev_run` are discarded) so the next process
     # retries from durable state. Must precede the disposition below.
     if (
-        _wf._ignore_if_interrupted(issue, prepared.agent_result)
+        _guards._ignore_if_interrupted(issue, prepared.agent_result)
         or prepared.paused
     ):
         return

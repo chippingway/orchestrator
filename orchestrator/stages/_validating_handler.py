@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
@@ -74,7 +75,7 @@ def _run_reviewer_round(
     # tick left it and the next tick re-spawns a fresh reviewer once the label
     # is removed. Nothing is stranded: the reviewer is read-only and spawns
     # fresh each round.
-    if _wf._paused_during_agent_run(gh, issue):
+    if _guards._paused_during_agent_run(gh, issue):
         return None
     _usage._accumulate_issue_usage(state, review.usage)
     if review.session_id:
@@ -89,7 +90,7 @@ def _run_reviewer_round(
     # return WITHOUT writing so those in-memory mutations are discarded and the
     # next process re-spawns the reviewer. Must precede the timeout/verdict
     # branches.
-    if _wf._ignore_if_interrupted(issue, review):
+    if _guards._ignore_if_interrupted(issue, review):
         return None
 
     return _ReviewerRun(
@@ -107,11 +108,9 @@ def _dispatch_reviewer_result(
     state: PinnedState,
     reviewer_run: _ReviewerRun,
 ) -> None:
-    from orchestrator import workflow as _wf
-
     review = reviewer_run.agent_result
     if review.timed_out:
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} reviewer timed out after "
             f"{config.REVIEW_TIMEOUT}s; manual intervention needed.",

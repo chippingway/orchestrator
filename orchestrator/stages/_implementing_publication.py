@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 
 _PRWork = _owner._PRWork
 AgentResult = _owner.AgentResult
@@ -193,7 +194,7 @@ def _on_commits(
         # Park on awaiting_human like the timeout/question paths. Otherwise the
         # worktree's commits keep _has_new_commits() true, so every poll would
         # re-enter _on_commits() and re-comment indefinitely until a human acts.
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} git push failed; see orchestrator logs.",
             reason="push_failed",

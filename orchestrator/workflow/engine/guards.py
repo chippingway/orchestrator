@@ -1,19 +1,37 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Workflow run guards."""
+"""What a finished agent run is allowed to leave behind.
+
+Two of these decline a run's outcome and one publishes it, but all three live
+in the same window -- after the spawn returns, before the handler's
+`gh.write_pinned_state` -- and they share one rule: the handler owns that
+write. `_ignore_if_interrupted` and `_paused_during_agent_run` say "not this
+run" by returning True and letting the caller `return` without writing, so the
+in-memory `PinnedState` mutations it already staged are dropped and the next
+tick re-derives the run from the state the prior tick left. `_park_awaiting_human`
+goes the other way -- it posts the HITL comment, sets `awaiting_human`, and
+ratchets `last_action_comment_id` past it -- and still leaves the write to the
+caller, so a park composes with whatever else that handler staged rather than
+committing ahead of it.
+
+The two refusals answer different questions and neither covers the other.
+Interruption is read off the result the shutdown sweep produced. A mid-run
+`paused` / `backlog` is visible only on a FRESHLY fetched issue: the dispatcher
+screened the hard-skip labels once at tick start, and the handler has been
+holding that snapshot for however long the agent ran.
+"""
 from __future__ import annotations
 
-from orchestrator import _workflow_state as _state
-from orchestrator import workflow as _owner
-from orchestrator.workflow.engine import comments as _comments
+from typing import Optional
 
-AgentResult = _owner.AgentResult
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Optional = _owner.Optional
-PinnedState = _owner.PinnedState
-hard_skip_control_label = _owner.hard_skip_control_label
-log = _state.log
+from github.Issue import Issue
+
+from orchestrator._workflow_state import log
+from orchestrator.agents import AgentResult
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.labels import hard_skip_control_label
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import comments as _comments
 
 
 def _ignore_if_interrupted(issue: Issue, agent_result: AgentResult) -> bool:

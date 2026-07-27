@@ -7,6 +7,7 @@ from orchestrator.git.worktrees import terminal as _worktree_terminal
 from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
 
@@ -101,9 +102,7 @@ def _park_question(
     The shared park helper clears `park_reason`, so this funnel restores the
     stage-specific reason and persists the completed state mutation.
     """
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         run.gh, run.issue, run.state, message, reason=reason,
     )
     run.state.set("park_reason", reason)

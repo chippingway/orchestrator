@@ -56,16 +56,15 @@ def _park_auto_rebase_failure(
     recovery branch keys off the same set to decide whether a new
     human comment on this issue is the "retry now" signal.
     """
-    # Lazy import: the park guard lives in the workflow engine above this
-    # package, and that engine imports `base_sync` at module load time, so
-    # a top-level import here would be circular. Stage modules use the same
-    # late-bind pattern.
-    from orchestrator import workflow as _wf
+    # Lazy import: the guard owner sits in the workflow layer above this
+    # package, and that layer imports `base_sync` at module load time, so
+    # binding it here at module load would be circular.
+    from orchestrator.workflow.engine import guards as _guards
     assert reason in _AUTO_REBASE_PARK_REASONS, (
         f"_park_auto_rebase_failure called with reason={reason!r}, "
         f"which is not in _AUTO_REBASE_PARK_REASONS"
     )
-    _wf._park_awaiting_human(gh, issue, state, message, reason=reason)
+    _guards._park_awaiting_human(gh, issue, state, message, reason=reason)
     state.set(_PARK_REASON, reason)
     gh.write_pinned_state(issue, state)
 
