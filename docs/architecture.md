@@ -758,12 +758,13 @@ rather than the code it runs. `handler` holds the order those decisions are aske
 `disposition` for what the run left behind. `spawn` asks `session` for the retry budget and `drift_preflight` for the
 awaiting-human route; `resume` and `execution` split one resume between the call shape callers wrote against and the
 attempt-and-retry behind it, over `session` for retirement and `worktree` for the checkout; `disposition` routes a
-committed tree to `publication` and everything else to `parks`. `state`, `models`, and `session_read` reach nothing
-outside the stage, which is why the pinned-state keys, the carriers, and the CLI-marker classifiers can be exercised
-without a client. So a patch that has to intercept a park, a push, a resume, or a session read targets the owner
-module. The seams that stay on the facade are the ones the stage does not own -- the worktree, git, and push helpers
-are read as `_wf` attributes at call time -- and the whole historical inventory still resolves on
-`orchestrator.stages.implementing` with the owner's exact identity.
+committed tree to `publication` and everything else to `parks`. `state`, `models`, and `session_read` reach no engine
+owner, no GitHub client, and no worktree helper — `session_read` reads the configured agent spec and nothing else —
+which is why the pinned-state keys, the carriers, and the CLI-marker classifiers can be exercised without a client. So
+a patch that has to intercept a park, a push, a resume, or a session read targets the owner module. The seams that stay
+on the facade are the ones the stage does not own -- the worktree, git, and push helpers are read as `_wf` attributes
+at call time -- and the whole historical inventory still resolves on `orchestrator.stages.implementing` with the
+owner's exact identity.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked
