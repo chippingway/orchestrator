@@ -34,10 +34,10 @@ entry checks, session execution, drift handling, persistence, and terminal routi
 [`architecture.md#top-level-layout`](architecture.md#top-level-layout)). A cross-stage call into a stage that has not
 migrated yet still resolves through `orchestrator.workflow`, preserving the historical patch surface; between migrated
 stages the caller names the owner it borrows instead — documenting, validating, in_review, and fixing all reach the
-implementing dev resume, documenting, validating, and fixing also its session read and question / dirty-tree parks,
-documenting reaches validating's watermark walk, in_review its body-edit disposition, and fixing its dev-fix
-disposition and transient-park recovery plus in_review's comment timestamp — so a
-patch meant to intercept one of those has to land on the owner. Those facades move to
+implementing dev resume, documenting and validating also its session read and question / dirty-tree parks and fixing
+its poisoned-session drop, documenting reaches validating's watermark walk, in_review its body-edit disposition, and
+fixing its dev-fix disposition, stranded-fix probe, and transient-park recovery plus in_review's comment timestamp —
+so a patch meant to intercept one of those has to land on the owner. Those facades move to
 `orchestrator/workflow/stages/` one stage at a time — `decomposition`, `implementing`, `documenting`, `validating`,
 `in_review`, and `fixing` have gone, so the `decomposing` / `ready` / `blocked` / `umbrella` handlers live on owners in
 `orchestrator/workflow/stages/decomposition/`, `_handle_implementing` on owners in
