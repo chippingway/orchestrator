@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import usage as _usage
 
 _AgentWork = _owner._AgentWork
@@ -84,9 +85,7 @@ def _implementing_preflight(
 def _handle_detected_implementing_drift(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
 ) -> bool:
-    from orchestrator import workflow as _wf
-
-    new_hash = _wf._detect_user_content_change(gh, issue, state)
+    new_hash = _drift._detect_user_content_change(gh, issue, state)
     return new_hash is not None and _owner._handle_user_content_drift(
         gh, spec, issue, state, new_hash,
     )

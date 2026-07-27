@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
+from orchestrator.workflow.engine import drift as _drift
 
 _ConflictContext = _owner._ConflictContext
 _WorktreeSync = _owner._WorktreeSync
@@ -81,7 +82,7 @@ def _handle_resolving_conflict(
     # deferred to the single post-approval hop. On an ack (no commit
     # but a reply) we stay in `resolving_conflict` without parking so a
     # harmless clarification doesn't stall the rebase.
-    new_hash = _wf._detect_user_content_change(gh, issue, state)
+    new_hash = _drift._detect_user_content_change(gh, issue, state)
     if new_hash is not None:
         _owner._resume_on_user_content_change(ctx, pr_number, new_hash)
         return

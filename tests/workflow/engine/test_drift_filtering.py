@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import comments, drift
 
-from tests import workflow_drift_test_support as support
+from tests.workflow.engine import drift_test_support as support
 
 
 class OrchCommentMarkerSurvivesIdCapTest(unittest.TestCase):
@@ -24,7 +24,7 @@ class OrchCommentMarkerSurvivesIdCapTest(unittest.TestCase):
         # from the bounded cap. Its body still carries the marker
         # (because every orchestrator comment is posted with it), so
         # the hash filter must drop it.
-        bot_body = f"picking this up\n\n{workflow._ORCH_COMMENT_MARKER}"
+        bot_body = f"picking this up\n\n{comments._ORCH_COMMENT_MARKER}"
         bot = support.FakeComment(
             id=support._EVICTED_BOT_COMMENT_ID,
             body=bot_body,
@@ -41,10 +41,10 @@ class OrchCommentMarkerSurvivesIdCapTest(unittest.TestCase):
         # but the hash must still match because the marker identifies
         # the bot comment.
         self.assertEqual(
-            workflow._compute_user_content_hash(
+            drift._compute_user_content_hash(
                 issue_with_just_human, set()
             ),
-            workflow._compute_user_content_hash(
+            drift._compute_user_content_hash(
                 issue_with_both, set()
             ),
         )
@@ -74,10 +74,10 @@ class HashFiltersBotUsersTest(unittest.TestCase):
         issue_with_just_human = support.make_issue(1, comments=[human])
         issue_with_bot = support.make_issue(1, comments=[human, bot_comment])
         self.assertEqual(
-            workflow._compute_user_content_hash(
+            drift._compute_user_content_hash(
                 issue_with_just_human, set()
             ),
-            workflow._compute_user_content_hash(
+            drift._compute_user_content_hash(
                 issue_with_bot, set()
             ),
         )
@@ -92,6 +92,6 @@ class HashFiltersBotUsersTest(unittest.TestCase):
         empty = support.make_issue(1)
         with_human = support.make_issue(1, comments=[comment])
         self.assertNotEqual(
-            workflow._compute_user_content_hash(empty, set()),
-            workflow._compute_user_content_hash(with_human, set()),
+            drift._compute_user_content_hash(empty, set()),
+            drift._compute_user_content_hash(with_human, set()),
         )

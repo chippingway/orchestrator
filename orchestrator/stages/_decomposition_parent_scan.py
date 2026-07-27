@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
+from orchestrator.workflow.engine import drift as _drift
 
 _ChildScan = _owner._ChildScan
 GitHubClient = _owner.GitHubClient
@@ -38,13 +39,11 @@ def _route_parent_drift(
     orphans in the notice (the new manifest may overlap; the operator
     closes the obsolete ones manually).
     """
-    from orchestrator import workflow as _wf
-
-    new_hash = _wf._detect_user_content_change(gh, issue, state)
+    new_hash = _drift._detect_user_content_change(gh, issue, state)
     if new_hash is None:
         return False
     orphans = list(state.get(_CHILDREN) or [])
-    _wf._route_drift_to_decomposing(gh, issue, state, new_hash, orphans)
+    _drift._route_drift_to_decomposing(gh, issue, state, new_hash, orphans)
     gh.write_pinned_state(issue, state)
     return True
 

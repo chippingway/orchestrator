@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _fixing_state as _state
 from orchestrator.stages import fixing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
@@ -115,7 +116,7 @@ def _run_fixing_resume(
     ctx.state.set("last_agent_action_at", _usage._now_iso())
     ctx.state.set(
         "user_content_hash",
-        _wf._compute_user_content_hash(
+        _drift._compute_user_content_hash(
             ctx.issue, _comments._orchestrator_ids(ctx.state),
         ),
     )

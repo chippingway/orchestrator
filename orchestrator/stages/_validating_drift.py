@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import usage as _usage
 
 AgentResult = _owner.AgentResult
@@ -43,7 +44,7 @@ def _run_validating_drift(
             branch=_wf._resolve_branch_name(state, spec, issue.number),
         )
     before_sha = _wf._head_sha(worktree)
-    followup = _wf._build_user_content_change_prompt(
+    followup = _drift._build_user_content_change_prompt(
         issue, _comments._recent_comments_text(issue),
     )
     worktree, agent_result, paused = _wf._resume_dev_with_text(
@@ -112,9 +113,7 @@ def _resume_dev_on_validating_drift(
     command would never be parsed. The new baseline hash is persisted here
     either way so the next tick's drift check has a stable comparison point.
     """
-    from orchestrator import workflow as _wf
-
-    new_hash = _wf._detect_user_content_change(gh, issue, state)
+    new_hash = _drift._detect_user_content_change(gh, issue, state)
     if new_hash is None:
         return False
     state.set("user_content_hash", new_hash)
@@ -129,7 +128,7 @@ def _resume_dev_on_validating_drift(
     # `_recent_comments_text` in the resume prompt, so the eventual
     # handoff to in_review must not replay those comments as fresh
     # feedback. Mirrors `_resume_developer_on_human_reply`'s pre-spawn bump.
-    _wf._mark_drift_comments_consumed(gh, issue, state)
+    _drift._mark_drift_comments_consumed(gh, issue, state)
     run = _owner._run_validating_drift(gh, spec, issue, state)
     state.set("last_agent_action_at", _usage._now_iso())
     if run.paused:

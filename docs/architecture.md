@@ -119,6 +119,11 @@ orchestrator/
       comments.py       the orchestrator marker and capped id ledger both
                         comment posters write, the trusted-author thread read
                         every prompt quotes, and the tracked-repos block
+      drift.py          the user-content hash, the filters that keep
+                        orchestrator, bot, untrusted, and bare-continue
+                        comments out of it, the dev-resume prompt and consumed
+                        watermark one drift earns, and the decomposition reset
+                        and notice the pre-implementation route takes
       messages.py       the markers read out of an agent's last message
                         (review / documentation verdicts, drift ack,
                         `/orchestrator continue` and its refusal) and the
@@ -142,7 +147,6 @@ orchestrator/
   _workflow_*.py        tick/scheduling, dispatch, pickup, terminal routing,
                         and run-guard leaves
   workflow_drift.py     lazy user-content-drift compatibility facade
-  _workflow_drift_*.py  drift hashing and stage-route leaves
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
                         manifest-parsing leaves and the values they share
@@ -400,8 +404,8 @@ its answer are edited as a pair. It reaches `comments.py` for the thread text an
 patch that has to intercept a built prompt, a shared note, or the single-decision comment targets
 `orchestrator.workflow.engine.prompts`; `workflow`, `workflow_messages`, and `workflow_drift` each still resolve their
 historical slice of those names to the owner's exact object. A prompt with only one caller stays with that caller:
-`_workflow_drift_routes.py` composes the drift-resume prompt beside the route that sends it and borrows just the two
-notes from here, so a patch aimed at that prompt still targets the drift leaf.
+`engine/drift.py` composes the drift-resume prompt beside the route that sends it and borrows just the two notes from
+here, so a patch aimed at that prompt still targets the drift owner.
 
 `workflow/engine/usage.py` is bound the same way. It owns what a tracked agent run is bookended by: the frozen request
 a caller describes the run with, the `agent_spawn` / `agent_exit` audit pair, the analytics record the exit appends
@@ -424,6 +428,21 @@ drive a handler without a CLI, so `patch.object(workflow, "run_agent", ...)` sta
 itself. Everything after the spawn is fail-open — the record and trajectory guards live inside
 `analytics.record_agent_exit`, the skill emission carries its own here — because none of it is worth a run whose
 audit pair already fired; an exception out of the spawn is the deliberate exception and propagates.
+
+`workflow/engine/drift.py` is bound the same way. It owns what the orchestrator treats as the human's requirements —
+one SHA-256 over the issue title, body, and the comments a human actually wrote — together with the six filters that
+keep it from moving on content nobody wrote: the pinned-state comment, the hidden marker every posted comment carries,
+the legacy ids from before that marker existed, third-party bots, authors outside `ALLOWED_ISSUE_AUTHORS`, and a bare
+`/orchestrator continue`. The routes a real move is handed to sit with the hash because they are the only reason it is
+computed: a mid-implementation drift resumes the locked dev session with the updated title, body, and thread quoted and
+then advances `last_action_comment_id` past everything it quoted, so the next validating→in_review handoff does not
+replay those comments as fresh PR feedback; a pre-implementation drift instead clears the manifest state, names the
+children it stops tracking in a notice, and flips the label back to `decomposing`. It reaches `comments.py` for the
+id ledger and the thread text, `messages.py` for the blockquote and the bare-continue test, and `prompts.py` for the
+two shared notes, and every stage leaf that hashes, detects, resumes, or reroutes imports the owner. So a patch that
+has to intercept a hash, a drift detection, the resume prompt or its watermark bump, or the decomposition reroute
+targets `orchestrator.workflow.engine.drift`; `workflow` resolves the five names it published and `workflow_drift`
+resolves the whole group to the owner's exact object.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

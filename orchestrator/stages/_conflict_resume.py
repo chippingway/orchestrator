@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
@@ -43,10 +44,10 @@ def _resume_on_user_content_change(
     # `_recent_comments_text`, and the eventual validating->in_review handoff
     # (after a successful pushed resolution flips back to validating) must not
     # replay them.
-    _wf._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
+    _drift._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
     wt = _owner._ensure_conflict_worktree(ctx)
     before_sha = _wf._head_sha(wt)
-    followup = _wf._build_user_content_change_prompt(
+    followup = _drift._build_user_content_change_prompt(
         ctx.issue, _comments._recent_comments_text(ctx.issue),
     )
     run = _owner._run_conflict_resume(ctx, followup)

@@ -70,6 +70,13 @@
 # the issue, the pinned state, and the comment poster on the other. WPS201 and
 # WPS202 are waived.
 #
+# orchestrator/workflow/engine/drift.py is one owner for what a user-content
+# change is and what it costs -- the hash, the six filters that keep it from
+# moving on content no human wrote, and the two routes a real move is handed
+# to -- so it carries 9 members past the same ceiling. The routes are the only
+# reason the hash exists, and a filter loosened without the route that fires on
+# it is a re-decompose nobody asked for, so WPS202 is waived.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -97,6 +104,7 @@ per-file-ignores =
     orchestrator/workflow/__init__.py:WPS412
     orchestrator/workflow/state.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
+    orchestrator/workflow/engine/drift.py:WPS202
     orchestrator/workflow/engine/messages.py:WPS202
     orchestrator/workflow/engine/prompts.py:WPS202
     orchestrator/workflow/engine/usage.py:WPS201,WPS202
