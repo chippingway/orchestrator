@@ -9,11 +9,11 @@ import threading
 from unittest.mock import patch
 
 from orchestrator import workflow
-from orchestrator.workflow.engine import dispatch
+from orchestrator.workflow.engine import dispatch, tick
 
-from tests import workflow_tick_parallel_test_support as support
-from tests import workflow_tick_probe_test_support as probes
-from tests import workflow_tick_family_test_support as family_support
+from tests.workflow.engine import tick_parallel_test_support as support
+from tests.workflow.engine import tick_probe_test_support as probes
+from tests.workflow.engine import tick_family_test_support as family_support
 
 
 class TickFamilySchedulingTest(unittest.TestCase):
@@ -49,7 +49,7 @@ class TickFamilySchedulingTest(unittest.TestCase):
         # family handler currently holds the lock.
         with patch.object(workflow, support.REFRESH_BASE), \
              patch.object(dispatch, support.PROCESS_ISSUE, side_effect=probe):
-            workflow.tick(gh, support._spec(parallel_limit=5))
+            tick.tick(gh, support._spec(parallel_limit=5))
 
         # Four family-aware issues observed; the family lock kept them
         # from overlapping with each other.
@@ -83,7 +83,7 @@ class TickFamilySchedulingTest(unittest.TestCase):
 
         with patch.object(workflow, support.REFRESH_BASE), \
              patch.object(dispatch, support.PROCESS_ISSUE, side_effect=recorder):
-            workflow.tick(gh, support._spec(parallel_limit=3))
+            tick.tick(gh, support._spec(parallel_limit=3))
 
         recorder.assert_worker_records(self, caller_thread)
 
@@ -113,7 +113,7 @@ class TickFamilySchedulingTest(unittest.TestCase):
             patch.object(workflow, support.REFRESH_BASE),
             patch.object(dispatch, support.PROCESS_ISSUE, side_effect=recorder),
         ):
-            workflow.tick(gh, support._spec(parallel_limit=3))
+            tick.tick(gh, support._spec(parallel_limit=3))
 
         # All three issues were attempted -- the partition did not abort
         # after the bad label read on #2.
@@ -161,7 +161,7 @@ class TickFamilySchedulingTest(unittest.TestCase):
                 support.PROCESS_ISSUE,
                 side_effect=probe.process,
             ):
-                workflow.tick(gh, support._spec(parallel_limit=2))
+                tick.tick(gh, support._spec(parallel_limit=2))
 
         if probe.releaser_errors:
             raise probe.releaser_errors[0]
@@ -213,7 +213,7 @@ class TickFamilySchedulingTest(unittest.TestCase):
             support.PROCESS_ISSUE,
             side_effect=probe.process,
         ):
-            workflow.tick(gh, support._spec(parallel_limit=4))
+            tick.tick(gh, support._spec(parallel_limit=4))
 
         # All three fanout issues completed while the family handler
         # was still inside `_process_issue` -- exactly the property the
@@ -259,7 +259,7 @@ class TickFamilySchedulingTest(unittest.TestCase):
                 side_effect=family_support._simulate_family_child_state,
             ),
         ):
-            workflow.tick(gh, support._spec(parallel_limit=4))
+            tick.tick(gh, support._spec(parallel_limit=4))
 
         # Child's final state retains the parent's seed and is not parked.
         # The family lock guarantees the two handlers ran sequentially

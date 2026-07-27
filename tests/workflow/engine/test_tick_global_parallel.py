@@ -10,10 +10,10 @@ from functools import partial
 from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
-from orchestrator.workflow.engine import dispatch
+from orchestrator.workflow.engine import dispatch, tick
 
-from tests import workflow_tick_parallel_test_support as support
-from tests import workflow_tick_probe_test_support as probes
+from tests.workflow.engine import tick_parallel_test_support as support
+from tests.workflow.engine import tick_probe_test_support as probes
 
 
 class TickGlobalSchedulingTest(unittest.TestCase):
@@ -25,7 +25,7 @@ class TickGlobalSchedulingTest(unittest.TestCase):
         process = MagicMock()
         with patch.object(workflow, support.REFRESH_BASE), \
              patch.object(dispatch, support.PROCESS_ISSUE, process):
-            workflow.tick(gh, support._spec(parallel_limit=4))
+            tick.tick(gh, support._spec(parallel_limit=4))
         process.assert_not_called()
 
     def test_global_semaphore_clamps_concurrency(self) -> None:
@@ -46,7 +46,7 @@ class TickGlobalSchedulingTest(unittest.TestCase):
             support.PROCESS_ISSUE,
             side_effect=probe,
         ):
-            workflow.tick(
+            tick.tick(
                 gh,
                 support._spec(parallel_limit=4),
                 global_semaphore=threading.BoundedSemaphore(2),
@@ -69,7 +69,7 @@ class TickGlobalSchedulingTest(unittest.TestCase):
 
         with patch.object(workflow, support.REFRESH_BASE), \
              patch.object(dispatch, support.PROCESS_ISSUE, side_effect=probe):
-            workflow.tick(
+            tick.tick(
                 gh,
                 support._spec(parallel_limit=5),
                 global_semaphore=threading.BoundedSemaphore(1),
@@ -102,7 +102,7 @@ class TickGlobalSchedulingTest(unittest.TestCase):
                 side_effect=scenario.process_issue,
             ),
         ):
-            workflow.tick(scenario.parent, support._spec(parallel_limit=3))
+            tick.tick(scenario.parent, support._spec(parallel_limit=3))
 
         scenario.assert_distinct_worker_clients(self)
         scenario.assert_worker_refetches(self)
@@ -120,7 +120,7 @@ class TickGlobalSchedulingTest(unittest.TestCase):
         with patch.object(gh, "_for_worker_thread", clone), \
              patch.object(workflow, support.REFRESH_BASE), \
              patch.object(dispatch, support.PROCESS_ISSUE):
-            workflow.tick(gh, support._spec(parallel_limit=1))
+            tick.tick(gh, support._spec(parallel_limit=1))
         clone.assert_not_called()
 
     def test_limit_one_processes_issues_before_error(self) -> None:
@@ -147,6 +147,6 @@ class TickGlobalSchedulingTest(unittest.TestCase):
             # at the per-repo boundary in `main._run_tick`), but the issues
             # yielded BEFORE the raise must still have been processed.
             with self.assertRaises(RuntimeError):
-                workflow.tick(gh, support._spec(parallel_limit=1))
+                tick.tick(gh, support._spec(parallel_limit=1))
 
         self.assertEqual(recorder.processed, [1, 2])

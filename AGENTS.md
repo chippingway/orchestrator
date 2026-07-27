@@ -86,7 +86,17 @@ orchestrator process is stateless.
   only issue numbers cross a thread with, the scheduler submits and the sequential bucket drain
   with its `track_active` claim, and the `stage_evaluation` record every timed dispatch appends,
   with each handler reached through a call-time import of the module its label is paired with in
-  `_STAGE_HANDLER_TARGETS` -- and over the empty `workflow/stages/` package
+  `_STAGE_HANDLER_TARGETS` -- and over the `workflow/engine/tick.py` owner closing the
+  subpackage: one repo's polling pass in one order -- the base refresh whose failure is the only
+  one the tick catches, the community-contribution sweep that sits here because the outsider PRs
+  it labels carry no pinned state for a stage handler to consult, and the skill-catalog emission
+  beside it, both placed before the scheduler / in-tick split so they fire once per tick on either
+  path -- and behind that split either the scheduler handoff or the two in-tick modes: the
+  streaming sequential loop that keeps the issues a mid-sweep pagination failure yielded, and the
+  bounded pool whose materialized partition folds the whole family bucket into one task so it
+  holds a single slot, both wrapping each issue in its own try/except, with
+  `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog` deliberately read off the facade
+  because those are the seams the tick tests replace -- and over the empty `workflow/stages/` package
   beside that subpackage, the destination the per-label stage facades migrate to one at a time: it
   binds nothing, a migrated stage keeps the lazy hooks it already publishes, and the
   `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading every name back off
@@ -216,11 +226,9 @@ orchestrator process is stateless.
   `tests/conflict_resume_test_support.py`); other facade-level helper tests
   include (`tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
-  `tests/test_workflow_tick_parallel.py`,
   `tests/test_workflow_question_routing.py`,
   `tests/test_workflow_documenting_routing.py`, `tests/test_workflow_fixing_routing.py`,
-  `tests/test_workflow_in_review_fresh_feedback.py`,
-  `tests/test_workflow_community_contribution.py`); shared helpers in `tests/workflow_helpers.py`.
+  `tests/test_workflow_in_review_fresh_feedback.py`); shared helpers in `tests/workflow_helpers.py`.
   Configuration-package
   tests live in `tests/config/`, agent-package owner / import-cycle tests in `tests/agents/`, and github-package
   client (construction, token resolution, worker clone, label cache), label (vocabulary, predicates, and bootstrap),
@@ -345,7 +353,7 @@ orchestrator process is stateless.
   receipt it skips on an empty meter (`test_terminals_finalize.py`), with the scenario models, issue numbers,
   and drain / cleanup / receipt assertions the first four share in
   `tests/workflow/engine/terminals_test_support.py`. The dispatch owner's coverage
-  closes the directory: the facade forward of all nineteen names (`test_dispatch.py`), the `backlog` and
+  follows: the facade forward of all nineteen names (`test_dispatch.py`), the `backlog` and
   `paused` holds that must run no handler, write no label, and post no comment, and the resume a removed
   label is (`test_dispatch_backlog.py`, `test_dispatch_paused.py`), the one `stage_evaluation` record each
   dispatch appends across the happy, unlabeled, error, hard-skip, and disabled-sink paths
@@ -356,7 +364,19 @@ orchestrator process is stateless.
   in-flight claim (`_family`), the per-issue submits and the duplicate-active skip (`_fanout`), and the
   per-worker client the refetch mints (`_isolation`) — with their fixtures, fakes, and gated workers in
   `tests/workflow/engine/dispatch_scheduler_test_support.py`, `dispatch_scheduler_fakes.py`, and
-  `dispatch_scheduler_workers.py`. The mirrored
+  `dispatch_scheduler_workers.py`. The tick owner's coverage closes the directory: the pass order both
+  dispatch routes run and the facade forward of all eleven names (`test_tick.py`), the base refresh that
+  precedes every issue and the failure that must not stop them (`test_tick_refresh.py`), the family
+  bucket's internal serialization, one-slot footprint, and overlap with fanout plus the label read routed
+  into it (`test_tick_family_parallel.py`), the per-repo cap, its sequential `limit == 1` legacy, and the
+  isolation of a raising issue (`test_tick_per_repo_parallel.py`), the global semaphore clamping under a
+  higher per-repo limit, the per-worker clients the fanout mints and the sequential path must not, and
+  the issues a mid-enumeration failure must not lose (`test_tick_global_parallel.py`), and the sweep's
+  allowlist, bot, and already-labeled skips (`test_tick_community.py`) beside the ping-before-label
+  ordering, the per-PR and enumeration failure isolation, and the tick wiring
+  (`test_tick_community_failures.py`), with their spec / client fixtures, concurrency probes,
+  family-scheduling probes, and PR builders in `tests/workflow/engine/tick_parallel_test_support.py`,
+  `tick_probe_test_support.py`, `tick_family_test_support.py`, and `tick_community_test_support.py`. The mirrored
   `tests/workflow/stages/` directory holds what the migration destination owes before any stage lands there: its
   clean-process import, the layering guard that the package costs the facade above it and nothing else, and the
   surface checks that its initializer binds only submodules and that `orchestrator.stages` stays the module the

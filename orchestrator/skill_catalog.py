@@ -20,10 +20,10 @@ Dashboard-local skill files are never scanned: enumeration reads the
 target repo's base ref via `git ls-tree`, not the orchestrator's own
 working tree. The whole producer is fail-open -- a missing clone, an
 unfetched ref, a git error, or a sink IO failure logs and is swallowed so
-catalog collection never disturbs the polling tick. `workflow.tick`
-re-exports `_emit_repo_skill_catalog` and calls it once per tick per spec
-after `_refresh_base_and_worktrees` has refreshed
-`<remote_name>/<base_branch>`.
+catalog collection never disturbs the polling tick. The `workflow` facade
+re-exports `_emit_repo_skill_catalog`, and `workflow/engine/tick.py` calls it
+through that facade once per tick per spec, after
+`_refresh_base_and_worktrees` has refreshed `<remote_name>/<base_branch>`.
 
 Two per-run collectors (`discover_local_skills`, `discover_codex_tools`) serve
 the analytics trajectory record rather than the per-tick catalog. Codex's

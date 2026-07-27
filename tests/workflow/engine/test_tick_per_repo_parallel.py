@@ -10,14 +10,14 @@ from functools import partial
 from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
-from orchestrator.workflow.engine import dispatch
+from orchestrator.workflow.engine import dispatch, tick
 
-from tests import workflow_tick_parallel_test_support as support
-from tests import workflow_tick_probe_test_support as probes
+from tests.workflow.engine import tick_parallel_test_support as support
+from tests.workflow.engine import tick_probe_test_support as probes
 
 
 class TickPerRepoParallelLimitTest(unittest.TestCase):
-    """`workflow.tick` must respect `spec.parallel_limit` when fanning per-issue
+    """`tick` must respect `spec.parallel_limit` when fanning per-issue
     work out: a repo configured with `parallel_limit=N` may run up to N
     issues' `_process_issue` calls concurrently, no more, and a single
     failing issue must not stop other eligible issues. The legacy
@@ -36,7 +36,7 @@ class TickPerRepoParallelLimitTest(unittest.TestCase):
 
         with patch.object(workflow, support.REFRESH_BASE), \
              patch.object(dispatch, support.PROCESS_ISSUE, side_effect=probe):
-            workflow.tick(gh, support._spec(parallel_limit=1))
+            tick.tick(gh, support._spec(parallel_limit=1))
 
         self.assertEqual(probe.max_in_flight, 1)
         self.assertEqual(probe.order, [1, 2, 3])
@@ -57,7 +57,7 @@ class TickPerRepoParallelLimitTest(unittest.TestCase):
             support.PROCESS_ISSUE,
             side_effect=probe,
         ):
-            workflow.tick(gh, support._spec(parallel_limit=2))
+            tick.tick(gh, support._spec(parallel_limit=2))
 
         self.assertTrue(probe.admissions_complete)
         self.assertEqual(probe.max_in_flight, 2)
@@ -74,7 +74,7 @@ class TickPerRepoParallelLimitTest(unittest.TestCase):
 
         with patch.object(workflow, support.REFRESH_BASE), \
              patch.object(dispatch, support.PROCESS_ISSUE, side_effect=recorder):
-            workflow.tick(gh, support._spec(parallel_limit=3))
+            tick.tick(gh, support._spec(parallel_limit=3))
 
         self.assertEqual(sorted(recorder.records), [1, 2, 3])
 
@@ -88,7 +88,7 @@ class TickPerRepoParallelLimitTest(unittest.TestCase):
 
         with patch.object(workflow, support.REFRESH_BASE), \
              patch.object(dispatch, support.PROCESS_ISSUE, side_effect=recorder):
-            workflow.tick(gh, support._spec(parallel_limit=3))
+            tick.tick(gh, support._spec(parallel_limit=3))
 
         self.assertEqual(sorted(recorder.processed), [1, 3])
 
@@ -104,7 +104,7 @@ class TickPerRepoParallelLimitTest(unittest.TestCase):
 
         with patch.object(workflow, support.REFRESH_BASE, refresh), \
              patch.object(dispatch, support.PROCESS_ISSUE, side_effect=recorder):
-            workflow.tick(gh, support._spec(parallel_limit=2))
+            tick.tick(gh, support._spec(parallel_limit=2))
 
         refresh.assert_called_once_with(
             gh, support._spec(parallel_limit=2), scheduler=None,
