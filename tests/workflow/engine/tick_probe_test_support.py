@@ -7,7 +7,7 @@ import threading
 import time
 from unittest.mock import MagicMock
 
-from tests import workflow_tick_parallel_test_support as support
+from tests.workflow.engine import tick_parallel_test_support as support
 
 
 class _ConcurrencyProbe:

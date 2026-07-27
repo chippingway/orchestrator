@@ -114,8 +114,8 @@ orchestrator/
                         `ControlLabel` vocabularies, strict label coercion, the
                         declared transition graph, and the transition guard
     engine/
-      __init__.py       package marker only; reserved for the tick loop and
-                        the remaining shared-helper owners
+      __init__.py       package marker only; reserved for the remaining
+                        shared-helper owners
       comments.py       the orchestrator marker and capped id ledger both
                         comment posters write, the trusted-author thread read
                         every prompt quotes, and the tracked-repos block
@@ -149,6 +149,10 @@ orchestrator/
                         and human-closed arcs with their stamps, receipts,
                         events, issue close, and branch cleanup, plus the
                         PR-holding drain and the two entry-time finalizers
+      tick.py           one repo's polling pass: the base refresh, the
+                        community-contribution sweep, the skill-catalog
+                        emission, and the scheduler handoff or the sequential /
+                        bounded-parallel in-tick execution behind it
       usage.py          the tracked agent run: the request model, the audit
                         spawn/exit pair, the analytics record and its
                         configured-model fallback, the `skill_triggered`
@@ -162,8 +166,9 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
-  _workflow_*.py        tick loop, community-contribution sweep, and the
-                        immutable values they share
+  _workflow_state.py    immutable values the engine owners share: the logger,
+                        the per-issue failure log line, and the issue-state
+                        attribute and its open / closed values
   workflow_drift.py     lazy user-content-drift compatibility facade
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
@@ -548,7 +553,28 @@ stays an attribute read, so a stage that migrates to `workflow/stages/` keeps an
 leaves behind. That makes the owning module, not `workflow`, the target for a patch that has to intercept a
 dispatched handler, and this owner the target for one aimed at the partition, the cap-exemption probe, the timed
 dispatch, or a scheduler submit. `workflow` still resolves all nineteen names to the owner's exact object for callers
-outside the package; `_workflow_tick.py` binds the owner directly.
+outside the package; `workflow/engine/tick.py` binds the owner directly.
+
+`workflow/engine/tick.py` is bound the same way, and closes the subpackage. It owns one repo's polling pass, which is
+four things in one order. The base refresh runs first because everything after it reads what that fetch left behind —
+a handler would otherwise rebase onto the base SHA its worktree was created at, and the skill catalog would ls-tree a
+stale `<remote_name>/<base_branch>` — and it is the only pass whose failure the tick catches, because a fetch that
+fails must not cost the tick its issues. The community-contribution sweep sits here rather than in the stage tree
+because it is the one pass with no per-issue home: the outsider PRs it labels carry no pinned state for a handler to
+consult, so nothing dispatches them. It and the skill-catalog emission both run before the scheduler / in-tick split
+so they fire exactly once per tick on either path, and both are internally fail-open. Past that split the tick either
+hands every issue to `dispatch._dispatch_via_scheduler` and returns without waiting, or runs them itself under
+`parallel_limit`: `limit == 1` streams `list_pollable_issues()` directly, because materializing it first would lose
+every already-yielded issue when a pagination error raises mid-sweep, while `limit > 1` must materialize (the executor
+needs the submission count up front to bound `max_workers`) and lets an enumeration failure cost the tick the next one
+retries. Either way each issue is wrapped in its own try/except, and the family bucket is submitted as exactly one
+task so it holds a single worker slot and leaves the other `limit - 1` free for fanout. It reaches `dispatch.py` for
+the partition, the per-worker refetch, and both dispatch routes, so a patch aimed at a sweep helper or an execution
+mode targets `orchestrator.workflow.engine.tick`; `workflow` still resolves all eleven names to the owner's exact
+object, `tick` among them, which keeps `main._run_tick`'s `workflow.tick(...)` call unchanged. The two collaborators
+it deliberately reaches back through the facade for are `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog`:
+those are the seams the tick tests replace to drive a pass without a git remote or a clone, so
+`patch.object(workflow, ...)` stays the way to intercept either.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

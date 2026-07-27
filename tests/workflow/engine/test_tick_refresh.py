@@ -8,13 +8,13 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
-from orchestrator.workflow.engine import dispatch
+from orchestrator.workflow.engine import dispatch, tick
 
-from tests import workflow_tick_parallel_test_support as support
+from tests.workflow.engine import tick_parallel_test_support as support
 
 
 class TickInvokesBaseRefreshTest(unittest.TestCase):
-    """`workflow.tick` must drive `_refresh_base_and_worktrees` before any
+    """`tick` must drive `_refresh_base_and_worktrees` before any
     issue is processed -- otherwise an in-flight worktree would still be
     anchored at the base SHA from when it was first added.
     """
@@ -26,7 +26,7 @@ class TickInvokesBaseRefreshTest(unittest.TestCase):
         process = MagicMock()
         with patch.object(workflow, support.REFRESH_BASE, refresh), \
              patch.object(dispatch, support.PROCESS_ISSUE, process):
-            workflow.tick(gh, support._TEST_SPEC)
+            tick.tick(gh, support._TEST_SPEC)
         refresh.assert_called_once_with(gh, support._TEST_SPEC, scheduler=None)
         process.assert_called_once()
 
@@ -37,5 +37,5 @@ class TickInvokesBaseRefreshTest(unittest.TestCase):
         process = MagicMock()
         with patch.object(workflow, support.REFRESH_BASE, refresh), \
              patch.object(dispatch, support.PROCESS_ISSUE, process):
-            workflow.tick(gh, support._TEST_SPEC)
+            tick.tick(gh, support._TEST_SPEC)
         process.assert_called_once()

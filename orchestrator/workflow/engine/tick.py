@@ -1,25 +1,149 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Workflow tick."""
+"""One repo's polling pass: the order it drives, and how its issues execute.
+
+`tick` is the whole per-repo unit of work, and the order of the passes it
+drives is the contract. The base refresh goes first because everything after it
+reads what that fetch left behind -- a handler would otherwise rebase onto the
+base SHA its worktree was created at, and the skill catalog would ls-tree a
+stale `<remote_name>/<base_branch>`. It is also the only pass whose failure is
+caught here, because a fetch that fails must not cost the tick its issues; the
+sweep and the catalog are internally fail-open and cannot raise at all.
+
+The community sweep sits with the tick rather than in the stage tree because it
+is the one pass with no per-issue home: a PR the orchestrator never opened
+carries no pinned state for a handler to consult, so nothing dispatches it. The
+skill-catalog emission is producer-side observability with the same shape. Both
+run before the scheduler / in-tick split so they fire exactly once per tick on
+either path.
+
+Past that split the tick either hands every issue to the scheduler and returns
+without waiting, or runs them itself under `parallel_limit`. The two in-tick
+modes are not one loop at two widths. `limit == 1` streams
+`list_pollable_issues()` directly, because materializing it first would lose
+every already-yielded issue when a pagination error raises mid-sweep;
+`limit > 1` must materialize (the executor needs the submission count up front
+to bound `max_workers`) and accepts that an enumeration failure costs the whole
+tick, which the next one retries. Both wrap each issue in its own try/except,
+so one raising handler never stops the rest.
+
+The family bucket the partition hands over is submitted as exactly ONE task no
+matter how many family-aware issues are pending, so it occupies a single worker
+slot and leaves the other `limit - 1` free for fanout. Per-family-issue futures
+behind a shared lock would instead let a waiting family future hold a second
+slot and starve fanout under a small `limit`.
+
+Two collaborators are reached as ``_wf`` attributes rather than off their own
+owners: `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog` are the
+seams the tick tests replace to drive a pass without a git remote or a clone,
+and the facade attribute is what they patch.
+"""
 from __future__ import annotations
 
-from orchestrator import _workflow_state as _state
-from orchestrator import workflow as _owner
+import contextlib
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from typing import Any, Optional
+
+from orchestrator import config
+from orchestrator import workflow as _wf
+from orchestrator._workflow_state import _PROCESSING_FAILED_LOG, log
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
+from orchestrator.scheduler import IssueScheduler
 from orchestrator.workflow.engine import dispatch as _dispatch
 
-_PollablePartition = _dispatch._PollablePartition
-Any = _owner.Any
-GitHubClient = _owner.GitHubClient
-IssueScheduler = _owner.IssueScheduler
-Optional = _owner.Optional
-ThreadPoolExecutor = _owner.ThreadPoolExecutor
-as_completed = _owner.as_completed
-config = _owner.config
-contextlib = _owner.contextlib
-dataclass = _owner.dataclass
-threading = _owner.threading
-_PROCESSING_FAILED_LOG = _state._PROCESSING_FAILED_LOG
-log = _state.log
+
+@dataclass(frozen=True)
+class _CommunityContribution:
+    author: str
+
+
+def _community_contribution_for_pr(
+    gh: GitHubClient, pr, allowed_lower: set[str],
+) -> Optional[_CommunityContribution]:
+    user = getattr(pr, "user", None)
+    if getattr(user, "type", None) == "Bot":
+        return None
+    author = getattr(user, "login", None) or ""
+    if author.lower() in allowed_lower:
+        return None
+    if gh.pr_has_label(pr, COMMUNITY_CONTRIBUTION_LABEL):
+        return None
+    return _CommunityContribution(author)
+
+
+def _label_community_contribution(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    pr,
+    contribution: _CommunityContribution,
+) -> None:
+    # The label is the dedup marker, so the ping must land first. A label
+    # failure may repeat a ping; a comment failure must not suppress one.
+    author = contribution.author or "unknown"
+    gh.pr_comment(
+        pr.number,
+        f"{config.HITL_MENTIONS} community contribution from "
+        f"@{author} -- please review this PR.",
+    )
+    gh.add_pr_label(pr, COMMUNITY_CONTRIBUTION_LABEL)
+    log.info(
+        "repo=%s pr=#%s author=%r pinged HITL and labeled %r",
+        spec.slug, pr.number, contribution.author, COMMUNITY_CONTRIBUTION_LABEL,
+    )
+
+
+def _sweep_pr_contribution(
+    gh: GitHubClient, spec: config.RepoSpec, pr, allowed_lower: set,
+) -> None:
+    """Label one open PR when its author is an outside community contributor."""
+    contribution = _community_contribution_for_pr(gh, pr, allowed_lower)
+    if contribution is not None:
+        _label_community_contribution(gh, spec, pr, contribution)
+
+
+def _sweep_community_contribution_prs(
+    gh: GitHubClient, spec: config.RepoSpec
+) -> None:
+    """Label open PRs from authors outside ALLOWED_ISSUE_AUTHORS and ping HITL.
+
+    No-op when ALLOWED_ISSUE_AUTHORS is empty (the default) so a single-user
+    deployment keeps the legacy "anyone is trusted" behavior. When the list
+    is populated, every open PR whose author is not in it earns the
+    `community_contribution` label and a one-shot HITL ping comment; the
+    label is idempotent (already-labeled PRs are skipped) so the comment
+    fires exactly once per PR.
+
+    Bot-authored PRs (Dependabot, Renovate, CI bots) are skipped by
+    GitHub's `user.type == "Bot"` flag -- they open PRs structurally and
+    are not community contributions, so they never earn the label or ping.
+
+    All errors are caught and logged: a PyGithub lazy-load failure on one
+    PR must not abort the rest of the sweep, and the sweep itself must not
+    abort the polling tick.
+    """
+    allowed = config.ALLOWED_ISSUE_AUTHORS
+    if not allowed:
+        return
+    allowed_lower = {github_handle.lower() for github_handle in allowed}
+    try:
+        prs = list(gh.iter_open_prs())
+    except Exception:
+        log.exception(
+            "repo=%s community-contribution sweep: open-PR enumeration failed",
+            spec.slug,
+        )
+        return
+    for pr in prs:
+        try:
+            _sweep_pr_contribution(gh, spec, pr, allowed_lower)
+        except Exception:
+            log.exception(
+                "repo=%s pr=#%s community-contribution sweep step failed; continuing",
+                spec.slug, getattr(pr, "number", "?"),
+            )
 
 
 def _run_sequential_tick(
@@ -82,7 +206,7 @@ def _drain_family_bucket(
 class _ParallelTickPlan:
     gh: GitHubClient
     spec: config.RepoSpec
-    partition: _PollablePartition
+    partition: _dispatch._PollablePartition
     semaphore_cm: contextlib.AbstractContextManager
 
     @property
@@ -96,7 +220,7 @@ class _ParallelTickPlan:
         if self.partition.family_numbers:
             futures[
                 executor.submit(
-                    _owner._drain_family_bucket,
+                    _drain_family_bucket,
                     self.gh,
                     self.spec,
                     self.partition.family_numbers,
@@ -182,7 +306,7 @@ def _run_parallel_tick(
         # `as_completed` so a slow issue does not delay logging the failures
         # of faster ones. Each `fut.result()` is wrapped individually so one
         # raising issue cannot abort the remaining futures' result drain.
-        _owner._drain_parallel_futures(spec, futures, family_sentinel)
+        _drain_parallel_futures(spec, futures, family_sentinel)
 
 
 def tick(
@@ -225,7 +349,7 @@ def tick(
         # refresh helper consults `scheduler.is_active` per worktree
         # so an in-flight issue's worktree and pinned state are left
         # alone until the worker exits.
-        _owner._refresh_base_and_worktrees(gh, spec, scheduler=scheduler)
+        _wf._refresh_base_and_worktrees(gh, spec, scheduler=scheduler)
     except Exception:
         log.exception(
             "repo=%s pre-tick base refresh failed; continuing", spec.slug,
@@ -234,14 +358,14 @@ def tick(
     # Independent from the per-issue dispatch (PRs not driven by the
     # orchestrator have no pinned state to consult), so failures inside the
     # sweep are swallowed by the helper itself and cannot stop the tick.
-    _owner._sweep_community_contribution_prs(gh, spec)
+    _sweep_community_contribution_prs(gh, spec)
     # Per-tick: snapshot the target repo's skill catalog into analytics.
     # Runs after the base refresh above has fetched
     # `<remote_name>/<base_branch>` so the ls-tree reads the current base
     # ref. Producer-side observability only and internally fail-open, so a
     # missing clone / git error never stops the tick; placed before the
     # scheduler/legacy split so it fires once per tick on both paths.
-    _owner._emit_repo_skill_catalog(spec)
+    _wf._emit_repo_skill_catalog(spec)
     if scheduler is not None:
         _dispatch._dispatch_via_scheduler(gh, spec, scheduler)
         return
@@ -259,6 +383,6 @@ def tick(
         contextlib.nullcontext() if global_semaphore is None else global_semaphore
     )
     if limit == 1:
-        _owner._run_sequential_tick(gh, spec, semaphore_cm)
+        _run_sequential_tick(gh, spec, semaphore_cm)
     else:
-        _owner._run_parallel_tick(gh, spec, limit, semaphore_cm)
+        _run_parallel_tick(gh, spec, limit, semaphore_cm)

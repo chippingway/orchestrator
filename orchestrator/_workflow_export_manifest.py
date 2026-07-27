@@ -52,16 +52,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._workflow_community",
-        (
-            ("_CommunityContribution", "_CommunityContribution"),
-            ("_community_contribution_for_pr", "_community_contribution_for_pr"),
-            ("_label_community_contribution", "_label_community_contribution"),
-            ("_sweep_community_contribution_prs", "_sweep_community_contribution_prs"),
-            ("_sweep_pr_contribution", "_sweep_pr_contribution"),
-        ),
-    ),
-    *export_group(
         "orchestrator._workflow_state",
         (
             ("_ISSUE_STATE_CLOSED", "_ISSUE_STATE_CLOSED"),
@@ -69,17 +59,6 @@ EXPORTS = (
             ("_PROCESSING_FAILED_LOG", "_PROCESSING_FAILED_LOG"),
             ("_STATE_ATTR", "_STATE_ATTR"),
             ("log", "log"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_tick",
-        (
-            ("_ParallelTickPlan", "_ParallelTickPlan"),
-            ("_drain_family_bucket", "_drain_family_bucket"),
-            ("_drain_parallel_futures", "_drain_parallel_futures"),
-            ("_run_parallel_tick", "_run_parallel_tick"),
-            ("_run_sequential_tick", "_run_sequential_tick"),
-            ("tick", "tick"),
         ),
     ),
     *export_group(
@@ -323,6 +302,22 @@ EXPORTS = (
             ("_finalize_if_pr_merged", "_finalize_if_pr_merged"),
             ("_finalize_merged_pr", "_finalize_merged_pr"),
             ("_finalize_rejected_pr", "_finalize_rejected_pr"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.engine.tick",
+        (
+            ("_CommunityContribution", "_CommunityContribution"),
+            ("_ParallelTickPlan", "_ParallelTickPlan"),
+            ("_community_contribution_for_pr", "_community_contribution_for_pr"),
+            ("_drain_family_bucket", "_drain_family_bucket"),
+            ("_drain_parallel_futures", "_drain_parallel_futures"),
+            ("_label_community_contribution", "_label_community_contribution"),
+            ("_run_parallel_tick", "_run_parallel_tick"),
+            ("_run_sequential_tick", "_run_sequential_tick"),
+            ("_sweep_community_contribution_prs", "_sweep_community_contribution_prs"),
+            ("_sweep_pr_contribution", "_sweep_pr_contribution"),
+            ("tick", "tick"),
         ),
     ),
     *export_group(
