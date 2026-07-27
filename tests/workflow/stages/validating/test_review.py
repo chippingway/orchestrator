@@ -5,7 +5,9 @@ from __future__ import annotations
 import unittest
 from contextlib import ExitStack
 
-from tests import validating_review_test_support as review_support
+from tests.workflow.stages.validating import (
+    validating_review_test_support as review_support,
+)
 
 MagicMock = review_support.MagicMock
 Path = review_support.Path

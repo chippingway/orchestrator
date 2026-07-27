@@ -1,22 +1,41 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Validating awaiting handler."""
+"""The order a park's claimants are asked, and the resume none of them wanted.
+
+The auto-rebase reasons are checked first and answered with silence, because
+the comment on such a park is a "retry the rebase" signal addressed to the
+per-tick refresh loop. Resuming the dev or re-spawning the reviewer here would
+consume that comment as input neither has any context for, and the retry
+intent would vanish without a trace.
+
+After that the three park-reason decisions are asked in order and the first
+one that claims the reply wins. Only when none does is this a plain
+awaiting-human resume, and a bare `/orchestrator continue` against a park that
+needs real words is refused there rather than spent on the dev.
+
+The resume itself is implementing's mechanic with one difference: a clean
+pushed fix bumps the round and emits no relabel, so the issue stays on
+`validating` and the reviewer re-reads the new head next tick. Docs wait for
+the final-docs hop after approval. It always answers `"return"` -- every path
+through it has fully handled the tick -- while the decisions above may answer
+`"spawn_reviewer"` and send the caller on to the round-cap check.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _validating_state as _state
-from orchestrator.stages import validating as _owner
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import usage as _usage
-
-_AwaitingValidation = _owner._AwaitingValidation
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-config = _owner.config
-_OUTCOME_RETURN = _state._OUTCOME_RETURN
+from orchestrator.workflow.stages.validating import awaiting as _awaiting
+from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
+from orchestrator.workflow.stages.validating import models as _models
+from orchestrator.workflow.stages.validating import state as _state
 
 
-def _resume_validating_awaiting_dev(context: _AwaitingValidation) -> str:
+def _resume_validating_awaiting_dev(context: _models._AwaitingValidation) -> str:
     continue_action = (
         _messages._continue_command_action(context.comments, context.park_reason)
         if context.comments else "passthrough"
@@ -24,14 +43,14 @@ def _resume_validating_awaiting_dev(context: _AwaitingValidation) -> str:
     if continue_action == "refuse":
         _messages._refuse_parked_continue(context.gh, context.issue, context.state)
         context.gh.write_pinned_state(context.issue, context.state)
-        return _OUTCOME_RETURN
-    attempt = _owner._run_awaiting_dev(context, continue_action)
+        return _state._OUTCOME_RETURN
+    attempt = _awaiting._run_awaiting_dev(context, continue_action)
     if attempt is None:
-        return _OUTCOME_RETURN
+        return _state._OUTCOME_RETURN
     context.state.set("last_agent_action_at", _usage._now_iso())
     if attempt.paused:
-        return _OUTCOME_RETURN
-    pushed = _owner._handle_dev_fix_result(
+        return _state._OUTCOME_RETURN
+    pushed = _dev_fix._handle_dev_fix_result(
         context.gh,
         context.spec,
         context.issue,
@@ -43,10 +62,10 @@ def _resume_validating_awaiting_dev(context: _AwaitingValidation) -> str:
     if not pushed:
         if not attempt.run.agent_result.interrupted:
             context.gh.write_pinned_state(context.issue, context.state)
-        return _OUTCOME_RETURN
-    _owner._bump_review_round(context.state)
+        return _state._OUTCOME_RETURN
+    _dev_fix._bump_review_round(context.state)
     context.gh.write_pinned_state(context.issue, context.state)
-    return _OUTCOME_RETURN
+    return _state._OUTCOME_RETURN
 
 
 def _handle_validating_awaiting_human(
@@ -68,7 +87,7 @@ def _handle_validating_awaiting_human(
     """
     from orchestrator import workflow as _wf
 
-    context = _AwaitingValidation.build(gh, spec, issue, state)
+    context = _models._AwaitingValidation.build(gh, spec, issue, state)
 
     # Transient-park recovery: when the original park reason is something
     # that can resolve without a human comment (a push race that the
@@ -88,7 +107,7 @@ def _handle_validating_awaiting_human(
     # input it has no context for and silently drop the retry
     # intent.
     if context.park_reason in _wf._AUTO_REBASE_PARK_REASONS:
-        return _OUTCOME_RETURN
+        return _state._OUTCOME_RETURN
     # `/orchestrator add-review-rounds N` operator command. Only honored
     # on a `review_cap` park: the cap has consumed every review round and
     # plain resuming the dev would re-park on the same cap next tick (the
@@ -98,11 +117,11 @@ def _handle_validating_awaiting_human(
     # it. On a non-command reply while parked on the cap we stay parked
     # silently rather than waking the dev on a do-nothing prompt.
     for decision_helper in (
-        _owner._review_cap_awaiting_action,
-        _owner._transient_awaiting_action,
-        _owner._reviewer_retry_awaiting_action,
+        _awaiting._review_cap_awaiting_action,
+        _awaiting._transient_awaiting_action,
+        _awaiting._reviewer_retry_awaiting_action,
     ):
         action = decision_helper(context)
         if action is not None:
             return action
-    return _owner._resume_validating_awaiting_dev(context)
+    return _resume_validating_awaiting_dev(context)

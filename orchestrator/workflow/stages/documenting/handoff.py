@@ -27,6 +27,7 @@ from github.Issue import Issue
 from orchestrator._workflow_state import log
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.stages.validating import watermarks as _validating_watermarks
 from orchestrator.workflow.state import WorkflowLabel
 
 
@@ -62,8 +63,6 @@ def _ratchet_in_review_watermark_for_final_docs(
     will route to `fixing` and the rescan there is debounced and
     correct on its own.
     """
-    from orchestrator import workflow as _wf
-
     pr_number = state.get("pr_number")
     if pr_number is None:
         return
@@ -77,7 +76,9 @@ def _ratchet_in_review_watermark_for_final_docs(
         )
         return
 
-    candidate, _ = _wf._latest_pr_comment_ids(gh, issue, pr, state)
+    candidate, _ = _validating_watermarks._latest_pr_comment_ids(
+        gh, issue, pr, state,
+    )
     prev_wm = state.get("pr_last_comment_id")
     if isinstance(prev_wm, int):
         candidate = (

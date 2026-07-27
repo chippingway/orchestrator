@@ -126,6 +126,19 @@
 # it publishes through, and the sibling owners it hands off to. WPS201 and
 # WPS202 are waived for those files.
 #
+# Five validating stage owners name more than the same WPS201 ceiling of 12 for
+# the same reason -- `approval.py`, `dev_fix.py`, `drift.py`,
+# `requested_changes.py`, and `reviewer.py`. Each of them spans one agent run
+# end to end, so it is typed by the issue, client, and pinned state it reads and
+# writes, the engine surfaces it comments, guards, prompts, and meters through,
+# the sibling owners it disposes the run to, the implementing and publication
+# owners it borrows the dev resume, the session read, the parks, and the squash
+# from, and the worktree / git helpers it
+# reaches on the `workflow` facade at call time -- that last import is counted
+# per call site, so a stage owner with four publish paths pays four. Splitting
+# any of them by import would put one run's decisions across two modules.
+# WPS201 is waived for those files.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -167,6 +180,11 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS201
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
+    orchestrator/workflow/stages/validating/approval.py:WPS201
+    orchestrator/workflow/stages/validating/dev_fix.py:WPS201
+    orchestrator/workflow/stages/validating/drift.py:WPS201
+    orchestrator/workflow/stages/validating/requested_changes.py:WPS201
+    orchestrator/workflow/stages/validating/reviewer.py:WPS201
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

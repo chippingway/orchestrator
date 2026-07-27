@@ -1,29 +1,50 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Validating requested changes."""
+"""The two verdicts that are not an approval.
+
+CHANGES_REQUESTED runs its dev fix under the `fixing` label rather than
+`validating`, so the active job reads as what it is instead of as reviewer
+work. The relabel happens BEFORE the spawn on purpose: a crash inside the
+spawn then leaves the issue on `fixing` with `awaiting_human` still false,
+which the next tick's fixing handler reads as "no feedback" and bounces back
+to `validating` -- whereas a crash after a spawn under the old label would
+leave an issue nobody re-enters. A pushed fix bumps the round and relabels
+back; any park leaves the issue on `fixing`, whose handler owns the
+awaiting-human rescan from there.
+
+The reviewer-feedback comment's id is recorded because a session-failure park
+on this route has to be retryable by `/orchestrator continue`, and the fixing
+handler replays that exact comment to reconstruct the batch. It is a
+standalone key rather than part of the in_review bookmark pair, since
+`pending_fix_at` is what tells that route's round RESET from this route's
+bump.
+
+A reviewer that emitted no VERDICT line is the other verdict, and it splits
+by whether there was any output at all. An empty last message with a non-zero
+exit is a crash, tagged transient so the next tick re-spawns the reviewer --
+waking the dev on a human "retry" would hand the wrong agent a prompt with no
+review in it. Real text that merely omitted the marker is left for a human,
+and the stderr tail is suppressed there because the human is already reading
+model output.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _validating_state as _state
-from orchestrator.stages import validating as _owner
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator._workflow_state import log
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
-
-_AwaitingDevAttempt = _owner._AwaitingDevAttempt
-_DevFixRun = _owner._DevFixRun
-_RequestedChanges = _owner._RequestedChanges
-_ReviewerDecision = _owner._ReviewerDecision
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-WorkflowLabel = _owner.WorkflowLabel
-config = _owner.config
-_PARK_REASON = _state._PARK_REASON
-_REASON_REVIEWER_FAILED = _state._REASON_REVIEWER_FAILED
-_REASON_REVIEW_CAP = _state._REASON_REVIEW_CAP
-_REVIEW_ROUND = _state._REVIEW_ROUND
+from orchestrator.workflow.stages.implementing import resume as _dev_resume
+from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
+from orchestrator.workflow.stages.validating import models as _models
+from orchestrator.workflow.stages.validating import state as _state
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _park_reviewer_no_verdict(
@@ -40,8 +61,6 @@ def _park_reviewer_no_verdict(
     VERDICT line is left as `reviewer_no_verdict` for human adjudication, and
     stderr diagnostics are suppressed (the human is reading real model output).
     """
-    from orchestrator import workflow as _wf
-
     raw = (review.last_message or "").strip() or "(reviewer produced no final message)"
     quoted = _messages._as_blockquote(raw)
     silent_crash = (
@@ -57,11 +76,11 @@ def _park_reviewer_no_verdict(
         f"{config.HITL_MENTIONS} reviewer did not emit a VERDICT line; "
         f"manual adjudication needed.\n\n_Last reviewer message:_\n\n"
         f"{quoted}{diag}",
-        reason=_REASON_REVIEWER_FAILED if silent_crash else "reviewer_no_verdict",
+        reason=_state._REASON_REVIEWER_FAILED if silent_crash else "reviewer_no_verdict",
     )
     if silent_crash:
-        state.set(_PARK_REASON, _REASON_REVIEWER_FAILED)
-    _wf.log.warning(
+        state.set(_state._PARK_REASON, _state._REASON_REVIEWER_FAILED)
+    log.warning(
         "issue=#%s reviewer emitted no VERDICT; exit_code=%d "
         "timed_out=%s stderr_tail=%r",
         issue.number, review.exit_code, review.timed_out,
@@ -70,9 +89,7 @@ def _park_reviewer_no_verdict(
     gh.write_pinned_state(issue, state)
 
 
-def _post_reviewer_feedback(context: _RequestedChanges) -> None:
-    from orchestrator import workflow as _wf
-
+def _post_reviewer_feedback(context: _models._RequestedChanges) -> None:
     reviewer_run = context.decision.run
     if reviewer_run.pr_number is None:
         return
@@ -89,7 +106,7 @@ def _post_reviewer_feedback(context: _RequestedChanges) -> None:
             f"{feedback}",
         )
     except Exception:
-        _wf.log.exception(
+        log.exception(
             "issue=#%s could not post review to PR #%s",
             context.issue.number,
             reviewer_run.pr_number,
@@ -100,7 +117,7 @@ def _post_reviewer_feedback(context: _RequestedChanges) -> None:
         context.state.set("pending_fix_reviewer_comment_id", int(anchor_id))
 
 
-def _run_requested_fix(context: _RequestedChanges) -> _AwaitingDevAttempt:
+def _run_requested_fix(context: _models._RequestedChanges) -> _models._AwaitingDevAttempt:
     from orchestrator import workflow as _wf
 
     before_sha = _wf._head_sha(context.decision.run.wt)
@@ -109,7 +126,7 @@ def _run_requested_fix(context: _RequestedChanges) -> _AwaitingDevAttempt:
     # `set_labels`, so pass `fixing` explicitly rather than let the resume
     # helper read the stale `validating` back off the issue and attribute this
     # developer run to the reviewer's stage.
-    worktree, agent_result, paused = _wf._resume_dev_with_text(
+    worktree, agent_result, paused = _dev_resume._resume_dev_with_text(
         context.gh,
         context.spec,
         context.issue,
@@ -119,17 +136,17 @@ def _run_requested_fix(context: _RequestedChanges) -> _AwaitingDevAttempt:
         pause_guard=True,
     )
     context.state.set("last_agent_action_at", _usage._now_iso())
-    return _AwaitingDevAttempt(
-        _DevFixRun(worktree, agent_result, before_sha), paused,
+    return _models._AwaitingDevAttempt(
+        _models._DevFixRun(worktree, agent_result, before_sha), paused,
     )
 
 
 def _finish_requested_fix(
-    context: _RequestedChanges, attempt: _AwaitingDevAttempt,
+    context: _models._RequestedChanges, attempt: _models._AwaitingDevAttempt,
 ) -> None:
     if attempt.paused:
         return
-    pushed = _owner._handle_dev_fix_result(
+    pushed = _dev_fix._handle_dev_fix_result(
         context.gh,
         context.spec,
         context.issue,
@@ -142,7 +159,7 @@ def _finish_requested_fix(
         if not attempt.run.agent_result.interrupted:
             context.gh.write_pinned_state(context.issue, context.state)
         return
-    context.state.set(_REVIEW_ROUND, context.decision.run.round_n + 1)
+    context.state.set(_state._REVIEW_ROUND, context.decision.run.round_n + 1)
     context.state.set("pending_fix_reviewer_comment_id", None)
     context.gh.set_workflow_label(context.issue, WorkflowLabel.VALIDATING)
     context.gh.write_pinned_state(context.issue, context.state)
@@ -153,7 +170,7 @@ def _handle_validating_changes_requested(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    decision: _ReviewerDecision,
+    decision: _models._ReviewerDecision,
 ) -> None:
     """CHANGES_REQUESTED: post the reviewer feedback on the PR, flip to
     `fixing`, and resume the dev.
@@ -181,11 +198,11 @@ def _handle_validating_changes_requested(
     is a standalone key cleared on the pushed-fix exit here and inside
     `_clear_pending_fix_bookmarks`.
     """
-    context = _RequestedChanges(gh, spec, issue, state, decision)
-    _owner._post_reviewer_feedback(context)
+    context = _models._RequestedChanges(gh, spec, issue, state, decision)
+    _post_reviewer_feedback(context)
     gh.set_workflow_label(issue, WorkflowLabel.FIXING)
     gh.write_pinned_state(issue, state)
-    _owner._finish_requested_fix(context, _owner._run_requested_fix(context))
+    _finish_requested_fix(context, _run_requested_fix(context))
 
 
 def _park_review_cap(
@@ -201,10 +218,10 @@ def _park_review_cap(
         "more rounds without losing the PR/worktree, reply with "
         "`/orchestrator add-review-rounds N` "
         "(N = additional rounds, e.g. `1`).",
-        reason=_REASON_REVIEW_CAP,
+        reason=_state._REASON_REVIEW_CAP,
     )
     # `_park_awaiting_human` clears `park_reason` by contract; the
     # awaiting-human branch needs this transient reason to route the
     # operator's `/orchestrator add-review-rounds` command.
-    state.set(_PARK_REASON, _REASON_REVIEW_CAP)
+    state.set(_state._PARK_REASON, _state._REASON_REVIEW_CAP)
     gh.write_pinned_state(issue, state)

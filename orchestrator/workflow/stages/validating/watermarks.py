@@ -1,18 +1,38 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Validating watermarks."""
+"""Where the in_review watermarks are parked when an approval hands off.
+
+in_review wakes on "PR feedback newer than the watermark" and pings a human
+that the PR is ready for merge. So the seed written here decides two ways to
+be wrong: too low replays the orchestrator's own pickup ping, "PR opened",
+approval, and squash notices as human feedback and resumes the dev on them;
+too high advertises the PR as ready over a human comment nobody read. The
+walk therefore advances only through the leading run of orchestrator-authored
+comments plus the issue-thread ids a dev resume already consumed, and stops at
+the first comment that is neither.
+
+Self-authorship is decided by recorded id OR by the hidden body marker,
+because either alone is wrong in a way that loses feedback: the id set is
+bounded and evicts, and a login check would drop a human reviewer who shares
+the PAT's account. The pickup comment is the boundary the walk starts from --
+everything older is chatter the dev agent already saw at spawn -- and its
+absence is answered by refusing to advance at all.
+
+`_ratchet_watermark` closes the loop with the value already persisted: an
+earlier in_review tick may have advanced past feedback the dev has since
+fixed, and the seed walk deliberately stops short of it, so the two are
+combined by max rather than overwritten.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import validating as _owner
-from orchestrator.workflow.engine import comments as _comments
+from dataclasses import dataclass
+from typing import Any, Optional, Tuple
 
-Any = _owner.Any
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Optional = _owner.Optional
-PinnedState = _owner.PinnedState
-Tuple = _owner.Tuple
-dataclass = _owner.dataclass
+from github.Issue import Issue
+
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import comments as _comments
 
 
 def _watermark_comment_pairs(
@@ -41,7 +61,7 @@ class _WatermarkWalker:
     seen_self: bool = False
 
     def consume(self, comment, is_issue_thread: bool) -> bool:
-        is_self = _owner._is_orchestrator_comment(comment, self.orchestrator_ids)
+        is_self = _is_orchestrator_comment(comment, self.orchestrator_ids)
         already_consumed = (
             is_issue_thread
             and self.consumed_through is not None
@@ -88,8 +108,8 @@ def _seed_watermark_past_self(
     be <= a later-consumed issue-thread reply has NOT been seen by the dev
     and must surface on the next in_review tick. Folding both surfaces
     under one `c.id <= consumed_through` check would let the in_review
-    HITL ready-ping advertise the PR as ready for human merge over
-    unread PR-conversation feedback.
+    HITL ready-ping advertise the PR as ready for human merge over unread
+    PR-conversation feedback.
 
     Identification of orchestrator-authored content is by exact comment id
     (recorded when the orchestrator posted the comment) OR by the hidden
@@ -123,11 +143,11 @@ def _seed_watermark_past_self(
         return None
     # Tag each comment with its surface so the walk below can apply
     # `consumed_through` to the issue thread only.
-    comment_pairs = _owner._watermark_comment_pairs(
+    comment_pairs = _watermark_comment_pairs(
         issue_thread_comments, pr_conversation_comments,
     )
     if not any(
-        _owner._is_orchestrator_comment(comment, orchestrator_ids)
+        _is_orchestrator_comment(comment, orchestrator_ids)
         for comment, _ in comment_pairs
     ):
         return None
@@ -174,10 +194,10 @@ def _latest_pr_comment_ids(
     issue_thread = list(gh.comments_after(issue, None))
     pr_conversation = list(gh.pr_conversation_comments_after(pr, None))
     return (
-        _owner._seed_watermark_past_self(
+        _seed_watermark_past_self(
             issue_thread, pr_conversation,
-            orchestrator_ids, _owner._state_int(state, "pickup_comment_id"),
-            consumed_through=_owner._state_int(state, "last_action_comment_id"),
+            orchestrator_ids, _state_int(state, "pickup_comment_id"),
+            consumed_through=_state_int(state, "last_action_comment_id"),
         ),
         None,
     )
@@ -186,3 +206,20 @@ def _latest_pr_comment_ids(
 def _state_int(state: PinnedState, key: str) -> Optional[int]:
     state_value = state.get(key)
     return state_value if isinstance(state_value, int) else None
+
+
+def _ratchet_watermark(prev, seeded):
+    """Combine a previously-persisted in_review watermark with a freshly-seeded
+    one, never moving backward.
+
+    A prior in_review tick may have already advanced the persisted watermark
+    past PR feedback the dev has since fixed; `_seed_watermark_past_self` stops
+    at the first post-pickup human comment, so without the max() that consumed
+    comment would replay as "new". Returns the max of the two when both are
+    present, the one that exists otherwise, or 0 when neither does -- 0 means
+    "scan all from the beginning" and marks the surface as already seeded so the
+    in_review legacy migration does not advance past historical human feedback.
+    """
+    if isinstance(prev, int):
+        return prev if seeded is None else max(seeded, prev)
+    return 0 if seeded is None else seeded

@@ -32,9 +32,11 @@ from tests.workflow_helpers import (
 
 _ANALYTICS_FILENAME = "analytics.jsonl"
 # The reviewer handler is patched by name: this module wants the validating
-# facade only as a patch target, and naming it instead of importing it keeps the
-# module under the import ceiling.
-_VALIDATING_HANDLER = "orchestrator.stages.validating._handle_validating"
+# handler owner only as a patch target, and naming it instead of importing it
+# keeps the module under the import ceiling.
+_VALIDATING_HANDLER = (
+    "orchestrator.workflow.stages.validating.handler._handle_validating"
+)
 _ANALYTICS_PATH_ATTR = "ANALYTICS_LOG_PATH"
 _STAGE_KEY = "stage"
 _HARD_SKIPPED_ISSUE = 8004

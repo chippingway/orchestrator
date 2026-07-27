@@ -11,10 +11,10 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.github.labels import WORKFLOW_LABEL_SPECS, WORKFLOW_LABELS
-from orchestrator.stages import validating as _validating
 from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
 from orchestrator.workflow.stages.documenting import handler as _documenting
 from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.validating import handler as _validating
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import _TEST_SPEC

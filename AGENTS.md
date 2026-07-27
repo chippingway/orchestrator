@@ -153,9 +153,31 @@ orchestrator process is stateless.
   `pr_last_comment_id` ratchet that has to precede the `in_review` relabel so a consumed reply does not
   replay as fresh PR feedback (`handoff.py`) -- with the four awaiting-human parks (`parks.py`) over the
   frozen records (`models.py`) and pinned-state keys (`state.py`) they share, the dev resume, session
-  read, and question / dirty-tree parks imported from the implementing owners directly, and the
-  worktree, git, and push helpers plus validating's `_latest_pr_comment_ids` still reached through the
-  `workflow` facade at call time), per-stage
+  read, and question / dirty-tree parks imported from the implementing owners directly and the seed
+  walk from validating's `watermarks.py`, and the worktree, git, and push helpers still reached
+  through the `workflow` facade at call time) -- and over the `workflow/stages/validating/` subpackage beside it,
+  whose owners divide by what one review tick is answering, the reviewer being only part of what the
+  stage runs: the terminals a landed or rejected PR ends the tick on and the order the rest are asked
+  in (`handler.py`); the round cap that guards a loop which cannot converge, the tracked spawn, and the
+  live-pause and interruption refusals that stand between it and any disposition (`reviewer.py`); the
+  approved arc -- the local verify gate that is the last thing before `in_review`, the approval
+  comment, the optional squash whose failure parks WITHOUT relabeling, and the `documenting` relabel
+  (`approval.py`) -- with the failure side of that gate (`verify.py`) and the seed walk it hands the PR
+  to, which stops at the first comment the dev has not consumed rather than the first the orchestrator
+  did not write, plus the ratchet that never regresses one (`watermarks.py`); the other two verdicts --
+  the PR feedback and the dev fix run under the `fixing` label, and the park a reviewer that emitted no
+  VERDICT line earns (`requested_changes.py`); and what one finished dev fix leaves behind whichever
+  route started it -- the stranded-commit probe that keeps a committed-but-unpublished fix from
+  ping-ponging between parks, the push, and the `review_round` bump (`dev_fix.py`) -- fed by the three
+  routes between rounds: a park a human replied to, its three park-reason claims and the resume none of
+  them wanted (`awaiting.py` / `awaiting_resume.py`), a body edit mid-review and the `ACK:` reply that
+  must not park (`drift.py` / `drift_outcomes.py`), and the push race or dev timeout that clears
+  without anyone commenting (`recovery.py`) -- over the frozen records (`models.py`) and the
+  pinned-state keys, park reasons, and outcome tokens (`state.py`) they share, with the dev resume,
+  session read, and question / dirty-tree parks imported from the implementing owners directly and the
+  squash from `git/publication/squash.py`, and the worktree, git, and push helpers still reached
+  through the `workflow` facade at call time),
+  per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -265,11 +287,10 @@ orchestrator process is stateless.
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
   tests through the `tests/fakes.py` bridge. Stage-handler tests in
-  `tests/test_workflow_<stage>*.py` (the validating stage is split across review, controls, drift, handoff, pause,
-  squash, verify, and watermark modules in `tests/test_workflow_validating_*.py`, with shared fixtures in
-  `tests/validating_*_test_support.py`; the in_review stage is split across
-  `tests/test_workflow_in_review_*.py`; the implementing and documenting stages have moved beside their owners into
-  `tests/workflow/stages/implementing/` and `tests/workflow/stages/documenting/`, and the decomposition and question
+  `tests/test_workflow_<stage>*.py` (the in_review stage is split across
+  `tests/test_workflow_in_review_*.py`; the implementing, documenting, and validating stages have moved beside their
+  owners into `tests/workflow/stages/implementing/`, `tests/workflow/stages/documenting/`, and
+  `tests/workflow/stages/validating/`, and the decomposition and question
   stages across their respective focused modules, with shared fixtures in `tests/decomposition*_support.py` and
   `tests/question_*_support.py`; the resolving-conflict stage is split across
   `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_event_emission`,
@@ -467,9 +488,23 @@ orchestrator process is stateless.
   awaiting-human resume and the park it wakes from (`test_resume.py`, `test_parked.py`), the refused bare continue
   (`test_continue.py`), the interruption and live-pause returns that write nothing (`test_interrupted.py`,
   `test_paused.py`), the drift unwind and its reconcile failures (`test_drift_route.py`, `test_drift_recovery.py`), and
-  the `pr_last_comment_id` ratchet on the handoff (`test_final_docs.py`) -- with shared fixtures in
-  `documenting_test_support.py`, `documenting_assertion_test_support.py`, `documenting_scenario_test_support.py`,
+  the `pr_last_comment_id` ratchet on the handoff with the validating owner its seed walk has to land on
+  (`test_final_docs.py`) -- with shared fixtures in `documenting_test_support.py`,
+  `documenting_assertion_test_support.py`, `documenting_scenario_test_support.py`,
   `documenting_drift_test_support.py`, and `documenting_drift_recovery_test_support.py`.
+  `tests/workflow/stages/validating/` holds the fourth stage to arrive: the same import, layering, and initializer
+  guards for its own package plus the forwarding checks that no manifest target names a flat `_validating_*` leaf and
+  that both historical import sites hand back the owner's exact object, and the dispatch check that the label table
+  names the handler owner (`test_imports.py`); the stage scenarios beside it -- the review loop and its retry caps
+  (`test_review.py`), the operator controls and handler-level guards (`test_controls.py`), the live-pause returns that
+  write nothing (`test_paused.py`), the approval handoff and its recoveries (`test_handoff.py`), the squash on
+  approval (`test_squash.py`), the terminal arcs a merged PR or closed issue earns (`test_terminal.py`), the verify
+  gate and the mutations it refuses (`test_verify.py`, `test_verify_refusal.py`), a body edit mid-review
+  (`test_drift.py`), the in_review watermark seed across its fresh, consumed, legacy, and review-surface cases
+  (`test_watermarks*.py`), and the implementing / publication owners the stage borrows, each pinned by patching the
+  owner and the facade name it must not read (`test_owner_boundaries.py`) -- with shared fixtures in
+  `validating_review_test_support.py`, `validating_verify_test_support.py`, and
+  `validating_boundary_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

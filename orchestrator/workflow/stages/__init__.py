@@ -4,8 +4,8 @@
 
 Destination for the per-label handler facades that still sit in the flat
 ``orchestrator.stages`` package. A stage arrives here as its own subpackage of
-responsibility-named owners -- ``decomposition``, ``implementing``, and
-``documenting`` have -- and
+responsibility-named owners -- ``decomposition``, ``implementing``,
+``documenting``, and ``validating`` have -- and
 the module it vacates stays behind as a temporary forwarder that reads every name
 back off those owners instead of rebuilding one, so both import sites hand back
 the same object. Identity is all a forwarder carries: it caches what it resolved,
