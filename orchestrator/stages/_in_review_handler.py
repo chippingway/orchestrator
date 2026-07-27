@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import in_review as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 
 _InReviewContext = _owner._InReviewContext
 GitHubClient = _owner.GitHubClient
@@ -37,15 +38,13 @@ def _handle_mergeable_gate(ctx: _InReviewContext) -> None:
     final-docs handoff covers that head OR GitHub carries a real APPROVED
     review on that head, and no standing CHANGES_REQUESTED veto exists.
     """
-    from orchestrator import workflow as _wf
-
     pr = ctx.pr
     pr_number = ctx.pr_number
     mergeable = ctx.gh.pr_is_mergeable(pr)
     if mergeable is None:
         return  # GitHub still computing; try next tick
     if not mergeable:
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             ctx.gh, ctx.issue, ctx.state,
             f"{config.HITL_MENTIONS} PR #{pr_number} is not mergeable "
             "(branch protection, conflicts, or out-of-date base); "
@@ -129,11 +128,9 @@ def _park_missing_pr_number(
     """Park a manually-relabeled in_review issue that has no pinned `pr_number`.
     We don't infer the PR -- park once and let the human relabel back.
     """
-    from orchestrator import workflow as _wf
-
     if state.get("awaiting_human"):
         return
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} `in_review` without a pinned `pr_number`; "
         "manual relabeling suspected. Set the workflow label back to "

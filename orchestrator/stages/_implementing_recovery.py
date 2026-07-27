@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import guards as _guards
 
 _AgentWork = _owner._AgentWork
 AgentResult = _owner.AgentResult
@@ -57,9 +58,7 @@ def _park_agent_timeout(
     commit a lingering descendant finishes after this point without waiting for
     a human reply.
     """
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} agent timed out after "
         f"{config.AGENT_TIMEOUT}s, manual intervention needed.",

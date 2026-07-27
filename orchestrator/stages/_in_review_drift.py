@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import in_review as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 
 _DriftResume = _owner._DriftResume
@@ -187,8 +188,6 @@ def _handle_user_content_drift(ctx: _InReviewContext) -> bool:
     False when there is no drift (the caller falls through to the mergeability
     gate).
     """
-    from orchestrator import workflow as _wf
-
     new_hash = _drift._detect_user_content_change(ctx.gh, ctx.issue, ctx.state)
     if new_hash is None:
         return False
@@ -203,7 +202,7 @@ def _handle_user_content_drift(ctx: _InReviewContext) -> bool:
     # body change and leaves any committed work on the branch. Must precede
     # `_dispose_drift_result` so it neither parses a partial reply nor persists
     # the consumption.
-    if _wf._ignore_if_interrupted(ctx.issue, resume.dev_result):
+    if _guards._ignore_if_interrupted(ctx.issue, resume.dev_result):
         return True
     if resume.paused:
         return True

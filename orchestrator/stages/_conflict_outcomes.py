@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import conflicts as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 
 _ConflictContext = _owner._ConflictContext
@@ -83,7 +84,7 @@ def _park_stalled_conflict_result(
     # WITHOUT writing pinned state -- the caller's in-memory watermark /
     # session mutations are discarded and the next process re-runs the rebase
     # from durable state. Must precede the timeout / unfinished-rebase branches.
-    if _wf._ignore_if_interrupted(ctx.issue, dev_result):
+    if _guards._ignore_if_interrupted(ctx.issue, dev_result):
         return True
 
     if dev_result.timed_out:

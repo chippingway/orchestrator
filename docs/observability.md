@@ -45,7 +45,8 @@ file is the durable record.
   off-switch installs emit none.
 - `review_verdict` — `_handle_validating` after `_parse_review_verdict` reads the reviewer's last message; extras:
   `verdict` (`approved` / `changes_requested` / `unknown`), `review_round`, `pr_number`, `session_id`.
-- `park_awaiting_human` — every `_park_awaiting_human` call site, plus `_on_question`, `_on_dirty_worktree`,
+- `park_awaiting_human` — every `_park_awaiting_human` (in `workflow/engine/guards.py`) call site, plus
+  `_on_question`, `_on_dirty_worktree`,
   `_park_verify_failure`, and the question-stage `_park_question` funnel; extras: `stage` (read from the current
   workflow label, not passed in), `reason` (e.g. `agent_timeout`, `push_failed`, `failed_checks`, `agent_question`,
   `agent_session_limit` (a quota-exhausted agent message, parked retryably as `agent_silent`), `dirty_worktree`,

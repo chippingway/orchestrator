@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
 
@@ -45,8 +46,6 @@ def _spawn_implementer(
     state: PinnedState,
     worktree: Path,
 ) -> Optional[tuple[AgentResult, bool]]:
-    from orchestrator import workflow as _wf
-
     if not _owner._check_and_increment_retry_budget(gh, issue, state):
         gh.write_pinned_state(issue, state)
         return None
@@ -74,7 +73,7 @@ def _spawn_implementer(
     if agent_result.session_id:
         state.set(_DEV_SESSION_ID, agent_result.session_id)
         state.set(_DEV_RESUME_COUNT, 0)
-    return agent_result, _wf._paused_during_agent_run(gh, issue)
+    return agent_result, _guards._paused_during_agent_run(gh, issue)
 
 
 def _prepare_active_dev_run(

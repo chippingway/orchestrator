@@ -5,11 +5,14 @@ from __future__ import annotations
 
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    drift as _drift,
+    guards as _guards,
+    messages as _messages,
+    prompts as _prompts,
+    usage as _usage,
+)
 
 _ConflictContext = _owner._ConflictContext
 _ConflictResumeRun = _owner._ConflictResumeRun
@@ -58,7 +61,7 @@ def _resume_on_user_content_change(
     # Must precede `_post_user_content_change_result`, which has no interrupted
     # check of its own and would otherwise parse `last_message` / route through
     # `_on_question` before the caller persists those changes.
-    if _wf._ignore_if_interrupted(ctx.issue, run.dev_result):
+    if _guards._ignore_if_interrupted(ctx.issue, run.dev_result):
         return
     # Live pause applied mid-run: an operator added `paused` (or `backlog`)
     # while this drift resume was in flight. Same short-circuit as the

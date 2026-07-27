@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _validating_state as _state
 from orchestrator.stages import validating as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
@@ -51,7 +52,7 @@ def _park_reviewer_no_verdict(
         if (review.last_message or "").strip()
         else _messages._format_stderr_diagnostics(review, "Reviewer")
     )
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} reviewer did not emit a VERDICT line; "
         f"manual adjudication needed.\n\n_Last reviewer message:_\n\n"
@@ -193,9 +194,7 @@ def _park_review_cap(
     state: PinnedState,
     round_n: int,
 ) -> None:
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} review still has comments after "
         f"{round_n} round(s); manual intervention needed. To grant "

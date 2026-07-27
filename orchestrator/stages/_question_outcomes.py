@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _question_state as _state
 from orchestrator.stages import question as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import usage as _usage
 
@@ -23,11 +24,9 @@ def _assess_question_outcome(
     run: _QuestionRun, question_result: AgentResult,
 ) -> _QuestionOutcome:
     """Inspect a completed agent run in the stage's required order."""
-    from orchestrator import workflow as _wf
-
     # A live pause must leave every in-memory session and watermark mutation
     # unpersisted so the next active tick can replay the same durable state.
-    if _wf._paused_during_agent_run(run.gh, run.issue):
+    if _guards._paused_during_agent_run(run.gh, run.issue):
         return _QuestionOutcome(None, run.keep_worktree)
 
     run.state.set("last_question_at", _usage._now_iso())
@@ -61,7 +60,7 @@ def _assess_question_worktree(
             _QUESTION_DIRTY, True, dirty_files=dirty_files,
         )
 
-    if _wf._ignore_if_interrupted(run.issue, question_result):
+    if _guards._ignore_if_interrupted(run.issue, question_result):
         return _QuestionOutcome(None, run.keep_worktree)
 
     answer = (question_result.last_message or "").strip()

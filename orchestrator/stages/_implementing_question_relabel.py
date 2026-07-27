@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
+from orchestrator.workflow.engine import guards as _guards
 
 GitHubClient = _owner.GitHubClient
 Issue = _owner.Issue
@@ -116,9 +117,7 @@ def _park_unsafe_question_relabel(
     park_reason: str,
     hazard: _QuestionRelabelHazard,
 ) -> None:
-    from orchestrator import workflow as _wf
-
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} relabeled to `implementing`, "
         f"but the prior question-stage park (`{park_reason}`) left "

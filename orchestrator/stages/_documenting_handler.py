@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from orchestrator.stages import documenting as _owner
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 
 _DocumentingContext = _owner._DocumentingContext
@@ -40,7 +41,7 @@ def _drive_documenting_pass(ctx: _DocumentingContext):
     # fresh-docs spawn can land here). Ignore it and return WITHOUT writing
     # pinned state -- the pre-spawn `docs_checked_sha` / watermark mutations
     # are discarded so the next process re-runs the docs pass.
-    if _wf._ignore_if_interrupted(ctx.issue, run.agent_result):
+    if _guards._ignore_if_interrupted(ctx.issue, run.agent_result):
         return None
 
     # Live pause applied while the docs agent ran: honor the decision the

@@ -9,6 +9,7 @@ from typing import Any
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
 
@@ -130,8 +131,6 @@ class _DevResumeContext:
     def _run_attempt(
         self, *, fresh: bool, session_id: Optional[str],
     ) -> tuple[AgentResult, bool]:
-        from orchestrator import workflow as _wf
-
         session = self.plan.session
         agent_result = _usage._run_agent_tracked(
             self.gh,
@@ -158,7 +157,7 @@ class _DevResumeContext:
         _usage._accumulate_issue_usage(self.state, agent_result.usage)
         paused = (
             self.options.pause_guard
-            and _wf._paused_during_agent_run(self.gh, self.issue)
+            and _guards._paused_during_agent_run(self.gh, self.issue)
         )
         return agent_result, paused
 

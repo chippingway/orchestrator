@@ -21,6 +21,7 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
 from orchestrator.github.labels import PAUSED_LABEL
+from orchestrator.workflow.engine import drift
 
 from tests.fakes import (
     FakeComment,
@@ -74,7 +75,7 @@ class DecomposerLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
         gh.add_issue(issue)
         gh.seed_state(
             _DECOMPOSER_ISSUE_NUMBER,
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=drift._compute_user_content_hash(issue, set()),
         )
         before_writes = gh.write_state_calls
         manifest = _manifest(
@@ -123,7 +124,7 @@ class ReviewerLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
             branch="orchestrator/geserdugarov__agent-orchestrator/issue-300",
             codex_session_id="dev-sess",
             review_round=0,
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=drift._compute_user_content_hash(issue, set()),
         )
         before_writes = gh.write_state_calls
 

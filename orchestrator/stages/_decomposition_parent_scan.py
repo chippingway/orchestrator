@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.engine import guards as _guards
 
 _ChildScan = _owner._ChildScan
 GitHubClient = _owner.GitHubClient
@@ -86,8 +87,6 @@ def _park_rejected_children(
     Idempotent by `awaiting_human` so a rejected child does not re-park
     every tick.
     """
-    from orchestrator import workflow as _wf
-
     rejected = [
         child_number
         for child_number, child_label in child_labels.items()
@@ -98,7 +97,7 @@ def _park_rejected_children(
     if state.get(_AWAITING_HUMAN):
         return True
     rejected_refs = _owner._issue_ref_list(rejected)
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} child issue(s) rejected: "
         f"{rejected_refs}; "
@@ -133,8 +132,6 @@ def _park_manually_closed_children(
     that the closed-in_review sweep finalizes on the next tick, NOT a manual
     override.
     """
-    from orchestrator import workflow as _wf
-
     manually_closed = _owner._manually_closed_children(scan)
     if manually_closed:
         manually_closed = _owner._remaining_manually_closed(
@@ -145,7 +142,7 @@ def _park_manually_closed_children(
     if state.get(_AWAITING_HUMAN):
         return True
     closed_refs = _owner._issue_ref_list(manually_closed)
-    _wf._park_awaiting_human(
+    _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} child issue(s) closed without reaching "
         f"`done` or `rejected`: "

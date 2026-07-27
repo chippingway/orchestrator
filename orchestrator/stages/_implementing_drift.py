@@ -7,6 +7,7 @@ from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import usage as _usage
 
@@ -119,10 +120,8 @@ def _dispose_implementing_drift(
     state: PinnedState,
     drift: _ImplementingDriftRun,
 ) -> None:
-    from orchestrator import workflow as _wf
-
     if (
-        _wf._ignore_if_interrupted(issue, drift.agent_result)
+        _guards._ignore_if_interrupted(issue, drift.agent_result)
         or drift.paused
     ):
         return

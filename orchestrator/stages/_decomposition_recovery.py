@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
@@ -221,7 +222,7 @@ def _park_unparsed_manifest(
                 decomposer_result, "Decomposer",
             )
         )
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} decomposer needs your input to "
             f"proceed:\n\n{quoted}{diag}",
@@ -238,7 +239,7 @@ def _park_unparsed_manifest(
             )
     else:
         quoted = _messages._as_blockquote(last_msg.strip())
-        _wf._park_awaiting_human(
+        _guards._park_awaiting_human(
             gh, issue, state,
             f"{config.HITL_MENTIONS} decomposer manifest invalid "
             f"({error}); manual adjudication needed.\n\n"
