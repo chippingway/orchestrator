@@ -11,8 +11,9 @@ from unittest.mock import patch
 
 from orchestrator import config, workflow
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.stages import decomposition, implementing
+from orchestrator.stages import implementing
 from orchestrator.workflow.engine import pickup
+from orchestrator.workflow.stages.decomposition import run as _decomposing
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import _PatchedWorkflowMixin, _TEST_SPEC, _agent
@@ -178,7 +179,7 @@ class PickupOwnerPatchTest(unittest.TestCase):
         dispatches = (
             (
                 pickup._start_decomposing,
-                decomposition,
+                _decomposing,
                 "_handle_decomposing",
                 _DECOMPOSING_LABEL,
             ),

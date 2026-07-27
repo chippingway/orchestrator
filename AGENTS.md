@@ -98,9 +98,31 @@ orchestrator process is stateless.
   `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog` deliberately read off the facade
   because those are the seams the tick tests replace -- and over the empty `workflow/stages/` package
   beside that subpackage, the destination the per-label stage facades migrate to one at a time: it
-  binds nothing, a migrated stage keeps the lazy hooks it already publishes, and the
+  binds nothing, a migrated stage arrives as its own subpackage of responsibility-named owners, the
   `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading every name back off
-  the owner), per-stage
+  those owners, and dispatch is the one caller the forwarder does not cover -- both the label table
+  and the same-tick pickup start name the owner a migrated handler lives on -- and over the
+  `workflow/stages/decomposition/` subpackage that arrived there first: the four labels one manifest
+  produces, split across the `state.py` owner (the pinned-state fields every owner keys and the
+  `#a, #b` renderer each notice quotes children through), the `models.py` owner (the run plan and
+  its worktree policy, the locked session, the split plan, the child scan), the `manifest.py` /
+  `validation.py` pair (the one-final-fence envelope, the JSON decode and the parse entry point
+  beside it; and everything a `split` payload must satisfy before the first irreversible child
+  create -- the `_MAX_CHILDREN` cap the decompose prompt reads back so the two cannot disagree, each
+  child's shape, and the acyclicity of the graph they declare), the `session.py` owner (the spec
+  pinned before the first spawn can fail, the spawn that pins it, the human-reply resume, and the
+  drift reset that drops the session id but never the lock), the `run.py` owner (one `decomposing`
+  tick: drift before recovery before the `DECOMPOSE` kill switch, then pause, dirty worktree, and
+  interruption before any disposition, with the worktree torn down by an `ExitStack` callback so a
+  mid-sequence `keep_worktree` survives a raise), the `outcomes.py` owner (the unparsed park that
+  tells a malformed manifest from a question, the `single` finalize, the `split` hand-off), the
+  `recovery.py` owner (the two markers a crashed split leaves, the orphan-child repair a finalize
+  runs first, and the park a short count earns), the `split.py` owner (the crash-safe order children
+  are created and recorded in, and the summary / label / activation tail), the `parents.py` owner
+  (the fresh child scan the family bucket makes safe, the rejected and manually-closed parks, and
+  the parent's own drift reroute), the `activation.py` owner (the dep-graph walk and the
+  held-dependency line it logs), and the `blocked.py` / `umbrella.py` handlers (the poll they share,
+  and the `ready` handoff versus the close their all-done branches differ by)), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -214,9 +236,9 @@ orchestrator process is stateless.
   squash, verify, and watermark modules in `tests/test_workflow_validating_*.py`, with shared fixtures in
   `tests/validating_*_test_support.py`; the in_review stage is split across
   `tests/test_workflow_in_review_*.py`; the implementing stage across
-  `tests/test_workflow_implementing_*.py`, and the decomposition, question, and documenting stages across their
-  respective focused modules, with shared fixtures in `tests/decomposition*_support.py`,
-  `tests/question_*_support.py`, and `tests/documenting_*_support.py`; the resolving-conflict stage is split across
+  `tests/test_workflow_implementing_*.py`, and the question and documenting stages across their
+  respective focused modules, with shared fixtures in
+  `tests/question_*_support.py` and `tests/documenting_*_support.py`; the resolving-conflict stage is split across
   `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_event_emission`,
   `_list_pollable`, `_routing`) plus the `_handle_resolving_conflict` handler scenarios in focused modules
   (`_clean_rebase` for clean rebase routing, `_agent` for agent execution, `_resume` for awaiting-human resume
@@ -377,10 +399,18 @@ orchestrator process is stateless.
   (`test_tick_community_failures.py`), with their spec / client fixtures, concurrency probes,
   family-scheduling probes, and PR builders in `tests/workflow/engine/tick_parallel_test_support.py`,
   `tick_probe_test_support.py`, `tick_family_test_support.py`, and `tick_community_test_support.py`. The mirrored
-  `tests/workflow/stages/` directory holds what the migration destination owes before any stage lands there: its
-  clean-process import, the layering guard that the package costs the facade above it and nothing else, and the
-  surface checks that its initializer binds only submodules and that `orchestrator.stages` stays the module the
-  handlers resolve off (`test_imports.py`).
+  `tests/workflow/stages/` directory holds what the migration destination owes: its clean-process import, the
+  layering guard that the package costs the facade above it and nothing else, and the surface checks that its
+  initializer binds only submodules and that `orchestrator.stages` still answers with the object the facade does
+  (`test_imports.py`). `tests/workflow/stages/decomposition/` holds the stage that arrived there: the same import,
+  layering, and initializer guards for its own package plus the two forwarding checks that no manifest target names
+  a flat `_decomposition_*` leaf and that both historical import sites hand back the owner's exact object, and the
+  dispatch check that the label table and the pickup start name the owner rather than the forwarder
+  (`test_imports.py`); the handler scenarios beside it (`test_blocked.py`, `test_umbrella.py`, `test_ready.py`,
+  `test_decision.py`, `test_manifest.py`, `test_recovery.py`, `test_resume.py`, `test_drift.py`, `test_disabled.py`,
+  `test_park.py`, `test_persistence.py`, `test_write_ordering.py`, `test_finalize.py`, `test_cleanup.py`,
+  `test_usage.py`, `test_worktree.py`, `test_full_spec.py`), with shared fixtures in
+  `tests/workflow/stages/decomposition/decomposition_test_support.py` and `decomposing_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

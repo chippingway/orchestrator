@@ -1,19 +1,32 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Decomposition activation."""
+"""The dep-graph walk that decides which children may start next.
+
+A `blocked` child becomes `ready` the moment every dependency the manifest
+recorded for it is `done`. A child with no recorded dependencies satisfies that
+vacuously, which is deliberate: it is also the retry for a no-dep child whose
+same-tick activation flip failed at split time, so nothing has to remember that
+the flip was missed.
+
+Held children are logged rather than parked, because the tree is still making
+progress: their siblings run concurrently and are what will eventually release
+them. The line names the exact unfinished dependencies so an operator reading a
+tick log can tell a waiting parent from a stuck one without opening GitHub, and
+it is emitted only when something is actually held so a healthy parent stays
+quiet.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _decomposition_state as _state
-from orchestrator.stages import decomposition as _owner
+from dataclasses import dataclass
 
-_ChildScan = _owner._ChildScan
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-WorkflowLabel = _owner.WorkflowLabel
-dataclass = _owner.dataclass
-_DONE = _state._DONE
-_HeldChild = _state._HeldChild
+from github.Issue import Issue
+
+from orchestrator._workflow_state import log
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.stages.decomposition.models import _ChildScan
+from orchestrator.workflow.state import WorkflowLabel
 
 
 @dataclass
@@ -21,7 +34,7 @@ class _ChildActivation:
     gh: GitHubClient
     state: PinnedState
     scan: _ChildScan
-    held: list[_HeldChild]
+    held: list[_state._HeldChild]
     relabeled: bool = False
 
     @classmethod
@@ -53,7 +66,7 @@ class _ChildActivation:
         ]
         return [
             number for number in dep_numbers
-            if self.scan.labels.get(number) != _DONE
+            if self.scan.labels.get(number) != _state._DONE
         ]
 
 
@@ -80,7 +93,7 @@ def _activate_ready_children(
 
 def _held_dependency_line(child_number: object, pending: list) -> str:
     """Format one held child and the unfinished dependencies gating it."""
-    return f"#{child_number} waits on {_owner._issue_ref_list(pending)}"
+    return f"#{child_number} waits on {_state._issue_ref_list(pending)}"
 
 
 def _log_held_children(
@@ -96,15 +109,15 @@ def _log_held_children(
     completion. Logged only when something is held to keep a healthy parent
     from spamming the tick log. `parent_kind` is `"blocked"` or `_UMBRELLA`.
     """
-    from orchestrator import workflow as _wf
-
     if not held:
         return
-    done_count = sum(1 for lbl in child_labels.values() if lbl == _DONE)
-    summary = "; ".join(
-        _owner._held_dependency_line(cn, pending) for cn, pending in held
+    done_count = sum(
+        1 for lbl in child_labels.values() if lbl == _state._DONE
     )
-    _wf.log.info(
+    summary = "; ".join(
+        _held_dependency_line(cn, pending) for cn, pending in held
+    )
+    log.info(
         "issue=#%s %s parent: %d/%d children done, %d held: %s",
         issue.number, parent_kind, done_count, len(children), len(held),
         summary,

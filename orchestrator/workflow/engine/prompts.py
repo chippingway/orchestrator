@@ -21,7 +21,9 @@ rebase, replaying subjects somebody else already wrote.
 A prompt that promises a marker -- ``VERDICT:``, ``DOCS: NO_CHANGE``, ``ACK:``,
 the fenced manifest -- spells out the exact literal ``messages.py`` and the
 manifest parser then match, and says outright that prose in its place is parked
-rather than guessed at.
+rather than guessed at. The child cap the decompose prompt states is read back
+off the validator that rejects past it, for the same reason: a bound the agent
+is told and a bound it is judged against must be one number.
 
 A prompt with only one caller is built where that caller lives: ``drift.py``
 composes the drift-resume prompt beside the route that sends it and borrows both
@@ -32,9 +34,10 @@ from __future__ import annotations
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_messages_state import _MAX_CHILDREN, _SECTION_SEP
+from orchestrator._workflow_messages_state import _SECTION_SEP
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
 
 _MAX_FILES_SHOWN = 20
 

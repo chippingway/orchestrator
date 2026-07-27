@@ -41,13 +41,13 @@ mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
 
 The handler for a label is reached by importing the module
-`_STAGE_HANDLER_TARGETS` pairs it with, at call time: eleven of them are stage
-facades under `orchestrator/stages/` and the twelfth is the `pickup` sibling an
-unlabeled issue starts on, and the stage tree imports this subpackage, so
-binding any of them at module scope would point that edge back at itself. The
-lookup stays an attribute read on the imported module, so a stage facade that
-migrates to `workflow/stages/` keeps answering through the forwarder it leaves
-behind, and a patch against the owning module is what intercepts the dispatch.
+`_STAGE_HANDLER_TARGETS` pairs it with, at call time: seven of them are stage
+facades still under `orchestrator/stages/`, four are decomposition owners under
+`workflow/stages/`, and the twelfth is the `pickup` sibling an unlabeled issue
+starts on -- and the stage tree imports this subpackage, so binding any of them
+at module scope would point that edge back at itself. A migrated stage is named
+by the owner its handler now lives on rather than by the forwarder it left
+behind, so the patch that intercepts a dispatch is the one against that owner.
 """
 from __future__ import annotations
 
@@ -86,14 +86,14 @@ _CAP_EXEMPT_FAMILY_LABELS = frozenset((
 _FAMILY_BUCKET_ISSUE: int = 0
 
 _STAGE_PACKAGE = "orchestrator.stages"
-_DECOMPOSITION_MODULE = f"{_STAGE_PACKAGE}.decomposition"
+_DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
 
 _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyType({
     None: ("orchestrator.workflow.engine.pickup", "_handle_pickup"),
-    "decomposing": (_DECOMPOSITION_MODULE, "_handle_decomposing"),
-    "ready": (_DECOMPOSITION_MODULE, "_handle_ready"),
-    "blocked": (_DECOMPOSITION_MODULE, "_handle_blocked"),
-    "umbrella": (_DECOMPOSITION_MODULE, "_handle_umbrella"),
+    "decomposing": (f"{_DECOMPOSITION_PACKAGE}.run", "_handle_decomposing"),
+    "ready": (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_ready"),
+    "blocked": (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_blocked"),
+    "umbrella": (f"{_DECOMPOSITION_PACKAGE}.umbrella", "_handle_umbrella"),
     "implementing": (f"{_STAGE_PACKAGE}.implementing", "_handle_implementing"),
     "documenting": (f"{_STAGE_PACKAGE}.documenting", "_handle_documenting"),
     "validating": (f"{_STAGE_PACKAGE}.validating", "_handle_validating"),

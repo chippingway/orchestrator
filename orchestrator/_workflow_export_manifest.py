@@ -124,16 +124,6 @@ EXPORTS = (
         (("_handle_resolving_conflict", "_handle_resolving_conflict"),),
     ),
     *export_group(
-        "orchestrator.stages.decomposition",
-        (
-            ("_handle_blocked", "_handle_blocked"),
-            ("_handle_decomposing", "_handle_decomposing"),
-            ("_handle_ready", "_handle_ready"),
-            ("_handle_umbrella", "_handle_umbrella"),
-            ("_read_decomposer_session", "_read_decomposer_session"),
-        ),
-    ),
-    *export_group(
         "orchestrator.stages.documenting",
         (("_handle_documenting", "_handle_documenting"),),
     ),
@@ -336,15 +326,34 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.workflow.state",
-        (("WorkflowLabel", "WorkflowLabel"),),
+        "orchestrator.workflow.stages.decomposition.blocked",
+        (
+            ("_handle_blocked", "_handle_blocked"),
+            ("_handle_ready", "_handle_ready"),
+        ),
     ),
     *export_group(
-        "orchestrator.workflow_messages",
+        "orchestrator.workflow.stages.decomposition.manifest",
         (
             ("_MANIFEST_RE", "_MANIFEST_RE"),
             ("_parse_manifest", "_parse_manifest"),
         ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.decomposition.run",
+        (("_handle_decomposing", "_handle_decomposing"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.decomposition.session",
+        (("_read_decomposer_session", "_read_decomposer_session"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.decomposition.umbrella",
+        (("_handle_umbrella", "_handle_umbrella"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.state",
+        (("WorkflowLabel", "WorkflowLabel"),),
     ),
     *export_group(
         "orchestrator.worktrees",

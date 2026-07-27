@@ -102,8 +102,9 @@ class PackageSurfaceTest(unittest.TestCase):
     def test_flat_stage_package_stays_the_route(self) -> None:
         # A nested package carrying the flat one's name is the hazard this
         # destination introduces: `orchestrator.stages` has to stay the module
-        # historical imports land on and the facade resolves handlers off,
-        # until a migrated stage's forwarder points at its new owner.
+        # historical imports land on, answering with the same object the
+        # workflow facade does whether the handler still lives there or has
+        # already moved to an owner under this package.
         self.assertIsNot(_stages, _flat_stages)
         self.assertIs(
             getattr(_workflow, _PROBE_HANDLER),

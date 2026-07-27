@@ -1,25 +1,108 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Decomposition run."""
+"""One `decomposing` tick: what runs before the agent, and what the agent earns.
+
+The order in `_prepare_decomposer_run` is the contract. Drift goes first, so a
+body edited during a crash window clears the manifest markers before recovery
+can read them and finalize a split the human no longer wants. Recovery goes
+next, and deliberately ahead of the `DECOMPOSE` kill switch: children already
+open on GitHub have to be resolved whether or not new decompositions are still
+enabled -- a kill switch that stranded existing work would be the wrong kind of
+off. Only past both does the tick pick between resuming a parked session and
+spawning a fresh one.
+
+Everything after the run is about what that run is allowed to publish. A
+`paused` label applied mid-run wins over the whole disposition, an agent that
+left commits or edits in a read-only worktree parks with the worktree kept for
+inspection, and an interrupted run is dropped entirely -- checked in that order
+so a killed run's changes stay inspectable rather than being discarded as
+untrustworthy.
+
+The worktree is torn down by an `ExitStack` callback rather than at each exit,
+because `keep_worktree` is decided in the middle of that sequence and every
+path after it -- including one that raises -- has to honor the decision.
+"""
 from __future__ import annotations
 
 from contextlib import ExitStack
 
-from orchestrator.stages import _decomposition_state as _state
-from orchestrator.stages import decomposition as _owner
-from orchestrator.stages._decomposition_models import _DecomposerCleanup
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.agents import AgentResult
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.stages.decomposition import outcomes as _outcomes
+from orchestrator.workflow.stages.decomposition import recovery as _recovery
+from orchestrator.workflow.stages.decomposition import session as _session
+from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.stages.decomposition.models import (
+    _DecomposerCleanup,
+    _DecomposerRunPlan,
+)
+from orchestrator.workflow.state import WorkflowLabel
 
-_DecomposerRunPlan = _owner._DecomposerRunPlan
-AgentResult = _owner.AgentResult
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-config = _owner.config
-_AWAITING_HUMAN = _state._AWAITING_HUMAN
-_CHILDREN = _state._CHILDREN
-_UMBRELLA = _state._UMBRELLA
+
+def _route_disabled_to_implementing(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
+) -> bool:
+    """DECOMPOSE kill-switch bailout.
+
+    Returns True when decomposition is disabled and the issue was routed
+    to implementation (caller must return); False when decomposition is
+    enabled and the caller should proceed to spawn the decomposer.
+
+    Every path after this point spawns the decomposer (fresh or via the
+    awaiting_human resume), so an operator who restarts with DECOMPOSE=off
+    after `_handle_pickup` already labeled the issue `decomposing` -- or
+    while it is parked there awaiting a human -- would still see the
+    disabled rollout create manifests and child issues. Drop into the
+    legacy implementing flow exactly as `_handle_pickup` does on a freshly
+    unlabeled issue. The half-finished recovery above must keep running
+    regardless of the flag: abandoning orphan children (already on GitHub)
+    because new decompositions are now disabled would strand work, which
+    is not what a kill switch should do.
+    """
+    from orchestrator import workflow as _wf
+
+    if config.DECOMPOSE:
+        return False
+    _comments._post_issue_comment(
+        gh, issue, state,
+        ":robot: decomposition is disabled; routing this issue "
+        "to implementation.",
+    )
+    # Clear decomposer-side park state. Without this,
+    # `_handle_implementing` reads `awaiting_human=True` and
+    # tries to resume a dev session that was never spawned --
+    # at best it stalls on `comments_after`, at worst the
+    # follow-up text becomes the sole prompt instead of the
+    # real implement prompt.
+    state.set(_state._AWAITING_HUMAN, False)
+    state.set(_state._PARK_REASON, None)
+    # Mark every comment visible at this transition as
+    # "already consumed", mirroring `_handle_ready`'s ratchet.
+    # `_handle_implementing` will read the full issue thread
+    # via `_recent_comments_text` when it builds the implement
+    # prompt, so the dev sees any decomposing-era human
+    # feedback at spawn. Without this bump, the
+    # validating->in_review watermark seed later sees those
+    # same comments as fresh PR feedback (because they sit
+    # AFTER the now-stale `last_action_comment_id` from the
+    # decomposer-era park) and bounces the dev unnecessarily.
+    # One-way ratchet so we never lower a higher prior value.
+    latest = gh.latest_comment_id(issue)
+    if isinstance(latest, int):
+        prior = state.get(_state._LAST_ACTION_COMMENT_ID)
+        if not isinstance(prior, int) or latest > prior:
+            state.set(_state._LAST_ACTION_COMMENT_ID, latest)
+    gh.set_workflow_label(issue, WorkflowLabel.IMPLEMENTING)
+    gh.write_pinned_state(issue, state)
+    _wf._handle_implementing(gh, spec, issue)
+    return True
 
 
 def _settle_decomposer_run(
@@ -75,46 +158,6 @@ def _settle_decomposer_run(
     return False
 
 
-def _dispatch_decomposer_manifest(
-    gh: GitHubClient,
-    issue: Issue,
-    state: PinnedState,
-    decomposer_result: AgentResult,
-) -> None:
-    """Parse the decomposer's final message and route on the outcome.
-
-    Parks awaiting human on an invalid / silent / question manifest,
-    finalizes a `single` decision to `ready`, or creates the `split`
-    children and finalizes the parent to `blocked` / `umbrella`.
-    """
-    from orchestrator import workflow as _wf
-
-    last_msg = decomposer_result.last_message or ""
-    parsed, error = _wf._parse_manifest(last_msg)
-
-    if parsed is None:
-        _owner._park_unparsed_manifest(
-            gh, issue, state, decomposer_result, error,
-        )
-        return
-
-    if parsed["decision"] == "single":
-        _owner._finalize_single_decision(gh, issue, state, parsed)
-        return
-
-    # decision == "split".
-    split_plan = _owner._create_child_issues(
-        gh,
-        issue,
-        state,
-        parsed[_CHILDREN],
-        bool(parsed.get(_UMBRELLA)),
-    )
-    if split_plan is None:
-        return
-    _owner._finalize_split(gh, issue, state, split_plan)
-
-
 def _prepare_decomposer_run(
     gh: GitHubClient,
     spec: config.RepoSpec,
@@ -124,16 +167,16 @@ def _prepare_decomposer_run(
     # User-content drift FIRST, so it runs BEFORE the half-finished recovery:
     # otherwise recovery could finalize against a stale manifest when the issue
     # was edited during a crash window.
-    _owner._reset_decomposing_on_drift(gh, issue, state)
+    _session._reset_decomposing_on_drift(gh, issue, state)
 
-    if _owner._recover_stale_manifest(gh, issue, state):
+    if _recovery._recover_stale_manifest(gh, issue, state):
         return _DecomposerRunPlan(agent_result=None)
 
-    if _owner._route_disabled_to_implementing(gh, spec, issue, state):
+    if _route_disabled_to_implementing(gh, spec, issue, state):
         return _DecomposerRunPlan(agent_result=None)
 
-    if state.get(_AWAITING_HUMAN):
-        decomposer_result = _owner._resume_decomposer_on_human_reply(
+    if state.get(_state._AWAITING_HUMAN):
+        decomposer_result = _session._resume_decomposer_on_human_reply(
             gh, spec, issue, state,
         )
         return _DecomposerRunPlan(
@@ -142,7 +185,7 @@ def _prepare_decomposer_run(
             keep_worktree=decomposer_result is None,
         )
     return _DecomposerRunPlan(
-        agent_result=_owner._spawn_fresh_decomposer(gh, spec, issue, state),
+        agent_result=_session._spawn_fresh_decomposer(gh, spec, issue, state),
     )
 
 
@@ -159,7 +202,7 @@ def _process_decomposer_run(
     if decomposer_result is None:
         return
 
-    if _owner._settle_decomposer_run(gh, issue, state, decomposer_result):
+    if _settle_decomposer_run(gh, issue, state, decomposer_result):
         return
 
     # The decomposer is read-only. Preserve a changed worktree for operator
@@ -183,7 +226,7 @@ def _process_decomposer_run(
     if _guards._ignore_if_interrupted(issue, decomposer_result):
         return
 
-    _owner._dispatch_decomposer_manifest(gh, issue, state, decomposer_result)
+    _outcomes._dispatch_decomposer_manifest(gh, issue, state, decomposer_result)
 
 
 def _handle_decomposing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
@@ -195,13 +238,13 @@ def _handle_decomposing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -
     )
     with ExitStack() as cleanup_stack:
         cleanup_stack.callback(cleanup.close)
-        cleanup.run_plan = _owner._prepare_decomposer_run(
+        cleanup.run_plan = _prepare_decomposer_run(
             gh,
             spec,
             issue,
             state,
         )
-        _owner._process_decomposer_run(
+        _process_decomposer_run(
             gh,
             spec,
             issue,
