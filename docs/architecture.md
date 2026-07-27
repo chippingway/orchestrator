@@ -577,13 +577,15 @@ exemption is what keeps that serialization from deadlocking — a bucket whose e
 and global caps. Only issue numbers cross a thread boundary; `_refetch_and_process` mints a per-worker client and
 refetches against it, because PyGithub's `Issue` and the `Requester` chain behind it are not documented thread-safe.
 Its own helpers call each other in-module, and each handler is reached through a call-time import of the module
-`_STAGE_HANDLER_TARGETS` pairs with its label — eleven `orchestrator/stages/` facades plus the `pickup` sibling an
-unlabeled issue starts on. That table stays owner-private, because the facade's inventory is the historical surface
-rather than a mirror of the owner: what `workflow` publishes is `_ISSUE_HANDLER_NAMES`, the label → handler-name half
-of it, derived from the table so the two cannot disagree about which labels route. The import is deferred because the
-stage tree imports this subpackage, so binding one at module scope would point that edge back at itself; the lookup
-stays an attribute read, so a stage that migrates to `workflow/stages/` keeps answering through the forwarder it
-leaves behind. That makes the owning module, not `workflow`, the target for a patch that has to intercept a
+`_STAGE_HANDLER_TARGETS` pairs with its label — seven of the twelve entries name `orchestrator/stages/` facades, four
+name decomposition owners under `workflow/stages/`, and the twelfth names the `pickup` sibling an unlabeled issue
+starts on. That table stays owner-private,
+because the facade's inventory is the historical surface rather than a mirror of the owner: what `workflow` publishes
+is `_ISSUE_HANDLER_NAMES`, the label → handler-name half of it, derived from the table so the two cannot disagree
+about which labels route. The import is deferred because the stage tree imports this subpackage, so binding one at
+module scope would point that edge back at itself; the lookup stays an attribute read on whichever module the table
+names, and a migrated stage is named by the owner its handler lives on rather than by the forwarder it left behind.
+That makes the owning module, not `workflow`, the target for a patch that has to intercept a
 dispatched handler, and this owner the target for one aimed at the partition, the cap-exemption probe, the timed
 dispatch, or a scheduler submit. `workflow` still resolves all nineteen names to the owner's exact object for callers
 outside the package; `workflow/engine/tick.py` binds the owner directly.
@@ -709,8 +711,10 @@ reach.
 The decomposition owners bind their collaborators directly. `manifest` calls `validation` for the split rules,
 `run` calls `session`, `recovery`, and `outcomes` for the order a tick asks them in, `outcomes` calls `manifest` and
 `split`, `blocked` and `umbrella` both call `parents` for the child scan and `activation` for the dep-graph walk, and
-every one of them reaches `workflow/engine/` for the comment poster, the run guards, the prompts, and the usage
-counters. So a patch that has to intercept the manifest parse, a child scan, or the split writer targets the owner
+every owner that writes to GitHub reaches `workflow/engine/` for the comment poster, the run guards, the prompts, and
+the usage counters. `state`, `models`, `manifest`, and `validation` deliberately reach nothing — the keys, the
+carriers, and the whole parse are decidable without a client, which is why the manifest rules can be exercised without
+one. So a patch that has to intercept the manifest parse, a child scan, or the split writer targets the owner
 module. The seams that stay on the facade are the ones a stage does not own: `_handle_implementing`, the decompose
 worktree helpers, `_has_new_commits` / `_worktree_dirty_files`, and `_check_and_increment_retry_budget` are read as
 `_wf` attributes at call time, and the whole historical inventory still resolves on `orchestrator.stages.decomposition`
