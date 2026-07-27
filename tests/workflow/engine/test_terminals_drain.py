@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from tests import workflow_drain_test_support as support
+from tests.workflow.engine import terminals_test_support as support
 
 
 class DrainReviewPrTerminalTest(unittest.TestCase, support._DrainTestMixin):
@@ -133,7 +133,7 @@ class DrainReviewPrTerminalTest(unittest.TestCase, support._DrainTestMixin):
 
         mocks = self._run(
             lambda: self.assertTrue(
-                support.workflow._drain_review_pr_terminals(
+                support.terminals._drain_review_pr_terminals(
                     gh, support._TEST_SPEC, issue, state, pr, stage=support.LABEL_IN_REVIEW,
                 )
             ),

@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import in_review as _owner
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import terminals as _terminals
 
 _InReviewContext = _owner._InReviewContext
 GitHubClient = _owner.GitHubClient
@@ -165,8 +166,6 @@ def _handle_in_review(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> 
     updated body. Docs do not run on the drift exit: the single docs
     pass is deferred to the final-docs handoff after reviewer approval.
     """
-    from orchestrator import workflow as _wf
-
     state = gh.read_pinned_state(issue)
     pr_number = state.get("pr_number")
 
@@ -194,7 +193,7 @@ def _handle_in_review(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> 
     # observed by the orchestrator, so the operator must clean up the
     # worktree, local branch, and remote branch manually for the
     # "close issue first, then close PR" ordering.
-    if _wf._drain_review_pr_terminals(
+    if _terminals._drain_review_pr_terminals(
         gh, spec, issue, state, ctx.pr, stage="in_review",
     ):
         return

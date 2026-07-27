@@ -19,6 +19,7 @@ from orchestrator.workflow.engine import (
     messages as _messages,
     pickup as _pickup,
     prompts as _prompts,
+    terminals as _terminals,
     usage as _usage,
 )
 from tests.reexport_test_support import lazy_targets, resolve_target
@@ -32,6 +33,7 @@ _MODULES = (
     "orchestrator.workflow.engine.messages",
     "orchestrator.workflow.engine.pickup",
     "orchestrator.workflow.engine.prompts",
+    "orchestrator.workflow.engine.terminals",
     "orchestrator.workflow.engine.usage",
     "orchestrator.workflow.state",
 )
@@ -145,6 +147,7 @@ class PackageSurfaceTest(unittest.TestCase):
         self.assertIs(_engine.messages, _messages)
         self.assertIs(_engine.pickup, _pickup)
         self.assertIs(_engine.prompts, _prompts)
+        self.assertIs(_engine.terminals, _terminals)
         self.assertIs(_engine.usage, _usage)
         for name, bound in _engine.__dict__.items():
             if name.startswith("__"):

@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _conflict_state as _state
 from orchestrator.stages import conflicts as _owner
 from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.engine import terminals as _terminals
 
 _ConflictContext = _owner._ConflictContext
 _WorktreeSync = _owner._WorktreeSync
@@ -41,8 +42,6 @@ def _handle_resolving_conflict(
     `review_round`; validation must re-approve the rebased branch before
     any merge gate can pass.
     """
-    from orchestrator import workflow as _wf
-
     state = gh.read_pinned_state(issue)
     ctx = _ConflictContext(gh, spec, issue, state)
     pr_number = state.get("pr_number")
@@ -69,7 +68,7 @@ def _handle_resolving_conflict(
     # observed by the orchestrator, so the operator must clean up the
     # worktree, local branch, and remote branch manually for the
     # "close issue first, then close PR" ordering.
-    if _wf._drain_review_pr_terminals(
+    if _terminals._drain_review_pr_terminals(
         gh, spec, issue, state, pr, stage="resolving_conflict",
     ):
         return

@@ -53,7 +53,8 @@ file is the durable record.
   `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`, `question_*`, ...).
 - `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`.
 - `pr_merged` — External merge terminal arcs in `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict`;
-  plus `_finalize_if_pr_merged` from `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks
+  plus `_finalize_if_pr_merged` (in `workflow/engine/terminals.py`, which also owns those arcs) from
+  `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks
   and from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; extras: `pr_number`, `sha`,
   `merge_method="external"`, `review_round`, `conflict_round`, `retry_count`; `stage` reflects the workflow label at
   finalize entry.

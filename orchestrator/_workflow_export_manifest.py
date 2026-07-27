@@ -106,29 +106,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._workflow_terminal_actions",
-        (
-            ("_ReviewTerminalContext", "_ReviewTerminalContext"),
-            ("_cleanup_review_terminal", "_cleanup_review_terminal"),
-            ("_close_terminal_issue", "_close_terminal_issue"),
-            ("_finalize_closed_issue_with_open_pr", "_finalize_closed_issue_with_open_pr"),
-            ("_finalize_if_pr_merged", "_finalize_if_pr_merged"),
-            ("_finalize_merged_pr", "_finalize_merged_pr"),
-            ("_finalize_rejected_pr", "_finalize_rejected_pr"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_terminals",
-        (
-            ("_ClosedIssuePR", "_ClosedIssuePR"),
-            ("_closed_issue_pr", "_closed_issue_pr"),
-            ("_drain_review_pr_terminals", "_drain_review_pr_terminals"),
-            ("_drain_review_terminal", "_drain_review_terminal"),
-            ("_emit_closed_pr_rejection", "_emit_closed_pr_rejection"),
-            ("_finalize_if_issue_closed", "_finalize_if_issue_closed"),
-        ),
-    ),
-    *export_group(
         "orchestrator._workflow_tick",
         (
             ("_ParallelTickPlan", "_ParallelTickPlan"),
@@ -338,6 +315,24 @@ EXPORTS = (
             ("_build_question_prompt", "_build_question_prompt"),
             ("_build_review_prompt", "_build_review_prompt"),
             ("_build_single_decision_comment", "_build_single_decision_comment"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.engine.terminals",
+        (
+            ("_ClosedIssuePR", "_ClosedIssuePR"),
+            ("_ReviewTerminalContext", "_ReviewTerminalContext"),
+            ("_cleanup_review_terminal", "_cleanup_review_terminal"),
+            ("_close_terminal_issue", "_close_terminal_issue"),
+            ("_closed_issue_pr", "_closed_issue_pr"),
+            ("_drain_review_pr_terminals", "_drain_review_pr_terminals"),
+            ("_drain_review_terminal", "_drain_review_terminal"),
+            ("_emit_closed_pr_rejection", "_emit_closed_pr_rejection"),
+            ("_finalize_closed_issue_with_open_pr", "_finalize_closed_issue_with_open_pr"),
+            ("_finalize_if_issue_closed", "_finalize_if_issue_closed"),
+            ("_finalize_if_pr_merged", "_finalize_if_pr_merged"),
+            ("_finalize_merged_pr", "_finalize_merged_pr"),
+            ("_finalize_rejected_pr", "_finalize_rejected_pr"),
         ),
     ),
     *export_group(

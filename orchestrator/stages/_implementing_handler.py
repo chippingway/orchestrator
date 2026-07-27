@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import terminals as _terminals
 from orchestrator.workflow.engine import usage as _usage
 
 _AgentWork = _owner._AgentWork
@@ -70,11 +71,9 @@ def _dispose_agent_result(
 def _implementing_preflight(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
 ) -> bool:
-    from orchestrator import workflow as _wf
-
-    if _wf._finalize_if_pr_merged(gh, spec, issue, state):
+    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
         return True
-    if _wf._finalize_if_issue_closed(gh, spec, issue, state):
+    if _terminals._finalize_if_issue_closed(gh, spec, issue, state):
         return True
     if _owner._handle_stale_question_park(gh, spec, issue, state):
         return True
