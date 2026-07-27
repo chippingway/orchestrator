@@ -1,65 +1,44 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""In review drift."""
+"""A body edit that lands after the PR is already open.
+
+The dev session is still the one that wrote the branch, so the edit resumes it
+rather than re-deciding the work. What makes this route different from the
+same edit during implementing is where it ends: both a pushed fix and a
+no-commit `ACK:` hand the issue back to `validating` with `review_round`
+reset, because the approval that carried it to `in_review` was earned against
+requirements that no longer exist. Docs deliberately do not run on the way
+out -- the single docs pass belongs to the final-docs handoff after a fresh
+reviewer approval.
+
+The PR conversation is read BEFORE the notice and the ratchet, and that
+ordering is the whole reason `_drift_unread_pr_conv` exists: the issue thread
+and the PR conversation share one id space, so the issue-side ratchet can leap
+past a PR comment whose id happens to fall inside the range it advances
+through. Capturing those comments up front and quoting them into the resume
+prompt is what keeps a concurrent PR comment from vanishing unanswered.
+
+Both refusals sit between the finished run and the disposition rather than
+before the run, because the run itself is what makes them decidable: a
+shutdown-interrupted result and a live pause both bail WITHOUT writing pinned
+state, so the refreshed hash, the consumed comments, and the cleared park are
+all discarded and the next process re-detects the same edit.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import in_review as _owner
+from github.Issue import Issue
+
+from orchestrator.github.comments import filter_trusted
 from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.engine import drift as _engine_drift
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
-
-_DriftResume = _owner._DriftResume
-_InReviewContext = _owner._InReviewContext
-Issue = _owner.Issue
-WorkflowLabel = _owner.WorkflowLabel
-filter_trusted = _owner.filter_trusted
-
-
-def _route_feedback_to_fixing(
-    ctx: _InReviewContext,
-    issue_space_new: list,
-    review_space_new: list,
-    review_summary_new: list,
-) -> None:
-    """Hand fresh PR feedback off to the `fixing` stage instead of silently
-    waiting through the debounce window or spawning the dev agent here.
-    Recording the per-namespace ids in pinned state (see
-    `_record_pending_fix_bookmarks`) gives the fixing handler a bookmark of what
-    triggered the route so it can resume the dev session, push a fix, and flip
-    back to `validating` -- all without `_handle_in_review` keeping the
-    comment-debounce / dev-resume machinery in its own body.
-
-    Deliberately NOT honoring the debounce window before the flip: with the
-    route to `fixing`, the dev is no longer spawned from this handler at all --
-    the fixing stage owns debouncing before its own spawn, so flipping
-    immediately is the right contract (the `fixing` label surfaces the
-    transition to the operator straight away, and any concurrent additional
-    comments are seen by the fixing handler on its next tick).
-
-    Refresh `user_content_hash` so the user-content drift detection does NOT
-    fire on the next tick for the same comment changes just consumed via the
-    fixing route: the hash covers title + body + human issue-thread comments, so
-    any issue-thread comment in `issue_space_new` shifts it; leaving the old
-    hash would have the drift path resume the dev and bounce to `validating` the
-    moment a human relabels the issue back to `in_review`, undoing the route.
-    """
-    state = ctx.state
-    state.set("pending_fix_at", _usage._now_iso())
-    _owner._record_pending_fix_bookmarks(
-        state, issue_space_new, review_space_new, review_summary_new,
-    )
-    state.set(
-        "user_content_hash",
-        _drift._compute_user_content_hash(ctx.issue, _comments._orchestrator_ids(state)),
-    )
-    # If we were parked awaiting human, the comment that triggered this route is
-    # the human signal -- clear the park flags so the fixing handler is not
-    # greeted with stale awaiting_human state.
-    state.set("awaiting_human", False)
-    state.set("park_reason", None)
-    ctx.gh.set_workflow_label(ctx.issue, WorkflowLabel.FIXING)
-    ctx.gh.write_pinned_state(ctx.issue, state)
+from orchestrator.workflow.stages.implementing import resume as _dev_resume
+from orchestrator.workflow.stages.in_review import feedback as _feedback
+from orchestrator.workflow.stages.in_review import models as _models
+from orchestrator.workflow.stages.in_review import watermarks as _watermarks
+from orchestrator.workflow.stages.validating import drift_outcomes as _drift_outcomes
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _build_drift_resume_prompt(issue: Issue, unread_pr_conv: list) -> str:
@@ -78,10 +57,10 @@ def _build_drift_resume_prompt(issue: Issue, unread_pr_conv: list) -> str:
         comments_text = (
             f"{prefix}Unread PR conversation comments:\n\n{pr_block}"
         )
-    return _drift._build_user_content_change_prompt(issue, comments_text)
+    return _engine_drift._build_user_content_change_prompt(issue, comments_text)
 
 
-def _drift_unread_pr_conv(ctx: _InReviewContext) -> list:
+def _drift_unread_pr_conv(ctx: _models._InReviewContext) -> list:
     """Capture unread PR-conversation comments BEFORE the drift notice and the
     later watermark bump.
 
@@ -93,14 +72,14 @@ def _drift_unread_pr_conv(ctx: _InReviewContext) -> list:
     what stops a concurrent PR comment from being silently dropped. Orchestrator
     id / marker filtering mirrors the regular in_review comment scan.
     """
-    issue_wm = _owner._issue_side_watermark(ctx.state)
+    issue_wm = _feedback._issue_side_watermark(ctx.state)
     orchestrator_ids = _comments._orchestrator_ids(ctx.state)
-    return _owner._drop_orchestrator_comments(
+    return _feedback._drop_orchestrator_comments(
         ctx.gh.pr_conversation_comments_after(ctx.pr, issue_wm), orchestrator_ids,
     )
 
 
-def _drift_worktree(ctx: _InReviewContext):
+def _drift_worktree(ctx: _models._InReviewContext):
     """Resolve the PR worktree for the drift resume, recreating it on the
     resolved branch if the path is gone.
     """
@@ -116,8 +95,8 @@ def _drift_worktree(ctx: _InReviewContext):
 
 
 def _resume_dev_for_drift(
-    ctx: _InReviewContext, unread_pr_conv: list,
-) -> _DriftResume:
+    ctx: _models._InReviewContext, unread_pr_conv: list,
+) -> _models._DriftResume:
     """Notify both surfaces, mark the issue-thread drift comments consumed,
     resolve the worktree, and resume the locked dev session with the updated
     body plus the unread PR conversation. Captures the pre-resume HEAD so the
@@ -136,22 +115,24 @@ def _resume_dev_for_drift(
         ctx.gh, int(ctx.pr_number), ctx.state,
         ":pencil2: issue body changed; resuming dev session.",
     )
-    _drift._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
-    wt = _owner._drift_worktree(ctx)
+    _engine_drift._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
+    wt = _drift_worktree(ctx)
     before_sha = _wf._head_sha(wt)
-    wt, dev_result, paused = _wf._resume_dev_with_text(
+    wt, dev_result, paused = _dev_resume._resume_dev_with_text(
         ctx.gh, ctx.spec, ctx.issue, ctx.state,
-        _owner._build_drift_resume_prompt(ctx.issue, filter_trusted(unread_pr_conv)),
+        _build_drift_resume_prompt(ctx.issue, filter_trusted(unread_pr_conv)),
         pause_guard=True,
     )
     ctx.state.set("last_agent_action_at", _usage._now_iso())
-    return _DriftResume(
+    return _models._DriftResume(
         worktree=wt, dev_result=dev_result, paused=paused, before_sha=before_sha,
     )
 
 
 def _dispose_drift_result(
-    ctx: _InReviewContext, unread_pr_conv: list, resume: _DriftResume,
+    ctx: _models._InReviewContext,
+    unread_pr_conv: list,
+    resume: _models._DriftResume,
 ) -> None:
     """Post the dev result (a no-commit reply is an ack, not a park), ratchet
     the in_review issue-side watermark past everything consumed this tick, and
@@ -167,20 +148,18 @@ def _dispose_drift_result(
     higher than every issue-thread id would survive the bump and re-fire as
     fresh feedback.
     """
-    from orchestrator import workflow as _wf
-
-    outcome = _wf._post_user_content_change_result(
+    outcome = _drift_outcomes._post_user_content_change_result(
         ctx.gh, ctx.spec, ctx.issue, ctx.state,
         resume.worktree, resume.dev_result, resume.before_sha,
     )
-    _owner._bump_in_review_watermarks(ctx, issue_space_new=unread_pr_conv)
+    _watermarks._bump_in_review_watermarks(ctx, issue_space_new=unread_pr_conv)
     if outcome in ("pushed", "ack"):
         ctx.state.set("review_round", 0)
         ctx.gh.set_workflow_label(ctx.issue, WorkflowLabel.VALIDATING)
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 
 
-def _handle_user_content_drift(ctx: _InReviewContext) -> bool:
+def _handle_user_content_drift(ctx: _models._InReviewContext) -> bool:
     """Resume the dev when a human edited the issue title / body after the PR
     opened (no fresh comment surface triggered the fixing route).
 
@@ -188,12 +167,12 @@ def _handle_user_content_drift(ctx: _InReviewContext) -> bool:
     False when there is no drift (the caller falls through to the mergeability
     gate).
     """
-    new_hash = _drift._detect_user_content_change(ctx.gh, ctx.issue, ctx.state)
+    new_hash = _engine_drift._detect_user_content_change(ctx.gh, ctx.issue, ctx.state)
     if new_hash is None:
         return False
     ctx.state.set("user_content_hash", new_hash)
-    unread_pr_conv = _owner._drift_unread_pr_conv(ctx)
-    resume = _owner._resume_dev_for_drift(ctx, unread_pr_conv)
+    unread_pr_conv = _drift_unread_pr_conv(ctx)
+    resume = _resume_dev_for_drift(ctx, unread_pr_conv)
     # Interrupted (shutdown sweep) or live-paused (operator added `paused` /
     # `backlog` mid-run) resume: bail WITHOUT writing pinned state so everything
     # staged above -- refreshed `user_content_hash`, consumed drift comments,
@@ -206,5 +185,5 @@ def _handle_user_content_drift(ctx: _InReviewContext) -> bool:
         return True
     if resume.paused:
         return True
-    _owner._dispose_drift_result(ctx, unread_pr_conv, resume)
+    _dispose_drift_result(ctx, unread_pr_conv, resume)
     return True

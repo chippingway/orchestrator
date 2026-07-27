@@ -60,8 +60,9 @@ right:
   approach per PR and be consistent.
 - Stage-handler tests live in `tests/test_workflow_<stage>.py` (`_conflicts`); the in_review stage is
   split into focused
-  `tests/test_workflow_in_review_*.py` files (routing, watermarks, filtering, parked, migration,
-  checks, drift, fresh-feedback fixing route), the implementing stage into focused
+  `tests/workflow/stages/in_review/test_*.py` files beside its owners (routing, watermarks,
+  filtering, parked, migration, review summary, drift, live pause, fresh-feedback fixing route,
+  borrowed-owner boundaries), the implementing stage into focused
   `tests/workflow/stages/implementing/test_*.py` files beside its owners (fresh runs, PR reuse +
   conventional-commit helpers, retry / backend behavior, user-content drift, full-spec persistence,
   terminal merges / closed issues), the documenting stage into focused

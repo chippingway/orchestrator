@@ -33,14 +33,16 @@ The stable stage-handler names live on lazy facades under `orchestrator/stages/`
 entry checks, session execution, drift handling, persistence, and terminal routing (see the module map in
 [`architecture.md#top-level-layout`](architecture.md#top-level-layout)). A cross-stage call into a stage that has not
 migrated yet still resolves through `orchestrator.workflow`, preserving the historical patch surface; between migrated
-stages the caller names the owner it borrows instead — documenting and validating both reach the implementing dev
-resume, session read, and question / dirty-tree parks, and documenting reaches validating's watermark walk — so a
+stages the caller names the owner it borrows instead — documenting, validating, and in_review all reach the
+implementing dev resume, documenting and validating also its session read and question / dirty-tree parks,
+documenting reaches validating's watermark walk, and in_review its body-edit disposition — so a
 patch meant to intercept one of those has to land on the owner. Those facades move to
-`orchestrator/workflow/stages/` one stage at a time — `decomposition`, `implementing`, `documenting`, and
-`validating` have gone, so the `decomposing` / `ready` / `blocked` / `umbrella` handlers live on owners in
+`orchestrator/workflow/stages/` one stage at a time — `decomposition`, `implementing`, `documenting`, `validating`,
+and `in_review` have gone, so the `decomposing` / `ready` / `blocked` / `umbrella` handlers live on owners in
 `orchestrator/workflow/stages/decomposition/`, `_handle_implementing` on owners in
 `orchestrator/workflow/stages/implementing/`, `_handle_documenting` in `orchestrator/workflow/stages/documenting/`,
-and `_handle_validating` in `orchestrator/workflow/stages/validating/`. The module each migrated stage vacates stays
+`_handle_validating` in `orchestrator/workflow/stages/validating/`, and `_handle_in_review` in
+`orchestrator/workflow/stages/in_review/`. The module each migrated stage vacates stays
 behind as a temporary forwarder onto those owners, so both import sites keep handing back the same handler; the
 dispatcher and the same-tick pickup start name the owner directly. The per-stage
 behavior is documented in
