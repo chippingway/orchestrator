@@ -283,7 +283,8 @@ it round-trips to `spec="codex"` with no args so an older orchestrator's pin kee
 The drift-sensitive handlers — `_handle_decomposing`, `_handle_ready`, `_handle_blocked`, `_handle_umbrella`,
 `_handle_implementing`, `_handle_validating`, `_handle_documenting`, `_handle_in_review`, `_handle_resolving_conflict`
 — run `_detect_user_content_change` somewhere in their flow. The hash covers the issue title, body, and every
-human-authored *issue-thread* comment body (PR-conversation comments are not in the hash).
+human-authored *issue-thread* comment body (PR-conversation comments are not in the hash). The hash, the six filters
+below, and the routes a detected drift is handed to all live in `workflow/engine/drift.py`.
 
 `_handle_in_review` is the exception in ordering: it runs the four-surface fresh-feedback ID scan FIRST and routes any
 unread human comment past those watermarks to `fixing`, so the drift check that follows reacts only to changes the ID
