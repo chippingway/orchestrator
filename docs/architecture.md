@@ -359,10 +359,11 @@ keyword-call adapters -- the PR sync in `pr`, the conflict route in `conflicts`,
 so a test that has to intercept the per-worktree sync the refresh drives, the PR-aware coordinator it hands a
 worktree off to, or the conflict route a failed rebase takes patches `refresh` / `pr` / `conflicts` and not
 the facade.
-The collaborators these owners reach *upward* are call-time imports: `persistence` binds the park guard and
-the PR-comment poster straight off their owning modules, and `publication` and `conflicts` bind the same
-poster for their notices, so a patch for the park targets `orchestrator.workflow.engine.guards` and one for
-any of the notices targets `orchestrator.workflow.engine.comments` -- the
+The collaborators these owners reach *upward* are call-time imports: `persistence` binds the awaiting-human
+park from `workflow/engine/guards.py` -- not from its own `guards` sibling, which owns the publication
+refusals -- and the PR-comment poster straight off its owning module, and `publication` and `conflicts` bind
+the same poster for their notices, so a patch for the park targets `orchestrator.workflow.engine.guards` and
+one for any of the notices targets `orchestrator.workflow.engine.comments` -- the
 `workflow` forward of `_park_awaiting_human` and the `base_sync` and `workflow_messages` forwards of
 `_post_pr_comment` still resolve, but they are
 not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
@@ -458,11 +459,15 @@ mutations it staged in memory are simply dropped and the next tick re-derives th
 third, `_park_awaiting_human`, publishes one instead — the HITL comment, `awaiting_human`, a cleared
 `park_reason`, the `last_action_comment_id` ratchet, and the `park_awaiting_human` event — and still leaves
 `gh.write_pinned_state` to its caller, which is the rule all three share and the reason they sit together. It
-reaches `comments.py` for the park comment, and every stage leaf that runs an agent or parks one imports the
+reaches `comments.py` for the park comment, and every stage leaf that calls one of the three imports the
 owner, so a patch that has to intercept an interruption check, a mid-run pause check, or a park targets
 `orchestrator.workflow.engine.guards`; `workflow` still resolves all three names to the owner's exact object for
 callers outside the package. The base-sync `persistence` owner reaches the park through a call-time import
-instead, which is what keeps a workflow-layer module out of its import graph.
+instead, which is what keeps a workflow-layer module out of its import graph. Two parks sit outside the helper:
+`_on_question` and `_on_dirty_worktree` on `stages/_implementing_parks.py` compose the same comment,
+`awaiting_human` flag, `last_action_comment_id` ratchet, and `park_awaiting_human` event themselves, each
+beside stage-specific state the helper does not write — the classified park reason and the silent-park counter
+on one, the dirty-file count carried on the other's event — so a patch aimed at either targets the stage leaf.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`
