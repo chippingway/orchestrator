@@ -218,6 +218,26 @@ orchestrator/
                         dirty-tree, and question parks
         models.py       the frozen records the owners hand each other
         state.py        the pinned-state keys they share
+      fixing/
+        __init__.py     package marker only; callers import an owner directly
+        handler.py      the order one tick asks its questions in, plus the
+                        preflight terminals / missing-`pr_number` park it runs
+                        before the fix loop can start
+        feedback.py     the rescan past the three in_review watermarks and the
+                        narrower ratchet a consumed batch advances them by
+        bookmarks.py    the `pending_fix_*` ids a replay rebuilds the triggering
+                        batch from, and the clear each finished round earns
+        continue_command.py
+                        `/orchestrator continue` on a parked fix: the replay,
+                        the two refusals, and the guidance passthrough
+        parked.py       the four answers an `awaiting_human` tick can reach and
+                        the order they are asked in
+        drift.py        the `resolving_conflict` reroute a stuck validating-route
+                        park earns when its worktree has fallen behind base
+        resume.py       the quiet window, the dev run, the ACK fast path, and
+                        the `validating` relabel a pushed fix earns
+        models.py       the frozen records the owners hand each other
+        state.py        the pinned-state keys they share
       implementing/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one tick asks its questions in
@@ -435,7 +455,6 @@ orchestrator/
                         under `workflow/stages/`
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
-    _fixing_*.py        bookmarks, quiet-window feedback, resume, and routing
     _conflict_*.py      rebase guards/outcomes, resume, publish, and transitions
     _question_*.py      read-only session, run, outcomes, and handler routing
 ```
@@ -792,12 +811,13 @@ Each workflow label dispatches to a `_handle_<label>` function. The handlers liv
 `orchestrator/workflow/stages/` (see the module map above), and the dispatcher reaches one by importing the module its
 label is paired with in `_STAGE_HANDLER_TARGETS` and reading the handler off it, so a patch that has to intercept the
 dispatch targets that module rather than `workflow`. The `workflow` package initializer still re-exports every handler
-under its original name, and that is the edge the stage-to-stage calls resolve through — `_handle_implementing` from
-the decomposition recovery and blocked paths, `_handle_dev_fix_result` from the fixing resume — so a patch aimed at one
-of those keeps targeting the facade.
+under its original name, and that is the edge a stage-to-stage call resolves through when its caller has not migrated
+— `_handle_implementing` from the decomposition recovery and blocked paths — so a patch aimed at one of those keeps
+targeting the facade.
 
 `orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time; `decomposition`,
-`implementing`, `documenting`, `validating`, and `in_review` have arrived. A migrated stage becomes a subpackage of
+`implementing`, `documenting`, `validating`, `in_review`, and `fixing` have arrived. A migrated stage becomes a
+subpackage of
 responsibility-named owners there, and the `orchestrator/stages/<stage>.py` it vacates stays behind as a temporary
 forwarder that reads every name back off those owners rather than rebuilding one, so both import sites hand back the
 same object. Identity is all a forwarder carries: it caches each name it resolved, so a `patch.object` intercepts the
@@ -873,13 +893,13 @@ documenting it imports the resume, the session read, and the question / dirty-tr
 lands on the owner rather than on the facade — which would not intercept the call. The seams that stay on the facade
 are the ones the stage does not own — the worktree, fetch, git, and push helpers plus base-sync's
 `_AUTO_REBASE_PARK_REASONS` are read as `_wf` attributes at call time — and the whole historical inventory still
-resolves on `orchestrator.stages.validating` with the owner's exact identity. Five of its names are what other stages
-reach for and so keep resolving on `workflow` as well: `_handle_dev_fix_result`, `_stranded_fix_unpushed`,
-`_try_recover_validating_transient_park`, and `_VALIDATING_TRANSIENT_PARK_REASONS` (fixing), and
-`_post_user_content_change_result` (resolving_conflict, the one caller of it that still reads a facade — in_review's
-drift route disposes through the same helper but names `drift_outcomes` itself). A sixth, `_latest_pr_comment_ids`,
-still resolves there too, but its one cross-package caller — documenting's final-docs handoff — names `watermarks`
-itself, so that entry now serves historical callers alone.
+resolves on `orchestrator.stages.validating` with the owner's exact identity. One of its names is what another stage
+still reaches for through a facade and so keeps resolving on `workflow` as well:
+`_post_user_content_change_result` (resolving_conflict — in_review's drift route disposes through the same helper but
+names `drift_outcomes` itself). Five more resolve there too — `_handle_dev_fix_result`, `_stranded_fix_unpushed`,
+`_try_recover_validating_transient_park`, `_VALIDATING_TRANSIENT_PARK_REASONS`, and `_latest_pr_comment_ids` — but
+every in-tree caller of those names the owner itself: fixing's resume and parked owners for the first four,
+documenting's final-docs handoff for the last. Those entries now serve historical callers alone.
 
 The in_review owners divide by the four answers one tick can reach, and `handler` holds the order because the order is
 the contract rather than a style choice. `feedback` runs before `drift`: `user_content_hash` covers every human
@@ -898,7 +918,32 @@ seams that stay on the facade are the ones the stage does not own — the worktr
 base-sync's `_AUTO_REBASE_PARK_REASONS`, which is what tells a park the rebase loop owns from one this stage may
 answer — and the whole historical inventory still resolves on `orchestrator.stages.in_review` with the owner's exact
 identity. Two of its names keep resolving on `workflow` as well: `_handle_in_review` for the stage-to-stage edge and
-`_comment_created_at` for the fixing debounce.
+`_comment_created_at`, whose one cross-package caller — fixing's quiet window — names `watermarks` itself.
+
+The fixing owners divide by what one tick has to settle, and two of them exist as a pair because the batch that starts
+the loop is not the batch that ends it. `feedback` scans forward from the three in_review watermarks; `bookmarks`
+rebuilds backward from the `pending_fix_*` ids the in_review route recorded. Both are needed because the first dev
+resume advances those watermarks past the triggering feedback, so once a fix has been attempted the batch a
+`/orchestrator continue` must replay can only come from the ids. `feedback` also owns the ratchet, deliberately
+narrower than `_bump_in_review_watermarks`: it advances each surface only to the max id actually quoted in the prompt,
+on the pushed path and the park path alike, so a comment that landed mid-tick survives to the next one.
+`continue_command` is the only caller that rebuilds a batch, and the only one that answers with a refusal instead of a
+run. `parked` is the dispatcher for an `awaiting_human` tick and the order is the contract: the base-sync retry loop's
+own parks are refused first and silently, then the explicit operator command, then the silent recovery — which fires
+only on the validating route, because `review_round` accounting and watermark advancement differ between the two and
+`pending_fix_at` is what tells them apart. `drift` is the exit from a stuck validating-route transient park whose
+worktree has fallen behind base, and it exists because the per-tick base sync stands down on every park, so nobody
+else will rebase it. `resume` owns the quiet window, the run, the interruption and live-pause refusals that write
+nothing, the ACK fast path, and the `validating` relabel a pushed fix earns. `models`, `state`, and `bookmarks` reach
+no further than the client they are handed, so the carriers, the wire keys, and the whole reconstruction are decidable
+without a worktree or an agent. So a patch that has to intercept the rescan, the replay, the parked dispatch, the
+reroute, or the run targets the owner module. This stage owns no dev machinery either: the resume and the
+poisoned-session drop come from `workflow/stages/implementing/`, the dev-fix disposition, the stranded-fix probe, and
+the transient-park recovery from `workflow/stages/validating/`, and the comment timestamp the quiet window measures
+from `workflow/stages/in_review/watermarks.py` — so a patch on any of those lands on the owner. The seams that stay on
+the facade are the ones the stage does not own — the worktree, git, and HEAD helpers plus base-sync's
+`_AUTO_REBASE_PARK_REASONS` — and the whole historical inventory still resolves on `orchestrator.stages.fixing` with
+the owner's exact identity, with `_handle_fixing` resolving on `workflow` as well.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked

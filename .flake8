@@ -146,6 +146,19 @@
 # the validating ones, and reaches the worktree helpers on the `workflow`
 # facade from two separate call sites. WPS201 is waived for that file.
 #
+# Two fixing stage owners name more than the same WPS201 ceiling of 12.
+# `resume.py` names 20: it spans one dev run end to end, so it is typed by the
+# engine's comment, drift, message, prompt, and usage surfaces, the four
+# sibling owners it reads bookmarks, watermarks, records, and keys from, the
+# dev resume it borrows from the implementing owners and the dev-fix
+# disposition and stranded-fix probe from the validating ones, the comment
+# timestamp the debounce borrows from in_review, and the worktree helpers it
+# reaches on the `workflow` facade at call time. `handler.py` names 15 because
+# the order one tick asks its questions in is the contract, so it is typed by
+# every owner an answer can come from plus the engine's guard and terminal
+# surfaces its preflight runs first. Splitting either by import would put one
+# tick's decisions across two modules. WPS201 is waived for those files.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -187,6 +200,8 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS201
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
+    orchestrator/workflow/stages/fixing/handler.py:WPS201
+    orchestrator/workflow/stages/fixing/resume.py:WPS201
     orchestrator/workflow/stages/in_review/drift.py:WPS201
     orchestrator/workflow/stages/validating/approval.py:WPS201
     orchestrator/workflow/stages/validating/dev_fix.py:WPS201

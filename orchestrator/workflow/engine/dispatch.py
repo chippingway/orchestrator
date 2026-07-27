@@ -41,9 +41,9 @@ mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
 
 The handler for a label is reached by importing the module
-`_STAGE_HANDLER_TARGETS` pairs it with, at call time: three of them are stage
-facades still under `orchestrator/stages/`, eight are decomposition,
-documenting, implementing, validating, and in_review owners under
+`_STAGE_HANDLER_TARGETS` pairs it with, at call time: two of them are stage
+facades still under `orchestrator/stages/`, nine are decomposition,
+documenting, fixing, implementing, validating, and in_review owners under
 `workflow/stages/`, and the twelfth is the `pickup` sibling an unlabeled issue
 starts on -- and the stage tree imports this subpackage, so binding any of them
 at module scope would point that edge back at itself. A migrated stage is named
@@ -90,6 +90,7 @@ _FAMILY_BUCKET_ISSUE: int = 0
 _STAGE_PACKAGE = "orchestrator.stages"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
+_FIXING_PACKAGE = "orchestrator.workflow.stages.fixing"
 _IMPLEMENTING_PACKAGE = "orchestrator.workflow.stages.implementing"
 _IN_REVIEW_PACKAGE = "orchestrator.workflow.stages.in_review"
 _VALIDATING_PACKAGE = "orchestrator.workflow.stages.validating"
@@ -104,7 +105,7 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
     "documenting": (f"{_DOCUMENTING_PACKAGE}.handler", "_handle_documenting"),
     "validating": (f"{_VALIDATING_PACKAGE}.handler", "_handle_validating"),
     "in_review": (f"{_IN_REVIEW_PACKAGE}.handler", "_handle_in_review"),
-    "fixing": (f"{_STAGE_PACKAGE}.fixing", "_handle_fixing"),
+    "fixing": (f"{_FIXING_PACKAGE}.handler", "_handle_fixing"),
     "resolving_conflict": (f"{_STAGE_PACKAGE}.conflicts", "_handle_resolving_conflict"),
     "question": (f"{_STAGE_PACKAGE}.question", "_handle_question"),
 })

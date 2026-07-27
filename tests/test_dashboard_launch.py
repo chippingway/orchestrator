@@ -32,6 +32,11 @@ from tests.dashboard_reload_helpers import (
     hermetic_environment as _hermetic_env,
 )
 
+from tests.import_world_helpers import (
+    CONFIG_MODULE as _CONFIG_MODULE,
+    restored_import_world as _restored_import_world,
+)
+
 from tests.script_launch_helpers import (
     clear_modules as _clear_modules,
     drop_repo_root as _drop_repo_root_from_sys_path,
@@ -102,9 +107,12 @@ class LazyImportTest(unittest.TestCase):
 
     def test_dashboard_only_modules_absent_after_load(self) -> None:
         optional_deps = ("streamlit", "pandas", "plotly")
-        with patch.dict(os.environ, _hermetic_env(), clear=True):
+        with (
+            _restored_import_world(),
+            patch.dict(os.environ, _hermetic_env(), clear=True),
+        ):
             for stale_module in (
-                "orchestrator.config",
+                _CONFIG_MODULE,
                 ANALYTICS_READ_MODULE,
                 "orchestrator.analytics",
                 DASHBOARD_MODULE,

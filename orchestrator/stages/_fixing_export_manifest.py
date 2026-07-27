@@ -43,7 +43,7 @@ EXPORTS = (
         (("PinnedState", "PinnedState"),),
     ),
     *export_group(
-        "orchestrator.stages._fixing_bookmarks",
+        "orchestrator.workflow.stages.fixing.bookmarks",
         (
             ("_clear_pending_fix_bookmarks", "_clear_pending_fix_bookmarks"),
             ("_pending_fix_id_set", "_pending_fix_id_set"),
@@ -54,15 +54,14 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._fixing_continue",
+        "orchestrator.workflow.stages.fixing.continue_command",
         (
-            ("_advance_consumed_watermarks", "_advance_consumed_watermarks"),
             ("_handle_continue_command", "_handle_continue_command"),
             ("_reconstruct_pending_fix_batch", "_reconstruct_pending_fix_batch"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._fixing_drift",
+        "orchestrator.workflow.stages.fixing.drift",
         (
             ("_fixing_drift_reason", "_fixing_drift_reason"),
             ("_post_fixing_conflict_notice", "_post_fixing_conflict_notice"),
@@ -72,8 +71,9 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._fixing_feedback",
+        "orchestrator.workflow.stages.fixing.feedback",
         (
+            ("_advance_consumed_watermarks", "_advance_consumed_watermarks"),
             ("_new_issue_space_feedback", "_new_issue_space_feedback"),
             ("_new_review_comment_feedback", "_new_review_comment_feedback"),
             ("_new_review_summary_feedback", "_new_review_summary_feedback"),
@@ -81,18 +81,24 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._fixing_models",
+        "orchestrator.workflow.stages.fixing.handler",
+        (
+            ("_fixing_preflight", "_fixing_preflight"),
+            ("_handle_fixing", "_handle_fixing"),
+            ("_park_fixing_without_pr", "_park_fixing_without_pr"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.fixing.models",
         (
             ("_FixingContext", "_FixingContext"),
             ("_FixingFeedback", "_FixingFeedback"),
             ("_FixingResumeRun", "_FixingResumeRun"),
             ("_ParkedFixingDecision", "_ParkedFixingDecision"),
-            ("_fixing_preflight", "_fixing_preflight"),
-            ("_park_fixing_without_pr", "_park_fixing_without_pr"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._fixing_parked",
+        "orchestrator.workflow.stages.fixing.parked",
         (
             ("_dispatch_continue_command", "_dispatch_continue_command"),
             ("_dispatch_parked_fixing", "_dispatch_parked_fixing"),
@@ -100,18 +106,20 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._fixing_resume",
+        "orchestrator.workflow.stages.fixing.resume",
         (
             ("_apply_fix_review_round", "_apply_fix_review_round"),
             ("_fixing_ack_fast_path", "_fixing_ack_fast_path"),
             ("_fixing_debounce_open", "_fixing_debounce_open"),
-            ("_handle_fixing", "_handle_fixing"),
-            ("_resume_fixing_and_dispatch_result", "_resume_fixing_and_dispatch_result"),
+            (
+                "_resume_fixing_and_dispatch_result",
+                "_resume_fixing_and_dispatch_result",
+            ),
             ("_run_fixing_resume", "_run_fixing_resume"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._fixing_state",
+        "orchestrator.workflow.stages.fixing.state",
         (
             ("_AWAITING_HUMAN", "_AWAITING_HUMAN"),
             ("_CONFLICT_ROUND", "_CONFLICT_ROUND"),
