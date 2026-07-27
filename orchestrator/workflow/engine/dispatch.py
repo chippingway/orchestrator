@@ -41,13 +41,14 @@ mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
 
 The handler for a label is reached by importing the module
-`_STAGE_HANDLER_TARGETS` pairs it with, at call time: seven of them are stage
-facades still under `orchestrator/stages/`, four are decomposition owners under
-`workflow/stages/`, and the twelfth is the `pickup` sibling an unlabeled issue
-starts on -- and the stage tree imports this subpackage, so binding any of them
-at module scope would point that edge back at itself. A migrated stage is named
-by the owner its handler now lives on rather than by the forwarder it left
-behind, so the patch that intercepts a dispatch is the one against that owner.
+`_STAGE_HANDLER_TARGETS` pairs it with, at call time: six of them are stage
+facades still under `orchestrator/stages/`, five are decomposition and
+implementing owners under `workflow/stages/`, and the twelfth is the `pickup`
+sibling an unlabeled issue starts on -- and the stage tree imports this
+subpackage, so binding any of them at module scope would point that edge back at
+itself. A migrated stage is named by the owner its handler lives on rather than
+by the forwarder it left behind, so the patch that intercepts a dispatch is the
+one against whichever module the table names.
 """
 from __future__ import annotations
 
@@ -87,6 +88,7 @@ _FAMILY_BUCKET_ISSUE: int = 0
 
 _STAGE_PACKAGE = "orchestrator.stages"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
+_IMPLEMENTING_PACKAGE = "orchestrator.workflow.stages.implementing"
 
 _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyType({
     None: ("orchestrator.workflow.engine.pickup", "_handle_pickup"),
@@ -94,7 +96,7 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
     "ready": (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_ready"),
     "blocked": (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_blocked"),
     "umbrella": (f"{_DECOMPOSITION_PACKAGE}.umbrella", "_handle_umbrella"),
-    "implementing": (f"{_STAGE_PACKAGE}.implementing", "_handle_implementing"),
+    "implementing": (f"{_IMPLEMENTING_PACKAGE}.handler", "_handle_implementing"),
     "documenting": (f"{_STAGE_PACKAGE}.documenting", "_handle_documenting"),
     "validating": (f"{_STAGE_PACKAGE}.validating", "_handle_validating"),
     "in_review": (f"{_STAGE_PACKAGE}.in_review", "_handle_in_review"),
@@ -120,9 +122,10 @@ def _route_issue_to_handler(
 ) -> None:
     """Dispatch one issue to its stage handler by workflow label.
 
-    The owning module is imported at call time and the handler read off it as
-    an attribute, so a patch against that stage facade intercepts the dispatch
-    and a facade that later forwards to a migrated owner still resolves.
+    The module the table names is imported at call time and the handler read
+    off it as an attribute, so the patch that intercepts a dispatch is the one
+    against that module -- a flat stage facade for an unmigrated label, the
+    handler owner for a migrated one.
     ``done`` / ``rejected`` are terminal no-ops; an unrecognized label is
     logged and left alone for a human. Timing and the ``stage_evaluation``
     analytics record stay in ``_process_issue``, which wraps this call in its

@@ -15,8 +15,8 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import analytics
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
-from orchestrator.stages import implementing, validating
 from orchestrator.workflow.engine import dispatch, pickup
+from orchestrator.workflow.stages.implementing import handler as implementing
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow_helpers import (
@@ -31,6 +31,10 @@ from tests.workflow_helpers import (
 
 
 _ANALYTICS_FILENAME = "analytics.jsonl"
+# The reviewer handler is patched by name: this module wants the validating
+# facade only as a patch target, and naming it instead of importing it keeps the
+# module under the import ceiling.
+_VALIDATING_HANDLER = "orchestrator.stages.validating._handle_validating"
 _ANALYTICS_PATH_ATTR = "ANALYTICS_LOG_PATH"
 _STAGE_KEY = "stage"
 _HARD_SKIPPED_ISSUE = 8004
@@ -144,9 +148,8 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             gh.add_issue(issue)
             with (
                 patch.object(analytics, _ANALYTICS_PATH_ATTR, path),
-                patch.object(
-                    validating,
-                    "_handle_validating",
+                patch(
+                    _VALIDATING_HANDLER,
                     side_effect=RuntimeError("handler blew up"),
                 ),
             ):

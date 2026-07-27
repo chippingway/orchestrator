@@ -39,9 +39,9 @@ right:
 
 - The facade re-exports stage handlers and cross-module helpers under their original names so
   `patch.object(workflow, "_foo", ...)` in tests keeps intercepting calls. **Every re-export must be
-  aliased with `as <name>`** — bare `from .stages.implementing import _handle_implementing` will be
-  stripped by ruff F401; `from .stages.implementing import _handle_implementing as _handle_implementing`
-  survives.
+  aliased with `as <name>`** — bare `from .stages.implementing.handler import _handle_implementing` will
+  be stripped by ruff F401;
+  `from .stages.implementing.handler import _handle_implementing as _handle_implementing` survives.
 - Stage modules call back into the facade via `from orchestrator import workflow as _wf` **at call
   time**, not at module import. Top-level `from orchestrator.workflow import _foo` defeats
   `patch.object(workflow, "_foo", ...)` because the stage module captures the original reference.
@@ -63,9 +63,10 @@ right:
   handoff, squash, watermarks, drift, verify, terminal), the in_review stage into focused
   `tests/test_workflow_in_review_*.py` files (routing, watermarks, filtering, parked, migration,
   checks, drift, fresh-feedback fixing route), the implementing stage into focused
-  `tests/test_workflow_implementing_*.py` files (fresh runs, PR reuse + conventional-commit helpers,
-  retry / backend behavior, user-content drift, full-spec persistence, terminal merges / closed
-  issues), and the decomposition stage into focused `tests/test_workflow_decomposition_*.py` files
+  `tests/workflow/stages/implementing/test_*.py` files beside its owners (fresh runs, PR reuse +
+  conventional-commit helpers, retry / backend behavior, user-content drift, full-spec persistence,
+  terminal merges / closed issues), and the decomposition stage into focused
+  `tests/test_workflow_decomposition_*.py` files
   (manifest parsing, decomposing/ready/blocked/umbrella stage handlers, child issue creation, hash
   drift, stale manifest cleanup, child merged-PR finalize). Per-label dispatcher / routing tests
   live in `tests/test_workflow_<label>_routing.py` (backlog, question, documenting, fixing) and the
@@ -111,7 +112,8 @@ When you move a handler, helper, or constant, grep for the symbol across these f
 - `docs/state-machine.md`
 - `docs/workflow.md`
 - the module docstrings at the top of `orchestrator/workflow/__init__.py`, `workflow_drift.py`,
-  `workflow_messages.py`, `worktrees.py`, and `orchestrator/stages/*.py`
+  `workflow_messages.py`, `worktrees.py`, `orchestrator/stages/*.py`, and the owners under
+  `orchestrator/workflow/stages/<stage>/`
 
 Be precise about what is and isn't re-exported — overstated claims like "every helper is re-exported" get flagged.
 

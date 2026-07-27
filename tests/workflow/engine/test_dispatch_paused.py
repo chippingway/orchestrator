@@ -23,7 +23,7 @@ from orchestrator.github.labels import (
     PAUSED_LABEL,
     hard_skip_control_label,
 )
-from orchestrator.stages import implementing
+from orchestrator.workflow.stages.implementing import handler as implementing
 from orchestrator.workflow.engine import dispatch, pickup
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue

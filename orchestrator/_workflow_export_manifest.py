@@ -132,24 +132,6 @@ EXPORTS = (
         (("_handle_fixing", "_handle_fixing"),),
     ),
     *export_group(
-        "orchestrator.stages.implementing",
-        (
-            ("_SILENT_PARKS_BEFORE_FRESH_SESSION", "_SILENT_PARKS_BEFORE_FRESH_SESSION"),
-            ("_check_and_increment_retry_budget", "_check_and_increment_retry_budget"),
-            ("_drop_poisoned_dev_session", "_drop_poisoned_dev_session"),
-            ("_handle_implementing", "_handle_implementing"),
-            ("_is_context_overflow_failure", "_is_context_overflow_failure"),
-            ("_is_poisoned_session_failure", "_is_poisoned_session_failure"),
-            ("_is_session_limit_message", "_is_session_limit_message"),
-            ("_is_stale_session_failure", "_is_stale_session_failure"),
-            ("_on_dirty_worktree", "_on_dirty_worktree"),
-            ("_on_question", "_on_question"),
-            ("_read_dev_session", "_read_dev_session"),
-            ("_resume_dev_with_text", "_resume_dev_with_text"),
-            ("_resume_developer_on_human_reply", "_resume_developer_on_human_reply"),
-        ),
-    ),
-    *export_group(
         "orchestrator.stages.in_review",
         (
             ("_comment_created_at", "_comment_created_at"),
@@ -350,6 +332,47 @@ EXPORTS = (
     *export_group(
         "orchestrator.workflow.stages.decomposition.umbrella",
         (("_handle_umbrella", "_handle_umbrella"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.implementing.handler",
+        (("_handle_implementing", "_handle_implementing"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.implementing.parks",
+        (
+            ("_on_dirty_worktree", "_on_dirty_worktree"),
+            ("_on_question", "_on_question"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.implementing.resume",
+        (
+            ("_resume_dev_with_text", "_resume_dev_with_text"),
+            ("_resume_developer_on_human_reply", "_resume_developer_on_human_reply"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.implementing.session",
+        (
+            ("_check_and_increment_retry_budget", "_check_and_increment_retry_budget"),
+            ("_drop_poisoned_dev_session", "_drop_poisoned_dev_session"),
+            ("_is_poisoned_session_failure", "_is_poisoned_session_failure"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.implementing.session_read",
+        (
+            ("_is_context_overflow_failure", "_is_context_overflow_failure"),
+            ("_is_session_limit_message", "_is_session_limit_message"),
+            ("_is_stale_session_failure", "_is_stale_session_failure"),
+            ("_read_dev_session", "_read_dev_session"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.implementing.state",
+        (
+            ("_SILENT_PARKS_BEFORE_FRESH_SESSION", "_SILENT_PARKS_BEFORE_FRESH_SESSION"),
+        ),
     ),
     *export_group(
         "orchestrator.workflow.state",

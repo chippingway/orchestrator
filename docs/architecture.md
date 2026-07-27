@@ -195,6 +195,36 @@ orchestrator/
                         implementing with its consumed-comment ratchet
         umbrella.py     the `umbrella` poll and the close its all-done branch
                         earns instead of an implementation pass
+      implementing/
+        __init__.py     package marker only; callers import an owner directly
+        handler.py      the order one tick asks its questions in
+        spawn.py        awaiting-human vs active, the recovered-worktree
+                        shortcut, and the retry-gated fresh spawn
+        session_read.py the locked session read plus the stale / overflow /
+                        quota classifiers and the blockquote they quote with
+        session.py      the three session retirements, the per-issue 24h spawn
+                        cap, and the fresh-spawn prompt
+        resume.py       the two resume entry points and the historical call
+                        shape they keep
+        execution.py    one resume, its poisoned-session retry, and what each
+                        attempt is allowed to persist
+        worktree.py     the checkout a resume runs in, restored when reaped
+        disposition.py  the `before_sha` publish / timeout-park decision and
+                        the timeout park's own next-tick recovery
+        parks.py        the session-limit, question, silent-failure, and
+                        dirty-tree parks
+        publication.py  the push, the PR reuse or open, and the validating
+                        handoff with its counter resets
+        drift.py        a body edit mid-implementation: the resume it earns and
+                        the `ACK:` that answers it
+        drift_preflight.py
+                        a pre-session edit and the quiet timeout recovery
+        continue_command.py
+                        `/orchestrator continue` on a parked issue
+        question_relabel.py
+                        the question -> implementing relabel guards
+        models.py       the frozen records the owners hand each other
+        state.py        the pinned-state keys and CLI marker tuples they share
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
@@ -333,8 +363,6 @@ orchestrator/
                         under `workflow/stages/`
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
-    _implementing_*.py  handler entry, sessions, typed resume, recovery,
-                        publication, drift, and post-agent dispositions
     _documenting_*.py   preconditions, run, persistence, drift, and outcomes
     _validating_*.py    reviewer/verify flow, watermarks, approval, fixes,
                         drift, and awaiting-human routes
@@ -449,8 +477,8 @@ and stage leaves that read a verdict, quote a blockquote, or classify a continue
 to intercept a verdict parse, an ack read, a continue classification or refusal, or a stderr diagnostic targets
 `orchestrator.workflow.engine.messages`; `workflow`, `workflow_messages`, and `workflow_drift` each still resolve
 their historical slice of those names to the owner's exact object. The implementing stage keeps its own
-`_as_blockquote` on `stages/_implementing_session_read.py`, so a patch aimed at that stage's quoting still targets the
-stage leaf.
+`_as_blockquote` on `workflow/stages/implementing/session_read.py`, so a patch aimed at that stage's quoting still
+targets the stage owner.
 
 `workflow/engine/prompts.py` is bound the same way. It owns the prompt builders the stages share, and the reason they
 sit together is that they share their parts: one header carrying the issue body and the trust-filtered thread text, one
@@ -520,10 +548,10 @@ owner, so a patch that has to intercept an interruption check, a mid-run pause c
 `orchestrator.workflow.engine.guards`; `workflow` still resolves all three names to the owner's exact object for
 callers outside the package. The base-sync `persistence` owner reaches the park through a call-time import
 instead, which is what keeps a workflow-layer module out of its import graph. Two parks sit outside the helper:
-`_on_question` and `_on_dirty_worktree` on `stages/_implementing_parks.py` compose the same comment,
+`_on_question` and `_on_dirty_worktree` on `workflow/stages/implementing/parks.py` compose the same comment,
 `awaiting_human` flag, `last_action_comment_id` ratchet, and `park_awaiting_human` event themselves, each
 beside stage-specific state the helper does not write — the classified park reason and the silent-park counter
-on one, the dirty-file count carried on the other's event — so a patch aimed at either targets the stage leaf.
+on one, the dirty-file count carried on the other's event — so a patch aimed at either targets the stage owner.
 
 `workflow/engine/pickup.py` is bound the same way. It owns the first tick an unlabeled issue gets, which is two
 decisions and one publish order. `ALLOWED_ISSUE_AUTHORS` decides whether the orchestrator answers at all — the
@@ -538,7 +566,7 @@ routes to the stage it was committed to rather than an unlabeled one it would gr
 stamp, so a patch that has to intercept the allowlist, either start, or the pickup-comment record targets
 `orchestrator.workflow.engine.pickup`; `workflow` still resolves all five names to the owner's exact object. The
 stage handler it dispatches in the same tick is reached through a call-time import of
-`workflow/stages/decomposition/run.py` or `orchestrator/stages/implementing.py` — the stage tree imports this
+`workflow/stages/decomposition/run.py` or `workflow/stages/implementing/handler.py` — the stage tree imports this
 subpackage, so binding either at module scope would point that edge back at itself — which also makes the stage
 module, not `workflow`, the target for a patch that has to intercept the dispatch. A migrated stage is named by
 the owner its handler lives on rather than by the forwarder it left behind, so that patch target is the same one
@@ -577,9 +605,9 @@ exemption is what keeps that serialization from deadlocking — a bucket whose e
 and global caps. Only issue numbers cross a thread boundary; `_refetch_and_process` mints a per-worker client and
 refetches against it, because PyGithub's `Issue` and the `Requester` chain behind it are not documented thread-safe.
 Its own helpers call each other in-module, and each handler is reached through a call-time import of the module
-`_STAGE_HANDLER_TARGETS` pairs with its label — seven of the twelve entries name `orchestrator/stages/` facades, four
-name decomposition owners under `workflow/stages/`, and the twelfth names the `pickup` sibling an unlabeled issue
-starts on. That table stays owner-private,
+`_STAGE_HANDLER_TARGETS` pairs with its label — six of the twelve entries name `orchestrator/stages/` facades, five
+name decomposition and implementing owners under `workflow/stages/`, and the twelfth names the `pickup` sibling an
+unlabeled issue starts on. That table stays owner-private,
 because the facade's inventory is the historical surface rather than a mirror of the owner: what `workflow` publishes
 is `_ISSUE_HANDLER_NAMES`, the label → handler-name half of it, derived from the table so the two cannot disagree
 about which labels route. The import is deferred because the stage tree imports this subpackage, so binding one at
@@ -697,12 +725,14 @@ under its original name, and that is the edge the stage-to-stage calls resolve t
 the decomposition recovery and blocked paths, `_handle_dev_fix_result` from the fixing resume — so a patch aimed at one
 of those keeps targeting the facade.
 
-`orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time; `decomposition` is the
-first to arrive. A migrated stage becomes a subpackage of responsibility-named owners there, and the
+`orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time; `decomposition` and
+`implementing` have arrived. A migrated stage becomes a subpackage of responsibility-named owners there, and the
 `orchestrator/stages/<stage>.py` it vacates stays behind as a temporary forwarder that reads every name back off those
-owners rather than rebuilding one, so both import sites hand back the same object. What the forwarder does not cover is
-dispatch: `_STAGE_HANDLER_TARGETS` names the owner a migrated handler lives on, and so does the same-tick start in
-`workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
+owners rather than rebuilding one, so both import sites hand back the same object. Identity is all a forwarder carries:
+it caches each name it resolved, so a `patch.object` intercepts the lookup site it lands on rather than both, and the
+owner is the site orchestrator code reads. Dispatch makes that explicit: `_STAGE_HANDLER_TARGETS` names the owner a
+migrated handler lives on, and so does the same-tick start in `workflow/engine/pickup.py`, so a patch meant to intercept
+a dispatched handler has to land on the owner. A forwarder
 is dropped once the callers it serves name the owner. Like `workflow/engine/`, the new package and each stage
 subpackage inside it bind nothing in their initializers -- the dispatcher resolves one handler per issue, so an eager
 binding there would charge that import for every other stage's leaves and for the worktree and GitHub subsystems they
@@ -721,6 +751,19 @@ worktree helpers, `_has_new_commits` / `_worktree_dirty_files`, and `_check_and_
 with the owner's exact identity. `_MAX_CHILDREN` runs the other way: the cap lives with the validator that rejects past
 it and `workflow/engine/prompts.py` reads it back, so the bound the decomposer is told and the bound it is judged
 against cannot drift apart.
+
+The implementing owners bind their collaborators the same way, and they divide along the decisions one tick makes
+rather than the code it runs. `handler` holds the order those decisions are asked in and calls `question_relabel` and
+`continue_command` for the two preflight signals, `drift` for a body edit, `spawn` for the run itself, and
+`disposition` for what the run left behind. `spawn` asks `session` for the retry budget and `drift_preflight` for the
+awaiting-human route; `resume` and `execution` split one resume between the call shape callers wrote against and the
+attempt-and-retry behind it, over `session` for retirement and `worktree` for the checkout; `disposition` routes a
+committed tree to `publication` and everything else to `parks`. `state`, `models`, and `session_read` reach nothing
+outside the stage, which is why the pinned-state keys, the carriers, and the CLI-marker classifiers can be exercised
+without a client. So a patch that has to intercept a park, a push, a resume, or a session read targets the owner
+module. The seams that stay on the facade are the ones the stage does not own -- the worktree, git, and push helpers
+are read as `_wf` attributes at call time -- and the whole historical inventory still resolves on
+`orchestrator.stages.implementing` with the owner's exact identity.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked

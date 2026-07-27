@@ -9,10 +9,10 @@ import unittest
 from orchestrator import worktrees
 from orchestrator.github import labels as _labels
 from orchestrator.stages import fixing as _fixing
-from orchestrator.stages import implementing as _implementing
 from orchestrator.stages import in_review as _in_review
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.engine import pickup as _pickup
+from orchestrator.workflow.stages.implementing import handler as _implementing
 from tests import fixing_routing_test_support as support
 from tests.implementing_fixing_test_cases import IssueScenario
 
