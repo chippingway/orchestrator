@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _documenting_state as _state
 from orchestrator.stages import documenting as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 
 _DocumentingContext = _owner._DocumentingContext
 WorkflowLabel = _owner.WorkflowLabel
@@ -198,8 +199,6 @@ def _announce_documenting_drift(
 ) -> None:
     """Record the new body hash, post the re-route notice, and mark the
     issue-thread comments consumed for a freshly-detected drift."""
-    from orchestrator import workflow as _wf
-
     ctx.state.set("user_content_hash", new_hash)
     _comments._post_issue_comment(
         ctx.gh, ctx.issue, ctx.state,
@@ -207,7 +206,7 @@ def _announce_documenting_drift(
         "`validating` so the reviewer re-evaluates the "
         "updated requirements.",
     )
-    _wf._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
+    _drift._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
 
 
 def _begin_documenting_drift_unwind(ctx: _DocumentingContext) -> None:
@@ -254,7 +253,7 @@ def _reconcile_documenting_drift(ctx: _DocumentingContext) -> bool:
     """
     from orchestrator import workflow as _wf
 
-    new_hash = _wf._detect_user_content_change(ctx.gh, ctx.issue, ctx.state)
+    new_hash = _drift._detect_user_content_change(ctx.gh, ctx.issue, ctx.state)
     fresh_drift = new_hash is not None
     pending_unwind = bool(ctx.state.get("docs_drift_unwind_pending"))
     # A prior tick's drift unwind couldn't finish (the worktree reconcile

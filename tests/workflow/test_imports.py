@@ -14,6 +14,7 @@ from orchestrator import workflow as _workflow
 from orchestrator.workflow import engine as _engine
 from orchestrator.workflow.engine import (
     comments as _comments,
+    drift as _drift,
     messages as _messages,
     prompts as _prompts,
     usage as _usage,
@@ -24,6 +25,7 @@ _MODULES = (
     "orchestrator.workflow",
     "orchestrator.workflow.engine",
     "orchestrator.workflow.engine.comments",
+    "orchestrator.workflow.engine.drift",
     "orchestrator.workflow.engine.messages",
     "orchestrator.workflow.engine.prompts",
     "orchestrator.workflow.engine.usage",
@@ -132,6 +134,7 @@ class PackageSurfaceTest(unittest.TestCase):
         # make the initializer a second identity for that owner and charge every
         # importer of one owner for the imports of all the others.
         self.assertIs(_engine.comments, _comments)
+        self.assertIs(_engine.drift, _drift)
         self.assertIs(_engine.messages, _messages)
         self.assertIs(_engine.prompts, _prompts)
         self.assertIs(_engine.usage, _usage)

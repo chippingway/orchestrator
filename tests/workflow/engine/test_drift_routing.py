@@ -8,8 +8,9 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config, workflow
+from orchestrator.workflow.engine import comments, drift
 
-from tests import workflow_drift_test_support as support
+from tests.workflow.engine import drift_test_support as support
 
 
 class HandlePickupInitializesUserContentHashTest(
@@ -35,7 +36,7 @@ class HandlePickupInitializesUserContentHashTest(
         orch_ids = set(state.get("orchestrator_comment_ids") or [])
         self.assertEqual(
             state[support.KEY_USER_CONTENT_HASH],
-            workflow._compute_user_content_hash(issue, orch_ids),
+            drift._compute_user_content_hash(issue, orch_ids),
         )
 
     def test_pickup_with_decompose_on_seeds_hash(self) -> None:
@@ -72,8 +73,8 @@ class UserContentChangePromptIncludesCommentsTest(unittest.TestCase):
             body="new acceptance criterion: handle empty input",
             user=support.FakeUser(support.TRUSTED_AUTHOR),
         ))
-        comments_text = workflow._recent_comments_text(issue)
-        prompt = workflow._build_user_content_change_prompt(
+        comments_text = comments._recent_comments_text(issue)
+        prompt = drift._build_user_content_change_prompt(
             issue, comments_text,
         )
         self.assertIn("new acceptance criterion", prompt)

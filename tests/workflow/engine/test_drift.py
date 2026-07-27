@@ -1,13 +1,41 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""User-content hash and drift detection tests."""
+"""User-content hash and drift detection tests, and the facades forwarding
+them."""
 from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator import workflow, workflow_drift
+from orchestrator.workflow.engine import drift
 
-from tests import workflow_drift_test_support as support
+from tests.workflow.engine import drift_test_support as support
+
+
+# Every name each historical facade still has to answer for, and the facade it
+# answers on. Live issues and external operator scripts reach the owner through
+# these, so a forward that stops resolving is a break, not a rename.
+_FACADE_FORWARDS = (
+    (workflow, (
+        "_build_user_content_change_prompt",
+        "_compute_user_content_hash",
+        "_detect_user_content_change",
+        "_mark_drift_comments_consumed",
+        "_route_drift_to_decomposing",
+    )),
+    (workflow_drift, (
+        "_USER_CONTENT_HASH",
+        "_build_user_content_change_prompt",
+        "_comment_body_for_hash",
+        "_compute_user_content_hash",
+        "_detect_user_content_change",
+        "_drift_to_decomposing_notice",
+        "_is_hidden_comment",
+        "_mark_drift_comments_consumed",
+        "_reset_decomposition_for_drift",
+        "_route_drift_to_decomposing",
+    )),
+)
 
 
 class ComputeUserContentHashTest(unittest.TestCase):
@@ -21,16 +49,16 @@ class ComputeUserContentHashTest(unittest.TestCase):
         issue_a = support.make_issue(1, body="old body")
         issue_b = support.make_issue(1, body=support.NEW_BODY)
         self.assertNotEqual(
-            workflow._compute_user_content_hash(issue_a, set()),
-            workflow._compute_user_content_hash(issue_b, set()),
+            drift._compute_user_content_hash(issue_a, set()),
+            drift._compute_user_content_hash(issue_b, set()),
         )
 
     def test_hash_changes_when_title_changes(self) -> None:
         issue_a = support.make_issue(1, title="old", body="b")
         issue_b = support.make_issue(1, title="new", body="b")
         self.assertNotEqual(
-            workflow._compute_user_content_hash(issue_a, set()),
-            workflow._compute_user_content_hash(issue_b, set()),
+            drift._compute_user_content_hash(issue_a, set()),
+            drift._compute_user_content_hash(issue_b, set()),
         )
 
     def test_orchestrator_comments_filtered_by_id(self) -> None:
@@ -49,19 +77,19 @@ class ComputeUserContentHashTest(unittest.TestCase):
         issue_with_human = support.make_issue(1, comments=[human])
         issue_with_both = support.make_issue(1, comments=[human, bot])
         self.assertEqual(
-            workflow._compute_user_content_hash(
+            drift._compute_user_content_hash(
                 issue_with_human,
                 {support._BOT_COMMENT_ID},
             ),
-            workflow._compute_user_content_hash(
+            drift._compute_user_content_hash(
                 issue_with_both,
                 {support._BOT_COMMENT_ID},
             ),
         )
         # Without filtering the bot comment, the hash differs.
         self.assertNotEqual(
-            workflow._compute_user_content_hash(issue_with_human, set()),
-            workflow._compute_user_content_hash(issue_with_both, set()),
+            drift._compute_user_content_hash(issue_with_human, set()),
+            drift._compute_user_content_hash(issue_with_both, set()),
         )
 
     def test_state_marker_filtered_by_marker(self) -> None:
@@ -74,8 +102,8 @@ class ComputeUserContentHashTest(unittest.TestCase):
         # Pinned-state comment id is NOT in orchestrator_ids but its marker
         # body causes it to be filtered.
         self.assertEqual(
-            workflow._compute_user_content_hash(issue, set()),
-            workflow._compute_user_content_hash(issue_with_pinned, set()),
+            drift._compute_user_content_hash(issue, set()),
+            drift._compute_user_content_hash(issue_with_pinned, set()),
         )
 
     def test_bare_continue_ignored_guidance_counts(
@@ -96,14 +124,14 @@ class ComputeUserContentHashTest(unittest.TestCase):
             user=support.FakeUser(support.TRUSTED_AUTHOR),
         )
         self.assertEqual(
-            workflow._compute_user_content_hash(issue, set()),
-            workflow._compute_user_content_hash(
+            drift._compute_user_content_hash(issue, set()),
+            drift._compute_user_content_hash(
                 support.make_issue(1, comments=[bare]), set()
             ),
         )
         self.assertNotEqual(
-            workflow._compute_user_content_hash(issue, set()),
-            workflow._compute_user_content_hash(
+            drift._compute_user_content_hash(issue, set()),
+            drift._compute_user_content_hash(
                 support.make_issue(1, comments=[guided]), set()
             ),
         )
@@ -119,11 +147,11 @@ class DetectUserContentChangeTest(unittest.TestCase):
         gh.add_issue(issue)
         state = gh.read_pinned_state(issue)
         before = gh.write_state_calls
-        detected_hash = workflow._detect_user_content_change(gh, issue, state)
+        detected_hash = drift._detect_user_content_change(gh, issue, state)
         self.assertIsNone(detected_hash)
         self.assertEqual(
             state.get(support.KEY_USER_CONTENT_HASH),
-            workflow._compute_user_content_hash(issue, set()),
+            drift._compute_user_content_hash(issue, set()),
         )
         # Durably written so a later edit after an early-return tick is
         # correctly classified as drift, not absorbed as the new baseline.
@@ -137,12 +165,12 @@ class DetectUserContentChangeTest(unittest.TestCase):
         gh = support.FakeGitHubClient()
         issue = support.make_issue(1)
         gh.add_issue(issue)
-        prior_hash = workflow._compute_user_content_hash(issue, set())
+        prior_hash = drift._compute_user_content_hash(issue, set())
         gh.seed_state(1, user_content_hash=prior_hash)
         state = gh.read_pinned_state(issue)
         before = gh.write_state_calls
         self.assertIsNone(
-            workflow._detect_user_content_change(gh, issue, state)
+            drift._detect_user_content_change(gh, issue, state)
         )
         # No extra write when the baseline already matches.
         self.assertEqual(gh.write_state_calls, before)
@@ -151,7 +179,7 @@ class DetectUserContentChangeTest(unittest.TestCase):
         self,
     ) -> None:
         context = support._content_change_case("old", support.NEW_BODY)
-        detected_hash = workflow._detect_user_content_change(
+        detected_hash = drift._detect_user_content_change(
             context.github,
             context.issue,
             context.state,
@@ -193,7 +221,7 @@ class DetectUserContentChangeTest(unittest.TestCase):
             context.current_hash,
         )
 
-        detected_hash = workflow._detect_user_content_change(
+        detected_hash = drift._detect_user_content_change(
             context.github,
             context.issue,
             context.state,
@@ -225,7 +253,7 @@ class DetectUserContentChangeTest(unittest.TestCase):
             comments=(continue_comment,),
             include_bare_continue=True,
         )
-        detected_hash = workflow._detect_user_content_change(
+        detected_hash = drift._detect_user_content_change(
             context.github,
             context.issue,
             context.state,
@@ -233,3 +261,16 @@ class DetectUserContentChangeTest(unittest.TestCase):
 
         self.assertEqual(detected_hash, context.current_hash)
         self.assertIsNotNone(detected_hash)
+
+
+class DriftFacadeForwardTest(unittest.TestCase):
+    """Each historical facade resolves to the owner's exact object."""
+
+    def test_facades_forward_the_owner_objects(self) -> None:
+        for facade, forwarded_names in _FACADE_FORWARDS:
+            for forwarded_name in forwarded_names:
+                with self.subTest(facade=facade.__name__, name=forwarded_name):
+                    self.assertIs(
+                        getattr(facade, forwarded_name),
+                        getattr(drift, forwarded_name),
+                    )

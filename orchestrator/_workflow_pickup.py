@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator import _workflow_state as _state
 from orchestrator import workflow as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import usage as _usage
 
 GitHubClient = _owner.GitHubClient
@@ -53,7 +54,7 @@ def _start_decomposing(
     _owner._record_pickup_comment(state, pickup)
     state.set(
         "user_content_hash",
-        _owner._compute_user_content_hash(issue, _comments._orchestrator_ids(state)),
+        _drift._compute_user_content_hash(issue, _comments._orchestrator_ids(state)),
     )
     gh.set_workflow_label(issue, WorkflowLabel.DECOMPOSING)
     gh.write_pinned_state(issue, state)
@@ -81,7 +82,7 @@ def _start_implementing(
     _owner._record_pickup_comment(state, pickup)
     state.set(
         "user_content_hash",
-        _owner._compute_user_content_hash(issue, _comments._orchestrator_ids(state)),
+        _drift._compute_user_content_hash(issue, _comments._orchestrator_ids(state)),
     )
     gh.set_workflow_label(issue, WorkflowLabel.IMPLEMENTING)
     gh.write_pinned_state(issue, state)

@@ -23,9 +23,9 @@ the fenced manifest -- spells out the exact literal ``messages.py`` and the
 manifest parser then match, and says outright that prose in its place is parked
 rather than guessed at.
 
-A prompt with only one caller is built where that caller lives:
-``_workflow_drift_routes.py`` composes the drift-resume prompt beside the route
-that sends it and borrows both notes from here.
+A prompt with only one caller is built where that caller lives: ``drift.py``
+composes the drift-resume prompt beside the route that sends it and borrows both
+notes from here.
 """
 from __future__ import annotations
 

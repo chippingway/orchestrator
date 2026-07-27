@@ -41,7 +41,7 @@ orchestrator process is stateless.
   placeholders, the foreground-only note every commit-producing prompt appends and the commit-style note
   the subject-writing subset of them adds beside it (the conflict prompt replays subjects it did not
   write, so it takes only the first) -- the single-caller drift-resume prompt stays on
-  `_workflow_drift_routes.py` and borrows both -- the
+  `workflow/engine/drift.py` and borrows both -- the
   bounded conflicted-path listing, and the single-decision comment and its best-effort manifest
   fields -- and over the `workflow/engine/usage.py` owner beside them: the single tracked-run site
   every agent role spawns through, the frozen run request and the runner kwargs it forwards
@@ -50,13 +50,20 @@ orchestrator process is stateless.
   prompt and worktree the trajectory hooks ride on), the fail-open `skill_triggered` emission that
   record's return value drives, the per-issue run / token / cost / cost-source counters that record's
   parsed usage is folded into and the terminal receipt line and tracked comment read back off them,
-  and the UTC timestamp the stages stamp pinned state with), per-stage
+  and the UTC timestamp the stages stamp pinned state with -- and over the
+  `workflow/engine/drift.py` owner closing the subpackage: the user-content hash and the six filters
+  that keep an orchestrator, bot, untrusted, or bare-continue comment from shifting it, the
+  first-encounter baseline write and the legacy-baseline absorption, the drift-resume prompt and its
+  `ACK:` contract, the consumed-comment watermark ratchet the resume paths bump, and the
+  decomposition reset, orphan-naming notice, and `decomposing` relabel a pre-implementation drift is
+  rerouted with), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
   route historical imports and patch points to responsibility-named private leaves (`_workflow_*`
-  and stage-specific prefixes) or straight to the git-package owners -- `git/` for
+  and stage-specific prefixes) or straight to the package owners -- `workflow/engine/drift.py` for
+  every name `workflow_drift.py` publishes, `git/` for
   `git_plumbing.py`, `git/verification/` for `verify.py`, `git/worktrees/` for `worktree_lifecycle.py`,
   `git/publication/` for `branch_publication.py`, and `git/base_sync/` for every name `base_sync.py`
   publishes: the models, shared state, worktree refresh, rebase-eligibility gates, the PR-route coordinator
@@ -179,7 +186,7 @@ orchestrator process is stateless.
   include (`tests/test_workflow_pickup.py`,
   `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
-  `tests/test_workflow_tick_parallel.py`, `tests/test_workflow_drift.py`,
+  `tests/test_workflow_tick_parallel.py`,
   `tests/test_workflow_backlog_routing.py`, `tests/test_workflow_question_routing.py`,
   `tests/test_workflow_documenting_routing.py`, `tests/test_workflow_fixing_routing.py`,
   `tests/test_workflow_in_review_fresh_feedback.py`, `tests/test_workflow_community_contribution.py`,
@@ -268,18 +275,26 @@ orchestrator process is stateless.
   carries only the second), the conflicted-path listing and its capped remainder, the empty reviewer-feedback
   fallback, and the three historical facades that still forward its names (`test_prompts.py`), plus the
   documentation prompt's own marker / diff-target / `plans/`-exclusion contract
-  (`test_prompts_documentation.py`). The tracked-run owner's coverage closes the directory: the single
+  (`test_prompts_documentation.py`). The tracked-run owner's coverage sits beside those: the single
   analytics record a stage-driven run appends, its context / exit / usage fields and the prompt, stdout,
   stderr, and secrets it must not carry (`test_usage.py`), the configured-model fallback filling only a
   stream that omitted its own model (`test_usage_fallback.py`), the one-per-distinct-skill emission with
   its default-off gate, args privacy, and fail-open guard (`test_usage_skills.py`), the opt-in trajectory
   record and the pinned-off sink it must not write (`test_usage_trajectory.py`), and the `UsageMetrics`
   surfaced on the returned result (`test_usage_metrics.py`), with the wire payloads and issue numbers all
-  five share in `tests/workflow/engine/usage_test_support.py`. The same owner's per-issue meter closes the
-  directory: the token formula that excludes codex's cached tokens, the cost and cost-source aggregates, the
+  five share in `tests/workflow/engine/usage_test_support.py`. The same owner's per-issue meter follows: the
+  token formula that excludes codex's cached tokens, the cost and cost-source aggregates, the
   `(est.)` / `unknown` / zero-run verdict slots, and the developer, resume, and reviewer run sites whose
   interrupted runs persist nothing (`test_usage_accumulator.py`), with the poisoned-then-fresh resume fixture
-  in `tests/workflow/engine/usage_accumulator_test_support.py`.
+  in `tests/workflow/engine/usage_accumulator_test_support.py`. The drift owner's coverage closes the
+  directory: the title / body / comment hash, its first-encounter baseline write, the legacy bare-continue
+  baseline it absorbs and the real edit it still reports, and the two facades that forward its names
+  (`test_drift.py`), the evicted-id and third-party-bot comments the hash must stay stable across
+  (`test_drift_filtering.py`), the pickup hash seed, the resume prompt's quoted conversation, the durable
+  baseline a no-op tick still writes, and the `ACK:` that must not park (`test_drift_routing.py`), the
+  unmarked clarification that must (`test_drift_parking.py`), and the `last_action_comment_id` ratchet each
+  stage's drift path leaves behind (`test_drift_watermarks.py`), with the issue numbers and the
+  prior-versus-current hash fixture all five share in `tests/workflow/engine/drift_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

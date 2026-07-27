@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _decomposition_state as _state
 from orchestrator.stages import decomposition as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import usage as _usage
 
 _DecomposerSession = _owner._DecomposerSession
@@ -131,9 +132,7 @@ def _reset_decomposing_on_drift(
     `decomposing`, so we mutate state in place and fall through -- the
     caller keeps running and spawns the decomposer this tick.
     """
-    from orchestrator import workflow as _wf
-
-    new_hash = _wf._detect_user_content_change(gh, issue, state)
+    new_hash = _drift._detect_user_content_change(gh, issue, state)
     if new_hash is None:
         return
     _comments._post_issue_comment(

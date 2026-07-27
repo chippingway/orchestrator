@@ -296,6 +296,16 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.workflow.engine.drift",
+        (
+            ("_build_user_content_change_prompt", "_build_user_content_change_prompt"),
+            ("_compute_user_content_hash", "_compute_user_content_hash"),
+            ("_detect_user_content_change", "_detect_user_content_change"),
+            ("_mark_drift_comments_consumed", "_mark_drift_comments_consumed"),
+            ("_route_drift_to_decomposing", "_route_drift_to_decomposing"),
+        ),
+    ),
+    *export_group(
         "orchestrator.workflow.engine.messages",
         (
             ("_CONTINUE_PARK_REASONS", "_CONTINUE_PARK_REASONS"),
@@ -348,16 +358,6 @@ EXPORTS = (
     *export_group(
         "orchestrator.workflow.state",
         (("WorkflowLabel", "WorkflowLabel"),),
-    ),
-    *export_group(
-        "orchestrator.workflow_drift",
-        (
-            ("_build_user_content_change_prompt", "_build_user_content_change_prompt"),
-            ("_compute_user_content_hash", "_compute_user_content_hash"),
-            ("_detect_user_content_change", "_detect_user_content_change"),
-            ("_mark_drift_comments_consumed", "_mark_drift_comments_consumed"),
-            ("_route_drift_to_decomposing", "_route_drift_to_decomposing"),
-        ),
     ),
     *export_group(
         "orchestrator.workflow_messages",

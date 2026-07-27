@@ -20,29 +20,6 @@ EXPORTS = (
         (("hashlib", None),),
     ),
     *export_group(
-        "orchestrator._workflow_drift_hash",
-        (
-            ("_comment_body_for_hash", "_comment_body_for_hash"),
-            ("_compute_user_content_hash", "_compute_user_content_hash"),
-            ("_detect_user_content_change", "_detect_user_content_change"),
-            ("_is_hidden_comment", "_is_hidden_comment"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_drift_routes",
-        (
-            ("_build_user_content_change_prompt", "_build_user_content_change_prompt"),
-            ("_drift_to_decomposing_notice", "_drift_to_decomposing_notice"),
-            ("_mark_drift_comments_consumed", "_mark_drift_comments_consumed"),
-            ("_reset_decomposition_for_drift", "_reset_decomposition_for_drift"),
-            ("_route_drift_to_decomposing", "_route_drift_to_decomposing"),
-        ),
-    ),
-    *export_group(
-        "orchestrator._workflow_drift_state",
-        (("_USER_CONTENT_HASH", "_USER_CONTENT_HASH"),),
-    ),
-    *export_group(
         "orchestrator.github.client",
         (("GitHubClient", "GitHubClient"),),
     ),
@@ -63,6 +40,21 @@ EXPORTS = (
             ("_ORCH_COMMENT_MARKER", "_ORCH_COMMENT_MARKER"),
             ("_orchestrator_ids", "_orchestrator_ids"),
             ("_post_issue_comment", "_post_issue_comment"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.engine.drift",
+        (
+            ("_USER_CONTENT_HASH", "_USER_CONTENT_HASH"),
+            ("_build_user_content_change_prompt", "_build_user_content_change_prompt"),
+            ("_comment_body_for_hash", "_comment_body_for_hash"),
+            ("_compute_user_content_hash", "_compute_user_content_hash"),
+            ("_detect_user_content_change", "_detect_user_content_change"),
+            ("_drift_to_decomposing_notice", "_drift_to_decomposing_notice"),
+            ("_is_hidden_comment", "_is_hidden_comment"),
+            ("_mark_drift_comments_consumed", "_mark_drift_comments_consumed"),
+            ("_reset_decomposition_for_drift", "_reset_decomposition_for_drift"),
+            ("_route_drift_to_decomposing", "_route_drift_to_decomposing"),
         ),
     ),
     *export_group(

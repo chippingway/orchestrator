@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 
 _PreparedDevRun = _owner._PreparedDevRun
 GitHubClient = _owner.GitHubClient
@@ -45,7 +46,7 @@ def _handle_pre_session_drift(
             ":pencil2: issue content changed; clearing the park and "
             "spawning a fresh dev run against the updated requirements.",
         )
-        _wf._mark_drift_comments_consumed(gh, issue, state)
+        _drift._mark_drift_comments_consumed(gh, issue, state)
         state.set(_AWAITING_HUMAN, False)
         state.set(_PARK_REASON, None)
     return False

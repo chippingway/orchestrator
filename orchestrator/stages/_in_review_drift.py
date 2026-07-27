@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.stages import in_review as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import usage as _usage
 
 _DriftResume = _owner._DriftResume
@@ -42,8 +43,6 @@ def _route_feedback_to_fixing(
     hash would have the drift path resume the dev and bounce to `validating` the
     moment a human relabels the issue back to `in_review`, undoing the route.
     """
-    from orchestrator import workflow as _wf
-
     state = ctx.state
     state.set("pending_fix_at", _usage._now_iso())
     _owner._record_pending_fix_bookmarks(
@@ -51,7 +50,7 @@ def _route_feedback_to_fixing(
     )
     state.set(
         "user_content_hash",
-        _wf._compute_user_content_hash(ctx.issue, _comments._orchestrator_ids(state)),
+        _drift._compute_user_content_hash(ctx.issue, _comments._orchestrator_ids(state)),
     )
     # If we were parked awaiting human, the comment that triggered this route is
     # the human signal -- clear the park flags so the fixing handler is not
@@ -68,8 +67,6 @@ def _build_drift_resume_prompt(issue: Issue, unread_pr_conv: list) -> str:
     comments so the dev sees both surfaces before the watermark bump consumes
     them.
     """
-    from orchestrator import workflow as _wf
-
     comments_text = _comments._recent_comments_text(issue)
     if unread_pr_conv:
         pr_block = "\n\n".join(
@@ -80,7 +77,7 @@ def _build_drift_resume_prompt(issue: Issue, unread_pr_conv: list) -> str:
         comments_text = (
             f"{prefix}Unread PR conversation comments:\n\n{pr_block}"
         )
-    return _wf._build_user_content_change_prompt(issue, comments_text)
+    return _drift._build_user_content_change_prompt(issue, comments_text)
 
 
 def _drift_unread_pr_conv(ctx: _InReviewContext) -> list:
@@ -138,7 +135,7 @@ def _resume_dev_for_drift(
         ctx.gh, int(ctx.pr_number), ctx.state,
         ":pencil2: issue body changed; resuming dev session.",
     )
-    _wf._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
+    _drift._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
     wt = _owner._drift_worktree(ctx)
     before_sha = _wf._head_sha(wt)
     wt, dev_result, paused = _wf._resume_dev_with_text(
@@ -192,7 +189,7 @@ def _handle_user_content_drift(ctx: _InReviewContext) -> bool:
     """
     from orchestrator import workflow as _wf
 
-    new_hash = _wf._detect_user_content_change(ctx.gh, ctx.issue, ctx.state)
+    new_hash = _drift._detect_user_content_change(ctx.gh, ctx.issue, ctx.state)
     if new_hash is None:
         return False
     ctx.state.set("user_content_hash", new_hash)

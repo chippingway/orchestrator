@@ -6,6 +6,7 @@ from __future__ import annotations
 from orchestrator.stages import _implement_state as _state
 from orchestrator.stages import implementing as _owner
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import usage as _usage
 
@@ -74,7 +75,7 @@ def _run_implementing_drift_resume(
 
     worktree = _owner._ensure_resume_worktree(spec, issue, state)
     before_sha = _wf._head_sha(worktree)
-    followup = _wf._build_user_content_change_prompt(
+    followup = _drift._build_user_content_change_prompt(
         issue, _comments._recent_comments_text(issue),
     )
     resumed = _owner._resume_dev_with_text(
@@ -153,7 +154,7 @@ def _resume_dev_on_implementing_drift(
         ":pencil2: issue body changed; resuming dev session with "
         "the updated requirements.",
     )
-    _wf._mark_drift_comments_consumed(gh, issue, state)
+    _drift._mark_drift_comments_consumed(gh, issue, state)
     drift = _owner._run_implementing_drift_resume(gh, spec, issue, state)
     state.set("last_agent_action_at", _usage._now_iso())
     state.set(_BRANCH, _wf._resolve_branch_name(state, spec, issue.number))

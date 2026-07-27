@@ -7,7 +7,7 @@ import unittest
 
 from orchestrator import workflow
 
-from tests import workflow_drift_test_support as support
+from tests.workflow.engine import drift_test_support as support
 
 
 class DriftNonAckResponseParksTest(
