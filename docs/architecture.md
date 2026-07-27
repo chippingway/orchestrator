@@ -428,11 +428,14 @@ inventories, `.pyi` surfaces, and immutable target registries. Resolution is laz
 resolved object is the implementation object's exact identity. Existing direct imports, wildcard imports, and
 `patch.object` calls therefore keep working. Base-sync names still resolve on the `base_sync` facade with their
 owner's exact identity, and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
-`workflow`) because their callers read them off a facade. Inside `git/publication/`, though, the owners bind their
+`workflow`) for the callers that still read them off a facade. Inside `git/publication/`, though, the owners bind their
 collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes`, `planning` calls `git.commands`,
 both siblings, and the verification probes for its HEAD and dirty-file guards, `rewrite` calls `git.commands`,
 `git.authentication`, and the verification probes, and `squash` calls `planning` and `rewrite` -- so a patch that has
-to intercept the hardened reset, the force-push, or the plan a rewrite spends targets the owner module.
+to intercept the hardened reset, the force-push, or the plan a rewrite spends targets the owner module. The stage
+side is bound that way too: validating's approval arc calls `squash._squash_and_force_push` directly, so a mock that
+has to intercept the squash a review approval runs targets `git.publication.squash` even though the name itself keeps
+resolving on `branch_publication`, `worktrees`, and `workflow` for the historical callers.
 `git/verification/` is bound the same way -- `output`
 calls `models`, `process` calls `output` and `probes`, `runner` calls `process` -- and the validating approval gate
 reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or
