@@ -139,6 +139,13 @@
 # any of them by import would put one run's decisions across two modules.
 # WPS201 is waived for those files.
 #
+# orchestrator/workflow/stages/in_review/drift.py names 15 for the same reason
+# and one more: the body-edit route owns neither half of the run it drives, so
+# on top of the engine's comment, drift, guard, and usage surfaces it borrows
+# the dev resume from the implementing owners and the reply disposition from
+# the validating ones, and reaches the worktree helpers on the `workflow`
+# facade from two separate call sites. WPS201 is waived for that file.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -180,6 +187,7 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS201
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
+    orchestrator/workflow/stages/in_review/drift.py:WPS201
     orchestrator/workflow/stages/validating/approval.py:WPS201
     orchestrator/workflow/stages/validating/dev_fix.py:WPS201
     orchestrator/workflow/stages/validating/drift.py:WPS201

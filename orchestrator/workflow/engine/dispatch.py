@@ -41,14 +41,15 @@ mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
 
 The handler for a label is reached by importing the module
-`_STAGE_HANDLER_TARGETS` pairs it with, at call time: four of them are stage
-facades still under `orchestrator/stages/`, seven are decomposition,
-documenting, implementing, and validating owners under `workflow/stages/`, and
-the twelfth is the `pickup` sibling an unlabeled issue starts on -- and the
-stage tree imports this subpackage, so binding any of them at module scope would
-point that edge back at itself. A migrated stage is named by the owner its handler lives on rather than
-by the forwarder it left behind, so the patch that intercepts a dispatch is the
-one against whichever module the table names.
+`_STAGE_HANDLER_TARGETS` pairs it with, at call time: three of them are stage
+facades still under `orchestrator/stages/`, eight are decomposition,
+documenting, implementing, validating, and in_review owners under
+`workflow/stages/`, and the twelfth is the `pickup` sibling an unlabeled issue
+starts on -- and the stage tree imports this subpackage, so binding any of them
+at module scope would point that edge back at itself. A migrated stage is named
+by the owner its handler lives on rather than by the forwarder it left behind,
+so the patch that intercepts a dispatch is the one against whichever module the
+table names.
 """
 from __future__ import annotations
 
@@ -90,6 +91,7 @@ _STAGE_PACKAGE = "orchestrator.stages"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _IMPLEMENTING_PACKAGE = "orchestrator.workflow.stages.implementing"
+_IN_REVIEW_PACKAGE = "orchestrator.workflow.stages.in_review"
 _VALIDATING_PACKAGE = "orchestrator.workflow.stages.validating"
 
 _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyType({
@@ -101,7 +103,7 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
     "implementing": (f"{_IMPLEMENTING_PACKAGE}.handler", "_handle_implementing"),
     "documenting": (f"{_DOCUMENTING_PACKAGE}.handler", "_handle_documenting"),
     "validating": (f"{_VALIDATING_PACKAGE}.handler", "_handle_validating"),
-    "in_review": (f"{_STAGE_PACKAGE}.in_review", "_handle_in_review"),
+    "in_review": (f"{_IN_REVIEW_PACKAGE}.handler", "_handle_in_review"),
     "fixing": (f"{_STAGE_PACKAGE}.fixing", "_handle_fixing"),
     "resolving_conflict": (f"{_STAGE_PACKAGE}.conflicts", "_handle_resolving_conflict"),
     "question": (f"{_STAGE_PACKAGE}.question", "_handle_question"),

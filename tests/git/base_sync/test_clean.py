@@ -7,8 +7,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator.stages import in_review as _in_review
 from orchestrator.workflow.engine import dispatch as _dispatch
+from orchestrator.workflow.stages.in_review import handler as _in_review
 
 from tests.git.base_sync.refresh_scenarios import (
     PUSH_PATCH,

@@ -176,7 +176,22 @@ orchestrator process is stateless.
   pinned-state keys, park reasons, and outcome tokens (`state.py`) they share, with the dev resume,
   session read, and question / dirty-tree parks imported from the implementing owners directly and the
   squash from `git/publication/squash.py`, and the worktree, git, and push helpers still reached
-  through the `workflow` facade at call time),
+  through the `workflow` facade at call time) -- and over the `workflow/stages/in_review/` subpackage
+  beside it, the stage where the orchestrator stops driving and a human merges, whose owners divide by
+  the four answers one tick can reach and by the order they have to be asked in (`handler.py`): the
+  four surfaces scanned before the drift check because a review comment moves the same hash a body
+  edit does, the orchestrator-id / marker and trusted-author filters under them, and the park that
+  stays silent because the base-sync retry loop owns the comment answering it (`feedback.py`); the
+  bookmarks that are deliberately not watermarks, the hash refresh, and the `fixing` relabel
+  (`fixing_route.py`); the body edit nobody commented about -- the PR conversation captured before the
+  ratchet can leap past it, the resume, the two refusals that write nothing, and the `validating`
+  return with `review_round` reset that both outcomes earn (`drift.py`); and the manual-merge-only
+  tail -- the park an unmergeable PR earns and the one HITL ping per head SHA that an approved,
+  unvetoed head does (`merge_gate.py`) -- over the one-way issue-side ratchet and the legacy seed
+  (`watermarks.py`), the per-tick handles (`models.py`), and the watermark key (`state.py`) they share,
+  with the dev resume imported from the implementing owners directly and the body-edit disposition from
+  validating's `drift_outcomes.py`, and the worktree, git, and push helpers still reached through the
+  `workflow` facade at call time),
   per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
@@ -287,10 +302,10 @@ orchestrator process is stateless.
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
   tests through the `tests/fakes.py` bridge. Stage-handler tests in
-  `tests/test_workflow_<stage>*.py` (the in_review stage is split across
-  `tests/test_workflow_in_review_*.py`; the implementing, documenting, and validating stages have moved beside their
-  owners into `tests/workflow/stages/implementing/`, `tests/workflow/stages/documenting/`, and
-  `tests/workflow/stages/validating/`, and the decomposition and question
+  `tests/test_workflow_<stage>*.py` (the implementing, documenting, validating, and in_review stages have moved
+  beside their
+  owners into `tests/workflow/stages/implementing/`, `tests/workflow/stages/documenting/`,
+  `tests/workflow/stages/validating/`, and `tests/workflow/stages/in_review/`, and the decomposition and question
   stages across their respective focused modules, with shared fixtures in `tests/decomposition*_support.py` and
   `tests/question_*_support.py`; the resolving-conflict stage is split across
   `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_event_emission`,
@@ -302,8 +317,8 @@ orchestrator process is stateless.
   `tests/conflict_resume_test_support.py`); other facade-level helper tests
   include (`tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
-  `tests/test_workflow_question_routing.py`, `tests/test_workflow_fixing_routing.py`,
-  `tests/test_workflow_in_review_fresh_feedback.py`); shared helpers in `tests/workflow_helpers.py`.
+  `tests/test_workflow_question_routing.py`, `tests/test_workflow_fixing_routing.py`); shared helpers in
+  `tests/workflow_helpers.py`.
   Configuration-package
   tests live in `tests/config/`, agent-package owner / import-cycle tests in `tests/agents/`, and github-package
   client (construction, token resolution, worker clone, label cache), label (vocabulary, predicates, and bootstrap),
@@ -505,6 +520,18 @@ orchestrator process is stateless.
   owner and the facade name it must not read (`test_owner_boundaries.py`) -- with shared fixtures in
   `validating_review_test_support.py`, `validating_verify_test_support.py`, and
   `validating_boundary_test_support.py`.
+  `tests/workflow/stages/in_review/` holds the fifth stage to arrive: the same import, layering, and initializer
+  guards for its own package plus the forwarding checks that no manifest target names a flat `_in_review_*` leaf and
+  that both historical import sites hand back the owner's exact object, and the dispatch check that the label table
+  names the handler owner (`test_imports.py`); the stage scenarios beside it -- the merged / closed terminals, the
+  ready-ping gates, and the missing-`pr_number` park (`test_routing.py`), the fresh-feedback route to `fixing` and the
+  stale hash it must beat (`test_fresh_feedback.py`), the review-summary surface (`test_review_summary.py`), the
+  same-account and cross-namespace comment filters (`test_filtering.py`), the park-message bump and the split id
+  namespaces (`test_watermarks.py`), the legacy seed and its zero-watermark fallback (`test_migration.py`), the
+  awaiting-human parks and the manually-closed issue over an open PR (`test_parked.py`), a body edit and both of its
+  exits (`test_drift.py`), the live pause that publishes nothing (`test_paused.py`), and the implementing /
+  validating owners the drift route borrows, each pinned by patching the owner and the facade name it must not read
+  (`test_owner_boundaries.py`).
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

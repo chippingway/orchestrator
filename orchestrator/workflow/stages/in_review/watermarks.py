@@ -1,49 +1,39 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""In review watermarks."""
+"""What this stage has already looked at, on the surfaces it looks at.
+
+Both halves here answer the same question in opposite directions. The ratchet
+decides what a route just consumed is allowed to hide: a park writes an issue
+comment, so without moving the watermark past it the next tick reads the
+orchestrator's own HITL message as fresh human feedback and routes the issue
+to `fixing` against it. The seed decides what a first tick is allowed to
+forget: an issue that reached `in_review` before the validating handoff seeded
+watermarks -- or by a manual relabel -- has none at all, and scanning from
+`None` would treat the whole history, pickup greeting included, as fresh
+feedback.
+
+Both are deliberately narrow. The ratchet only moves the issue-side watermark,
+because the inline-review and review-summary surfaces are consumed by the
+`fixing` handler rather than here, and moving them would hide feedback this
+stage never read. The seed persists 0 for an empty surface rather than leaving
+the key unset, because an unset key would re-run the seed next tick and
+swallow the first human review that arrived in between.
+
+`_comment_created_at` sits with them because the debounce that reads it spans
+both surfaces: a PullRequestReview stamps `submitted_at` where an IssueComment
+stamps `created_at`, and the fakes can leave either unset.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _in_review_state as _state
-from orchestrator.stages import in_review as _owner
+from datetime import datetime, timezone
+from typing import Optional
 
-Any = _owner.Any
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Optional = _owner.Optional
-PinnedState = _owner.PinnedState
-config = _owner.config
-dataclass = _owner.dataclass
-datetime = _owner.datetime
-timezone = _owner.timezone
-_PR_LAST_COMMENT_ID = _state._PR_LAST_COMMENT_ID
+from github.Issue import Issue
 
-
-@dataclass(frozen=True)
-class _InReviewContext:
-    """The per-tick `in_review` invocation handles, bundled so the fresh-feedback
-    scan, fixing-route, drift, and mergeability sub-handlers thread them as a
-    single value instead of five/six positional arguments (mirrors fixing's
-    `_FixingContext`). `pr` is the live PR fetched this tick; `pr_number` is the
-    pinned PR number `_handle_in_review` already validated as present.
-    """
-    gh: GitHubClient
-    spec: config.RepoSpec
-    issue: Issue
-    state: PinnedState
-    pr: Any
-    pr_number: Any
-
-
-@dataclass(frozen=True)
-class _DriftResume:
-    """Outcome of the drift dev-resume: the (possibly recreated) worktree, the
-    agent result, whether an operator paused mid-run, and the pre-resume HEAD
-    used to tell a pushed fix from a no-commit ack.
-    """
-    worktree: Any
-    dev_result: Any
-    paused: bool
-    before_sha: Any
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.stages.in_review import models as _models
+from orchestrator.workflow.stages.in_review import state as _state
 
 
 def _comment_created_at(comment) -> Optional[datetime]:
@@ -66,7 +56,7 @@ def _comment_created_at(comment) -> Optional[datetime]:
 
 
 def _bump_in_review_watermarks(
-    ctx: _InReviewContext, *, issue_space_new: Optional[list] = None,
+    ctx: _models._InReviewContext, *, issue_space_new: Optional[list] = None,
 ) -> None:
     """Push the in_review issue-side watermark (`pr_last_comment_id`) past
     everything seen so far AND past any park comment just written on the issue
@@ -86,7 +76,7 @@ def _bump_in_review_watermarks(
     past on those surfaces.
     """
     candidates: list[int] = []
-    cur_issue_wm = ctx.state.get(_PR_LAST_COMMENT_ID)
+    cur_issue_wm = ctx.state.get(_state._PR_LAST_COMMENT_ID)
     if isinstance(cur_issue_wm, int):
         candidates.append(cur_issue_wm)
     last_action = ctx.state.get("last_action_comment_id")
@@ -98,7 +88,7 @@ def _bump_in_review_watermarks(
     if issue_space_new:
         candidates.extend(comment.id for comment in issue_space_new)
     if candidates:
-        ctx.state.set(_PR_LAST_COMMENT_ID, max(candidates))
+        ctx.state.set(_state._PR_LAST_COMMENT_ID, max(candidates))
 
 
 def _seed_missing_watermark(state: PinnedState, key: str, fetch) -> bool:
@@ -153,7 +143,7 @@ def _seed_legacy_in_review_watermarks(
     # feedback route would silently swallow that first review.
     seeded = False
     if (
-        state.get(_PR_LAST_COMMENT_ID) is None
+        state.get(_state._PR_LAST_COMMENT_ID) is None
         and state.get("last_action_comment_id") is None
     ):
         candidates: list[int] = []
@@ -163,15 +153,15 @@ def _seed_legacy_in_review_watermarks(
         pr_conv = list(gh.pr_conversation_comments_after(pr, None))
         if pr_conv:
             candidates.append(max(comment.id for comment in pr_conv))
-        state.set(_PR_LAST_COMMENT_ID, max(candidates) if candidates else 0)
+        state.set(_state._PR_LAST_COMMENT_ID, max(candidates) if candidates else 0)
         seeded = True
 
-    if _owner._seed_missing_watermark(
+    if _seed_missing_watermark(
         state, "pr_last_review_comment_id",
         lambda: gh.pr_inline_comments_after(pr, None),
     ):
         seeded = True
-    if _owner._seed_missing_watermark(
+    if _seed_missing_watermark(
         state, "pr_last_review_summary_id",
         lambda: gh.pr_reviews_after(pr, None),
     ):

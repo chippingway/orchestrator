@@ -128,13 +128,6 @@ EXPORTS = (
         (("_handle_fixing", "_handle_fixing"),),
     ),
     *export_group(
-        "orchestrator.stages.in_review",
-        (
-            ("_comment_created_at", "_comment_created_at"),
-            ("_handle_in_review", "_handle_in_review"),
-        ),
-    ),
-    *export_group(
         "orchestrator.stages.question",
         (("_handle_question", "_handle_question"),),
     ),
@@ -361,6 +354,14 @@ EXPORTS = (
         (
             ("_SILENT_PARKS_BEFORE_FRESH_SESSION", "_SILENT_PARKS_BEFORE_FRESH_SESSION"),
         ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.in_review.handler",
+        (("_handle_in_review", "_handle_in_review"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.in_review.watermarks",
+        (("_comment_created_at", "_comment_created_at"),),
     ),
     *export_group(
         "orchestrator.workflow.stages.validating.dev_fix",
