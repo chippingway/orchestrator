@@ -1,14 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
 """Pickup behavior for unlabeled issues: legacy decompose-off shortcut to
-implementing and the `ALLOWED_ISSUE_AUTHORS` allowlist (case-insensitive
-match, empty-list disables filter)."""
+implementing, the `ALLOWED_ISSUE_AUTHORS` allowlist (case-insensitive
+match, empty-list disables filter), the anchors both starts publish before
+dispatching a stage in the same tick, and the facade forwarding them."""
 from __future__ import annotations
 
 import unittest
 from unittest.mock import patch
 
 from orchestrator import config, workflow
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.stages import decomposition, implementing
+from orchestrator.workflow.engine import pickup
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import _PatchedWorkflowMixin, _TEST_SPEC, _agent
@@ -18,6 +22,38 @@ _DECOMPOSE_CONFIG = "DECOMPOSE"
 _ALLOWLIST_CONFIG = "ALLOWED_ISSUE_AUTHORS"
 _CLARIFICATION_MESSAGE = "need clarification"
 _IMPLEMENTING_LABEL = "implementing"
+_DECOMPOSING_LABEL = "decomposing"
+_ISSUE_NUMBER = 1
+_START_DECOMPOSING = "_start_decomposing"
+_START_IMPLEMENTING = "_start_implementing"
+
+# Every name the workflow facade still has to answer for. Live issues and
+# operator scripts reach the owner through it, so a forward that stops
+# resolving is a break, not a rename.
+_FACADE_FORWARDS = (
+    "_handle_pickup",
+    "_pickup_author_allowed",
+    "_record_pickup_comment",
+    _START_DECOMPOSING,
+    _START_IMPLEMENTING,
+)
+
+
+class _StageDispatchRecorder:
+    """Stand in for a stage handler and capture what the issue already
+    carried at the moment pickup dispatched it."""
+
+    def __init__(self, github, issue_number: int) -> None:
+        self._github = github
+        self._issue_number = issue_number
+        self.calls: list = []
+        self.labels: list = []
+        self.state: dict = {}
+
+    def __call__(self, gh, spec, issue) -> None:
+        self.calls.append((gh, spec, issue))
+        self.labels = list(self._github.label_history)
+        self.state = dict(self._github.pinned_data(self._issue_number))
 
 
 class HandlePickupTest(unittest.TestCase, _PatchedWorkflowMixin):
@@ -123,3 +159,91 @@ class HandlePickupTest(unittest.TestCase, _PatchedWorkflowMixin):
             )
 
         self.assertIn((1, _IMPLEMENTING_LABEL), gh.label_history)
+
+
+class PickupOwnerPatchTest(unittest.TestCase):
+    """The owner reaches its own two starts and the stage handlers by module
+    attribute, so the owning module is where a patch has to land."""
+
+    def test_decompose_switch_selects_the_owner_start(self) -> None:
+        selections = (
+            (True, _START_DECOMPOSING, _START_IMPLEMENTING),
+            (False, _START_IMPLEMENTING, _START_DECOMPOSING),
+        )
+        for decompose, taken_name, skipped_name in selections:
+            with self.subTest(decompose=decompose):
+                self._assert_start_selected(decompose, taken_name, skipped_name)
+
+    def test_start_dispatches_stage_after_publishing(self) -> None:
+        dispatches = (
+            (
+                pickup._start_decomposing,
+                decomposition,
+                "_handle_decomposing",
+                _DECOMPOSING_LABEL,
+            ),
+            (
+                pickup._start_implementing,
+                implementing,
+                "_handle_implementing",
+                _IMPLEMENTING_LABEL,
+            ),
+        )
+        for start, stage_owner, handler_name, label in dispatches:
+            with self.subTest(handler=handler_name):
+                self._assert_dispatched(start, stage_owner, handler_name, label)
+
+    def _assert_start_selected(
+        self, decompose: bool, taken_name: str, skipped_name: str,
+    ) -> None:
+        github = FakeGitHubClient()
+        issue = make_issue(_ISSUE_NUMBER)
+        github.add_issue(issue)
+
+        with patch.object(config, _DECOMPOSE_CONFIG, decompose), \
+             patch.object(pickup, _START_DECOMPOSING), \
+             patch.object(pickup, _START_IMPLEMENTING):
+            pickup._handle_pickup(github, _TEST_SPEC, issue)
+            getattr(pickup, skipped_name).assert_not_called()
+            self._assert_started(getattr(pickup, taken_name), github, issue)
+
+    def _assert_started(self, start, github, issue) -> None:
+        start.assert_called_once()
+        self.assertEqual(start.call_args.args[:3], (github, _TEST_SPEC, issue))
+        # The creation stamp is the only field pickup itself stages; the start
+        # it hands the fresh state to owns every other one.
+        self.assertIsNotNone(start.call_args.args[3].get("created_at"))
+
+    def _assert_dispatched(
+        self, start, stage_owner, handler_name: str, label: str,
+    ) -> None:
+        github = FakeGitHubClient()
+        issue = make_issue(_ISSUE_NUMBER)
+        github.add_issue(issue)
+        recorder = _StageDispatchRecorder(github, _ISSUE_NUMBER)
+
+        with patch.object(stage_owner, handler_name, recorder):
+            start(github, _TEST_SPEC, issue, PinnedState())
+
+        # The stage runs in the same tick, and only once the label and the
+        # anchors it reads back are already durable on the issue.
+        self.assertEqual(recorder.calls, [(github, _TEST_SPEC, issue)])
+        self.assertEqual(recorder.labels, [(_ISSUE_NUMBER, label)])
+        self.assertIn("pickup_comment_id", recorder.state)
+        self.assertIn("user_content_hash", recorder.state)
+
+
+class PickupFacadeForwardTest(unittest.TestCase):
+    """The workflow facade resolves each name to the owner's exact object."""
+
+    def test_facade_forwards_the_owner_objects(self) -> None:
+        for forwarded_name in _FACADE_FORWARDS:
+            with self.subTest(name=forwarded_name):
+                self.assertIs(
+                    getattr(workflow, forwarded_name),
+                    getattr(pickup, forwarded_name),
+                )
+
+
+if __name__ == "__main__":
+    unittest.main()

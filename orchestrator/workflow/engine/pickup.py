@@ -1,20 +1,44 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Workflow pickup."""
+"""The first tick an unlabeled issue gets, and the anchors it leaves behind.
+
+Two decisions live here and nothing else does. `ALLOWED_ISSUE_AUTHORS` decides
+whether the orchestrator answers an unlabeled issue at all -- it is the abuse
+guard that keeps a stranger on a public repo from spending agent budget, and it
+fires only on this path, so a maintainer who labels an outsider's issue by hand
+still drives it through every later stage. `DECOMPOSE` decides which stage
+answers: `decomposing` normally, or `implementing` directly when the switch is
+off.
+
+Both starts then write the same four things in the same order, because
+everything downstream reads them back. The pickup comment goes first so its id
+can anchor `pickup_comment_id`: the validating handoff seeds its watermark past
+the orchestrator's own comments, and with no anchor the earliest bot id it can
+find is a much later "PR opened" or approval -- which would silently consume
+every human comment in between, including a "do not merge yet" posted while the
+developer ran. The `user_content_hash` baseline is computed after that comment
+exists and with its id filtered out, so the orchestrator's own greeting is not
+the first drift the next tick reports. The workflow label is written before the
+pinned state so a crash between the two leaves an issue the next tick still
+routes to the stage it was committed to, rather than an unlabeled one that would
+be greeted a second time.
+
+The chosen handler runs in the same tick rather than waiting for the next one:
+the label write already committed the issue to that stage, so returning here
+would buy nothing but a poll interval.
+"""
 from __future__ import annotations
 
-from orchestrator import _workflow_state as _state
-from orchestrator import workflow as _owner
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator._workflow_state import log
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import usage as _usage
-
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-WorkflowLabel = _owner.WorkflowLabel
-config = _owner.config
-log = _state.log
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _pickup_author_allowed(spec: config.RepoSpec, issue: Issue) -> bool:
@@ -47,18 +71,23 @@ def _record_pickup_comment(state: PinnedState, pickup) -> None:
 def _start_decomposing(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
 ) -> None:
+    # The handler is reached through a call-time import: the stage tree imports
+    # this subpackage, so binding it at module scope would point that edge back
+    # at itself.
+    from orchestrator.stages.decomposition import _handle_decomposing
+
     pickup = _comments._post_issue_comment(
         gh, issue, state,
         ":robot: orchestrator picking this up; decomposing.",
     )
-    _owner._record_pickup_comment(state, pickup)
+    _record_pickup_comment(state, pickup)
     state.set(
         "user_content_hash",
         _drift._compute_user_content_hash(issue, _comments._orchestrator_ids(state)),
     )
     gh.set_workflow_label(issue, WorkflowLabel.DECOMPOSING)
     gh.write_pinned_state(issue, state)
-    _owner._handle_decomposing(gh, spec, issue)
+    _handle_decomposing(gh, spec, issue)
 
 
 def _start_implementing(
@@ -67,6 +96,8 @@ def _start_implementing(
     # Legacy path with DECOMPOSE=off: skip decomposition entirely and route
     # the unlabeled issue straight to implementing, exactly as the
     # bootstrap-milestone code did.
+    from orchestrator.stages.implementing import _handle_implementing
+
     pickup = _comments._post_issue_comment(
         gh, issue, state,
         ":robot: orchestrator picking this up. Decomposition stage is "
@@ -79,22 +110,22 @@ def _start_implementing(
     # approval), causing `_seed_watermark_past_self` to silently advance
     # past every issue/PR comment in between -- including any human
     # "do not merge yet" posted during implementing.
-    _owner._record_pickup_comment(state, pickup)
+    _record_pickup_comment(state, pickup)
     state.set(
         "user_content_hash",
         _drift._compute_user_content_hash(issue, _comments._orchestrator_ids(state)),
     )
     gh.set_workflow_label(issue, WorkflowLabel.IMPLEMENTING)
     gh.write_pinned_state(issue, state)
-    _owner._handle_implementing(gh, spec, issue)
+    _handle_implementing(gh, spec, issue)
 
 
 def _handle_pickup(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
-    if not _owner._pickup_author_allowed(spec, issue):
+    if not _pickup_author_allowed(spec, issue):
         return
     state = PinnedState()
     state.set("created_at", _usage._now_iso())
     if config.DECOMPOSE:
-        _owner._start_decomposing(gh, spec, issue, state)
+        _start_decomposing(gh, spec, issue, state)
     else:
-        _owner._start_implementing(gh, spec, issue, state)
+        _start_implementing(gh, spec, issue, state)

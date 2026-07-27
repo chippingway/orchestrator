@@ -56,16 +56,24 @@ orchestrator process is stateless.
   first-encounter baseline write and the legacy-baseline absorption, the drift-resume prompt and its
   `ACK:` contract, the consumed-comment watermark ratchet the resume paths bump, and the
   decomposition reset, orphan-naming notice, and `decomposing` relabel a pre-implementation drift is
-  rerouted with -- and over the `workflow/engine/guards.py` owner closing the subpackage: the two
+  rerouted with -- and over the `workflow/engine/guards.py` owner beside them: the two
   refusals every agent-running stage puts between a finished run and its disposition -- the
   shutdown-interruption read off the result, and the hard-skip label read off a freshly fetched issue
   because the handler's own snapshot predates the run -- beside the awaiting-human park that
   publishes one instead: its HITL comment, `awaiting_human` flag, cleared park reason,
   action-comment watermark ratchet, and `park_awaiting_human` event, with the pinned-state write
-  left to the handler in all three cases -- and over the empty `workflow/stages/` package beside that
-  subpackage, the destination the per-label stage facades migrate to one at a time: it binds nothing,
-  a migrated stage keeps the lazy hooks it already publishes, and the `stages/<stage>.py` it vacates
-  stays behind as a temporary forwarder reading every name back off the owner), per-stage
+  left to the handler in all three cases -- and over the `workflow/engine/pickup.py` owner closing
+  the subpackage: the two decisions an unlabeled issue's first tick makes -- the
+  case-insensitive `ALLOWED_ISSUE_AUTHORS` filter that answers whether the orchestrator picks it up
+  at all, and the `DECOMPOSE` switch that picks `decomposing` or the legacy straight-to-implementing
+  route -- and the four writes both starts publish in one order: the greeting whose id anchors
+  `pickup_comment_id`, the `user_content_hash` baseline computed with that id filtered out, the
+  workflow label, and the pinned state, with the chosen stage handler called in the same tick
+  through a call-time import of its `orchestrator/stages/` facade -- and over the empty `workflow/stages/` package
+  beside that subpackage, the destination the per-label stage facades migrate to one at a time: it
+  binds nothing, a migrated stage keeps the lazy hooks it already publishes, and the
+  `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading every name back off
+  the owner), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -192,8 +200,7 @@ orchestrator process is stateless.
   `tests/test_workflow_scheduler_*.py`,
   with subsystem-specific support in
   `tests/scheduler_routing_*.py`; other facade-level helper tests
-  include (`tests/test_workflow_pickup.py`,
-  `tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
+  include (`tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
   `tests/test_workflow_tick_parallel.py`,
   `tests/test_workflow_backlog_routing.py`, `tests/test_workflow_question_routing.py`,
@@ -258,7 +265,8 @@ orchestrator process is stateless.
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
   `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state`,
-  `engine/comments.py`, `engine/drift.py`, `engine/guards.py`, `engine/messages.py`, `engine/prompts.py`, and
+  `engine/comments.py`, `engine/drift.py`, `engine/guards.py`, `engine/messages.py`, `engine/pickup.py`,
+  `engine/prompts.py`, and
   `engine/usage.py` owners, the guard that
   importing either the facade or the state
   owner resolves no manifest target and no
@@ -305,10 +313,14 @@ orchestrator process is stateless.
   unmarked clarification that must (`test_drift_parking.py`), and the `last_action_comment_id` ratchet each
   stage's drift path leaves behind (`test_drift_watermarks.py`), with the issue numbers and the
   prior-versus-current hash fixture all five share in `tests/workflow/engine/drift_test_support.py`. The
-  guard owner's coverage closes the directory: the mid-run hard skip read off a freshly fetched issue at
+  guard owner's coverage follows: the mid-run hard skip read off a freshly fetched issue at
   the decomposer, reviewer, and question spawn sites, and the children, relabel, comment, session id, and
   watermark none of them may leave behind (`test_guards_paused.py`); the per-stage `_paused` modules and each
-  stage's own interrupted cases keep the dispositions those refusals are wrapped in. The mirrored
+  stage's own interrupted cases keep the dispositions those refusals are wrapped in. The pickup owner's
+  coverage closes the directory: the decompose-off route to implementing, the allowlist's silent skip and
+  its case-insensitive and empty-list matches, the start each `DECOMPOSE` setting selects on the owner, the
+  label and anchors each start has already published by the time it dispatches the stage owner in the same
+  tick, and the facade that still forwards its five names (`test_pickup.py`). The mirrored
   `tests/workflow/stages/` directory holds what the migration destination owes before any stage lands there: its
   clean-process import, the layering guard that the package costs the facade above it and nothing else, and the
   surface checks that its initializer binds only submodules and that `orchestrator.stages` stays the module the

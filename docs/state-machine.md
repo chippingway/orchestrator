@@ -278,7 +278,11 @@ it round-trips to `spec="codex"` with no args so an older orchestrator's pin kee
   → allow all).
 - **Action**: when `ALLOWED_ISSUE_AUTHORS` is set, an issue authored by anyone outside the list is silently skipped (log
   only); otherwise post a "picking this up" comment, anchor `pickup_comment_id`, snapshot `user_content_hash` over title
-  + body + non-orchestrator comments, then route to `decomposing` (`DECOMPOSE=on`) or `implementing` (`DECOMPOSE=off`).
+  + body + non-orchestrator comments, then route to `decomposing` (`DECOMPOSE=on`) or `implementing` (`DECOMPOSE=off`)
+  and run that stage's handler in the same tick, so an unlabeled issue's first tick ends inside its second stage.
+
+The allowlist, both routes, and the order they publish the comment, hash, label, and pinned state in all live in
+`workflow/engine/pickup.py`; the same-tick handler call is a call-time import of the chosen stage facade.
 
 ### User-content drift detection
 

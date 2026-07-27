@@ -131,6 +131,10 @@ orchestrator/
                         (review / documentation verdicts, drift ack,
                         `/orchestrator continue` and its refusal) and the
                         redact-before-truncate stderr diagnostics
+      pickup.py         an unlabeled issue's first tick: the author allowlist,
+                        the `DECOMPOSE` route, the pickup comment / hash /
+                        label / state a start publishes, and the same-tick
+                        dispatch to the chosen stage
       prompts.py        the prompt builders the stages share (implement,
                         respawn, review, documentation, fix, conflict, question
                         and its followup, PR-comment followup, decompose) plus
@@ -150,8 +154,7 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
-  _workflow_*.py        tick/scheduling, dispatch, pickup, and terminal-routing
-                        leaves
+  _workflow_*.py        tick/scheduling, dispatch, and terminal-routing leaves
   workflow_drift.py     lazy user-content-drift compatibility facade
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
@@ -473,6 +476,25 @@ instead, which is what keeps a workflow-layer module out of its import graph. Tw
 `awaiting_human` flag, `last_action_comment_id` ratchet, and `park_awaiting_human` event themselves, each
 beside stage-specific state the helper does not write — the classified park reason and the silent-park counter
 on one, the dirty-file count carried on the other's event — so a patch aimed at either targets the stage leaf.
+
+`workflow/engine/pickup.py` is bound the same way. It owns the first tick an unlabeled issue gets, which is two
+decisions and one publish order. `ALLOWED_ISSUE_AUTHORS` decides whether the orchestrator answers at all — the
+allowlist is checked here and nowhere else, so a maintainer who labels an outsider's issue by hand still drives it
+through every later stage — and `DECOMPOSE` decides whether `_start_decomposing` or the legacy
+`_start_implementing` answers. Both starts then write the same four things in the same order, because everything
+downstream reads them back: the greeting first, so its id can anchor `pickup_comment_id` for the validating
+handoff's seed-watermark; the `user_content_hash` baseline next, computed with that id already filtered out; then
+the workflow label, and only then the pinned state, so a crash between the two leaves an issue the next tick still
+routes to the stage it was committed to rather than an unlabeled one it would greet a second time. It reaches
+`comments.py` for the greeting and the id ledger, `drift.py` for the baseline, and `usage.py` for the `created_at`
+stamp, so a patch that has to intercept the allowlist, either start, or the pickup-comment record targets
+`orchestrator.workflow.engine.pickup`; `workflow` still resolves all five names to the owner's exact object. The
+stage handler it dispatches in the same tick is reached through a call-time import of
+`orchestrator/stages/decomposition.py` or `orchestrator/stages/implementing.py` — the stage tree imports this
+subpackage, so binding either at module scope would point that edge back at itself — which also makes the stage
+facade, not `workflow`, the target for a patch that has to intercept the dispatch. Either facade keeps answering
+once it migrates to `workflow/stages/`, because the forwarder it leaves behind reads the handler back off the new
+owner.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`

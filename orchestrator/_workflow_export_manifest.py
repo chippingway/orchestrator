@@ -81,16 +81,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._workflow_pickup",
-        (
-            ("_handle_pickup", "_handle_pickup"),
-            ("_pickup_author_allowed", "_pickup_author_allowed"),
-            ("_record_pickup_comment", "_record_pickup_comment"),
-            ("_start_decomposing", "_start_decomposing"),
-            ("_start_implementing", "_start_implementing"),
-        ),
-    ),
-    *export_group(
         "orchestrator._workflow_scheduler",
         (
             ("_dispatch_via_scheduler", "_dispatch_via_scheduler"),
@@ -320,6 +310,16 @@ EXPORTS = (
             ("_parse_review_verdict", "_parse_review_verdict"),
             ("_refuse_parked_continue", "_refuse_parked_continue"),
             ("_stderr_log_tail", "_stderr_log_tail"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.engine.pickup",
+        (
+            ("_handle_pickup", "_handle_pickup"),
+            ("_pickup_author_allowed", "_pickup_author_allowed"),
+            ("_record_pickup_comment", "_record_pickup_comment"),
+            ("_start_decomposing", "_start_decomposing"),
+            ("_start_implementing", "_start_implementing"),
         ),
     ),
     *export_group(
