@@ -41,12 +41,12 @@ mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
 
 The handler for a label is reached by importing the module
-`_STAGE_HANDLER_TARGETS` pairs it with, at call time: six of them are stage
-facades still under `orchestrator/stages/`, five are decomposition and
-implementing owners under `workflow/stages/`, and the twelfth is the `pickup`
-sibling an unlabeled issue starts on -- and the stage tree imports this
-subpackage, so binding any of them at module scope would point that edge back at
-itself. A migrated stage is named by the owner its handler lives on rather than
+`_STAGE_HANDLER_TARGETS` pairs it with, at call time: five of them are stage
+facades still under `orchestrator/stages/`, six are decomposition,
+documenting, and implementing owners under `workflow/stages/`, and the twelfth
+is the `pickup` sibling an unlabeled issue starts on -- and the stage tree
+imports this subpackage, so binding any of them at module scope would point that
+edge back at itself. A migrated stage is named by the owner its handler lives on rather than
 by the forwarder it left behind, so the patch that intercepts a dispatch is the
 one against whichever module the table names.
 """
@@ -88,6 +88,7 @@ _FAMILY_BUCKET_ISSUE: int = 0
 
 _STAGE_PACKAGE = "orchestrator.stages"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
+_DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _IMPLEMENTING_PACKAGE = "orchestrator.workflow.stages.implementing"
 
 _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyType({
@@ -97,7 +98,7 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
     "blocked": (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_blocked"),
     "umbrella": (f"{_DECOMPOSITION_PACKAGE}.umbrella", "_handle_umbrella"),
     "implementing": (f"{_IMPLEMENTING_PACKAGE}.handler", "_handle_implementing"),
-    "documenting": (f"{_STAGE_PACKAGE}.documenting", "_handle_documenting"),
+    "documenting": (f"{_DOCUMENTING_PACKAGE}.handler", "_handle_documenting"),
     "validating": (f"{_STAGE_PACKAGE}.validating", "_handle_validating"),
     "in_review": (f"{_STAGE_PACKAGE}.in_review", "_handle_in_review"),
     "fixing": (f"{_STAGE_PACKAGE}.fixing", "_handle_fixing"),

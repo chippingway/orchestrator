@@ -2,23 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-import unittest
 
+from orchestrator import workflow
 
 from tests.fakes import (
+    FakeComment,
     FakeGitHubClient,
-    FakePR,
-    FakePRRef,
+    FakeUser,
     make_issue,
-)
-from tests.workflow_helpers import (
-    _TEST_SPEC,
-    _agent,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_test_support import (
+from tests.workflow.stages.documenting.documenting_test_support import (
     _branch,
     _DocumentingWorkflowMixin,
 )
@@ -139,52 +135,106 @@ PARK_COMMENT_ID = 950
 HUMAN_REPLY_ID = 1100
 
 
-class HandleDocumentingClosedIssueTest(unittest.TestCase, _DocumentingWorkflowMixin):
-    """Closed `documenting` issues yielded by the new closed-issue sweep
-    must NOT spawn the docs agent. The handler flips to `rejected`
-    after the external-merge finalize returns False; the closed-PR-
-    without-merge variant additionally runs branch cleanup.
-    """
+def _continue_comment(body: str) -> FakeComment:
+    return FakeComment(
+        id=CONTINUE_COMMENT_ID,
+        body=body,
+        user=FakeUser("dave"),
+    )
 
-    def test_closed_pr_runs_cleanup(self) -> None:
+
+class _ContinueDocumentingFixture(_DocumentingWorkflowMixin):
+    def _seed(self, number: int, *, park_reason, body="/orchestrator continue"):
         gh = FakeGitHubClient()
-        issue = make_issue(CLOSED_ISSUE_NUMBER, label=DOCUMENTING)
-        issue.closed = True
+        issue = make_issue(number, label=DOCUMENTING, body="the requirements")
+        issue.comments.append(_continue_comment(body))
         gh.add_issue(issue)
-        pr = FakePR(
-            number=CLOSED_PR_NUMBER,
-            head_branch=_branch(CLOSED_ISSUE_NUMBER),
-            head=FakePRRef(sha="cafe1234"),
-            merged=False,
-            state="closed",
-        )
-        gh.add_pr(pr)
+        # A bare continue does not shift the current content hash, so the
+        # retry reruns documenting without taking the drift detour.
         gh.seed_state(
-            CLOSED_ISSUE_NUMBER,
-            pr_number=CLOSED_PR_NUMBER,
-            branch=_branch(CLOSED_ISSUE_NUMBER),
-            dev_agent="claude",
+            number,
+            pr_number=CONTINUE_PR_NUMBER,
+            branch=_branch(number),
+            awaiting_human=True,
+            park_reason=park_reason,
+            last_action_comment_id=CONTINUE_WATERMARK,
+            dev_agent=DEV_AGENT,
             dev_session_id=DEV_SESSION,
+            silent_park_count=1,
+            user_content_hash=workflow._compute_user_content_hash(issue, set()),
         )
+        return gh, issue
 
-        mocks = self._run_documenting(
-            gh,
-            issue,
-            run_agent=_agent(),
-        )
 
-        self.assertIn(
-            (CLOSED_ISSUE_NUMBER, "rejected"),
-            gh.label_history,
+class _ParkedDocumentingFixture(_DocumentingWorkflowMixin):
+    issue_number = 601
+    pr_number = 61
+
+    def _seeded(self, **state):
+        gh = FakeGitHubClient()
+        issue = make_issue(self.issue_number, label=DOCUMENTING)
+        gh.add_issue(issue)
+        defaults = dict(
+            pr_number=self.pr_number,
+            branch=_branch(self.issue_number),
+            dev_agent=DEV_AGENT,
+            dev_session_id=DEV_SESSION,
+            awaiting_human=True,
+            last_action_comment_id=PARKED_FIXTURE_WATERMARK,
+            # The seeded baseline keeps first-encounter drift persistence
+            # out of tests that assert an already-parked tick writes nothing.
+            user_content_hash=workflow._compute_user_content_hash(
+                issue,
+                set(),
+            ),
         )
-        self.assertIn(
-            "closed_without_merge_at",
-            gh.pinned_data(CLOSED_ISSUE_NUMBER),
+        defaults.update(state)
+        gh.seed_state(self.issue_number, **defaults)
+        return gh, issue
+
+
+class _DocumentingDriftFixture(_DocumentingWorkflowMixin):
+    issue_number = 701
+    pr_number = 71
+
+    def _seeded(self, **state):
+        gh = FakeGitHubClient()
+        issue = make_issue(
+            self.issue_number,
+            label=DOCUMENTING,
+            body=ORIGINAL_BODY,
         )
-        mocks[RUN_AGENT].assert_not_called()
-        mocks["_cleanup_terminal_branch"].assert_called_once_with(
-            gh,
-            _TEST_SPEC,
-            CLOSED_ISSUE_NUMBER,
-            branch=_branch(CLOSED_ISSUE_NUMBER),
+        gh.add_issue(issue)
+        defaults = dict(
+            pr_number=self.pr_number,
+            branch=_branch(self.issue_number),
+            dev_agent=DEV_AGENT,
+            dev_session_id=DEV_SESSION,
+            user_content_hash="stale-hash-from-original-body",
+            review_round=2,
         )
+        defaults.update(state)
+        gh.seed_state(self.issue_number, **defaults)
+        return gh, issue
+
+
+class _FinalDocsFixture(_DocumentingWorkflowMixin):
+    issue_number = 707
+    pr_number = 71
+    branch_name = _branch(issue_number)
+
+    def _seeded(self, **state):
+        gh = FakeGitHubClient()
+        issue = make_issue(self.issue_number, label=DOCUMENTING)
+        gh.add_issue(issue)
+        defaults = dict(
+            pr_number=self.pr_number,
+            branch=self.branch_name,
+            dev_agent=DEV_AGENT,
+            dev_session_id=DEV_SESSION,
+            review_round=2,
+            pr_last_comment_id=FINAL_DOCS_PR_WATERMARK,
+        )
+        defaults.update(state)
+        gh.seed_state(self.issue_number, **defaults)
+        return gh, issue

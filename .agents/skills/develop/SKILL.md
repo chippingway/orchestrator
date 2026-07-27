@@ -65,11 +65,15 @@ right:
   checks, drift, fresh-feedback fixing route), the implementing stage into focused
   `tests/workflow/stages/implementing/test_*.py` files beside its owners (fresh runs, PR reuse +
   conventional-commit helpers, retry / backend behavior, user-content drift, full-spec persistence,
-  terminal merges / closed issues), and the decomposition stage into focused
+  terminal merges / closed issues), the documenting stage into focused
+  `tests/workflow/stages/documenting/test_*.py` files beside its owners (routing, missing-PR park,
+  terminal finalizes, fresh pass and its guards, recovered-commit push, awaiting-human resume,
+  refused continue, interruption / live pause, drift unwind, final-docs watermarks), and the
+  decomposition stage into focused
   `tests/test_workflow_decomposition_*.py` files
   (manifest parsing, decomposing/ready/blocked/umbrella stage handlers, child issue creation, hash
   drift, stale manifest cleanup, child merged-PR finalize). Per-label dispatcher / routing tests
-  live in `tests/test_workflow_<label>_routing.py` (backlog, question, documenting, fixing) and the
+  live in `tests/test_workflow_<label>_routing.py` (backlog, question, fixing) and the
   remaining facade-level helpers (worktree serialization, drain-terminals, finalize-if-pr-merged,
   stage analytics) live in their own focused modules. Shared fixtures go in `tests/workflow_helpers.py`.
 - Prefer extending the in-memory fakes in `tests/support/github/` (reached through the

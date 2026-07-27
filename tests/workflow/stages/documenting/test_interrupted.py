@@ -2,19 +2,24 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
+import unittest
 
 from orchestrator import workflow
 
+from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
 from tests.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
+from tests.workflow_helpers import (
+    _agent,
+)
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_test_support import (
+from tests.workflow.stages.documenting.documenting_test_support import (
     _branch,
     _DocumentingWorkflowMixin,
 )
@@ -135,106 +140,109 @@ PARK_COMMENT_ID = 950
 HUMAN_REPLY_ID = 1100
 
 
-def _continue_comment(body: str) -> FakeComment:
-    return FakeComment(
-        id=CONTINUE_COMMENT_ID,
-        body=body,
-        user=FakeUser("dave"),
+def _interrupted_fixture():
+    github = FakeGitHubClient()
+    issue = make_issue(INTERRUPTED_ISSUE_NUMBER, label=DOCUMENTING)
+    github.add_issue(issue)
+    github.seed_state(
+        INTERRUPTED_ISSUE_NUMBER,
+        pr_number=INTERRUPTED_PR_NUMBER,
+        branch=_branch(INTERRUPTED_ISSUE_NUMBER),
+        dev_agent=DEV_AGENT,
+        dev_session_id=DEV_SESSION,
+        user_content_hash=workflow._compute_user_content_hash(issue, set()),
     )
+    return github, issue, github.write_state_calls
 
 
-class _ContinueDocumentingFixture(_DocumentingWorkflowMixin):
-    def _seed(self, number: int, *, park_reason, body="/orchestrator continue"):
+class HandleDocumentingInterruptedTest(unittest.TestCase, _DocumentingWorkflowMixin):
+    """A docs run the shutdown sweep killed mid-flight
+    (`AgentResult.interrupted`) must be ignored: the handler returns WITHOUT
+    writing pinned state, so the pre-spawn `docs_checked_sha` / watermark
+    writes are discarded and durable state stays retryable. It must not park,
+    advance to `in_review`, post a HITL question, or set a docs verdict off
+    the partial result."""
+
+    def test_interrupted_final_docs_keeps_state(self) -> None:
+        gh, issue, before_writes = _interrupted_fixture()
+
+        mocks = self._run_documenting(
+            gh,
+            issue,
+            run_agent=_agent(session_id=DEV_SESSION, interrupted=True),
+            # Only `before_sha` is read -- the guard fires before the
+            # post-spawn `after_sha` probe.
+            head_shas=[SHA_BEFORE],
+            branch_ahead_behind=(0, 0),
+        )
+
+        self.assertEqual(mocks[RUN_AGENT].call_count, 1)
+        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertNotIn(
+            (INTERRUPTED_ISSUE_NUMBER, IN_REVIEW),
+            gh.label_history,
+        )
+        pinned_state = gh.pinned_data(INTERRUPTED_ISSUE_NUMBER)
+        self.assertFalse(pinned_state.get(AWAITING_HUMAN))
+        self.assertNotIn(DOCS_VERDICT, pinned_state)
+        # The pre-spawn `docs_checked_sha=before_sha` write was discarded.
+        self.assertNotIn(DOCS_CHECKED_SHA, pinned_state)
+        self.assertEqual(gh.posted_pr_comments, [])
+        self.assertNotIn(
+            "agent needs your input",
+            _issue_comment_text(gh, INTERRUPTED_ISSUE_NUMBER),
+        )
+        self.assertNotIn(
+            "timed out",
+            _issue_comment_text(gh, INTERRUPTED_ISSUE_NUMBER),
+        )
+
+    def test_awaiting_human_resume_keeps_reply(
+        self,
+    ) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(number, label=DOCUMENTING, body="the requirements")
-        issue.comments.append(_continue_comment(body))
+        issue = make_issue(INTERRUPTED_RESUME_ISSUE_NUMBER, label=DOCUMENTING)
+        issue.comments.append(
+            FakeComment(
+                id=INTERRUPTED_RESUME_COMMENT_ID,
+                body="add a note about flag X",
+                user=FakeUser(TRUSTED_AUTHOR),
+            )
+        )
         gh.add_issue(issue)
-        # A bare continue does not shift the current content hash, so the
-        # retry reruns documenting without taking the drift detour.
         gh.seed_state(
-            number,
-            pr_number=CONTINUE_PR_NUMBER,
-            branch=_branch(number),
+            INTERRUPTED_RESUME_ISSUE_NUMBER,
+            pr_number=INTERRUPTED_RESUME_PR_NUMBER,
+            branch=_branch(INTERRUPTED_RESUME_ISSUE_NUMBER),
             awaiting_human=True,
-            park_reason=park_reason,
-            last_action_comment_id=CONTINUE_WATERMARK,
+            last_action_comment_id=INTERRUPTED_RESUME_WATERMARK,
             dev_agent=DEV_AGENT,
             dev_session_id=DEV_SESSION,
-            silent_park_count=1,
             user_content_hash=workflow._compute_user_content_hash(issue, set()),
         )
-        return gh, issue
+        before_writes = gh.write_state_calls
 
-
-class _ParkedDocumentingFixture(_DocumentingWorkflowMixin):
-    issue_number = 601
-    pr_number = 61
-
-    def _seeded(self, **state):
-        gh = FakeGitHubClient()
-        issue = make_issue(self.issue_number, label=DOCUMENTING)
-        gh.add_issue(issue)
-        defaults = dict(
-            pr_number=self.pr_number,
-            branch=_branch(self.issue_number),
-            dev_agent=DEV_AGENT,
-            dev_session_id=DEV_SESSION,
-            awaiting_human=True,
-            last_action_comment_id=PARKED_FIXTURE_WATERMARK,
-            # The seeded baseline keeps first-encounter drift persistence
-            # out of tests that assert an already-parked tick writes nothing.
-            user_content_hash=workflow._compute_user_content_hash(
-                issue,
-                set(),
-            ),
+        mocks = self._run_documenting(
+            gh,
+            issue,
+            run_agent=_agent(session_id=DEV_SESSION, interrupted=True),
+            head_shas=[SHA_BEFORE],
+            branch_ahead_behind=(0, 0),
         )
-        defaults.update(state)
-        gh.seed_state(self.issue_number, **defaults)
-        return gh, issue
 
-
-class _DocumentingDriftFixture(_DocumentingWorkflowMixin):
-    issue_number = 701
-    pr_number = 71
-
-    def _seeded(self, **state):
-        gh = FakeGitHubClient()
-        issue = make_issue(
-            self.issue_number,
-            label=DOCUMENTING,
-            body=ORIGINAL_BODY,
+        # The reply DID drive a resume, but the interruption is ignored.
+        self.assertEqual(mocks[RUN_AGENT].call_count, 1)
+        self.assertEqual(gh.write_state_calls, before_writes)
+        state = gh.pinned_data(INTERRUPTED_RESUME_ISSUE_NUMBER)
+        # The park is not consumed and the consumed-reply watermark bump is
+        # discarded, so the next process re-resumes on the same reply.
+        self.assertTrue(state.get(AWAITING_HUMAN))
+        self.assertEqual(
+            state.get(LAST_ACTION_COMMENT_ID),
+            INTERRUPTED_RESUME_WATERMARK,
         )
-        gh.add_issue(issue)
-        defaults = dict(
-            pr_number=self.pr_number,
-            branch=_branch(self.issue_number),
-            dev_agent=DEV_AGENT,
-            dev_session_id=DEV_SESSION,
-            user_content_hash="stale-hash-from-original-body",
-            review_round=2,
+        self.assertNotIn(
+            (INTERRUPTED_RESUME_ISSUE_NUMBER, IN_REVIEW),
+            gh.label_history,
         )
-        defaults.update(state)
-        gh.seed_state(self.issue_number, **defaults)
-        return gh, issue
-
-
-class _FinalDocsFixture(_DocumentingWorkflowMixin):
-    issue_number = 707
-    pr_number = 71
-    branch_name = _branch(issue_number)
-
-    def _seeded(self, **state):
-        gh = FakeGitHubClient()
-        issue = make_issue(self.issue_number, label=DOCUMENTING)
-        gh.add_issue(issue)
-        defaults = dict(
-            pr_number=self.pr_number,
-            branch=self.branch_name,
-            dev_agent=DEV_AGENT,
-            dev_session_id=DEV_SESSION,
-            review_round=2,
-            pr_last_comment_id=FINAL_DOCS_PR_WATERMARK,
-        )
-        defaults.update(state)
-        gh.seed_state(self.issue_number, **defaults)
-        return gh, issue
+        self.assertNotIn(DOCS_VERDICT, state)

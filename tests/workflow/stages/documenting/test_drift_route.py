@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from tests.documenting_assertion_test_support import _issue_comment_text
-from tests.documenting_drift_test_support import (
+from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
+from tests.workflow.stages.documenting.documenting_drift_test_support import (
     _assert_reconcile_calls,
     _run_drift_reconcile,
 )
@@ -16,10 +16,10 @@ from tests.workflow_helpers import (
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_test_support import (
+from tests.workflow.stages.documenting.documenting_test_support import (
     _branch,
 )
-from tests.documenting_scenario_test_support import (
+from tests.workflow.stages.documenting.documenting_scenario_test_support import (
     _DocumentingDriftFixture,
 )
 

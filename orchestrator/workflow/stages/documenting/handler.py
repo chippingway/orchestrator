@@ -1,19 +1,36 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Documenting handler."""
+"""One documenting tick, in the order its questions have to be asked.
+
+The preconditions come first because each of them makes the spawn pointless or
+unanchored. Drift comes next, ahead of the parked-no-input fast path, so a body
+edit still unwinds an issue that is sitting parked -- the reverse order would
+leave a stale approval standing behind a park nobody replied to.
+
+After the run the order matters just as much: the interruption and live-pause
+refusals both precede the disposition and both return WITHOUT writing pinned
+state, so the mutations the pass staged -- the advanced watermark, the
+pre-spawn `docs_checked_sha` -- are discarded and the next process re-derives
+the tick from what durable state still says. Committed docs work stays on the
+branch and republishes through the recovered-commit shortcut.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import documenting as _owner
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import usage as _usage
+from github.Issue import Issue
 
-_DocumentingContext = _owner._DocumentingContext
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-config = _owner.config
+from orchestrator import config
+from orchestrator.github.client import GitHubClient
+from orchestrator.workflow.engine import guards as _guards, usage as _usage
+from orchestrator.workflow.stages.documenting import (
+    drift as _drift,
+    models as _models,
+    outcomes as _outcomes,
+    preconditions as _preconditions,
+    run as _run,
+)
 
 
-def _drive_documenting_pass(ctx: _DocumentingContext):
+def _drive_documenting_pass(ctx: _models._DocumentingContext):
     """Prepare the worktree, run the docs pass, and return the run outcome.
 
     Returns a `_DocumentingRun` ready for disposition, or None when the tick
@@ -25,11 +42,11 @@ def _drive_documenting_pass(ctx: _DocumentingContext):
 
     wt = _wf._ensure_pr_worktree(ctx.spec, ctx.issue.number, branch=ctx.branch)
 
-    ahead = _owner._prepare_documenting_worktree(ctx, wt)
+    ahead = _run._prepare_documenting_worktree(ctx, wt)
     if ahead is None:
         return None
 
-    run = _owner._run_documenting_dev(ctx, wt, ahead)
+    run = _run._run_documenting_dev(ctx, wt, ahead)
     if run is None:
         return None
 
@@ -62,22 +79,24 @@ def _handle_documenting(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -
     state = gh.read_pinned_state(issue)
     pr_number = state.get("pr_number")
 
-    if _owner._documenting_preconditions_handled(gh, spec, issue, state, pr_number):
+    if _preconditions._documenting_preconditions_handled(
+        gh, spec, issue, state, pr_number,
+    ):
         return
 
-    ctx = _DocumentingContext(
+    ctx = _models._DocumentingContext(
         gh, spec, issue, state,
         _wf._resolve_branch_name(state, spec, issue.number), pr_number,
     )
 
-    if _owner._reconcile_documenting_drift(ctx):
+    if _drift._reconcile_documenting_drift(ctx):
         return
 
-    if _owner._documenting_parked_no_input(gh, issue, state):
+    if _preconditions._documenting_parked_no_input(gh, issue, state):
         return
 
-    run = _owner._drive_documenting_pass(ctx)
+    run = _drive_documenting_pass(ctx)
     if run is None:
         return
 
-    _owner._dispose_documenting_outcome(ctx, run)
+    _outcomes._dispose_documenting_outcome(ctx, run)

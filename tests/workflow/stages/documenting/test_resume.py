@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from tests.documenting_assertion_test_support import (
+from tests.workflow.stages.documenting.documenting_assertion_test_support import (
     _agent_prompt,
     _pr_comment_text,
 )
@@ -21,7 +21,7 @@ from tests.workflow_helpers import (
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_test_support import (
+from tests.workflow.stages.documenting.documenting_test_support import (
     _branch,
     _DocumentingWorkflowMixin,
 )

@@ -40,46 +40,71 @@ EXPORTS = (
         (("PinnedState", "PinnedState"),),
     ),
     *export_group(
-        "orchestrator.stages._documenting_drift",
+        "orchestrator.workflow.stages.documenting.drift",
         (
             ("_announce_documenting_drift", "_announce_documenting_drift"),
             ("_begin_documenting_drift_unwind", "_begin_documenting_drift_unwind"),
+            ("_reconcile_documenting_drift", "_reconcile_documenting_drift"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.documenting.drift_reset",
+        (
             ("_documenting_drift_fetch", "_documenting_drift_fetch"),
             ("_documenting_drift_hard_reset", "_documenting_drift_hard_reset"),
             ("_documenting_drift_probe", "_documenting_drift_probe"),
-            ("_reconcile_documenting_drift", "_reconcile_documenting_drift"),
             ("_reset_documenting_drift_worktree", "_reset_documenting_drift_worktree"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._documenting_handler",
+        "orchestrator.workflow.stages.documenting.handler",
         (
             ("_drive_documenting_pass", "_drive_documenting_pass"),
             ("_handle_documenting", "_handle_documenting"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._documenting_models",
+        "orchestrator.workflow.stages.documenting.handoff",
         (
-            ("_DocumentingContext", "_DocumentingContext"),
-            ("_DocumentingRun", "_DocumentingRun"),
             ("_advance_after_docs_no_change", "_advance_after_docs_no_change"),
             ("_advance_after_docs_push", "_advance_after_docs_push"),
-            ("_park_documenting", "_park_documenting"),
             ("_ratchet_in_review_watermark_for_final_docs", "_ratchet_in_review_watermark_for_final_docs"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._documenting_outcomes",
+        "orchestrator.workflow.stages.documenting.models",
         (
-            ("_dispose_documenting_clean", "_dispose_documenting_clean"),
-            ("_dispose_documenting_outcome", "_dispose_documenting_outcome"),
-            ("_park_documenting_dirty", "_park_documenting_dirty"),
-            ("_park_documenting_question", "_park_documenting_question"),
+            ("_DocumentingContext", "_DocumentingContext"),
+            ("_DocumentingRun", "_DocumentingRun"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._documenting_persistence",
+        "orchestrator.workflow.stages.documenting.outcomes",
+        (
+            ("_dispose_documenting_clean", "_dispose_documenting_clean"),
+            ("_dispose_documenting_outcome", "_dispose_documenting_outcome"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.documenting.parks",
+        (
+            ("_park_documenting", "_park_documenting"),
+            ("_park_documenting_dirty", "_park_documenting_dirty"),
+            ("_park_documenting_question", "_park_documenting_question"),
+            ("_park_documenting_without_pr", "_park_documenting_without_pr"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.documenting.preconditions",
+        (
+            ("_documenting_parked_no_input", "_documenting_parked_no_input"),
+            ("_documenting_preconditions_handled", "_documenting_preconditions_handled"),
+            ("_finalize_documenting_terminal", "_finalize_documenting_terminal"),
+            ("_refuse_parked_continue_command", "_refuse_parked_continue_command"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.documenting.publication",
         (
             ("_documenting_commit_notice", "_documenting_commit_notice"),
             ("_documenting_no_change_note", "_documenting_no_change_note"),
@@ -90,17 +115,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._documenting_preconditions",
-        (
-            ("_documenting_parked_no_input", "_documenting_parked_no_input"),
-            ("_documenting_preconditions_handled", "_documenting_preconditions_handled"),
-            ("_finalize_documenting_terminal", "_finalize_documenting_terminal"),
-            ("_park_documenting_without_pr", "_park_documenting_without_pr"),
-            ("_refuse_parked_continue_command", "_refuse_parked_continue_command"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.stages._documenting_run",
+        "orchestrator.workflow.stages.documenting.run",
         (
             ("_documentation_prompt", "_documentation_prompt"),
             ("_fresh_documenting_run", "_fresh_documenting_run"),
@@ -111,7 +126,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._documenting_state",
+        "orchestrator.workflow.stages.documenting.state",
         (
             ("_AWAITING_HUMAN", "_AWAITING_HUMAN"),
             ("_LAST_ACTION_COMMENT_ID", "_LAST_ACTION_COMMENT_ID"),

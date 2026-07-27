@@ -3,18 +3,17 @@
 """`documenting` label bootstrap, family-aware partitioning, PR-refresh
 detour membership, and dispatcher routing -- plus the end-to-end
 no-`pr_number` park stability checks. Handler-behavior tests live in
-the focused `tests/test_workflow_documenting_*.py` modules."""
+the focused `test_*.py` modules beside this one."""
 
 from __future__ import annotations
 
 import unittest
 from unittest.mock import patch
 
-from orchestrator.stages import (
-    documenting as _documenting,
-    validating as _validating,
-)
+from orchestrator.github.labels import WORKFLOW_LABEL_SPECS, WORKFLOW_LABELS
+from orchestrator.stages import validating as _validating
 from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
+from orchestrator.workflow.stages.documenting import handler as _documenting
 from orchestrator.workflow.stages.implementing import handler as _implementing
 
 from tests.fakes import FakeGitHubClient, make_issue
@@ -56,16 +55,12 @@ class DocumentingLabelRegistrationTest(unittest.TestCase):
     """
 
     def test_label_is_recognized(self) -> None:
-        from orchestrator.github.labels import WORKFLOW_LABELS
-
         self.assertIn(LABEL_DOCUMENTING, WORKFLOW_LABELS)
 
     def test_documenting_label_is_in_bootstrap_specs(self) -> None:
         # Label bootstrap iterates WORKFLOW_LABEL_SPECS; if the spec entry
         # is missing, `ensure_workflow_labels` would never create the
         # label on a fresh repo and operators would be unable to apply it.
-        from orchestrator.github.labels import WORKFLOW_LABEL_SPECS
-
         names = [name for name, _, _ in WORKFLOW_LABEL_SPECS]
         self.assertIn(LABEL_DOCUMENTING, names)
 
@@ -78,8 +73,6 @@ class DocumentingLabelRegistrationTest(unittest.TestCase):
         # WORKFLOW_LABEL_SPECS top-to-bottom sees the actual flow.
         # Lifecycle routing itself lives in the stage handlers, not
         # this tuple, but the order shouldn't actively mislead.
-        from orchestrator.github.labels import WORKFLOW_LABEL_SPECS
-
         names = [name for name, _, _ in WORKFLOW_LABEL_SPECS]
         positions = tuple(
             names.index(label)

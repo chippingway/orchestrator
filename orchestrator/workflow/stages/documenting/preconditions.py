@@ -1,22 +1,38 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Documenting preconditions."""
+"""What has to be settled before a docs agent may spawn.
+
+Three of these end the tick outright. A PR merged or an issue closed out of
+band means the docs pass would run against work that has already landed or
+been abandoned, so both are read before anything spends tokens. A
+`documenting` label with no pinned `pr_number` has nothing to anchor on. And a
+content-free `/orchestrator continue` has to be classified here, ahead of the
+drift and resume paths, because documenting keeps no preserved feedback batch
+to replay: a bare continue either retries a session failure by rerunning the
+whole documentation prompt or it needs a human's actual words, and only the
+second one is refused.
+
+The fourth is the quiet one: an already-parked issue with no new trusted reply
+returns before the fetch and ahead/behind probe, so a transient park does not
+re-post its comment on every poll and an outsider's comment cannot wake a docs
+pass an allowlist was meant to keep them out of.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _documenting_state as _state
-from orchestrator.stages import documenting as _owner
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import terminals as _terminals
+from github.Issue import Issue
 
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-PinnedState = _owner.PinnedState
-config = _owner.config
-filter_trusted = _owner.filter_trusted
-_AWAITING_HUMAN = _state._AWAITING_HUMAN
-_LAST_ACTION_COMMENT_ID = _state._LAST_ACTION_COMMENT_ID
-_PARK_REASON = _state._PARK_REASON
+from orchestrator import config
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.comments import filter_trusted
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import (
+    messages as _messages,
+    terminals as _terminals,
+)
+from orchestrator.workflow.stages.documenting import (
+    parks as _parks,
+    state as _state,
+)
 
 
 def _finalize_documenting_terminal(
@@ -41,31 +57,6 @@ def _finalize_documenting_terminal(
     return False
 
 
-def _park_documenting_without_pr(
-    gh: GitHubClient, issue: Issue, state: PinnedState,
-) -> None:
-    """Park a `documenting` issue that has no pinned `pr_number`.
-
-    Documenting only runs against an existing PR worktree. Without a
-    pinned `pr_number` we cannot anchor on the dev's branch and must not
-    branch off the base (that would orphan the docs commit from the
-    implementing PR). Park once and let the operator relabel; idempotency
-    by `awaiting_human` mirrors `_handle_in_review`'s missing-pr-number
-    guard.
-    """
-    if state.get(_AWAITING_HUMAN):
-        return
-    _guards._park_awaiting_human(
-        gh, issue, state,
-        f"{config.HITL_MENTIONS} `documenting` without a pinned "
-        "`pr_number`; the documenting stage runs against an existing "
-        "PR worktree. Relabel back to `implementing` (the dev's PR "
-        "opens there) after fixing.",
-        reason="missing_pr_number",
-    )
-    gh.write_pinned_state(issue, state)
-
-
 def _documenting_parked_no_input(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> bool:
@@ -86,15 +77,15 @@ def _documenting_parked_no_input(
     """
     from orchestrator import workflow as _wf
 
-    if not state.get(_AWAITING_HUMAN):
+    if not state.get(_state._AWAITING_HUMAN):
         return False
     # The refresh-time `_AUTO_REBASE_PARK_REASONS` parks belong to the
     # `_sync_pr_worktree_to_base` retry loop -- the operator's new comment
     # is the "retry the rebase" signal, NOT a documenting-stage trigger.
     # Stay silent so the refresh keeps ownership of the comment.
-    if state.get(_PARK_REASON) in _wf._AUTO_REBASE_PARK_REASONS:
+    if state.get(_state._PARK_REASON) in _wf._AUTO_REBASE_PARK_REASONS:
         return True
-    last_action_id = state.get(_LAST_ACTION_COMMENT_ID)
+    last_action_id = state.get(_state._LAST_ACTION_COMMENT_ID)
     # Only a trusted reply wakes a parked docs pass: with `ALLOWED_ISSUE_AUTHORS`
     # set an outsider comment must read as silence so the park survives instead
     # of falling through to the docs resume in `_run_documenting_dev`.
@@ -125,13 +116,13 @@ def _refuse_parked_continue_command(
     """
     from orchestrator import workflow as _wf
 
-    if not state.get(_AWAITING_HUMAN):
+    if not state.get(_state._AWAITING_HUMAN):
         return False
-    park_reason = state.get(_PARK_REASON)
+    park_reason = state.get(_state._PARK_REASON)
     if park_reason in _wf._AUTO_REBASE_PARK_REASONS:
         return False
     new_comments = filter_trusted(
-        gh.comments_after(issue, state.get(_LAST_ACTION_COMMENT_ID))
+        gh.comments_after(issue, state.get(_state._LAST_ACTION_COMMENT_ID))
     )
     if not new_comments:
         return False
@@ -154,9 +145,9 @@ def _documenting_preconditions_handled(
     `user_content_hash`, so the retryable resume later reruns the docs prompt
     without a spurious drift notice. See `_refuse_parked_continue_command`.
     """
-    if _owner._finalize_documenting_terminal(gh, spec, issue, state):
+    if _finalize_documenting_terminal(gh, spec, issue, state):
         return True
     if pr_number is None:
-        _owner._park_documenting_without_pr(gh, issue, state)
+        _parks._park_documenting_without_pr(gh, issue, state)
         return True
-    return _owner._refuse_parked_continue_command(gh, issue, state)
+    return _refuse_parked_continue_command(gh, issue, state)

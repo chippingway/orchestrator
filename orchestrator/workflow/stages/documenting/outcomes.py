@@ -1,47 +1,34 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Documenting outcomes."""
+"""Reading a finished docs run, in the order the checks have to happen.
+
+A timeout is answered first because nothing the run left on disk can be
+trusted. The dirty-tree check is second and blocks every outcome after it: a
+push ships only committed work, so an agent that edited files without
+committing would have its edits silently dropped by the publication path and
+silently abandoned by the no-change and question paths alike. Only then does
+the `before_sha` comparison get to say whether THIS run produced a commit.
+
+On a clean tree with no new commit the agent either checked the diff and found
+nothing to write, or it stopped for some other reason. The explicit
+`DOCS: NO_CHANGE` marker is the only thing that distinguishes the two -- an
+absent marker is not agreement, so anything else parks for a human rather than
+advancing an issue whose docs were never actually reviewed.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import documenting as _owner
+from orchestrator import config
+from orchestrator.agents import AgentResult
 from orchestrator.workflow.engine import messages as _messages
-
-_DocumentingContext = _owner._DocumentingContext
-_DocumentingRun = _owner._DocumentingRun
-AgentResult = _owner.AgentResult
-config = _owner.config
-
-
-def _park_documenting_dirty(
-    ctx: _DocumentingContext, documentation_result: AgentResult, dirty,
-) -> None:
-    """Park an uncommitted docs edit via `_on_dirty_worktree`; writes pinned
-    state."""
-    from orchestrator import workflow as _wf
-
-    _wf._on_dirty_worktree(
-        ctx.gh, ctx.issue, ctx.state, documentation_result, dirty,
-    )
-    ctx.gh.write_pinned_state(ctx.issue, ctx.state)
-
-
-def _park_documenting_question(
-    ctx: _DocumentingContext, documentation_result: AgentResult,
-) -> None:
-    """Park an unknown verdict via `_on_question`.
-
-    `_on_question` posts the HITL ping, distinguishes the silent-crash case
-    via stderr diagnostics, and tags `silent_park_count` so a poisoned session
-    can be dropped on the next resume. Writes pinned state.
-    """
-    from orchestrator import workflow as _wf
-
-    _wf._on_question(ctx.gh, ctx.issue, ctx.state, documentation_result)
-    ctx.gh.write_pinned_state(ctx.issue, ctx.state)
+from orchestrator.workflow.stages.documenting import (
+    models as _models,
+    parks as _parks,
+    publication as _publication,
+)
 
 
 def _dispose_documenting_clean(
-    ctx: _DocumentingContext, wt, ahead: int, after_sha: str,
+    ctx: _models._DocumentingContext, wt, ahead: int, after_sha: str,
     documentation_result: AgentResult,
 ) -> None:
     """No new commit on a clean tree: the agent either declared no change or
@@ -52,13 +39,13 @@ def _dispose_documenting_clean(
         documentation_result.last_message or "",
     )
     if verdict == "no_change":
-        _owner._route_documenting_no_change(ctx, wt, ahead, after_sha, body)
+        _publication._route_documenting_no_change(ctx, wt, ahead, after_sha, body)
         return
-    _owner._park_documenting_question(ctx, documentation_result)
+    _parks._park_documenting_question(ctx, documentation_result)
 
 
 def _dispose_documenting_outcome(
-    ctx: _DocumentingContext, run: _DocumentingRun,
+    ctx: _models._DocumentingContext, run: _models._DocumentingRun,
 ) -> None:
     """Route the post-agent outcome: timeout / dirty / commit / no-change
     / question.
@@ -69,7 +56,7 @@ def _dispose_documenting_outcome(
     from orchestrator import workflow as _wf
 
     if run.agent_result.timed_out:
-        _owner._park_documenting(
+        _parks._park_documenting(
             ctx,
             f"{config.HITL_MENTIONS} agent timed out after "
             f"{config.AGENT_TIMEOUT}s, manual intervention needed.",
@@ -88,13 +75,14 @@ def _dispose_documenting_outcome(
     # `DOCS: NO_CHANGE`, asked a question, or produced nothing) cannot slip past.
     dirty = _wf._worktree_dirty_files(wt)
     if dirty:
-        _owner._park_documenting_dirty(ctx, run.agent_result, dirty)
+        _parks._park_documenting_dirty(ctx, run.agent_result, dirty)
         return
 
     if after_sha and after_sha != run.before_sha:
-        _owner._push_docs_and_advance(
-            ctx, wt, after_sha, _owner._documenting_commit_notice(run.recovered),
+        _publication._push_docs_and_advance(
+            ctx, wt, after_sha,
+            _publication._documenting_commit_notice(run.recovered),
         )
         return
 
-    _owner._dispose_documenting_clean(ctx, wt, run.ahead, after_sha, run.agent_result)
+    _dispose_documenting_clean(ctx, wt, run.ahead, after_sha, run.agent_result)

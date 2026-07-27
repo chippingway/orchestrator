@@ -137,7 +137,25 @@ orchestrator process is stateless.
   `/orchestrator continue` on a parked issue (`continue_command.py`), and the question relabel guards
   (`question_relabel.py`) -- over the frozen records they hand each other (`models.py`) and the
   pinned-state keys and CLI markers they share (`state.py`), with the worktree, git, and push helpers
-  still reached through the `workflow` facade at call time), per-stage
+  still reached through the `workflow` facade at call time) -- and over the
+  `workflow/stages/documenting/` subpackage beside it, whose owners divide by what one final-docs tick
+  has to settle before it may spawn: the order those questions are asked in (`handler.py`); the three
+  that end the tick outright -- the merged-PR / closed-issue terminals, the missing-`pr_number` guard,
+  and the bare `/orchestrator continue` refusal -- beside the parked-no-input fast path that keeps a
+  transient park from reposting (`preconditions.py`); the one that unwinds instead, a body edit that
+  drops the stale approval and relabels back to `validating` (`drift.py`), with the fetch, probe, and
+  hard-reset + clean it hands the worktree to, each failing closed because a docs commit left against
+  the OLD body is what the next tick's recovered-commit shortcut would push unreviewed
+  (`drift_reset.py`); the pass itself -- the branch refresh, the diverged-worktree refusal, and the
+  awaiting-human resume / recovered-commit / fresh-spawn shapes (`run.py`); and what it left behind --
+  the timeout / dirty / commit / `DOCS: NO_CHANGE` order (`outcomes.py`), the push with the
+  `docs_checked_sha` and `docs_verdict` it stamps and the PR notice it posts (`publication.py`), and the
+  `pr_last_comment_id` ratchet that has to precede the `in_review` relabel so a consumed reply does not
+  replay as fresh PR feedback (`handoff.py`) -- with the four awaiting-human parks (`parks.py`) over the
+  frozen records (`models.py`) and pinned-state keys (`state.py`) they share, the dev resume, session
+  read, and question / dirty-tree parks imported from the implementing owners directly, and the
+  worktree, git, and push helpers plus validating's `_latest_pr_comment_ids` still reached through the
+  `workflow` facade at call time), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -250,10 +268,10 @@ orchestrator process is stateless.
   `tests/test_workflow_<stage>*.py` (the validating stage is split across review, controls, drift, handoff, pause,
   squash, verify, and watermark modules in `tests/test_workflow_validating_*.py`, with shared fixtures in
   `tests/validating_*_test_support.py`; the in_review stage is split across
-  `tests/test_workflow_in_review_*.py`; the implementing stage has moved beside its owners into
-  `tests/workflow/stages/implementing/`, and the decomposition, question, and documenting stages across their
-  respective focused modules, with shared fixtures in `tests/decomposition*_support.py`,
-  `tests/question_*_support.py`, and `tests/documenting_*_support.py`; the resolving-conflict stage is split across
+  `tests/test_workflow_in_review_*.py`; the implementing and documenting stages have moved beside their owners into
+  `tests/workflow/stages/implementing/` and `tests/workflow/stages/documenting/`, and the decomposition and question
+  stages across their respective focused modules, with shared fixtures in `tests/decomposition*_support.py` and
+  `tests/question_*_support.py`; the resolving-conflict stage is split across
   `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_event_emission`,
   `_list_pollable`, `_routing`) plus the `_handle_resolving_conflict` handler scenarios in focused modules
   (`_clean_rebase` for clean rebase routing, `_agent` for agent execution, `_resume` for awaiting-human resume
@@ -263,8 +281,7 @@ orchestrator process is stateless.
   `tests/conflict_resume_test_support.py`); other facade-level helper tests
   include (`tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
-  `tests/test_workflow_question_routing.py`,
-  `tests/test_workflow_documenting_routing.py`, `tests/test_workflow_fixing_routing.py`,
+  `tests/test_workflow_question_routing.py`, `tests/test_workflow_fixing_routing.py`,
   `tests/test_workflow_in_review_fresh_feedback.py`); shared helpers in `tests/workflow_helpers.py`.
   Configuration-package
   tests live in `tests/config/`, agent-package owner / import-cycle tests in `tests/agents/`, and github-package
@@ -440,6 +457,19 @@ orchestrator process is stateless.
   `terminal_test_support.py`; the two fixtures the flat suite still shares stay in `tests/`
   (`implementing_fixing_test_cases.py` for the fixing scenarios, `implementing_full_spec_test_support.py` for the
   decomposer full-spec mixin).
+  `tests/workflow/stages/documenting/` holds the third stage to arrive: the same import, layering, and initializer
+  guards for its own package plus the forwarding checks that no manifest target names a flat `_documenting_*` leaf and
+  that both historical import sites hand back the owner's exact object, and the dispatch check that the label table
+  names the handler owner (`test_imports.py`); the stage scenarios beside it -- the label bootstrap, detour membership,
+  and dispatcher routing (`test_routing.py`), the missing-`pr_number` park (`test_missing_pr.py`), the external-merge
+  and human-closed finalizes (`test_external_merge.py`, `test_closed.py`), the fresh pass and the guards that stop it
+  short (`test_fresh_outcome.py`, `test_fresh_safety.py`), the recovered-commit push (`test_recovery.py`), the
+  awaiting-human resume and the park it wakes from (`test_resume.py`, `test_parked.py`), the refused bare continue
+  (`test_continue.py`), the interruption and live-pause returns that write nothing (`test_interrupted.py`,
+  `test_paused.py`), the drift unwind and its reconcile failures (`test_drift_route.py`, `test_drift_recovery.py`), and
+  the `pr_last_comment_id` ratchet on the handoff (`test_final_docs.py`) -- with shared fixtures in
+  `documenting_test_support.py`, `documenting_assertion_test_support.py`, `documenting_scenario_test_support.py`,
+  `documenting_drift_test_support.py`, and `documenting_drift_recovery_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

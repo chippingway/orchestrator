@@ -4,18 +4,15 @@ from __future__ import annotations
 
 import unittest
 
-from tests.documenting_assertion_test_support import (
-    _lifecycle_events,
-    _pr_comment_text,
-)
+from tests.workflow.stages.documenting.documenting_assertion_test_support import _pr_comment_text
 from tests.workflow_helpers import (
     _agent,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
-from tests.documenting_test_support import (
-    _FreshDocumentingFixture,
+from tests.workflow.stages.documenting.documenting_test_support import (
+    _BasicDocumentingFixture,
 )
 
 DOCUMENTING = "documenting"
@@ -134,149 +131,78 @@ PARK_COMMENT_ID = 950
 HUMAN_REPLY_ID = 1100
 
 
-class HandleDocumentingFreshOutcomeTest(
-    unittest.TestCase,
-    _FreshDocumentingFixture,
-):
-    """A docs agent run on a PR that already has commits."""
+class HandleDocumentingRecoveryTest(unittest.TestCase, _BasicDocumentingFixture):
+    """Restart recovery: a previous tick committed docs but crashed
+    before the push lands."""
 
-    def test_docs_commit_pushed_advances_to_in_review(self) -> None:
+    issue_number = 301
+    pr_number = 31
+
+    def test_recovered_commits_push_without_spawn(self) -> None:
         gh, issue = self._seeded()
         mocks = self._run_documenting(
             gh,
             issue,
-            run_agent=_agent(
-                session_id=DEV_SESSION,
-                last_message="docs: updated README",
-            ),
+            run_agent=_agent(),
             push_branch=True,
-            # before_sha + after_sha
-            head_shas=[SHA_BEFORE, SHA_AFTER],
-            branch_ahead_behind=(0, 0),
+            # _head_sha is called once to record docs_checked_sha after
+            # the push.
+            head_shas=[SHA_RECOVERED],
+            branch_ahead_behind=(1, 0),
         )
 
-        self.assertEqual(mocks[RUN_AGENT].call_count, 1)
-        # The agent is spawned with the dev session id locked in.
-        _, call_kwargs = mocks[RUN_AGENT].call_args
-        self.assertEqual(call_kwargs.get("resume_session_id"), DEV_SESSION)
+        # The agent must NOT be spawned -- the recovered commits are
+        # enough to advance.
+        mocks[RUN_AGENT].assert_not_called()
         mocks[PUSH_BRANCH].assert_called_once()
         self.assertIn((self.issue_number, IN_REVIEW), gh.label_history)
-
-    def test_lifecycle_events_carry_review_round(self) -> None:
-        # Documenting runs once per reviewer-approval handoff between
-        # approval and `in_review`. The pinned `review_round` at the time
-        # of approval (0 on the first approval, higher after fix loops)
-        # must ride along on the spawn / exit audit events (and the
-        # analytics record), so a downstream consumer can tell which
-        # reviewer round the docs pass belonged to.
-        gh, issue = self._seeded(review_round=2)
-        self._run_documenting(
-            gh,
-            issue,
-            run_agent=_agent(
-                session_id=DEV_SESSION,
-                last_message="docs: updated README",
-            ),
-            push_branch=True,
-            head_shas=[SHA_BEFORE, SHA_AFTER],
-            branch_ahead_behind=(0, 0),
-        )
-        lifecycle = _lifecycle_events(gh, "documenting")
-        self.assertEqual(len(lifecycle), 2)
-        for event in lifecycle:
-            self.assertEqual(event.get(REVIEW_ROUND), 2)
-
         state = gh.pinned_data(self.issue_number)
         self.assertEqual(state.get(DOCS_VERDICT), VERDICT_UPDATED)
-        self.assertEqual(state.get(DOCS_CHECKED_SHA), SHA_AFTER)
-        # A PR-conversation announcement is posted so reviewers see the
-        # docs commit in context.
-        self.assertIn(":books: documenting pass", _pr_comment_text(gh))
+        self.assertEqual(state.get(DOCS_CHECKED_SHA), SHA_RECOVERED)
+        self.assertIn("recovered docs commit", _pr_comment_text(gh))
 
-    def test_no_change_marker_advances_without_push(self) -> None:
+    def test_recovery_push_failure_parks_push_failed(self) -> None:
         gh, issue = self._seeded()
         mocks = self._run_documenting(
             gh,
             issue,
-            run_agent=_agent(
-                session_id=DEV_SESSION,
-                last_message=("Inspected diff; no user-facing change.\nDOCS: NO_CHANGE"),
-            ),
-            push_branch=True,
-            # before + after both same -> no commit.
-            head_shas=[SHA_BEFORE, SHA_BEFORE],
-            branch_ahead_behind=(0, 0),
+            run_agent=_agent(),
+            push_branch=False,
+            # The recovery branch falls through to the unified
+            # commit/dirty/push block, which reads `after_sha`.
+            head_shas=[SHA_RECOVERED],
+            branch_ahead_behind=(1, 0),
         )
 
-        mocks[PUSH_BRANCH].assert_not_called()
-        self.assertIn((self.issue_number, IN_REVIEW), gh.label_history)
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertNotIn((self.issue_number, IN_REVIEW), gh.label_history)
+        self.assertNotIn((self.issue_number, VALIDATING), gh.label_history)
         state = gh.pinned_data(self.issue_number)
-        self.assertEqual(state.get(DOCS_VERDICT), VERDICT_NO_CHANGE)
-        self.assertIn("no docs changes required", _pr_comment_text(gh))
+        self.assertTrue(state.get(AWAITING_HUMAN))
+        self.assertEqual(state.get(PARK_REASON), PARK_PUSH_FAILED)
 
-    def test_no_commit_or_marker_parks_as_question(self) -> None:
+    def test_dirty_recovery_parks_without_push(self) -> None:
+        # A previous tick committed docs AND left some files
+        # uncommitted, then crashed. The recovery branch must NOT push:
+        # the push would publish an incomplete branch (the dirty files
+        # would silently disappear from what the reviewer agent sees).
         gh, issue = self._seeded()
         mocks = self._run_documenting(
             gh,
             issue,
-            run_agent=_agent(
-                session_id=DEV_SESSION,
-                last_message="should I touch docs/architecture.md too?",
-            ),
+            run_agent=_agent(),
             push_branch=True,
-            head_shas=[SHA_BEFORE, SHA_BEFORE],
-            branch_ahead_behind=(0, 0),
+            dirty_files=["docs/dirty.md"],
+            head_shas=[SHA_RECOVERED],
+            branch_ahead_behind=(1, 0),
         )
 
+        mocks[RUN_AGENT].assert_not_called()
         mocks[PUSH_BRANCH].assert_not_called()
         self.assertNotIn((self.issue_number, IN_REVIEW), gh.label_history)
         self.assertNotIn((self.issue_number, VALIDATING), gh.label_history)
         state = gh.pinned_data(self.issue_number)
         self.assertTrue(state.get(AWAITING_HUMAN))
-        # The verdict is NOT recorded -- the agent did not give one.
-        self.assertNotIn(DOCS_VERDICT, state)
         last_comment = gh.posted_comments[-1][1]
-        self.assertIn("agent needs your input", last_comment)
-        self.assertIn(DOCS_ARCHITECTURE, last_comment)
-
-    def test_silent_run_parks_as_agent_silent(self) -> None:
-        # No commits, no message -- treat as a poisoned-session silent
-        # crash like the implementing/validating handlers do.
-        gh, issue = self._seeded()
-        self._run_documenting(
-            gh,
-            issue,
-            run_agent=_agent(
-                session_id=DEV_SESSION,
-                last_message="",
-                exit_code=2,
-            ),
-            push_branch=True,
-            head_shas=[SHA_BEFORE, SHA_BEFORE],
-            branch_ahead_behind=(0, 0),
-        )
-
-        state = gh.pinned_data(self.issue_number)
-        self.assertTrue(state.get(AWAITING_HUMAN))
-        self.assertEqual(state.get(PARK_REASON), PARK_AGENT_SILENT)
-        self.assertNotIn((self.issue_number, IN_REVIEW), gh.label_history)
-        self.assertNotIn((self.issue_number, VALIDATING), gh.label_history)
-
-    def test_timeout_parks_with_agent_timeout(self) -> None:
-        gh, issue = self._seeded()
-        mocks = self._run_documenting(
-            gh,
-            issue,
-            run_agent=_agent(session_id=DEV_SESSION, timed_out=True),
-            push_branch=True,
-            head_shas=[SHA_BEFORE],
-            branch_ahead_behind=(0, 0),
-        )
-
-        mocks[PUSH_BRANCH].assert_not_called()
-        self.assertNotIn((self.issue_number, IN_REVIEW), gh.label_history)
-        self.assertNotIn((self.issue_number, VALIDATING), gh.label_history)
-        state = gh.pinned_data(self.issue_number)
-        self.assertTrue(state.get(AWAITING_HUMAN))
-        self.assertEqual(state.get(PARK_REASON), PARK_AGENT_TIMEOUT)
-        self.assertIn("agent timed out", gh.posted_comments[-1][1])
+        self.assertIn(UNCOMMITTED_CHANGE, last_comment)
+        self.assertIn("docs/dirty.md", last_comment)
