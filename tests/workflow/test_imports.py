@@ -34,10 +34,11 @@ _MODULES = (
     "orchestrator.workflow.state",
 )
 
-# Manifest targets and what they resolve to, so importing the facade must leave
-# every one of them out of `sys.modules`: the dispatcher, the tick loop, the
-# stage handlers, the worktree and GitHub subsystems those reach, and the
-# analytics and config packages behind the shared dependency bindings.
+# Manifest targets, what they resolve to, and the two subpackages beside the
+# facade, so importing it must leave every one of them out of `sys.modules`: the
+# dispatcher, the tick loop, the stage handlers and the destination they migrate
+# to, the worktree and GitHub subsystems those reach, and the analytics and
+# config packages behind the shared dependency bindings.
 _DEFERRED_MODULES = (
     "orchestrator._workflow_dispatch",
     "orchestrator._workflow_tick",
@@ -46,6 +47,7 @@ _DEFERRED_MODULES = (
     "orchestrator.github",
     "orchestrator.stages",
     "orchestrator.workflow.engine",
+    "orchestrator.workflow.stages",
     "orchestrator.worktrees",
 )
 

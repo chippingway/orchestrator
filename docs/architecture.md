@@ -143,6 +143,9 @@ orchestrator/
                         emission, the per-issue counters that record's usage is
                         folded into and the terminal receipt read off them, and
                         the UTC stamp the stages write
+    stages/
+      __init__.py       package marker only; the destination the per-label
+                        stage facades under `orchestrator/stages/` migrate to
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
@@ -275,7 +278,9 @@ orchestrator/
                         a codex trajectory's offered skills and tools
   _local_skills.py      per-run filesystem skill discovery and codex tool list
   stages/
-    <stage>.py          lazy compatibility facade for each historical stage
+    <stage>.py          lazy compatibility facade for each historical stage,
+                        or a temporary forwarder once that stage has an owner
+                        under `workflow/stages/`
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
     _decomposition_*.py decomposer runs/sessions, child routing, recovery,
@@ -546,6 +551,14 @@ external-merge sweeps, and the complete pinned-state JSON schema), see
 Each workflow label dispatches to a `_handle_<label>` function. The handlers live under `orchestrator/stages/` (see the
 module map above) and are re-exported from the `workflow` package initializer so test patches against
 `workflow.<helper>` keep intercepting calls from inside a stage handler.
+
+`orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time. A migrated stage takes
+its own name in that package and keeps the lazy hooks it already publishes; the `orchestrator/stages/<stage>.py` it
+vacates stays behind as a temporary forwarder that reads every name back off the owner rather than rebuilding one, so
+both import sites hand back the same object and a `patch.object` against either is what the other resolves. A forwarder
+is dropped once the callers it serves name the owner. Like `workflow/engine/`, the new package binds nothing in its
+initializer -- the dispatcher resolves one handler per issue, so an eager binding there would charge that import for
+every other stage's leaves and for the worktree and GitHub subsystems they reach.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked
