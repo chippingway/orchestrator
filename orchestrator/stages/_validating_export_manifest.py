@@ -36,7 +36,7 @@ EXPORTS = (
         (("PinnedState", "PinnedState"),),
     ),
     *export_group(
-        "orchestrator.stages._validating_approval",
+        "orchestrator.workflow.stages.validating.approval",
         (
             ("_approved_work_verifies", "_approved_work_verifies"),
             ("_finalize_validating_approval", "_finalize_validating_approval"),
@@ -48,10 +48,9 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_awaiting",
+        "orchestrator.workflow.stages.validating.awaiting",
         (
-            ("_AwaitingDevAttempt", "_AwaitingDevAttempt"),
-            ("_AwaitingValidation", "_AwaitingValidation"),
+            ("_parse_add_review_rounds", "_parse_add_review_rounds"),
             ("_resume_awaiting_dev_agent", "_resume_awaiting_dev_agent"),
             ("_review_cap_awaiting_action", "_review_cap_awaiting_action"),
             ("_reviewer_retry_awaiting_action", "_reviewer_retry_awaiting_action"),
@@ -60,15 +59,16 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_awaiting_handler",
+        "orchestrator.workflow.stages.validating.awaiting_resume",
         (
             ("_handle_validating_awaiting_human", "_handle_validating_awaiting_human"),
             ("_resume_validating_awaiting_dev", "_resume_validating_awaiting_dev"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_dev_fix",
+        "orchestrator.workflow.stages.validating.dev_fix",
         (
+            ("_bump_review_round", "_bump_review_round"),
             ("_dev_fix_is_publishable", "_dev_fix_is_publishable"),
             ("_dispose_dev_fix_result", "_dispose_dev_fix_result"),
             ("_handle_dev_fix_result", "_handle_dev_fix_result"),
@@ -78,7 +78,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_drift",
+        "orchestrator.workflow.stages.validating.drift",
         (
             ("_ValidatingDriftRun", "_ValidatingDriftRun"),
             ("_defer_validating_drift", "_defer_validating_drift"),
@@ -88,38 +88,42 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_drift_result",
+        "orchestrator.workflow.stages.validating.drift_outcomes",
         (
-            ("_bump_review_round", "_bump_review_round"),
             ("_dispose_user_content_change_result", "_dispose_user_content_change_result"),
             ("_post_drift_ack", "_post_drift_ack"),
             ("_post_user_content_change_result", "_post_user_content_change_result"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.handler",
+        (
+            ("_finalize_validating_terminal", "_finalize_validating_terminal"),
+            ("_handle_validating", "_handle_validating"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.models",
+        (
+            ("_AwaitingDevAttempt", "_AwaitingDevAttempt"),
+            ("_AwaitingValidation", "_AwaitingValidation"),
+            ("_DevFixRun", "_DevFixRun"),
+            ("_RequestedChanges", "_RequestedChanges"),
+            ("_ReviewerDecision", "_ReviewerDecision"),
+            ("_ReviewerRun", "_ReviewerRun"),
+            ("_dev_fix_run", "_dev_fix_run"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.recovery",
+        (
             ("_recover_failed_push", "_recover_failed_push"),
             ("_recover_timed_out_fix", "_recover_timed_out_fix"),
             ("_try_recover_validating_transient_park", "_try_recover_validating_transient_park"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_handler",
-        (
-            ("_dispatch_reviewer_result", "_dispatch_reviewer_result"),
-            ("_handle_validating", "_handle_validating"),
-            ("_run_reviewer_round", "_run_reviewer_round"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.stages._validating_models",
-        (
-            ("_DevFixRun", "_DevFixRun"),
-            ("_RequestedChanges", "_RequestedChanges"),
-            ("_ReviewerDecision", "_ReviewerDecision"),
-            ("_ReviewerRun", "_ReviewerRun"),
-            ("_dev_fix_run", "_dev_fix_run"),
-            ("_parse_add_review_rounds", "_parse_add_review_rounds"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.stages._validating_requested_changes",
+        "orchestrator.workflow.stages.validating.requested_changes",
         (
             ("_finish_requested_fix", "_finish_requested_fix"),
             ("_handle_validating_changes_requested", "_handle_validating_changes_requested"),
@@ -130,7 +134,14 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_state",
+        "orchestrator.workflow.stages.validating.reviewer",
+        (
+            ("_dispatch_reviewer_result", "_dispatch_reviewer_result"),
+            ("_run_reviewer_round", "_run_reviewer_round"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.state",
         (
             ("_ADD_REVIEW_ROUNDS_RE", "_ADD_REVIEW_ROUNDS_RE"),
             ("_OUTCOME_PARKED", "_OUTCOME_PARKED"),
@@ -152,20 +163,19 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_verify",
+        "orchestrator.workflow.stages.validating.verify",
         (
-            ("_finalize_validating_terminal", "_finalize_validating_terminal"),
             ("_park_verify_failure", "_park_verify_failure"),
-            ("_ratchet_watermark", "_ratchet_watermark"),
             ("_verify_failure_detail", "_verify_failure_detail"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._validating_watermarks",
+        "orchestrator.workflow.stages.validating.watermarks",
         (
             ("_WatermarkWalker", "_WatermarkWalker"),
             ("_is_orchestrator_comment", "_is_orchestrator_comment"),
             ("_latest_pr_comment_ids", "_latest_pr_comment_ids"),
+            ("_ratchet_watermark", "_ratchet_watermark"),
             ("_seed_watermark_past_self", "_seed_watermark_past_self"),
             ("_state_int", "_state_int"),
             ("_watermark_comment_pairs", "_watermark_comment_pairs"),

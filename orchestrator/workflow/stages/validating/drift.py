@@ -1,26 +1,46 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Validating drift."""
+"""A body edit that arrives while the reviewer is running.
+
+Re-decomposing at this point would throw away work the dev has already pushed,
+so the edit resumes the locked dev session on the new body instead. A landed
+fix bumps `review_round` and stays on `validating`: the reviewer has to read
+the updated body against the new diff, and the round it already spent was
+against a head that no longer exists.
+
+Three parks deliberately opt out, and the reason is who owns the human's next
+comment. A reviewer timeout or silent crash produced no review output for the
+dev to act on, so a "retry" reply has to re-spawn the REVIEWER -- and the
+reviewer re-reads the edited body itself when it runs. `review_cap` is
+sharper still: the cap has consumed every round, so resuming the dev would
+just re-park on it, and the operator's `/orchestrator add-review-rounds`
+comment is itself content that moves the drift hash -- without the bypass the
+drift block would fire first and the command would never be parsed. The new
+baseline hash is persisted on every path regardless, so the next tick compares
+against something stable.
+
+The full issue thread is marked consumed before the resume, because the dev
+sees it inside the resume prompt; leaving the watermark behind would let the
+in_review handoff replay those same comments as fresh feedback.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _validating_state as _state
-from orchestrator.stages import validating as _owner
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.engine import usage as _usage
+from dataclasses import dataclass
+from pathlib import Path
 
-AgentResult = _owner.AgentResult
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Path = _owner.Path
-PinnedState = _owner.PinnedState
-config = _owner.config
-dataclass = _owner.dataclass
-_OUTCOME_PUSHED = _state._OUTCOME_PUSHED
-_PARK_REASON = _state._PARK_REASON
-_REASON_REVIEWER_FAILED = _state._REASON_REVIEWER_FAILED
-_REASON_REVIEWER_TIMEOUT = _state._REASON_REVIEWER_TIMEOUT
-_REASON_REVIEW_CAP = _state._REASON_REVIEW_CAP
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.agents import AgentResult
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import drift as _engine_drift
+from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.stages.implementing import resume as _dev_resume
+from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
+from orchestrator.workflow.stages.validating import drift_outcomes as _outcomes
+from orchestrator.workflow.stages.validating import state as _state
 
 
 @dataclass(frozen=True)
@@ -44,10 +64,10 @@ def _run_validating_drift(
             branch=_wf._resolve_branch_name(state, spec, issue.number),
         )
     before_sha = _wf._head_sha(worktree)
-    followup = _drift._build_user_content_change_prompt(
+    followup = _engine_drift._build_user_content_change_prompt(
         issue, _comments._recent_comments_text(issue),
     )
-    worktree, agent_result, paused = _wf._resume_dev_with_text(
+    worktree, agent_result, paused = _dev_resume._resume_dev_with_text(
         gh, spec, issue, state, followup, pause_guard=True,
     )
     return _ValidatingDriftRun(worktree, agent_result, before_sha, paused)
@@ -56,8 +76,12 @@ def _run_validating_drift(
 def _defer_validating_drift(state: PinnedState) -> bool:
     return bool(
         state.get("awaiting_human")
-        and state.get(_PARK_REASON)
-        in (_REASON_REVIEWER_TIMEOUT, _REASON_REVIEWER_FAILED, _REASON_REVIEW_CAP)
+        and state.get(_state._PARK_REASON)
+        in (
+            _state._REASON_REVIEWER_TIMEOUT,
+            _state._REASON_REVIEWER_FAILED,
+            _state._REASON_REVIEW_CAP,
+        )
     )
 
 
@@ -68,7 +92,7 @@ def _finish_validating_drift(
     state: PinnedState,
     run: _ValidatingDriftRun,
 ) -> None:
-    outcome = _owner._post_user_content_change_result(
+    outcome = _outcomes._post_user_content_change_result(
         gh,
         spec,
         issue,
@@ -79,8 +103,8 @@ def _finish_validating_drift(
     )
     if run.agent_result.interrupted:
         return
-    if outcome == _OUTCOME_PUSHED:
-        _owner._bump_review_round(state)
+    if outcome == _state._OUTCOME_PUSHED:
+        _dev_fix._bump_review_round(state)
     gh.write_pinned_state(issue, state)
 
 
@@ -113,11 +137,11 @@ def _resume_dev_on_validating_drift(
     command would never be parsed. The new baseline hash is persisted here
     either way so the next tick's drift check has a stable comparison point.
     """
-    new_hash = _drift._detect_user_content_change(gh, issue, state)
+    new_hash = _engine_drift._detect_user_content_change(gh, issue, state)
     if new_hash is None:
         return False
     state.set("user_content_hash", new_hash)
-    if _owner._defer_validating_drift(state):
+    if _defer_validating_drift(state):
         return False
 
     _comments._post_issue_comment(
@@ -128,8 +152,8 @@ def _resume_dev_on_validating_drift(
     # `_recent_comments_text` in the resume prompt, so the eventual
     # handoff to in_review must not replay those comments as fresh
     # feedback. Mirrors `_resume_developer_on_human_reply`'s pre-spawn bump.
-    _drift._mark_drift_comments_consumed(gh, issue, state)
-    run = _owner._run_validating_drift(gh, spec, issue, state)
+    _engine_drift._mark_drift_comments_consumed(gh, issue, state)
+    run = _run_validating_drift(gh, spec, issue, state)
     state.set("last_agent_action_at", _usage._now_iso())
     if run.paused:
         # Live pause applied during the drift resume: the helper already
@@ -145,5 +169,5 @@ def _resume_dev_on_validating_drift(
     # prompt explicitly invites that response. `_handle_dev_fix_result` would
     # park on it via `_on_question`; use the user-content-specific helper so a
     # harmless clarification does not stall the issue.
-    _owner._finish_validating_drift(gh, spec, issue, state, run)
+    _finish_validating_drift(gh, spec, issue, state, run)
     return True

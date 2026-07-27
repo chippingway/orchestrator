@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import unittest
 
-from tests import validating_review_test_support as review_support
+from tests.workflow.stages.validating import (
+    validating_review_test_support as review_support,
+)
 
 Path = review_support.Path
 patch = review_support.patch

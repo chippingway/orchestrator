@@ -1,20 +1,45 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Validating approval."""
+"""Everything an approved review still has to survive before it hands off.
+
+The reviewer's verdict is not the last gate. The local verify run comes first
+so an obviously-broken branch never reaches `in_review`, where the next reader
+is a human deciding whether to merge; a default-empty `VERIFY_COMMANDS`
+short-circuits to ok, and a failure parks in `validating` with a durable
+reason rather than advancing. The squash follows, and its failure parks
+WITHOUT relabeling on purpose -- the original commits are still on the branch,
+and only a human can decide whether to keep the history or force it flat.
+
+The ordering inside the handoff matters too. The squash notice is posted
+BEFORE the watermarks are seeded so that its own id lands in the recorded
+orchestrator set and the seed walk steps past it; the reverse order would hand
+in_review an informational post as fresh human PR feedback and wake the dev on
+it. A `get_pr` failure is not fatal here -- in_review still has its legacy
+watermark to fall back on -- so it logs and skips the seed rather than
+stranding an approved branch.
+
+The relabel goes to `documenting`, not straight to `in_review`: the final docs
+pass runs against the approved head, and everything seeded here survives that
+hop.
+"""
 from __future__ import annotations
 
+from typing import Optional
+
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator._workflow_state import log
+from orchestrator.git.publication import squash as _squash
 from orchestrator.git.verification import runner as _verify_runner
-from orchestrator.stages import validating as _owner
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import guards as _guards
-
-_ReviewerRun = _owner._ReviewerRun
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Optional = _owner.Optional
-PinnedState = _owner.PinnedState
-WorkflowLabel = _owner.WorkflowLabel
-config = _owner.config
+from orchestrator.workflow.stages.validating import models as _models
+from orchestrator.workflow.stages.validating import verify as _verify
+from orchestrator.workflow.stages.validating import watermarks as _watermarks
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _seed_in_review_handoff_watermarks(
@@ -33,15 +58,13 @@ def _seed_in_review_handoff_watermarks(
     legacy `last_action_comment_id` watermark -- so we log and return without
     seeding.
     """
-    from orchestrator import workflow as _wf
-
     if pr_number is None:
         return
     try:
         pr = gh.get_pr(int(pr_number))
     except Exception as error:
         # Surface the failure but skip the traceback -- it adds no signal.
-        _wf.log.warning(
+        log.warning(
             "issue=#%s could not snapshot PR #%s for in_review "
             "handoff: %s", issue.number, pr_number, error,
         )
@@ -59,11 +82,11 @@ def _seed_in_review_handoff_watermarks(
                 "to 1 after approval",
             )
         except Exception:
-            _wf.log.exception(
+            log.exception(
                 "issue=#%s could not post squash notice to "
                 "PR #%s", issue.number, pr_number,
             )
-    _owner._seed_in_review_pr_watermarks(gh, issue, state, pr)
+    _seed_in_review_pr_watermarks(gh, issue, state, pr)
 
 
 def _seed_in_review_pr_watermarks(
@@ -87,18 +110,18 @@ def _seed_in_review_pr_watermarks(
     defaults each to 0 so the in_review legacy migration treats them as already
     seeded and does NOT advance past human feedback submitted on those surfaces.
     """
-    issue_wm, review_wm = _owner._latest_pr_comment_ids(gh, issue, pr, state)
+    issue_wm, review_wm = _watermarks._latest_pr_comment_ids(gh, issue, pr, state)
     state.set(
         "pr_last_comment_id",
-        _owner._ratchet_watermark(state.get("pr_last_comment_id"), issue_wm),
+        _watermarks._ratchet_watermark(state.get("pr_last_comment_id"), issue_wm),
     )
     state.set(
         "pr_last_review_comment_id",
-        _owner._ratchet_watermark(state.get("pr_last_review_comment_id"), review_wm),
+        _watermarks._ratchet_watermark(state.get("pr_last_review_comment_id"), review_wm),
     )
     state.set(
         "pr_last_review_summary_id",
-        _owner._ratchet_watermark(state.get("pr_last_review_summary_id"), None),
+        _watermarks._ratchet_watermark(state.get("pr_last_review_summary_id"), None),
     )
 
 
@@ -106,14 +129,14 @@ def _approved_work_verifies(
     gh: GitHubClient,
     issue: Issue,
     state: PinnedState,
-    reviewer_run: _ReviewerRun,
+    reviewer_run: _models._ReviewerRun,
 ) -> bool:
     verify = _verify_runner._run_verify_commands(
         reviewer_run.wt, config.VERIFY_COMMANDS, config.VERIFY_TIMEOUT,
     )
     if verify.status == "ok":
         return True
-    _owner._park_verify_failure(gh, issue, state, verify)
+    _verify._park_verify_failure(gh, issue, state, verify)
     gh.write_pinned_state(issue, state)
     return False
 
@@ -122,10 +145,8 @@ def _post_approval_comment(
     gh: GitHubClient,
     issue: Issue,
     state: PinnedState,
-    reviewer_run: _ReviewerRun,
+    reviewer_run: _models._ReviewerRun,
 ) -> None:
-    from orchestrator import workflow as _wf
-
     if reviewer_run.pr_number is None:
         return
     try:
@@ -136,7 +157,7 @@ def _post_approval_comment(
             f":white_check_mark: {config.REVIEW_AGENT} review approved.",
         )
     except Exception:
-        _wf.log.exception(
+        log.exception(
             "issue=#%s could not post approval to PR #%s",
             issue.number,
             reviewer_run.pr_number,
@@ -166,13 +187,13 @@ def _squash_approved_work(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    reviewer_run: _ReviewerRun,
+    reviewer_run: _models._ReviewerRun,
 ) -> Optional[int]:
     from orchestrator import workflow as _wf
 
     if not config.SQUASH_ON_APPROVAL:
         return 0
-    squash_result = _wf._squash_and_force_push(
+    squash_result = _squash._squash_and_force_push(
         spec,
         reviewer_run.wt,
         _wf._resolve_branch_name(state, spec, issue.number),
@@ -180,7 +201,7 @@ def _squash_approved_work(
     )
     if squash_result[0]:
         return squash_result[2]
-    _owner._park_squash_failure(gh, issue, state, squash_result[3])
+    _park_squash_failure(gh, issue, state, squash_result[3])
     return None
 
 
@@ -189,7 +210,7 @@ def _finalize_validating_approval(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    reviewer_run: _ReviewerRun,
+    reviewer_run: _models._ReviewerRun,
 ) -> None:
     """Finalize an approved review: verify gate, approval comment, optional
     squash, in_review handoff watermarks, then relabel to `documenting`.
@@ -205,15 +226,15 @@ def _finalize_validating_approval(
     final docs pass before in_review picks up; the watermarks, approval, and
     squash comment seeded here are preserved across the documenting hop.
     """
-    if not _owner._approved_work_verifies(gh, issue, state, reviewer_run):
+    if not _approved_work_verifies(gh, issue, state, reviewer_run):
         return
-    _owner._post_approval_comment(gh, issue, state, reviewer_run)
-    squashed_count = _owner._squash_approved_work(
+    _post_approval_comment(gh, issue, state, reviewer_run)
+    squashed_count = _squash_approved_work(
         gh, spec, issue, state, reviewer_run,
     )
     if squashed_count is None:
         return
-    _owner._seed_in_review_handoff_watermarks(
+    _seed_in_review_handoff_watermarks(
         gh, issue, state, reviewer_run.pr_number, squashed_count,
     )
     gh.set_workflow_label(issue, WorkflowLabel.DOCUMENTING)

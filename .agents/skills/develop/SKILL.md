@@ -58,9 +58,8 @@ right:
 - When you move a helper to a new module, either update the test's patch target to the new module
   boundary, or keep the compatibility alias on `orchestrator.workflow` and patch through the facade. Pick one
   approach per PR and be consistent.
-- Stage-handler tests live in `tests/test_workflow_<stage>.py` (`_conflicts`); the validating stage
-  is split into focused `tests/test_workflow_validating_*.py` files (review loops + retry caps,
-  handoff, squash, watermarks, drift, verify, terminal), the in_review stage into focused
+- Stage-handler tests live in `tests/test_workflow_<stage>.py` (`_conflicts`); the in_review stage is
+  split into focused
   `tests/test_workflow_in_review_*.py` files (routing, watermarks, filtering, parked, migration,
   checks, drift, fresh-feedback fixing route), the implementing stage into focused
   `tests/workflow/stages/implementing/test_*.py` files beside its owners (fresh runs, PR reuse +
@@ -68,7 +67,10 @@ right:
   terminal merges / closed issues), the documenting stage into focused
   `tests/workflow/stages/documenting/test_*.py` files beside its owners (routing, missing-PR park,
   terminal finalizes, fresh pass and its guards, recovered-commit push, awaiting-human resume,
-  refused continue, interruption / live pause, drift unwind, final-docs watermarks), and the
+  refused continue, interruption / live pause, drift unwind, final-docs watermarks), the validating
+  stage into focused `tests/workflow/stages/validating/test_*.py` files beside its owners (review
+  loops + retry caps, operator controls, live pause, handoff, squash, terminal, verify + its
+  refusals, drift, watermarks), and the
   decomposition stage into focused
   `tests/test_workflow_decomposition_*.py` files
   (manifest parsing, decomposing/ready/blocked/umbrella stage handlers, child issue creation, hash

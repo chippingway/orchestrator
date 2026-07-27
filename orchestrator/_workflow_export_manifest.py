@@ -139,18 +139,6 @@ EXPORTS = (
         (("_handle_question", "_handle_question"),),
     ),
     *export_group(
-        "orchestrator.stages.validating",
-        (
-            ("_VALIDATING_TRANSIENT_PARK_REASONS", "_VALIDATING_TRANSIENT_PARK_REASONS"),
-            ("_handle_dev_fix_result", "_handle_dev_fix_result"),
-            ("_handle_validating", "_handle_validating"),
-            ("_latest_pr_comment_ids", "_latest_pr_comment_ids"),
-            ("_post_user_content_change_result", "_post_user_content_change_result"),
-            ("_stranded_fix_unpushed", "_stranded_fix_unpushed"),
-            ("_try_recover_validating_transient_park", "_try_recover_validating_transient_park"),
-        ),
-    ),
-    *export_group(
         "orchestrator.usage",
         (("UsageMetrics", "UsageMetrics"),),
     ),
@@ -373,6 +361,35 @@ EXPORTS = (
         (
             ("_SILENT_PARKS_BEFORE_FRESH_SESSION", "_SILENT_PARKS_BEFORE_FRESH_SESSION"),
         ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.dev_fix",
+        (
+            ("_handle_dev_fix_result", "_handle_dev_fix_result"),
+            ("_stranded_fix_unpushed", "_stranded_fix_unpushed"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.drift_outcomes",
+        (("_post_user_content_change_result", "_post_user_content_change_result"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.handler",
+        (("_handle_validating", "_handle_validating"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.recovery",
+        (("_try_recover_validating_transient_park", "_try_recover_validating_transient_park"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.state",
+        (
+            ("_VALIDATING_TRANSIENT_PARK_REASONS", "_VALIDATING_TRANSIENT_PARK_REASONS"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.validating.watermarks",
+        (("_latest_pr_comment_ids", "_latest_pr_comment_ids"),),
     ),
     *export_group(
         "orchestrator.workflow.state",

@@ -9,7 +9,9 @@ from orchestrator import config
 from orchestrator.config import _parse_verify_commands as parse_verify_commands
 from orchestrator.worktrees import VerifyResult
 
-from tests import validating_verify_test_support as verify_support
+from tests.workflow.stages.validating import (
+    validating_verify_test_support as verify_support,
+)
 from tests.workflow_helpers import (
     LABEL_DOCUMENTING,
     LABEL_IN_REVIEW,

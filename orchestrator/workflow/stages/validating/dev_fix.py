@@ -1,22 +1,41 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Validating dev fix."""
+"""What one finished dev fix leaves behind, whichever route started it.
+
+The reviewer feedback route, the awaiting-human resume, and the drift resume
+all end here, because the questions after a dev run are the same three
+regardless of what prompted it: did the run produce something publishable, is
+the tree clean enough to push, and does the reviewer owe the branch another
+look. Only the disposition order differs, and `_dispose_dev_fix_result` fixes
+it -- an interrupted run first, so a shutdown-killed agent parks nothing and
+the next tick simply retries it, then the timeout park, then the question.
+
+`_stranded_fix_unpushed` is the non-obvious gate. A fix committed by an
+earlier run that parked before publishing looks identical to "the agent did
+nothing" on every later resume -- `after_sha == before_sha` -- so without it
+the commit can never reach the PR and the issue ping-pongs between
+awaiting-human parks forever. It is conservative by construction: a dirty
+tree, a failed fetch, or a remote that moved all report False, because
+pushing over a head nobody reconciled is worse than one more park.
+
+`_bump_review_round` is the counter every landed fix pays into. It stays here
+rather than beside any one caller because all three routes owe it for the
+same reason -- the head the reviewer approved or rejected no longer exists,
+so the round it spent does not count against the cap.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _validating_state as _state
-from orchestrator.stages import validating as _owner
-from orchestrator.workflow.engine import guards as _guards
+from pathlib import Path
 
-_DevFixRun = _owner._DevFixRun
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Path = _owner.Path
-PinnedState = _owner.PinnedState
-config = _owner.config
-_PARK_REASON = _state._PARK_REASON
-_PRE_DEV_FIX_SHA = _state._PRE_DEV_FIX_SHA
-_REASON_AGENT_TIMEOUT = _state._REASON_AGENT_TIMEOUT
-_REASON_PUSH_FAILED = _state._REASON_PUSH_FAILED
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.stages.implementing import parks as _dev_parks
+from orchestrator.workflow.stages.validating import models as _models
+from orchestrator.workflow.stages.validating import state as _state
 
 
 def _stranded_fix_unpushed(
@@ -59,14 +78,14 @@ def _park_dev_fix_timeout(
         gh, issue, state,
         f"{config.HITL_MENTIONS} agent timed out after {config.AGENT_TIMEOUT}s, "
         "manual intervention needed.",
-        reason=_REASON_AGENT_TIMEOUT,
+        reason=_state._REASON_AGENT_TIMEOUT,
     )
-    state.set(_PARK_REASON, _REASON_AGENT_TIMEOUT)
-    state.set(_PRE_DEV_FIX_SHA, before_sha or "")
+    state.set(_state._PARK_REASON, _state._REASON_AGENT_TIMEOUT)
+    state.set(_state._PRE_DEV_FIX_SHA, before_sha or "")
 
 
 def _dev_fix_is_publishable(
-    spec: config.RepoSpec, issue: Issue, state: PinnedState, run: _DevFixRun,
+    spec: config.RepoSpec, issue: Issue, state: PinnedState, run: _models._DevFixRun,
 ) -> bool:
     from orchestrator import workflow as _wf
 
@@ -75,7 +94,7 @@ def _dev_fix_is_publishable(
         after_sha = _wf._head_sha(run.worktree)
     if after_sha and after_sha != run.before_sha:
         return True
-    return bool(after_sha) and _owner._stranded_fix_unpushed(
+    return bool(after_sha) and _stranded_fix_unpushed(
         spec, run.worktree, state, issue,
     )
 
@@ -85,14 +104,14 @@ def _publish_dev_fix(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    run: _DevFixRun,
+    run: _models._DevFixRun,
 ) -> bool:
     from orchestrator import workflow as _wf
 
     state.set("silent_park_count", 0)
     dirty = _wf._worktree_dirty_files(run.worktree)
     if dirty:
-        _wf._on_dirty_worktree(gh, issue, state, run.agent_result, dirty)
+        _dev_parks._on_dirty_worktree(gh, issue, state, run.agent_result, dirty)
         return False
     branch = _wf._resolve_branch_name(state, spec, issue.number)
     if _wf._push_branch(spec, run.worktree, branch):
@@ -100,9 +119,9 @@ def _publish_dev_fix(
     _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} git push failed; see orchestrator logs.",
-        reason=_REASON_PUSH_FAILED,
+        reason=_state._REASON_PUSH_FAILED,
     )
-    state.set(_PARK_REASON, _REASON_PUSH_FAILED)
+    state.set(_state._PARK_REASON, _state._REASON_PUSH_FAILED)
     return False
 
 
@@ -111,19 +130,17 @@ def _dispose_dev_fix_result(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    run: _DevFixRun,
+    run: _models._DevFixRun,
 ) -> bool:
-    from orchestrator import workflow as _wf
-
     if run.agent_result.interrupted:
         return False
     if run.agent_result.timed_out:
-        _owner._park_dev_fix_timeout(gh, issue, state, run.before_sha)
+        _park_dev_fix_timeout(gh, issue, state, run.before_sha)
         return False
-    if not _owner._dev_fix_is_publishable(spec, issue, state, run):
-        _wf._on_question(gh, issue, state, run.agent_result)
+    if not _dev_fix_is_publishable(spec, issue, state, run):
+        _dev_parks._on_question(gh, issue, state, run.agent_result)
         return False
-    return _owner._publish_dev_fix(gh, spec, issue, state, run)
+    return _publish_dev_fix(gh, spec, issue, state, run)
 
 
 def _handle_dev_fix_result(
@@ -150,5 +167,10 @@ def _handle_dev_fix_result(
     read (e.g. the fixing handler's ACK fast path); passing it avoids a
     redundant `_head_sha` call. When None it is read here.
     """
-    state, run = _owner._dev_fix_run(context_args, fields)
-    return _owner._dispose_dev_fix_result(gh, spec, issue, state, run)
+    state, run = _models._dev_fix_run(context_args, fields)
+    return _dispose_dev_fix_result(gh, spec, issue, state, run)
+
+
+def _bump_review_round(state: PinnedState) -> None:
+    current_round = int(state.get(_state._REVIEW_ROUND) or 0)
+    state.set(_state._REVIEW_ROUND, current_round + 1)
