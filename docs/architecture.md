@@ -630,6 +630,10 @@ Each tick the polling loop fans `workflow.tick(gh, spec, scheduler=...)` out acr
 repo count. A single long-lived `IssueScheduler` (global cap `MAX_PARALLEL_ISSUES_GLOBAL`, per-repo cap
 `MAX_PARALLEL_ISSUES_PER_REPO`) is shared across all `tick` calls.
 
+One repo's pass is owned by `workflow/engine/tick.py` — the base refresh, the community-contribution PR sweep, the
+skill-catalog emission, and then either the scheduler handoff or the in-tick sequential / bounded-parallel loop, in
+that order (see [the owner's paragraph](#top-level-layout) above for why each step depends on the one before it).
+
 The dispatch loop classifies each issue as family-aware (`decomposing` / `blocked` / `umbrella` / unlabeled — parent
 ↔ child writes) or fan-out (everything else). Fan-out submits go one callable per issue. Every family-aware issue this
 tick is folded into ONE bucket submit per repo that drains them sequentially on a single executor worker so a stale

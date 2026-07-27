@@ -47,8 +47,9 @@ Three non-workflow **control labels** modify behavior without occupying the work
   continue command is not an un-pause and does not clear
   `paused`. It is unrelated to un-pausing, but not exempt from it — the hard skip fires in `_process_issue` before any
   handler, so a continue comment posted on a paused issue is deferred with everything else until the label is removed.
-- `community_contribution` is applied by the per-tick open-PR sweep when `ALLOWED_ISSUE_AUTHORS` is configured: any open
-  PR whose author is not in the allowlist is labeled and `HITL_HANDLE` is @-mentioned once per PR. Bot-authored PRs
+- `community_contribution` is applied by the per-tick open-PR sweep (on the `workflow/engine/tick.py` owner, which
+  drives it before per-issue dispatch) when `ALLOWED_ISSUE_AUTHORS` is configured: any open PR whose author is not in
+  the allowlist is labeled and `HITL_HANDLE` is @-mentioned once per PR. Bot-authored PRs
   (Dependabot, Renovate, CI bots) are skipped via GitHub's `user.type == "Bot"` flag — they open PRs structurally and
   are not community contributions. The orchestrator does not otherwise drive these PRs. With `ALLOWED_ISSUE_AUTHORS`
   empty (the default), the sweep is a no-op.
@@ -108,6 +109,13 @@ and dispatches per-issue handlers through a long-lived `IssueScheduler` capped b
 `MAX_PARALLEL_ISSUES_PER_REPO`. See
 [`architecture.md#per-tick-flow-workflowtick`](architecture.md#per-tick-flow-workflowtick) for the multi-repo dispatch
 and scheduler lifecycle.
+
+One repo's pass is owned by `workflow/engine/tick.py` (`workflow.tick` resolves to it) and runs four things in a fixed
+order: the base refresh below, then the community-contribution PR sweep and the repo skill-catalog emission, then
+either the scheduler handoff or the in-tick sequential / bounded-parallel loop. The refresh goes first because the two
+passes after it read what its fetch left behind, and it is the only one whose failure the tick catches — the sweep and
+the emission are internally fail-open. Both of those sit before the scheduler / in-tick split so they fire exactly once
+per tick on either path.
 
 The dispatch loop classifies each pollable issue by workflow label before submitting it:
 
