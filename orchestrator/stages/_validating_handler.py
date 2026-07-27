@@ -76,7 +76,7 @@ def _run_reviewer_round(
     # fresh each round.
     if _wf._paused_during_agent_run(gh, issue):
         return None
-    _wf._accumulate_issue_usage(state, review.usage)
+    _usage._accumulate_issue_usage(state, review.usage)
     if review.session_id:
         state.set("last_review_session_id", review.session_id)
     state.set("last_review_at", _usage._now_iso())

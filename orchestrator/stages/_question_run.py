@@ -120,7 +120,7 @@ def _finalize_closed_question(run: _QuestionRun) -> bool:
     run.gh.set_workflow_label(run.issue, WorkflowLabel.DONE)
     # The receipt is posted before the single state write so its comment id is
     # tracked alongside the terminal timestamp.
-    _wf._post_issue_usage_verdict(run.gh, run.issue, run.state)
+    _usage._post_issue_usage_verdict(run.gh, run.issue, run.state)
     run.gh.write_pinned_state(run.issue, run.state)
     _worktree_terminal._cleanup_question_worktree(
         run.spec,

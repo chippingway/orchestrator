@@ -132,13 +132,15 @@ orchestrator/
       usage.py          the tracked agent run: the request model, the audit
                         spawn/exit pair, the analytics record and its
                         configured-model fallback, the `skill_triggered`
-                        emission, and the UTC stamp the stages write
+                        emission, the per-issue counters that record's usage is
+                        folded into and the terminal receipt read off them, and
+                        the UTC stamp the stages write
   _workflow_export_manifest.py / _workflow_exports.py
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
   _workflow_*.py        tick/scheduling, dispatch, pickup, terminal routing,
-                        per-issue usage totals, and run-guard leaves
+                        and run-guard leaves
   workflow_drift.py     lazy user-content-drift compatibility facade
   _workflow_drift_*.py  drift hashing and stage-route leaves
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
@@ -407,9 +409,15 @@ a caller describes the run with, the `agent_spawn` / `agent_exit` audit pair, th
 opt-in trajectory record is built from), and the `skill_triggered` events that record's return value drives. They
 share the one request object, so a field added for the audit event is already the field the record and the skill
 event repeat. `_now_iso` sits with them because the pinned-state stamps it writes — `last_agent_action_at`,
-`last_review_at`, `decomposed_at`, the terminal `merged_at` — all mark when a run or its verdict landed. Its own
-helpers call each other in-module, and every stage leaf that spawns an agent or stamps a run imports the owner, so a
-patch that has to intercept a tracked run, its exit record, or the emitted skill events targets
+`last_review_at`, `decomposed_at`, the terminal `merged_at` — all mark when a run or its verdict landed. The
+per-issue meter closes the same loop: the `UsageMetrics` the record attaches to the returned result is exactly what
+`_accumulate_issue_usage` folds into the `issue_agent_runs` / `issue_total_tokens` / `issue_total_cost_usd` /
+`issue_cost_sources` counters, and `_format_issue_usage_verdict` reads them back into the one receipt line
+`_post_issue_usage_verdict` posts as a tracked comment at a terminal. The fold deliberately sits outside the spawn:
+`_run_agent_tracked` writes no pinned state, so the handler that owns the write stays its only writer and an
+interrupted run that never persists simply undercounts. Its own helpers call each other in-module, and every stage
+leaf that spawns an agent, stamps a run, or folds its usage imports the owner, so a patch that has to intercept a
+tracked run, its exit record, the emitted skill events, or the per-issue counters targets
 `orchestrator.workflow.engine.usage`; `workflow` still resolves the whole group to the owner's exact object. The one
 name it deliberately reaches back through the facade for is `run_agent`: that is the seam the stage tests replace to
 drive a handler without a CLI, so `patch.object(workflow, "run_agent", ...)` stays the way to intercept the spawn
@@ -518,11 +526,12 @@ from `timed_out` (the orchestrator's own `AGENT_TIMEOUT` firing). `usage` (defau
 `usage.UsageMetrics` `analytics.record_agent_exit` attaches during a tracked run so callers can read token /
 cost metrics off the result without re-parsing stdout; it stays `None` for a result that never flowed through
 `_run_agent_tracked` or whose usage parse failed (fail-open). The developer (implementing), reviewer
-(validating), decomposer (decomposing), and question handlers consume it: `workflow._accumulate_issue_usage` folds
+(validating), decomposer (decomposing), and question handlers consume it: `_accumulate_issue_usage` — in
+`workflow/engine/usage.py`, which each of those handlers binds directly — folds
 each run's `usage` into the per-issue `issue_agent_runs` / `issue_total_tokens` / `issue_total_cost_usd` /
 `issue_cost_sources` counters on the pinned state
 ([`state-machine.md#pinned-state`](state-machine.md#pinned-state)); at each terminal (PR merge / reject, umbrella
-close, closed question) `workflow._format_issue_usage_verdict` reads those counters back into one visible receipt
+close, closed question) `_format_issue_usage_verdict` beside it reads those counters back into one visible receipt
 comment — the sole read-side consumer, and nothing gates on the figure. `CodexResult` is kept as a
 transitional alias.
 

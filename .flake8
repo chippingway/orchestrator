@@ -59,6 +59,17 @@
 # the prompt and the parser that reads its answer drift apart, so WPS202 is
 # waived.
 #
+# orchestrator/workflow/engine/usage.py is one owner for everything a tracked
+# agent run is accounted by -- the audit pair and analytics record the spawn is
+# bookended with, and the per-issue counters the usage that record parses is
+# then folded into -- so it carries 10 members past the same ceiling and names
+# 15 imports past the WPS201 ceiling of 12. The fold consumes the `UsageMetrics`
+# the record produced, so splitting the halves apart would put one run's
+# accounting across two modules, and the import list is just the union of what
+# each half is typed by: the analytics sink and the agent result on one side,
+# the issue, the pinned state, and the comment poster on the other. WPS201 and
+# WPS202 are waived.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -88,6 +99,7 @@ per-file-ignores =
     orchestrator/workflow/engine/comments.py:WPS202
     orchestrator/workflow/engine/messages.py:WPS202
     orchestrator/workflow/engine/prompts.py:WPS202
+    orchestrator/workflow/engine/usage.py:WPS201,WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

@@ -70,7 +70,7 @@ def _spawn_implementer(
         review_round=state.get("review_round", 0),
         retry_count=state.get(_RETRY_COUNT),
     )
-    _wf._accumulate_issue_usage(state, agent_result.usage)
+    _usage._accumulate_issue_usage(state, agent_result.usage)
     if agent_result.session_id:
         state.set(_DEV_SESSION_ID, agent_result.session_id)
         state.set(_DEV_RESUME_COUNT, 0)

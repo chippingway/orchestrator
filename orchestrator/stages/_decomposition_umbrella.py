@@ -42,7 +42,7 @@ def _complete_umbrella(
     from orchestrator import workflow as _wf
 
     close_body = ":white_check_mark: all children resolved; closing umbrella issue."
-    verdict = _wf._format_issue_usage_verdict(state)
+    verdict = _usage._format_issue_usage_verdict(state)
     if verdict:
         close_body = f"{close_body}\n\n{verdict}"
     _comments._post_issue_comment(gh, issue, state, close_body)

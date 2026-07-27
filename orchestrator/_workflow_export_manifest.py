@@ -158,14 +158,6 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._workflow_usage",
-        (
-            ("_accumulate_issue_usage", "_accumulate_issue_usage"),
-            ("_format_issue_usage_verdict", "_format_issue_usage_verdict"),
-            ("_post_issue_usage_verdict", "_post_issue_usage_verdict"),
-        ),
-    ),
-    *export_group(
         "orchestrator.agents",
         (
             ("AgentResult", "AgentResult"),
@@ -342,10 +334,13 @@ EXPORTS = (
         "orchestrator.workflow.engine.usage",
         (
             ("_AgentRunRequest", "_AgentRunRequest"),
+            ("_accumulate_issue_usage", "_accumulate_issue_usage"),
             ("_agent_run_kwargs", "_agent_run_kwargs"),
             ("_configured_model", "_configured_model"),
             ("_emit_triggered_skills", "_emit_triggered_skills"),
+            ("_format_issue_usage_verdict", "_format_issue_usage_verdict"),
             ("_now_iso", "_now_iso"),
+            ("_post_issue_usage_verdict", "_post_issue_usage_verdict"),
             ("_record_tracked_agent_exit", "_record_tracked_agent_exit"),
             ("_run_agent_tracked", "_run_agent_tracked"),
         ),
