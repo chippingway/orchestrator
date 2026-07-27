@@ -5,7 +5,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
+from orchestrator.stages import conflicts as _conflicts
+from orchestrator.workflow.engine import dispatch as _dispatch
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import _TEST_SPEC
@@ -24,8 +25,8 @@ class HandleResolvingConflictDispatchTest(unittest.TestCase):
         gh.add_issue(issue)
 
         conflict_handler = MagicMock()
-        with patch.object(workflow, "_handle_resolving_conflict", conflict_handler):
-            workflow._process_issue(gh, _TEST_SPEC, issue)
+        with patch.object(_conflicts, "_handle_resolving_conflict", conflict_handler):
+            _dispatch._process_issue(gh, _TEST_SPEC, issue)
 
         conflict_handler.assert_called_once_with(gh, _TEST_SPEC, issue)
 

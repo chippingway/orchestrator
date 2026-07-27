@@ -5,8 +5,9 @@ from __future__ import annotations
 
 from orchestrator import _workflow_state as _state
 from orchestrator import workflow as _owner
+from orchestrator.workflow.engine import dispatch as _dispatch
 
-_PollablePartition = _owner._PollablePartition
+_PollablePartition = _dispatch._PollablePartition
 Any = _owner.Any
 GitHubClient = _owner.GitHubClient
 IssueScheduler = _owner.IssueScheduler
@@ -40,7 +41,7 @@ def _run_sequential_tick(
     for issue in gh.list_pollable_issues():
         try:
             with semaphore_cm:
-                _owner._process_issue(gh, spec, issue)
+                _dispatch._process_issue(gh, spec, issue)
         except Exception:
             log.exception(
                 _PROCESSING_FAILED_LOG,
@@ -67,7 +68,7 @@ def _drain_family_bucket(
     """
     for issue_number in family_numbers:
         try:
-            _owner._refetch_and_process(
+            _dispatch._refetch_and_process(
                 gh, spec, issue_number, semaphore_cm=semaphore_cm,
             )
         except Exception:
@@ -105,7 +106,7 @@ class _ParallelTickPlan:
         for issue_number in self.partition.fanout_numbers:
             futures[
                 executor.submit(
-                    _owner._refetch_and_process,
+                    _dispatch._refetch_and_process,
                     self.gh,
                     self.spec,
                     issue_number,
@@ -166,7 +167,7 @@ def _run_parallel_tick(
     starve fanout under a small `limit`.
     """
     plan = _ParallelTickPlan(
-        gh, spec, _owner._partition_pollable_issues(gh, spec), semaphore_cm,
+        gh, spec, _dispatch._partition_pollable_issues(gh, spec), semaphore_cm,
     )
     if plan.task_count == 0:
         return
@@ -242,7 +243,7 @@ def tick(
     # scheduler/legacy split so it fires once per tick on both paths.
     _owner._emit_repo_skill_catalog(spec)
     if scheduler is not None:
-        _owner._dispatch_via_scheduler(gh, spec, scheduler)
+        _dispatch._dispatch_via_scheduler(gh, spec, scheduler)
         return
     # `parallel_limit` is the local cap on worker threads this tick spins up.
     # The host-wide `MAX_PARALLEL_ISSUES_GLOBAL` cap is enforced by

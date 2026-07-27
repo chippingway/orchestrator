@@ -70,17 +70,27 @@ orchestrator process is stateless.
   `pickup_comment_id`, the `user_content_hash` baseline computed with that id filtered out, the
   workflow label, and the pinned state, with the chosen stage handler called in the same tick
   through a call-time import of its `orchestrator/stages/` facade -- and over the
-  `workflow/engine/terminals.py` owner closing the subpackage: the three arcs an issue stops on --
+  `workflow/engine/terminals.py` owner beside them: the three arcs an issue stops on --
   merged PR, PR closed unmerged, and a human-closed issue over an open PR -- sharing one tail of
   terminal stamp, terminal label, usage receipt, and single pinned-state write, with the `pr_merged` /
   `pr_closed_without_merge` payloads, the issue close, and the local + remote branch cleanup the two
   PR-gone arcs alone earn, reached either through the drain the PR-holding stages hand their own PR
   to or through the pair of entry-time finalizers that fetch their own and answer a failed fetch by
-  leaving the issue alone and by deferring the tick respectively -- and over the empty
-  `workflow/stages/` package beside that subpackage, the destination the per-label stage facades
-  migrate to one at a time: it binds nothing, a migrated stage keeps the lazy hooks it already
-  publishes, and the `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading
-  every name back off the owner), per-stage
+  leaving the issue alone and by deferring the tick respectively -- and over the
+  `workflow/engine/dispatch.py` owner closing the subpackage: everything between a repo's pollable
+  issues and a running stage handler -- the `backlog` / `paused` filter applied both before the
+  partition and again in `_process_issue`, the family / fanout split that serializes the
+  cross-issue writers (`decomposing` / `blocked` / `umbrella` and the unlabeled-pickup `None`)
+  and the failed label read routed conservatively into that bucket, the cap exemption a no-agent
+  family bucket and a closed fan-out issue are submitted under, the per-worker client and refetch
+  only issue numbers cross a thread with, the scheduler submits and the sequential bucket drain
+  with its `track_active` claim, and the `stage_evaluation` record every timed dispatch appends,
+  with each handler reached through a call-time import of the module its label is paired with in
+  `_STAGE_HANDLER_TARGETS` -- and over the empty `workflow/stages/` package
+  beside that subpackage, the destination the per-label stage facades migrate to one at a time: it
+  binds nothing, a migrated stage keeps the lazy hooks it already publishes, and the
+  `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading every name back off
+  the owner), per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
@@ -203,17 +213,15 @@ orchestrator process is stateless.
   paths, `_dirty` for dirty / rebase-in-progress parking, `_recovery` for recovery pushes, `_diverged` for stale /
   diverged worktree handling, `_publish` for already-rebased force-publish scenarios, `_publish_guard` for the
   publish-guard probe unit tests, `_drift` for hash-drift resume behavior), with resume fixtures in
-  `tests/conflict_resume_test_support.py`); scheduler-dispatch tests are split across
-  `tests/test_workflow_scheduler_*.py`,
-  with subsystem-specific support in
-  `tests/scheduler_routing_*.py`; other facade-level helper tests
+  `tests/conflict_resume_test_support.py`); other facade-level helper tests
   include (`tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
   `tests/test_workflow_tick_parallel.py`,
-  `tests/test_workflow_backlog_routing.py`, `tests/test_workflow_question_routing.py`,
+  `tests/test_workflow_question_routing.py`,
   `tests/test_workflow_documenting_routing.py`, `tests/test_workflow_fixing_routing.py`,
-  `tests/test_workflow_in_review_fresh_feedback.py`, `tests/test_workflow_community_contribution.py`,
-  `tests/test_workflow_stage_analytics.py`); shared helpers in `tests/workflow_helpers.py`. Configuration-package
+  `tests/test_workflow_in_review_fresh_feedback.py`,
+  `tests/test_workflow_community_contribution.py`); shared helpers in `tests/workflow_helpers.py`.
+  Configuration-package
   tests live in `tests/config/`, agent-package owner / import-cycle tests in `tests/agents/`, and github-package
   client (construction, token resolution, worker clone, label cache), label (vocabulary, predicates, and bootstrap),
   event, issue-query, issue-client (real-client polling and child creation), pollable-listing, pinned-state,
@@ -271,8 +279,8 @@ orchestrator process is stateless.
   their collaborator patch table, refresh fixtures and scenarios, real-git fixtures, anchor / clean / park
   assertions, and recovery-context / call-order support modules. Workflow-package tests live in
   `tests/workflow/`: the clean-process imports of the package, its `engine/` subpackage, and the `state`,
-  `engine/comments.py`, `engine/drift.py`, `engine/guards.py`, `engine/messages.py`, `engine/pickup.py`,
-  `engine/prompts.py`, `engine/terminals.py`, and
+  `engine/comments.py`, `engine/dispatch.py`, `engine/drift.py`, `engine/guards.py`, `engine/messages.py`,
+  `engine/pickup.py`, `engine/prompts.py`, `engine/terminals.py`, and
   `engine/usage.py` owners, the guard that
   importing either the facade or the state
   owner resolves no manifest target and no
@@ -327,7 +335,7 @@ orchestrator process is stateless.
   its case-insensitive and empty-list matches, the start each `DECOMPOSE` setting selects on the owner, the
   label and anchors each start has already published by the time it dispatches the stage owner in the same
   tick, and the facade that still forwards its five names (`test_pickup.py`). The terminal owner's
-  coverage closes the directory: the merged, closed-unmerged, and human-closed arcs with the stamp, label,
+  coverage follows: the merged, closed-unmerged, and human-closed arcs with the stamp, label,
   event payload, issue close, and branch cleanup each earns (`test_terminals_drain.py`), the two states that
   fire no arc at all -- a `None` PR and an open PR under an open issue (`test_terminals_no_op.py`), the
   already-closed issue a merged arc must not re-close and the tracked receipt every arc posts before its
@@ -336,7 +344,19 @@ orchestrator process is stateless.
   no-`pr_number` / open-PR / closed-unmerged negatives, its open- and already-closed-issue finalizes, and the
   receipt it skips on an empty meter (`test_terminals_finalize.py`), with the scenario models, issue numbers,
   and drain / cleanup / receipt assertions the first four share in
-  `tests/workflow/engine/terminals_test_support.py`. The mirrored
+  `tests/workflow/engine/terminals_test_support.py`. The dispatch owner's coverage
+  closes the directory: the facade forward of all nineteen names (`test_dispatch.py`), the `backlog` and
+  `paused` holds that must run no handler, write no label, and post no comment, and the resume a removed
+  label is (`test_dispatch_backlog.py`, `test_dispatch_paused.py`), the one `stage_evaluation` record each
+  dispatch appends across the happy, unlabeled, error, hard-skip, and disabled-sink paths
+  (`test_dispatch_analytics.py`), and the scheduler-dispatch scenarios in
+  `tests/workflow/engine/test_dispatch_scheduler_*.py` — the hard-skip issue that must not starve fanout
+  (`_backlog`), the closed-issue probe and its cap-exempt fan-out submit (`_closed`), the no-agent bucket's
+  cap exemption and the mixes that forfeit it (`_exemption`), the single sequential bucket and its
+  in-flight claim (`_family`), the per-issue submits and the duplicate-active skip (`_fanout`), and the
+  per-worker client the refetch mints (`_isolation`) — with their fixtures, fakes, and gated workers in
+  `tests/workflow/engine/dispatch_scheduler_test_support.py`, `dispatch_scheduler_fakes.py`, and
+  `dispatch_scheduler_workers.py`. The mirrored
   `tests/workflow/stages/` directory holds what the migration destination owes before any stage lands there: its
   clean-process import, the layering guard that the package costs the facade above it and nothing else, and the
   surface checks that its initializer binds only submodules and that `orchestrator.stages` stays the module the

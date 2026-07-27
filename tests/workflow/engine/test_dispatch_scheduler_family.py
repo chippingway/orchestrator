@@ -16,19 +16,19 @@ from tests.workflow_helpers import (
     LABEL_IMPLEMENTING,
 )
 
-from tests.scheduler_routing_workers import (
+from tests.workflow.engine.dispatch_scheduler_workers import (
     _GatedWorker,
     _wait_for_first_started,
     _wait_for_log,
 )
 
-from tests.scheduler_routing_test_support import (
+from tests.workflow.engine.dispatch_scheduler_test_support import (
+    _patch_process_issue,
     _SchedulerWorkflowTest,
 )
 
 REPO_SLUG = "acme/widget"
 TARGET_ROOT = Path("/tmp/orchestrator-test-target-root")
-PROCESS_ISSUE = "_process_issue"
 REFRESH_BASE = "_refresh_base_and_worktrees"
 FANOUT_START_TIMEOUT_MESSAGE = "implementing fanout #1 did not start"
 POLL_INTERVAL_SECONDS = 0.01
@@ -214,7 +214,7 @@ class FamilyBucketRoutingTest(_SchedulerWorkflowTest):
                 level=logging.INFO,
             ) as logs,
             patch.object(workflow, REFRESH_BASE),
-            patch.object(workflow, PROCESS_ISSUE, side_effect=process),
+            _patch_process_issue(side_effect=process),
         ):
             workflow.tick(gh, self._spec(), scheduler=sched)
             self.assertTrue(

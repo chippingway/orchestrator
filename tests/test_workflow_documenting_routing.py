@@ -10,7 +10,12 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import workflow
+from orchestrator.stages import (
+    documenting as _documenting,
+    implementing as _implementing,
+    validating as _validating,
+)
+from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import _TEST_SPEC
@@ -26,12 +31,12 @@ def _routing_handlers(
     issue,
 ):
     with (
-        patch.object(workflow, "_handle_documenting") as documenting_handler,
-        patch.object(workflow, "_handle_pickup") as pickup_handler,
-        patch.object(workflow, "_handle_implementing") as implementing_handler,
-        patch.object(workflow, "_handle_validating") as validating_handler,
+        patch.object(_documenting, "_handle_documenting") as documenting_handler,
+        patch.object(_pickup, "_handle_pickup") as pickup_handler,
+        patch.object(_implementing, "_handle_implementing") as implementing_handler,
+        patch.object(_validating, "_handle_validating") as validating_handler,
     ):
-        workflow._process_issue(gh, _TEST_SPEC, issue)
+        _dispatch._process_issue(gh, _TEST_SPEC, issue)
         return (
             documenting_handler,
             pickup_handler,
@@ -95,7 +100,7 @@ class DocumentingLabelRegistrationTest(unittest.TestCase):
         # worktree, so the label must stay out of `_FAMILY_AWARE_LABELS`
         # -- otherwise the parallel tick path would route it through the
         # single-threaded family bucket and defeat fan-out concurrency.
-        self.assertNotIn(LABEL_DOCUMENTING, workflow._FAMILY_AWARE_LABELS)
+        self.assertNotIn(LABEL_DOCUMENTING, _dispatch._FAMILY_AWARE_LABELS)
 
     def test_label_is_in_pr_refresh_detours(self) -> None:
         # Behind-base PR-having worktrees need to be routed through
@@ -136,7 +141,7 @@ class DocumentingLabelRoutingTest(unittest.TestCase):
         issue = make_issue(MISSING_PR_ISSUE_NUMBER, label=LABEL_DOCUMENTING)
         gh.add_issue(issue)
 
-        workflow._process_issue(gh, _TEST_SPEC, issue)
+        _dispatch._process_issue(gh, _TEST_SPEC, issue)
 
         self.assertEqual(len(gh.posted_comments), 1)
         issue_number, body = gh.posted_comments[0]
@@ -162,7 +167,7 @@ class DocumentingLabelRoutingTest(unittest.TestCase):
         gh.add_issue(issue)
         gh.seed_state(PARKED_MISSING_PR_ISSUE_NUMBER, awaiting_human=True)
 
-        workflow._process_issue(gh, _TEST_SPEC, issue)
+        _dispatch._process_issue(gh, _TEST_SPEC, issue)
 
         self.assertEqual(gh.posted_comments, [])
         self.assertEqual(gh.write_state_calls, 0)

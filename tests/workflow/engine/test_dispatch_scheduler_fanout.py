@@ -13,11 +13,11 @@ from tests.workflow_helpers import (
     LABEL_IMPLEMENTING,
 )
 
-from tests.scheduler_routing_workers import (
+from tests.workflow.engine.dispatch_scheduler_workers import (
     _BarrierIssueProcessor,
 )
 
-from tests.scheduler_routing_test_support import (
+from tests.workflow.engine.dispatch_scheduler_test_support import (
     _SchedulerWorkflowTest,
 )
 

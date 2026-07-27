@@ -70,6 +70,19 @@
 # the issue, the pinned state, and the comment poster on the other. WPS201 and
 # WPS202 are waived.
 #
+# orchestrator/workflow/engine/dispatch.py is one owner for everything between
+# a repo's pollable issues and a running stage handler -- the hard-skip filter,
+# the family / fanout partition and its cap-exemption probe, the per-worker
+# refetch, the scheduler submits, and the timed per-issue dispatch -- so it
+# carries 15 members past the WPS202 ceiling of 7 and names 16 imports past the
+# WPS201 ceiling of 12. Each link is only safe given the one before it: the
+# filter is what keeps a parked issue from flipping the bucket cap-counted, and
+# the partition is what the exemption probe reads, so splitting them would put
+# one tick's concurrency contract across several modules. The import list is
+# the union of what that chain is typed by -- the issue and client it routes,
+# the labels it filters on, the scheduler it submits to, and the analytics sink
+# it times into. WPS201 and WPS202 are waived.
+#
 # orchestrator/workflow/engine/drift.py is one owner for what a user-content
 # change is and what it costs -- the hash, the six filters that keep it from
 # moving on content no human wrote, and the two routes a real move is handed
@@ -113,6 +126,7 @@ per-file-ignores =
     orchestrator/workflow/__init__.py:WPS412
     orchestrator/workflow/state.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
+    orchestrator/workflow/engine/dispatch.py:WPS201,WPS202
     orchestrator/workflow/engine/drift.py:WPS202
     orchestrator/workflow/engine/messages.py:WPS202
     orchestrator/workflow/engine/prompts.py:WPS202

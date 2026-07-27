@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib
 import subprocess
 import sys
 import unittest
@@ -12,29 +13,24 @@ from pathlib import Path
 from orchestrator import _workflow_export_manifest
 from orchestrator import workflow as _workflow
 from orchestrator.workflow import engine as _engine
-from orchestrator.workflow.engine import (
-    comments as _comments,
-    drift as _drift,
-    guards as _guards,
-    messages as _messages,
-    pickup as _pickup,
-    prompts as _prompts,
-    terminals as _terminals,
-    usage as _usage,
-)
 from tests.reexport_test_support import lazy_targets, resolve_target
+
+_ENGINE_OWNERS = (
+    "comments",
+    "dispatch",
+    "drift",
+    "guards",
+    "messages",
+    "pickup",
+    "prompts",
+    "terminals",
+    "usage",
+)
 
 _MODULES = (
     "orchestrator.workflow",
     "orchestrator.workflow.engine",
-    "orchestrator.workflow.engine.comments",
-    "orchestrator.workflow.engine.drift",
-    "orchestrator.workflow.engine.guards",
-    "orchestrator.workflow.engine.messages",
-    "orchestrator.workflow.engine.pickup",
-    "orchestrator.workflow.engine.prompts",
-    "orchestrator.workflow.engine.terminals",
-    "orchestrator.workflow.engine.usage",
+    *(f"orchestrator.workflow.engine.{owner}" for owner in _ENGINE_OWNERS),
     "orchestrator.workflow.state",
 )
 
@@ -44,13 +40,13 @@ _MODULES = (
 # to, the worktree and GitHub subsystems those reach, and the analytics and
 # config packages behind the shared dependency bindings.
 _DEFERRED_MODULES = (
-    "orchestrator._workflow_dispatch",
     "orchestrator._workflow_tick",
     "orchestrator.analytics",
     "orchestrator.config",
     "orchestrator.github",
     "orchestrator.stages",
     "orchestrator.workflow.engine",
+    "orchestrator.workflow.engine.dispatch",
     "orchestrator.workflow.stages",
     "orchestrator.worktrees",
 )
@@ -141,14 +137,12 @@ class PackageSurfaceTest(unittest.TestCase):
         # is the only thing allowed to appear here. A re-export beside it would
         # make the initializer a second identity for that owner and charge every
         # importer of one owner for the imports of all the others.
-        self.assertIs(_engine.comments, _comments)
-        self.assertIs(_engine.drift, _drift)
-        self.assertIs(_engine.guards, _guards)
-        self.assertIs(_engine.messages, _messages)
-        self.assertIs(_engine.pickup, _pickup)
-        self.assertIs(_engine.prompts, _prompts)
-        self.assertIs(_engine.terminals, _terminals)
-        self.assertIs(_engine.usage, _usage)
+        for owner in _ENGINE_OWNERS:
+            with self.subTest(owner=owner):
+                self.assertIs(
+                    getattr(_engine, owner),
+                    importlib.import_module(f"{_engine.__name__}.{owner}"),
+                )
         for name, bound in _engine.__dict__.items():
             if name.startswith("__"):
                 continue

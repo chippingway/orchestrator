@@ -8,6 +8,11 @@ import unittest
 
 from orchestrator import worktrees
 from orchestrator.github import labels as _labels
+from orchestrator.stages import fixing as _fixing
+from orchestrator.stages import implementing as _implementing
+from orchestrator.stages import in_review as _in_review
+from orchestrator.workflow.engine import dispatch as _dispatch
+from orchestrator.workflow.engine import pickup as _pickup
 from tests import fixing_routing_test_support as support
 from tests.implementing_fixing_test_cases import IssueScenario
 
@@ -59,7 +64,7 @@ class FixingLabelDefinitionTest(unittest.TestCase, _PatchedWorkflowMixin):
         # worktree, so the label must stay out of `_FAMILY_AWARE_LABELS` --
         # otherwise the parallel tick path would route it through the
         # single-threaded family bucket and defeat fan-out concurrency.
-        self.assertNotIn(LABEL_FIXING, workflow._FAMILY_AWARE_LABELS)
+        self.assertNotIn(LABEL_FIXING, _dispatch._FAMILY_AWARE_LABELS)
 
     def test_fixing_label_is_in_pr_refresh_detour_set(self) -> None:
         # Behind-base PR-having worktrees need to be routed through
@@ -76,12 +81,12 @@ class FixingLabelDefinitionTest(unittest.TestCase, _PatchedWorkflowMixin):
         scenario.github.add_issue(scenario.issue)
 
         with (
-            patch.object(workflow, "_handle_fixing") as fixing_handler,
-            patch.object(workflow, "_handle_pickup") as pickup,
-            patch.object(workflow, "_handle_implementing") as impl,
-            patch.object(workflow, "_handle_in_review") as in_review,
+            patch.object(_fixing, "_handle_fixing") as fixing_handler,
+            patch.object(_pickup, "_handle_pickup") as pickup,
+            patch.object(_implementing, "_handle_implementing") as impl,
+            patch.object(_in_review, "_handle_in_review") as in_review,
         ):
-            workflow._process_issue(
+            _dispatch._process_issue(
                 scenario.github,
                 _TEST_SPEC,
                 scenario.issue,

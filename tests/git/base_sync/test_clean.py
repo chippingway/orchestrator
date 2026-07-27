@@ -7,7 +7,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import workflow
+from orchestrator.stages import in_review as _in_review
+from orchestrator.workflow.engine import dispatch as _dispatch
 
 from tests.git.base_sync.refresh_scenarios import (
     PUSH_PATCH,
@@ -108,12 +109,12 @@ class CleanRebaseRoutingUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase
         in_review = _AwaitingHumanRecorder()
 
         with patch.object(
-            workflow,
+            _in_review,
             "_handle_in_review",
             side_effect=in_review,
         ):
             scenario.run(self)
-            workflow._process_issue(
+            _dispatch._process_issue(
                 self.gh,
                 self.spec,
                 self.gh._issues[ISSUE],

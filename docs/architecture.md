@@ -114,11 +114,15 @@ orchestrator/
                         `ControlLabel` vocabularies, strict label coercion, the
                         declared transition graph, and the transition guard
     engine/
-      __init__.py       package marker only; reserved for the tick, dispatch,
-                        and remaining shared-helper owners
+      __init__.py       package marker only; reserved for the tick loop and
+                        the remaining shared-helper owners
       comments.py       the orchestrator marker and capped id ledger both
                         comment posters write, the trusted-author thread read
                         every prompt quotes, and the tracked-repos block
+      dispatch.py       one tick's pollable issues turned into handler calls:
+                        the hard-skip filter, the family / fanout partition and
+                        its cap exemptions, the per-worker refetch, the
+                        scheduler submits, and the timed per-issue dispatch
       drift.py          the user-content hash, the filters that keep
                         orchestrator, bot, untrusted, and bare-continue
                         comments out of it, the dev-resume prompt and consumed
@@ -158,7 +162,8 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
-  _workflow_*.py        tick/scheduling and dispatch leaves
+  _workflow_*.py        tick loop, community-contribution sweep, and the
+                        immutable values they share
   workflow_drift.py     lazy user-content-drift compatibility facade
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   _workflow_messages_*.py
@@ -518,6 +523,32 @@ merged-PR issue `rejected`. Its own helpers call each other in-module and reach 
 receipt and `git.worktrees` for the branch name and the cleanup, and every stage leaf that drains or finalizes a
 terminal imports the owner, so a patch that has to intercept an arc, a drain, or an entry-time finalize targets
 `orchestrator.workflow.engine.terminals`; `workflow` still resolves the whole group to the owner's exact object.
+
+`workflow/engine/dispatch.py` is bound the same way. It owns everything between "the repo has open issues" and "one
+`_handle_<stage>` is running", and the pieces sit together because each is only safe given the one before it. The
+`backlog` / `paused` filter runs twice on purpose — once in `_classify_pollable_issue` so a parked issue never
+reaches the partition, and once in `_process_issue` so a directly dispatched one is still refused — and the early
+drop is not an optimization: a parked issue carries no workflow label, so leaving it in would fold it into the
+family bucket, flip that bucket cap-counted, and reserve the only per-repo slot under the default
+`parallel_limit=1`. The partition itself is the concurrency contract: the cross-issue writers (`decomposing` /
+`blocked` / `umbrella` and the unlabeled-pickup `None`) collect into one bucket that drains sequentially, everything
+else fans out, and a label read that raises is answered `(False, None)` so the unreadable issue lands in the
+serialized bucket where `_process_issue`'s own per-issue exception isolation can pick up a sustained failure. Cap
+exemption is what keeps that serialization from deadlocking — a bucket whose every label is a no-agent handler
+(`_CAP_EXEMPT_FAMILY_LABELS`) and a closed fan-out issue whose handler is a terminal finalize both skip the per-repo
+and global caps. Only issue numbers cross a thread boundary; `_refetch_and_process` mints a per-worker client and
+refetches against it, because PyGithub's `Issue` and the `Requester` chain behind it are not documented thread-safe.
+Its own helpers call each other in-module, and each handler is reached through a call-time import of the module
+`_STAGE_HANDLER_TARGETS` pairs with its label — eleven `orchestrator/stages/` facades plus the `pickup` sibling an
+unlabeled issue starts on. That table stays owner-private, because the facade's inventory is the historical surface
+rather than a mirror of the owner: what `workflow` publishes is `_ISSUE_HANDLER_NAMES`, the label → handler-name half
+of it, derived from the table so the two cannot disagree about which labels route. The import is deferred because the
+stage tree imports this subpackage, so binding one at module scope would point that edge back at itself; the lookup
+stays an attribute read, so a stage that migrates to `workflow/stages/` keeps answering through the forwarder it
+leaves behind. That makes the owning module, not `workflow`, the target for a patch that has to intercept a
+dispatched handler, and this owner the target for one aimed at the partition, the cap-exemption probe, the timed
+dispatch, or a scheduler submit. `workflow` still resolves all nineteen names to the owner's exact object for callers
+outside the package; `_workflow_tick.py` binds the owner directly.
 
 Stage-private helpers stay private to their stage facade (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). Cross-stage helpers like `_comment_created_at`
