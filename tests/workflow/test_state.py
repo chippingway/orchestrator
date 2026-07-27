@@ -8,8 +8,9 @@ import pathlib
 import re
 import unittest
 
-from orchestrator import base_sync, workflow
+from orchestrator import base_sync
 from orchestrator.github import labels as _labels
+from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.state import (
     ALLOWED_TRANSITIONS,
     ControlLabel,
@@ -52,8 +53,8 @@ class WorkflowLabelEnumTest(unittest.TestCase):
     def test_frozenset_membership_both_directions(self) -> None:
         # Plain string against an enum-valued set, and enum against a
         # string-seeded set -- both must hold (hash/eq match str).
-        self.assertIn("blocked", workflow._FAMILY_AWARE_LABELS)
-        self.assertIn(WorkflowLabel.BLOCKED, workflow._FAMILY_AWARE_LABELS)
+        self.assertIn("blocked", _dispatch._FAMILY_AWARE_LABELS)
+        self.assertIn(WorkflowLabel.BLOCKED, _dispatch._FAMILY_AWARE_LABELS)
         self.assertIn(_VALIDATING_LABEL, base_sync._PR_REFRESH_DETOUR_LABELS)
         self.assertIn(WorkflowLabel.FIXING, base_sync._PR_REFRESH_DETOUR_LABELS)
 

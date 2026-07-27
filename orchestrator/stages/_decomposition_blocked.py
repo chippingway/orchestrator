@@ -129,7 +129,7 @@ def _handle_blocked(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> No
     children unblocks).
 
     The orchestrator's parallel tick path (see
-    `workflow._FAMILY_AWARE_LABELS`) submits the whole family-aware
+    `dispatch._FAMILY_AWARE_LABELS`) submits the whole family-aware
     bucket as a single drain task on one worker thread, so only one of
     `decomposing`, `blocked`, or `umbrella` runs at a time within a
     tick -- even when other issues fan out across worker threads. A

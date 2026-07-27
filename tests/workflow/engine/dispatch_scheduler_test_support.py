@@ -9,8 +9,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config, workflow
-from orchestrator.github.labels import BACKLOG_LABEL
 from orchestrator.scheduler import IssueScheduler
+from orchestrator.workflow.engine import dispatch
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow_helpers import (
@@ -18,7 +18,7 @@ from tests.workflow_helpers import (
     TEST_BASE_BRANCH,
 )
 
-from tests.scheduler_routing_workers import (
+from tests.workflow.engine.dispatch_scheduler_workers import (
     _IssueProcessor,
     _SequentialIssueProcessor,
 )
@@ -34,6 +34,11 @@ WORKER_TIMEOUT_SECONDS = 5.0
 DEFERRED_ISSUE_NUMBERS = (10, 11, 12)
 FAMILY_ISSUE_NUMBER = 42
 RELABELLED_FANOUT_ISSUE_NUMBER = 50
+
+
+def _patch_process_issue(*args, **kwargs):
+    """Intercept the per-issue dispatch on the owner the tick calls."""
+    return patch.object(dispatch, PROCESS_ISSUE, *args, **kwargs)
 
 
 class _SchedulerWorkflowTest(unittest.TestCase):
@@ -106,11 +111,7 @@ class _SchedulerWorkflowTest(unittest.TestCase):
     def _route_through(self, processor):
         with (
             patch.object(workflow, REFRESH_BASE),
-            patch.object(
-                workflow,
-                PROCESS_ISSUE,
-                side_effect=processor,
-            ),
+            _patch_process_issue(side_effect=processor),
         ):
             yield
 
@@ -126,7 +127,7 @@ class _BacklogDispatchFixture(_SchedulerWorkflowTest):
     (`_process_issue` skips them anyway).
     """
 
-    def _parked_issue(self, number: int, label: str = BACKLOG_LABEL):
+    def _parked_issue(self, number: int, label: str):
         issue = make_issue(number)
         issue.labels.append(FakeLabel(label))
         return issue

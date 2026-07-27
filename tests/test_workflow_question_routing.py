@@ -10,7 +10,10 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import workflow
+from orchestrator.stages import implementing as _implementing
+from orchestrator.stages import question as _question
+from orchestrator.workflow.engine import dispatch as _dispatch
+from orchestrator.workflow.engine import pickup as _pickup
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import LABEL_QUESTION, _TEST_SPEC
@@ -44,7 +47,7 @@ class QuestionLabelRoutingTest(unittest.TestCase):
         # label must stay out of `_FAMILY_AWARE_LABELS` -- otherwise the
         # parallel tick path would route it through the single-threaded
         # family bucket and defeat fan-out concurrency.
-        self.assertNotIn(LABEL_QUESTION, workflow._FAMILY_AWARE_LABELS)
+        self.assertNotIn(LABEL_QUESTION, _dispatch._FAMILY_AWARE_LABELS)
 
     def test_dispatcher_routes_question_to_handler(self) -> None:
         gh = FakeGitHubClient()
@@ -52,11 +55,11 @@ class QuestionLabelRoutingTest(unittest.TestCase):
         gh.add_issue(issue)
 
         with (
-            patch.object(workflow, "_handle_question") as question_handler,
-            patch.object(workflow, "_handle_pickup") as pickup,
-            patch.object(workflow, "_handle_implementing") as impl,
+            patch.object(_question, "_handle_question") as question_handler,
+            patch.object(_pickup, "_handle_pickup") as pickup,
+            patch.object(_implementing, "_handle_implementing") as impl,
         ):
-            workflow._process_issue(gh, _TEST_SPEC, issue)
+            _dispatch._process_issue(gh, _TEST_SPEC, issue)
             question_handler.assert_called_once_with(gh, _TEST_SPEC, issue)
             pickup.assert_not_called()
             impl.assert_not_called()

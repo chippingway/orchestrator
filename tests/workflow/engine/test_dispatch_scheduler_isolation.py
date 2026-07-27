@@ -13,23 +13,23 @@ from orchestrator import workflow
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.git.base_sync.sync_test_support import _patch_base_sync
 
-from tests.scheduler_routing_workers import (
+from tests.workflow.engine.dispatch_scheduler_workers import (
     _record_current_thread,
 )
 
-from tests.scheduler_routing_fakes import (
+from tests.workflow.engine.dispatch_scheduler_fakes import (
     _FakeWorktreeRoot,
     _WorkerClientFactory,
 )
 
-from tests.scheduler_routing_test_support import (
+from tests.workflow.engine.dispatch_scheduler_test_support import (
+    _patch_process_issue,
     LABEL_IMPLEMENTING,
     _SchedulerWorkflowTest,
 )
 
 REPO_SLUG = "acme/widget"
 TARGET_ROOT = Path("/tmp/orchestrator-test-target-root")
-PROCESS_ISSUE = "_process_issue"
 REFRESH_BASE = "_refresh_base_and_worktrees"
 FANOUT_START_TIMEOUT_MESSAGE = "implementing fanout #1 did not start"
 POLL_INTERVAL_SECONDS = 0.01
@@ -64,9 +64,7 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
                 workflow,
                 REFRESH_BASE,
             ),
-            patch.object(
-                workflow,
-                PROCESS_ISSUE,
+            _patch_process_issue(
                 side_effect=lambda *args: _record_current_thread(worker_threads, *args),
             ),
         ):
@@ -135,7 +133,7 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
                 workflow,
                 REFRESH_BASE,
             ),
-            patch.object(workflow, PROCESS_ISSUE, process),
+            _patch_process_issue(process),
         ):
             workflow.tick(gh, self._spec(), scheduler=sched)
             self._wait_idle(sched, REPO_SLUG)
@@ -173,6 +171,6 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
                 worktrees_root=MagicMock(return_value=refresh.root),
                 sync=refresh.sync,
             ),
-            patch.object(workflow, PROCESS_ISSUE, side_effect=processor),
+            _patch_process_issue(side_effect=processor),
         ):
             yield

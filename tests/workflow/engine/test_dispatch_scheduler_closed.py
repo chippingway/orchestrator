@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import workflow
+from orchestrator.workflow.engine import dispatch
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import (
@@ -16,17 +17,17 @@ from tests.workflow_helpers import (
     STATE_OPEN,
 )
 
-from tests.scheduler_routing_fakes import (
+from tests.workflow.engine.dispatch_scheduler_fakes import (
     _PyGithubIssue,
 )
 
-from tests.scheduler_routing_test_support import (
+from tests.workflow.engine.dispatch_scheduler_test_support import (
+    _patch_process_issue,
     _SchedulerWorkflowTest,
 )
 
 REPO_SLUG = "acme/widget"
 TARGET_ROOT = Path("/tmp/orchestrator-test-target-root")
-PROCESS_ISSUE = "_process_issue"
 REFRESH_BASE = "_refresh_base_and_worktrees"
 FANOUT_START_TIMEOUT_MESSAGE = "implementing fanout #1 did not start"
 POLL_INTERVAL_SECONDS = 0.01
@@ -62,9 +63,7 @@ class ClosedFanoutCapExemptionTest(_SchedulerWorkflowTest):
         process = self._processor(1, 2)
         with (
             patch.object(workflow, REFRESH_BASE),
-            patch.object(
-                workflow,
-                PROCESS_ISSUE,
+            _patch_process_issue(
                 side_effect=process,
             ),
         ):
@@ -93,9 +92,7 @@ class ClosedFanoutCapExemptionTest(_SchedulerWorkflowTest):
         process = self._processor(1)
         with (
             patch.object(workflow, REFRESH_BASE),
-            patch.object(
-                workflow,
-                PROCESS_ISSUE,
+            _patch_process_issue(
                 side_effect=process,
             ),
         ):
@@ -118,9 +115,7 @@ class ClosedFanoutCapExemptionTest(_SchedulerWorkflowTest):
         process = self._processor(1, 2)
         with (
             patch.object(workflow, REFRESH_BASE),
-            patch.object(
-                workflow,
-                PROCESS_ISSUE,
+            _patch_process_issue(
                 side_effect=process,
             ),
         ):
@@ -140,16 +135,16 @@ class IssueIsClosedHelperTest(unittest.TestCase):
 
     def test_detects_fake_closed_bool(self) -> None:
         issue = make_issue(1, label=LABEL_IN_REVIEW)
-        self.assertFalse(workflow._issue_is_closed(issue))
+        self.assertFalse(dispatch._issue_is_closed(issue))
         issue.closed = True
-        self.assertTrue(workflow._issue_is_closed(issue))
+        self.assertTrue(dispatch._issue_is_closed(issue))
 
     def test_detects_pygithub_state_string(self) -> None:
         self.assertTrue(
-            workflow._issue_is_closed(_PyGithubIssue(STATE_CLOSED)),
+            dispatch._issue_is_closed(_PyGithubIssue(STATE_CLOSED)),
         )
         self.assertFalse(
-            workflow._issue_is_closed(_PyGithubIssue(STATE_OPEN)),
+            dispatch._issue_is_closed(_PyGithubIssue(STATE_OPEN)),
         )
 
 

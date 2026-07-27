@@ -13,8 +13,10 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator import analytics, workflow
+from orchestrator import analytics
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
+from orchestrator.stages import implementing, validating
+from orchestrator.workflow.engine import dispatch, pickup
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow_helpers import (
@@ -57,17 +59,17 @@ def _process_hard_skipped_issue(skip_label: str) -> tuple[MagicMock, list[dict]]
         gh.add_issue(issue)
         handler_mock = MagicMock()
         with patch.object(analytics, _ANALYTICS_PATH_ATTR, path), patch.object(
-            workflow,
+            implementing,
             "_handle_implementing",
             handler_mock,
         ):
-            workflow._process_issue(gh, _TEST_SPEC, issue)
+            dispatch._process_issue(gh, _TEST_SPEC, issue)
         return handler_mock, _analytics_records(path)
 
 
 def _process_error(gh: FakeGitHubClient, issue) -> RuntimeError:
     try:
-        workflow._process_issue(gh, _TEST_SPEC, issue)
+        dispatch._process_issue(gh, _TEST_SPEC, issue)
     except RuntimeError as error:
         return error
     raise AssertionError("the stage handler did not propagate its error")
@@ -83,8 +85,8 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
     `stage_evaluation` analytics record carrying repo / issue / stage /
     duration_s / result. The record fires on both happy-path and
     exception paths; an unhandled handler exception still propagates so
-    the per-issue tick try/except in `workflow.tick` keeps the legacy
-    isolation behavior. Backlog-skips are NOT timed -- no handler runs.
+    the per-issue tick try/except in `workflow.tick` owns the isolation.
+    Backlog-skips are NOT timed -- no handler runs.
     """
 
     def test_success_appends_evaluation_record(self) -> None:
@@ -97,8 +99,8 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             issue = make_issue(_SUCCESS_ISSUE, label=LABEL_IMPLEMENTING)
             gh.add_issue(issue)
             with patch.object(analytics, _ANALYTICS_PATH_ATTR, path), \
-                 patch.object(workflow, "_handle_implementing"):
-                workflow._process_issue(gh, _TEST_SPEC, issue)
+                 patch.object(implementing, "_handle_implementing"):
+                dispatch._process_issue(gh, _TEST_SPEC, issue)
             record = _stage_evaluations(path, _SUCCESS_ISSUE)[0]
         self.assertEqual(record["repo"], TEST_REPO_SLUG)
         self.assertEqual(record[_STAGE_KEY], LABEL_IMPLEMENTING)
@@ -121,8 +123,8 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             issue = make_issue(_UNLABELED_ISSUE)
             gh.add_issue(issue)
             with patch.object(analytics, _ANALYTICS_PATH_ATTR, path), \
-                 patch.object(workflow, "_handle_pickup"):
-                workflow._process_issue(gh, _TEST_SPEC, issue)
+                 patch.object(pickup, "_handle_pickup"):
+                dispatch._process_issue(gh, _TEST_SPEC, issue)
             record = _stage_evaluations(path, _UNLABELED_ISSUE)[0]
         self.assertNotIn(_STAGE_KEY, record)
         self.assertEqual(record["result"], "ok")
@@ -143,7 +145,7 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             with (
                 patch.object(analytics, _ANALYTICS_PATH_ATTR, path),
                 patch.object(
-                    workflow,
+                    validating,
                     "_handle_validating",
                     side_effect=RuntimeError("handler blew up"),
                 ),
@@ -179,8 +181,8 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             issue = make_issue(_DISABLED_SINK_ISSUE, label=LABEL_IMPLEMENTING)
             gh.add_issue(issue)
             with patch.object(analytics, _ANALYTICS_PATH_ATTR, None), \
-                 patch.object(workflow, "_handle_implementing"):
-                workflow._process_issue(gh, _TEST_SPEC, issue)
+                 patch.object(implementing, "_handle_implementing"):
+                dispatch._process_issue(gh, _TEST_SPEC, issue)
             self.assertFalse(sentinel.exists())
             self.assertEqual(list(Path(td).iterdir()), [])
 

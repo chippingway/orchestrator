@@ -18,12 +18,13 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
 from orchestrator.github.labels import (
     BACKLOG_LABEL,
     PAUSED_LABEL,
     hard_skip_control_label,
 )
+from orchestrator.stages import implementing
+from orchestrator.workflow.engine import dispatch, pickup
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow_helpers import _TEST_SPEC
@@ -50,8 +51,8 @@ class PausedLabelSkipsProcessingTest(unittest.TestCase):
         gh.add_issue(issue)
 
         implementing_mock = MagicMock()
-        with patch.object(workflow, "_handle_implementing", implementing_mock):
-            workflow._process_issue(gh, _TEST_SPEC, issue)
+        with patch.object(implementing, "_handle_implementing", implementing_mock):
+            dispatch._process_issue(gh, _TEST_SPEC, issue)
 
         implementing_mock.assert_not_called()
         self.assertEqual(gh.label_history, [])
@@ -64,8 +65,8 @@ class PausedLabelSkipsProcessingTest(unittest.TestCase):
         gh.add_issue(issue)
 
         pickup_mock = MagicMock()
-        with patch.object(workflow, "_handle_pickup", pickup_mock):
-            workflow._process_issue(gh, _TEST_SPEC, issue)
+        with patch.object(pickup, "_handle_pickup", pickup_mock):
+            dispatch._process_issue(gh, _TEST_SPEC, issue)
 
         pickup_mock.assert_not_called()
         self.assertEqual(gh.label_history, [])
@@ -76,8 +77,8 @@ class PausedLabelSkipsProcessingTest(unittest.TestCase):
         gh.add_issue(issue)
 
         implementing_mock = MagicMock()
-        with patch.object(workflow, "_handle_implementing", implementing_mock):
-            workflow._process_issue(gh, _TEST_SPEC, issue)
+        with patch.object(implementing, "_handle_implementing", implementing_mock):
+            dispatch._process_issue(gh, _TEST_SPEC, issue)
 
         implementing_mock.assert_called_once_with(gh, _TEST_SPEC, issue)
 

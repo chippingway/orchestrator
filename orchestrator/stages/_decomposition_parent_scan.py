@@ -58,7 +58,7 @@ def _read_child_labels(
     Returns a child scan with issues and labels keyed by child number, or
     None if any child read raised (the caller returns and the tick retries
     on the next poll). Labels are read fresh here: the family-aware bucket
-    (see `workflow._FAMILY_AWARE_LABELS`) serializes decomposing / blocked
+    (see `dispatch._FAMILY_AWARE_LABELS`) serializes decomposing / blocked
     / umbrella within a tick, so a child's own label flip cannot race this
     read.
     """

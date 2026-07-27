@@ -312,6 +312,7 @@ class TickEmitsRepoSkillCatalogTest(unittest.TestCase):
 
     def test_tick_calls_emit_once(self) -> None:
         from orchestrator import workflow
+        from orchestrator.workflow.engine import dispatch
         from tests.fakes import FakeGitHubClient, make_issue
         from tests.workflow_helpers import _TEST_SPEC
 
@@ -319,7 +320,7 @@ class TickEmitsRepoSkillCatalogTest(unittest.TestCase):
         gh.add_issue(make_issue(1, label="implementing"))
         emit = MagicMock()
         with patch.object(workflow, "_refresh_base_and_worktrees"), \
-                patch.object(workflow, "_process_issue"), \
+                patch.object(dispatch, "_process_issue"), \
                 patch.object(workflow, "_emit_repo_skill_catalog", emit):
             workflow.tick(gh, _TEST_SPEC)
         emit.assert_called_once_with(_TEST_SPEC)

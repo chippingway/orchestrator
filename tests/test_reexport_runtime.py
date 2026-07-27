@@ -1,17 +1,12 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Runtime identity, wildcard inventory, and patch routing for facades."""
+"""Runtime identity and wildcard inventory for the lazy facades."""
 from __future__ import annotations
 
 import unittest
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
 
-from tests.reexport_test_facades import LAZY_FACADES, WORKFLOW_FACADE
+from tests.reexport_test_facades import LAZY_FACADES
 from tests.reexport_test_support import lazy_targets, resolve_target
-
-
-_ISSUE_NUMBER = 17
 
 
 class ReexportRuntimeTest(unittest.TestCase):
@@ -35,20 +30,3 @@ class ReexportRuntimeTest(unittest.TestCase):
                     exported is getattr(module, name)
                     for name, exported in namespace.items()
                 ))
-
-    def test_workflow_handler_patch_stays_late_bound(self) -> None:
-        issue = SimpleNamespace(number=_ISSUE_NUMBER)
-        spec = SimpleNamespace(slug="owner/repo")
-        ready_handler = Mock()
-        with patch.object(
-            WORKFLOW_FACADE,
-            "_handle_ready",
-            ready_handler,
-        ):
-            WORKFLOW_FACADE._route_issue_to_handler(
-                None,
-                spec,
-                issue,
-                "ready",
-            )
-        ready_handler.assert_called_once_with(None, spec, issue)

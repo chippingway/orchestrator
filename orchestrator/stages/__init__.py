@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Per-stage handlers for the orchestrator state machine.
 
-The dispatcher (`orchestrator.workflow._process_issue`) still owns the
-label->handler routing; modules under this package own the bodies of
-those handlers and their stage-private helpers. `orchestrator.workflow`
+The dispatcher (`orchestrator.workflow.engine.dispatch`) owns the
+label->handler routing and imports the module its table names for a
+label at call time; modules under this package own the bodies of those
+handlers and their stage-private helpers. `orchestrator.workflow` also
 re-exports each handler under its original `_handle_*` name so direct
 test references and intra-handler calls keep working.
 
