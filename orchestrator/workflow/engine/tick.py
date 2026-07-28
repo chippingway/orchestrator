@@ -33,10 +33,11 @@ slot and leaves the other `limit - 1` free for fanout. Per-family-issue futures
 behind a shared lock would instead let a waiting family future hold a second
 slot and starve fanout under a small `limit`.
 
-Two collaborators are reached as ``_wf`` attributes rather than off their own
-owners: `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog` are the
-seams the tick tests replace to drive a pass without a git remote or a clone,
-and the facade attribute is what they patch.
+One collaborator is reached as a ``_wf`` attribute rather than off its own
+owner: `_refresh_base_and_worktrees` is the seam the tick tests replace to drive
+a pass without a git remote or a clone, and the facade attribute is what they
+patch. The skill-catalog emission is named on its owner instead, so a test
+intercepting that pass patches `orchestrator.skills.catalog`.
 """
 from __future__ import annotations
 
@@ -52,6 +53,7 @@ from orchestrator._workflow_state import _PROCESSING_FAILED_LOG, log
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
 from orchestrator.scheduler import IssueScheduler
+from orchestrator.skills import catalog as _catalog
 from orchestrator.workflow.engine import dispatch as _dispatch
 
 
@@ -365,7 +367,7 @@ def tick(
     # ref. Producer-side observability only and internally fail-open, so a
     # missing clone / git error never stops the tick; placed before the
     # scheduler/legacy split so it fires once per tick on both paths.
-    _wf._emit_repo_skill_catalog(spec)
+    _catalog._emit_repo_skill_catalog(spec)
     if scheduler is not None:
         _dispatch._dispatch_via_scheduler(gh, spec, scheduler)
         return

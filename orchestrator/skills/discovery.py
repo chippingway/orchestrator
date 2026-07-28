@@ -1,6 +1,23 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Filesystem discovery of skills and tools offered to local Codex runs."""
+"""Filesystem discovery of skills and tools offered to local Codex runs.
+
+Codex's `codex exec --json` stream -- unlike claude's `system`/`init` frame --
+carries no offered-skills or offered-tools catalog, so a codex run's
+`skills_available` / `tools` would stay empty. As an out-of-band workaround
+`discover_local_skills` scans, directly on the filesystem, the repo skill roots
+under the run's worktree plus the global `$CODEX_HOME/skills` codex loads --
+including the built-in skills under that global root's `.system` container. It
+is fail-open (a missing root contributes nothing) and reads only skill *names*,
+never `SKILL.md` contents. `discover_codex_tools` returns a best-effort static
+baseline of codex exec's offered tools (codex's stream, unlike its skill files,
+exposes no filesystem source for these).
+
+The roots and the marker file are defined here rather than beside the caller
+that scans them hardest: this owner reaches nothing outside the standard
+library, so `catalog` can read them back and the two enumerations cannot
+disagree about what a skill definition is.
+"""
 from __future__ import annotations
 
 import os
@@ -8,8 +25,15 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Iterable
 
+# Skill roots, in the order a repo definition takes precedence over a global
+# one. Both are relative: `catalog` passes them to `git ls-tree` as pathspecs
+# on a base ref, while the scans here join them onto a worktree.
 _SKILL_ROOTS = (".agents/skills", ".claude/skills")
+
+# The single file that marks a skill definition. Only a file with exactly this
+# name, sitting directly under `<root>/<name>/`, defines a skill.
 _SKILL_FILE = "SKILL.md"
+
 _SYSTEM_SKILL_DIR = ".system"
 
 

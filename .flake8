@@ -95,14 +95,15 @@
 # orchestrator/workflow/engine/tick.py is one owner for a single repo's polling
 # pass -- the base refresh, the community-contribution sweep, the skill-catalog
 # emission, the scheduler handoff, and the two in-tick execution modes -- so it
-# carries 11 members past the WPS202 ceiling of 7 and names 13 imports past the
+# carries 11 members past the WPS202 ceiling of 7 and names 14 imports past the
 # WPS201 ceiling of 12. The order those passes run in IS the behavior a tick is
 # defined by, so a pass hoisted into its own module would leave that order
 # unreadable from any one of them; the sweep in particular has no per-issue home
 # because the PRs it labels carry no pinned state. The import list is the union
 # of what one pass needs -- the executor and semaphore the fanout is bounded by,
-# the client and spec every pass is typed by, the label the sweep writes, and
-# the scheduler the handoff submits to. WPS201 and WPS202 are waived.
+# the client and spec every pass is typed by, the label the sweep writes, the
+# catalog owner the skill emission calls, and the scheduler the handoff submits
+# to. WPS201 and WPS202 are waived.
 #
 # orchestrator/workflow/engine/drift.py is one owner for what a user-content
 # change is and what it costs -- the hash, the six filters that keep it from

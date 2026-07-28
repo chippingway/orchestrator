@@ -508,13 +508,16 @@ orchestrator/
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
     dashboard/          destination for the Streamlit analytics page
     trajectory_viewer/  destination for the file-backed trajectory page
-  skill_catalog.py      per-tick repo skill-catalog collection: enumerate
+  skills/               the two skill-enumeration owners
+    __init__.py         package marker only; callers name an owner
+    catalog.py          per-tick repo skill-catalog collection: enumerate
                         SKILL.md definitions on the target base ref and
-                        append one `repo_skill_catalog` analytics record;
-                        plus the per-run `discover_local_skills` filesystem
-                        scan and `discover_codex_tools` baseline that backfill
-                        a codex trajectory's offered skills and tools
-  _local_skills.py      per-run filesystem skill discovery and codex tool list
+                        append one `repo_skill_catalog` analytics record
+    discovery.py        per-run filesystem skill discovery and codex tool
+                        list, plus the skill roots and SKILL.md marker
+                        `catalog.py` reads back
+  skill_catalog.py      temporary compatibility site re-exporting the skills
+                        owners under skills/
   stages/
     <stage>.py          temporary forwarder for each historical stage, reading
                         every name back off its owners under `workflow/stages/`
@@ -789,10 +792,13 @@ retries. Either way each issue is wrapped in its own try/except, and the family 
 task so it holds a single worker slot and leaves the other `limit - 1` free for fanout. It reaches `dispatch.py` for
 the partition, the per-worker refetch, and both dispatch routes, so a patch aimed at a sweep helper or an execution
 mode targets `orchestrator.workflow.engine.tick`; `workflow` still resolves all eleven names to the owner's exact
-object, `tick` among them, which keeps `main._run_tick`'s `workflow.tick(...)` call unchanged. The two collaborators
-it deliberately reaches back through the facade for are `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog`:
-those are the seams the tick tests replace to drive a pass without a git remote or a clone, so
-`patch.object(workflow, ...)` stays the way to intercept either.
+object, `tick` among them, which keeps `main._run_tick`'s `workflow.tick(...)` call unchanged. The one collaborator
+it deliberately reaches back through the facade for is `_refresh_base_and_worktrees`: that is the seam the tick tests
+replace to drive a pass without a git remote or a clone, so `patch.object(workflow, ...)` stays the way to intercept
+it. The skill-catalog emission is named on its owner instead — the tick imports `orchestrator/skills/catalog.py`, so
+`patch.object(catalog, "_emit_repo_skill_catalog", ...)` is what intercepts that pass and nothing on the tick path
+loads the `skill_catalog.py` compatibility site. `workflow._emit_repo_skill_catalog` still resolves to the same
+owner object for historical callers.
 
 Stage-private helpers stay private to the stage that owns them (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). A helper more than one stage reaches for is

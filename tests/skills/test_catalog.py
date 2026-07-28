@@ -1,14 +1,16 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""Base-ref catalog collection, its record shape, and the tick that drives it."""
 from __future__ import annotations
 
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import analytics, skill_catalog
+from orchestrator import analytics
+from orchestrator.skills import catalog
 
-from tests.skill_catalog_test_support import (
+from tests.skills.skills_test_support import (
     _capture_analytics_records,
     _catalog_identity,
     _completed,
@@ -42,7 +44,7 @@ class ExtractSkillCatalogTest(unittest.TestCase):
             _AGENT_DEVELOP_SKILL_PATH,
             _AGENT_REVIEW_SKILL_PATH,
         ]
-        skills, skill_paths = skill_catalog._extract_skill_catalog(paths)
+        skills, skill_paths = catalog._extract_skill_catalog(paths)
         self.assertEqual(skills, [_DEVELOP_SKILL, _REVIEW_SKILL])
         self.assertEqual(
             skill_paths,
@@ -59,7 +61,7 @@ class ExtractSkillCatalogTest(unittest.TestCase):
             ".claude/skills/verify/SKILL.md",
             ".claude/skills/run/SKILL.md",
         ]
-        skills, skill_paths = skill_catalog._extract_skill_catalog(paths)
+        skills, skill_paths = catalog._extract_skill_catalog(paths)
         self.assertEqual(skills, ["run", "verify"])
         self.assertEqual(
             skill_paths,
@@ -77,7 +79,7 @@ class ExtractSkillCatalogTest(unittest.TestCase):
             _AGENT_REVIEW_SKILL_PATH,
             _AGENT_DEVELOP_SKILL_PATH,
         ]
-        skills, skill_paths = skill_catalog._extract_skill_catalog(paths)
+        skills, skill_paths = catalog._extract_skill_catalog(paths)
         self.assertEqual(skills, [_DEVELOP_SKILL, _REVIEW_SKILL])
         self.assertEqual(
             skill_paths[_REVIEW_SKILL],
@@ -104,14 +106,14 @@ class ExtractSkillCatalogTest(unittest.TestCase):
             "docs/skills/leaked/SKILL.md",
             "",
         ]
-        skills, skill_paths = skill_catalog._extract_skill_catalog(paths)
+        skills, skill_paths = catalog._extract_skill_catalog(paths)
         self.assertEqual(skills, [_REVIEW_SKILL])
         self.assertEqual(
             skill_paths, {_REVIEW_SKILL: [_AGENT_REVIEW_SKILL_PATH]},
         )
 
     def test_empty_input_yields_empty_catalog(self) -> None:
-        skills, skill_paths = skill_catalog._extract_skill_catalog([])
+        skills, skill_paths = catalog._extract_skill_catalog([])
         self.assertEqual(skills, [])
         self.assertEqual(skill_paths, {})
 
@@ -188,8 +190,8 @@ class ListSkillTreeTest(unittest.TestCase):
     def test_missing_target_root_returns_none(self) -> None:
         spec = _spec(target_root="/tmp/does-not-exist-skill-catalog-xyz")
         git_mock = MagicMock()
-        with patch.object(skill_catalog, "_git", git_mock):
-            self.assertIsNone(skill_catalog._list_skill_tree(spec))
+        with patch.object(catalog, "_git", git_mock):
+            self.assertIsNone(catalog._list_skill_tree(spec))
         git_mock.assert_not_called()
 
     def test_ls_tree_command_and_parse(self) -> None:
@@ -202,8 +204,8 @@ class ListSkillTreeTest(unittest.TestCase):
                 ".claude/skills/review/SKILL.md\n"
                 "\n",
             ))
-            with patch.object(skill_catalog, "_git", git_mock):
-                lines = skill_catalog._list_skill_tree(spec)
+            with patch.object(catalog, "_git", git_mock):
+                lines = catalog._list_skill_tree(spec)
         self.assertEqual(
             lines,
             [
@@ -225,13 +227,13 @@ class ListSkillTreeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             spec = _spec(target_root=td)
             with patch.object(
-                skill_catalog, "_git",
+                catalog, "_git",
                 return_value=_completed(
                     returncode=_BAD_REF_EXIT_CODE,
                     stderr="bad ref",
                 ),
             ):
-                self.assertIsNone(skill_catalog._list_skill_tree(spec))
+                self.assertIsNone(catalog._list_skill_tree(spec))
 
 
 class EmitRepoSkillCatalogTest(unittest.TestCase):
@@ -250,11 +252,11 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
         ]
         record_mock = MagicMock()
         with patch.object(
-            skill_catalog, _LIST_SKILL_TREE_METHOD, return_value=paths,
+            catalog, _LIST_SKILL_TREE_METHOD, return_value=paths,
         ), patch.object(
             analytics, _RECORD_CATALOG_METHOD, record_mock,
         ):
-            skill_catalog._emit_repo_skill_catalog(spec)
+            catalog._emit_repo_skill_catalog(spec)
         record_mock.assert_called_once_with(
             repo="acme/widgets",
             base_branch="trunk",
@@ -273,11 +275,11 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
         spec = _spec()
         record_mock = MagicMock()
         with patch.object(
-            skill_catalog, _LIST_SKILL_TREE_METHOD, return_value=[],
+            catalog, _LIST_SKILL_TREE_METHOD, return_value=[],
         ), patch.object(
             analytics, _RECORD_CATALOG_METHOD, record_mock,
         ):
-            skill_catalog._emit_repo_skill_catalog(spec)
+            catalog._emit_repo_skill_catalog(spec)
         _, kwargs = record_mock.call_args
         self.assertEqual(kwargs["skills_available"], [])
         self.assertIsNone(kwargs["skill_paths"])
@@ -286,24 +288,24 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
         spec = _spec()
         record_mock = MagicMock()
         with patch.object(
-            skill_catalog, _LIST_SKILL_TREE_METHOD, return_value=None,
+            catalog, _LIST_SKILL_TREE_METHOD, return_value=None,
         ), patch.object(
             analytics, _RECORD_CATALOG_METHOD, record_mock,
         ):
-            skill_catalog._emit_repo_skill_catalog(spec)
+            catalog._emit_repo_skill_catalog(spec)
         record_mock.assert_not_called()
 
     def test_failure_is_swallowed(self) -> None:
         spec = _spec()
         record_mock = MagicMock()
         with patch.object(
-            skill_catalog, _LIST_SKILL_TREE_METHOD,
+            catalog, _LIST_SKILL_TREE_METHOD,
             side_effect=RuntimeError("boom"),
         ), patch.object(
             analytics, _RECORD_CATALOG_METHOD, record_mock,
         ):
             # Must not raise -- catalog collection is fail-open.
-            skill_catalog._emit_repo_skill_catalog(spec)
+            catalog._emit_repo_skill_catalog(spec)
         record_mock.assert_not_called()
 
 
@@ -311,6 +313,9 @@ class TickEmitsRepoSkillCatalogTest(unittest.TestCase):
     """`workflow.tick` drives `_emit_repo_skill_catalog` once per tick."""
 
     def test_tick_calls_emit_once(self) -> None:
+        # The tick names this owner, so patching it here is what intercepts
+        # the pass -- and what proves the spec it is handed is the one being
+        # polled, which is all the catalog needs to read the right base ref.
         from orchestrator import workflow
         from orchestrator.workflow.engine import dispatch
         from tests.fakes import FakeGitHubClient, make_issue
@@ -321,7 +326,7 @@ class TickEmitsRepoSkillCatalogTest(unittest.TestCase):
         emit = MagicMock()
         with patch.object(workflow, "_refresh_base_and_worktrees"), \
                 patch.object(dispatch, "_process_issue"), \
-                patch.object(workflow, "_emit_repo_skill_catalog", emit):
+                patch.object(catalog, "_emit_repo_skill_catalog", emit):
             workflow.tick(gh, _TEST_SPEC)
         emit.assert_called_once_with(_TEST_SPEC)
 

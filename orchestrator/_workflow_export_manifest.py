@@ -116,7 +116,7 @@ EXPORTS = (
         (("IssueScheduler", "IssueScheduler"),),
     ),
     *export_group(
-        "orchestrator.skill_catalog",
+        "orchestrator.skills.catalog",
         (("_emit_repo_skill_catalog", "_emit_repo_skill_catalog"),),
     ),
     *export_group(

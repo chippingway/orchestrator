@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import _workflow_export_manifest, workflow
+from orchestrator.skills import catalog
 from orchestrator.workflow.engine import dispatch, tick
 
 from tests.fakes import FakeGitHubClient
@@ -79,7 +80,7 @@ class TickPassOrderTest(unittest.TestCase):
                 recorder.pass_named("sweep"),
             ),
             patch.object(
-                workflow, "_emit_repo_skill_catalog",
+                catalog, "_emit_repo_skill_catalog",
                 recorder.pass_named("catalog"),
             ),
             patch.object(
