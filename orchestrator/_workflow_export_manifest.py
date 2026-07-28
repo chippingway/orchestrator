@@ -120,10 +120,6 @@ EXPORTS = (
         (("_emit_repo_skill_catalog", "_emit_repo_skill_catalog"),),
     ),
     *export_group(
-        "orchestrator.stages.conflicts",
-        (("_handle_resolving_conflict", "_handle_resolving_conflict"),),
-    ),
-    *export_group(
         "orchestrator.stages.question",
         (("_handle_question", "_handle_question"),),
     ),
@@ -279,6 +275,10 @@ EXPORTS = (
             ("_record_tracked_agent_exit", "_record_tracked_agent_exit"),
             ("_run_agent_tracked", "_run_agent_tracked"),
         ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.conflicts.handler",
+        (("_handle_resolving_conflict", "_handle_resolving_conflict"),),
     ),
     *export_group(
         "orchestrator.workflow.stages.decomposition.blocked",

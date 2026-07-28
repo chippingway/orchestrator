@@ -1,21 +1,35 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Conflict divergence."""
+"""What to do with a worktree that does not match its remote PR head.
+
+The default is to refuse: a branch behind its remote head may carry someone
+else's commit, and force-pushing the local state would drop it. The single
+exception is narrow on purpose -- the worktree is ahead, already rebased onto
+the current base, and the head it is behind is one the orchestrator itself
+recorded -- and it exists because that is exactly the shape a prior tick leaves
+when it rebased and crashed before the push.
+
+The ahead-only case is the other half of the same crash: commits that never
+reached the remote. Pushing them is safe, but the follow-up question is not
+obvious -- the `fixing` dead-lock reroute also lands unpushed FIX commits here,
+which are not a rebase, so the branch is still behind base afterwards. That is
+why the push probes rather than assuming, and falls through to the rebase path
+when it finds it, letting one round cover both.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import conflicts as _owner
+from pathlib import Path
+from typing import Optional
 
-_ConflictContext = _owner._ConflictContext
-_DivergeDecision = _owner._DivergeDecision
-_WorktreeSync = _owner._WorktreeSync
-Optional = _owner.Optional
-Path = _owner.Path
-config = _owner.config
+from orchestrator import config
+from orchestrator.workflow.stages.conflicts import guards as _guards
+from orchestrator.workflow.stages.conflicts import models as _models
+from orchestrator.workflow.stages.conflicts import transitions as _transitions
 
 
 def _guard_diverged_worktree(
-    ctx: _ConflictContext, pr, sync: _WorktreeSync,
-) -> _DivergeDecision:
+    ctx: _models._ConflictContext, pr, sync: _models._WorktreeSync,
+) -> _models._DivergeDecision:
     """Decide the fate of a worktree behind the remote PR head.
 
     When `behind > 0` the worktree is normally stale or diverged and we refuse
@@ -28,7 +42,7 @@ def _guard_diverged_worktree(
     from orchestrator import workflow as _wf
 
     if sync.behind <= 0:
-        return _DivergeDecision(parked=False)
+        return _models._DivergeDecision(parked=False)
 
     # One exception to the refuse-and-park default: the worktree is already
     # correctly rebased ONTO base, ahead of the PR head, and the "behind"
@@ -41,8 +55,8 @@ def _guard_diverged_worktree(
     # branch to lose.
     if (
         sync.ahead > 0
-        and _owner._pr_head_orchestrator_produced(ctx.state, pr)
-        and _owner._already_rebased_onto_base(ctx.spec, sync.worktree)
+        and _guards._pr_head_orchestrator_produced(ctx.state, pr)
+        and _guards._already_rebased_onto_base(ctx.spec, sync.worktree)
     ):
         _wf.log.info(
             "issue=#%d resolving_conflict: worktree already rebased onto "
@@ -58,20 +72,20 @@ def _guard_diverged_worktree(
         # the push below, the new SHA would become the lease and the force-push
         # would silently overwrite it. Leasing against the validated SHA
         # refuses any such concurrent update.
-        return _DivergeDecision(parked=False, publish_lease=pr.head.sha)
+        return _models._DivergeDecision(parked=False, publish_lease=pr.head.sha)
 
-    _owner._park_diverged_worktree(ctx, pr, sync)
-    return _DivergeDecision(parked=True)
+    _park_diverged_worktree(ctx, pr, sync)
+    return _models._DivergeDecision(parked=True)
 
 
 def _park_diverged_worktree(
-    ctx: _ConflictContext, pr, sync: _WorktreeSync,
+    ctx: _models._ConflictContext, pr, sync: _models._WorktreeSync,
 ) -> None:
     """Park a stale / diverged worktree: force-pushing the local state would
     clobber the real PR head."""
     spec = ctx.spec
     pr_head_short = pr.head.sha[:8]
-    _owner._park_conflict(
+    _transitions._park_conflict(
         ctx,
         f"{config.HITL_MENTIONS} worktree on `{sync.branch}` is {sync.ahead} "
         f"ahead and {sync.behind} behind `{spec.remote_name}/{sync.branch}` "
@@ -83,8 +97,8 @@ def _park_diverged_worktree(
 
 
 def _push_recovered_commits(
-    ctx: _ConflictContext,
-    sync: _WorktreeSync,
+    ctx: _models._ConflictContext,
+    sync: _models._WorktreeSync,
     conflict_round: int,
     pr_number,
     publish_lease: Optional[str],
@@ -111,7 +125,7 @@ def _push_recovered_commits(
     # `_on_dirty_worktree`: park awaiting human, no flip.
     dirty = _wf._worktree_dirty_files(wt)
     if dirty:
-        _owner._park_conflict(
+        _transitions._park_conflict(
             ctx,
             f"{config.HITL_MENTIONS} worktree has {len(dirty)} "
             "uncommitted change(s) alongside recovered conflict "
@@ -128,7 +142,7 @@ def _push_recovered_commits(
     if not _wf._push_branch(
         spec, wt, sync.branch, force_with_lease=publish_lease,
     ):
-        _owner._park_conflict(
+        _transitions._park_conflict(
             ctx,
             f"{config.HITL_MENTIONS} git push of recovered conflict "
             "resolution failed; see orchestrator logs.",
@@ -150,7 +164,7 @@ def _push_recovered_commits(
     # bookkeeping (conflict_round bump, event emit, label flip) for the combined
     # push+rebase round.
     base_ref = f"{spec.remote_name}/{spec.base_branch}"
-    still_behind = _owner._still_behind_base(wt, base_ref)
+    still_behind = _still_behind_base(wt, base_ref)
     if still_behind != 0:
         _wf.log.info(
             "issue=#%d resolving_conflict: pushed %d recovered commit(s) "
@@ -160,7 +174,7 @@ def _push_recovered_commits(
         return False
     # Pushed branch diff -> hand straight back to validating; the single docs
     # pass runs after final reviewer approval.
-    _owner._hand_resolved_round_to_validating(
+    _transitions._hand_resolved_round_to_validating(
         ctx, conflict_round, pr_number,
         outcome="recovered_push", sha=_wf._head_sha(wt),
     )

@@ -18,7 +18,10 @@ from unittest.mock import MagicMock, patch
 from orchestrator.github.labels import PAUSED_LABEL
 
 from tests.fakes import FakeComment, FakeLabel, FakeUser, make_issue
-from tests.workflow_helpers import _ResolvingConflictMixin, _agent
+from tests.workflow.stages.conflicts.conflicts_test_support import (
+    _ResolvingConflictMixin,
+)
+from tests.workflow_helpers import _agent
 
 CONFLICT_ISSUE = 200
 HUMAN_REPLY_ID = 2000

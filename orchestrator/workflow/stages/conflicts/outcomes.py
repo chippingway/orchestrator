@@ -1,22 +1,38 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Conflict outcomes."""
+"""What a finished dev run left behind, in the order it has to be read.
+
+Three dispositions precede any look at HEAD, and the order is load-bearing. A
+shutdown-sweep interruption comes first because a killed run's output cannot be
+trusted at all -- it returns without writing pinned state, so the whole tick's
+in-memory bookkeeping is discarded and the next process re-runs from durable
+state. Then a timeout, then a rebase still mid-flight, because a HEAD that
+moved during an unfinished rebase says nothing about whether the conflicts were
+resolved.
+
+Only after those does the HEAD comparison mean anything: unchanged is a
+question or silence and parks like the implementing handler does, a dirty tree
+refuses to publish an incomplete branch, and a real new commit is pushed. The
+`conflict_round` bump lives on the success path alone -- a human-reply resume
+that lands cleanly should consume a slot, but a timeout or push failure on the
+same counter should not, or the cap would fire on rounds that never ran.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import conflicts as _owner
+from pathlib import Path
+from typing import Optional
+
+from orchestrator import config
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
-
-_ConflictContext = _owner._ConflictContext
-_ConflictResumeRun = _owner._ConflictResumeRun
-Optional = _owner.Optional
-Path = _owner.Path
-config = _owner.config
+from orchestrator.workflow.stages.conflicts import models as _models
+from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.stages.implementing import parks as _dev_parks
 
 
 def _post_conflict_resolution_result(
-    ctx: _ConflictContext,
-    run: _ConflictResumeRun,
+    ctx: _models._ConflictContext,
+    run: _models._ConflictResumeRun,
     before_sha: str,
     conflict_round: int,
     *,
@@ -42,30 +58,32 @@ def _post_conflict_resolution_result(
     wt = run.worktree
     # Interrupt / timeout / still-mid-rebase dispositions park (or, for the
     # shutdown-sweep interrupt, silently drop) and signal the caller to stop.
-    if _owner._park_stalled_conflict_result(ctx, run):
+    if _park_stalled_conflict_result(ctx, run):
         return
 
     after_sha = _wf._head_sha(wt)
     if not after_sha or after_sha == before_sha:
         # Agent did not finish the rebase. Treat as a question / silence park,
         # mirroring the implementing handler.
-        _wf._on_question(ctx.gh, ctx.issue, ctx.state, run.dev_result)
+        _dev_parks._on_question(ctx.gh, ctx.issue, ctx.state, run.dev_result)
         ctx.gh.write_pinned_state(ctx.issue, ctx.state)
         return
 
     dirty = _wf._worktree_dirty_files(wt)
     if dirty:
-        _wf._on_dirty_worktree(ctx.gh, ctx.issue, ctx.state, run.dev_result, dirty)
+        _dev_parks._on_dirty_worktree(
+            ctx.gh, ctx.issue, ctx.state, run.dev_result, dirty,
+        )
         ctx.gh.write_pinned_state(ctx.issue, ctx.state)
         return
 
-    _owner._finalize_conflict_resolution(
+    _finalize_conflict_resolution(
         ctx, wt, after_sha, conflict_round, force_with_lease=force_with_lease,
     )
 
 
 def _park_stalled_conflict_result(
-    ctx: _ConflictContext, run: _ConflictResumeRun,
+    ctx: _models._ConflictContext, run: _models._ConflictResumeRun,
 ) -> bool:
     """Park (or silently drop) a conflict-resolution run that never landed
     a usable commit. Returns True when the tick is fully handled.
@@ -88,7 +106,7 @@ def _park_stalled_conflict_result(
         return True
 
     if dev_result.timed_out:
-        _owner._park_conflict(
+        _transitions._park_conflict(
             ctx,
             f"{config.HITL_MENTIONS} dev agent timed out resolving rebase "
             f"conflicts after {config.AGENT_TIMEOUT}s; manual intervention "
@@ -104,7 +122,7 @@ def _park_stalled_conflict_result(
     quoted = ""
     if raw:
         quoted = f"\n\nAgent output:\n\n{_messages._as_blockquote(raw)}"
-    _owner._park_conflict(
+    _transitions._park_conflict(
         ctx,
         f"{config.HITL_MENTIONS} rebase is still in progress after the "
         "dev agent returned; finish it manually or comment with "
@@ -115,7 +133,7 @@ def _park_stalled_conflict_result(
 
 
 def _finalize_conflict_resolution(
-    ctx: _ConflictContext,
+    ctx: _models._ConflictContext,
     wt: Path,
     after_sha: str,
     conflict_round: int,
@@ -133,7 +151,7 @@ def _finalize_conflict_resolution(
 
     branch = _wf._resolve_branch_name(ctx.state, ctx.spec, ctx.issue.number)
     if not _wf._push_branch(ctx.spec, wt, branch, force_with_lease=force_with_lease):
-        _owner._park_conflict(
+        _transitions._park_conflict(
             ctx,
             f"{config.HITL_MENTIONS} git push failed after conflict "
             "resolution; see orchestrator logs.",
@@ -144,7 +162,7 @@ def _finalize_conflict_resolution(
     # Pushed branch diff (fresh conflict resolution OR awaiting-human resume
     # that landed a commit) -> hand straight back to validating; the single
     # docs pass runs after final reviewer approval.
-    _owner._hand_resolved_round_to_validating(
+    _transitions._hand_resolved_round_to_validating(
         ctx, conflict_round, ctx.state.get("pr_number"),
         outcome="agent_resolved", sha=after_sha,
     )

@@ -162,6 +162,29 @@ orchestrator/
     stages/
       __init__.py       package marker only; the destination the per-label
                         stage facades under `orchestrator/stages/` migrate to
+      conflicts/
+        __init__.py     package marker only; callers import an owner directly
+        handler.py      the order one tick asks its questions in: the
+                        missing-`pr_number` park, the terminal arcs, the
+                        body-edit resume, and the rebase behind them
+        routing.py      the awaiting-human resume and `MAX_CONFLICT_ROUNDS` cap
+                        that gate the rebase, plus the worktree it runs in
+        guards.py       the worktree restore and the two probes that prove a
+                        stale PR head is safe to force-publish over
+        divergence.py   the park a behind-base worktree earns, the one lease
+                        that excuses it, and the crash-recovered push
+        rebase.py       the branch / base fetches, the rebase, its
+                        `merge_attempt` event, and the three-way disposition
+        publication.py  the dirty park, the no-op flip, the rebased-head push,
+                        and the hand-off of real conflicts to the dev
+        resume.py       the three dev-resume entry points, the shared run, and
+                        the `/orchestrator continue` classification
+        outcomes.py     the interrupt / timeout / mid-rebase parks read before
+                        HEAD, and the push a completed resolution earns
+        transitions.py  the park-and-write pair and the pushed-round tail every
+                        exit shares
+        models.py       the frozen records the owners hand each other
+        state.py        the counter keys they share
       decomposition/
         __init__.py     package marker only; callers import an owner directly
         state.py        the pinned-state field names the owners share, the
@@ -455,7 +478,6 @@ orchestrator/
                         under `workflow/stages/`
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
-    _conflict_*.py      rebase guards/outcomes, resume, publish, and transitions
     _question_*.py      read-only session, run, outcomes, and handler routing
 ```
 
@@ -818,8 +840,8 @@ under its original name, and that is the edge a stage-to-stage call resolves thr
 targeting the facade.
 
 `orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time; `decomposition`,
-`implementing`, `documenting`, `validating`, `in_review`, and `fixing` have arrived. A migrated stage becomes a
-subpackage of
+`implementing`, `documenting`, `validating`, `in_review`, `fixing`, and `conflicts` have arrived. A migrated stage
+becomes a subpackage of
 responsibility-named owners there, and the `orchestrator/stages/<stage>.py` it vacates stays behind as a temporary
 forwarder that reads every name back off those owners rather than rebuilding one, so both import sites hand back the
 same object. Identity is all a forwarder carries: it caches each name it resolved, so a `patch.object` intercepts the
@@ -895,13 +917,12 @@ documenting it imports the resume, the session read, and the question / dirty-tr
 lands on the owner rather than on the facade — which would not intercept the call. The seams that stay on the facade
 are the ones the stage does not own — the worktree, fetch, git, and push helpers plus base-sync's
 `_AUTO_REBASE_PARK_REASONS` are read as `_wf` attributes at call time — and the whole historical inventory still
-resolves on `orchestrator.stages.validating` with the owner's exact identity. One of its names is what another stage
-still reaches for through a facade and so keeps resolving on `workflow` as well:
-`_post_user_content_change_result` (resolving_conflict — in_review's drift route disposes through the same helper but
-names `drift_outcomes` itself). Five more resolve there too — `_handle_dev_fix_result`, `_stranded_fix_unpushed`,
+resolves on `orchestrator.stages.validating` with the owner's exact identity. Six of its names resolve on `workflow`
+as well — `_post_user_content_change_result`, `_handle_dev_fix_result`, `_stranded_fix_unpushed`,
 `_try_recover_validating_transient_park`, `_VALIDATING_TRANSIENT_PARK_REASONS`, and `_latest_pr_comment_ids` — but
-every in-tree caller of those names the owner itself: fixing's resume and parked owners for the first four,
-documenting's final-docs handoff for the last. Those entries now serve historical callers alone.
+every in-tree caller of those names the owner itself: in_review's and resolving_conflict's drift routes for the first,
+fixing's resume and parked owners for the next four, documenting's final-docs handoff for the last. Those entries
+serve historical callers alone.
 
 The in_review owners divide by the four answers one tick can reach, and `handler` holds the order because the order is
 the contract rather than a style choice. `feedback` runs before `drift`: `user_content_hash` covers every human
@@ -946,6 +967,28 @@ from `workflow/stages/in_review/watermarks.py` — so a patch on any of those la
 the facade are the ones the stage does not own — the worktree, git, and HEAD helpers plus base-sync's
 `_AUTO_REBASE_PARK_REASONS` — and the whole historical inventory still resolves on `orchestrator.stages.fixing` with
 the owner's exact identity, with `_handle_fixing` resolving on `workflow` as well.
+
+The conflicts owners divide by what one tick has to establish before the rebase may run and by what it does with the
+result, and `handler` holds the order: the pinned `pr_number` (without one the label can only have come from a manual
+relabel), then the terminal arcs, then the body edit, then `routing` for the awaiting-human resume and the
+`MAX_CONFLICT_ROUNDS` cap. `guards` and `divergence` are a pair around one decision — whether a worktree behind its
+remote PR head may be published at all — and both halves fail closed: the refuse-and-park default holds unless
+`guards` can prove the worktree is already on the current base AND the head it is behind is one the orchestrator
+recorded, in which case `divergence` returns a lease pinned to that exact SHA so a foreign push landing mid-tick is
+refused rather than overwritten. `rebase` owns the two fetches, the rebase, and the `merge_attempt` event; publishes a
+clean one through `publication`; and hands real conflicted files to the dev. `resume` is the single entry point all
+three dev resumes go through, and `outcomes` reads what one left behind in the order that matters — interruption,
+timeout, and mid-rebase all precede any HEAD comparison. `transitions` exists because every state-changing exit shares
+one of two shapes, a park plus its pinned-state write or the full pushed-round tail, and this stage has eleven of the
+first and five of the second. `state` and `models` reach nothing, so the counter keys and the carriers are decidable
+without a client. So a patch that has to intercept the divergence verdict, the rebase, a park, or a resume targets the
+owner module. This stage owns no dev machinery either: the resume and the question / dirty-tree parks come from
+`workflow/stages/implementing/`, the body-edit disposition from
+`workflow/stages/validating/drift_outcomes.py`, and the auto-rebase park reasons from `git/base_sync/state.py` — so a
+patch on any of those lands on the owner. The seams that stay on the facade are the ones the stage does not own — the
+worktree, fetch, git, rebase, and push helpers are read as `_wf` attributes at call time — and the whole historical
+inventory still resolves on `orchestrator.stages.conflicts` with the owner's exact identity, with
+`_handle_resolving_conflict` resolving on `workflow` as well.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked

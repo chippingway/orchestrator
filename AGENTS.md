@@ -191,8 +191,8 @@ orchestrator process is stateless.
   (`watermarks.py`), the per-tick handles (`models.py`), and the watermark key (`state.py`) they share,
   with the dev resume imported from the implementing owners directly and the body-edit disposition from
   validating's `drift_outcomes.py`, and the worktree, git, and push helpers still reached through the
-  `workflow` facade at call time) -- and over the `workflow/stages/fixing/` subpackage closing that
-  destination, the dev fix-loop two routes hand the same PR to, whose owners divide by what one tick
+  `workflow` facade at call time) -- and over the `workflow/stages/fixing/` subpackage beside it,
+  the dev fix-loop two routes hand the same PR to, whose owners divide by what one tick
   has to settle and by the order the handler asks it in (`handler.py`, which also holds the preflight
   terminals and the missing-`pr_number` park that outrank the loop): the rescan forward from the three
   in_review watermarks and the narrower ratchet a consumed batch advances them by, on the park path as
@@ -209,7 +209,28 @@ orchestrator process is stateless.
   pinned-state keys (`state.py`) they share, with the dev resume and the poisoned-session drop imported
   from the implementing owners directly, the dev-fix disposition, stranded-fix probe, and transient-park
   recovery from the validating ones, the comment timestamp from in_review's `watermarks.py`, and the
-  worktree, git, and push helpers still reached through the `workflow` facade at call time),
+  worktree, git, and push helpers still reached through the `workflow` facade at call time) -- and over
+  the `workflow/stages/conflicts/` subpackage closing that destination, the rebase three routes hand an
+  unmergeable PR to, whose owners divide by what one tick has to establish before the rebase may run and
+  by what it does with the result: the order those questions are asked in -- the missing-`pr_number`
+  park, the terminal arcs, and the body-edit resume that all outrank the loop (`handler.py`); the
+  awaiting-human resume and the `MAX_CONFLICT_ROUNDS` cap that gate it, plus the worktree it runs in
+  (`routing.py`); the pair that decides whether a branch may be published at all -- the worktree restore
+  that rebuilds from the PR branch rather than base, and the two fail-closed probes that prove a stale
+  head is the orchestrator's own (`guards.py`) beside the park a behind-base worktree earns, the lease
+  pinned to that validated head when it is excused, and the crash-recovered push that falls through to
+  the rebase when it lands on a stale base (`divergence.py`); the two fetches, the rebase, its
+  `merge_attempt` event, and the three-way disposition (`rebase.py`) with the dirty park, the counted
+  no-op flip, the leased rebased-head push, and the hand-off of real conflicts to the dev
+  (`publication.py`); the three dev-resume entry points, the shared run, and the `/orchestrator continue`
+  classification that leaves an auto-rebase park to the base-sync retry loop (`resume.py`); and the
+  interruption, timeout, and mid-rebase parks read before any HEAD comparison, plus the push a completed
+  resolution earns (`outcomes.py`) -- over the park-and-write pair and the pushed-round tail every exit
+  shares (`transitions.py`), the frozen records (`models.py`), and the two counter keys (`state.py`),
+  with the dev resume and the question / dirty-tree parks imported from the implementing owners directly,
+  the body-edit disposition from validating's `drift_outcomes.py`, the auto-rebase park reasons from
+  `git/base_sync/state.py`, and the worktree, git, rebase, and push helpers still reached through the
+  `workflow` facade at call time),
   per-stage
   lazy facades (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
@@ -320,20 +341,13 @@ orchestrator process is stateless.
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
   tests through the `tests/fakes.py` bridge. Stage-handler tests in
-  `tests/test_workflow_<stage>*.py` (the implementing, documenting, validating, in_review, and fixing stages have
-  moved beside their
+  `tests/test_workflow_<stage>*.py` (the implementing, documenting, validating, in_review, fixing, and
+  resolving-conflict stages have moved beside their
   owners into `tests/workflow/stages/implementing/`, `tests/workflow/stages/documenting/`,
-  `tests/workflow/stages/validating/`, `tests/workflow/stages/in_review/`, and
-  `tests/workflow/stages/fixing/`, and the decomposition and question
+  `tests/workflow/stages/validating/`, `tests/workflow/stages/in_review/`,
+  `tests/workflow/stages/fixing/`, and `tests/workflow/stages/conflicts/`, and the decomposition and question
   stages across their respective focused modules, with shared fixtures in `tests/decomposition*_support.py` and
-  `tests/question_*_support.py`; the resolving-conflict stage is split across
-  `tests/test_workflow_conflicts_*.py` — infrastructure tests (`_event_emission`,
-  `_list_pollable`, `_routing`) plus the `_handle_resolving_conflict` handler scenarios in focused modules
-  (`_clean_rebase` for clean rebase routing, `_agent` for agent execution, `_resume` for awaiting-human resume
-  paths, `_dirty` for dirty / rebase-in-progress parking, `_recovery` for recovery pushes, `_diverged` for stale /
-  diverged worktree handling, `_publish` for already-rebased force-publish scenarios, `_publish_guard` for the
-  publish-guard probe unit tests, `_drift` for hash-drift resume behavior), with resume fixtures in
-  `tests/conflict_resume_test_support.py`); other facade-level helper tests
+  `tests/question_*_support.py`); other facade-level helper tests
   include (`tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
   `tests/test_workflow_question_routing.py`); shared helpers in
@@ -552,7 +566,8 @@ orchestrator process is stateless.
   exits (`test_drift.py`), the live pause that publishes nothing (`test_paused.py`), and the implementing /
   validating owners the drift route borrows, each pinned by patching the owner and the facade name it must not read
   (`test_owner_boundaries.py`).
-  `tests/workflow/stages/fixing/` closes the destination: the same import, layering, and initializer guards for its
+  `tests/workflow/stages/fixing/` holds the sixth stage to arrive: the same import, layering, and initializer guards
+  for its
   own package plus the forwarding checks that no manifest target names a flat `_fixing_*` leaf and that both
   historical import sites hand back the owner's exact object, and the dispatch check that the label table names the
   handler owner (`test_imports.py`); the stage scenarios beside it -- the label registration and dispatcher route
@@ -567,6 +582,19 @@ orchestrator process is stateless.
   nothing (`test_paused.py`), and the implementing / validating / in_review owners the loop borrows, each pinned by
   patching the owner and the facade name it must not read (`test_owner_boundaries.py`) -- with shared fixtures in
   `fixing_test_support.py` and `fixing_routing_test_support.py`.
+  `tests/workflow/stages/conflicts/` closes the destination: the same import, layering, and initializer guards for its
+  own package plus the forwarding checks that no manifest target names a flat `_conflict_*` leaf and that both
+  historical import sites hand back the owner's exact object, and the dispatch check that the label table names the
+  handler owner (`test_imports.py`); the stage scenarios beside it -- the dispatcher route (`test_routing.py`), the
+  closed-issue sweep that keeps a terminal reachable (`test_list_pollable.py`), the clean rebase and its no-op flip
+  (`test_clean_rebase.py`), the agent resolution (`test_agent.py`), the awaiting-human resume across its poisoned
+  session and refused continue (`test_resume.py`), the dirty / rebase-in-progress parks (`test_dirty.py`), the
+  crash-recovery pushes (`test_recovery.py`), the stale / diverged parks (`test_diverged.py`), the already-rebased
+  force-publish and the probes behind it (`test_publish.py`, `test_publish_guard.py`), a body edit mid-rebase
+  (`test_drift.py`), the `merge_attempt` / `conflict_round` / terminal events (`test_event_emission.py`), the live
+  pause that publishes nothing (`test_paused.py`), and the implementing / validating / base-sync owners the loop
+  borrows, each pinned by patching the owner and the facade name it must not read (`test_owner_boundaries.py`) --
+  with shared fixtures in `conflicts_test_support.py` and `conflict_resume_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in
