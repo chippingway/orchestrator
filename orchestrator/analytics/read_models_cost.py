@@ -106,7 +106,7 @@ class CostCoverageRow:
     dominate the cost picture, so a run-count share would
     misrepresent how exposed an operator is to pricing-table gaps.
     The `unknown-price` cohort is the maintenance signal for the
-    pricing table baked into `orchestrator.usage` -- it is NEVER
+    price tables in `observability/usage/prices.py` -- it is NEVER
     collapsed into a generic "unknown" bucket here so an operator
     can see at a glance how much volume the parser could not price.
     Rows whose `cost_source` is NULL surface under `"unknown"` so

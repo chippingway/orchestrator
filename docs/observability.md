@@ -17,12 +17,12 @@ time.
   Streamlit page.
 - **Analytics database** (`analytics-db/`) — operator-deployed Postgres service that is the aggregation target for the
   analytics sink, with an operator-driven sync CLI and a Streamlit dashboard on top.
-- **Usage parser** (`orchestrator/usage.py`) — decoder for the agent CLI JSONL stdout that produces the token / cost
-  detail the analytics `agent_exit` record carries.
+- **Usage parser** (`orchestrator/observability/usage/`) — decoder for the agent CLI JSONL stdout that produces the
+  token / cost detail the analytics `agent_exit` record carries.
 
-Every module path in this document is the current one. `orchestrator/observability/` holds the empty packages the
-analytics sink, the usage parser, the dashboard, and the trajectory viewer are each migrating into; until a
-responsibility has an owner in that tree, the module named for it below stays the import site. See
+Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners
+and the still-empty packages the analytics sink, the dashboard, and the trajectory viewer are each migrating into;
+until a responsibility has an owner in that tree, the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -225,10 +225,10 @@ every tracked agent run, distinct from (and in addition to) the audit `agent_spa
   field is dropped (its key absent) when empty, so a claude run that was offered skills but triggered none records
   `skills_available` while the triggered / evidence keys drop — the "offered but unused" vs "never available" signal —
   and a run with nothing to report keeps the record shape identical to the switch-off case. Parsed via
-  `usage.parse_agent_skills` under its own fail-open guard inside `record_agent_exit`: a skill-parse failure logs and
-  still emits the baseline usage / cost record, and reads only the skill *name* — never the `Skill` tool's `args`, the
-  surrounding codex command text, or a command's `aggregated_output` (the file's contents). With the switch off the
-  extractor never runs and none of the skill keys appear.
+  `observability/usage/skills.py`'s `parse_agent_skills` under its own fail-open guard inside `record_agent_exit`: a
+  skill-parse failure logs and still emits the baseline usage / cost record, and reads only the skill *name* — never
+  the `Skill` tool's `args`, the surrounding codex command text, or a command's `aggregated_output` (the file's
+  contents). With the switch off the extractor never runs and none of the skill keys appear.
 
 The configured model is pulled out of the role's `extra_args` (via `_configured_model`; recognises `-m <model>` /
 `-m=<model>` for codex and `--model <model>` / `--model=<model>` for claude) and forwarded as the parser's
@@ -332,9 +332,9 @@ before the scheduler / in-tick split so it fires once per tick on either dispatc
 the `SKILL.md` definitions the *target repo* carries on its base ref via `git -C <target_root> ls-tree -r --name-only
 <remote_name>/<base_branch> .agents/skills .claude/skills`, keeps only direct `<root>/<name>/SKILL.md` definitions (a
 `SKILL.md` nested deeper — e.g. `.claude/skills/.system/<name>/SKILL.md` — is ignored, matching the names-only
-trigger anchor in `_usage_skills.py`), and dedupes by skill name across the two roots while preserving every
-source path. The catalog is read from the target repo's base ref, never the orchestrator's own working tree, so
-dashboard-local skill files are not scanned.
+trigger anchor in `observability/usage/skill_commands.py`), and dedupes by skill name across the two roots while
+preserving every source path. The catalog is read from the target repo's base ref, never the orchestrator's own
+working tree, so dashboard-local skill files are not scanned.
 
 Each record carries `base_branch`, `remote_name`, `skills_available` (the sorted deduped skill names), and the optional
 `skill_paths` (name → sorted source paths; dropped when empty). It is **not** issue-scoped, so its `issue` is the
@@ -354,8 +354,9 @@ Postgres aggregation, or the dashboard.
 
 **Producer: `record_agent_exit`.** After the baseline `agent_exit` analytics record (and the opt-in skill parse) are
 produced, `record_agent_exit` calls `_maybe_record_trajectory`, which — only when `TRAJECTORY_LOG_PATH` is enabled —
-parses the run's trajectory from the same stdout (`usage.parse_agent_trajectory`), redacts and truncates it, and appends
-one `event="agent_trajectory"` record. `_run_agent_tracked` (in `workflow/engine/usage.py`) forwards its
+parses the run's trajectory from the same stdout (`observability/usage/trajectory.py`'s `parse_agent_trajectory`),
+redacts and truncates it, and appends one `event="agent_trajectory"` record. `_run_agent_tracked` (in
+`workflow/engine/usage.py`) forwards its
 orchestrator-built `prompt` so it can land as the redacted `user_input`; `record_agent_exit` also threads through the
 `UsageMetrics` it already parsed for the baseline record so the trajectory can carry a denormalized `run_usage` summary
 without a re-parse. The whole block rides its **own** inner fail-open `try/except`: a parser, redactor, or sink
@@ -958,7 +959,7 @@ query, and predicate leaves.
   backend" stacked-area toggle.
 - `get_cost_coverage` (agent-run view) — per `cost_source` rollups carrying both runs and `total_tokens`. The
   `unknown-price` cohort is exposed verbatim (never collapsed into a generic "unknown") because it is the maintenance
-  signal for the pricing table in `orchestrator.usage`. NULL `cost_source` buckets under `"unknown"`.
+  signal for the price tables in `observability/usage/prices.py`. NULL `cost_source` buckets under `"unknown"`.
 
 **Filter contract.** The agent-run view has no `event` column (its WHERE `event = 'agent_exit'` is baked in), so
 view-backed functions cannot push an `event IN (...)` clause down. They honor the dashboard's event-filter contract by
@@ -1204,19 +1205,26 @@ If `python -m orchestrator.analytics.sync` runs cleanly (non-zero `inserted=`) b
 double-check the `ANALYTICS_DB_URL` the sync used — passing `--db-url postgresql://other/db` (or a different shell
 environment) populates a different database than the one the dashboard is reading.
 
-## Usage parser (`orchestrator/usage.py`)
+## Usage parser (`orchestrator/observability/usage/`)
 
 Pure-Python helpers that decode the JSONL stdout `agents.AgentResult` carries into a `UsageMetrics` dataclass —
 backend, distinct model(s), turn count, input / output / cached / cache-read / cache-write token totals, `cost_usd`, and
 a `cost_source` tag of `reported` / `estimated` / `unknown-price` / `no-usage`. No external dependency: the parser is
 jq-free.
 
-**Module layout.** `_usage_metrics.py`, `_usage_skills.py`, and `_usage_trajectory.py` remain the stable model/parser
-hubs re-exported by `orchestrator.usage`. Provider payload handling is split behind them: the shared event stream,
-protocol keys, model paths, and price tables have focused leaves; Claude and Codex usage rows/summaries and skill
-evidence have provider-specific leaves; and trajectory models, Claude blocks/turns, and Codex reconstruction are
-separate. The trajectory classifier still reuses the same event decoder, pricing path, and skill evidence owners, so
-the resilience and cost-precedence contracts remain defined once.
+**Module layout.** The package initializer is the public surface: under a narrow `__all__` it re-exports the nine
+parsers `metrics.py`, `skills.py`, and `trajectory.py` define, a per-backend trio each, plus the five result types they
+hand back — `UsageMetrics` and `SkillTriggers` from the first two, and `AgentTrajectory` / `TrajectoryStep` /
+`TurnUsage` from `trajectory_models.py`. Provider payload handling is split behind them: `protocol.py` holds the JSONL
+vocabulary and `event_stream.py` the resilient line decoder, `prices.py` the first-party price tables and
+`model_names.py` the nested model-name lookup, `claude_rows.py` / `claude_summary.py` and `codex_rows.py` /
+`codex_summary.py` the per-provider frame decoding and run summary, `shell_segments.py` / `skill_commands.py` /
+`skills_claude.py` / `skills_codex.py` the skill-evidence classification, and `trajectory_claude_blocks.py` /
+`trajectory_claude_stream.py` / `trajectory_claude_turns.py` plus `trajectory_codex.py` the timeline reconstruction. The
+trajectory classifier reuses the same event decoder, pricing path, and skill evidence owners, so the resilience and
+cost-precedence contracts are defined once. Each published name is bound once at import to its owner's own object, and a
+binding does not follow a later patch, so a test intercepting a parser targets the module its caller imported;
+`orchestrator/usage.py` remains a temporary compatibility site re-exporting the same surface for historical importers.
 
 **Two parsers, one dispatcher.** `parse_claude_usage(stdout)` consumes claude `--output-format stream-json` events,
 groups assistant frames by `message.id` so the final-frame usage wins (claude streams partial counts on intermediate
@@ -1310,8 +1318,9 @@ assign each a 0-based `turn` index — stamped onto the `assistant_message` / `t
 `TurnUsage` per turn: `model`, `input_tokens` / `output_tokens`, `cache_read_tokens` / `cache_write_tokens` (the 5m + 1h
 cache-creation buckets summed), and an always-*estimated* `cost_usd` / `cost_source` (`"estimated"`, or
 `"unknown-price"` with `cost_usd=None` for an unpriced SKU — a reported `total_cost_usd` is a run-level figure and
-never reaches a turn). The per-turn estimate reuses the same `_claude_estimate_cost` price path as the run aggregate, so
-factoring it out left `parse_claude_usage`'s run totals unchanged. `parse_codex_trajectory(stdout)` treats each
+never reaches a turn). The per-turn estimate reuses the same `claude_estimate_cost` price path on
+`observability/usage/prices.py` as the run aggregate, so the per-turn figures stay in lock-step with
+`parse_claude_usage`'s run totals. `parse_codex_trajectory(stdout)` treats each
 `command_execution` item as one call (its `command`) plus one result (its `aggregated_output`) and each `agent_message`
 item as one `assistant_message` turn (its `text`), collapsing each item's started/completed pair by the shared
 `item.id`, and reads the final answer from the last `agent_message` `text`; it leaves `turns` empty with every

@@ -17,7 +17,8 @@ _CODEX_MODEL = "gpt-5-codex"
 
 class ConfiguredModelExtractionTest(unittest.TestCase):
     """`_configured_model` is the tiny shim that converts an `extra_args`
-    tuple into the model fallback `usage.parse_agent_usage` consumes.
+    tuple into the model fallback `parse_agent_usage` consumes -- the one
+    on `observability/usage/metrics.py`.
     Both the split (`-m gpt-5`) and `=`-glued (`--model=opus-4`) shapes
     must survive because `shlex.split` produces either depending on the
     operator's quoting.

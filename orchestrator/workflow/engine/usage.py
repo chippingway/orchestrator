@@ -52,7 +52,7 @@ from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.usage import UsageMetrics
+from orchestrator.observability.usage.metrics import UsageMetrics
 from orchestrator.workflow.engine import comments as _comments
 
 
@@ -177,16 +177,17 @@ def _run_agent_tracked(
     `agent_spec`, `resume_session_id` / `session_id`, `review_round`,
     `retry_count`, `duration_s`, `exit_code`, `timed_out`) plus parsed
     token counts, model list, `cost_usd`, and `cost_source` extracted
-    from `result.stdout` by `usage.parse_agent_usage`. The configured
-    model is pulled out of `extra_args` (via `_configured_model`) and
-    passed as the parser's `fallback_model` so a codex run whose stdout
-    omits the model name still records the configured model and an
-    estimated cost when the SKU is in the price table. Prompts, raw
-    stdout/stderr, secrets, and worktree contents are intentionally NOT
-    stored in this `agent_exit` record -- the analytics sink is a foundation
-    for usage / cost aggregation, not a debugging mirror, and `result.stdout`
-    may contain user-issue text. A parser failure or a sink IO error is
-    swallowed so an analytics misconfiguration cannot stop the per-issue tick.
+    from `result.stdout` by `observability/usage/metrics.py`'s
+    `parse_agent_usage`. The configured model is pulled out of
+    `extra_args` (via `_configured_model`) and passed as the parser's
+    `fallback_model` so a codex run whose stdout omits the model name
+    still records the configured model and an estimated cost when the
+    SKU is in the price table. Prompts, raw stdout/stderr, secrets, and
+    worktree contents are intentionally NOT stored in this `agent_exit`
+    record -- the analytics sink is a foundation for usage / cost
+    aggregation, not a debugging mirror, and `result.stdout` may contain
+    user-issue text. A parser failure or a sink IO error is swallowed so
+    an analytics misconfiguration cannot stop the per-issue tick.
 
     The returned `AgentResult` additionally carries the parsed run usage on its
     `usage` field -- `record_agent_exit` attaches the `UsageMetrics` it parsed
@@ -262,12 +263,13 @@ def _configured_model(
 
     codex selects the model with `-m <model>` (or `-m=<model>`); claude
     uses `--model <model>` (or `--model=<model>`). Whichever is present
-    is forwarded to `usage.parse_agent_usage` as `fallback_model` so a
-    codex run whose stdout carries usage frames but omits the model
-    (resume frames, minimal completions, schema drift) still produces a
-    populated `models` list and -- when the model is in the price table
-    -- an estimated `cost_usd`. Returns `None` when neither flag is
-    set so the parser keeps its own "unknown" handling.
+    is forwarded to `observability/usage/metrics.py`'s
+    `parse_agent_usage` as `fallback_model` so a codex run whose stdout
+    carries usage frames but omits the model (resume frames, minimal
+    completions, schema drift) still produces a populated `models` list
+    and -- when the model is in the price table -- an estimated
+    `cost_usd`. Returns `None` when neither flag is set so the parser
+    keeps its own "unknown" handling.
 
     The split-form (`-m gpt-5`) and `=`-form (`--model=gpt-5`) are both
     accepted because `shlex.split` produces either shape depending on

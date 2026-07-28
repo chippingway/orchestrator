@@ -4,16 +4,16 @@
 
 from __future__ import annotations
 
-from orchestrator import usage
 from orchestrator.analytics._recording_models import (
     _AgentExitContext,
     _AgentExitSkillFields,
     _CodexCatalog,
 )
+from orchestrator.observability.usage import skills as usage_skills
 
 
 def _normalize_agent_exit_skills(
-    parsed_skills: usage.SkillTriggers,
+    parsed_skills: usage_skills.SkillTriggers,
     codex_catalog: _CodexCatalog,
 ) -> _AgentExitSkillFields:
     """Convert parser output into optional event fields.
@@ -43,7 +43,7 @@ def _read_agent_exit_skills(
     codex_catalog: _CodexCatalog,
 ) -> _AgentExitSkillFields:
     """Parse and normalize skill fields for an enabled run."""
-    parsed_skills = usage.parse_agent_skills(
+    parsed_skills = usage_skills.parse_agent_skills(
         context.backend,
         context.agent_result.stdout,
     )

@@ -10,6 +10,7 @@ from pathlib import Path
 from tests.observability.observability_test_support import (
     _PACKAGE_ROOT,
     _PACKAGES,
+    _PUBLISHING_PACKAGES,
     _imported_orchestrator_modules,
     _observability_modules,
     _observability_packages,
@@ -64,6 +65,29 @@ def _package_chain(package: str) -> frozenset[str]:
     return frozenset(".".join(parts[:depth]) for depth in depths)
 
 
+def _is_own_submodule(package: str, name: str, bound: object) -> bool:
+    """Whether `name` binds a submodule of `package` under its own name.
+
+    A private alias is excused the name match: that is how a publishing
+    initializer holds the owner it re-exports from.
+    """
+    parent, _, leaf = getattr(bound, "__name__", "").rpartition(".")
+    return parent == package and (name.startswith("_") or name == leaf)
+
+
+def _undeclared_bindings(package: str) -> tuple[str, ...]:
+    """Names an initializer binds that are neither declared nor its owners."""
+    initializer = import_module(package)
+    published = frozenset(getattr(initializer, "__all__", ()))
+    return tuple(
+        name
+        for name, bound in initializer.__dict__.items()
+        if not name.startswith("__")
+        and name not in published
+        and not _is_own_submodule(package, name, bound)
+    )
+
+
 def _mirrored_test_package(package: str) -> Path:
     """Initializer of the tests package that mirrors a runtime package."""
     return _TESTS_ROOT.joinpath(*package.split(".")[1:], "__init__.py")
@@ -91,16 +115,27 @@ class LayeringTest(unittest.TestCase):
     """Each package costs its own chain and points away from the workflow."""
 
     def test_package_import_costs_only_its_own_chain(self) -> None:
-        # The initializers bind nothing, so importing one owner must not
+        # A marker initializer binds nothing, so importing one owner must not
         # charge the importer for its siblings: a stage that wants the
         # recording path would otherwise pay for the query owners and the
         # database driver under them.
-        for package in _PACKAGES:
+        for package in frozenset(_PACKAGES) - _PUBLISHING_PACKAGES:
             with self.subTest(package=package):
                 self.assertEqual(
                     _imported_orchestrator_modules(package),
                     _ROOT_PACKAGE_MODULES | _package_chain(package),
                 )
+
+    def test_a_publishing_package_costs_its_owners(self) -> None:
+        # A package that publishes a surface pays for the owners behind it,
+        # which is what an importer buys by naming the package rather than
+        # one of them. What it must still not pay for is anything outside.
+        for package in _PUBLISHING_PACKAGES:
+            planted = _imported_orchestrator_modules(package)
+            outside = planted - _ROOT_PACKAGE_MODULES - _package_chain(package)
+            for imported in outside:
+                with self.subTest(package=package, imported=imported):
+                    self.assertTrue(imported.startswith(f"{package}."))
 
     def test_no_module_reaches_the_workflow_layer(self) -> None:
         for module in _observability_modules():
@@ -113,24 +148,43 @@ class LayeringTest(unittest.TestCase):
 
 
 class PackageSurfaceTest(unittest.TestCase):
-    """The initializers own no names and install no resolver."""
+    """An initializer owns only what it declares, and installs no resolver."""
 
     def test_declared_packages_are_the_ones_on_disk(self) -> None:
         self.assertEqual(_observability_packages(), tuple(sorted(_PACKAGES)))
 
-    def test_initializer_binds_only_submodules(self) -> None:
-        # Importing an owner plants it in its package namespace, so a
-        # submodule is the only thing allowed to appear here. A re-export
-        # beside it would make the initializer a second identity for that
-        # owner and charge every importer of one for all the others.
+    def test_initializer_binds_only_declared_names(self) -> None:
+        # Undeclared, the only thing allowed here is a submodule of this
+        # package: the one an import planted under its own name, or the
+        # private alias a publishing initializer re-exports one through.
+        # Anything else has to be named in `__all__`, which is what marks it a
+        # deliberate surface an importer of one owner pays for the rest of.
         for package in _PACKAGES:
-            for name, bound in import_module(package).__dict__.items():
-                if name.startswith("__"):
-                    continue
+            with self.subTest(package=package):
+                self.assertEqual(_undeclared_bindings(package), ())
+
+    def test_only_publishers_declare_a_surface(self) -> None:
+        # `__all__` is what makes the exemption above visible, so the packages
+        # carrying one are exactly the packages the layering check excuses.
+        declaring = frozenset(
+            package for package in _PACKAGES
+            if hasattr(import_module(package), "__all__")
+        )
+        self.assertEqual(declaring, _PUBLISHING_PACKAGES)
+
+    def test_a_published_name_is_its_owner_s(self) -> None:
+        # A re-export binds the owner's own object at import rather than
+        # wrapping or rebuilding it, so the module a published name reports is
+        # the module that defines it -- which is where a reader looks for the
+        # source and where an interception has to be aimed.
+        for package in _PUBLISHING_PACKAGES:
+            initializer = import_module(package)
+            for name in initializer.__all__:
+                published = getattr(initializer, name)
+                owner = import_module(published.__module__)
                 with self.subTest(package=package, name=name):
-                    self.assertEqual(
-                        getattr(bound, "__name__", None), f"{package}.{name}",
-                    )
+                    self.assertTrue(owner.__name__.startswith(f"{package}."))
+                    self.assertIs(published, getattr(owner, name))
 
     def test_initializer_installs_no_resolver_hook(self) -> None:
         # Read the namespace rather than `dir()`: a lazy facade installs both

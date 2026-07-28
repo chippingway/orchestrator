@@ -68,7 +68,7 @@ def _parse_track_skill_triggers() -> bool:
     """Resolve `TRACK_SKILL_TRIGGERS` from the environment.
 
     Default off. When on, `record_agent_exit` runs the skill-trigger
-    extractor (`usage.parse_agent_skills`) and folds `skills_triggered` /
+    extractor (`observability/usage/skills.py`) and folds `skills_triggered` /
     `skills_triggered_count` / `skills_available` / `skills_evidence` /
     `skills_incidental` / `skills_incidental_count` into the `agent_exit`
     record. The switch defaults off *because* the sink itself is default-on

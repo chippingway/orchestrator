@@ -77,7 +77,6 @@ def _compatibility_exports(modules: _AnalyticsModules) -> dict[str, Any]:
     trajectories = modules.trajectories
     return {
         "AgentResult": recording.AgentResult,
-        "usage": recording.usage,
         "_FILE_LOCK": recording._FILE_LOCK,
         "log": recording.log,
         "os": recording.os,

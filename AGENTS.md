@@ -262,12 +262,25 @@ orchestrator process is stateless.
   crash-recovery probing, routing, outcomes, and persistence. The package also
   contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
-  recording, query, rendering, usage-provider, and trajectory leaves (with the empty `observability/` package as the
-  destination those surfaces migrate to: the analytics sink over its `recording/`, `query/`, `sync/`, and
-  `trajectories/` subpackages, the `usage/` parser under them, and the `dashboard/` and `trajectory_viewer/` pages over
-  them, every initializer binding nothing and carrying no manifest or resolver hook, no owner permitted to import the
+  recording, query, rendering, and trajectory leaves (with the `observability/` package as the destination those
+  surfaces migrate to: the analytics sink over its `recording/`, `query/`, `sync/`, and `trajectories/` subpackages and
+  the `dashboard/` and `trajectory_viewer/` pages over them, every initializer binding nothing unless the surface it
+  fronts is what a caller names and none carrying a manifest or resolver hook, no owner permitted to import the
   workflow engine, a stage, or an entrypoint, and Streamlit / Plotly reached inside the function that renders with
-  them so an ordinary import works in the default install), the process-local scheduler package
+  them so an ordinary import works in the default install -- and with the `observability/usage/` parser already there,
+  the owners one finished agent run is metered by: the shared JSONL
+  vocabulary and resilient line decoder (`protocol.py`, `event_stream.py`), the first-party price tables and the
+  nested model-name lookup an estimate needs (`prices.py`, `model_names.py`), the per-provider frame decoding and run
+  summary the counts come from (`claude_rows.py` / `claude_summary.py`, `codex_rows.py` / `codex_summary.py`), the
+  shell scanning and command classification a codex skill reference is inferred from (`shell_segments.py`,
+  `skill_commands.py`, `skills_claude.py`, `skills_codex.py`), the records and per-provider reconstruction one
+  timeline is rebuilt into (`trajectory_models.py`, `trajectory_claude_blocks.py`, `trajectory_claude_stream.py`,
+  `trajectory_claude_turns.py`, `trajectory_codex.py`), and the three entry points over them -- `metrics.py`,
+  `skills.py`, `trajectory.py` -- whose nine parsers the package initializer re-exports alongside the five result types
+  they return, as its narrow `__all__` and the one publishing initializer in the
+  tree, with `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers naming
+  the owner they need and root-level `usage.py` left as a temporary compatibility site re-exporting the same surface),
+  the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
   `SubmissionRequest`, re-exported from their owners -- over the `models.py` owner (typed submissions,
   legacy-call binding, normalization) and the `service.py` owner (the concrete scheduler and its view,
@@ -628,17 +641,32 @@ orchestrator process is stateless.
   borrows, each pinned by patching the owner and the facade name it must not read (`test_owner_boundaries.py`) --
   with shared fixtures in `question_test_support.py`, `question_conversation_test_support.py`,
   `question_relabel_test_support.py`, and the `question_real_git_test_support.py` the worktree tests share.
-  Observability-package tests live in `tests/observability/`, whose directories mirror the runtime ones: what the
-  empty destination owes before an owner lands in it -- the clean-process import of every module in the tree, the
-  chain-only import cost that is what "the initializers bind nothing" means to an importer, the direction check that
+  Observability-package tests live in `tests/observability/`, whose directories mirror the runtime ones: what every
+  owner in the tree owes -- the clean-process import of every module in it, the chain-only import cost a marker
+  initializer charges an importer and the owners-only cost the one publishing initializer charges instead, the
+  direction check that
   no module reaches the workflow engine, a stage, or an entrypoint -- the two `streamlit run` targets and the leaves
   they front included -- and the surface checks that the declared packages
-  are the ones on disk, that an initializer binds only submodules and installs no resolver hook, that no manifest or
+  are the ones on disk, that an initializer binds only its own submodules plus whatever it declares in `__all__`, that
+  the packages declaring one are exactly the packages the cost check excuses, that a published name is its owner's own
+  object, that no resolver hook is installed, that no manifest or
   stub leaf lands under the tree, and that each runtime package has its mirrored tests package (`test_imports.py`) --
   beside the guard that every module imports with Streamlit and Plotly blocked outright and no attempt on either
   recorded, since a swallowed `ImportError` is still a load in the install that has the package, plus the two probes
   proving a raised and a swallowed attempt both fail it (`test_optional_dependencies.py`), with the tree
   discovery and clean-process probes both share in `observability_test_support.py`.
+  `tests/observability/usage/` holds the parser that arrived there: the declared owners against the directory, the
+  guard that no flat `_usage_*` leaf is left beside the compatibility site, the package's sorted `__all__` and the
+  owner each published name is defined on and answers with, the guard that no owner declares a surface of its own, the
+  records' own defining module, the layering check that no owner reaches anything outside the package, the
+  compatibility site included, the six metering callers that must plant an owner and must not plant that site, and the
+  fourteen names it forwards as the owners' exact objects (`test_imports.py`);
+  the parser scenarios beside it -- the three dispatchers and the serialized shapes (`test_usage.py`), claude token /
+  cost aggregation, skills, trajectory, and per-turn usage (`test_usage_claude_*.py`), and codex cumulative metrics,
+  model selection, gpt-5 pricing, skill evidence across its core / evidence-tier / shell cases, trajectory, and both
+  malformed-stream families (`test_usage_codex_*.py`) -- with shared fixtures in `usage_test_values.py`,
+  `usage_jsonl_helpers.py`, `usage_claude_events.py`, `usage_codex_events.py`, `usage_assertions.py`,
+  `usage_pricing_cases.py`, `usage_serialization_cases.py`, and `usage_trajectory_projections.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import NamedTuple, Optional, TypedDict
 
 from orchestrator import config
-from orchestrator.usage import UsageMetrics
+from orchestrator.observability.usage.metrics import UsageMetrics
 
 
 @dataclass

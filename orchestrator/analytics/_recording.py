@@ -16,7 +16,6 @@ _deps = importlib.import_module("orchestrator.analytics._recording_dependencies"
 
 
 AgentResult = _deps.agents.AgentResult
-usage = _deps.usage
 _append_jsonl_record = _deps._recording_io._append_jsonl_record
 _AgentExitContext = _deps._recording_models._AgentExitContext
 _AgentExitSkillFields = _deps._recording_models._AgentExitSkillFields

@@ -14,14 +14,13 @@ from orchestrator import analytics, workflow
 from orchestrator.agents import AgentResult
 from orchestrator.workflow.engine import usage as engine_usage
 
-from tests.fakes import FakeGitHubClient
-
 from tests.workflow.engine import usage_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 EVENT_AGENT_EXIT = support.EVENT_AGENT_EXIT
 EVENT_AGENT_TRAJECTORY = support.EVENT_AGENT_TRAJECTORY
 EVENT_SKILL_TRIGGERED = support.EVENT_SKILL_TRIGGERED
+FakeGitHubClient = support.FakeGitHubClient
 LABEL_IMPLEMENTING = support.LABEL_IMPLEMENTING
 ROLE_DEVELOPER = support.ROLE_DEVELOPER
 _AGENT_ROLE_KEY = support._AGENT_ROLE_KEY
@@ -232,7 +231,7 @@ class TrajectoryRecordingTest(unittest.TestCase):
                 patch.object(analytics, _TRAJECTORY_PATH_ATTR, t_path),
                 patch.object(analytics, _TRACK_SKILLS_ATTR, True),
                 patch.object(
-                    analytics.usage,
+                    support.usage_trajectory,
                     "parse_agent_trajectory",
                     side_effect=RuntimeError("boom"),
                 ),

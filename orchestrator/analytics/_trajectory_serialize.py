@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from orchestrator import usage
 from orchestrator.analytics._recording import (
     _AgentExitContext,
     _live_settings,
@@ -20,9 +19,13 @@ from orchestrator.analytics._trajectory_sanitize import (
     _Redactor,
     _redact_and_truncate,
 )
+from orchestrator.observability.usage import (
+    metrics as usage_metrics,
+    trajectory_models as usage_trajectory_models,
+)
 
 
-def _trajectory_usage(metrics: usage.UsageMetrics) -> dict[str, Any]:
+def _trajectory_usage(metrics: usage_metrics.UsageMetrics) -> dict[str, Any]:
     run_usage = metrics.to_dict()
     run_usage.pop("backend", None)
     return run_usage
@@ -30,8 +33,8 @@ def _trajectory_usage(metrics: usage.UsageMetrics) -> dict[str, Any]:
 
 def _trajectory_headline(
     context: _AgentExitContext,
-    trajectory: usage.AgentTrajectory,
-    metrics: usage.UsageMetrics,
+    trajectory: usage_trajectory_models.AgentTrajectory,
+    metrics: usage_metrics.UsageMetrics,
     redact: _Redactor,
 ) -> _TrajectoryHeadline:
     return _TrajectoryHeadline(
@@ -43,7 +46,7 @@ def _trajectory_headline(
 
 
 def _bounded_trajectory_turns(
-    trajectory: usage.AgentTrajectory,
+    trajectory: usage_trajectory_models.AgentTrajectory,
     budget: _TrajectoryBudget,
 ) -> list[dict[str, Any]]:
     turns: list[dict[str, Any]] = []
@@ -55,7 +58,7 @@ def _bounded_trajectory_turns(
     return turns
 
 
-def _trajectory_step(step: usage.TrajectoryStep, redact: _Redactor) -> dict[str, Any]:
+def _trajectory_step(step: usage_trajectory_models.TrajectoryStep, redact: _Redactor) -> dict[str, Any]:
     step_dict: dict[str, Any] = {
         "kind": step.kind,
         "name": step.name or None,
@@ -68,7 +71,7 @@ def _trajectory_step(step: usage.TrajectoryStep, redact: _Redactor) -> dict[str,
 
 
 def _bounded_trajectory_steps(
-    trajectory: usage.AgentTrajectory,
+    trajectory: usage_trajectory_models.AgentTrajectory,
     budget: _TrajectoryBudget,
     redact: _Redactor,
 ) -> list[dict[str, Any]]:
@@ -85,8 +88,8 @@ def _bounded_trajectory_steps(
 
 def _build_trajectory_record(
     context: _AgentExitContext,
-    trajectory: usage.AgentTrajectory,
-    metrics: usage.UsageMetrics,
+    trajectory: usage_trajectory_models.AgentTrajectory,
+    metrics: usage_metrics.UsageMetrics,
     redact: _Redactor,
 ) -> dict:
     """Assemble one redacted, truncated `agent_trajectory` record.

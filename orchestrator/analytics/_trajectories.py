@@ -10,7 +10,6 @@ import threading
 _deps = importlib.import_module("orchestrator.analytics._trajectory_dependencies")
 
 
-usage = _deps.usage
 _AgentExitContext = _deps._recording._AgentExitContext
 _CodexCatalog = _deps._recording._CodexCatalog
 _append_jsonl_record = _deps._recording._append_jsonl_record
