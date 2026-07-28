@@ -480,8 +480,9 @@ orchestrator/
                         viewer bootstrap, page controls, rendering, and HTML leaves
   observability/
     __init__.py         package marker only; home of the usage parsers and
-                        the destination the other three observation-only
-                        surfaces above migrate to
+                        the analytics configuration owner, and the
+                        destination the observation-only surfaces above
+                        migrate the rest of their responsibilities to
     analytics/
       __init__.py       package marker only; destination for the JSONL sink
       config.py         the six sink / database environment knobs, the parse
@@ -841,7 +842,7 @@ share, the whole set parsed under the names the flat package binds them to, the 
 back through, and the fallback a read's `db_url=None` resolves through. Every adapter obtains configuration there —
 the flat package's bootstrap, both sinks' append and prune paths, the two skill readers that take their holder off an
 exit context, the read-path modules (`connection.py`, `query.py`), and the sync request — so a knob's name appears in
-one place; the `_recording_settings.py` and `db_url.py` leaves that used to hold those answers are gone.
+one place, and the flat package keeps no settings leaf of its own.
 
 What the flat package still owns is *which* values are in force: it binds the parsed set at import and is where a
 caller patches one, so the view reads them back off it rather than re-parsing. Which *instance* it reads is the
@@ -852,9 +853,10 @@ nothing captured and use `live_settings`, which resolves the name behind a funct
 at module scope would cycle and make the compatibility package load-bearing rather than retirable. The view reads each
 attribute on demand, so a knob patched between two reads reaches the second and a holder carrying only the knobs its
 caller touches stays usable.
-The remaining three surfaces have not moved: `orchestrator/analytics/`, `dashboard*.py`, `trajectory_reader.py`, and
-`trajectory_dashboard.py` stay the import site every historical caller
-names until the responsibility they hold has an owner here.
+
+Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
+`trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
+names until the one it needs has an owner here.
 
 Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own subjects
 off disk so a new owner is covered the day it appears. An initializer binds nothing unless the surface it fronts is what

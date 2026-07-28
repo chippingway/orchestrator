@@ -8,11 +8,12 @@ the provider-payload parser that turns one finished agent run into tokens and
 cost (``usage``), the Streamlit page rendered over the operator's Postgres
 target (``dashboard``), and the file-backed trajectory viewer beside it
 (``trajectory_viewer``). Each arrives under its own subpackage. ``usage`` is
-here; the flat ``analytics`` package and the ``dashboard*``,
-``trajectory_reader``, and ``trajectory_dashboard`` modules beside it stay the
-import site every historical caller names until the responsibility they hold
-has an owner here, as does the ``usage`` module this package's owners left
-behind.
+here whole, and the configuration every analytics surface is knobbed by is the
+first owner under ``analytics``; the flat ``analytics`` package and the
+``dashboard*``, ``trajectory_reader``, and ``trajectory_dashboard`` modules
+beside it stay the import site every historical caller names for whatever
+responsibility does not have an owner here yet, as does the ``usage`` module
+this package's owners left behind.
 
 Callers import the owner they need, so an initializer here binds nothing
 unless the surface it fronts is what a caller asks for by name -- ``usage``
