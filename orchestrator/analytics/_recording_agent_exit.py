@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-from orchestrator import usage
 from orchestrator.analytics._recording_catalog import _discover_codex_catalog
 from orchestrator.analytics._recording_models import (
     _AgentExitContext,
@@ -15,11 +14,12 @@ from orchestrator.analytics._recording_models import (
 )
 from orchestrator.analytics._recording_skills import _parse_agent_exit_skills
 from orchestrator.analytics._recording_usage import _parse_agent_exit_usage
+from orchestrator.observability.usage import metrics as usage_metrics
 
 
 def _build_agent_exit_record(
     context: _AgentExitContext,
-    metrics: usage.UsageMetrics,
+    metrics: usage_metrics.UsageMetrics,
     skill_fields: _AgentExitSkillFields,
 ) -> dict:
     """Build the allowlisted baseline event without raw run content."""
@@ -58,7 +58,7 @@ def _build_agent_exit_record(
 
 def _persist_agent_exit(
     context: _AgentExitContext,
-    metrics: usage.UsageMetrics,
+    metrics: usage_metrics.UsageMetrics,
     skill_fields: _AgentExitSkillFields,
     codex_catalog: _CodexCatalog,
 ) -> None:

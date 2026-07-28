@@ -2,19 +2,25 @@
 # SPDX-License-Identifier: Apache-2.0
 """Observation-only domain owners.
 
-Destination for the four surfaces that watch a run without steering it: the
+Home of the four surfaces that watch a run without steering it: the
 project-local analytics sink and everything downstream of it (``analytics``),
 the provider-payload parser that turns one finished agent run into tokens and
 cost (``usage``), the Streamlit page rendered over the operator's Postgres
 target (``dashboard``), and the file-backed trajectory viewer beside it
-(``trajectory_viewer``). Each arrives under its own subpackage; the flat
-``analytics`` package and the ``usage``, ``dashboard*``, ``trajectory_reader``,
-and ``trajectory_dashboard`` modules beside it stay the import site every
-historical caller names until the responsibility they hold has an owner here.
+(``trajectory_viewer``). Each arrives under its own subpackage. ``usage`` is
+here; the flat ``analytics`` package and the ``dashboard*``,
+``trajectory_reader``, and ``trajectory_dashboard`` modules beside it stay the
+import site every historical caller names until the responsibility they hold
+has an owner here, as does the ``usage`` module this package's owners left
+behind.
 
-Callers import the owner they need, so this initializer binds nothing, and
-nothing under it carries an export manifest or a resolver hook -- a name is
-imported from the module that defines it, and a patch targets that module.
+Callers import the owner they need, so an initializer here binds nothing
+unless the surface it fronts is what a caller asks for by name -- ``usage``
+re-exports its parsers and their result types under an ``__all__``, and every
+other initializer stays a marker. Nothing under the tree carries an export
+manifest or a resolver hook: a re-export is the owner's own object, bound once
+at import rather than resolved per lookup, so the module defining a name stays
+where a reader finds it and where a patch has to land.
 Two constraints hold for every owner that lands here. Nothing observed is on
 the workflow's decision path, so no owner may import the workflow engine, a
 stage, or an application entrypoint: the dependency runs one way, and the

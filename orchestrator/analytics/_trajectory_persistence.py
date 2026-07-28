@@ -7,7 +7,6 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-from orchestrator import usage
 from orchestrator.analytics._recording import (
     _AgentExitContext,
     _CodexCatalog,
@@ -16,10 +15,15 @@ from orchestrator.analytics._recording import (
 )
 from orchestrator.analytics._trajectory_serialize import _build_trajectory_record
 from orchestrator.config import credentials
+from orchestrator.observability.usage import (
+    metrics as usage_metrics,
+    trajectory as usage_trajectory,
+    trajectory_models as usage_trajectory_models,
+)
 
 
 def _codex_trajectory_changes(
-    trajectory: usage.AgentTrajectory,
+    trajectory: usage_trajectory_models.AgentTrajectory,
     catalog: _CodexCatalog,
 ) -> dict[str, Any]:
     changes: dict[str, Any] = {}
@@ -36,8 +40,8 @@ def _codex_trajectory_changes(
 def _agent_trajectory(
     context: _AgentExitContext,
     catalog: _CodexCatalog,
-) -> usage.AgentTrajectory:
-    trajectory = usage.parse_agent_trajectory(
+) -> usage_trajectory_models.AgentTrajectory:
+    trajectory = usage_trajectory.parse_agent_trajectory(
         context.backend,
         context.agent_result.stdout,
     )
@@ -51,7 +55,7 @@ def _agent_trajectory(
 
 def _persist_trajectory_record(
     context: _AgentExitContext,
-    metrics: usage.UsageMetrics,
+    metrics: usage_metrics.UsageMetrics,
     codex_catalog: _CodexCatalog,
 ) -> None:
     """Build and append the denormalized trajectory record."""
@@ -63,7 +67,7 @@ def _persist_trajectory_record(
 
 def _maybe_record_trajectory(
     context: _AgentExitContext,
-    metrics: usage.UsageMetrics,
+    metrics: usage_metrics.UsageMetrics,
     codex_catalog: _CodexCatalog,
 ) -> None:
     """Parse, redact, truncate, and append one trajectory record -- gated on

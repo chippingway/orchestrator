@@ -20,6 +20,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 
+from orchestrator.observability.usage import trajectory as _usage_trajectory
+from orchestrator.observability.usage import trajectory_models as _usage_records
+
+
 from tests.analytics_reload_helpers import reload_analytics as _reload
 
 
@@ -293,7 +297,7 @@ def _emit_stubbed_trajectory(test_case, analytics, trajectory) -> tuple[str, dic
     with tempfile.TemporaryDirectory() as temp_dir:
         trajectory_path = Path(temp_dir) / _TRAJECTORY_FILENAME
         with patch.object(
-            analytics.usage,
+            _usage_trajectory,
             "parse_agent_trajectory",
             return_value=trajectory,
         ):
@@ -354,10 +358,10 @@ class RecordAgentExitTrajectoryBudgetTest(_RecordAgentExitTrajectorySupport):
         # array in full via `build_record` and overshoot the budget by its
         # size -- the reviewer reproduced ~914 KB with zero steps kept.
         _, analytics = _reload()
-        many = analytics.usage.AgentTrajectory(
+        many = _usage_records.AgentTrajectory(
             backend=_CLAUDE,
             turns=tuple(
-                analytics.usage.TurnUsage(
+                _usage_records.TurnUsage(
                     turn=index,
                     model=_CLAUDE_MODEL,
                     input_tokens=1,
@@ -380,10 +384,10 @@ class RecordAgentExitTrajectoryBudgetTest(_RecordAgentExitTrajectorySupport):
         # otherwise produce a multi-hundred-KB record with NO `truncated`
         # flag, because the old content-length-only check never advanced.
         _, analytics = _reload()
-        many = analytics.usage.AgentTrajectory(
+        many = _usage_records.AgentTrajectory(
             backend=_CLAUDE,
             steps=tuple(
-                analytics.usage.TrajectoryStep(
+                _usage_records.TrajectoryStep(
                     kind=_TOOL_CALL_KIND,
                     name="command_execution",
                     tool_id=f"id{index}",

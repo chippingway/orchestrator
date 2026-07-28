@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import importlib
 
-from orchestrator import agents as agents, usage as usage
+from orchestrator import agents as agents
 
 
 _recording_agent_exit = importlib.import_module(
@@ -22,7 +22,6 @@ _recording_usage = importlib.import_module("orchestrator.analytics._recording_us
 
 _DEPENDENCIES = (
     agents,
-    usage,
     _recording_agent_exit,
     _recording_catalog,
     _recording_io,

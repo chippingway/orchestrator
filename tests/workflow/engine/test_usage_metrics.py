@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import patch
 
-from orchestrator import analytics, usage, workflow
+from orchestrator import analytics, workflow
 from orchestrator.agents import AgentResult
+from orchestrator.observability.usage import metrics as _usage_metrics
 from orchestrator.workflow.engine import usage as engine_usage
 
 from tests.fakes import FakeGitHubClient
@@ -89,7 +90,7 @@ def _run_usage(
 
 def _assert_usage_metrics(
     case: unittest.TestCase,
-    metrics: usage.UsageMetrics,
+    metrics: _usage_metrics.UsageMetrics,
 ) -> None:
     case.assertEqual(metrics.backend, BACKEND_CLAUDE)
     case.assertEqual(metrics.input_tokens, _CLAUDE_INPUT_TOKENS)
@@ -128,7 +129,7 @@ class RunUsageSurfacedTest(unittest.TestCase):
             stdout=_claude_stdout(total_cost_usd=_REPORTED_COST_USD),
             analytics_path=None,
         )
-        self.assertIsInstance(agent_result.usage, usage.UsageMetrics)
+        self.assertIsInstance(agent_result.usage, _usage_metrics.UsageMetrics)
         _assert_usage_metrics(self, agent_result.usage)
         # The lifecycle audit still fired even with the sink disabled.
         self.assertIn(
@@ -151,7 +152,7 @@ class RunUsageSurfacedTest(unittest.TestCase):
     def test_parse_failure_leaves_none_and_fails_open(self) -> None:
         path = _analytics_path(self, "usage-failopen-")
         with patch.object(
-            analytics.usage,
+            _usage_metrics,
             "parse_agent_usage",
             side_effect=RuntimeError("boom"),
         ), self.assertLogs(analytics.log, level="ERROR"):

@@ -176,7 +176,7 @@ STAGE_COLORS: Mapping[str, str] = MappingProxyType({
     "rejected": NEUTRAL,
 })
 
-# `cost_source` values from `orchestrator.usage.UsageMetrics`.
+# `cost_source` values from `observability/usage/metrics.py`'s `UsageMetrics`.
 COST_SOURCE_COLORS: Mapping[str, str] = MappingProxyType({
     "reported": SUCCESS,
     "estimated": WARNING,

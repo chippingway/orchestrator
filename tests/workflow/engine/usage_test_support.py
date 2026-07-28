@@ -7,15 +7,22 @@ import json
 import tempfile
 from pathlib import Path
 
-from tests import workflow_event_values as _events
-from tests import workflow_repo_values as _repo
-from tests import workflow_stage_labels as _labels
-from tests import workflow_state_values as _roles
-from tests import workflow_value_helpers as _value_helpers
-from tests import workflow_verdict_values as _verdicts
-from tests import workflow_patch_runner as _runner
+from orchestrator.observability.usage import trajectory as _trajectory
+from tests import (
+    workflow_event_values as _events,
+    workflow_patch_runner as _runner,
+    workflow_repo_values as _repo,
+    workflow_stage_labels as _labels,
+    workflow_state_values as _roles,
+    workflow_value_helpers as _value_helpers,
+    workflow_verdict_values as _verdicts,
+)
 from tests.fakes import FakeGitHubClient
 
+
+# The owner a tracked run's trajectory is parsed on, so a fail-open test
+# patches the module the analytics writer calls rather than a facade.
+usage_trajectory = _trajectory
 
 EVENT_AGENT_EXIT = _events.EVENT_AGENT_EXIT
 EVENT_AGENT_SPAWN = _events.EVENT_AGENT_SPAWN

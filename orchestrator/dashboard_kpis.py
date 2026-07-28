@@ -82,8 +82,8 @@ def compute_insights(
     - Failure rate exceeds `FAILURE_RATE_BANNER_THRESHOLD`: agent
       runs are exiting non-zero more than 10 % of the time.
     - Unpriced cost coverage exceeds `UNPRICED_COVERAGE_THRESHOLD`:
-      the pricing table in `orchestrator.usage` is missing SKUs the
-      parser is seeing in the wild.
+      the price tables in `observability/usage/prices.py` are
+      missing SKUs the parser is seeing in the wild.
 
     The helper returns an empty list when nothing crosses a
     threshold, so the caller can branch on `if banners:` for the
@@ -121,7 +121,8 @@ def compute_insights(
                         message=(
                             f"{unpriced} of {total_runs} agent runs lack "
                             f"a priced cost ({ratio:.0f}%) -- check "
-                            "the pricing table in `orchestrator.usage` "
+                            "the price tables in "
+                            "`observability/usage/prices.py` "
                             "for missing SKUs."
                         ),
                     )

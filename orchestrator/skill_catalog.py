@@ -13,8 +13,9 @@ Two skill roots are scanned -- `.agents/skills` and `.claude/skills` --
 and only *direct* `<root>/<name>/SKILL.md` definitions count: a `SKILL.md`
 nested any deeper (e.g. `.claude/skills/.system/<name>/SKILL.md`) or not
 under a known root is ignored, mirroring the names-only trigger anchor in
-`_usage_skills.py`. Skills are deduped by name across both roots; every source
-path that produced a name is preserved under `skill_paths`.
+`observability/usage/skill_commands.py`. Skills are deduped by name across
+both roots; every source path that produced a name is preserved under
+`skill_paths`.
 
 Dashboard-local skill files are never scanned: enumeration reads the
 target repo's base ref via `git ls-tree`, not the orchestrator's own

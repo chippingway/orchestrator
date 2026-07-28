@@ -11,6 +11,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 
+from orchestrator.observability.usage import skills as _usage_skills
+
+
 from tests.analytics_reload_helpers import reload_analytics as _reload
 
 
@@ -106,7 +109,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
             stack.enter_context(patch.object(analytics, _ANALYTICS_LOG_PATH, None))
             stack.enter_context(patch.object(analytics, _TRACK_SKILL_TRIGGERS, track))
             if parse is not None:
-                stack.enter_context(patch.object(analytics.usage, "parse_agent_skills", parse))
+                stack.enter_context(patch.object(_usage_skills, "parse_agent_skills", parse))
             return analytics.record_agent_exit(
                 repo=_REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,

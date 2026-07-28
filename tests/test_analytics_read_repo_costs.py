@@ -90,9 +90,9 @@ class RepoBreakdownTest(unittest.TestCase):
 
 class CostCoverageTest(unittest.TestCase):
     """`get_cost_coverage` MUST keep `unknown-price` visible -- it is
-    the maintenance signal for the pricing table in
-    `orchestrator.usage`. Distinct from rows whose `cost_source` is
-    NULL, which bucket under the generic `"unknown"`."""
+    the maintenance signal for the price tables in
+    `observability/usage/prices.py`. Distinct from rows whose
+    `cost_source` is NULL, which bucket under the generic `"unknown"`."""
 
     def test_unset_db_url_returns_empty(self) -> None:
         analytics_read = _reload_read(db_url="")

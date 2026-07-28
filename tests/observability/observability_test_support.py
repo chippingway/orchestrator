@@ -28,6 +28,12 @@ _PACKAGES = (
     f"{_ROOT}.usage",
 )
 
+# The packages whose initializer publishes a public surface instead of staying
+# a marker. A caller reaches the usage parsers through their package, so it
+# re-exports them under an `__all__` and an importer of one owner pays for the
+# rest; every other initializer here still binds nothing.
+_PUBLISHING_PACKAGES = frozenset((f"{_ROOT}.usage",))
+
 _PACKAGE_ROOT = Path(import_module(_ROOT).__file__).parent
 
 _IMPORT_ROOT = _PACKAGE_ROOT.parent.parent

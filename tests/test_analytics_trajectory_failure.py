@@ -17,6 +17,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 
+from orchestrator.observability.usage import trajectory as _usage_trajectory
+
+
 from tests.analytics_reload_helpers import reload_analytics as _reload
 
 
@@ -293,7 +296,7 @@ class RecordAgentExitTrajectoryFailureTest(_RecordAgentExitTrajectorySupport):
             t_path = Path(td) / _TRAJECTORY_FILENAME
             with (
                 patch.object(
-                    analytics.usage,
+                    _usage_trajectory,
                     "parse_agent_trajectory",
                     side_effect=RuntimeError("boom"),
                 ),

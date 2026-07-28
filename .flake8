@@ -1,6 +1,6 @@
 [flake8]
 # WPS412 forbids logic in an __init__.py and WPS410 forbids module-level
-# metadata such as __all__. Five package initializers deliberately carry
+# metadata such as __all__. Six package initializers deliberately carry
 # import-time logic and are scoped exemptions here:
 #
 # * orchestrator/config/__init__.py invokes the `environment` resolver and
@@ -30,6 +30,15 @@
 #   and patch target for the whole inventory. WPS412 is waived for that
 #   import-time logic; the `__all__` it publishes is resolved lazily through the
 #   hooks rather than assigned in the initializer, so WPS410 does not apply.
+# * orchestrator/observability/usage/__init__.py is the stable usage-parsing
+#   facade: it re-exports the nine parsers defined across the `metrics`,
+#   `skills`, and `trajectory` owners, a per-backend trio each, plus the five
+#   result types they hand back -- two from those same owners and the
+#   trajectory trio from `trajectory_models` -- and publishes that narrow
+#   public surface through an explicit __all__ (WPS410) so a caller reaches
+#   the parsers through the package. WPS412 is waived for that import-time
+#   logic. Every other initializer under `observability/` stays a marker that
+#   binds nothing.
 #
 # orchestrator/workflow/state.py is one owner for the typed workflow state --
 # the label and control vocabularies, the transition graph keyed by them, and
@@ -195,6 +204,7 @@ per-file-ignores =
     orchestrator/github/__init__.py:WPS412,WPS410
     orchestrator/scheduler/__init__.py:WPS412,WPS410
     orchestrator/workflow/__init__.py:WPS412
+    orchestrator/observability/usage/__init__.py:WPS412,WPS410
     orchestrator/workflow/state.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
     orchestrator/workflow/engine/dispatch.py:WPS201,WPS202

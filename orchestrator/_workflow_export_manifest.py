@@ -120,7 +120,7 @@ EXPORTS = (
         (("_emit_repo_skill_catalog", "_emit_repo_skill_catalog"),),
     ),
     *export_group(
-        "orchestrator.usage",
+        "orchestrator.observability.usage.metrics",
         (("UsageMetrics", "UsageMetrics"),),
     ),
     *export_group(
