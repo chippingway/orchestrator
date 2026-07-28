@@ -5,23 +5,22 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+from orchestrator import config
 
-from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import (
-    BACKEND_CLAUDE,
+    KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
 )
 from tests.workflow_helpers import (
-    LABEL_QUESTION,
-    _TEST_SPEC,
     _agent,
 )
 
-from tests.question_test_support import (
-    _issue_branch,
+from tests.workflow.stages.question.question_test_support import (
+    _assert_no_pr_no_push_no_relabel,
+    _dirty_files,
     _seed_question,
 )
-from tests.question_conversation_test_support import (
+from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
 )
 
@@ -66,6 +65,7 @@ QUESTION_REPLY_WATERMARK = 11000
 DIRTY_FILE_COUNT = 15
 DIRTY_DISPLAY_LIMIT = 10
 DIRTY_OVERFLOW_COUNT = DIRTY_FILE_COUNT - DIRTY_DISPLAY_LIMIT
+LAST_VISIBLE_FILE_INDEX = DIRTY_DISPLAY_LIMIT - 1
 TRUSTED_REPLY_ID = QUESTION_REPLY_ID
 OUTSIDER_REPLY_ID = TRUSTED_REPLY_ID + 1
 MULTI_ROUND_REPLY_ID_STEP = 100
@@ -129,115 +129,79 @@ TRUSTED_WATERMARK_ISSUE_NUMBER = 72
 OUTSIDER_ONLY_ISSUE_NUMBER = 71
 
 
-class HandleQuestionWorktreeCleanupTest(
-    unittest.TestCase,
-    _QuestionWorkflowMixin,
-):
-    """The read-only question stage must not leave a per-issue
-    worktree on disk between ticks: `_refresh_base_and_worktrees`
-    would otherwise merge `origin/<base>` into the pre-PR worktree,
-    accreting commits on a branch the question agent is forbidden
-    from touching, and a later relabel to `implementing` would then
-    either trip the `question_unsafe_relabel` guard or fall through
-    to the recovered-worktree push path. Every safe-exit of
-    `_handle_question` therefore tears the worktree down via
-    `_cleanup_question_worktree`. The unsafe parks
-    (`question_commits`, `question_dirty`, `question_timeout`) keep
-    the worktree so the operator can inspect.
+class HandleQuestionParkPathsTest(unittest.TestCase, _QuestionWorkflowMixin):
+    """The handler distinguishes four park reasons -- timeout, silent
+    crash, dirty worktree, and commit -- so an operator can tell why
+    the conversation stalled. All four leave `awaiting_human=True`
+    and no PR / no push / no relabel.
     """
 
-    def test_answer_path_cleans_up_worktree(self) -> None:
-        gh, issue = _seed_question(ANSWER_CLEANUP_ISSUE_NUMBER)
-        mocks = self._run_question(
-            gh,
-            issue,
-            run_agent=_agent(last_message="here is the answer"),
-            has_new_commits=False,
-        )
-        mocks[CLEANUP_QUESTION_WORKTREE].assert_called_once_with(
-            _TEST_SPEC,
-            issue.number,
-            branch=_issue_branch(issue.number),
-        )
-
-    def test_silent_path_cleans_up_worktree(self) -> None:
-        gh, issue = _seed_question(SILENT_CLEANUP_ISSUE_NUMBER)
-        mocks = self._run_question(
-            gh,
-            issue,
-            run_agent=_agent(last_message="", exit_code=1),
-            has_new_commits=False,
-        )
-        mocks[CLEANUP_QUESTION_WORKTREE].assert_called_once_with(
-            _TEST_SPEC,
-            issue.number,
-            branch=_issue_branch(issue.number),
-        )
-
-    def test_no_comments_resume_cleans_stale_tree(
-        self,
-    ) -> None:
-        # A no-reply tick must still tear down any worktree left by
-        # a prior tick. Without this, an answered question that the
-        # operator left alone for a few ticks would accumulate base
-        # merges in the worktree even though `_handle_question`
-        # itself did nothing.
-        gh = FakeGitHubClient()
-        issue = make_issue(STALE_RESUME_ISSUE_NUMBER, label=LABEL_QUESTION)
-        gh.add_issue(issue)
-        gh.seed_state(
-            issue.number,
-            awaiting_human=True,
-            last_action_comment_id=STALE_RESUME_WATERMARK,
-            question_agent=BACKEND_CLAUDE,
-            question_session_id="q-sess-stale",
-            park_reason=PARK_QUESTION_ANSWER,
-        )
-        mocks = self._run_question(
-            gh,
-            issue,
-            run_agent=_agent(last_message=UNEXPECTED_AGENT_MESSAGE),
-        )
-        mocks[RUN_AGENT].assert_not_called()
-        mocks[CLEANUP_QUESTION_WORKTREE].assert_called_once_with(
-            _TEST_SPEC,
-            issue.number,
-            branch=_issue_branch(issue.number),
-        )
-
-    def test_timeout_park_keeps_worktree(self) -> None:
-        gh, issue = _seed_question(TIMEOUT_PARK_ISSUE_NUMBER)
+    def test_timeout_parks_with_question_timeout(self) -> None:
+        gh, issue = _seed_question(2)
         mocks = self._run_question(
             gh,
             issue,
             run_agent=_agent(timed_out=True, last_message=""),
         )
-        mocks[CLEANUP_QUESTION_WORKTREE].assert_not_called()
+        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
         pinned_data = gh.pinned_data(issue.number)
+        self.assertTrue(pinned_data[KEY_AWAITING_HUMAN])
         self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_TIMEOUT)
-        self.assertIn("worktree is left intact", gh.posted_comments[-1][1])
+        self.assertIn(config.HITL_MENTIONS, gh.posted_comments[-1][1])
+        self.assertIn("timed out", gh.posted_comments[-1][1])
 
-    def test_commit_park_keeps_worktree(self) -> None:
-        gh, issue = _seed_question(COMMIT_PARK_ISSUE_NUMBER)
+    def test_silent_run_parks_with_question_silent(self) -> None:
+        # No commit AND no final message -- distinct from a real
+        # clarifying question; see the implementer's `_on_question`
+        # silent branch for the parallel.
+        gh, issue = _seed_question(2)
+        mocks = self._run_question(
+            gh,
+            issue,
+            run_agent=_agent(
+                last_message="",
+                exit_code=1,
+                stderr="something broke",
+            ),
+        )
+        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
+        pinned_data = gh.pinned_data(issue.number)
+        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_SILENT)
+        # Silent-path park surfaces stderr diagnostics for the operator.
+        self.assertIn("something broke", gh.posted_comments[-1][1])
+
+    def test_commit_output_parks_without_pushing(self) -> None:
+        # The question stage is read-only. A commit is misbehavior --
+        # park with question_commits, keep the issue on label `question`,
+        # and refuse to push.
+        gh, issue = _seed_question(2)
         mocks = self._run_question(
             gh,
             issue,
             run_agent=_agent(last_message="here is a code change"),
             has_new_commits=True,
         )
-        mocks[CLEANUP_QUESTION_WORKTREE].assert_not_called()
+        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
         pinned_data = gh.pinned_data(issue.number)
         self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_COMMITS)
+        self.assertIn("read-only", gh.posted_comments[-1][1])
 
-    def test_dirty_park_keeps_worktree_for_inspection(self) -> None:
-        gh, issue = _seed_question(DIRTY_PARK_ISSUE_NUMBER)
+    def test_dirty_worktree_parks_without_pushing(self) -> None:
+        gh, issue = _seed_question(2)
         mocks = self._run_question(
             gh,
             issue,
-            run_agent=_agent(last_message="dropped changes"),
+            run_agent=_agent(last_message="changes left in tree"),
             has_new_commits=False,
-            dirty_files=["src/x.py"],
+            dirty_files=_dirty_files(),
         )
-        mocks[CLEANUP_QUESTION_WORKTREE].assert_not_called()
-        pinned_data = gh.pinned_data(issue.number)
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_DIRTY)
+        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
+        self.assertEqual(
+            gh.pinned_data(issue.number)[KEY_PARK_REASON],
+            PARK_QUESTION_DIRTY,
+        )
+        comment = gh.posted_comments[-1][1]
+        self.assertIn("file_0.py", comment)
+        self.assertIn(f"file_{LAST_VISIBLE_FILE_INDEX}.py", comment)
+        self.assertNotIn(f"file_{DIRTY_DISPLAY_LIMIT}.py", comment)
+        self.assertIn(f"({DIRTY_OVERFLOW_COUNT} more)", comment)

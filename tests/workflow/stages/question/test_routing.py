@@ -1,19 +1,19 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
 """`question` label bootstrap + dispatcher routing. Handler behavior lives
-in the focused `tests/test_workflow_question_*.py` modules; this module pins
-only the label-spec / family-aware / dispatcher wiring that keeps the
-dispatcher from falling through to pickup or implementing."""
+in the focused sibling modules; this module pins only the label-spec /
+family-aware / dispatcher wiring that keeps the dispatcher from falling through
+to pickup or implementing."""
 
 from __future__ import annotations
 
 import unittest
 from unittest.mock import patch
 
-from orchestrator.stages import question as _question
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.engine import pickup as _pickup
 from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.question import handler as _question
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import LABEL_QUESTION, _TEST_SPEC
@@ -23,9 +23,9 @@ QUESTION_ISSUE_NUMBER = 801
 
 class QuestionLabelRoutingTest(unittest.TestCase):
     """`question` is a first-class workflow label routed to its own stage
-    handler. The behavioral tests for that handler live in
-    `tests/test_workflow_question_*.py`; this class only covers label
-    bootstrapping and dispatcher routing.
+    handler owner, which is where a patch has to land to intercept a
+    dispatched tick. The behavioral tests for that handler live in the sibling
+    modules; this class only covers label bootstrapping and dispatcher routing.
     """
 
     def test_label_is_recognized(self) -> None:

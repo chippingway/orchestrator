@@ -9,7 +9,7 @@ from pathlib import Path
 
 from orchestrator import config
 
-from tests.question_real_git_test_support import (
+from tests.workflow.stages.question.question_real_git_test_support import (
     _run_git,
     _seed_target_root,
     _spec_for,

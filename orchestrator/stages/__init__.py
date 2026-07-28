@@ -1,23 +1,21 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Per-stage handlers for the orchestrator state machine.
+"""Historical import site for the orchestrator's per-stage handlers.
 
-The dispatcher (`orchestrator.workflow.engine.dispatch`) owns the
-label->handler routing and imports the module its table names for a
-label at call time; the unmigrated modules under this package own the
-bodies of those handlers and their stage-private helpers.
+Every stage now lives as a subpackage of responsibility-named owners under
+`orchestrator.workflow.stages`; `decomposition`, `implementing`,
+`documenting`, `validating`, `in_review`, `fixing`, `conflicts`, and
+`question` have all gone. The module each vacated stays here as a temporary
+forwarder that reads every name back off those owners rather than rebuilding
+one, so this package stays the import site historical callers and patches
+already name until they name the owner instead.
+
+Orchestrator code itself no longer reads through here. The dispatcher
+(`orchestrator.workflow.engine.dispatch`) owns the label->handler routing and
+imports the module its table names for a label at call time, and that table --
+like the same-tick start in `workflow/engine/pickup.py` -- names the owner a
+handler lives on, so intercepting one means patching there and not here.
 `orchestrator.workflow` also re-exports each handler under its original
-`_handle_*` name so direct test references and intra-handler calls keep
-working.
-
-`orchestrator.workflow.stages` is where a stage moves once it has owners
-of its own; `decomposition`, `implementing`, `documenting`, `validating`,
-`in_review`, `fixing`, and `conflicts` have already gone. The module it vacates
-stays
-here as a temporary forwarder that reads every name back off those owners
-rather than rebuilding one, so this package stays the import site
-historical callers and patches already name until they name the owner
-instead. Dispatch is the exception: the label table -- and the same-tick
-start in `workflow/engine/pickup.py` -- names the owner a migrated handler
-lives on, so intercepting one means patching there and not here.
+`_handle_*` name, straight off the owner, so direct test references and
+stage-to-stage calls keep working.
 """

@@ -40,16 +40,25 @@ EXPORTS = (
         (("PinnedState", "PinnedState"),),
     ),
     *export_group(
-        "orchestrator.stages._question_handler",
+        "orchestrator.workflow.stages.question.handler",
         (
             ("_cleanup_question_run", "_cleanup_question_run"),
+            ("_finalize_closed_question", "_finalize_closed_question"),
             ("_handle_question", "_handle_question"),
             ("_process_question_run", "_process_question_run"),
             ("_question_run_cleanup", "_question_run_cleanup"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._question_outcomes",
+        "orchestrator.workflow.stages.question.models",
+        (
+            ("_QuestionOutcome", "_QuestionOutcome"),
+            ("_QuestionRun", "_QuestionRun"),
+            ("_QuestionSession", "_QuestionSession"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.question.outcomes",
         (
             ("_assess_question_outcome", "_assess_question_outcome"),
             ("_assess_question_worktree", "_assess_question_worktree"),
@@ -60,9 +69,9 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._question_run",
+        "orchestrator.workflow.stages.question.run",
         (
-            ("_finalize_closed_question", "_finalize_closed_question"),
+            ("_execute_question_prompt", "_execute_question_prompt"),
             ("_park_question", "_park_question"),
             ("_resume_question_on_human_reply", "_resume_question_on_human_reply"),
             ("_select_question_run", "_select_question_run"),
@@ -70,19 +79,15 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._question_session",
+        "orchestrator.workflow.stages.question.session",
         (
-            ("_QuestionOutcome", "_QuestionOutcome"),
-            ("_QuestionRun", "_QuestionRun"),
-            ("_QuestionSession", "_QuestionSession"),
             ("_build_question_resume_prompt", "_build_question_resume_prompt"),
             ("_consume_new_human_replies", "_consume_new_human_replies"),
-            ("_execute_question_prompt", "_execute_question_prompt"),
             ("_read_question_session", "_read_question_session"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._question_state",
+        "orchestrator.workflow.stages.question.state",
         (
             ("_QUESTION_AGENT_KEY", "_QUESTION_AGENT_KEY"),
             ("_QUESTION_ANSWER", "_QUESTION_ANSWER"),

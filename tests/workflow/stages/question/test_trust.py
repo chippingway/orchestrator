@@ -17,10 +17,10 @@ from tests.workflow_helpers import (
     _agent,
 )
 
-from tests.question_test_support import (
+from tests.workflow.stages.question.question_test_support import (
     _seed_live_question_session,
 )
-from tests.question_conversation_test_support import (
+from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
 )
 
@@ -178,7 +178,9 @@ class HandleQuestionResumeTrustFilterTest(
         # trusted comment. A trusted reply trailed by an outsider comment must
         # leave the outsider id unconsumed by the resume -- otherwise a mixed
         # batch would persist an outsider id nobody acted on as the watermark.
-        from orchestrator.stages.question import _consume_new_human_replies
+        from orchestrator.workflow.stages.question.session import (
+            _consume_new_human_replies,
+        )
 
         gh = FakeGitHubClient()
         issue = make_issue(TRUSTED_WATERMARK_ISSUE_NUMBER, label=LABEL_QUESTION)

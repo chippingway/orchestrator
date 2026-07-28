@@ -6,20 +6,22 @@ import unittest
 from pathlib import Path
 
 
-from tests.fakes import FakeComment, FakeGitHubClient, make_issue
+from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import (
     BACKEND_CLAUDE,
-    KEY_AWAITING_HUMAN,
-    KEY_ISSUE_AGENT_RUNS,
-    KEY_ISSUE_TOTAL_TOKENS,
     KEY_PARK_REASON,
 )
 from tests.workflow_helpers import (
     LABEL_QUESTION,
+    _TEST_SPEC,
     _agent,
 )
 
-from tests.question_conversation_test_support import (
+from tests.workflow.stages.question.question_test_support import (
+    _issue_branch,
+    _seed_question,
+)
+from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
 )
 
@@ -127,146 +129,115 @@ TRUSTED_WATERMARK_ISSUE_NUMBER = 72
 OUTSIDER_ONLY_ISSUE_NUMBER = 71
 
 
-class HandleQuestionRunUsageAccumulationTest(
+class HandleQuestionWorktreeCleanupTest(
     unittest.TestCase,
     _QuestionWorkflowMixin,
 ):
-    """`_handle_question` folds each real question-agent exit into the
-    per-issue usage counters, at both the fresh-spawn and awaiting-human
-    resume sites, and leaves them unpersisted when the run was interrupted
-    (empty stdout parses to a `no-usage` metric: a counted run with zero
-    tokens).
+    """The read-only question stage must not leave a per-issue
+    worktree on disk between ticks: `_refresh_base_and_worktrees`
+    would otherwise merge `origin/<base>` into the pre-PR worktree,
+    accreting commits on a branch the question agent is forbidden
+    from touching, and a later relabel to `implementing` would then
+    either trip the `question_unsafe_relabel` guard or fall through
+    to the recovered-worktree push path. Every safe-exit of
+    `_handle_question` therefore tears the worktree down via
+    `_cleanup_question_worktree`. The unsafe parks
+    (`question_commits`, `question_dirty`, `question_timeout`) keep
+    the worktree so the operator can inspect.
     """
 
-    def test_fresh_run_persists_one_run(self) -> None:
-        gh = FakeGitHubClient()
-        issue = make_issue(
-            FRESH_USAGE_ISSUE_NUMBER,
-            label=LABEL_QUESTION,
-            body=QUESTION_TEXT,
-        )
-        gh.add_issue(issue)
-
-        self._run_question(
-            gh,
-            issue,
-            run_agent=_agent(session_id="q-sess", last_message="X is in x.py."),
-        )
-
-        pinned_data = gh.pinned_data(issue.number)
-        self.assertEqual(pinned_data[KEY_ISSUE_AGENT_RUNS], 1)
-        self.assertEqual(pinned_data[KEY_ISSUE_TOTAL_TOKENS], 0)
-        self.assertEqual(pinned_data["issue_cost_sources"], ["no-usage"])
-
-    def test_resume_counts_one_exit(self) -> None:
-        gh = FakeGitHubClient()
-        issue = make_issue(RESUMED_USAGE_ISSUE_NUMBER, label=LABEL_QUESTION)
-        issue.comments.append(
-            FakeComment(id=QUESTION_REPLY_ID, body="please clarify"),
-        )
-        gh.add_issue(issue)
-        gh.seed_state(
-            issue.number,
-            awaiting_human=True,
-            last_action_comment_id=QUESTION_REPLY_WATERMARK,
-            question_agent=BACKEND_CLAUDE,
-            question_session_id=QUESTION_SESSION,
-            park_reason=PARK_QUESTION_ANSWER,
-        )
-
-        self._run_question(
-            gh,
-            issue,
-            run_agent=_agent(
-                session_id=QUESTION_SESSION,
-                last_message="here you go",
-            ),
-        )
-
-        # Exactly one real resume exit folded.
-        self.assertEqual(
-            gh.pinned_data(issue.number)[KEY_ISSUE_AGENT_RUNS],
-            1,
-        )
-
-    def test_no_comment_resume_keeps_counters(self) -> None:
-        gh = FakeGitHubClient()
-        issue = make_issue(NO_COMMENT_USAGE_ISSUE_NUMBER, label=LABEL_QUESTION)
-        gh.add_issue(issue)
-        gh.seed_state(
-            issue.number,
-            awaiting_human=True,
-            last_action_comment_id=NO_NEW_COMMENTS_WATERMARK,
-            question_agent=BACKEND_CLAUDE,
-            question_session_id=QUESTION_SESSION,
-            park_reason=PARK_QUESTION_ANSWER,
-        )
-
+    def test_answer_path_cleans_up_worktree(self) -> None:
+        gh, issue = _seed_question(ANSWER_CLEANUP_ISSUE_NUMBER)
         mocks = self._run_question(
             gh,
             issue,
-            run_agent=_agent(),
+            run_agent=_agent(last_message="here is the answer"),
+            has_new_commits=False,
+        )
+        mocks[CLEANUP_QUESTION_WORKTREE].assert_called_once_with(
+            _TEST_SPEC,
+            issue.number,
+            branch=_issue_branch(issue.number),
         )
 
-        # No reply -> the resume returns before spawning, so no run is
-        # counted and no counter key is created.
+    def test_silent_path_cleans_up_worktree(self) -> None:
+        gh, issue = _seed_question(SILENT_CLEANUP_ISSUE_NUMBER)
+        mocks = self._run_question(
+            gh,
+            issue,
+            run_agent=_agent(last_message="", exit_code=1),
+            has_new_commits=False,
+        )
+        mocks[CLEANUP_QUESTION_WORKTREE].assert_called_once_with(
+            _TEST_SPEC,
+            issue.number,
+            branch=_issue_branch(issue.number),
+        )
+
+    def test_no_comments_resume_cleans_stale_tree(
+        self,
+    ) -> None:
+        # A no-reply tick must still tear down any worktree left by
+        # a prior tick. Without this, an answered question that the
+        # operator left alone for a few ticks would accumulate base
+        # merges in the worktree even though `_handle_question`
+        # itself did nothing.
+        gh = FakeGitHubClient()
+        issue = make_issue(STALE_RESUME_ISSUE_NUMBER, label=LABEL_QUESTION)
+        gh.add_issue(issue)
+        gh.seed_state(
+            issue.number,
+            awaiting_human=True,
+            last_action_comment_id=STALE_RESUME_WATERMARK,
+            question_agent=BACKEND_CLAUDE,
+            question_session_id="q-sess-stale",
+            park_reason=PARK_QUESTION_ANSWER,
+        )
+        mocks = self._run_question(
+            gh,
+            issue,
+            run_agent=_agent(last_message=UNEXPECTED_AGENT_MESSAGE),
+        )
         mocks[RUN_AGENT].assert_not_called()
-        pinned_data = gh.pinned_data(issue.number)
-        self.assertNotIn(KEY_ISSUE_AGENT_RUNS, pinned_data)
-        self.assertNotIn(KEY_ISSUE_TOTAL_TOKENS, pinned_data)
-
-    def test_interrupted_run_keeps_counters_clear(self) -> None:
-        gh = FakeGitHubClient()
-        issue = make_issue(INTERRUPTED_USAGE_ISSUE_NUMBER, label=LABEL_QUESTION)
-        gh.add_issue(issue)
-
-        self._run_question(
-            gh,
-            issue,
-            run_agent=_agent(
-                session_id="",
-                last_message="",
-                exit_code=1,
-                interrupted=True,
-            ),
+        mocks[CLEANUP_QUESTION_WORKTREE].assert_called_once_with(
+            _TEST_SPEC,
+            issue.number,
+            branch=_issue_branch(issue.number),
         )
 
-        # A shutdown-killed question agent returns before
-        # `write_pinned_state`, so neither the folded counters nor a silent
-        # park reach GitHub.
-        pinned_data = gh.pinned_data(issue.number)
-        self.assertNotIn(KEY_ISSUE_AGENT_RUNS, pinned_data)
-        self.assertNotIn(KEY_ISSUE_TOTAL_TOKENS, pinned_data)
-        self.assertFalse(pinned_data.get(KEY_AWAITING_HUMAN))
-        self.assertNotEqual(pinned_data.get(KEY_PARK_REASON), PARK_QUESTION_SILENT)
-        self.assertEqual(gh.posted_comments, [])
-
-    def test_committed_interrupt_parks_no_counters(self) -> None:
-        # A killed question agent that ALSO left commits still hits the
-        # read-only `question_commits` park (which writes pinned state and
-        # keeps the worktree for inspection). Because that write path fires,
-        # the usage fold must be skipped for the interrupted run or a counter
-        # would persist despite the run being killed.
-        gh = FakeGitHubClient()
-        issue = make_issue(COMMITTED_INTERRUPT_ISSUE_NUMBER, label=LABEL_QUESTION)
-        gh.add_issue(issue)
-
+    def test_timeout_park_keeps_worktree(self) -> None:
+        gh, issue = _seed_question(TIMEOUT_PARK_ISSUE_NUMBER)
         mocks = self._run_question(
             gh,
             issue,
-            run_agent=_agent(
-                session_id="q-sess",
-                last_message="",
-                interrupted=True,
-            ),
+            run_agent=_agent(timed_out=True, last_message=""),
+        )
+        mocks[CLEANUP_QUESTION_WORKTREE].assert_not_called()
+        pinned_data = gh.pinned_data(issue.number)
+        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_TIMEOUT)
+        self.assertIn("worktree is left intact", gh.posted_comments[-1][1])
+
+    def test_commit_park_keeps_worktree(self) -> None:
+        gh, issue = _seed_question(COMMIT_PARK_ISSUE_NUMBER)
+        mocks = self._run_question(
+            gh,
+            issue,
+            run_agent=_agent(last_message="here is a code change"),
             has_new_commits=True,
         )
-
-        pinned_data = gh.pinned_data(issue.number)
-        self.assertEqual(pinned_data.get(KEY_PARK_REASON), PARK_QUESTION_COMMITS)
-        # Worktree kept for inspection (the commits park's contract).
         mocks[CLEANUP_QUESTION_WORKTREE].assert_not_called()
-        # The park wrote pinned state, but the killed run's usage was NOT
-        # folded, so no counter accrued.
-        self.assertNotIn(KEY_ISSUE_AGENT_RUNS, pinned_data)
-        self.assertNotIn(KEY_ISSUE_TOTAL_TOKENS, pinned_data)
+        pinned_data = gh.pinned_data(issue.number)
+        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_COMMITS)
+
+    def test_dirty_park_keeps_worktree_for_inspection(self) -> None:
+        gh, issue = _seed_question(DIRTY_PARK_ISSUE_NUMBER)
+        mocks = self._run_question(
+            gh,
+            issue,
+            run_agent=_agent(last_message="dropped changes"),
+            has_new_commits=False,
+            dirty_files=["src/x.py"],
+        )
+        mocks[CLEANUP_QUESTION_WORKTREE].assert_not_called()
+        pinned_data = gh.pinned_data(issue.number)
+        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_DIRTY)

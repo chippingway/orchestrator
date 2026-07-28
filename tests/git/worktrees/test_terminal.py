@@ -24,7 +24,7 @@ from tests.git.worktrees.terminal_test_support import (
     _branch_exists,
     _seed_cleanup_fixture,
 )
-from tests.question_real_git_test_support import (
+from tests.workflow.stages.question.question_real_git_test_support import (
     _seed_target_root,
     _spec_for,
 )

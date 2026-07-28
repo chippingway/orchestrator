@@ -18,7 +18,7 @@ from tests.workflow_helpers import (
     _agent,
 )
 
-from tests.question_conversation_test_support import (
+from tests.workflow.stages.question.question_conversation_test_support import (
     _assert_fresh_round,
     _assert_resumed_round,
     _QuestionConversation,

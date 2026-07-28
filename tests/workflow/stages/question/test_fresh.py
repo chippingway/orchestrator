@@ -4,23 +4,25 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from orchestrator import config
+from orchestrator import config, workflow
 
 from tests.workflow_helpers import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
 )
 from tests.workflow_helpers import (
+    _TEST_SPEC,
     _agent,
 )
 
-from tests.question_test_support import (
+from tests.workflow.stages.question.question_test_support import (
     _assert_no_pr_no_push_no_relabel,
-    _dirty_files,
+    _issue_branch,
     _seed_question,
 )
-from tests.question_conversation_test_support import (
+from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
 )
 
@@ -65,7 +67,6 @@ QUESTION_REPLY_WATERMARK = 11000
 DIRTY_FILE_COUNT = 15
 DIRTY_DISPLAY_LIMIT = 10
 DIRTY_OVERFLOW_COUNT = DIRTY_FILE_COUNT - DIRTY_DISPLAY_LIMIT
-LAST_VISIBLE_FILE_INDEX = DIRTY_DISPLAY_LIMIT - 1
 TRUSTED_REPLY_ID = QUESTION_REPLY_ID
 OUTSIDER_REPLY_ID = TRUSTED_REPLY_ID + 1
 MULTI_ROUND_REPLY_ID_STEP = 100
@@ -129,79 +130,91 @@ TRUSTED_WATERMARK_ISSUE_NUMBER = 72
 OUTSIDER_ONLY_ISSUE_NUMBER = 71
 
 
-class HandleQuestionParkPathsTest(unittest.TestCase, _QuestionWorkflowMixin):
-    """The handler distinguishes four park reasons -- timeout, silent
-    crash, dirty worktree, and commit -- so an operator can tell why
-    the conversation stalled. All four leave `awaiting_human=True`
-    and no PR / no push / no relabel.
+class HandleQuestionFreshRunTest(unittest.TestCase, _QuestionWorkflowMixin):
+    """First-tick spawn paths: the question handler runs the configured
+    `DECOMPOSE_AGENT` in the per-issue worktree (`issue-N`), posts the
+    answer back to the issue thread, persists the agent / session, and
+    parks awaiting human. The agent must never push, open a PR, or
+    relabel the issue.
     """
 
-    def test_timeout_parks_with_question_timeout(self) -> None:
-        gh, issue = _seed_question(2)
-        mocks = self._run_question(
-            gh,
-            issue,
-            run_agent=_agent(timed_out=True, last_message=""),
-        )
-        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
-        pinned_data = gh.pinned_data(issue.number)
-        self.assertTrue(pinned_data[KEY_AWAITING_HUMAN])
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_TIMEOUT)
-        self.assertIn(config.HITL_MENTIONS, gh.posted_comments[-1][1])
-        self.assertIn("timed out", gh.posted_comments[-1][1])
-
-    def test_silent_run_parks_with_question_silent(self) -> None:
-        # No commit AND no final message -- distinct from a real
-        # clarifying question; see the implementer's `_on_question`
-        # silent branch for the parallel.
-        gh, issue = _seed_question(2)
+    def test_answer_posts_and_parks_for_human(self) -> None:
+        gh, issue = _seed_question(1, body=QUESTION_TEXT)
         mocks = self._run_question(
             gh,
             issue,
             run_agent=_agent(
-                last_message="",
-                exit_code=1,
-                stderr="something broke",
+                session_id="q-sess-1",
+                last_message="X lives in src/x.py:42.",
+            ),
+            has_new_commits=False,
+        )
+
+        # Read-only stage: no push, no PR, no relabel.
+        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
+
+        # The answer was posted to the issue thread pinging HITL_MENTIONS.
+        self.assertEqual(len(gh.posted_comments), 1)
+        _, body = gh.posted_comments[0]
+        self.assertIn(config.HITL_MENTIONS, body)
+        self.assertIn("> X lives in src/x.py:42.", body)
+
+        # Pinned state records the agent spec, session id, and park reason.
+        pinned_data = gh.pinned_data(issue.number)
+        self.assertEqual(
+            (
+                pinned_data["question_agent"],
+                pinned_data[KEY_QUESTION_SESSION_ID],
+                pinned_data[KEY_PARK_REASON],
+            ),
+            (
+                config.DECOMPOSE_AGENT_SPEC,
+                "q-sess-1",
+                PARK_QUESTION_ANSWER,
             ),
         )
-        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
-        pinned_data = gh.pinned_data(issue.number)
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_SILENT)
-        # Silent-path park surfaces stderr diagnostics for the operator.
-        self.assertIn("something broke", gh.posted_comments[-1][1])
+        self.assertTrue(pinned_data[KEY_AWAITING_HUMAN])
+        self.assertIn("last_question_at", pinned_data)
 
-    def test_commit_output_parks_without_pushing(self) -> None:
-        # The question stage is read-only. A commit is misbehavior --
-        # park with question_commits, keep the issue on label `question`,
-        # and refuse to push.
-        gh, issue = _seed_question(2)
+        # The agent ran in the per-issue worktree, not the decomposer one.
+        mocks["_ensure_worktree"].assert_called_once_with(
+            _TEST_SPEC,
+            issue.number,
+            branch=_issue_branch(issue.number),
+        )
+        mocks["_ensure_decompose_worktree"].assert_not_called()
+
+    def test_uses_decompose_agent_backend(self) -> None:
+        # Locked-backend pattern: the persisted spec is the configured
+        # DECOMPOSE_AGENT spec. The orchestrator does not flip to a
+        # different backend mid-conversation, and a later env flip cannot
+        # retarget the resume at the wrong CLI.
+        gh, issue = _seed_question(1, body=QUESTION_TEXT)
         mocks = self._run_question(
             gh,
             issue,
-            run_agent=_agent(last_message="here is a code change"),
-            has_new_commits=True,
+            run_agent=_agent(last_message="answer text"),
         )
-        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
-        pinned_data = gh.pinned_data(issue.number)
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_QUESTION_COMMITS)
-        self.assertIn("read-only", gh.posted_comments[-1][1])
-
-    def test_dirty_worktree_parks_without_pushing(self) -> None:
-        gh, issue = _seed_question(2)
-        mocks = self._run_question(
-            gh,
-            issue,
-            run_agent=_agent(last_message="changes left in tree"),
-            has_new_commits=False,
-            dirty_files=_dirty_files(),
-        )
-        _assert_no_pr_no_push_no_relabel(self, gh, mocks)
+        call_kwargs = mocks[RUN_AGENT].call_args.kwargs
         self.assertEqual(
-            gh.pinned_data(issue.number)[KEY_PARK_REASON],
-            PARK_QUESTION_DIRTY,
+            mocks[RUN_AGENT].call_args.args[0],
+            config.DECOMPOSE_AGENT,
         )
-        comment = gh.posted_comments[-1][1]
-        self.assertIn("file_0.py", comment)
-        self.assertIn(f"file_{LAST_VISIBLE_FILE_INDEX}.py", comment)
-        self.assertNotIn(f"file_{DIRTY_DISPLAY_LIMIT}.py", comment)
-        self.assertIn(f"({DIRTY_OVERFLOW_COUNT} more)", comment)
+        self.assertEqual(
+            call_kwargs.get("extra_args"),
+            config.DECOMPOSE_AGENT_ARGS,
+        )
+
+    def test_stage_does_not_use_retry_budget(self) -> None:
+        # Mirrors the implementing/decomposing retry-budget contract --
+        # but the question stage explicitly does NOT consume that budget,
+        # since the agent does no codegen and a wedged conversation does
+        # not threaten an issue's daily spawn allowance.
+        gh, issue = _seed_question(1, body=QUESTION_TEXT)
+        with patch.object(workflow, "_check_and_increment_retry_budget") as cb:
+            self._run_question(
+                gh,
+                issue,
+                run_agent=_agent(last_message="answer"),
+            )
+            cb.assert_not_called()
