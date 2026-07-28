@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import unittest
 
+from tests.workflow.stages.conflicts.conflicts_test_support import (
+    _ResolvingConflictMixin,
+)
 from tests.workflow_helpers import (
     _FAKE_WT,
-    _ResolvingConflictMixin,
     _TEST_SPEC,
     _agent,
 )

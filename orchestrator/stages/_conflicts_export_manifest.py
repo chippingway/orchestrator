@@ -36,7 +36,7 @@ EXPORTS = (
         (("PinnedState", "PinnedState"),),
     ),
     *export_group(
-        "orchestrator.stages._conflict_divergence",
+        "orchestrator.workflow.stages.conflicts.divergence",
         (
             ("_guard_diverged_worktree", "_guard_diverged_worktree"),
             ("_park_diverged_worktree", "_park_diverged_worktree"),
@@ -45,7 +45,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_guards",
+        "orchestrator.workflow.stages.conflicts.guards",
         (
             ("_already_rebased_onto_base", "_already_rebased_onto_base"),
             ("_ensure_conflict_worktree", "_ensure_conflict_worktree"),
@@ -53,7 +53,14 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_models",
+        "orchestrator.workflow.stages.conflicts.handler",
+        (
+            ("_handle_resolving_conflict", "_handle_resolving_conflict"),
+            ("_park_conflict_missing_pr_number", "_park_conflict_missing_pr_number"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.conflicts.models",
         (
             ("_ConflictContext", "_ConflictContext"),
             ("_ConflictResumeRun", "_ConflictResumeRun"),
@@ -62,7 +69,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_outcomes",
+        "orchestrator.workflow.stages.conflicts.outcomes",
         (
             ("_finalize_conflict_resolution", "_finalize_conflict_resolution"),
             ("_park_stalled_conflict_result", "_park_stalled_conflict_result"),
@@ -70,7 +77,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_publish",
+        "orchestrator.workflow.stages.conflicts.publication",
         (
             ("_flip_base_up_to_date", "_flip_base_up_to_date"),
             ("_publish_clean_rebase", "_publish_clean_rebase"),
@@ -78,7 +85,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_rebase",
+        "orchestrator.workflow.stages.conflicts.rebase",
         (
             ("_fetch_base_ref", "_fetch_base_ref"),
             ("_fetch_pr_branch", "_fetch_pr_branch"),
@@ -87,7 +94,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_resume",
+        "orchestrator.workflow.stages.conflicts.resume",
         (
             ("_awaiting_human_followup", "_awaiting_human_followup"),
             ("_resume_awaiting_human", "_resume_awaiting_human"),
@@ -96,23 +103,21 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_routing",
+        "orchestrator.workflow.stages.conflicts.routing",
         (
             ("_drive_conflict_rebase", "_drive_conflict_rebase"),
-            ("_handle_resolving_conflict", "_handle_resolving_conflict"),
-            ("_park_conflict_missing_pr_number", "_park_conflict_missing_pr_number"),
             ("_prepare_conflict_worktree", "_prepare_conflict_worktree"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_state",
+        "orchestrator.workflow.stages.conflicts.state",
         (
             ("_CONFLICT_ROUND", "_CONFLICT_ROUND"),
             ("_REVIEW_ROUND", "_REVIEW_ROUND"),
         ),
     ),
     *export_group(
-        "orchestrator.stages._conflict_transitions",
+        "orchestrator.workflow.stages.conflicts.transitions",
         (
             ("_emit_conflict_round_incremented", "_emit_conflict_round_incremented"),
             ("_hand_resolved_round_to_validating", "_hand_resolved_round_to_validating"),

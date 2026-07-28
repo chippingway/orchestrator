@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Typed resolving-conflict scenarios for focused workflow tests."""
+"""Typed resolving-conflict scenarios for the stage's focused tests."""
 from __future__ import annotations
 
 from dataclasses import dataclass

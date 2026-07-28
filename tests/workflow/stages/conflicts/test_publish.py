@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
-from orchestrator.stages import conflicts
+from orchestrator.workflow.stages.conflicts import guards as _guards
 
 from tests.fakes import (
     FakeGitHubClient,
@@ -67,8 +67,9 @@ class _PublishFixtureMixin(_PatchedWorkflowMixin):
 
     def _run_diverged(self, gh, issue, *, on_base, recognized):
         # The worktree is 4 ahead / 2 behind the remote PR head (a rebase
-        # rewrote history). Patch the two safety probes directly so the
-        # handler's publish-vs-park branch is exercised in isolation.
+        # rewrote history). Patch the two safety probes on the owner the
+        # divergence guard calls them through, so the handler's
+        # publish-vs-park branch is exercised in isolation.
         # After a successful force-publish the handler probes
         # `rev-list HEAD..origin/<base>` to decide between the fast
         # path and a follow-up rebase; this scenario is "already on
@@ -78,12 +79,12 @@ class _PublishFixtureMixin(_PatchedWorkflowMixin):
         )
         with (
             patch.object(
-                conflicts,
+                _guards,
                 "_already_rebased_onto_base",
                 MagicMock(return_value=on_base),
             ),
             patch.object(
-                conflicts,
+                _guards,
                 "_pr_head_orchestrator_produced",
                 MagicMock(return_value=recognized),
             ),

@@ -8,10 +8,6 @@ from orchestrator._compat_exports import export_group
 
 EXPORTS = (
     *export_group(
-        "tests.workflow_conflict_support",
-        (("_ResolvingConflictMixin", "_ResolvingConflictMixin"),),
-    ),
-    *export_group(
         "tests.workflow_event_values",
         (
             ("EVENT_AGENT_EXIT", "EVENT_AGENT_EXIT"),

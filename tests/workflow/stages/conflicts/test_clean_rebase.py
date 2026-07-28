@@ -13,10 +13,12 @@ from tests.fakes import (
     FakePRRef,
     make_issue,
 )
+from tests.workflow.stages.conflicts.conflicts_test_support import (
+    _ResolvingConflictMixin,
+)
 from tests.workflow_helpers import (
     _FAKE_WT,
     _PatchedWorkflowMixin,
-    _ResolvingConflictMixin,
     _TEST_SPEC,
     _agent,
     _issue_branch,

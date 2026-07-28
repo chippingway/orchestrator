@@ -58,7 +58,7 @@ right:
 - When you move a helper to a new module, either update the test's patch target to the new module
   boundary, or keep the compatibility alias on `orchestrator.workflow` and patch through the facade. Pick one
   approach per PR and be consistent.
-- Stage-handler tests live in `tests/test_workflow_<stage>.py` (`_conflicts`); the in_review stage is
+- Stage-handler tests live beside their owners under `tests/workflow/stages/<stage>/`. The in_review stage is
   split into focused
   `tests/workflow/stages/in_review/test_*.py` files beside its owners (routing, watermarks,
   filtering, parked, migration, review summary, drift, live pause, fresh-feedback fixing route,
@@ -75,7 +75,12 @@ right:
   `tests/workflow/stages/fixing/test_*.py` files beside its owners (label + dispatcher routing, PR
   terminals, feedback rescan + trust gate, quiet window, resume outcomes, session retirement, replay
   batch + reviewer anchor, `/orchestrator continue` on both routes, parked dispatch, conflict
-  reroute, stranded commit, mid-tick comment, live pause, borrowed-owner boundaries), and the
+  reroute, stranded commit, mid-tick comment, live pause, borrowed-owner boundaries), the
+  resolving-conflict stage into focused
+  `tests/workflow/stages/conflicts/test_*.py` files beside its owners (dispatcher routing, closed-issue
+  sweep, clean rebase, agent resolution, awaiting-human resume, dirty / rebase-in-progress parks,
+  crash-recovery pushes, stale / diverged parks, force-publish and its probes, drift, event emission,
+  live pause, borrowed-owner boundaries), and the
   decomposition stage into focused
   `tests/test_workflow_decomposition_*.py` files
   (manifest parsing, decomposing/ready/blocked/umbrella stage handlers, child issue creation, hash

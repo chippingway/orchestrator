@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
-from orchestrator.stages import conflicts
+from orchestrator.workflow.stages.conflicts import guards as _guards
 
 from tests.fakes import (
     FakeGitHubClient,
@@ -43,20 +43,20 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
         # than guessing.
         state = _state_for(1, docs_checked_sha="abc")
         self.assertTrue(
-            conflicts._pr_head_orchestrator_produced(state, _pr("abc")),
+            _guards._pr_head_orchestrator_produced(state, _pr("abc")),
         )
         self.assertFalse(
-            conflicts._pr_head_orchestrator_produced(state, _pr("xyz")),
+            _guards._pr_head_orchestrator_produced(state, _pr("xyz")),
         )
         # An empty/missing head never matches.
         self.assertFalse(
-            conflicts._pr_head_orchestrator_produced(state, _pr("")),
+            _guards._pr_head_orchestrator_produced(state, _pr("")),
         )
         # No `docs_checked_sha` recorded -- e.g. a pre-docs validating
         # PR head -- must NOT match an empty-string lookup either.
         state2 = _state_for(2, dev_agent="claude")
         self.assertFalse(
-            conflicts._pr_head_orchestrator_produced(state2, _pr("abc")),
+            _guards._pr_head_orchestrator_produced(state2, _pr("abc")),
         )
 
     def test_already_rebased_reads_rev_list_count(self) -> None:
@@ -70,7 +70,7 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
             ),
         ):
             self.assertTrue(
-                conflicts._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
+                _guards._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
             )
         with (
             patch.object(workflow, "_authed_fetch", fetch_ok),
@@ -81,7 +81,7 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
             ),
         ):
             self.assertFalse(
-                conflicts._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
+                _guards._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
             )
 
     def test_rebased_probe_fails_closed_on_fetch(self) -> None:
@@ -100,7 +100,7 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
         with patch.object(workflow, "_authed_fetch", fetch_fail), \
              patch.object(workflow, "_git_hardened", rev_list_zero):
             self.assertFalse(
-                conflicts._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
+                _guards._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
             )
         # And the rev-list probe must be skipped entirely on fetch failure
         # -- there is no value reading a count off a stale ref.

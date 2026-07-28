@@ -41,11 +41,11 @@ mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
 
 The handler for a label is reached by importing the module
-`_STAGE_HANDLER_TARGETS` pairs it with, at call time: two of them are stage
-facades still under `orchestrator/stages/`, nine are decomposition,
-documenting, fixing, implementing, validating, and in_review owners under
-`workflow/stages/`, and the twelfth is the `pickup` sibling an unlabeled issue
-starts on -- and the stage tree imports this subpackage, so binding any of them
+`_STAGE_HANDLER_TARGETS` pairs it with, at call time: one of them is the
+`question` stage facade still under `orchestrator/stages/`, ten are
+conflicts, decomposition, documenting, fixing, implementing, validating, and
+in_review owners under `workflow/stages/`, and the twelfth is the `pickup`
+sibling an unlabeled issue starts on -- and the stage tree imports this subpackage, so binding any of them
 at module scope would point that edge back at itself. A migrated stage is named
 by the owner its handler lives on rather than by the forwarder it left behind,
 so the patch that intercepts a dispatch is the one against whichever module the
@@ -88,6 +88,7 @@ _CAP_EXEMPT_FAMILY_LABELS = frozenset((
 _FAMILY_BUCKET_ISSUE: int = 0
 
 _STAGE_PACKAGE = "orchestrator.stages"
+_CONFLICTS_PACKAGE = "orchestrator.workflow.stages.conflicts"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _FIXING_PACKAGE = "orchestrator.workflow.stages.fixing"
@@ -106,7 +107,9 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
     "validating": (f"{_VALIDATING_PACKAGE}.handler", "_handle_validating"),
     "in_review": (f"{_IN_REVIEW_PACKAGE}.handler", "_handle_in_review"),
     "fixing": (f"{_FIXING_PACKAGE}.handler", "_handle_fixing"),
-    "resolving_conflict": (f"{_STAGE_PACKAGE}.conflicts", "_handle_resolving_conflict"),
+    "resolving_conflict": (
+        f"{_CONFLICTS_PACKAGE}.handler", "_handle_resolving_conflict",
+    ),
     "question": (f"{_STAGE_PACKAGE}.question", "_handle_question"),
 })
 

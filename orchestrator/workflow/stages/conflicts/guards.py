@@ -1,17 +1,27 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Conflict guards."""
+"""The three probes that have to answer before any branch is overwritten.
+
+Two of them exist for one decision: whether a worktree that is behind its
+remote PR head may still be force-published. That is the one case where the
+stage rewrites a branch it did not just produce, so both probes are written to
+fail closed -- an unreadable fetch, an unparsable count, or an unrecognized head
+all answer "no" and leave the conservative park in place.
+
+The third is the worktree itself, and which restorer it uses is the whole
+point: rebuilding from the PR branch keeps the PR's commits, while the
+base-branch restorer would silently discard them.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import conflicts as _owner
+from pathlib import Path
 
-_ConflictContext = _owner._ConflictContext
-Path = _owner.Path
-PinnedState = _owner.PinnedState
-config = _owner.config
+from orchestrator import config
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.stages.conflicts import models as _models
 
 
-def _ensure_conflict_worktree(ctx: _ConflictContext) -> Path:
+def _ensure_conflict_worktree(ctx: _models._ConflictContext) -> Path:
     """Return the per-issue worktree, restoring it from `origin/<branch>` when
     it has been pruned.
 

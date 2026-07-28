@@ -7,11 +7,13 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import config, workflow
 
-from tests import conflict_resume_test_support
 from tests.fakes import FakeComment, FakeUser
+from tests.workflow.stages.conflicts import conflict_resume_test_support
+from tests.workflow.stages.conflicts.conflicts_test_support import (
+    _ResolvingConflictMixin,
+)
 from tests.workflow_helpers import (
     _FAKE_WT,
-    _ResolvingConflictMixin,
     _TEST_SPEC,
     _agent,
 )

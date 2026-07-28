@@ -12,7 +12,8 @@ working.
 
 `orchestrator.workflow.stages` is where a stage moves once it has owners
 of its own; `decomposition`, `implementing`, `documenting`, `validating`,
-`in_review`, and `fixing` have already gone. The module it vacates stays
+`in_review`, `fixing`, and `conflicts` have already gone. The module it vacates
+stays
 here as a temporary forwarder that reads every name back off those owners
 rather than rebuilding one, so this package stays the import site
 historical callers and patches already name until they name the owner

@@ -7,8 +7,10 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import workflow
 
-from tests.workflow_helpers import (
+from tests.workflow.stages.conflicts.conflicts_test_support import (
     _ResolvingConflictMixin,
+)
+from tests.workflow_helpers import (
     _agent,
 )
 

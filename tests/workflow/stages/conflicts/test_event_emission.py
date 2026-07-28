@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import unittest
+
+from tests.workflow.stages.conflicts.conflicts_test_support import (
+    _ResolvingConflictMixin,
+)
 from tests.workflow_helpers import (
     EVENT_PR_CLOSED_WITHOUT_MERGE,
     EVENT_PR_MERGED,
-    _ResolvingConflictMixin,
 )
 
 BEFORE_HEAD = "before"
