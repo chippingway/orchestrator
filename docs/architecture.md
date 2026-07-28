@@ -160,8 +160,8 @@ orchestrator/
                         folded into and the terminal receipt read off them, and
                         the UTC stamp the stages write
     stages/
-      __init__.py       package marker only; owner of every per-label stage
-                        handler, one subpackage each
+      __init__.py       package marker only; one subpackage per stage, each
+                        owning its label's handler
       conflicts/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one tick asks its questions in: the
@@ -523,7 +523,8 @@ bind the same way — the creators reach `git.commands`, `git.locks`, `git.authe
 `paths` / `recovery` siblings directly, the decomposer lifecycle resolves its own path helper, and `terminal`
 composes its local teardown from `cleanup` — so a patch that has to intercept the git plumbing, the authenticated
 fetch, the new-commit probe, or the worktree path one of them runs against targets `orchestrator.git.commands` /
-`orchestrator.git.authentication` / the owner module, not `worktree_lifecycle`. The question stage and
+`orchestrator.git.authentication` / the owner module, not `worktree_lifecycle`.
+`workflow/stages/question/handler.py` and
 `workflow/engine/terminals.py` call `terminal._cleanup_question_worktree` / `terminal._cleanup_terminal_branch`
 directly — the terminal owner reading its branch name off `worktrees.paths` first —
 so a mock for either one lands on the owner even though both names stay forwarded — straight off that owner — on
