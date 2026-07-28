@@ -10,6 +10,7 @@ from orchestrator.analytics._recording_models import (
     _AgentExitContext,
     _CodexCatalog,
 )
+from orchestrator.observability.analytics import config as analytics_config
 
 
 def _discover_codex_skills(
@@ -17,8 +18,8 @@ def _discover_codex_skills(
     discovery: Any,
 ) -> Optional[list[str]]:
     """Read Codex's offered skills when either sink needs them."""
-    settings = context.analytics_package
-    if context.cwd is None or not (settings.TRACK_SKILL_TRIGGERS or settings.TRAJECTORY_LOG_PATH is not None):
+    settings = analytics_config.settings_on(context.analytics_package)
+    if context.cwd is None or not (settings.track_skill_triggers or settings.trajectory_log_path is not None):
         return None
     return list(discovery.discover_local_skills(context.cwd)) or None
 
@@ -28,7 +29,8 @@ def _discover_codex_tools(
     discovery: Any,
 ) -> Optional[list[str]]:
     """Read Codex's baseline tools only for trajectory records."""
-    if context.analytics_package.TRAJECTORY_LOG_PATH is None:
+    settings = analytics_config.settings_on(context.analytics_package)
+    if settings.trajectory_log_path is None:
         return None
     return list(discovery.discover_codex_tools()) or None
 

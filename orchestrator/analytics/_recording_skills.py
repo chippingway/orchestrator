@@ -9,6 +9,7 @@ from orchestrator.analytics._recording_models import (
     _AgentExitSkillFields,
     _CodexCatalog,
 )
+from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.usage import skills as usage_skills
 
 
@@ -56,7 +57,7 @@ def _parse_agent_exit_skills(
 ) -> _AgentExitSkillFields:
     """Parse opt-in skill fields without risking the baseline event."""
     analytics_package = context.analytics_package
-    if not analytics_package.TRACK_SKILL_TRIGGERS:
+    if not analytics_config.settings_on(analytics_package).track_skill_triggers:
         return _AgentExitSkillFields()
     try:
         return _read_agent_exit_skills(context, codex_catalog)

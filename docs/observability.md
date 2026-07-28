@@ -20,9 +20,10 @@ time.
 - **Usage parser** (`orchestrator/observability/usage/`) — decoder for the agent CLI JSONL stdout that produces the
   token / cost detail the analytics `agent_exit` record carries.
 
-Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners
-and the still-empty packages the analytics sink, the dashboard, and the trajectory viewer are each migrating into;
-until a responsibility has an owner in that tree, the module named for it below stays the import site. See
+Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners,
+the analytics configuration owner (`analytics/config.py`), and the packages the rest of the analytics sink, the
+dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree, the
+module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -125,19 +126,25 @@ Project-local JSONL sink for raw metric records, separate from `EVENT_LOG_PATH`.
 the six sink knobs on every package import and assembles fresh recording, trajectory, and retention hubs so references
 held across a package reload keep their historical isolation. `_recording.py`, `_trajectories.py`, and `_retention.py`
 retain the established patch/import surfaces; their implementations are split into focused `_recording_*`,
-`_trajectory_*`, and `_retention_*` leaves for settings, event families, serialization, sanitization, persistence,
+`_trajectory_*`, and `_retention_*` leaves for event families, serialization, sanitization, persistence,
 scanning, and atomic rewrites. The read and sync surfaces are separate Postgres-facing families: `analytics.read` is a
 manifest-backed lazy facade, while `sync.py`, `connection.py`, `query.py`, `predicates.py`, and their private leaves own
 typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
-trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`) are parsed at import by
-`orchestrator/analytics/_recording.py` and bound as attributes of the `orchestrator/analytics` package — *not* in
-`orchestrator/config/`. They are exposed as package attributes (`analytics.ANALYTICS_LOG_PATH`, etc.) that tests patch
-directly via `patch.object(analytics, "ANALYTICS_LOG_PATH", ...)`; the recorders in `_recording` / `_trajectories` and
-the prune wrappers in `_retention` read them back off the package facade at call time, so a patch or a package reload
-takes effect. The audit event log (`config.EVENT_LOG_PATH`) stays in `config` because `GitHubClient.emit_event` is a
-general-purpose audit surface.
+trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
+`orchestrator/observability/analytics/config.py` — *not* in `orchestrator/config/`. That owner reads the environment
+inside the call, never at import, so every knob resolves against whatever environment the caller set up; its
+`parsed_settings` is what the `orchestrator/analytics` bootstrap binds on the package, and its `resolve_db_url` is the
+fallback a read's omitted `db_url=` resolves through. The values stay exposed as package attributes
+(`analytics.ANALYTICS_LOG_PATH`, etc.) that tests patch directly via
+`patch.object(analytics, "ANALYTICS_LOG_PATH", ...)`, and every adapter reads one back through the owner's `Settings`
+view, which reads its attribute on demand so a patch reaches the next read. The two entry points differ only in whose
+instance answers: the recorders in `_recording` / `_trajectories`, the prune wrappers in `_retention`, and the skill
+readers pass `config.settings_on` the package instance they captured at their own import (a package reloaded against a
+patched env is what its own callers drive), while the read and sync paths have nothing captured and use
+`config.live_settings`, which resolves the package name. The audit event log (`config.EVENT_LOG_PATH`) stays in
+`config` because `GitHubClient.emit_event` is a general-purpose audit surface.
 
 **Filesystem only.** No PostgreSQL, Streamlit, or external services — the sink is one JSONL file under the project log
 area. Default path is `<LOG_DIR>/analytics.jsonl`, already covered by the `logs/` `.gitignore` rule. Set
@@ -349,7 +356,8 @@ so catalog collection never disturbs the polling tick. An empty catalog still re
 
 A sibling, opt-in JSONL sink for agent *reasoning trajectories* — the ordered timeline of tool calls / results
 interleaved with the assistant / user text turns, plus the final output a run produced — owned by the same
-`orchestrator/analytics/` package and parsed at import alongside the analytics knobs. It is kept deliberately
+`orchestrator/analytics/` package, its two knobs parsed alongside the analytics ones by
+`observability/analytics/config.py`. It is kept deliberately
 **separate** from the analytics sink so the large free-text trajectory bodies never enter the numeric usage rollup, its
 Postgres aggregation, or the dashboard.
 
@@ -868,8 +876,9 @@ the `read_models_*` modules and re-exported through `read_models.py`.
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`.
 `read_request.py` binds every historical keyword signature into that typed request before the family leaf executes, so
 existing calls and error behavior are unchanged while implementation helpers no longer thread large argument lists.
-`connection.py`, `db_url.py`, `query.py`, and `predicates.py` remain the stable plumbing hubs over focused connection,
-query, and predicate leaves.
+`connection.py`, `query.py`, and `predicates.py` remain the stable plumbing hubs over focused connection,
+query, and predicate leaves; both connection paths resolve a caller's omitted `db_url=` through
+`observability/analytics/config.py`'s `resolve_db_url`, so the URL-source policy has one home.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is

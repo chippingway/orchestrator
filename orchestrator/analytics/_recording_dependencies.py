@@ -15,7 +15,6 @@ _recording_agent_exit = importlib.import_module(
 _recording_catalog = importlib.import_module("orchestrator.analytics._recording_catalog")
 _recording_io = importlib.import_module("orchestrator.analytics._recording_io")
 _recording_models = importlib.import_module("orchestrator.analytics._recording_models")
-_recording_settings = importlib.import_module("orchestrator.analytics._recording_settings")
 _recording_skills = importlib.import_module("orchestrator.analytics._recording_skills")
 _recording_usage = importlib.import_module("orchestrator.analytics._recording_usage")
 
@@ -26,7 +25,6 @@ _DEPENDENCIES = (
     _recording_catalog,
     _recording_io,
     _recording_models,
-    _recording_settings,
     _recording_skills,
     _recording_usage,
 )

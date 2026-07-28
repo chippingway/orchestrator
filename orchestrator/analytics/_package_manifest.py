@@ -31,7 +31,6 @@ IMPLEMENTATION_MODULES = (
     "orchestrator.analytics._recording_dependencies",
     "orchestrator.analytics._recording_io",
     "orchestrator.analytics._recording_models",
-    "orchestrator.analytics._recording_settings",
     "orchestrator.analytics._recording_skills",
     "orchestrator.analytics._recording_usage",
     "orchestrator.analytics._retention",

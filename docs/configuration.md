@@ -407,8 +407,9 @@ an unmergeable PR.
   `ThreadPoolExecutor` (eight workers). Parsed at dashboard import; the polling loop never reads it.
 
 `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, `ANALYTICS_DB_URL`, `TRACK_SKILL_TRIGGERS`, `TRAJECTORY_LOG_PATH`, and
-`TRAJECTORY_RETENTION_DAYS` are parsed at import by `orchestrator/analytics/_recording.py` and bound as attributes of
-the `orchestrator/analytics` package (the package owns its own configuration surface). `EVENT_LOG_PATH` is resolved by
+`TRAJECTORY_RETENTION_DAYS` are parsed by `orchestrator/observability/analytics/config.py` and bound as attributes of
+the `orchestrator/analytics` package on every import of it (the analytics surfaces own their own configuration rather
+than the `orchestrator/config` resolver). `EVENT_LOG_PATH` is resolved by
 the `orchestrator/config` resolver and bound on the config package because the audit event log is a general-purpose
 audit surface rather than analytics-specific.
 

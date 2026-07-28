@@ -45,12 +45,14 @@ def _reload(env: dict[str, str] | None = None):
     `orchestrator.analytics.read` against the given hermetic env,
     mirroring `test_analytics_sync`.
 
-    The analytics package owns the `ANALYTICS_DB_URL` parsing now,
-    and `analytics.read` reads it off the parent package at call
-    time, so the parent must be popped alongside `read` for the test
-    env to land. `config` is popped too so `analytics.__init__`'s
-    `from .. import config` reloads against the patched env (it
-    still reads `LOG_DIR` for the JSONL default).
+    `ANALYTICS_DB_URL` is parsed by
+    `orchestrator.observability.analytics.config` and bound on the
+    analytics package, and `analytics.read` resolves it back off that
+    package at call time, so the parent must be popped alongside
+    `read` for the test env to land. `config` is popped too so the
+    analytics package's bootstrap re-resolves it against the patched
+    env: the parse still reads `LOG_DIR` for the JSONL default, and
+    the module it read is what `analytics.config` answers with.
 
     The returned pair is the hermetic reload; `orchestrator.config` is put back
     so a later test that first imports a module binding it still binds the same

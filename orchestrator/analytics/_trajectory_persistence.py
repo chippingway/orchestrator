@@ -15,6 +15,7 @@ from orchestrator.analytics._recording import (
 )
 from orchestrator.analytics._trajectory_serialize import _build_trajectory_record
 from orchestrator.config import credentials
+from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.usage import (
     metrics as usage_metrics,
     trajectory as usage_trajectory,
@@ -92,7 +93,7 @@ def _maybe_record_trajectory(
     and "Tools offered" chips match a claude run's; a non-empty stream-parsed
     set is never overridden.
     """
-    if _live_settings().TRAJECTORY_LOG_PATH is None:
+    if analytics_config.settings_on(_live_settings()).trajectory_log_path is None:
         return
     try:
         _persist_trajectory_record(context, metrics, codex_catalog)

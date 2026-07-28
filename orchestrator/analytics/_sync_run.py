@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,6 +25,7 @@ from orchestrator.analytics._sync_models import (
 )
 from orchestrator.analytics._sync_redaction import _redact_db_url
 from orchestrator.analytics._sync_rows import _build_insert_sql
+from orchestrator.observability.analytics import config as analytics_config
 
 log = logging.getLogger("orchestrator.analytics.sync")
 
@@ -47,10 +47,10 @@ class _SyncRequest:
         connect: Optional[Callable[[str], Any]],
         json_adapter: Optional[Callable[[Any], Any]],
     ) -> _SyncRequest:
-        analytics_package = sys.modules["orchestrator.analytics"]
+        settings = analytics_config.live_settings()
         return cls(
-            log_path=(analytics_package.ANALYTICS_LOG_PATH if log_path is None else log_path),
-            db_url=(analytics_package.ANALYTICS_DB_URL if db_url is None else db_url),
+            log_path=(settings.log_path if log_path is None else log_path),
+            db_url=(settings.db_url if db_url is None else db_url),
             connect_fn=connect or _default_connect,
             json_adapter=json_adapter or _default_json_adapter,
         )

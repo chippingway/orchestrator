@@ -14,6 +14,7 @@ from orchestrator.analytics._package_manifest import (
     EXPORTED_NAMES,
     IMPLEMENTATION_MODULES,
 )
+from orchestrator.observability.analytics import config as analytics_config
 
 
 @dataclass(frozen=True)
@@ -37,18 +38,6 @@ def _load_modules() -> _AnalyticsModules:
         ),
         retention=importlib.import_module("orchestrator.analytics._retention"),
     )
-
-
-def _setting_exports(modules: _AnalyticsModules) -> dict[str, Any]:
-    recording = modules.recording
-    return {
-        "ANALYTICS_LOG_PATH": recording._parse_log_path(),
-        "ANALYTICS_RETENTION_DAYS": recording._parse_retention_days(),
-        "ANALYTICS_DB_URL": recording._parse_db_url(),
-        "TRACK_SKILL_TRIGGERS": recording._parse_track_skill_triggers(),
-        "TRAJECTORY_LOG_PATH": recording._parse_trajectory_log_path(),
-        "TRAJECTORY_RETENTION_DAYS": (recording._parse_trajectory_retention_days()),
-    }
 
 
 def _public_exports(modules: _AnalyticsModules) -> dict[str, Any]:
@@ -90,7 +79,7 @@ def _compatibility_exports(modules: _AnalyticsModules) -> dict[str, Any]:
 def initialize_package(package: ModuleType) -> None:
     """Populate one analytics package instance with a coherent module set."""
     modules = _load_modules()
-    exported_values = _setting_exports(modules)
+    exported_values = analytics_config.parsed_settings()
     exported_values.update(_public_exports(modules))
     exported_values.update(_compatibility_exports(modules))
     exported_values["__all__"] = EXPORTED_NAMES

@@ -22,7 +22,7 @@ from orchestrator.analytics.connection import (
     _close_quietly,
     _default_connect,
 )
-from orchestrator.analytics.db_url import _resolve_db_url
+from orchestrator.observability.analytics.config import resolve_db_url
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ class _ReadQuery:
         conn: Any,
     ) -> _ReadQuery:
         return cls(
-            db_url=_resolve_db_url(db_url),
+            db_url=resolve_db_url(db_url),
             connect_fn=connect or _default_connect,
             conn=conn,
         )
