@@ -80,12 +80,17 @@ right:
   `tests/workflow/stages/conflicts/test_*.py` files beside its owners (dispatcher routing, closed-issue
   sweep, clean rebase, agent resolution, awaiting-human resume, dirty / rebase-in-progress parks,
   crash-recovery pushes, stale / diverged parks, force-publish and its probes, drift, event emission,
-  live pause, borrowed-owner boundaries), and the
+  live pause, borrowed-owner boundaries), the question stage into focused
+  `tests/workflow/stages/question/test_*.py` files beside its owners (label bootstrap + dispatcher
+  routing, fresh spawn, awaiting-human resume, locked session, parks, unsafe read-only violations,
+  the implementing-side relabel guard, trusted conversation, usage accounting, terminal cleanup,
+  base-refresh skip, borrowed-owner boundaries), and the
   decomposition stage into focused
-  `tests/test_workflow_decomposition_*.py` files
+  `tests/workflow/stages/decomposition/test_*.py` files
   (manifest parsing, decomposing/ready/blocked/umbrella stage handlers, child issue creation, hash
-  drift, stale manifest cleanup, child merged-PR finalize). Per-label dispatcher / routing tests
-  live in `tests/test_workflow_<label>_routing.py` (backlog, question) and the
+  drift, stale manifest cleanup, child merged-PR finalize). The control-label holds the dispatcher
+  applies before any stage run are covered in `tests/workflow/engine/test_dispatch_backlog.py` and
+  `test_dispatch_paused.py`, and the
   remaining facade-level helpers (worktree serialization, drain-terminals, finalize-if-pr-merged,
   stage analytics) live in their own focused modules. Shared fixtures go in `tests/workflow_helpers.py`.
 - Prefer extending the in-memory fakes in `tests/support/github/` (reached through the

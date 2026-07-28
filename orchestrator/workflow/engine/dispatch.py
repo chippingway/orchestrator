@@ -41,12 +41,12 @@ mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
 
 The handler for a label is reached by importing the module
-`_STAGE_HANDLER_TARGETS` pairs it with, at call time: one of them is the
-`question` stage facade still under `orchestrator/stages/`, ten are
-conflicts, decomposition, documenting, fixing, implementing, validating, and
-in_review owners under `workflow/stages/`, and the twelfth is the `pickup`
-sibling an unlabeled issue starts on -- and the stage tree imports this subpackage, so binding any of them
-at module scope would point that edge back at itself. A migrated stage is named
+`_STAGE_HANDLER_TARGETS` pairs it with, at call time: eleven of them are
+conflicts, decomposition, documenting, fixing, implementing, question,
+validating, and in_review owners under `workflow/stages/`, and the twelfth is
+the `pickup` sibling an unlabeled issue starts on -- and the stage tree imports
+this subpackage, so binding any of them
+at module scope would point that edge back at itself. Every stage is named
 by the owner its handler lives on rather than by the forwarder it left behind,
 so the patch that intercepts a dispatch is the one against whichever module the
 table names.
@@ -87,13 +87,13 @@ _CAP_EXEMPT_FAMILY_LABELS = frozenset((
 
 _FAMILY_BUCKET_ISSUE: int = 0
 
-_STAGE_PACKAGE = "orchestrator.stages"
 _CONFLICTS_PACKAGE = "orchestrator.workflow.stages.conflicts"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _FIXING_PACKAGE = "orchestrator.workflow.stages.fixing"
 _IMPLEMENTING_PACKAGE = "orchestrator.workflow.stages.implementing"
 _IN_REVIEW_PACKAGE = "orchestrator.workflow.stages.in_review"
+_QUESTION_PACKAGE = "orchestrator.workflow.stages.question"
 _VALIDATING_PACKAGE = "orchestrator.workflow.stages.validating"
 
 _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyType({
@@ -110,7 +110,7 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
     "resolving_conflict": (
         f"{_CONFLICTS_PACKAGE}.handler", "_handle_resolving_conflict",
     ),
-    "question": (f"{_STAGE_PACKAGE}.question", "_handle_question"),
+    "question": (f"{_QUESTION_PACKAGE}.handler", "_handle_question"),
 })
 
 # The label -> handler-name half of the table above, kept as its own mapping
@@ -132,8 +132,8 @@ def _route_issue_to_handler(
 
     The module the table names is imported at call time and the handler read
     off it as an attribute, so the patch that intercepts a dispatch is the one
-    against that module -- a flat stage facade for an unmigrated label, the
-    handler owner for a migrated one.
+    against that module -- the stage's own handler owner, never the forwarder
+    it left behind.
     ``done`` / ``rejected`` are terminal no-ops; an unrecognized label is
     logged and left alone for a human. Timing and the ``stage_evaluation``
     analytics record stay in ``_process_issue``, which wraps this call in its

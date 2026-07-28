@@ -1,72 +1,34 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Question session."""
+"""What keeps a multi-turn Q&A on one agent, and what it is fed each round.
+
+A question thread can run for many ticks, and each helper here exists because
+something between two rounds is allowed to change underneath it. The configured
+`DECOMPOSE_AGENT` can be flipped, so the spec that actually ran is pinned and
+read back rather than re-resolved. The issue thread can gain an untrusted reply,
+so the consume filter drops those before they can steer the agent OR advance the
+watermark. And the CLI can hand back no session id, which is why both prompt
+builders sit together: the resume degrades to the full first-round prompt in
+that case, because a followup handed to a fresh agent would arrive with no issue
+body to answer against.
+"""
 from __future__ import annotations
 
-from orchestrator.stages import _question_state as _state
-from orchestrator.stages import question as _owner
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.comments import filter_trusted
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
-
-AgentResult = _owner.AgentResult
-GitHubClient = _owner.GitHubClient
-Issue = _owner.Issue
-Path = _owner.Path
-PinnedState = _owner.PinnedState
-config = _owner.config
-dataclass = _owner.dataclass
-filter_trusted = _owner.filter_trusted
-_QUESTION_AGENT_KEY = _state._QUESTION_AGENT_KEY
-_QUESTION_SESSION_KEY = _state._QUESTION_SESSION_KEY
-_QUESTION_STAGE = _state._QUESTION_STAGE
-_UNSAFE_QUESTION_PARKS = _state._UNSAFE_QUESTION_PARKS
-
-
-@dataclass
-class _QuestionRun:
-    """Mutable cleanup policy and stable inputs for one question-stage tick."""
-    gh: GitHubClient
-    spec: config.RepoSpec
-    issue: Issue
-    state: PinnedState
-    keep_worktree: bool
-
-    @classmethod
-    def start(
-        cls, gh: GitHubClient, spec: config.RepoSpec, issue: Issue,
-    ) -> _QuestionRun:
-        state = gh.read_pinned_state(issue)
-        return cls(
-            gh=gh,
-            spec=spec,
-            issue=issue,
-            state=state,
-            keep_worktree=state.get("park_reason") in _UNSAFE_QUESTION_PARKS,
-        )
-
-
-@dataclass(frozen=True)
-class _QuestionSession:
-    """Locked agent identity used by one question-agent invocation."""
-    agent_spec: str
-    backend: str
-    extra_args: tuple[str, ...]
-    session_id: str | None
-
-
-@dataclass(frozen=True)
-class _QuestionOutcome:
-    """Post-agent route and the cleanup policy it requires."""
-    park_reason: str | None
-    keep_worktree: bool
-    answer: str = ""
-    dirty_files: tuple[str, ...] = ()
+from orchestrator.workflow.stages.question import models as _models
+from orchestrator.workflow.stages.question import state as _state
 
 
 def _read_question_session(
     state: PinnedState,
-) -> _QuestionSession:
+) -> _models._QuestionSession:
     """Return the locked question-agent identity for an issue.
 
     Mirrors `_read_dev_session` / `_read_decomposer_session`: `spec` is
@@ -82,12 +44,14 @@ def _read_question_session(
     question agent, the returned fields carry the current decomposer spec,
     backend, args, and an empty session id.
     """
-    stored = state.get(_QUESTION_AGENT_KEY)
+    stored = state.get(_state._QUESTION_AGENT_KEY)
     if stored:
         spec = str(stored)
-        backend, args = config._parse_agent_spec(_QUESTION_AGENT_KEY, spec)
-        session_id = state.get(_QUESTION_SESSION_KEY)
-        return _QuestionSession(
+        backend, args = config._parse_agent_spec(
+            _state._QUESTION_AGENT_KEY, spec,
+        )
+        session_id = state.get(_state._QUESTION_SESSION_KEY)
+        return _models._QuestionSession(
             agent_spec=spec,
             backend=backend,
             extra_args=args,
@@ -95,7 +59,7 @@ def _read_question_session(
                 None if session_id is None else str(session_id)
             ),
         )
-    return _QuestionSession(
+    return _models._QuestionSession(
         agent_spec=config.DECOMPOSE_AGENT_SPEC,
         backend=config.DECOMPOSE_AGENT,
         extra_args=config.DECOMPOSE_AGENT_ARGS,
@@ -133,6 +97,17 @@ def _consume_new_human_replies(
     return new_comments
 
 
+def _build_first_round_question_prompt(
+    spec: config.RepoSpec, issue: Issue,
+) -> str:
+    """Assemble the prompt an agent with no cached context needs: the issue
+    body and title plus the trusted conversation so far."""
+    return _prompts._build_question_prompt(
+        spec, issue, _comments._recent_comments_text(issue),
+        config.default_repo_specs(),
+    )
+
+
 def _build_question_resume_prompt(
     spec: config.RepoSpec,
     issue: Issue,
@@ -153,33 +128,5 @@ def _build_question_resume_prompt(
     block via `_recent_comments_text`.
     """
     if question_session_id is None:
-        return _prompts._build_question_prompt(
-            spec, issue, _comments._recent_comments_text(issue),
-            config.default_repo_specs(),
-        )
+        return _build_first_round_question_prompt(spec, issue)
     return _prompts._build_question_followup_prompt(new_comments)
-
-
-def _execute_question_prompt(
-    run: _QuestionRun,
-    session: _QuestionSession,
-    prompt: str,
-    worktree: Path,
-    resume_session_id: str | None = None,
-) -> AgentResult:
-    """Run one question prompt and retain any session id it returns."""
-    question_result = _usage._run_agent_tracked(
-        run.gh,
-        run.issue.number,
-        agent_role=_QUESTION_STAGE,
-        stage=_QUESTION_STAGE,
-        backend=session.backend,
-        prompt=prompt,
-        cwd=worktree,
-        agent_spec=session.agent_spec,
-        resume_session_id=resume_session_id,
-        extra_args=session.extra_args,
-    )
-    if question_result.session_id:
-        run.state.set(_QUESTION_SESSION_KEY, question_result.session_id)
-    return question_result

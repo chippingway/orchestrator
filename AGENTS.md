@@ -97,11 +97,11 @@ orchestrator process is stateless.
   holds a single slot, both wrapping each issue in its own try/except, with
   `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog` deliberately read off the facade
   because those are the seams the tick tests replace -- and over the `workflow/stages/` package
-  beside that subpackage, the destination the per-label stage facades migrate to one at a time: it
-  binds nothing, a migrated stage arrives as its own subpackage of responsibility-named owners, the
-  `stages/<stage>.py` it vacates stays behind as a temporary forwarder reading every name back off
+  beside that subpackage, the owner of every per-label stage handler: it
+  binds nothing, each stage arrived as its own subpackage of responsibility-named owners, the
+  `stages/<stage>.py` it vacated stays behind as a temporary forwarder reading every name back off
   those owners, and dispatch is the one caller the forwarder does not cover -- both the label table
-  and the same-tick pickup start name the owner a migrated handler lives on -- and over the
+  and the same-tick pickup start name the owner a handler lives on -- and over the
   `workflow/stages/decomposition/` subpackage that arrived there first: the four labels one manifest
   produces, split across the `state.py` owner (the pinned-state fields every owner keys and the
   `#a, #b` renderer each notice quotes children through), the `models.py` owner (the run plan and
@@ -210,7 +210,7 @@ orchestrator process is stateless.
   from the implementing owners directly, the dev-fix disposition, stranded-fix probe, and transient-park
   recovery from the validating ones, the comment timestamp from in_review's `watermarks.py`, and the
   worktree, git, and push helpers still reached through the `workflow` facade at call time) -- and over
-  the `workflow/stages/conflicts/` subpackage closing that destination, the rebase three routes hand an
+  the `workflow/stages/conflicts/` subpackage beside it, the rebase three routes hand an
   unmergeable PR to, whose owners divide by what one tick has to establish before the rebase may run and
   by what it does with the result: the order those questions are asked in -- the missing-`pr_number`
   park, the terminal arcs, and the body-edit resume that all outrank the loop (`handler.py`); the
@@ -230,9 +230,25 @@ orchestrator process is stateless.
   with the dev resume and the question / dirty-tree parks imported from the implementing owners directly,
   the body-edit disposition from validating's `drift_outcomes.py`, the auto-rebase park reasons from
   `git/base_sync/state.py`, and the worktree, git, rebase, and push helpers still reached through the
-  `workflow` facade at call time),
+  `workflow` facade at call time) -- and over the `workflow/stages/question/` subpackage closing that
+  package, the read-only Q&A nothing routes into or out of automatically, whose owners divide by what one
+  tick has to decide and by what the read-only contract costs: the order those decisions are asked in --
+  the closed-issue finalize that outranks them all, then the run, then its disposition -- plus both
+  worktree teardowns, because the scratch checkout this stage never pushes has to disappear on the
+  terminal arc and on every safe exit alike, including the ones that raise (`handler.py`); the two shapes
+  a tick can take, told apart by `awaiting_human` alone, the tracked spawn they share and the session id
+  it retains, and the park funnel that restores the `question_` reason the shared helper clears
+  (`run.py`); the locked question-agent identity pinned before the first spawn can fail, the trusted-reply
+  consume that advances no watermark for an outsider, and both prompt builders, together because a resume
+  with no surviving session id degrades to the first-round prompt (`session.py`); and the read-only
+  violations -- new commits and a dirty tree inspected before interruption and before the answer, both
+  parking with the worktree kept for an operator -- plus the park each outcome earns (`outcomes.py`) --
+  over the three records (`models.py`) and the park reasons and pinned-state keys they share
+  (`state.py`, read from outside the package by the implementing relabel guard), with
+  `_cleanup_question_worktree` imported from `git/worktrees/terminal.py` directly and the worktree,
+  branch-name, and dirty-file helpers still reached through the `workflow` facade at call time),
   per-stage
-  lazy facades (`stages/`),
+  forwarders (`stages/`),
   worktree-subsystem compatibility hub (`worktrees.py`), and the `base_sync.py`,
   `branch_publication.py`, `git_plumbing.py`, `verify.py`, `worktree_lifecycle.py`, `workflow_drift.py`, and
   `workflow_messages.py` subsystem facades. Their immutable `_export_manifest.py` inventories and `_exports.py` hooks
@@ -340,17 +356,13 @@ orchestrator process is stateless.
   `github/comments.py`.
   Full module-by-module map: [`docs/architecture.md`](docs/architecture.md#top-level-layout).
 - `tests/` — pytest suite. In-memory GitHub doubles live in `tests/support/github/` and reach the still-flat workflow
-  tests through the `tests/fakes.py` bridge. Stage-handler tests in
-  `tests/test_workflow_<stage>*.py` (the implementing, documenting, validating, in_review, fixing, and
-  resolving-conflict stages have moved beside their
-  owners into `tests/workflow/stages/implementing/`, `tests/workflow/stages/documenting/`,
-  `tests/workflow/stages/validating/`, `tests/workflow/stages/in_review/`,
-  `tests/workflow/stages/fixing/`, and `tests/workflow/stages/conflicts/`, and the decomposition and question
-  stages across their respective focused modules, with shared fixtures in `tests/decomposition*_support.py` and
-  `tests/question_*_support.py`); other facade-level helper tests
+  tests through the `tests/fakes.py` bridge. Stage-handler tests sit beside their owners under
+  `tests/workflow/stages/<stage>/` -- `decomposition/`, `implementing/`, `documenting/`,
+  `validating/`, `in_review/`, `fixing/`, `conflicts/`, and `question/`, each across its own focused
+  modules with its shared fixtures alongside; other facade-level helper tests
   include (`tests/test_workflow_event_emission.py`, `tests/test_workflow_agent_event_emission.py`,
   `tests/test_workflow_model_extraction.py`, `tests/test_workflow_pr_lifecycle.py`,
-  `tests/test_workflow_question_routing.py`); shared helpers in
+  `tests/test_workflow_tracked_repos_*.py`); shared helpers in
   `tests/workflow_helpers.py`, and the snapshot that keeps a reload test from leaving a rebuilt
   `orchestrator.config` installed for the rest of the session in `tests/import_world_helpers.py`.
   Configuration-package
@@ -582,7 +594,8 @@ orchestrator process is stateless.
   nothing (`test_paused.py`), and the implementing / validating / in_review owners the loop borrows, each pinned by
   patching the owner and the facade name it must not read (`test_owner_boundaries.py`) -- with shared fixtures in
   `fixing_test_support.py` and `fixing_routing_test_support.py`.
-  `tests/workflow/stages/conflicts/` closes the destination: the same import, layering, and initializer guards for its
+  `tests/workflow/stages/conflicts/` holds the seventh stage to arrive: the same import, layering, and initializer
+  guards for its
   own package plus the forwarding checks that no manifest target names a flat `_conflict_*` leaf and that both
   historical import sites hand back the owner's exact object, and the dispatch check that the label table names the
   handler owner (`test_imports.py`); the stage scenarios beside it -- the dispatcher route (`test_routing.py`), the
@@ -595,6 +608,21 @@ orchestrator process is stateless.
   pause that publishes nothing (`test_paused.py`), and the implementing / validating / base-sync owners the loop
   borrows, each pinned by patching the owner and the facade name it must not read (`test_owner_boundaries.py`) --
   with shared fixtures in `conflicts_test_support.py` and `conflict_resume_test_support.py`.
+  `tests/workflow/stages/question/` closes the destination: the same import, layering, and initializer guards for its
+  own package plus the forwarding checks that no manifest target names a flat `_question_*` leaf and that both
+  historical import sites hand back the owner's exact object, the dispatch check that the label table names the
+  handler owner, and the guard that no dispatch target names a forwarder at all now that every stage has migrated
+  (`test_imports.py`); the stage scenarios beside it -- the label bootstrap, family-aware exclusion, and dispatcher
+  route (`test_routing.py`), the first-round spawn (`test_fresh.py`), the awaiting-human resume across its live,
+  recovered, and missing-session shapes (`test_resume.py`), the locked `question_agent` pin (`test_session.py`), the
+  four parks (`test_park.py`), the read-only violations that keep their worktree (`test_unsafe.py`), the
+  implementing-side relabel guard and its refusal (`test_relabel.py`, `test_relabel_unsafe.py`), the trusted
+  conversation an outsider reply must not steer or watermark (`test_trust.py`), the per-issue usage counters
+  (`test_usage.py`), the closed-issue terminal (`test_terminal.py`), the safe-exit teardown (`test_cleanup.py`), the
+  base-sync skip the label earns (`test_base_refresh.py`), and the engine / worktree-terminal owners the stage
+  borrows, each pinned by patching the owner and the facade name it must not read (`test_owner_boundaries.py`) --
+  with shared fixtures in `question_test_support.py`, `question_conversation_test_support.py`,
+  `question_relabel_test_support.py`, and the `question_real_git_test_support.py` the worktree tests share.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

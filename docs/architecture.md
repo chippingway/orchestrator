@@ -160,8 +160,8 @@ orchestrator/
                         folded into and the terminal receipt read off them, and
                         the UTC stamp the stages write
     stages/
-      __init__.py       package marker only; the destination the per-label
-                        stage facades under `orchestrator/stages/` migrate to
+      __init__.py       package marker only; owner of every per-label stage
+                        handler, one subpackage each
       conflicts/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one tick asks its questions in: the
@@ -309,6 +309,19 @@ orchestrator/
                         manually-relabeled issue needs
         models.py       the per-tick handles and the drift-resume record
         state.py        the issue-side watermark key they share
+      question/
+        __init__.py     package marker only; callers import an owner directly
+        handler.py      the order one tick asks its questions in, the
+                        closed-issue finalize that outranks them, and both
+                        worktree teardowns
+        run.py          the resume / fresh-spawn routes, the tracked spawn they
+                        share, and the park funnel every exit lands on
+        session.py      the locked question-agent identity, the trusted-reply
+                        consume, and both prompt builders
+        outcomes.py     the read-only violations checked before any answer, and
+                        the park each outcome earns
+        models.py       the tick record, the locked session, and the outcome
+        state.py        the park reasons and pinned-state keys they share
       validating/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one review tick asks its questions in, and
@@ -473,12 +486,10 @@ orchestrator/
                         a codex trajectory's offered skills and tools
   _local_skills.py      per-run filesystem skill discovery and codex tool list
   stages/
-    <stage>.py          lazy compatibility facade for each historical stage,
-                        or a temporary forwarder once that stage has an owner
-                        under `workflow/stages/`
+    <stage>.py          temporary forwarder for each historical stage, reading
+                        every name back off its owners under `workflow/stages/`
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
-    _question_*.py      read-only session, run, outcomes, and handler routing
 ```
 
 `workflow/__init__.py`, `worktrees.py`, `analytics.read`, and `dashboard.py` publish explicit sorted `__all__`
@@ -717,15 +728,15 @@ exemption is what keeps that serialization from deadlocking — a bucket whose e
 and global caps. Only issue numbers cross a thread boundary; `_refetch_and_process` mints a per-worker client and
 refetches against it, because PyGithub's `Issue` and the `Requester` chain behind it are not documented thread-safe.
 Its own helpers call each other in-module, and each handler is reached through a call-time import of the module
-`_STAGE_HANDLER_TARGETS` pairs with its label — one of the twelve entries names the `question` facade still under
-`orchestrator/stages/`, ten name conflicts, decomposition, documenting, fixing, implementing, validating, and
-in_review owners under `workflow/stages/`, and the twelfth names the `pickup` sibling an unlabeled issue starts on.
+`_STAGE_HANDLER_TARGETS` pairs with its label — eleven of the twelve entries name conflicts, decomposition,
+documenting, fixing, implementing, question, validating, and in_review owners under `workflow/stages/`, and the
+twelfth names the `pickup` sibling an unlabeled issue starts on; no entry names a forwarder.
 That table stays owner-private,
 because the facade's inventory is the historical surface rather than a mirror of the owner: what `workflow` publishes
 is `_ISSUE_HANDLER_NAMES`, the label → handler-name half of it, derived from the table so the two cannot disagree
 about which labels route. The import is deferred because the stage tree imports this subpackage, so binding one at
 module scope would point that edge back at itself; the lookup stays an attribute read on whichever module the table
-names, and a migrated stage is named by the owner its handler lives on rather than by the forwarder it left behind.
+names, and every stage is named by the owner its handler lives on rather than by the forwarder it left behind.
 That makes the owning module, not `workflow`, the target for a patch that has to intercept a
 dispatched handler, and this owner the target for one aimed at the partition, the cap-exemption probe, the timed
 dispatch, or a scheduler submit. `workflow` still resolves all nineteen names to the owner's exact object for callers
@@ -754,8 +765,8 @@ those are the seams the tick tests replace to drive a pass without a git remote 
 
 Stage-private helpers stay private to the stage that owns them (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). A helper more than one stage reaches for is
-re-exported from the facade as well, and that export is the edge an unmigrated caller resolves through; between
-migrated stages the borrower names the lender's owner instead, so fixing's quiet window imports `_comment_created_at`
+re-exported from the facade as well, and that export is the edge a historical caller resolves through; between
+stage owners the borrower names the lender's owner instead, so fixing's quiet window imports `_comment_created_at`
 from `in_review/watermarks.py` even though `workflow` answers with the same object.
 
 ## Workflow labels
@@ -832,22 +843,22 @@ external-merge sweeps, and the complete pinned-state JSON schema), see
 
 ## Stage handlers
 
-Each workflow label dispatches to a `_handle_<label>` function. The handlers live under `orchestrator/stages/` and
+Each workflow label dispatches to a `_handle_<label>` function. Every handler lives under
 `orchestrator/workflow/stages/` (see the module map above), and the dispatcher reaches one by importing the module its
 label is paired with in `_STAGE_HANDLER_TARGETS` and reading the handler off it, so a patch that has to intercept the
 dispatch targets that module rather than `workflow`. The `workflow` package initializer still re-exports every handler
-under its original name, and that is the edge a stage-to-stage call resolves through when its caller has not migrated
-— `_handle_implementing` from the decomposition recovery and blocked paths — so a patch aimed at one of those keeps
-targeting the facade.
+under its original name, and that is the edge a stage-to-stage call resolves through when its caller reads the name off
+the facade — `_handle_implementing` from the decomposition recovery and blocked paths — so a patch aimed at one of
+those keeps targeting the facade.
 
-`orchestrator/workflow/stages/` is the destination those facades move to, one stage at a time; `decomposition`,
-`implementing`, `documenting`, `validating`, `in_review`, `fixing`, and `conflicts` have arrived. A migrated stage
-becomes a subpackage of
-responsibility-named owners there, and the `orchestrator/stages/<stage>.py` it vacates stays behind as a temporary
+`orchestrator/workflow/stages/` is the destination the per-label facades moved to, one stage at a time;
+`decomposition`, `implementing`, `documenting`, `validating`, `in_review`, `fixing`, `conflicts`, and `question` have
+all arrived. Each became a subpackage of
+responsibility-named owners there, and the `orchestrator/stages/<stage>.py` it vacated stays behind as a temporary
 forwarder that reads every name back off those owners rather than rebuilding one, so both import sites hand back the
 same object. Identity is all a forwarder carries: it caches each name it resolved, so a `patch.object` intercepts the
 lookup site it lands on rather than both, and the owner is the site orchestrator code reads. Dispatch makes that
-explicit: `_STAGE_HANDLER_TARGETS` names the owner a migrated handler lives on, and so does the same-tick start in
+explicit: `_STAGE_HANDLER_TARGETS` names the owner a handler lives on, and so does the same-tick start in
 `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
 is dropped once the callers it serves name the owner. Like `workflow/engine/`, the new package and each stage
 subpackage inside it bind nothing in their initializers -- the dispatcher resolves one handler per issue, so an eager
@@ -990,6 +1001,28 @@ patch on any of those lands on the owner. The seams that stay on the facade are 
 worktree, fetch, git, rebase, and push helpers are read as `_wf` attributes at call time — and the whole historical
 inventory still resolves on `orchestrator.stages.conflicts` with the owner's exact identity, with
 `_handle_resolving_conflict` resolving on `workflow` as well.
+
+The question owners divide by what one tick has to decide, and the read-only contract is what shapes the split.
+`handler` holds the order — the closed-issue finalize outranks everything, then the run, then its disposition — and
+owns both worktree teardowns, because the scratch checkout this stage never pushes has to disappear on the terminal arc
+and on every safe exit alike, including the ones that raise. `run` picks between the two shapes a tick can take (an
+`awaiting_human` resume on a human reply, or the conversation's first spawn), owns the tracked spawn they share, and
+owns the park funnel every exit lands on — a funnel that exists because the shared park helper clears `park_reason` and
+the stage-specific one has to be restored after it, or the implementing relabel guard loses the `question_` prefix it
+refuses on. `session` is the locked identity that keeps a multi-turn Q&A on one backend, and both prompt builders sit
+there because the resume degrades to the first-round prompt when no session id survived. `outcomes` is where the
+read-only contract is enforced: new commits and a dirty tree are inspected before interruption and before the answer,
+and both park with the worktree kept, so a misbehaving run leaves an inspection target. `state` and `models` reach
+nothing, so the park reasons, the wire keys, and the carriers are decidable without a client. So a patch that has to
+intercept the spawn, a park, the assessment, or a teardown targets the owner module. The stage owns no agent or
+worktree machinery: the tracked spawn, the awaiting-human park, the prompt builders, the trusted conversation text, and
+the stderr diagnostics come from `workflow/engine/`, and `_cleanup_question_worktree` from
+`git/worktrees/terminal.py` — the last one matters because that name also resolves on `workflow` and `worktrees`, so a
+mock left on a facade would let a real teardown run. The seams that stay on the facade are the ones the stage does not
+own — `_worktree_path`, `_ensure_worktree`, `_resolve_branch_name`, `_has_new_commits`, and `_worktree_dirty_files` are
+read as `_wf` attributes at call time — and the whole historical inventory still resolves on
+`orchestrator.stages.question` with the owner's exact identity, with `_handle_question` resolving on `workflow` as
+well.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked

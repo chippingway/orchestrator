@@ -120,10 +120,6 @@ EXPORTS = (
         (("_emit_repo_skill_catalog", "_emit_repo_skill_catalog"),),
     ),
     *export_group(
-        "orchestrator.stages.question",
-        (("_handle_question", "_handle_question"),),
-    ),
-    *export_group(
         "orchestrator.usage",
         (("UsageMetrics", "UsageMetrics"),),
     ),
@@ -362,6 +358,10 @@ EXPORTS = (
     *export_group(
         "orchestrator.workflow.stages.in_review.watermarks",
         (("_comment_created_at", "_comment_created_at"),),
+    ),
+    *export_group(
+        "orchestrator.workflow.stages.question.handler",
+        (("_handle_question", "_handle_question"),),
     ),
     *export_group(
         "orchestrator.workflow.stages.validating.dev_fix",

@@ -29,26 +29,28 @@ use `codex` or `claude` and each carries its own optional CLI args.
 The defaults (`claude` decomposes, `claude` implements, `codex` reviews) use both backends; both CLIs need to be
 authenticated on the host before the orchestrator starts.
 
-The stable stage-handler names live on lazy facades under `orchestrator/stages/`; responsibility-named leaves own
-entry checks, session execution, drift handling, persistence, and terminal routing (see the module map in
-[`architecture.md#top-level-layout`](architecture.md#top-level-layout)). A cross-stage call into a stage that has not
-migrated yet still resolves through `orchestrator.workflow`, preserving the historical patch surface; between migrated
-stages the caller names the owner it borrows instead — documenting, validating, in_review, fixing, and conflicts all
+Every stage handler lives on responsibility-named owners under `orchestrator/workflow/stages/`, which own entry
+checks, session execution, drift handling, persistence, and terminal routing (see the module map in
+[`architecture.md#top-level-layout`](architecture.md#top-level-layout)). A cross-stage call still resolves through
+`orchestrator.workflow` when its caller reads the name off the facade, preserving the historical patch surface;
+between owners the caller names the owner it borrows instead — documenting, validating, in_review, fixing, and
+conflicts all
 reach the implementing dev resume, documenting, validating, and conflicts also its question / dirty-tree parks,
 documenting and validating its session read and fixing its poisoned-session drop, documenting reaches validating's
 watermark walk, in_review and conflicts its body-edit disposition, and
 fixing its dev-fix disposition, stranded-fix probe, and transient-park recovery plus in_review's comment timestamp;
 conflicts also names base-sync's auto-rebase park reasons on `git/base_sync/state.py` —
-so a patch meant to intercept one of those has to land on the owner. Those facades move to
-`orchestrator/workflow/stages/` one stage at a time — `decomposition`, `implementing`, `documenting`, `validating`,
-`in_review`, `fixing`, and `conflicts` have gone, so the `decomposing` / `ready` / `blocked` / `umbrella` handlers live
+so a patch meant to intercept one of those has to land on the owner. The per-label facades moved to
+`orchestrator/workflow/stages/` one stage at a time, and all eight are there: the `decomposing` / `ready` / `blocked` /
+`umbrella` handlers live
 on owners in
 `orchestrator/workflow/stages/decomposition/`, `_handle_implementing` on owners in
 `orchestrator/workflow/stages/implementing/`, `_handle_documenting` in `orchestrator/workflow/stages/documenting/`,
 `_handle_validating` in `orchestrator/workflow/stages/validating/`, `_handle_in_review` in
 `orchestrator/workflow/stages/in_review/`, `_handle_fixing` in
-`orchestrator/workflow/stages/fixing/`, and `_handle_resolving_conflict` in
-`orchestrator/workflow/stages/conflicts/`. The module each migrated stage vacates stays
+`orchestrator/workflow/stages/fixing/`, `_handle_resolving_conflict` in
+`orchestrator/workflow/stages/conflicts/`, and `_handle_question` in
+`orchestrator/workflow/stages/question/`. The module each stage vacated under `orchestrator/stages/` stays
 behind as a temporary forwarder onto those owners, so both import sites keep handing back the same handler; the
 dispatcher and the same-tick pickup start name the owner directly. The per-stage
 behavior is documented in

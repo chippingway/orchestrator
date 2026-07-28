@@ -17,11 +17,11 @@ from tests.workflow_helpers import (
     _agent,
 )
 
-from tests.question_test_support import (
+from tests.workflow.stages.question.question_test_support import (
     _issue_branch,
     _seed_unsafe_question,
 )
-from tests.question_conversation_test_support import (
+from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
 )
 
