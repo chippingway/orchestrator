@@ -478,6 +478,18 @@ orchestrator/
                         lazy compatibility facade and direct Streamlit entrypoint
   _trajectory_dashboard_*.py
                         viewer bootstrap, page controls, rendering, and HTML leaves
+  observability/
+    __init__.py         package marker only; the destination the four
+                        observation-only surfaces above migrate to
+    analytics/
+      __init__.py       package marker only; destination for the JSONL sink
+      recording/        destination for the append side of that sink
+      query/            destination for the reads of the Postgres target
+      sync/             destination for the JSONL -> Postgres ingestion
+      trajectories/     destination for the opt-in per-run reasoning sink
+    usage/              destination for the provider payload parsers
+    dashboard/          destination for the Streamlit analytics page
+    trajectory_viewer/  destination for the file-backed trajectory page
   skill_catalog.py      per-tick repo skill-catalog collection: enumerate
                         SKILL.md definitions on the target base ref and
                         append one `repo_skill_catalog` analytics record;
@@ -769,6 +781,28 @@ Stage-private helpers stay private to the stage that owns them (`_bump_in_review
 re-exported from the facade as well, and that export is the edge a historical caller resolves through; between
 stage owners the borrower names the lender's owner instead, so fixing's quiet window imports `_comment_created_at`
 from `in_review/watermarks.py` even though `workflow` answers with the same object.
+
+`orchestrator/observability/` is the destination for the four surfaces that watch a run without steering it: the
+analytics sink and everything downstream of it (`analytics/` over `recording/`, `query/`, `sync/`, and
+`trajectories/`), the parser that meters one finished agent run (`usage/`), the Streamlit page over the operator's
+Postgres target (`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`). Nothing has
+moved yet — the tree is its initializers and nothing else, so `orchestrator/analytics/`, `usage.py`,
+`dashboard*.py`, `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
+names until the responsibility they hold has an owner here.
+
+Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own
+subjects off disk so a new owner is covered the day it appears. Every initializer binds nothing, so importing one
+owner costs the importer its own package chain and nothing besides: the recording path runs inside every tracked
+agent run, and a binding would put the query owners and the database driver behind that import. Nothing under the
+tree carries an export manifest, a resolver hook, or a `.pyi` surface — a name is imported from the module that
+defines it, and a patch targets that module rather than a facade, which is the compatibility layer this destination
+exists to retire. Nothing observed is on the workflow's decision path, so no module may import the workflow engine, a
+stage, or an application entrypoint — the CLI and the runtime loop on one side, the two `streamlit run` targets
+(`dashboard.py`, `trajectory_dashboard.py`) and the leaves they front on the other; the dependency runs one way, and
+an entrypoint composes these owners rather than the reverse. And Streamlit and Plotly stay function-local: they live
+in the optional `dashboard` dependency group, so every module has to import cleanly with both blocked outright *and*
+with no attempt on either recorded — a module-scope import that swallows its own `ImportError` is still a load in the
+install that has the package — which is what keeps the data an owner shapes testable in an install that has neither.
 
 ## Workflow labels
 
@@ -1136,7 +1170,9 @@ dashboard and the `orchestrator/usage.py` parser that feeds it). The trajectory 
 — the file-backed trajectory viewer (`orchestrator/trajectory_dashboard.py` over the pure
 `orchestrator/trajectory_reader.py`), which reads the JSONL directly (usage and cost included) and needs no Postgres.
 None of them feed back into dispatch: workflow correctness keys off the pinned state JSON and the workflow label, so
-every surface is observation-only and safe to truncate, rotate, or delete.
+every surface is observation-only and safe to truncate, rotate, or delete. That is also why all four migrate into
+`orchestrator/observability/` — the destination and the rules its owners inherit are described under
+[Top-level layout](#top-level-layout).
 
 For the per-sink schema, event-kind tables, append / retention / rotation semantics, the analytics-DB compose layout,
 the sync / read-model / dashboard wiring, and the usage parser's cost-precedence rules, see

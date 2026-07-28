@@ -1,0 +1,13 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""Analytics recording owners.
+
+Destination for the append side of the analytics sink: the record each event
+family is built as, the settings that answer where it is written and whether
+it is written at all, and the JSONL persistence under both.
+
+Callers import the owner they need, so this initializer binds nothing. This
+is the one analytics path the orchestrator process itself runs, and it runs
+fail-open inside a tracked agent run, so it stays free of the query, sync,
+and page graphs above it.
+"""

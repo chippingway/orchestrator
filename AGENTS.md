@@ -262,7 +262,12 @@ orchestrator process is stateless.
   crash-recovery probing, routing, outcomes, and persistence. The package also
   contains per-tick
   repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
-  recording, query, rendering, usage-provider, and trajectory leaves, the process-local scheduler package
+  recording, query, rendering, usage-provider, and trajectory leaves (with the empty `observability/` package as the
+  destination those surfaces migrate to: the analytics sink over its `recording/`, `query/`, `sync/`, and
+  `trajectories/` subpackages, the `usage/` parser under them, and the `dashboard/` and `trajectory_viewer/` pages over
+  them, every initializer binding nothing and carrying no manifest or resolver hook, no owner permitted to import the
+  workflow engine, a stage, or an entrypoint, and Streamlit / Plotly reached inside the function that renders with
+  them so an ordinary import works in the default install), the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
   `SubmissionRequest`, re-exported from their owners -- over the `models.py` owner (typed submissions,
   legacy-call binding, normalization) and the `service.py` owner (the concrete scheduler and its view,
@@ -623,6 +628,17 @@ orchestrator process is stateless.
   borrows, each pinned by patching the owner and the facade name it must not read (`test_owner_boundaries.py`) --
   with shared fixtures in `question_test_support.py`, `question_conversation_test_support.py`,
   `question_relabel_test_support.py`, and the `question_real_git_test_support.py` the worktree tests share.
+  Observability-package tests live in `tests/observability/`, whose directories mirror the runtime ones: what the
+  empty destination owes before an owner lands in it -- the clean-process import of every module in the tree, the
+  chain-only import cost that is what "the initializers bind nothing" means to an importer, the direction check that
+  no module reaches the workflow engine, a stage, or an entrypoint -- the two `streamlit run` targets and the leaves
+  they front included -- and the surface checks that the declared packages
+  are the ones on disk, that an initializer binds only submodules and installs no resolver hook, that no manifest or
+  stub leaf lands under the tree, and that each runtime package has its mirrored tests package (`test_imports.py`) --
+  beside the guard that every module imports with Streamlit and Plotly blocked outright and no attempt on either
+  recorded, since a swallowed `ImportError` is still a load in the install that has the package, plus the two probes
+  proving a raised and a swallowed attempt both fail it (`test_optional_dependencies.py`), with the tree
+  discovery and clean-process probes both share in `observability_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in
