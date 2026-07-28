@@ -159,7 +159,7 @@ JSONL file is the raw foundation layer for the Postgres aggregation step.
   (no handler runs).
 - `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`); one record per tracked agent invocation; agent
   context + parsed token / model / cost details (see below).
-- `repo_skill_catalog` — `orchestrator.skill_catalog._emit_repo_skill_catalog`, driven once per tick per spec by the
+- `repo_skill_catalog` — `orchestrator.skills.catalog._emit_repo_skill_catalog`, driven once per tick per spec by the
   tick owner (in `workflow/engine/tick.py`, reachable as `workflow.tick`); repo-level (not issue-scoped, so `issue` is
   the sentinel `0`); carries `base_branch`, `remote_name`, `skills_available` (deduped `SKILL.md` skill names on the
   base ref), and optional `skill_paths` (name → source paths) — see below.
@@ -217,8 +217,9 @@ every tracked agent run, distinct from (and in addition to) the audit `agent_spa
   read from the dedicated `skills` array in the `system`/`init` stream frame — confirmed against a real captured
   `--output-format stream-json` run — so `skills_available` is populated for tracked claude runs independently of what
   they triggered. Codex's `codex exec --json` stream carries no such offered-skills catalog, so for **codex** the set is
-  instead discovered out-of-band from the filesystem by `skill_catalog.discover_local_skills(cwd)` — a scan of the repo
-  skill roots (`.agents/skills` / `.claude/skills`) under the run's worktree plus the global `$CODEX_HOME/skills` codex
+  instead discovered out-of-band from the filesystem by `skills.discovery.discover_local_skills(cwd)` — a scan of the
+  repo skill roots (`.agents/skills` / `.claude/skills`) under the run's worktree plus the global
+  `$CODEX_HOME/skills` codex
   loads, including the built-in skills under that global root's `.system` container (`imagegen`, `openai-docs`, …). It
   runs only for codex, never overrides the claude stream-parsed set, and is fail-open (a missing root leaves the field
   empty). Each
@@ -326,7 +327,7 @@ and per-skill cohorts. See the [read model](#read-model-orchestratoranalyticsrea
 
 ### `repo_skill_catalog` records
 
-`orchestrator/skill_catalog.py` appends one repo-level `event="repo_skill_catalog"` analytics record per tick per spec,
+`orchestrator/skills/catalog.py` appends one repo-level `event="repo_skill_catalog"` analytics record per tick per spec,
 driven from `workflow/engine/tick.py` after `_refresh_base_and_worktrees` has fetched `<remote_name>/<base_branch>`,
 before the scheduler / in-tick split so it fires once per tick on either dispatch path. It enumerates
 the `SKILL.md` definitions the *target repo* carries on its base ref via `git -C <target_root> ls-tree -r --name-only
@@ -369,9 +370,9 @@ operator-driven for now.
 **Record shape.** One `agent_trajectory` record per tracked run carries the standard envelope (`ts`, `repo`, `issue`,
 `event`, `stage`) plus correlation context (`agent_role`, `backend`, `session_id`, `review_round`, `retry_count`) and
 the redacted trajectory: `user_input` (the orchestrator prompt), `system_prompt`, `tools` (the offered-tools set — read
-from claude's stream, and for codex backfilled with the best-effort `skill_catalog.discover_codex_tools()` baseline
+from claude's stream, and for codex backfilled with the best-effort `skills.discovery.discover_codex_tools()` baseline
 since its stream carries no offered-tools frame), `skills_triggered` / `skills_available` (names-only — for codex the
-`skills_available` set is backfilled from the out-of-band `skill_catalog.discover_local_skills(cwd)` filesystem scan,
+`skills_available` set is backfilled from the out-of-band `skills.discovery.discover_local_skills(cwd)` filesystem scan,
 since its stream carries no
 offered-skills catalog), a `run_usage` summary, a claude-only per-turn `turns`
 array, an ordered `steps` array (each `{kind, name, tool_id, content}` plus a `turn` index on the billed steps, where
@@ -1295,7 +1296,7 @@ The offered-skills set (`SkillTriggers.available`) is
 stream — and
 stays **empty on codex** at the parser layer: a captured `codex exec --json` stream (v0.142.5) carries no offered-skills
 frame at all, so `record_agent_exit` backfills the codex offered set out-of-band from the filesystem via
-`skill_catalog.discover_local_skills(cwd)` instead. The *triggered* set does not
+`skills.discovery.discover_local_skills(cwd)` instead. The *triggered* set does not
 depend on it either way. As with the usage parsers, malformed JSONL lines are skipped and a missing / renamed field
 yields an empty result rather than an exception. Only the skill *name* is ever read — never the `Skill` tool's `args`
 (Privacy).
@@ -1328,7 +1329,7 @@ item as one `assistant_message` turn (its `text`), collapsing each item's starte
 matching skill extractor for the `skills` field. `parse_agent_trajectory(backend, stdout)` dispatches by backend exactly
 as the usage / skill dispatchers do. `system_prompt` stays `None` and `tools` stays empty in the classifier whenever a
 backend's stream does not expose them (codex exposes neither); the analytics writer backfills codex `tools` out-of-band
-from `skill_catalog.discover_codex_tools()`. Malformed JSONL lines are skipped and a missing / renamed field
+from `skills.discovery.discover_codex_tools()`. Malformed JSONL lines are skipped and a missing / renamed field
 yields an empty section rather than an exception. Unlike the skill extractor, this classifier records the **raw** stream
 payload — tool inputs, tool outputs, and the final text — verbatim: it deliberately does **not** redact, truncate,
 or write any file. Those concerns belong to its downstream writer, `analytics._trajectories._maybe_record_trajectory`

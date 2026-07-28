@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Shared builders and projections for skill-catalog tests."""
+"""Shared builders and projections for the skill-enumeration owners' tests."""
 from __future__ import annotations
 
 import subprocess

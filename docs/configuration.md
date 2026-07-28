@@ -390,7 +390,7 @@ an unmergeable PR.
   [`observability.md`](observability.md#usage-parser-orchestratorobservabilityusage)). The offered-skills set
   (`skills_available`) is read from claude's `system`/`init` frame `skills` array (confirmed against a real stream
   capture); codex's stream carries no such frame, so it is backfilled out-of-band from the filesystem via
-  `skill_catalog.discover_local_skills(cwd)` (a scan of the run's worktree `.agents/skills` / `.claude/skills` roots
+  `skills.discovery.discover_local_skills(cwd)` (a scan of the run's worktree `.agents/skills` / `.claude/skills` roots
   plus the global `$CODEX_HOME/skills`). Once on, the dashboard's "Skill adoption" panel leads with per-session adoption
   (`analytics.read.get_skill_adoption`) — how many logical sessions had each skill available and how many loaded it,
   with incidental references kept as a separate column that never raises the rate — above a collapsed invocation-level

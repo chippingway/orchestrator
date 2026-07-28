@@ -308,9 +308,9 @@ class _RecordAgentExitTrajectorySupport(unittest.TestCase):
 
 
 def _discover_codex_tools() -> list[str]:
-    from orchestrator import skill_catalog
+    from orchestrator.skills import discovery
 
-    return list(skill_catalog.discover_codex_tools())
+    return list(discovery.discover_codex_tools())
 
 
 def _codex_usage_projection(record: dict) -> tuple:

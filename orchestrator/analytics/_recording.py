@@ -153,7 +153,7 @@ def record_repo_skill_catalog(
     "scanned, found none" signal -- without an empty `skill_paths`.
     Disabled-sink behavior is inherited from `append_record` (no-op when
     the sink is off). Centralized here so the producer in
-    `orchestrator.skill_catalog` does not re-inline the record shape.
+    `orchestrator.skills.catalog` does not re-inline the record shape.
     """
     _live_settings().append_record(
         build_record(

@@ -95,8 +95,9 @@ orchestrator process is stateless.
   streaming sequential loop that keeps the issues a mid-sweep pagination failure yielded, and the
   bounded pool whose materialized partition folds the whole family bucket into one task so it
   holds a single slot, both wrapping each issue in its own try/except, with
-  `_refresh_base_and_worktrees` and `_emit_repo_skill_catalog` deliberately read off the facade
-  because those are the seams the tick tests replace -- and over the `workflow/stages/` package
+  `_refresh_base_and_worktrees` deliberately read off the facade because that is the seam the tick
+  tests replace and the skill-catalog emission named on its own owner instead -- and over the
+  `workflow/stages/` package
   beside that subpackage, the owner of every per-label stage handler: it
   binds nothing, each stage arrived as its own subpackage of responsibility-named owners, the
   `stages/<stage>.py` it vacated stays behind as a temporary forwarder reading every name back off
@@ -260,8 +261,19 @@ orchestrator process is stateless.
   publishes: the models, shared state, worktree refresh, rebase-eligibility gates, the PR-route coordinator
   and conflict routing, the rebase startup, publication and its guards, and
   crash-recovery probing, routing, outcomes, and persistence. The package also
-  contains per-tick
-  repo skill-catalog analytics (`skill_catalog.py`), lazy analytics/read and dashboard facades backed by focused
+  contains the skill-enumeration package
+  (`skills/`, whose `__init__.py` binds nothing over the `catalog.py` owner -- the two skill roots read as
+  `git ls-tree` pathspecs on a spec's base ref, the direct-`<root>/<name>/SKILL.md` filter and cross-root
+  dedupe behind it, the literal `orchestrator.skill_catalog` logger its fail-open swallow reports through, and
+  the one `repo_skill_catalog` analytics record a tick appends per spec by naming this owner directly, with
+  the workflow facade's `_emit_repo_skill_catalog` export left for historical callers -- and the
+  `discovery.py` owner beside it, the filesystem scan a codex run's
+  `skills_available` / `tools` are backfilled from because its stream carries neither: the worktree and global
+  `$CODEX_HOME/skills` roots including that root's `.system` builtins, the names-only read, and the static
+  offered-tools baseline, with the skill roots and the `SKILL.md` marker defined there rather than on
+  `catalog.py` so the standard-library-only owner is the one both scans agree through, and root-level
+  `skill_catalog.py` left as a temporary compatibility site re-exporting the same four names),
+  lazy analytics/read and dashboard facades backed by focused
   recording, query, rendering, and trajectory leaves (with the `observability/` package as the destination those
   surfaces migrate to: the analytics sink over its `recording/`, `query/`, `sync/`, and `trajectories/` subpackages and
   the `dashboard/` and `trajectory_viewer/` pages over them, every initializer binding nothing unless the surface it
@@ -667,6 +679,21 @@ orchestrator process is stateless.
   malformed-stream families (`test_usage_codex_*.py`) -- with shared fixtures in `usage_test_values.py`,
   `usage_jsonl_helpers.py`, `usage_claude_events.py`, `usage_codex_events.py`, `usage_assertions.py`,
   `usage_pricing_cases.py`, `usage_serialization_cases.py`, and `usage_trajectory_projections.py`.
+  Skills-package tests live in `tests/skills/`: what the package owes -- the clean-process import of the package, both
+  owners, and the site left behind, the marker initializer's own-chain cost and the standard-library-only cost
+  `discovery` charges, the direction checks that neither owner reaches the workflow engine, a stage, an entrypoint, or
+  that site, the surface checks that the declared owners are the ones on disk, that the initializer binds only
+  submodules and declares neither `__all__` nor a resolver hook, and that no flat `_local_skills` leaf is left beside
+  the site, the four names the site forwards as the owners' exact objects and nothing besides, and the two live
+  producers that must not resolve through it -- the tick's own import of the catalog owner, beside the facade export
+  that outlives it, and the codex
+  backfill's `discovery` read (`test_imports.py`); the catalog scenarios beside it -- the direct-`SKILL.md` extraction,
+  its cross-root dedupe and rejected nestings, the `ls-tree` argv and its fail-open missing-clone / git-error exits,
+  the spec fields and empty-catalog `skill_paths` the record carries, the swallowed producer failure, and the tick that
+  drives one emission per spec (`test_catalog.py`); and the discovery scenarios -- both repo roots and their dedupe,
+  the global `$CODEX_HOME/skills` root with its `.system` builtins, repo-over-global precedence, the direct-children
+  filter, missing roots, and the offered-tools baseline (`test_discovery.py`) -- with shared builders in
+  `skills_test_support.py`.
 - `docs/` — architecture, workflow, and configuration references.
 - `run.sh` — production launcher that auto-restarts after self-modifying merges.
 - `.env.example` / `.env.example.advanced` — basic and advanced configuration templates; full reference is in

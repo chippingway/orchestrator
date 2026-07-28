@@ -129,7 +129,7 @@ class _SkillDiscoveryCase:
 class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
     """Codex has no offered-skills stream frame, so `record_agent_exit`
     backfills `skills_available` out-of-band from the worktree / `$CODEX_HOME`
-    skill roots (via `skill_catalog.discover_local_skills`) -- into both the
+    skill roots (via `skills.discovery.discover_local_skills`) -- into both the
     `agent_exit` record (behind `TRACK_SKILL_TRIGGERS`) and the trajectory
     record (behind `TRAJECTORY_LOG_PATH`). Claude is untouched (its offered
     set rides the stream), and a run with no worktree stays empty."""
@@ -183,9 +183,9 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
         self.assertEqual(rec[_BACKEND], _CODEX)
         self.assertEqual(rec[_SKILLS_AVAILABLE], [_REVIEW])
         # The offered-tools baseline is backfilled onto the same record.
-        from orchestrator import skill_catalog
+        from orchestrator.skills import discovery
 
-        self.assertEqual(rec["tools"], list(skill_catalog.discover_codex_tools()))
+        self.assertEqual(rec["tools"], list(discovery.discover_codex_tools()))
 
     def test_no_worktree_leaves_codex_available_empty(self) -> None:
         # No worktree -> no skill discovery; the offered-tools baseline needs
@@ -208,9 +208,9 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
             )
         self.assertNotIn(_SKILLS_AVAILABLE, base[0])
         self.assertNotIn(_SKILLS_AVAILABLE, traj[0])
-        from orchestrator import skill_catalog
+        from orchestrator.skills import discovery
 
-        self.assertEqual(traj[0]["tools"], list(skill_catalog.discover_codex_tools()))
+        self.assertEqual(traj[0]["tools"], list(discovery.discover_codex_tools()))
 
     def test_claude_offered_set_not_from_discovery(self) -> None:
         # Discovery is codex-only: a claude run in a worktree full of skill

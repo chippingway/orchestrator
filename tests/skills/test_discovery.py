@@ -9,9 +9,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import skill_catalog
+from orchestrator.skills import discovery
 
-from tests.skill_catalog_test_support import _make_skill
+from tests.skills.skills_test_support import _make_skill
 
 
 _DEVELOP_SKILL = "develop"
@@ -34,7 +34,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
                 os.environ,
                 {_CODEX_HOME_ENV: str(cwd / "no-home")},
             ):
-                names = skill_catalog.discover_local_skills(cwd)
+                names = discovery.discover_local_skills(cwd)
         self.assertEqual(
             names,
             (_DEVELOP_SKILL, _REVIEW_SKILL, "extra"),
@@ -51,7 +51,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
                 _IMAGEGEN_SKILL,
             )
             with patch.dict(os.environ, {_CODEX_HOME_ENV: str(home)}):
-                names = skill_catalog.discover_local_skills(cwd)
+                names = discovery.discover_local_skills(cwd)
         self.assertEqual(
             names,
             (_REVIEW_SKILL, "global-skill", _IMAGEGEN_SKILL),
@@ -68,7 +68,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
             ):
                 _make_skill(home / _SKILLS_DIR / ".system", name)
             with patch.dict(os.environ, {_CODEX_HOME_ENV: str(home)}):
-                names = skill_catalog.discover_local_skills(cwd)
+                names = discovery.discover_local_skills(cwd)
         self.assertEqual(
             names,
             (_IMAGEGEN_SKILL, "openai-docs", "skill-installer"),
@@ -81,7 +81,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
             _make_skill(cwd / _AGENT_SKILLS_ROOT, _REVIEW_SKILL)
             _make_skill(home / _SKILLS_DIR, _REVIEW_SKILL)
             with patch.dict(os.environ, {_CODEX_HOME_ENV: str(home)}):
-                names = skill_catalog.discover_local_skills(cwd)
+                names = discovery.discover_local_skills(cwd)
         self.assertEqual(names, (_REVIEW_SKILL,))
 
     def test_only_direct_children_with_skill_md_count(self) -> None:
@@ -97,7 +97,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
                 os.environ,
                 {_CODEX_HOME_ENV: str(cwd / "no-home")},
             ):
-                names = skill_catalog.discover_local_skills(cwd)
+                names = discovery.discover_local_skills(cwd)
         self.assertEqual(names, (_DEVELOP_SKILL,))
 
     def test_missing_roots_yield_empty_not_error(self) -> None:
@@ -108,16 +108,16 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
             }
             with patch.dict(os.environ, missing_home):
                 self.assertEqual(
-                    skill_catalog.discover_local_skills(cwd),
+                    discovery.discover_local_skills(cwd),
                     (),
                 )
 
 
 class DiscoverCodexToolsTest(unittest.TestCase):
     def test_returns_nonempty_baseline(self) -> None:
-        tools = skill_catalog.discover_codex_tools()
+        tools = discovery.discover_codex_tools()
         self.assertIsInstance(tools, tuple)
-        self.assertEqual(tools, skill_catalog._CODEX_OFFERED_TOOLS)
+        self.assertEqual(tools, discovery._CODEX_OFFERED_TOOLS)
         self.assertIn("exec_command", tools)
         self.assertIn("web_search", tools)
         self.assertTrue(all(
