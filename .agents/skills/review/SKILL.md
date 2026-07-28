@@ -24,6 +24,8 @@ Reject (or request fixes) if any of these are red:
 - Full `pytest` run is referenced in the PR description and passes end-to-end. Reject "known failure"
   hand-waves; if the PR claims a baseline failure, the description must include a reproduction on
   `origin/main` at the branch point. Otherwise the developer must fix it.
+- Every source file the PR adds (`*.py`, `*.sh`, `pyproject.toml`) opens with the `# Copyright 2026 Geser Dugarov` /
+  `# SPDX-License-Identifier: Apache-2.0` header pair.
 
 ## Behavior preservation
 
@@ -62,17 +64,25 @@ The compatibility surface on `orchestrator/workflow/__init__.py` is load-bearing
 - For resource-usage fixes (over-fetching, redundant API calls, retained state), reject tests that
   only assert the final result; require at least one assertion at the helper/producer level.
 - Prefer fewer tests with clear distinct coverage over many narrowly overlapping regression tests.
+- Check placement: tests mirror the runtime layout, so a module under `orchestrator/<package>/` is covered by
+  `tests/<package>/` and stage handlers by `tests/workflow/stages/<stage>/`. Flag a new omnibus module added beside
+  an existing per-behavior split, a test parked away from the owner it exercises, and a stage reaching into a
+  sibling stage's `*_test_support.py` for fixtures.
 
 ## Documentation drift
 
 After any handler or helper move, grep the PR for stale pointers and request fixes in:
 
-- `AGENTS.md` / `CLAUDE.md`
-- `docs/architecture.md`
+- `docs/architecture.md` — the module-by-module inventory lives here and nowhere else
 - `docs/state-machine.md`
 - `docs/workflow.md`
-- module docstrings at the top of `workflow/__init__.py`, `workflow_drift.py`, `workflow_messages.py`,
-  `worktrees.py`, `orchestrator/stages/*.py`
+- module docstrings at the top of the facade the symbol was reached through and of the owners it moved
+  between
+
+`AGENTS.md` (and its `CLAUDE.md` symlink) is deliberately off that list, and the inverse is what to flag: it is
+loaded into every agent session and carries no module, owner, or test inventory. Reject a PR that answers a routine
+symbol or module move by editing it, or that grows an inventory back into it. It changes only when repository-wide
+agent instructions, safety rules, or documentation routing change.
 
 Treat blanket statements like "every helper is re-exported" with suspicion — verify literally against the code.
 
