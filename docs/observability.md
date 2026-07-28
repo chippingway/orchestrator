@@ -20,6 +20,11 @@ time.
 - **Usage parser** (`orchestrator/usage.py`) — decoder for the agent CLI JSONL stdout that produces the token / cost
   detail the analytics `agent_exit` record carries.
 
+Every module path in this document is the current one. `orchestrator/observability/` holds the empty packages the
+analytics sink, the usage parser, the dashboard, and the trajectory viewer are each migrating into; until a
+responsibility has an owner in that tree, the module named for it below stays the import site. See
+[`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
+
 ## Audit event log (`EVENT_LOG_PATH`)
 
 Optional, opt-in JSONL sink. When `config.EVENT_LOG_PATH` is set, `github.events.write_event_record` appends one JSON
@@ -123,10 +128,7 @@ retain the established patch/import surfaces; their implementations are split in
 `_trajectory_*`, and `_retention_*` leaves for settings, event families, serialization, sanitization, persistence,
 scanning, and atomic rewrites. The read and sync surfaces are separate Postgres-facing families: `analytics.read` is a
 manifest-backed lazy facade, while `sync.py`, `connection.py`, `query.py`, `predicates.py`, and their private leaves own
-typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle. Every path in this section is the
-current one: `orchestrator/observability/` holds the empty packages these surfaces move to, and until a responsibility
-has an owner there the modules named here stay the import site — see
-[`architecture.md`](architecture.md#top-level-layout) for that boundary.
+typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`) are parsed at import by
