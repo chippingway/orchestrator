@@ -806,6 +806,22 @@ re-exported from the facade as well, and that export is the edge a historical ca
 stage owners the borrower names the lender's owner instead, so fixing's quiet window imports `_comment_created_at`
 from `in_review/watermarks.py` even though `workflow` answers with the same object.
 
+`orchestrator/skills/` holds the two ways this orchestrator answers "which skills are in play". `catalog.py`
+enumerates what a target repo *offers* on its base ref — the `git ls-tree` read whose deduped names and preserved
+source paths become one `repo_skill_catalog` analytics record per tick per spec — and `discovery.py` enumerates what a
+single local codex run was *loaded with*, scanning the run's worktree roots plus the global `$CODEX_HOME/skills` (its
+`.system` builtins included) because codex's stream carries no offered-skills or offered-tools frame to read one off.
+The skill roots and the `SKILL.md` marker that both scans are defined by live on `discovery`, the owner that reaches
+nothing outside the standard library, and `catalog` reads them back so a git pathspec and a filesystem scan cannot
+disagree about what a skill definition is. The initializer binds nothing and both live callers name an owner: the tick
+calls `catalog._emit_repo_skill_catalog`, and the analytics codex backfill calls `discovery.discover_local_skills` /
+`discover_codex_tools` — so a patch that has to intercept a run's offered skills or tools targets
+`orchestrator.skills.discovery` and not `skill_catalog`. That leaves root-level `skill_catalog.py` a temporary
+compatibility site: it re-exports those four names as the owners' own objects, nothing on the tick or analytics path
+imports it any more, and a check under `tests/skills/` holds the direction the package runs in — neither owner may
+reach the workflow engine, a stage, or an application entrypoint, because a catalog is observation the tick drives
+rather than state a handler consults.
+
 `orchestrator/observability/` is the destination for the four surfaces that watch a run without steering it: the
 analytics sink and everything downstream of it (`analytics/` over `recording/`, `query/`, `sync/`, and `trajectories/`),
 the parser that meters one finished agent run (`usage/`), the Streamlit page over the operator's Postgres target
