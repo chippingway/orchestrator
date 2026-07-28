@@ -7,6 +7,8 @@ from __future__ import annotations
 import importlib
 import threading
 
+from orchestrator.observability.analytics import config as analytics_config
+
 _deps = importlib.import_module("orchestrator.analytics._trajectory_dependencies")
 
 
@@ -42,7 +44,7 @@ _TRAJECTORY_FILE_LOCK = threading.Lock()
 def append_trajectory_record(record: dict) -> None:
     """Append one JSONL line to the configured trajectory sink."""
     _append_jsonl_record(
-        _live_settings().TRAJECTORY_LOG_PATH,
+        analytics_config.settings_on(_live_settings()).trajectory_log_path,
         _TRAJECTORY_FILE_LOCK,
         record,
     )

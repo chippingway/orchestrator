@@ -12,6 +12,8 @@ import sys
 import threading
 import typing
 
+from orchestrator.observability.analytics import config as analytics_config
+
 _deps = importlib.import_module("orchestrator.analytics._recording_dependencies")
 
 
@@ -24,13 +26,6 @@ AGENT_EXIT_SIGNATURE = _deps._recording_models.AGENT_EXIT_SIGNATURE
 STAGE_EVALUATION_SIGNATURE = _deps._recording_models.STAGE_EVALUATION_SIGNATURE
 bind_agent_exit = _deps._recording_models.bind_agent_exit
 bind_stage_evaluation = _deps._recording_models.bind_stage_evaluation
-_DISABLED_SENTINELS = _deps._recording_settings._DISABLED_SENTINELS
-_parse_db_url = _deps._recording_settings._parse_db_url
-_parse_log_path = _deps._recording_settings._parse_log_path
-_parse_retention_days = _deps._recording_settings._parse_retention_days
-_parse_track_skill_triggers = _deps._recording_settings._parse_track_skill_triggers
-_parse_trajectory_log_path = _deps._recording_settings._parse_trajectory_log_path
-_parse_trajectory_retention_days = _deps._recording_settings._parse_trajectory_retention_days
 _discover_codex_catalog = _deps._recording_catalog._discover_codex_catalog
 _discover_codex_skills = _deps._recording_catalog._discover_codex_skills
 _discover_codex_tools = _deps._recording_catalog._discover_codex_tools
@@ -52,7 +47,17 @@ _COMPATIBILITY_MODULES = (os,)
 
 
 def _live_settings():
-    """Return the package instance that owns this recorder module."""
+    """Return the package instance this recorder module was imported alongside.
+
+    Two things resolve through it: the patchable entry points the recorders
+    dispatch to (`append_record`, `prune_old_records`,
+    `append_trajectory_record`), and the settings holder they hand
+    `config.settings_on` to read a knob off. It is deliberately the captured
+    instance rather than whatever the package name resolves to now -- a caller
+    that re-imports the package against a patched environment drives the
+    instance it got back, so the current one would answer with the
+    process-wide values instead.
+    """
     return _facade
 
 
@@ -90,7 +95,7 @@ def build_record(
 def append_record(record: dict) -> None:
     """Append one JSONL line to the configured analytics sink."""
     _append_jsonl_record(
-        _live_settings().ANALYTICS_LOG_PATH,
+        analytics_config.settings_on(_live_settings()).log_path,
         _FILE_LOCK,
         record,
     )

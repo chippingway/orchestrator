@@ -25,7 +25,7 @@ from orchestrator.analytics._connection_cache import (
     _discard_broken_connection as _discard_broken_connection,
     _open_cached_connection as _open_cached_connection,
 )
-from orchestrator.analytics.db_url import _resolve_db_url
+from orchestrator.observability.analytics.config import resolve_db_url
 
 log = logging.getLogger(__name__)
 _COMPATIBILITY_EXPORTS = (_cached_entry, _open_cached_connection)
@@ -161,7 +161,7 @@ def analytics_connection(
     Tests inject a fake `connect(db_url) -> conn` factory the same
     shape as every public helper accepts.
     """
-    url = _resolve_db_url(db_url)
+    url = resolve_db_url(db_url)
     if not url:
         yield None
         return

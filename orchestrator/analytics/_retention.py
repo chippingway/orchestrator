@@ -29,6 +29,7 @@ from orchestrator.analytics._retention_scan import (
 from orchestrator.analytics._trajectories import (
     _TRAJECTORY_FILE_LOCK as _TRAJECTORY_FILE_LOCK,
 )
+from orchestrator.observability.analytics import config as analytics_config
 
 
 _COMPATIBILITY_EXPORTS = (
@@ -98,10 +99,10 @@ def prune_old_records(*, now: Optional[datetime] = None) -> int:
     the polling loop calls this between ticks, so serializing with
     `append_record` is what keeps that prune-window invisible.
     """
-    settings = _live_settings()
+    settings = analytics_config.settings_on(_live_settings())
     return _prune_jsonl_records(
-        settings.ANALYTICS_LOG_PATH,
-        settings.ANALYTICS_RETENTION_DAYS,
+        settings.log_path,
+        settings.retention_days,
         _FILE_LOCK,
         now,
     )
@@ -120,10 +121,10 @@ def prune_trajectory_records(*, now: Optional[datetime] = None) -> int:
     rollups. `now` is parameter-overridable so tests can pin the
     comparison point.
     """
-    settings = _live_settings()
+    settings = analytics_config.settings_on(_live_settings())
     return _prune_jsonl_records(
-        settings.TRAJECTORY_LOG_PATH,
-        settings.TRAJECTORY_RETENTION_DAYS,
+        settings.trajectory_log_path,
+        settings.trajectory_retention_days,
         _TRAJECTORY_FILE_LOCK,
         now,
     )

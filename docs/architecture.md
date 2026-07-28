@@ -461,7 +461,7 @@ orchestrator/
     _read_*.py          query-family implementations, typed query rows, and hooks
     read_*.py           stable raw, rollup, dashboard, and model compatibility hubs
     read_request*.py    typed filters, connection inputs, options, and legacy binding
-    _recording*.py      event-family recording, settings, usage, and JSONL persistence
+    _recording*.py      event-family recording, usage, and JSONL persistence
     _retention*.py      retention scanning and atomic rewrite leaves
     sync.py / _sync_*.py
                         CLI, ingestion, row parsing/mapping, and database lifecycle
@@ -484,6 +484,10 @@ orchestrator/
                         surfaces above migrate to
     analytics/
       __init__.py       package marker only; destination for the JSONL sink
+      config.py         the six sink / database environment knobs, the parse
+                        the flat package's bootstrap binds, the `Settings`
+                        view every adapter reads one back through, and the
+                        read-path URL fallback
       recording/        destination for the append side of that sink
       query/            destination for the reads of the Postgres target
       sync/             destination for the JSONL -> Postgres ingestion
@@ -830,7 +834,25 @@ arrive: its owners live under `usage/`, whose initializer publishes the parser s
 run — `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers — name the
 owner they need. Root-level `usage.py` stays behind as a temporary compatibility site re-exporting those owners' own
 objects, and nothing on the tick path imports it any more — which is what makes it deletable rather than load-bearing.
-The other three have not moved: `orchestrator/analytics/`, `dashboard*.py`, `trajectory_reader.py`, and
+
+`analytics/config.py` is the first owner under the analytics destination: the six environment knobs the two JSONL
+sinks and the Postgres surfaces are configured by, the `off` / `disabled` / `none` disable vocabulary three of them
+share, the whole set parsed under the names the flat package binds them to, the `Settings` view an adapter reads one
+back through, and the fallback a read's `db_url=None` resolves through. Every adapter obtains configuration there —
+the flat package's bootstrap, both sinks' append and prune paths, the two skill readers that take their holder off an
+exit context, the read-path modules (`connection.py`, `query.py`), and the sync request — so a knob's name appears in
+one place; the `_recording_settings.py` and `db_url.py` leaves that used to hold those answers are gone.
+
+What the flat package still owns is *which* values are in force: it binds the parsed set at import and is where a
+caller patches one, so the view reads them back off it rather than re-parsing. Which *instance* it reads is the
+adapter's own answer, and the two are not interchangeable. A recorder passes `settings_on` the package it captured at
+its own import, because a package re-imported against a patched environment is not installed under the package name
+afterwards — reaching for the name would hand its callers the process-wide values. The read path and the sync have
+nothing captured and use `live_settings`, which resolves the name behind a function-local import: binding that import
+at module scope would cycle and make the compatibility package load-bearing rather than retirable. The view reads each
+attribute on demand, so a knob patched between two reads reaches the second and a holder carrying only the knobs its
+caller touches stays usable.
+The remaining three surfaces have not moved: `orchestrator/analytics/`, `dashboard*.py`, `trajectory_reader.py`, and
 `trajectory_dashboard.py` stay the import site every historical caller
 names until the responsibility they hold has an owner here.
 

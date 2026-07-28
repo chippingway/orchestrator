@@ -1,0 +1,271 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""Analytics sink and database configuration tests."""
+from __future__ import annotations
+
+import os
+import unittest
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Iterator
+from unittest.mock import patch
+
+from orchestrator import config as orchestrator_config
+from orchestrator.observability.analytics import config as analytics_config
+from tests.analytics_reload_helpers import reload_analytics as _reload
+
+_ANALYTICS_LOG_PATH = "ANALYTICS_LOG_PATH"
+
+_ANALYTICS_RETENTION_DAYS = "ANALYTICS_RETENTION_DAYS"
+
+_ANALYTICS_DB_URL = "ANALYTICS_DB_URL"
+
+_TRACK_SKILL_TRIGGERS = "TRACK_SKILL_TRIGGERS"
+
+_TRAJECTORY_LOG_PATH = "TRAJECTORY_LOG_PATH"
+
+_TRAJECTORY_RETENTION_DAYS = "TRAJECTORY_RETENTION_DAYS"
+
+# The names the analytics package publishes each parsed knob under.
+_PUBLISHED_KNOBS = (
+    _ANALYTICS_LOG_PATH,
+    _ANALYTICS_RETENTION_DAYS,
+    _ANALYTICS_DB_URL,
+    _TRACK_SKILL_TRIGGERS,
+    _TRAJECTORY_LOG_PATH,
+    _TRAJECTORY_RETENTION_DAYS,
+)
+
+# The spellings that turn a knob off, in the casings and padding an operator
+# writes them with. Shared by the three knobs that carry the vocabulary; an
+# explicit empty assignment in .env is a documented disable alongside them.
+_DISABLING = ("", "off", "OFF", " off ", "disabled", "none", "None")
+
+_DEFAULT_RETENTION_DAYS = 90
+
+_OVERRIDDEN_RETENTION_DAYS = 30
+
+_OVERRIDDEN_RETENTION_SPELLING = "30"
+
+# The retention spelling that keeps records indefinitely.
+_KEEP_FOREVER = "0"
+
+# One retention window per case: the spelling an operator writes and the
+# window it parses to. Both knobs read the same pair of answers.
+_RETENTION_CASES = (
+    (_KEEP_FOREVER, 0),
+    (_OVERRIDDEN_RETENTION_SPELLING, _OVERRIDDEN_RETENTION_DAYS),
+)
+
+_EXPLICIT_LOG_PATH = "/var/log/orch/a.jsonl"
+
+_EXPLICIT_TRAJECTORY_PATH = "/var/log/orch/t.jsonl"
+
+_DB_URL = "postgresql://u:p@db.example.com:5432/orchestrator_analytics"
+
+
+@contextmanager
+def _environment(**knobs: str) -> Iterator[None]:
+    """Run the body against exactly the knobs it names.
+
+    Cleared rather than layered: an operator who exported one of these before
+    running the suite would otherwise decide what an unset case parses to.
+    """
+    with patch.dict(os.environ, knobs, clear=True):
+        yield
+
+
+class AnalyticsSinkKnobTest(unittest.TestCase):
+    """`ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS`: the sink is
+    default-enabled under `config.LOG_DIR`, the disable sentinels turn it off,
+    retention defaults to 90 days, and 0 keeps raw data indefinitely.
+    """
+
+    def test_default_path_under_log_dir(self) -> None:
+        with _environment():
+            self.assertEqual(
+                analytics_config.parse_log_path(),
+                orchestrator_config.LOG_DIR / "analytics.jsonl",
+            )
+
+    def test_explicit_path_overrides_default(self) -> None:
+        with _environment(ANALYTICS_LOG_PATH=_EXPLICIT_LOG_PATH):
+            self.assertEqual(
+                analytics_config.parse_log_path(), Path(_EXPLICIT_LOG_PATH),
+            )
+
+    def test_disabling_values_turn_the_sink_off(self) -> None:
+        for spelling in _DISABLING:
+            with self.subTest(spelling=spelling):
+                with _environment(ANALYTICS_LOG_PATH=spelling):
+                    self.assertIsNone(analytics_config.parse_log_path())
+
+    def test_default_retention_is_ninety_days(self) -> None:
+        with _environment():
+            self.assertEqual(
+                analytics_config.parse_retention_days(),
+                _DEFAULT_RETENTION_DAYS,
+            )
+
+    def test_retention_reads_the_environment(self) -> None:
+        for raw, expected in _RETENTION_CASES:
+            with self.subTest(raw=raw):
+                with _environment(ANALYTICS_RETENTION_DAYS=raw):
+                    self.assertEqual(
+                        analytics_config.parse_retention_days(), expected,
+                    )
+
+
+class TrajectorySinkKnobTest(unittest.TestCase):
+    """`TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`: unlike the
+    analytics sink the trajectory one is opt-in, so an unset path disables it.
+    Retention mirrors the analytics knob (default 90, non-positive keeps
+    forever).
+    """
+
+    def test_unset_disables(self) -> None:
+        with _environment():
+            self.assertIsNone(analytics_config.parse_trajectory_log_path())
+
+    def test_disabling_values_turn_the_sink_off(self) -> None:
+        for spelling in _DISABLING:
+            with self.subTest(spelling=spelling):
+                with _environment(TRAJECTORY_LOG_PATH=spelling):
+                    self.assertIsNone(
+                        analytics_config.parse_trajectory_log_path(),
+                    )
+
+    def test_explicit_path_enables(self) -> None:
+        with _environment(TRAJECTORY_LOG_PATH=_EXPLICIT_TRAJECTORY_PATH):
+            self.assertEqual(
+                analytics_config.parse_trajectory_log_path(),
+                Path(_EXPLICIT_TRAJECTORY_PATH),
+            )
+
+    def test_retention_matches_the_analytics_default(self) -> None:
+        with _environment():
+            self.assertEqual(
+                analytics_config.parse_trajectory_retention_days(),
+                _DEFAULT_RETENTION_DAYS,
+            )
+
+    def test_retention_reads_the_environment(self) -> None:
+        for raw, expected in _RETENTION_CASES:
+            with self.subTest(raw=raw):
+                with _environment(TRAJECTORY_RETENTION_DAYS=raw):
+                    self.assertEqual(
+                        analytics_config.parse_trajectory_retention_days(),
+                        expected,
+                    )
+
+
+class DatabaseUrlKnobTest(unittest.TestCase):
+    """`ANALYTICS_DB_URL`: empty / sentinel disables the Postgres surfaces; a
+    real URL passes through verbatim so a libpq URL is the single-knob
+    endpoint contract.
+    """
+
+    def test_default_is_disabled(self) -> None:
+        with _environment():
+            self.assertIsNone(analytics_config.parse_db_url())
+
+    def test_disabling_values_turn_the_surfaces_off(self) -> None:
+        for spelling in _DISABLING:
+            with self.subTest(spelling=spelling):
+                with _environment(ANALYTICS_DB_URL=spelling):
+                    self.assertIsNone(analytics_config.parse_db_url())
+
+    def test_real_url_passes_through(self) -> None:
+        with _environment(ANALYTICS_DB_URL=_DB_URL):
+            self.assertEqual(analytics_config.parse_db_url(), _DB_URL)
+
+    def test_whitespace_is_stripped(self) -> None:
+        with _environment(ANALYTICS_DB_URL=f"  {_DB_URL}  "):
+            self.assertEqual(analytics_config.parse_db_url(), _DB_URL)
+
+
+class SkillTriggerKnobTest(unittest.TestCase):
+    """`TRACK_SKILL_TRIGGERS` defaults off and honors the same truthy
+    spellings as the other boolean knobs in `orchestrator.config`.
+    """
+
+    def test_defaults_off(self) -> None:
+        # Default-off is a deliberate, revisited decision (#515): even after
+        # codex skill-trigger coverage landed (#513), the file-open path's
+        # production noise stays unmeasured, so the default holds off until it
+        # proves low-noise live. Flipping this assertion is the flip.
+        with _environment():
+            self.assertFalse(analytics_config.parse_track_skill_triggers())
+
+    def test_truthy_spellings_enable(self) -> None:
+        for spelling in ("1", "true", "on", "yes", "On", " YES "):
+            with self.subTest(spelling=spelling):
+                with _environment(TRACK_SKILL_TRIGGERS=spelling):
+                    self.assertTrue(
+                        analytics_config.parse_track_skill_triggers(),
+                    )
+
+    def test_falsey_and_unknown_values_stay_off(self) -> None:
+        for spelling in ("0", "false", "off", "no", "", "maybe"):
+            with self.subTest(spelling=spelling):
+                with _environment(TRACK_SKILL_TRIGGERS=spelling):
+                    self.assertFalse(
+                        analytics_config.parse_track_skill_triggers(),
+                    )
+
+
+class ParsedSettingsTest(unittest.TestCase):
+    """`parsed_settings` is the whole set under the names the analytics
+    package publishes, and re-importing that package binds exactly it.
+    """
+
+    def test_knobs_parse_under_published_names(self) -> None:
+        with _environment(
+            ANALYTICS_LOG_PATH=_EXPLICIT_LOG_PATH,
+            ANALYTICS_RETENTION_DAYS=_OVERRIDDEN_RETENTION_SPELLING,
+            ANALYTICS_DB_URL=_DB_URL,
+            TRACK_SKILL_TRIGGERS="on",
+            TRAJECTORY_LOG_PATH=_EXPLICIT_TRAJECTORY_PATH,
+            TRAJECTORY_RETENTION_DAYS=_KEEP_FOREVER,
+        ):
+            self.assertEqual(
+                analytics_config.parsed_settings(),
+                {
+                    _ANALYTICS_LOG_PATH: Path(_EXPLICIT_LOG_PATH),
+                    _ANALYTICS_RETENTION_DAYS: _OVERRIDDEN_RETENTION_DAYS,
+                    _ANALYTICS_DB_URL: _DB_URL,
+                    _TRACK_SKILL_TRIGGERS: True,
+                    _TRAJECTORY_LOG_PATH: Path(_EXPLICIT_TRAJECTORY_PATH),
+                    _TRAJECTORY_RETENTION_DAYS: 0,
+                },
+            )
+
+    def test_the_package_binds_and_publishes_them(self) -> None:
+        # The compatibility contract this owner keeps: re-importing the
+        # analytics package against an environment binds every knob on it and
+        # publishes it, which is what a caller reads and patches settings on.
+        _, analytics = _reload(
+            {
+                _ANALYTICS_LOG_PATH: _EXPLICIT_LOG_PATH,
+                _TRAJECTORY_LOG_PATH: _EXPLICIT_TRAJECTORY_PATH,
+                _TRACK_SKILL_TRIGGERS: "1",
+                _ANALYTICS_DB_URL: _DB_URL,
+            },
+        )
+        bound = {name: getattr(analytics, name) for name in _PUBLISHED_KNOBS}
+        self.assertEqual(
+            bound,
+            {
+                _ANALYTICS_LOG_PATH: Path(_EXPLICIT_LOG_PATH),
+                _ANALYTICS_RETENTION_DAYS: _DEFAULT_RETENTION_DAYS,
+                _ANALYTICS_DB_URL: _DB_URL,
+                _TRACK_SKILL_TRIGGERS: True,
+                _TRAJECTORY_LOG_PATH: Path(_EXPLICIT_TRAJECTORY_PATH),
+                _TRAJECTORY_RETENTION_DAYS: _DEFAULT_RETENTION_DAYS,
+            },
+        )
+        self.assertTrue(set(_PUBLISHED_KNOBS) <= set(analytics.__all__))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -291,7 +291,16 @@ orchestrator process is stateless.
   `skills.py`, `trajectory.py` -- whose nine parsers the package initializer re-exports alongside the five result types
   they return, as its narrow `__all__` and the one publishing initializer in the
   tree, with `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers naming
-  the owner they need and root-level `usage.py` left as a temporary compatibility site re-exporting the same surface),
+  the owner they need and root-level `usage.py` left as a temporary compatibility site re-exporting the same surface --
+  and with `observability/analytics/config.py` the first owner under the analytics destination beside it, everything
+  the two JSONL sinks and the Postgres surfaces are configured by: the six environment knobs, the shared
+  `off` / `disabled` / `none` disable vocabulary three of them read through, the whole set parsed under the names the
+  flat package binds them to, the on-demand view every adapter reads a knob back through -- that package, for as long
+  as patching a setting on it is the interception a caller makes, entered either on the instance a recorder captured at
+  its own import or on whichever one the package name resolves to now -- and the read-path fallback a `db_url=None`
+  resolves through, with the bootstrap, both sinks' append and prune paths, the two skill readers, the two read-path
+  modules, and the sync request naming the owner and the `_recording_settings.py` / `db_url.py` leaves it replaces
+  gone),
   the process-local scheduler package
   (`scheduler/`, whose `__init__.py` publishes the narrow public surface (`__all__`) -- `IssueScheduler` and
   `SubmissionRequest`, re-exported from their owners -- over the `models.py` owner (typed submissions,
@@ -679,6 +688,17 @@ orchestrator process is stateless.
   malformed-stream families (`test_usage_codex_*.py`) -- with shared fixtures in `usage_test_values.py`,
   `usage_jsonl_helpers.py`, `usage_claude_events.py`, `usage_codex_events.py`, `usage_assertions.py`,
   `usage_pricing_cases.py`, `usage_serialization_cases.py`, and `usage_trajectory_projections.py`.
+  `tests/observability/analytics/` holds the configuration owner that arrived beside it: the declared owners against
+  the directory, the guard that neither vacated leaf survives, the narrow surface check that the public names the
+  owner defines are the declared eleven, the guard that neither it nor the package initializer declares an `__all__`,
+  the layering check that the owner reaches nothing outside the package -- the analytics package it reads the settings
+  back off included, since binding that import would cycle -- and the ten adapters that must plant it
+  (`test_imports.py`); the knob scenarios beside it -- the default sink path and its retention, the opt-in trajectory
+  pair, the database URL, and the skill-trigger switch, each across its defaults, disable spellings, and environment
+  overrides, plus the parsed set the re-imported package binds and publishes (`test_config.py`); and how a knob is read
+  back -- the package the live view holds, the patched setting and explicit URL a `db_url=None` fallback answers with,
+  the re-imported instance a captured view keeps answering for while the process-wide one says otherwise, the patch a
+  held view still observes, and the partial holder an on-demand read leaves usable (`test_config_reads.py`).
   Skills-package tests live in `tests/skills/`: what the package owes -- the clean-process import of the package, both
   owners, and the site left behind, the marker initializer's own-chain cost and the standard-library-only cost
   `discovery` charges, the direction checks that neither owner reaches the workflow engine, a stage, an entrypoint, or

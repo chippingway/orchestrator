@@ -180,6 +180,17 @@
 # call time. Splitting it would put one resume's decisions across two modules.
 # WPS201 is waived for that file.
 #
+# orchestrator/observability/analytics/config.py is one owner for everything
+# the analytics and trajectory sinks are configured by -- the six environment
+# knobs, the parse the analytics package bootstrap binds, the settings view
+# every adapter reads a knob back through (on its own captured instance or on
+# whichever one the package name resolves to), and the read-path URL
+# fallback -- so it carries 12 members past the WPS202 ceiling of 7. The
+# disable sentinels are one vocabulary across three of those knobs, and the
+# values an adapter reads back are the values these parsers produced, so
+# splitting the parse away from either half would let what "off" spells and
+# what it costs drift apart. WPS202 is waived.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -231,6 +242,7 @@ per-file-ignores =
     orchestrator/workflow/stages/validating/drift.py:WPS201
     orchestrator/workflow/stages/validating/requested_changes.py:WPS201
     orchestrator/workflow/stages/validating/reviewer.py:WPS201
+    orchestrator/observability/analytics/config.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

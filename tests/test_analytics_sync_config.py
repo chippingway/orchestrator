@@ -56,36 +56,6 @@ _ENCODING = "utf-8"
 _Batch = tuple[str, list[tuple]]
 
 
-class AnalyticsDbUrlConfigTest(unittest.TestCase):
-    """`ANALYTICS_DB_URL` parses at import inside the analytics
-    package: empty / sentinel disables; a real URL passes through
-    verbatim so a libpq URL is the single-knob endpoint contract.
-    """
-
-    def test_default_is_disabled(self) -> None:
-        analytics, _ = _reload()
-        self.assertIsNone(analytics.ANALYTICS_DB_URL)
-
-    def test_empty_string_disables(self) -> None:
-        analytics, _ = _reload({_DB_URL_ENV: ""})
-        self.assertIsNone(analytics.ANALYTICS_DB_URL)
-
-    def test_sentinel_values_disable(self) -> None:
-        for sentinel in ("off", "OFF", " off ", "disabled", "none", "None"):
-            with self.subTest(value=sentinel):
-                analytics, _ = _reload({_DB_URL_ENV: sentinel})
-                self.assertIsNone(analytics.ANALYTICS_DB_URL)
-
-    def test_real_url_passes_through(self) -> None:
-        url = "postgresql://u:p@db.example.com:5432/orchestrator_analytics"
-        analytics, _ = _reload({_DB_URL_ENV: url})
-        self.assertEqual(analytics.ANALYTICS_DB_URL, url)
-
-    def test_whitespace_stripped(self) -> None:
-        analytics, _ = _reload({_DB_URL_ENV: "  postgresql://h/db  "})
-        self.assertEqual(analytics.ANALYTICS_DB_URL, "postgresql://h/db")
-
-
 class AnalyticsSyncDisabledTest(unittest.TestCase):
     """When either env knob is unset the sync is a silent no-op: no
     connection attempt, no row insertion, no error. Mirrors how

@@ -68,6 +68,15 @@ class TrajectoryAppendTest(unittest.TestCase):
     warning rather than propagating it.
     """
 
+    def test_both_entry_points_are_published(self) -> None:
+        # The sink is driven off the package, so its two helpers stay part of
+        # what the package publishes rather than private leaves a caller has
+        # to reach past it for.
+        _, analytics = _reload()
+        for name in ("append_trajectory_record", "prune_trajectory_records"):
+            with self.subTest(name=name):
+                self.assertIn(name, analytics.__all__)
+
     def test_append_writes_one_line_per_record(self) -> None:
         with _trajectory_sink() as (path, analytics):
             analytics.append_trajectory_record({"session_id": "a", _COUNTER_KEY: 1})
