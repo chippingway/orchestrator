@@ -123,7 +123,10 @@ retain the established patch/import surfaces; their implementations are split in
 `_trajectory_*`, and `_retention_*` leaves for settings, event families, serialization, sanitization, persistence,
 scanning, and atomic rewrites. The read and sync surfaces are separate Postgres-facing families: `analytics.read` is a
 manifest-backed lazy facade, while `sync.py`, `connection.py`, `query.py`, `predicates.py`, and their private leaves own
-typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle.
+typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle. Every path in this section is the
+current one: `orchestrator/observability/` holds the empty packages these surfaces move to, and until a responsibility
+has an owner there the modules named here stay the import site — see
+[`architecture.md`](architecture.md#top-level-layout) for that boundary.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`) are parsed at import by
