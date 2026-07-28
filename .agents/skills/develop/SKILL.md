@@ -8,6 +8,28 @@ description: >-
 
 # Developer skill — agent-orchestrator
 
+## Environment and commands
+
+The repo targets Python 3.12+ and installs from the lockfile with [`uv`](https://github.com/astral-sh/uv):
+
+```sh
+uv sync --locked                              # creates .venv/ and installs runtime + dev deps from uv.lock
+uv run ruff check orchestrator tests          # run Ruff
+uv run flake8 orchestrator tests --select=WPS # run wemake-python-styleguide
+uv run pytest tests                           # run the test suite
+uv run python -m orchestrator.main --once     # one polling tick then exit
+uv run python -m orchestrator.main --log-level DEBUG
+```
+
+## License headers
+
+Every source file (`*.py`, `*.sh`, `pyproject.toml`) starts with:
+
+```
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+```
+
 ## Commits
 
 - Conventional Commits: `<type>: <subject>` with one of `feat`, `fix`, `chore`, `docs`, `refactor`, `test`.
@@ -58,41 +80,18 @@ right:
 - When you move a helper to a new module, either update the test's patch target to the new module
   boundary, or keep the compatibility alias on `orchestrator.workflow` and patch through the facade. Pick one
   approach per PR and be consistent.
-- Stage-handler tests live beside their owners under `tests/workflow/stages/<stage>/`. The in_review stage is
-  split into focused
-  `tests/workflow/stages/in_review/test_*.py` files beside its owners (routing, watermarks,
-  filtering, parked, migration, review summary, drift, live pause, fresh-feedback fixing route,
-  borrowed-owner boundaries), the implementing stage into focused
-  `tests/workflow/stages/implementing/test_*.py` files beside its owners (fresh runs, PR reuse +
-  conventional-commit helpers, retry / backend behavior, user-content drift, full-spec persistence,
-  terminal merges / closed issues), the documenting stage into focused
-  `tests/workflow/stages/documenting/test_*.py` files beside its owners (routing, missing-PR park,
-  terminal finalizes, fresh pass and its guards, recovered-commit push, awaiting-human resume,
-  refused continue, interruption / live pause, drift unwind, final-docs watermarks), the validating
-  stage into focused `tests/workflow/stages/validating/test_*.py` files beside its owners (review
-  loops + retry caps, operator controls, live pause, handoff, squash, terminal, verify + its
-  refusals, drift, watermarks), the fixing stage into focused
-  `tests/workflow/stages/fixing/test_*.py` files beside its owners (label + dispatcher routing, PR
-  terminals, feedback rescan + trust gate, quiet window, resume outcomes, session retirement, replay
-  batch + reviewer anchor, `/orchestrator continue` on both routes, parked dispatch, conflict
-  reroute, stranded commit, mid-tick comment, live pause, borrowed-owner boundaries), the
-  resolving-conflict stage into focused
-  `tests/workflow/stages/conflicts/test_*.py` files beside its owners (dispatcher routing, closed-issue
-  sweep, clean rebase, agent resolution, awaiting-human resume, dirty / rebase-in-progress parks,
-  crash-recovery pushes, stale / diverged parks, force-publish and its probes, drift, event emission,
-  live pause, borrowed-owner boundaries), the question stage into focused
-  `tests/workflow/stages/question/test_*.py` files beside its owners (label bootstrap + dispatcher
-  routing, fresh spawn, awaiting-human resume, locked session, parks, unsafe read-only violations,
-  the implementing-side relabel guard, trusted conversation, usage accounting, terminal cleanup,
-  base-refresh skip, borrowed-owner boundaries), and the
-  decomposition stage into focused
-  `tests/workflow/stages/decomposition/test_*.py` files
-  (manifest parsing, decomposing/ready/blocked/umbrella stage handlers, child issue creation, hash
-  drift, stale manifest cleanup, child merged-PR finalize). The control-label holds the dispatcher
-  applies before any stage run are covered in `tests/workflow/engine/test_dispatch_backlog.py` and
-  `test_dispatch_paused.py`, and the
-  remaining facade-level helpers (worktree serialization, drain-terminals, finalize-if-pr-merged,
-  stage analytics) live in their own focused modules. Shared fixtures go in `tests/workflow_helpers.py`.
+- Tests mirror the runtime layout: a module under `orchestrator/<package>/` is covered by `tests/<package>/`, and
+  stage-handler tests live beside their owners under `tests/workflow/stages/<stage>/`. Put a new test in the module
+  that already covers the behavior's owner; add a new module only when none does, and name it after the behavior it
+  protects rather than after the symbol it calls.
+- Each stage package's tests are already split into focused modules — routing, the outcomes one tick can reach, the
+  parks, drift, live pause, borrowed-owner boundaries — with the fixtures they share in a `*_test_support.py` beside
+  them. Follow the split that is there instead of growing one omnibus module, and put a stage's shared fixtures in
+  its own support module rather than in a sibling stage's.
+- Each tests package carries its package-level guards (clean-process import, import-cycle / layering direction,
+  public surface, and the forwarding checks a migrated owner owes) in its own `test_imports.py`.
+- Facade-level helpers that belong to no single stage get their own focused module under `tests/workflow/`; fixtures
+  shared across the flat workflow tests go in `tests/workflow_helpers.py`.
 - Prefer extending the in-memory fakes in `tests/support/github/` (reached through the
   `tests/fakes.py` bridge) over mocking PyGithub directly. New behavior should land with tests in
   the matching stage file.
@@ -128,13 +127,14 @@ Write every comment against the current state of the code, as if it had always b
 
 When you move a handler, helper, or constant, grep for the symbol across these files and update them in the same commit:
 
-- `AGENTS.md` (and its `CLAUDE.md` symlink)
-- `docs/architecture.md`
+- `docs/architecture.md` — the module-by-module inventory lives here and nowhere else
 - `docs/state-machine.md`
 - `docs/workflow.md`
-- the module docstrings at the top of `orchestrator/workflow/__init__.py`, `workflow_drift.py`,
-  `workflow_messages.py`, `worktrees.py`, `orchestrator/stages/*.py`, and the owners under
-  `orchestrator/workflow/stages/<stage>/`
+- the module docstrings at the top of the facade the symbol was reached through and of the owners it moved between
+
+`AGENTS.md` (and its `CLAUDE.md` symlink) is deliberately not on that list. It carries no module, owner, or test
+inventory, so a routine symbol or module move must leave it alone. Update it only when repository-wide agent
+instructions, safety rules, or documentation routing change.
 
 Be precise about what is and isn't re-exported — overstated claims like "every helper is re-exported" get flagged.
 
@@ -146,6 +146,14 @@ authoritative implementation requirements. Implement what the **issue** asks for
 in code, comments, docstrings, or commit messages (that reference outlives the note and goes stale the
 moment it is revised or deleted). Leave files under `plans/` untouched unless the current issue
 explicitly asks you to edit or remove one.
+
+## Dependencies
+
+`pyproject.toml` pins `PyGithub` and `psycopg[binary]` as runtime deps; `pytest`, `ruff`, and
+`wemake-python-styleguide` live in the `dev` group; the analytics dashboard's `streamlit` and `plotly` live in the
+separate `dashboard` group so the default `uv sync --locked` stays minimal. `uv.lock` is the source of truth for
+exact versions and is committed — regenerate it (`uv lock`) whenever `pyproject.toml` changes. Anything else needs
+justification.
 
 ## Out of scope without explicit ask
 
