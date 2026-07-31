@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from orchestrator.analytics.read_models import FilterOptions
+from orchestrator.observability.analytics.query.overview_models import FilterOptions
 
 _FILTER_OPTION_COLUMNS: tuple[str, ...] = (
     "repo",

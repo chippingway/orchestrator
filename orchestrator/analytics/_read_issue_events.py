@@ -7,11 +7,11 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from orchestrator.analytics._read_raw_values import _float_or_none, _int_or_none
-from orchestrator.analytics.read_models import IssueEventRow
 from orchestrator.observability.analytics.query.conditions import prepend_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
+from orchestrator.observability.analytics.query.run_models import IssueEventRow
 
 
 def _issue_event_from_row(row: Sequence[Any]) -> IssueEventRow:

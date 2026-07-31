@@ -24,16 +24,15 @@ from orchestrator.analytics._read_skill_matrix import (
 from orchestrator.analytics._read_skill_trigger_rates import (
     _skill_trigger_rate_rows,
 )
-from orchestrator.analytics.read_models import (
+from orchestrator.observability.analytics.query.activity_models import (
     BackendDailyTokensRow,
-    CostCoverageRow,
     HourlyHeatmapPoint,
-    ReviewRoundBucketRow,
-    SkillAdoptionRow,
-    SkillTriggerMatrixRow,
-    SkillTriggerRateRow,
 )
 from orchestrator.observability.analytics.query.conditions import agent_event_excluded
+from orchestrator.observability.analytics.query.cost_models import (
+    CostCoverageRow,
+    ReviewRoundBucketRow,
+)
 from orchestrator.observability.analytics.query.requests import (
     FILTERED_READ_SIGNATURE,
     HEATMAP_SIGNATURE,
@@ -41,6 +40,11 @@ from orchestrator.observability.analytics.query.requests import (
     bind_read_request,
     resolve_read_query,
     window_filters,
+)
+from orchestrator.observability.analytics.query.skill_models import (
+    SkillAdoptionRow,
+    SkillTriggerMatrixRow,
+    SkillTriggerRateRow,
 )
 
 

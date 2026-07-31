@@ -18,11 +18,11 @@ from orchestrator.analytics._read_skill_types import (
     _SkillCohort,
     _SkillMatrixKey,
 )
-from orchestrator.analytics.read_models import SkillTriggerMatrixRow
 from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
+from orchestrator.observability.analytics.query.skill_models import SkillTriggerMatrixRow
 
 SKILL_MATRIX_ROW_LIMIT = 100
 

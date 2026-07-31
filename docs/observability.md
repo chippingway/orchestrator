@@ -157,9 +157,9 @@ The retention scan and rewrite leaves are deliberately *not* in that rebuilt set
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
 separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py` and the private
 read leaves own the SQL boundaries, row mapping, and ingestion. The filters a read is asked for, the binding of its
-keyword call, the connection lifecycle, and the query execution are not among them — those belong to
-`observability/analytics/query/`, and the facade plus the `predicates.py`, `_predicate_*.py`, and `read_request*.py`
-modules forward the historical names to it.
+keyword call, the connection lifecycle, the query execution, and the frozen models a read answers with are not among
+them — those belong to `observability/analytics/query/`, and the facade plus the `predicates.py`, `_predicate_*.py`,
+`read_request*.py`, and `read_models*.py` modules forward the historical names to it.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -933,8 +933,9 @@ is Streamlit-free so the read path can be wired into any UI.
 `read.py` is a manifest-backed lazy facade with a complete `read.pyi`; it owns no query helpers and preserves the exact
 historical object identity, wildcard surface, and `from` imports. `read_raw.py`, `read_rollup.py`, and
 `read_dashboard.py` remain stable family hubs, backed by focused `_read_*` leaves for issue/event reads, summary and
-rollup series, cost/breakdown queries, skill views, and typed query-row conversion. Frozen result models are grouped in
-the `read_models_*` modules and re-exported through `read_models.py`.
+rollup series, cost/breakdown queries, skill views, and typed query-row conversion. The frozen result models they
+return are declared by the five `*_models.py` owners under `observability/analytics/query/`; `read_models.py` and the
+`read_models_*` modules beside it forward the historical names to those owners' own classes.
 
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
 `observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature
@@ -957,6 +958,18 @@ than a query (whether a close failed, whether an escaped error means the socket 
 how long a socket lives: the thread-local entry, the URL it is keyed on, the two evictions, and the
 `analytics_connection` / `close_thread_local_connection` pair over them. `execution.py` decides whose connection a
 SELECT runs on, and closes only the descriptor it opened itself.
+
+**Result owners.** One module per result family, each a plain frozen-dataclass module that reaches nothing — importing
+a row never costs a connection factory, the configuration behind an omitted `db_url=`, or the driver behind those.
+`activity_models.py` owns the time-bucketed cells (`BackendDailyTokensRow`, `HourlyHeatmapPoint`, `ThroughputDayRow`);
+`overview_models.py` what a page frames a window with — `FilterOptions`, `DataExtent`, and `Summary` construct bare so
+an unset `ANALYTICS_DB_URL` still renders a page, while `TimeSeriesPoint` requires the `(day, event, count)` key its
+cost and token aggregates hang off; `cost_models.py` the spend breakdowns
+(`ReviewRoundBucketRow`, `BackendEfficiencyRow`, `RepoBreakdownRow`, `CostCoverageRow`); `run_models.py` the run,
+issue, and traced-event rows (`StageBreakdown`, `EventBreakdown`, `AgentExitRow`, `IssueSummaryRow`, `IssueEventRow`)
+plus `public_event_result`, the accessor installed as the trace row's `result` property over its stored `event_result`
+column; and `skill_models.py` the skill cells (`SkillTriggerRateRow`, `SkillTriggerMatrixRow`, `SkillAdoptionRow`) with
+the zero-denominator-guarded share each derives.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is

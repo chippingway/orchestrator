@@ -7,11 +7,11 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from orchestrator.analytics._read_row_values import _day_value, _row_value
-from orchestrator.analytics.read_models import (
+from orchestrator.observability.analytics.query.activity_models import (
     BackendDailyTokensRow,
-    CostCoverageRow,
     HourlyHeatmapPoint,
 )
+from orchestrator.observability.analytics.query.cost_models import CostCoverageRow
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import (

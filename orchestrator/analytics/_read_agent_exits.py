@@ -13,7 +13,6 @@ from orchestrator.analytics._read_raw_values import (
     _float_or_none,
     _int_or_none,
 )
-from orchestrator.analytics.read_models import AgentExitRow
 from orchestrator.observability.analytics.query.conditions import (
     agent_event_excluded,
     prepend_where_condition,
@@ -21,6 +20,7 @@ from orchestrator.observability.analytics.query.conditions import (
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
+from orchestrator.observability.analytics.query.run_models import AgentExitRow
 
 
 def _agent_exit_from_row(row: Sequence[Any]) -> AgentExitRow:
