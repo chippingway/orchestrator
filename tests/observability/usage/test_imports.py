@@ -90,8 +90,8 @@ _RECORDS = ("AgentTrajectory", "TrajectoryStep", "TurnUsage")
 _CALLERS = (
     ("orchestrator.agents.models", _METRICS_OWNER),
     ("orchestrator.workflow.engine.usage", _METRICS_OWNER),
-    ("orchestrator.analytics._recording_usage", _METRICS_OWNER),
-    ("orchestrator.analytics._recording_skills", "skills"),
+    ("orchestrator.observability.analytics.recording.usage", _METRICS_OWNER),
+    ("orchestrator.observability.analytics.recording.skills", "skills"),
     ("orchestrator.analytics._trajectory_persistence", "trajectory"),
     ("orchestrator.analytics._trajectory_serialize", _RECORD_OWNER),
 )

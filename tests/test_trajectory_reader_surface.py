@@ -29,6 +29,9 @@ from orchestrator import trajectory_reader as tr
 from orchestrator import _trajectory_records as records
 
 
+from tests.import_world_helpers import RECORDING_EVENTS, republish_recording
+
+
 _LOG_PATH_ATTR = "TRAJECTORY_LOG_PATH"
 
 
@@ -97,6 +100,10 @@ def _restore_orchestrator_modules(saved, orchestrator_pkg, saved_pkg_attrs):
     sys.modules.update(saved)
     orchestrator_pkg.__dict__.clear()
     orchestrator_pkg.__dict__.update(saved_pkg_attrs)
+    # The recording package's module object is never replaced -- every
+    # producer holds the one it imported -- so putting `sys.modules` back is
+    # not enough to stop it publishing the recorders this reload built.
+    republish_recording(saved.get(RECORDING_EVENTS))
 
 
 @dataclass(frozen=True)

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import recording
 from orchestrator.skills import catalog
 
 from tests.skills.skills_test_support import (
@@ -119,13 +119,13 @@ class ExtractSkillCatalogTest(unittest.TestCase):
 
 
 class RecordRepoSkillCatalogShapeTest(unittest.TestCase):
-    """`analytics.record_repo_skill_catalog` builds a repo-level
+    """`recording.record_repo_skill_catalog` builds a repo-level
     `repo_skill_catalog` record carrying the catalog in extras.
     """
 
     def test_record_shape(self) -> None:
         captured = _capture_analytics_records(self)
-        analytics.record_repo_skill_catalog(
+        recording.record_repo_skill_catalog(
             repo=_TEST_REPO_SLUG,
             base_branch=_TEST_BASE_BRANCH,
             remote_name=_TEST_REMOTE_NAME,
@@ -170,7 +170,7 @@ class RecordRepoSkillCatalogShapeTest(unittest.TestCase):
         # An empty catalog still records `skills_available: []` (the
         # "scanned, found none" signal); `skill_paths` is dropped when None.
         captured = _capture_analytics_records(self)
-        analytics.record_repo_skill_catalog(
+        recording.record_repo_skill_catalog(
             repo=_TEST_REPO_SLUG,
             base_branch=_TEST_BASE_BRANCH,
             remote_name=_TEST_REMOTE_NAME,
@@ -254,7 +254,7 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
         with patch.object(
             catalog, _LIST_SKILL_TREE_METHOD, return_value=paths,
         ), patch.object(
-            analytics, _RECORD_CATALOG_METHOD, record_mock,
+            catalog.recording, _RECORD_CATALOG_METHOD, record_mock,
         ):
             catalog._emit_repo_skill_catalog(spec)
         record_mock.assert_called_once_with(
@@ -277,7 +277,7 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
         with patch.object(
             catalog, _LIST_SKILL_TREE_METHOD, return_value=[],
         ), patch.object(
-            analytics, _RECORD_CATALOG_METHOD, record_mock,
+            catalog.recording, _RECORD_CATALOG_METHOD, record_mock,
         ):
             catalog._emit_repo_skill_catalog(spec)
         _, kwargs = record_mock.call_args
@@ -290,7 +290,7 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
         with patch.object(
             catalog, _LIST_SKILL_TREE_METHOD, return_value=None,
         ), patch.object(
-            analytics, _RECORD_CATALOG_METHOD, record_mock,
+            catalog.recording, _RECORD_CATALOG_METHOD, record_mock,
         ):
             catalog._emit_repo_skill_catalog(spec)
         record_mock.assert_not_called()
@@ -302,7 +302,7 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
             catalog, _LIST_SKILL_TREE_METHOD,
             side_effect=RuntimeError("boom"),
         ), patch.object(
-            analytics, _RECORD_CATALOG_METHOD, record_mock,
+            catalog.recording, _RECORD_CATALOG_METHOD, record_mock,
         ):
             # Must not raise -- catalog collection is fail-open.
             catalog._emit_repo_skill_catalog(spec)

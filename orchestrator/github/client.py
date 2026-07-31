@@ -17,10 +17,11 @@ from github.Issue import Issue
 from github.Label import Label
 from github.Repository import Repository
 
-from orchestrator import analytics, config
+from orchestrator import config
 from orchestrator.github.checks import GitHubChecksMixin
 from orchestrator.github.labels import GitHubLabelMixin
 from orchestrator.github.reviews import GitHubReviewMixin
+from orchestrator.observability.analytics import recording
 
 log = logging.getLogger("orchestrator.github")
 
@@ -106,7 +107,7 @@ class GitHubClient(
             issue_number=issue_number,
             stage=stage,
         )
-        analytics.record_stage_enter(
+        recording.record_stage_enter(
             repo=self._repo_slug,
             issue=issue_number,
             stage=stage,

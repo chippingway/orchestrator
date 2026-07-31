@@ -63,7 +63,6 @@ from typing import Mapping, Optional
 
 from github.Issue import Issue
 
-from orchestrator import analytics
 from orchestrator import config
 from orchestrator._workflow_state import (
     _ISSUE_STATE_CLOSED,
@@ -73,6 +72,7 @@ from orchestrator._workflow_state import (
     log,
 )
 from orchestrator.github.client import GitHubClient
+from orchestrator.observability.analytics import recording
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.workflow.state import WorkflowLabel
@@ -184,7 +184,7 @@ def _process_issue(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> Non
         raise
     finally:
         duration_s = round(time.monotonic() - start, 3)
-        analytics.record_stage_evaluation(
+        recording.record_stage_evaluation(
             repo=getattr(gh, "_repo_slug", None) or "",
             issue=issue.number,
             stage=label,

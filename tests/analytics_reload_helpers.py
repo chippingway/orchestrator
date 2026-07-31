@@ -12,16 +12,55 @@ from contextlib import ExitStack
 from types import ModuleType
 from unittest.mock import patch
 
+from tests.import_world_helpers import (
+    CONFIG_MODULE,
+    RECORDING_EVENTS,
+    republish_recording,
+)
+
 
 _MODULE_PREFIX = "orchestrator.analytics"
-_CONFIG_MODULE = "orchestrator.config"
+_CONFIG_MODULE = CONFIG_MODULE
 _MISSING = object()
+
+# Where each tree a reload rebuilds is bound. Restoring `sys.modules` alone is
+# not enough: the import system also binds a submodule as an attribute of its
+# parent, and `from <parent> import <name>` answers off that attribute without
+# consulting `sys.modules` at all. Leaving one behind would hand every later
+# importer the throwaway copy this reload built.
+_PARENT_BINDINGS = (
+    ("orchestrator", "analytics"),
+    ("orchestrator", "config"),
+)
 
 
 @dataclass(frozen=True)
 class _ModuleSnapshot:
     modules: dict[str, ModuleType]
-    package_attributes: dict[str, object]
+    parent_bindings: dict[tuple[str, str], object]
+
+    @classmethod
+    def capture(cls) -> "_ModuleSnapshot":
+        """Record the import world a reload is about to rebuild."""
+        return cls(
+            {
+                name: module
+                for name, module in sys.modules.items()
+                if _reloaded(name)
+            },
+            {
+                binding: _parent_namespace(binding).get(binding[1], _MISSING)
+                for binding in _PARENT_BINDINGS
+            },
+        )
+
+    def restore(self) -> None:
+        """Put the recorded world back over whatever the reload left."""
+        _clear()
+        sys.modules.update(self.modules)
+        for binding, member in self.parent_bindings.items():
+            _rebind(binding, member)
+        republish_recording(self.modules.get(RECORDING_EVENTS))
 
 
 def _hermetic_env(extra: dict[str, str] | None) -> dict[str, str]:
@@ -34,42 +73,61 @@ def _hermetic_env(extra: dict[str, str] | None) -> dict[str, str]:
     return environment
 
 
-def _snapshot(package: ModuleType) -> _ModuleSnapshot:
-    modules = {
-        name: module
-        for name, module in sys.modules.items()
-        if name == _CONFIG_MODULE or name.startswith(_MODULE_PREFIX)
-    }
-    attributes = {name: package.__dict__.get(name, _MISSING) for name in ("analytics", "config")}
-    return _ModuleSnapshot(modules, attributes)
+def _reloaded(module_name: str) -> bool:
+    """Whether one import is rebuilt by a reload.
+
+    This mirrors the package bootstrap's own reload inventory rather than
+    sweeping a prefix, because over-clearing rebuilds more than the bootstrap
+    does. `events` is named exactly, and its recording siblings deliberately
+    are not: it is the only one carrying per-instance state -- each instance's
+    recorders capture the instance they were imported alongside, which is what
+    a reference held across a reload keeps dispatching to -- while clearing
+    the rest would have the re-execution mint a second `io` and, with it, a
+    second sink lock for the append and the prune to take one each of. The
+    package above them is re-executed in place rather than replaced, so it is
+    not cleared either.
+    """
+    return module_name in {_CONFIG_MODULE, RECORDING_EVENTS} or (
+        module_name.startswith(_MODULE_PREFIX)
+    )
 
 
-def _clear(package: ModuleType) -> None:
+def _parent_namespace(binding: tuple[str, str]) -> dict:
+    """The namespace one reloaded tree is bound in.
+
+    A throwaway mapping when the parent is not imported at all: a binding
+    nobody can observe is the same no-op as skipping the write.
+    """
+    parent = sys.modules.get(binding[0])
+    return {} if parent is None else parent.__dict__
+
+
+def _rebind(binding: tuple[str, str], member: object) -> None:
+    namespace = _parent_namespace(binding)
+    if member is _MISSING:
+        namespace.pop(binding[1], None)
+    else:
+        namespace[binding[1]] = member
+
+
+def _clear() -> None:
     for module_name in tuple(sys.modules):
-        if module_name == _CONFIG_MODULE or module_name.startswith(_MODULE_PREFIX):
+        if _reloaded(module_name):
             sys.modules.pop(module_name, None)
-    package.__dict__.pop("analytics", None)
-    package.__dict__.pop("config", None)
-
-
-def _restore(package: ModuleType, snapshot: _ModuleSnapshot) -> None:
-    _clear(package)
-    sys.modules.update(snapshot.modules)
-    for name, member in snapshot.package_attributes.items():
-        if member is not _MISSING:
-            package.__dict__[name] = member
+    for binding in _PARENT_BINDINGS:
+        _rebind(binding, _MISSING)
 
 
 def reload_analytics(
     environment: dict[str, str] | None = None,
 ) -> tuple[ModuleType, ModuleType]:
     """Load a fresh analytics world and restore the process import world."""
-    package = importlib.import_module("orchestrator")
-    snapshot = _snapshot(package)
+    importlib.import_module("orchestrator")
+    snapshot = _ModuleSnapshot.capture()
     with ExitStack() as cleanup:
-        cleanup.callback(_restore, package, snapshot)
+        cleanup.callback(snapshot.restore)
         with patch.dict(os.environ, _hermetic_env(environment), clear=True):
-            _clear(package)
+            _clear()
             config = importlib.import_module(_CONFIG_MODULE)
             analytics = importlib.import_module(_MODULE_PREFIX)
     return config, analytics

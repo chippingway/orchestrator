@@ -1,26 +1,36 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Agent-exit record construction and persistence flow."""
+"""The `agent_exit` flow: what one finished run is summarized into.
+
+The order here is the contract. Usage is parsed first because a stream it
+cannot read cancels the record entirely, the Codex catalog next because the
+skill fields fall back to it, and the write last -- the allowlisted baseline
+event, then the opt-in trajectory beside it under its own guard. The names
+this composes are reached on the owners that define them; what this owner adds
+is the sequence and the value the caller gets back, which is the list the
+`skill_triggered` audit events are driven by rather than a second pass over
+stdout.
+"""
 
 from __future__ import annotations
 
 from typing import Optional
 
-from orchestrator.analytics._recording_catalog import _discover_codex_catalog
-from orchestrator.analytics._recording_models import (
-    _AgentExitContext,
-    _AgentExitSkillFields,
-    _CodexCatalog,
+from orchestrator.observability.analytics.recording.catalog import discover_codex_catalog
+from orchestrator.observability.analytics.recording.models import (
+    AgentExitContext,
+    AgentExitSkillFields,
+    CodexCatalog,
 )
-from orchestrator.analytics._recording_skills import _parse_agent_exit_skills
-from orchestrator.analytics._recording_usage import _parse_agent_exit_usage
+from orchestrator.observability.analytics.recording.skills import parse_agent_exit_skills
+from orchestrator.observability.analytics.recording.usage import parse_agent_exit_usage
 from orchestrator.observability.usage import metrics as usage_metrics
 
 
-def _build_agent_exit_record(
-    context: _AgentExitContext,
+def build_agent_exit_record(
+    context: AgentExitContext,
     metrics: usage_metrics.UsageMetrics,
-    skill_fields: _AgentExitSkillFields,
+    skill_fields: AgentExitSkillFields,
 ) -> dict:
     """Build the allowlisted baseline event without raw run content."""
     return context.analytics_package.build_record(
@@ -56,22 +66,22 @@ def _build_agent_exit_record(
     )
 
 
-def _persist_agent_exit(
-    context: _AgentExitContext,
+def persist_agent_exit(
+    context: AgentExitContext,
     metrics: usage_metrics.UsageMetrics,
-    skill_fields: _AgentExitSkillFields,
-    codex_catalog: _CodexCatalog,
+    skill_fields: AgentExitSkillFields,
+    codex_catalog: CodexCatalog,
 ) -> None:
     """Write the baseline event, then the independently guarded trajectory.
 
-    The trajectory sink is reached through the facade's `_trajectories`
-    submodule rather than a direct import so a `_recording` instance always
-    dispatches to the same package instance's trajectory recorder -- keeping
-    the `_reload` A/B isolation `_live_settings` documents.
+    Both writes go through the settings holder on the context rather than a
+    direct import: the trajectory sink is still owned by the flat analytics
+    package, and dispatching there is what keeps one run's two records on the
+    same package instance the caller entered on.
     """
     analytics_package = context.analytics_package
     analytics_package.append_record(
-        _build_agent_exit_record(context, metrics, skill_fields),
+        build_agent_exit_record(context, metrics, skill_fields),
     )
     analytics_package._trajectories._maybe_record_trajectory(
         context,
@@ -80,11 +90,11 @@ def _persist_agent_exit(
     )
 
 
-def _record_agent_exit(context: _AgentExitContext) -> Optional[list[str]]:
-    metrics = _parse_agent_exit_usage(context)
+def record_agent_exit(context: AgentExitContext) -> Optional[list[str]]:
+    metrics = parse_agent_exit_usage(context)
     if metrics is None:
         return None
-    codex_catalog = _discover_codex_catalog(context)
-    skill_fields = _parse_agent_exit_skills(context, codex_catalog)
-    _persist_agent_exit(context, metrics, skill_fields, codex_catalog)
+    codex_catalog = discover_codex_catalog(context)
+    skill_fields = parse_agent_exit_skills(context, codex_catalog)
+    persist_agent_exit(context, metrics, skill_fields, codex_catalog)
     return skill_fields.skills_triggered

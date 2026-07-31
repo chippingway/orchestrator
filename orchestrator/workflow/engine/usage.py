@@ -16,7 +16,7 @@ The spawn itself is reached as ``_wf.run_agent`` rather than off
 drive a handler without a CLI, and the facade attribute is what they patch.
 
 Everything after the spawn is fail-open. The record and the trajectory write
-behind it ride guards inside `analytics.record_agent_exit`, and the skill
+behind it ride guards inside `recording.record_agent_exit`, and the skill
 emission carries its own here, because none of it is worth a run whose
 `agent_spawn` / `agent_exit` events already fired. An exception out of the
 spawn is the deliberate exception: it propagates, leaving a spawn with no
@@ -46,12 +46,12 @@ from typing import Any, Optional
 
 from github.Issue import Issue
 
-from orchestrator import analytics
 from orchestrator import workflow as _wf
 from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.observability.analytics import recording
 from orchestrator.observability.usage.metrics import UsageMetrics
 from orchestrator.workflow.engine import comments as _comments
 
@@ -107,7 +107,7 @@ def _record_tracked_agent_exit(
         review_round=request.review_round,
         retry_count=request.retry_count,
     )
-    return analytics.record_agent_exit(
+    return recording.record_agent_exit(
         repo=getattr(gh, "_repo_slug", None) or "",
         issue=issue_number,
         stage=request.stage,
@@ -171,9 +171,9 @@ def _run_agent_tracked(
     the traceback).
 
     After the audit `agent_exit` is emitted, an analytics record is
-    appended to `analytics.ANALYTICS_LOG_PATH` via `analytics.append_record`
-    (a no-op when the sink is disabled). The record carries the same
-    contextual fields (`repo`, `issue`, `stage`, `agent_role`, `backend`,
+    appended to `ANALYTICS_LOG_PATH` via the recording owner's
+    `append_record` (a no-op when the sink is disabled). The record carries
+    the same contextual fields (`repo`, `issue`, `stage`, `agent_role`, `backend`,
     `agent_spec`, `resume_session_id` / `session_id`, `review_round`,
     `retry_count`, `duration_s`, `exit_code`, `timed_out`) plus parsed
     token counts, model list, `cost_usd`, and `cost_source` extracted

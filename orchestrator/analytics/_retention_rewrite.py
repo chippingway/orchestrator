@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
-from orchestrator.analytics._recording import log
+from orchestrator.observability.analytics.recording.events import log
 from orchestrator.analytics._retention_scan import (
     _probe_exists,
     _read_kept_records,

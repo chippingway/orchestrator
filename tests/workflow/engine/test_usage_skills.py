@@ -161,7 +161,7 @@ class SkillTriggeredEventTest(unittest.TestCase):
         with (
             patch.object(analytics, _ANALYTICS_PATH_ATTR, None),
             patch.object(
-                analytics,
+                engine_usage.recording,
                 "record_agent_exit",
                 return_value=["alpha", "beta"],
             ),

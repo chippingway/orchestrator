@@ -12,12 +12,12 @@ from orchestrator.observability.analytics import config as analytics_config
 _deps = importlib.import_module("orchestrator.analytics._trajectory_dependencies")
 
 
-_AgentExitContext = _deps._recording._AgentExitContext
-_CodexCatalog = _deps._recording._CodexCatalog
-_append_jsonl_record = _deps._recording._append_jsonl_record
-_live_settings = _deps._recording._live_settings
-build_record = _deps._recording.build_record
-log = _deps._recording.log
+_AgentExitContext = _deps._recording_models.AgentExitContext
+_CodexCatalog = _deps._recording_models.CodexCatalog
+_append_jsonl_record = _deps._recording_io.append_jsonl_record
+_live_settings = _deps._recording_events.settings_holder
+build_record = _deps._recording_events.build_record
+log = _deps._recording_events.log
 _TrajectoryHeadline = _deps._trajectory_models._TrajectoryHeadline
 _TrajectoryBudget = _deps._trajectory_models._TrajectoryBudget
 _Redactor = _deps._trajectory_sanitize._Redactor

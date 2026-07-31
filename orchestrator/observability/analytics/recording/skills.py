@@ -1,22 +1,29 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Skill-field normalization for analytics agent records."""
+"""Skill-field normalization for the records a run's exit earns.
+
+The opt-in half of an `agent_exit`: what the skill-evidence parser reports,
+turned into the optional keys the event carries. Every field is dropped when
+empty, so a run with nothing to report keeps the record shape a default
+install writes, and the whole read is guarded -- the switch is observability,
+so a parser failure costs the skill keys rather than the baseline event.
+"""
 
 from __future__ import annotations
 
-from orchestrator.analytics._recording_models import (
-    _AgentExitContext,
-    _AgentExitSkillFields,
-    _CodexCatalog,
-)
 from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics.recording.models import (
+    AgentExitContext,
+    AgentExitSkillFields,
+    CodexCatalog,
+)
 from orchestrator.observability.usage import skills as usage_skills
 
 
-def _normalize_agent_exit_skills(
+def normalize_agent_exit_skills(
     parsed_skills: usage_skills.SkillTriggers,
-    codex_catalog: _CodexCatalog,
-) -> _AgentExitSkillFields:
+    codex_catalog: CodexCatalog,
+) -> AgentExitSkillFields:
     """Convert parser output into optional event fields.
 
     Incidental references stay out of `skills_triggered` / the count (and thus
@@ -29,7 +36,7 @@ def _normalize_agent_exit_skills(
     skills_available = list(parsed_skills.available) or codex_catalog.available_skills
     skills_incidental = list(parsed_skills.incidental) or None
     skills_incidental_count = sum(parsed_skills.incidental_counts.values()) if skills_incidental else None
-    return _AgentExitSkillFields(
+    return AgentExitSkillFields(
         skills_triggered=skills_triggered,
         skills_triggered_count=skills_triggered_count,
         skills_available=skills_available,
@@ -39,32 +46,32 @@ def _normalize_agent_exit_skills(
     )
 
 
-def _read_agent_exit_skills(
-    context: _AgentExitContext,
-    codex_catalog: _CodexCatalog,
-) -> _AgentExitSkillFields:
+def read_agent_exit_skills(
+    context: AgentExitContext,
+    codex_catalog: CodexCatalog,
+) -> AgentExitSkillFields:
     """Parse and normalize skill fields for an enabled run."""
     parsed_skills = usage_skills.parse_agent_skills(
         context.backend,
         context.agent_result.stdout,
     )
-    return _normalize_agent_exit_skills(parsed_skills, codex_catalog)
+    return normalize_agent_exit_skills(parsed_skills, codex_catalog)
 
 
-def _parse_agent_exit_skills(
-    context: _AgentExitContext,
-    codex_catalog: _CodexCatalog,
-) -> _AgentExitSkillFields:
+def parse_agent_exit_skills(
+    context: AgentExitContext,
+    codex_catalog: CodexCatalog,
+) -> AgentExitSkillFields:
     """Parse opt-in skill fields without risking the baseline event."""
     analytics_package = context.analytics_package
     if not analytics_config.settings_on(analytics_package).track_skill_triggers:
-        return _AgentExitSkillFields()
+        return AgentExitSkillFields()
     try:
-        return _read_agent_exit_skills(context, codex_catalog)
+        return read_agent_exit_skills(context, codex_catalog)
     except Exception:
         analytics_package.log.exception(
             "issue=#%d analytics: parse_agent_skills(%s) failed; emitting record without skill fields",
             context.issue,
             context.backend,
         )
-        return _AgentExitSkillFields()
+        return AgentExitSkillFields()

@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 
-_SCHEMA_DIR = Path(__file__).resolve().parent.parent / "analytics-db" / "init"
+_SCHEMA_DIR = Path(__file__).resolve().parents[4] / "analytics-db" / "init"
 
 
 _SCHEMA_PATH = _SCHEMA_DIR / "01-schema.sql"

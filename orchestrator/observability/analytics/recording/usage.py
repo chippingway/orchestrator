@@ -1,17 +1,24 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Usage parsing for completed analytics agent runs."""
+"""Usage parsing for one completed tracked agent run.
+
+The token and cost half of an `agent_exit`: what the provider's stdout is
+metered into, and the one boundary where a stream the parser cannot read
+cancels the record instead of degrading it. The parsed metrics are also
+attached back onto the result the caller still holds, which is what lets the
+per-issue meter fold the same object the record was built from.
+"""
 
 from __future__ import annotations
 
 from typing import Optional
 
-from orchestrator.analytics._recording_models import _AgentExitContext
+from orchestrator.observability.analytics.recording.models import AgentExitContext
 from orchestrator.observability.usage import metrics as usage_metrics
 
 
-def _parse_agent_exit_usage(
-    context: _AgentExitContext,
+def parse_agent_exit_usage(
+    context: AgentExitContext,
 ) -> Optional[usage_metrics.UsageMetrics]:
     """Parse usage and attach it to the result, failing open on bad streams."""
     try:
