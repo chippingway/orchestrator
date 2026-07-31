@@ -38,13 +38,9 @@ from orchestrator.analytics._read_raw_values import (
     _int_or_none as _int_or_none,
     _row_int as _row_int,
 )
-from orchestrator.analytics.read_models import (
-    AgentExitRow,
+from orchestrator.observability.analytics.query.overview_models import (
     DataExtent,
-    EventBreakdown,
     FilterOptions,
-    IssueEventRow,
-    IssueSummaryRow,
 )
 from orchestrator.observability.analytics.query.requests import (
     FILTERED_READ_SIGNATURE,
@@ -55,6 +51,12 @@ from orchestrator.observability.analytics.query.requests import (
     bind_read_request,
     resolve_read_query,
     window_filters,
+)
+from orchestrator.observability.analytics.query.run_models import (
+    AgentExitRow,
+    EventBreakdown,
+    IssueEventRow,
+    IssueSummaryRow,
 )
 
 

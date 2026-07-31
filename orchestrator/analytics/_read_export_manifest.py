@@ -19,8 +19,11 @@ EXPORTS = (
             ("get_skill_trigger_rates", "get_skill_trigger_rates"),
         ),
     ),
+    # The result models answer off the canonical owners too, so a row a caller
+    # unpacks off this facade is the class the read families constructed --
+    # `isinstance` against either import site holds.
     *export_group(
-        "orchestrator.analytics.read_models_activity",
+        "orchestrator.observability.analytics.query.activity_models",
         (
             ("BackendDailyTokensRow", "BackendDailyTokensRow"),
             ("HourlyHeatmapPoint", "HourlyHeatmapPoint"),
@@ -28,7 +31,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.analytics.read_models_core",
+        "orchestrator.observability.analytics.query.overview_models",
         (
             ("DataExtent", "DataExtent"),
             ("FilterOptions", "FilterOptions"),
@@ -37,7 +40,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.analytics.read_models_cost",
+        "orchestrator.observability.analytics.query.cost_models",
         (
             ("BackendEfficiencyRow", "BackendEfficiencyRow"),
             ("CostCoverageRow", "CostCoverageRow"),
@@ -46,7 +49,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.analytics.read_models_runs",
+        "orchestrator.observability.analytics.query.run_models",
         (
             ("AgentExitRow", "AgentExitRow"),
             ("EventBreakdown", "EventBreakdown"),
@@ -56,7 +59,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.analytics.read_models_skills",
+        "orchestrator.observability.analytics.query.skill_models",
         (
             ("SkillAdoptionRow", "SkillAdoptionRow"),
             ("SkillTriggerMatrixRow", "SkillTriggerMatrixRow"),

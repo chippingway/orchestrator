@@ -7,8 +7,8 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from orchestrator.analytics import _read_query_rows as query_rows
-from orchestrator.analytics.read_models import ReviewRoundBucketRow
 from orchestrator.observability.analytics.query.conditions import append_where_condition
+from orchestrator.observability.analytics.query.cost_models import ReviewRoundBucketRow
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_view_window_where

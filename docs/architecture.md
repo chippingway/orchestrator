@@ -535,6 +535,16 @@ orchestrator/
         conditions.py   the two splices of a table's own required condition,
                         and the probe for an event filter that leaves a
                         view-backed read no rows
+        activity_models.py
+                        the cells a volume is bucketed into by when it happened
+        overview_models.py
+                        the values a window's filters offer, how far its data
+                        reaches, what it totals, and its daily series
+        cost_models.py  the axes one window's spend is broken down along
+        run_models.py   the run, issue, and traced-event rows, and the accessor
+                        behind the trace row's `result` alias
+        skill_models.py the cells a skill's reach is reported in, and the share
+                        each derives
       sync/             destination for the JSONL -> Postgres ingestion
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
@@ -977,19 +987,37 @@ rebuilt alongside them for each package instance. Its lock is the one exception 
 with the analytics sink's, for the reason above — and `retention.py`'s trajectory prune takes that same object, so the
 trajectory file serializes its own append-versus-prune race without ever blocking against the analytics one.
 
-`analytics/query/` holds what a read is asked for and what it dials with, split by what each owner decides. On the
-input side, `requests` owns the keyword vocabulary every public read is called by — one signature per family, composed
-from shared parameter groups so an omitted `limit`, `sort_by`, or hour offset is defaulted in one place — and the bind
-of such a call into the `request_models` parts a family reads back: the filters, the connection, and the options.
-`filters` owns the selection those filters project onto and the builder a clause accumulates in, appending each
-condition together with its operand so the `%s` order and the binding order cannot drift apart. `predicates` owns the
-one `WHERE` builder behind all three scan targets, so the events table, the agent-run view (which drops the `events`
-selection its columns cannot carry), and the daily rollup (which binds `.date()` bounds against `day`) cannot disagree
-about what a filter means — including the three-case reading of a multiselect, where an empty selection is a
-tautologically-false predicate rather than no filter. `conditions` owns the splice of a table's own required condition
-onto either end of that clause, which is what fixes whether its operand binds before or after the generated ones, plus
-`agent_event_excluded` — the probe a view-backed read short-circuits on when the event selection excludes `agent_exit`,
-because the view has no `event` column to push the filter into.
+`analytics/query/` holds what a read is asked for, what it dials with, and what it answers with, split by what each
+owner decides. On the input side, `requests` owns the keyword vocabulary every public read is called by — one
+signature per family, composed from shared parameter groups so an omitted `limit`, `sort_by`, or hour offset is
+defaulted in one place — and the bind of such a call into the `request_models` parts a family reads back: the filters,
+the connection, and the options. `filters` owns the selection those filters project onto and the builder a clause
+accumulates in, appending each condition together with its operand so the `%s` order and the binding order cannot
+drift apart. `predicates` owns the one `WHERE` builder behind all three scan targets, so the events table, the
+agent-run view (which drops the `events` selection its columns cannot carry), and the daily rollup (which binds
+`.date()` bounds against `day`) cannot disagree about what a filter means — including the three-case reading of a
+multiselect, where an empty selection is a tautologically-false predicate rather than no filter. `conditions` owns the
+splice of a table's own required condition onto either end of that clause, which is what fixes whether its operand
+binds before or after the generated ones, plus `agent_event_excluded` — the probe a view-backed read short-circuits on
+when the event selection excludes `agent_exit`, because the view has no `event` column to push the filter into.
+
+On the result side there is one owner per family, and each is a plain frozen dataclass module: a page or a test that
+only consumes the rows imports one without reaching a connection factory, the configuration behind an omitted
+`db_url=`, or the driver those two stand in front of. `activity_models` holds the cells a volume is bucketed into by
+when it happened, kept raw so the chart above owns the Monday-first re-ordering rather than the reader. Its
+counterpart `overview_models` holds what a page frames one window with before any breakdown of it — the values its
+filters offer, how far the data behind them reaches, what it totals, and how those totals move day by day. The first
+three construct bare, because "no database configured" and "no rows in the window" are answers a page renders rather
+than errors it raises; the series cell is one row of a `GROUP BY`, so it requires the `(day, event, count)` key it was
+grouped on and defaults only the aggregates hung off that key. `cost_models` holds the axes that spend is broken down
+along (review round, backend, repo, and the pricing confidence the parser could attach), so the cache / no-cache
+proration and the NULL bucketing under `"unknown"` are declared once per axis instead of by each chart that plots one.
+`run_models` holds the run, issue, and traced-event rows, whose field order is half of a contract the SELECT list
+filling them is the other half of, plus the accessor behind the trace row's `result` alias: the column is stored as
+`event_result` because a bare `result` is a name the style guide rejects, and the alias is installed as a property so
+the two spellings can never hold different values. `skill_models` holds the cells a skill's reach is reported in, each
+pairing a numerator with the cohort it is read against and deriving that share itself, guarded against a zero
+denominator so a cell that exists only for its window diagnostics still renders.
 
 On the connection side, `connections` decides what a read dials with: the psycopg import deferred to call time, so a
 caller that only consumes the read dataclasses never pays for the driver and a test injects a `connect(db_url)`
@@ -1003,10 +1031,12 @@ caller-owned `conn=` is used as-is and never closed, because its lifetime belong
 that opened it, while a query without one opens and closes its own descriptor in a `finally`. Both connection paths
 resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families still under
 `orchestrator/analytics/` name these owners directly — the `analytics.read` facade forwards the historical connection
-names, including the underscored ones, to their own objects, and on the input side `predicates.py`, the three
-`_predicate_*` leaves, and `read_request*.py` do the same. Each of those flat modules names an owner itself and defines
-nothing — the hub publishes the union of what the leaves publish rather than sitting on top of them — so whichever one
-a historical caller imported hands back the owner's object rather than a copy of it.
+names, including the underscored ones, to their own objects — and the result classes too, so a row unpacked off the
+facade is the class the read family constructed. On the input side `predicates.py`, the three `_predicate_*` leaves,
+and `read_request*.py` do the same, and on the result side the five `read_models_*` family modules do. Each of those
+flat modules names an owner itself and defines nothing — the hub above each group (`predicates.py`, `read_models.py`)
+publishes the union of what the leaves publish rather than sitting on top of them — so whichever one a historical
+caller imported hands back the owner's object rather than a copy of it.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller

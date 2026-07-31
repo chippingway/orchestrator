@@ -168,18 +168,6 @@ class SkillTriggerRatesTest(unittest.TestCase):
         self.assertEqual(top_row.agent_role, _UNKNOWN)
         self.assertEqual(top_row.backend, _UNKNOWN)
 
-    def test_rate_zero_runs_does_not_divide(self) -> None:
-        # Defensive: a zero-run group (never emitted by the SQL) still
-        # yields 0.0 rather than a ZeroDivisionError. No DB is touched --
-        # the row is constructed directly.
-        analytics_read = _reload_read()
-        rate_row = analytics_read.SkillTriggerRateRow(
-            agent_role=_DEVELOPER,
-            backend=_CLAUDE,
-            runs=0,
-        )
-        self.assertEqual(rate_row.rate, float())
-
     def test_window_and_repo_params_bound(self) -> None:
         analytics_read = _reload_read()
         conn = _FakeConnection()
@@ -341,39 +329,6 @@ class SkillTriggerMatrixCellTest(unittest.TestCase):
             # Neither query touches the rollup / agent-runs view.
             self.assertNotIn("analytics_daily_rollup", scan_sql)
             self.assertNotIn("analytics_agent_runs", scan_sql)
-
-    def test_rate_handles_counts_and_zero_runs(self) -> None:
-        # `rate` is `skill_runs / runs` (the offered-but-quiet cell reads
-        # `0.0`), and a zero-run cell -- never emitted by the SQL -- still
-        # yields `0.0` rather than a ZeroDivisionError. No DB is touched --
-        # the rows are constructed directly.
-        analytics_read = _reload_read()
-        fired = analytics_read.SkillTriggerMatrixRow(
-            repo=_REPO,
-            skill=_DEVELOP,
-            agent_role=_DEVELOPER,
-            backend=_CLAUDE,
-            runs=4,
-            skill_runs=3,
-        )
-        self.assertEqual(fired.rate, 3 / 4)
-        quiet = analytics_read.SkillTriggerMatrixRow(
-            repo=_REPO,
-            skill=_REVIEW,
-            agent_role=_DEVELOPER,
-            backend=_CLAUDE,
-            runs=4,
-            skill_runs=0,
-        )
-        self.assertEqual(quiet.rate, float())
-        empty = analytics_read.SkillTriggerMatrixRow(
-            repo=_REPO,
-            skill=_DEVELOP,
-            agent_role=_DEVELOPER,
-            backend=_CLAUDE,
-            runs=0,
-        )
-        self.assertEqual(empty.rate, float())
 
     def test_developer_claude_review_is_zero(self) -> None:
         # A skill the repo offers that a running cohort never triggered

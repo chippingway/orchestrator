@@ -9,11 +9,11 @@ from typing import Any, Sequence
 from orchestrator.analytics._read_dashboard_sql import _AGENT_EXIT_CONDITION
 from orchestrator.analytics._read_row_values import _row_value
 from orchestrator.analytics._read_skill_values import _label_or_unknown
-from orchestrator.analytics.read_models import SkillTriggerRateRow
 from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
+from orchestrator.observability.analytics.query.skill_models import SkillTriggerRateRow
 
 
 def _skill_trigger_rate_sql(clause: str) -> str:

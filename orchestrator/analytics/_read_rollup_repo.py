@@ -8,8 +8,9 @@ from dataclasses import replace
 from typing import Any, Optional, Sequence
 
 from orchestrator.analytics._read_row_values import _cost_cell, _day_value
-from orchestrator.analytics.read_models import RepoBreakdownRow, ThroughputDayRow
+from orchestrator.observability.analytics.query.activity_models import ThroughputDayRow
 from orchestrator.observability.analytics.query.conditions import prepend_where_condition
+from orchestrator.observability.analytics.query.cost_models import RepoBreakdownRow
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import (

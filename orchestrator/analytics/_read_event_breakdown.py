@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from orchestrator.analytics.read_models import EventBreakdown
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
+from orchestrator.observability.analytics.query.run_models import EventBreakdown
 
 
 def _event_breakdown_rows(

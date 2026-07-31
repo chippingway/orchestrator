@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, Sequence
 
-from orchestrator.analytics.read_models import Summary
+from orchestrator.observability.analytics.query.overview_models import Summary
 
 _SUMMARY_TOTAL_FIELD_CASTS = (
     ("total_events", int),

@@ -17,9 +17,9 @@ from orchestrator.analytics._read_skill_types import (
     _SkillAdoptionKey,
     _SkillCohort,
 )
-from orchestrator.analytics.read_models import SkillAdoptionRow
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.skill_models import SkillAdoptionRow
 
 SKILL_ADOPTION_ROW_LIMIT = 100
 

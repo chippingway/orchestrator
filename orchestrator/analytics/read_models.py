@@ -1,34 +1,41 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable analytics read-model imports grouped by result family."""
+"""Historical result-model import site, answered by the query owners.
+
+The nineteen rows are the owners' own classes, so a result a caller unpacks
+here -- or compares a read against -- is the one the read families built. This
+hub publishes the union of what the five family modules beside it publish
+rather than sitting on top of them, so either import site hands back the same
+object.
+"""
 
 from __future__ import annotations
 
-from orchestrator.analytics.read_models_activity import (
+from orchestrator.observability.analytics.query.activity_models import (
     BackendDailyTokensRow as BackendDailyTokensRow,
     HourlyHeatmapPoint as HourlyHeatmapPoint,
     ThroughputDayRow as ThroughputDayRow,
 )
-from orchestrator.analytics.read_models_core import (
-    DataExtent as DataExtent,
-    FilterOptions as FilterOptions,
-    Summary as Summary,
-    TimeSeriesPoint as TimeSeriesPoint,
-)
-from orchestrator.analytics.read_models_cost import (
+from orchestrator.observability.analytics.query.cost_models import (
     BackendEfficiencyRow as BackendEfficiencyRow,
     CostCoverageRow as CostCoverageRow,
     RepoBreakdownRow as RepoBreakdownRow,
     ReviewRoundBucketRow as ReviewRoundBucketRow,
 )
-from orchestrator.analytics.read_models_runs import (
+from orchestrator.observability.analytics.query.overview_models import (
+    DataExtent as DataExtent,
+    FilterOptions as FilterOptions,
+    Summary as Summary,
+    TimeSeriesPoint as TimeSeriesPoint,
+)
+from orchestrator.observability.analytics.query.run_models import (
     AgentExitRow as AgentExitRow,
     EventBreakdown as EventBreakdown,
     IssueEventRow as IssueEventRow,
     IssueSummaryRow as IssueSummaryRow,
     StageBreakdown as StageBreakdown,
 )
-from orchestrator.analytics.read_models_skills import (
+from orchestrator.observability.analytics.query.skill_models import (
     SkillAdoptionRow as SkillAdoptionRow,
     SkillTriggerMatrixRow as SkillTriggerMatrixRow,
     SkillTriggerRateRow as SkillTriggerRateRow,

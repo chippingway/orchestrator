@@ -31,10 +31,30 @@ _REQUEST_MODELS_OWNER = "request_models"
 
 _REQUESTS_OWNER = "requests"
 
+_ACTIVITY_MODELS_OWNER = "activity_models"
+
+_COST_MODELS_OWNER = "cost_models"
+
+_OVERVIEW_MODELS_OWNER = "overview_models"
+
+_RUN_MODELS_OWNER = "run_models"
+
+_SKILL_MODELS_OWNER = "skill_models"
+
+# The result families, kept as their own group because what they must not do is
+# checked separately from what they answer for.
+_MODEL_OWNERS = (
+    _ACTIVITY_MODELS_OWNER,
+    _COST_MODELS_OWNER,
+    _OVERVIEW_MODELS_OWNER,
+    _RUN_MODELS_OWNER,
+    _SKILL_MODELS_OWNER,
+)
+
 # The declared inventory. A new owner is a deliberate edit here and a paragraph
 # in the module map, which is what the inventory check compares the directory
 # against.
-_OWNERS = (
+_OWNERS = _MODEL_OWNERS + (
     _CONDITIONS_OWNER,
     _CONNECTION_CACHE_OWNER,
     _CONNECTIONS_OWNER,
@@ -57,9 +77,13 @@ _OWNERS = (
 # family reads back off it, request_models the parts it binds into, filters the
 # selection and the builder a clause accumulates in, predicates the one clause
 # builder behind the three tables it can be scanned on, and conditions the two
-# splices and the exclusion probe. Constants -- the rollup view name, the two
-# request field names, and the signatures themselves -- are not reported here:
-# the check reads `__module__`, which only a class or function carries.
+# splices and the exclusion probe. On the result side each family owns the rows
+# a page reads back off it -- the time cells, the window frame, the spend
+# breakdowns, the run and issue rows plus the accessor behind the trace row's
+# `result` alias, and the skill cells. Constants -- the rollup view name, the
+# two request field names, the `result` attribute name, and the signatures
+# themselves -- are not reported here: the check reads `__module__`, which only
+# a class or function carries.
 _SURFACES = MappingProxyType({
     _CONNECTIONS_OWNER: (
         "AnalyticsReadError",
@@ -110,6 +134,36 @@ _SURFACES = MappingProxyType({
         "resolve_read_query",
         "window_filters",
     ),
+    _ACTIVITY_MODELS_OWNER: (
+        "BackendDailyTokensRow",
+        "HourlyHeatmapPoint",
+        "ThroughputDayRow",
+    ),
+    _COST_MODELS_OWNER: (
+        "BackendEfficiencyRow",
+        "CostCoverageRow",
+        "RepoBreakdownRow",
+        "ReviewRoundBucketRow",
+    ),
+    _OVERVIEW_MODELS_OWNER: (
+        "DataExtent",
+        "FilterOptions",
+        "Summary",
+        "TimeSeriesPoint",
+    ),
+    _RUN_MODELS_OWNER: (
+        "AgentExitRow",
+        "EventBreakdown",
+        "IssueEventRow",
+        "IssueSummaryRow",
+        "StageBreakdown",
+        "public_event_result",
+    ),
+    _SKILL_MODELS_OWNER: (
+        "SkillAdoptionRow",
+        "SkillTriggerMatrixRow",
+        "SkillTriggerRateRow",
+    ),
 })
 
 # The flat leaves whose responsibility these owners took over. Any survivor
@@ -130,6 +184,17 @@ _REACHABLE_PREFIXES = (
     "orchestrator.observability",
     "orchestrator._package",
 )
+
+# Everything an import inside this tree plants before the owner's own module:
+# the root package and the three above the owner. A result model is what the
+# import-cost check reads against it.
+_PACKAGE_CHAIN = frozenset((
+    "orchestrator",
+    "orchestrator._package_exports",
+    "orchestrator.observability",
+    "orchestrator.observability.analytics",
+    _PACKAGE,
+))
 
 # The package the settings a read resolves against still live on. Both
 # connection paths reach them inside the call, through the configuration
@@ -210,6 +275,24 @@ class LayeringTest(unittest.TestCase):
             planted = _imported_orchestrator_modules(_qualified(owner))
             with self.subTest(owner=owner):
                 self.assertNotIn(_ANALYTICS_PACKAGE, planted)
+
+
+class ResultModelImportCostTest(unittest.TestCase):
+    """A result model is a plain dataclass, so importing one reaches nothing.
+
+    Not a weaker restatement of the layering check above: that one bounds
+    where an owner may reach, while a page or a test that only consumes the
+    rows must not pay for a connection factory, the configuration behind an
+    omitted `db_url=`, or the driver those two stand in front of.
+    """
+
+    def test_a_model_owner_costs_its_chain_only(self) -> None:
+        for owner in _MODEL_OWNERS:
+            with self.subTest(owner=owner):
+                self.assertEqual(
+                    _imported_orchestrator_modules(_qualified(owner)),
+                    _PACKAGE_CHAIN | {_qualified(owner)},
+                )
 
 
 if __name__ == "__main__":
