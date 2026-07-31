@@ -51,7 +51,17 @@ _RAW_VALUES = "orchestrator.observability.analytics.query.raw_values"
 
 _BACKEND_EFFICIENCY = "orchestrator.observability.analytics.query.backend_efficiency"
 
+_BACKEND_TOKENS = "orchestrator.observability.analytics.query.backend_tokens"
+
+_BREAKDOWN_READS = "orchestrator.observability.analytics.query.breakdown_reads"
+
 _CACHE_SHARES = "orchestrator.observability.analytics.query.cache_shares"
+
+_COST_COVERAGE = "orchestrator.observability.analytics.query.cost_coverage"
+
+_HOURLY_HEATMAPS = "orchestrator.observability.analytics.query.hourly_heatmaps"
+
+_REVIEW_ROUNDS = "orchestrator.observability.analytics.query.review_rounds"
 
 _KPI_TOTALS = "orchestrator.observability.analytics.query.kpi_totals"
 
@@ -248,6 +258,56 @@ _TIME_SERIES_NAMES = (
     ("_time_series_rows", _TIME_SERIES, "time_series_rows"),
 )
 
+# The four breakdown reads, read by both checks below for the same reason as the
+# raw six and the rollup seven, and the names each of their projection owners
+# publishes. The review-round leaf published the token-share fragments too, and
+# those sit beside the rollup ones under the shared owner.
+_BREAKDOWN_READ_NAMES = (
+    ("get_backend_daily_tokens", _BREAKDOWN_READS, "get_backend_daily_tokens"),
+    ("get_cost_coverage", _BREAKDOWN_READS, "get_cost_coverage"),
+    ("get_hourly_heatmap", _BREAKDOWN_READS, "get_hourly_heatmap"),
+    (
+        "get_review_round_breakdown",
+        _BREAKDOWN_READS,
+        "get_review_round_breakdown",
+    ),
+)
+
+_AGENT_CACHE_SHARE_NAMES = (
+    ("_AGENT_ALL_TOKENS_SQL", _CACHE_SHARES, "AGENT_ALL_TOKENS_SQL"),
+    ("_AGENT_CACHE_FRACTION_SQL", _CACHE_SHARES, "AGENT_CACHE_FRACTION_SQL"),
+    ("_AGENT_CACHE_TOKENS_SQL", _CACHE_SHARES, "AGENT_CACHE_TOKENS_SQL"),
+)
+
+_REVIEW_ROUND_NAMES = (
+    ("_review_round_from_row", _REVIEW_ROUNDS, "review_round_from_row"),
+    ("_review_round_rows", _REVIEW_ROUNDS, "review_round_rows"),
+    ("_review_round_sql", _REVIEW_ROUNDS, "review_round_sql"),
+)
+
+_COST_COVERAGE_NAMES = (
+    ("_cost_coverage_from_row", _COST_COVERAGE, "cost_coverage_from_row"),
+    ("_cost_coverage_rows", _COST_COVERAGE, "cost_coverage_rows"),
+)
+
+_BACKEND_TOKEN_NAMES = (
+    (
+        "_backend_daily_token_rows",
+        _BACKEND_TOKENS,
+        "backend_daily_token_rows",
+    ),
+    (
+        "_backend_daily_tokens_from_row",
+        _BACKEND_TOKENS,
+        "backend_daily_tokens_from_row",
+    ),
+)
+
+_HOURLY_HEATMAP_NAMES = (
+    ("_hourly_heatmap_from_row", _HOURLY_HEATMAPS, "hourly_heatmap_from_row"),
+    ("_hourly_heatmap_rows", _HOURLY_HEATMAPS, "hourly_heatmap_rows"),
+)
+
 _SUMMARY_QUERY_NAMES = (
     ("_build_summary_sql", _SUMMARY_QUERIES, "build_summary_sql"),
     ("_build_summary_where", _SUMMARY_QUERIES, "build_summary_where"),
@@ -293,6 +353,7 @@ _FORWARDED = MappingProxyType({
             *_MODEL_NAMES,
             *_RAW_READ_NAMES,
             *_ROLLUP_READ_NAMES,
+            *_BREAKDOWN_READ_NAMES,
         )
     },
 })
@@ -425,15 +486,31 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator.analytics._read_row_values": _ROW_CELL_NAMES,
     "orchestrator.analytics._read_summary_query": _SUMMARY_QUERY_NAMES,
     "orchestrator.analytics._read_summary_result": _SUMMARY_RESULT_NAMES,
+    "orchestrator.analytics._read_dashboard_breakdowns": (
+        *_BACKEND_TOKEN_NAMES,
+        *_COST_COVERAGE_NAMES,
+        *_HOURLY_HEATMAP_NAMES,
+    ),
+    "orchestrator.analytics._read_review_rounds": (
+        *_AGENT_CACHE_SHARE_NAMES,
+        *_REVIEW_ROUND_NAMES,
+    ),
 })
 
 # A hub that still owns reads of its own cannot be held to the defines-nothing
-# rule, but the historical alias beside them has the same contract: the cost
-# column a dashboard row reads has to be the one a rollup row reads, or the two
-# families would disagree about what a null cost is worth.
+# rule, but every name it publishes beside them has the same contract: the four
+# reads it moved on from have to be the owners' functions, the projections
+# beneath them the ones those reads call, and the cost column a dashboard row
+# reads the one a rollup row reads -- or the families would disagree about what
+# a null cost is worth.
 _FORWARDED_ALIASES = MappingProxyType({
     "orchestrator.analytics.read_dashboard": (
         ("_cost_cell", _ROW_CELLS, "cost_cell"),
+        *_BREAKDOWN_READ_NAMES,
+        ("_backend_daily_token_rows", _BACKEND_TOKENS, "backend_daily_token_rows"),
+        ("_cost_coverage_rows", _COST_COVERAGE, "cost_coverage_rows"),
+        ("_hourly_heatmap_rows", _HOURLY_HEATMAPS, "hourly_heatmap_rows"),
+        ("_review_round_rows", _REVIEW_ROUNDS, "review_round_rows"),
     ),
 })
 

@@ -59,7 +59,17 @@ _RAW_VALUES_OWNER = "raw_values"
 
 _BACKEND_EFFICIENCY_OWNER = "backend_efficiency"
 
+_BACKEND_TOKENS_OWNER = "backend_tokens"
+
+_BREAKDOWN_READS_OWNER = "breakdown_reads"
+
 _CACHE_SHARES_OWNER = "cache_shares"
+
+_COST_COVERAGE_OWNER = "cost_coverage"
+
+_HOURLY_HEATMAPS_OWNER = "hourly_heatmaps"
+
+_REVIEW_ROUNDS_OWNER = "review_rounds"
 
 _KPI_TOTALS_OWNER = "kpi_totals"
 
@@ -95,14 +105,18 @@ _MODEL_OWNERS = (
 _OWNERS = _MODEL_OWNERS + (
     _AGENT_EXITS_OWNER,
     _BACKEND_EFFICIENCY_OWNER,
+    _BACKEND_TOKENS_OWNER,
+    _BREAKDOWN_READS_OWNER,
     _CACHE_SHARES_OWNER,
     _CONDITIONS_OWNER,
     _CONNECTION_CACHE_OWNER,
     _CONNECTIONS_OWNER,
+    _COST_COVERAGE_OWNER,
     _EVENT_BREAKDOWNS_OWNER,
     _EXECUTION_OWNER,
     _FILTER_OPTIONS_OWNER,
     _FILTERS_OWNER,
+    _HOURLY_HEATMAPS_OWNER,
     _ISSUE_EVENTS_OWNER,
     _ISSUE_SUMMARIES_OWNER,
     _KPI_TOTALS_OWNER,
@@ -113,6 +127,7 @@ _OWNERS = _MODEL_OWNERS + (
     _REPO_BREAKDOWNS_OWNER,
     _REQUEST_MODELS_OWNER,
     _REQUESTS_OWNER,
+    _REVIEW_ROUNDS_OWNER,
     _ROLLUP_READS_OWNER,
     _ROW_CELLS_OWNER,
     _STAGE_BREAKDOWNS_OWNER,
@@ -142,13 +157,14 @@ _OWNERS = _MODEL_OWNERS + (
 # the named rows the widest SELECT lists are read back through, and the
 # coercions a raw column is narrowed by. The rollup reads are the seven public
 # entry points under rollup_reads with one projection owner per read beneath
-# them, plus the cell readings a rollup row is narrowed by. Constants -- the
-# rollup view name, the two request field names, the `result` attribute name,
-# the filter-option columns, the two sort modes, the terminal throughput
-# stages, the token-share fragments, the summary cast list, and the signatures
-# themselves -- are not reported here: the check reads `__module__`, which only
-# a class or function carries, which is why the token-share owner declares an
-# empty surface.
+# them, and the breakdown reads the four under breakdown_reads with one owner
+# each beneath them too, plus the cell readings a row from either is narrowed
+# by. Constants -- the rollup view name, the two request field names, the
+# `result` attribute name, the filter-option columns, the two sort modes, the
+# terminal throughput stages, the token-share fragments, the summary cast list,
+# and the signatures themselves -- are not reported here: the check reads
+# `__module__`, which only a class or function carries, which is why the
+# token-share owner declares an empty surface.
 _SURFACES = MappingProxyType({
     _CONNECTIONS_OWNER: (
         "AnalyticsReadError",
@@ -319,6 +335,29 @@ _SURFACES = MappingProxyType({
         "selected_throughput_stages",
         "throughput_from_row",
         "throughput_rows",
+    ),
+    _BREAKDOWN_READS_OWNER: (
+        "get_backend_daily_tokens",
+        "get_cost_coverage",
+        "get_hourly_heatmap",
+        "get_review_round_breakdown",
+    ),
+    _REVIEW_ROUNDS_OWNER: (
+        "review_round_from_row",
+        "review_round_rows",
+        "review_round_sql",
+    ),
+    _COST_COVERAGE_OWNER: (
+        "cost_coverage_from_row",
+        "cost_coverage_rows",
+    ),
+    _BACKEND_TOKENS_OWNER: (
+        "backend_daily_token_rows",
+        "backend_daily_tokens_from_row",
+    ),
+    _HOURLY_HEATMAPS_OWNER: (
+        "hourly_heatmap_from_row",
+        "hourly_heatmap_rows",
     ),
     _CACHE_SHARES_OWNER: (),
     _ROW_CELLS_OWNER: (
