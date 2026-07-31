@@ -1003,9 +1003,10 @@ caller-owned `conn=` is used as-is and never closed, because its lifetime belong
 that opened it, while a query without one opens and closes its own descriptor in a `finally`. Both connection paths
 resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families still under
 `orchestrator/analytics/` name these owners directly — the `analytics.read` facade forwards the historical connection
-names, including the underscored ones, to their own objects, while `predicates.py`, the `_predicate_*` leaves beneath
-it, and `read_request*.py` stay behind as the same kind of forwarding for the input half — each defining nothing of its
-own, so the module a historical caller named keeps answering with the owner's object.
+names, including the underscored ones, to their own objects, and on the input side `predicates.py`, the three
+`_predicate_*` leaves, and `read_request*.py` do the same. Each of those flat modules names an owner itself and defines
+nothing — the hub publishes the union of what the leaves publish rather than sitting on top of them — so whichever one
+a historical caller imported hands back the owner's object rather than a copy of it.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
