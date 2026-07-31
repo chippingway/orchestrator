@@ -18,23 +18,21 @@ from orchestrator.analytics._read_skill_types import (
     _SkillCohort,
     _SkillMatrixKey,
 )
-from orchestrator.analytics.predicates import (
-    _WindowFilters,
-    _append_where_condition,
-    _build_window_where,
-)
 from orchestrator.analytics.read_models import SkillTriggerMatrixRow
+from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import build_window_where
 
 SKILL_MATRIX_ROW_LIMIT = 100
 
 
 def _skill_catalog_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[tuple]:
-    catalog_where, catalog_bindings = _build_window_where(filters.catalog_scope())
-    clause = _append_where_condition(
+    catalog_where, catalog_bindings = build_window_where(filters.catalog_scope())
+    clause = append_where_condition(
         catalog_where,
         "event = 'repo_skill_catalog'",
     )
@@ -57,10 +55,10 @@ def _skill_catalog(rows: Sequence[tuple]) -> dict[str, set[str]]:
 
 def _skill_run_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[tuple]:
-    run_where, run_bindings = _build_window_where(filters.without_events())
-    clause = _append_where_condition(run_where, _AGENT_EXIT_CONDITION)
+    run_where, run_bindings = build_window_where(filters.without_events())
+    clause = append_where_condition(run_where, _AGENT_EXIT_CONDITION)
     return query.select(
         "SELECT repo, "
         "COALESCE(agent_role, 'unknown') AS role_label, "
@@ -120,7 +118,7 @@ class _SkillMatrixCounts:
 
 def _skill_trigger_matrix_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
     limit: int,
 ) -> list[SkillTriggerMatrixRow]:
     catalog = _skill_catalog(_skill_catalog_rows(query, filters))

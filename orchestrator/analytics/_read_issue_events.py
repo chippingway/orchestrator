@@ -7,13 +7,11 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from orchestrator.analytics._read_raw_values import _float_or_none, _int_or_none
-from orchestrator.analytics.predicates import (
-    _WindowFilters,
-    _build_window_where,
-    _prepend_where_condition,
-)
 from orchestrator.analytics.read_models import IssueEventRow
+from orchestrator.observability.analytics.query.conditions import prepend_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import build_window_where
 
 
 def _issue_event_from_row(row: Sequence[Any]) -> IssueEventRow:
@@ -32,12 +30,12 @@ def _issue_event_from_row(row: Sequence[Any]) -> IssueEventRow:
 
 def _issue_event_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
     repo: str,
     issue: int,
 ) -> list[IssueEventRow]:
-    where, bindings = _build_window_where(filters)
-    where = _prepend_where_condition(where, "repo = %s AND issue = %s")
+    where, bindings = build_window_where(filters)
+    where = prepend_where_condition(where, "repo = %s AND issue = %s")
     rows = query.select(
         "SELECT ts, event, stage, duration_s, result, "
         "agent_role, backend, exit_code, cost_usd "

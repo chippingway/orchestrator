@@ -21,23 +21,45 @@ _CONNECTION_CACHE_OWNER = "connection_cache"
 
 _EXECUTION_OWNER = "execution"
 
+_CONDITIONS_OWNER = "conditions"
+
+_FILTERS_OWNER = "filters"
+
+_PREDICATES_OWNER = "predicates"
+
+_REQUEST_MODELS_OWNER = "request_models"
+
+_REQUESTS_OWNER = "requests"
+
 # The declared inventory. A new owner is a deliberate edit here and a paragraph
 # in the module map, which is what the inventory check compares the directory
 # against.
 _OWNERS = (
+    _CONDITIONS_OWNER,
     _CONNECTION_CACHE_OWNER,
     _CONNECTIONS_OWNER,
     _EXECUTION_OWNER,
+    _FILTERS_OWNER,
+    _PREDICATES_OWNER,
+    _REQUEST_MODELS_OWNER,
+    _REQUESTS_OWNER,
 )
 
 # What each owner answers for, declared rather than discovered so a new public
-# name is a deliberate edit: a second way to open a socket or run a SELECT is
-# a second place the close and the error wrapping could disagree. The dialing
-# owner is the error type and the two factories under it, plus the two
-# judgments a caller makes about a connection rather than a query; the cache is
-# the scope a thread reuses, its teardown, and the entry bookkeeping beneath
-# them; execution is the resolved inputs one read carries and the two
-# connection paths a SELECT runs through.
+# name is a deliberate edit: a second way to open a socket, run a SELECT, or
+# spell a window filter is a second place the close, the error wrapping, or the
+# cleared-multiselect contract could disagree. The dialing owner is the error
+# type and the two factories under it, plus the two judgments a caller makes
+# about a connection rather than a query; the cache is the scope a thread
+# reuses, its teardown, and the entry bookkeeping beneath them; execution is the
+# resolved inputs one read carries and the two connection paths a SELECT runs
+# through. On the input side, requests is the bind and the two projections a
+# family reads back off it, request_models the parts it binds into, filters the
+# selection and the builder a clause accumulates in, predicates the one clause
+# builder behind the three tables it can be scanned on, and conditions the two
+# splices and the exclusion probe. Constants -- the rollup view name, the two
+# request field names, and the signatures themselves -- are not reported here:
+# the check reads `__module__`, which only a class or function carries.
 _SURFACES = MappingProxyType({
     _CONNECTIONS_OWNER: (
         "AnalyticsReadError",
@@ -61,11 +83,39 @@ _SURFACES = MappingProxyType({
         "read_connection",
         "select_rows",
     ),
+    _CONDITIONS_OWNER: (
+        "agent_event_excluded",
+        "append_where_condition",
+        "prepend_where_condition",
+    ),
+    _FILTERS_OWNER: (
+        "WhereBuilder",
+        "WindowFilters",
+    ),
+    _PREDICATES_OWNER: (
+        "build_rollup_window_where",
+        "build_view_window_where",
+        "build_where",
+        "build_window_where",
+        "day_bound",
+    ),
+    _REQUEST_MODELS_OWNER: (
+        "ReadConnection",
+        "ReadFilters",
+        "ReadOptions",
+        "ReadRequest",
+    ),
+    _REQUESTS_OWNER: (
+        "bind_read_request",
+        "resolve_read_query",
+        "window_filters",
+    ),
 })
 
 # The flat leaves whose responsibility these owners took over. Any survivor
 # would be a second connection cache, or a second answer to what a driver
-# failure costs.
+# failure costs. The flat modules that do survive are checked separately: they
+# define nothing, and the forwarding check holds them to the owner's objects.
 _VACATED_LEAVES = (
     "orchestrator/analytics/_connection_cache.py",
     "orchestrator/analytics/connection.py",

@@ -460,7 +460,9 @@ orchestrator/
     read.py             lazy read-model compatibility facade with a `.pyi` surface
     _read_*.py          query-family implementations, typed query rows, and hooks
     read_*.py           stable raw, rollup, dashboard, and model compatibility hubs
-    read_request*.py    typed filters, connection inputs, options, and legacy binding
+    predicates.py / _predicate_*.py / read_request*.py
+                        historical filter, request-model, and keyword-binding
+                        import sites forwarding to the query owners
     sync.py / _sync_*.py
                         CLI, ingestion, row parsing/mapping, and database lifecycle
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
@@ -477,13 +479,13 @@ orchestrator/
   observability/
     __init__.py         package marker only; home of the usage parsers, the
                         analytics configuration, recording, retention, and
-                        read-connection owners beside them, and the
-                        destination the observation-only surfaces above
-                        migrate the rest of their responsibilities to
+                        read-path owners beside them, and the destination the
+                        observation-only surfaces above migrate the rest of
+                        their responsibilities to
     analytics/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, and
-                        the connection half of the read path
+                        what a read is asked for and dials with
       config.py         the six sink / database environment knobs, the parse
                         the flat package's bootstrap binds, the `Settings`
                         view every adapter reads one back through, and the
@@ -520,6 +522,19 @@ orchestrator/
         execution.py    the resolved inputs one read carries, and the single
                         SELECT run on a caller-owned or freshly opened
                         connection
+        requests.py     the keyword vocabulary every public read is called by,
+                        and the bind of one call into the typed request
+        request_models.py
+                        the filters, connection, and options that request is
+                        made of
+        filters.py      the selection a read narrows by, its three scoped
+                        projections, and the builder a clause and its bindings
+                        accumulate in
+        predicates.py   the `WHERE` clause that selection becomes against the
+                        events table, the agent-run view, and the daily rollup
+        conditions.py   the two splices of a table's own required condition,
+                        and the probe for an event filter that leaves a
+                        view-backed read no rows
       sync/             destination for the JSONL -> Postgres ingestion
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
@@ -962,19 +977,35 @@ rebuilt alongside them for each package instance. Its lock is the one exception 
 with the analytics sink's, for the reason above — and `retention.py`'s trajectory prune takes that same object, so the
 trajectory file serializes its own append-versus-prune race without ever blocking against the analytics one.
 
-`analytics/query/` holds the connection half of the read path, split by what each owner decides. `connections` decides
-what a read dials with: the psycopg import deferred to call time, so a caller that only consumes the read dataclasses
-never pays for the driver and a test injects a `connect(db_url)` factory instead of installing one; the two factories
-that use it, differing only in whether the socket outlives the query; and `AnalyticsReadError`, the single exception
-every driver failure is wrapped in with the original kept as `__cause__`. `connection_cache` decides how long a socket
-lives: one thread-local entry keyed on the resolved URL, so a `with` block asking for a different `db_url=` closes the
-stale one, and a broken-socket error escaping the block evicts it before re-raising. Reuse is the point, so a normal
-exit leaves the connection open and `close_thread_local_connection` is what drains it. `execution` decides whose
-connection one SELECT runs on: a caller-owned `conn=` is used as-is and never closed, because its lifetime belongs to
-the `analytics_connection` scope that opened it, while a query without one opens and closes its own descriptor in a
-`finally`. Both connection paths resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families
-still under `orchestrator/analytics/` name `execution`'s `ReadQuery` directly — the `analytics.read` facade forwards
-the historical connection names, including the underscored ones, to these owners' own objects.
+`analytics/query/` holds what a read is asked for and what it dials with, split by what each owner decides. On the
+input side, `requests` owns the keyword vocabulary every public read is called by — one signature per family, composed
+from shared parameter groups so an omitted `limit`, `sort_by`, or hour offset is defaulted in one place — and the bind
+of such a call into the `request_models` parts a family reads back: the filters, the connection, and the options.
+`filters` owns the selection those filters project onto and the builder a clause accumulates in, appending each
+condition together with its operand so the `%s` order and the binding order cannot drift apart. `predicates` owns the
+one `WHERE` builder behind all three scan targets, so the events table, the agent-run view (which drops the `events`
+selection its columns cannot carry), and the daily rollup (which binds `.date()` bounds against `day`) cannot disagree
+about what a filter means — including the three-case reading of a multiselect, where an empty selection is a
+tautologically-false predicate rather than no filter. `conditions` owns the splice of a table's own required condition
+onto either end of that clause, which is what fixes whether its operand binds before or after the generated ones, plus
+`agent_event_excluded` — the probe a view-backed read short-circuits on when the event selection excludes `agent_exit`,
+because the view has no `event` column to push the filter into.
+
+On the connection side, `connections` decides what a read dials with: the psycopg import deferred to call time, so a
+caller that only consumes the read dataclasses never pays for the driver and a test injects a `connect(db_url)`
+factory instead of installing one; the two factories that use it, differing only in whether the socket outlives the
+query; and `AnalyticsReadError`, the single exception every driver failure is wrapped in with the original kept as
+`__cause__`. `connection_cache` decides how long a socket lives: one thread-local entry keyed on the resolved URL, so
+a `with` block asking for a different `db_url=` closes the stale one, and a broken-socket error escaping the block
+evicts it before re-raising. Reuse is the point, so a normal exit leaves the connection open and
+`close_thread_local_connection` is what drains it. `execution` decides whose connection one SELECT runs on: a
+caller-owned `conn=` is used as-is and never closed, because its lifetime belongs to the `analytics_connection` scope
+that opened it, while a query without one opens and closes its own descriptor in a `finally`. Both connection paths
+resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families still under
+`orchestrator/analytics/` name these owners directly — the `analytics.read` facade forwards the historical connection
+names, including the underscored ones, to their own objects, while `predicates.py`, the `_predicate_*` leaves beneath
+it, and `read_request*.py` stay behind as the same kind of forwarding for the input half — each defining nothing of its
+own, so the module a historical caller named keeps answering with the owner's object.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller

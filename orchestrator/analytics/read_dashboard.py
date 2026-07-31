@@ -24,7 +24,6 @@ from orchestrator.analytics._read_skill_matrix import (
 from orchestrator.analytics._read_skill_trigger_rates import (
     _skill_trigger_rate_rows,
 )
-from orchestrator.analytics.predicates import _agent_event_excluded
 from orchestrator.analytics.read_models import (
     BackendDailyTokensRow,
     CostCoverageRow,
@@ -34,7 +33,8 @@ from orchestrator.analytics.read_models import (
     SkillTriggerMatrixRow,
     SkillTriggerRateRow,
 )
-from orchestrator.analytics.read_request import (
+from orchestrator.observability.analytics.query.conditions import agent_event_excluded
+from orchestrator.observability.analytics.query.requests import (
     FILTERED_READ_SIGNATURE,
     HEATMAP_SIGNATURE,
     LIMITED_READ_SIGNATURE,
@@ -83,7 +83,7 @@ def get_review_round_breakdown(
     query = resolve_read_query(request)
     if not query.available:
         return []
-    if _agent_event_excluded(request.filters.events):
+    if agent_event_excluded(request.filters.events):
         return []
     return _review_round_rows(query, window_filters(request))
 
@@ -100,7 +100,7 @@ def get_skill_trigger_rates(
     query = resolve_read_query(request)
     if not query.available:
         return []
-    if _agent_event_excluded(request.filters.events):
+    if agent_event_excluded(request.filters.events):
         return []
     return _skill_trigger_rate_rows(query, window_filters(request))
 
@@ -118,7 +118,7 @@ def get_skill_trigger_matrix(
     query = resolve_read_query(request)
     if not query.available:
         return []
-    if _agent_event_excluded(request.filters.events):
+    if agent_event_excluded(request.filters.events):
         return []
     return _skill_trigger_matrix_rows(
         query,
@@ -137,7 +137,7 @@ def get_skill_adoption(*args: Any, **kwargs: Any) -> list[SkillAdoptionRow]:
     query = resolve_read_query(request)
     if not query.available:
         return []
-    if _agent_event_excluded(request.filters.events):
+    if agent_event_excluded(request.filters.events):
         return []
     return _skill_adoption_rows(
         query,
@@ -155,7 +155,7 @@ def get_cost_coverage(*args: Any, **kwargs: Any) -> list[CostCoverageRow]:
     query = resolve_read_query(request)
     if not query.available:
         return []
-    if _agent_event_excluded(request.filters.events):
+    if agent_event_excluded(request.filters.events):
         return []
     return _cost_coverage_rows(query, window_filters(request))
 
@@ -172,7 +172,7 @@ def get_backend_daily_tokens(
     query = resolve_read_query(request)
     if not query.available:
         return []
-    if _agent_event_excluded(request.filters.events):
+    if agent_event_excluded(request.filters.events):
         return []
     return _backend_daily_token_rows(query, window_filters(request))
 

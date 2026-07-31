@@ -6,19 +6,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from orchestrator.analytics.predicates import (
-    _DAILY_ROLLUP_VIEW,
-    _WindowFilters,
-    _build_rollup_window_where,
-)
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import (
+    DAILY_ROLLUP_VIEW,
+    build_rollup_window_where,
+)
 
 
 def _build_summary_where(
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> tuple[str, list[Any]]:
     """Build the predicate and bound values for one summary window."""
-    return _build_rollup_window_where(filters)
+    return build_rollup_window_where(filters)
 
 
 def _build_summary_sql(where_clause: str) -> str:
@@ -33,7 +33,7 @@ def _build_summary_sql(where_clause: str) -> str:
         "event_count, failed_count, timed_out_count, "
         "total_cost_usd, total_input_tokens, total_output_tokens, "
         "total_cache_read_tokens, total_cache_write_tokens "
-        f"FROM {_DAILY_ROLLUP_VIEW}{where_clause}"
+        f"FROM {DAILY_ROLLUP_VIEW}{where_clause}"
         ") "
         "SELECT 't' AS kind, NULL::text AS label, "
         "COALESCE(SUM(event_count), 0) AS count_val, "
@@ -69,7 +69,7 @@ def _build_summary_sql(where_clause: str) -> str:
 
 def _query_summary_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[tuple]:
     """Execute one summary query using the requested connection path."""
     where_clause, query_parameters = _build_summary_where(filters)

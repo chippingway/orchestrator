@@ -13,14 +13,14 @@ from orchestrator.analytics._read_raw_values import (
     _float_or_none,
     _int_or_none,
 )
-from orchestrator.analytics.predicates import (
-    _WindowFilters,
-    _agent_event_excluded,
-    _build_window_where,
-    _prepend_where_condition,
-)
 from orchestrator.analytics.read_models import AgentExitRow
+from orchestrator.observability.analytics.query.conditions import (
+    agent_event_excluded,
+    prepend_where_condition,
+)
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import build_window_where
 
 
 def _agent_exit_from_row(row: Sequence[Any]) -> AgentExitRow:
@@ -46,15 +46,15 @@ def _agent_exit_from_row(row: Sequence[Any]) -> AgentExitRow:
 
 def _recent_agent_exit_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
     limit: int,
 ) -> list[AgentExitRow]:
-    if _agent_event_excluded(filters.events):
+    if agent_event_excluded(filters.events):
         return []
     if _empty_filter_selected(filters.stages):
         return []
-    where, bindings = _build_window_where(filters.without_events())
-    where = _prepend_where_condition(where, "event = %s")
+    where, bindings = build_window_where(filters.without_events())
+    where = prepend_where_condition(where, "event = %s")
     bindings.insert(0, "agent_exit")
     bindings.append(int(limit))
     rows = query.select(

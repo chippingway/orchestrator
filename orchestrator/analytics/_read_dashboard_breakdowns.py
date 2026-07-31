@@ -7,17 +7,17 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from orchestrator.analytics._read_row_values import _day_value, _row_value
-from orchestrator.analytics.predicates import (
-    _WindowFilters,
-    _build_view_window_where,
-    _build_window_where,
-)
 from orchestrator.analytics.read_models import (
     BackendDailyTokensRow,
     CostCoverageRow,
     HourlyHeatmapPoint,
 )
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import (
+    build_view_window_where,
+    build_window_where,
+)
 
 
 def _cost_coverage_from_row(row: Sequence[Any]) -> CostCoverageRow:
@@ -30,9 +30,9 @@ def _cost_coverage_from_row(row: Sequence[Any]) -> CostCoverageRow:
 
 def _cost_coverage_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[CostCoverageRow]:
-    coverage_where, coverage_bindings = _build_view_window_where(filters)
+    coverage_where, coverage_bindings = build_view_window_where(filters)
     rows = query.select(
         "SELECT "
         "COALESCE(cost_source, 'unknown') AS source_label, "
@@ -62,9 +62,9 @@ def _backend_daily_tokens_from_row(
 
 def _backend_daily_token_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[BackendDailyTokensRow]:
-    daily_where, daily_bindings = _build_view_window_where(filters)
+    daily_where, daily_bindings = build_view_window_where(filters)
     rows = query.select(
         "SELECT "
         "date_trunc('day', ts)::date AS day, "
@@ -93,10 +93,10 @@ def _hourly_heatmap_from_row(row: Sequence[Any]) -> HourlyHeatmapPoint:
 
 def _hourly_heatmap_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
     tz_offset_hours: int,
 ) -> list[HourlyHeatmapPoint]:
-    heatmap_where, heatmap_bindings = _build_window_where(filters)
+    heatmap_where, heatmap_bindings = build_window_where(filters)
     offset = int(tz_offset_hours)
     rows = query.select(
         "SELECT "

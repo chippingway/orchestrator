@@ -11,13 +11,13 @@ from orchestrator.analytics._read_row_values import (
     _day_value,
     _row_value,
 )
-from orchestrator.analytics.predicates import (
-    _DAILY_ROLLUP_VIEW,
-    _WindowFilters,
-    _build_rollup_window_where,
-)
 from orchestrator.analytics.read_models import Summary, TimeSeriesPoint
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import (
+    DAILY_ROLLUP_VIEW,
+    build_rollup_window_where,
+)
 
 
 def _kpi_prev_sql(where: str) -> str:
@@ -33,15 +33,15 @@ def _kpi_prev_sql(where: str) -> str:
         "COALESCE(SUM(CASE WHEN event = 'agent_exit' "
         "                  THEN event_count ELSE 0 END), 0) "
         "  AS total_agent_runs "
-        f"FROM {_DAILY_ROLLUP_VIEW}{where}"
+        f"FROM {DAILY_ROLLUP_VIEW}{where}"
     )
 
 
 def _kpi_prev_summary(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> Summary:
-    where, bindings = _build_rollup_window_where(filters)
+    where, bindings = build_rollup_window_where(filters)
     rows = query.select(_kpi_prev_sql(where), bindings)
     if not rows:
         return Summary()
@@ -71,9 +71,9 @@ def _time_series_from_row(row: Sequence[Any]) -> TimeSeriesPoint:
 
 def _time_series_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[TimeSeriesPoint]:
-    where, bindings = _build_rollup_window_where(filters)
+    where, bindings = build_rollup_window_where(filters)
     rows = query.select(
         "SELECT day, event, "
         "COALESCE(SUM(event_count), 0) AS c, "
@@ -84,7 +84,7 @@ def _time_series_rows(
         "  AS day_cache_read_tokens, "
         "COALESCE(SUM(total_cache_write_tokens), 0) "
         "  AS day_cache_write_tokens "
-        f"FROM {_DAILY_ROLLUP_VIEW}{where} "
+        f"FROM {DAILY_ROLLUP_VIEW}{where} "
         "GROUP BY day, event "
         "ORDER BY day ASC, event ASC",
         bindings,

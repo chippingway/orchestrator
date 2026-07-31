@@ -19,12 +19,10 @@ from orchestrator.analytics._read_skill_types import (
     _SESSION_ROW_INDEX,
     _SkillCohort,
 )
-from orchestrator.analytics.predicates import (
-    _WindowFilters,
-    _append_where_condition,
-    _build_window_where,
-)
+from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import build_window_where
 
 
 def _skill_session_key(row: Sequence[Any]) -> str:
@@ -117,10 +115,10 @@ def _skill_window_run(row: Sequence[Any]) -> _SkillWindowRun:
 
 def _skill_window_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[_SkillWindowRun]:
-    window_where, window_bindings = _build_window_where(filters.without_events())
-    clause = _append_where_condition(window_where, _AGENT_EXIT_CONDITION)
+    window_where, window_bindings = build_window_where(filters.without_events())
+    clause = append_where_condition(window_where, _AGENT_EXIT_CONDITION)
     rows = query.select(
         "SELECT repo, "
         "COALESCE(agent_role, 'unknown') AS role_label, "
@@ -136,12 +134,12 @@ def _skill_window_rows(
 
 def _skill_history_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[tuple]:
-    history_where, history_bindings = _build_window_where(
+    history_where, history_bindings = build_window_where(
         filters.historical_scope(),
     )
-    clause = _append_where_condition(history_where, _AGENT_EXIT_CONDITION)
+    clause = append_where_condition(history_where, _AGENT_EXIT_CONDITION)
     return query.select(
         "SELECT repo, "
         "COALESCE(agent_role, 'unknown') AS role_label, "
@@ -157,7 +155,7 @@ def _skill_history_rows(
 
 def _skill_session_evidence(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
     window_runs: Sequence[_SkillWindowRun],
 ) -> dict[str, _SessionEvidence]:
     """Gather each active session's before-window-end availability + loads.
