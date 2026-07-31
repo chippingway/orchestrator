@@ -7,10 +7,11 @@ time.
 
 - **Audit event log** (`EVENT_LOG_PATH`) — opt-in JSONL audit of workflow events, written through
   `GitHubClient.emit_event`.
-- **Analytics sink** (`ANALYTICS_LOG_PATH`) — project-local JSONL of raw metric records, owned by the
-  `orchestrator/analytics/` package.
+- **Analytics sink** (`ANALYTICS_LOG_PATH`) — project-local JSONL of raw metric records. The recorders that append it
+  are owned by `orchestrator/observability/analytics/recording/`; the retention prune, the read models, and the sync
+  are still in the `orchestrator/analytics/` package.
 - **Trajectory sink** (`TRAJECTORY_LOG_PATH`) — opt-in, default-off JSONL sink for per-run agent reasoning
-  trajectories, a sibling of the analytics sink in the `orchestrator/analytics/` package. `record_agent_exit` is its
+  trajectories, a sibling sink still owned by the `orchestrator/analytics/` package. `record_agent_exit` is its
   producer: when the sink is on it parses each tracked run's trajectory from the same stdout, redacts and head/tail
   truncates every free-text field, and appends one `agent_trajectory` record — all behind its own fail-open guard. A
   dedicated, file-backed **trajectory viewer** (`orchestrator/trajectory_dashboard.py`) renders it as a separate
@@ -120,7 +121,8 @@ any time without affecting workflow correctness.
 ## Analytics sink (`ANALYTICS_LOG_PATH`)
 
 Project-local JSONL sink for raw metric records, separate from `EVENT_LOG_PATH`. Opts in or out independently via
-`ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS` and the helpers in `orchestrator/analytics/`.
+`ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS`; the recorders that write it live in
+`orchestrator/observability/analytics/recording/`, and the retention prune beside them in `orchestrator/analytics/`.
 
 **Module layout.** The append side lives in `orchestrator/observability/analytics/recording/`, whose initializer
 publishes the six recorders a producer calls (`build_record`, `append_record`, `record_stage_enter`,
@@ -167,7 +169,7 @@ area. Default path is `<LOG_DIR>/analytics.jsonl`, already covered by the `logs/
 `ANALYTICS_LOG_PATH=` (empty) or to `off` / `disabled` / `none` to disable writes entirely; in that mode `append_record`
 and `prune_old_records` are silent no-ops and no file is opened.
 
-**Schema.** Every record is built by `analytics.build_record` and carries `ts` (UTC ISO-8601 at second precision),
+**Schema.** Every record is built by `recording.build_record` and carries `ts` (UTC ISO-8601 at second precision),
 `repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included when the caller
 passes one; extras whose value is `None` are dropped. `json.dumps` uses `sort_keys=True` so on-disk order is stable. The
 JSONL file is the raw foundation layer for the Postgres aggregation step.
@@ -187,8 +189,9 @@ JSONL file is the raw foundation layer for the Postgres aggregation step.
   the sentinel `0`); carries `base_branch`, `remote_name`, `skills_available` (deduped `SKILL.md` skill names on the
   base ref), and optional `skill_paths` (name → source paths) — see below.
 
-**Append.** `analytics.append_record(record)` reopens the file in append mode for every record after
+**Append.** `recording.append_record(record)` reopens the file in append mode for every record after
 `path.parent.mkdir(parents=True, exist_ok=True)`. An `OSError` is caught and downgraded to a `log.warning`.
+`analytics.append_record` is the same object for as long as the compatibility facade forwards it.
 
 **Retention pruning.** `analytics.prune_old_records(*, now=None)` reads the file and removes records whose `ts` is older
 than `ANALYTICS_RETENTION_DAYS`. No-op (returns `0`) when the sink is disabled, retention is non-positive, or the file
@@ -196,12 +199,14 @@ does not exist. The rewrite goes through a temp file followed by `os.replace` so
 analytics file. Records with a missing / non-string / unparseable `ts` (and any line that is not valid JSON) are
 preserved verbatim so the prune step never silently drops data it cannot interpret.
 
-**Append/prune serialization.** Append and prune share a process-local `threading.Lock` inside the analytics module so a
-concurrent `append_record` cannot land between the prune's read and its `os.replace`. Under the scheduler-driven
-dispatch, `workflow.tick` returns as soon as it has submitted per-issue callables, so scheduler workers may still be
-running — and calling `append_record` — when `main._run_tick` invokes `prune_with_retention_logging()`. Without the
-lock, an append that opened the old inode after the prune's read but before the replace would be silently lost. The lock
-is held only around the filesystem ops; JSON serialization happens outside the critical section.
+**Append/prune serialization.** Append and prune share one process-local `threading.Lock`, minted on
+`recording/io.py` — the owner no package reload rebuilds, so every reference to `append_record` takes the object the
+prune takes — so a concurrent `append_record` cannot land between the prune's read and its `os.replace`. Under the
+scheduler-driven dispatch, `workflow.tick` returns as soon as it has submitted per-issue callables, so scheduler
+workers may still be running — and calling `append_record` — when `main._run_tick` invokes
+`prune_with_retention_logging()`. Without the lock, an append that opened the old inode after the prune's read but
+before the replace would be silently lost. The lock is held only around the filesystem ops; JSON serialization happens
+outside the critical section.
 
 **Retention cadence.** `main._run_tick` calls `analytics.prune_with_retention_logging()` exactly once per polling
 iteration after `workflow.tick` returns for every configured repo, regardless of how many repos are configured — the
