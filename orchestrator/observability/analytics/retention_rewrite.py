@@ -1,6 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Atomic JSONL retention rewrites under the sink lock."""
+"""How a by-age prune replaces a JSONL sink without ever truncating it.
+
+The write half of retention, shared by both sinks: a temp file in the sink's
+own directory, the `os.replace` that swaps it in, the cleanup when either
+raises, and the lock held across the read and that swap. The same-directory
+temp file is what makes the swap a single atomic rename rather than a copy a
+crash can catch half-done, and holding the lock across both is what keeps a
+concurrent append off the soon-unlinked inode.
+
+Every filesystem touch downgrades OSError to a logged no-op, because the caller
+is the polling tick: analytics is observability, never authoritative workflow
+state, so a misconfigured path must cost a warning rather than a tick.
+"""
 
 from __future__ import annotations
 
@@ -13,13 +25,13 @@ from pathlib import Path
 from typing import Optional
 
 from orchestrator.observability.analytics.recording.events import log
-from orchestrator.analytics._retention_scan import (
-    _probe_exists,
-    _read_kept_records,
+from orchestrator.observability.analytics.retention_scan import (
+    probe_exists,
+    read_kept_records,
 )
 
 
-def _unlink_quietly(path: str) -> None:
+def unlink_quietly(path: str) -> None:
     """Remove `path`, ignoring a missing or unremovable file.
 
     Best-effort cleanup of the prune's temp file when the rewrite fails; an
@@ -30,7 +42,7 @@ def _unlink_quietly(path: str) -> None:
         os.unlink(path)
 
 
-def _flush_fd_and_replace(
+def flush_fd_and_replace(
     tmp_fd: int,
     tmp_path: str,
     path: Path,
@@ -42,7 +54,7 @@ def _flush_fd_and_replace(
     os.replace(tmp_path, str(path))
 
 
-def _atomic_rewrite(path: Path, lines: list[str]) -> None:
+def atomic_rewrite(path: Path, lines: list[str]) -> None:
     """Replace `path`'s contents with `lines` via a temp file + `os.replace`.
 
     The temp file lands in `path.parent` so `os.replace` is a same-filesystem
@@ -57,13 +69,13 @@ def _atomic_rewrite(path: Path, lines: list[str]) -> None:
         suffix=".tmp",
     )
     try:
-        _flush_fd_and_replace(tmp_fd, tmp_path, path, lines)
+        flush_fd_and_replace(tmp_fd, tmp_path, path, lines)
     except OSError:
-        _unlink_quietly(tmp_path)
+        unlink_quietly(tmp_path)
         raise
 
 
-def _rewrite_pruned_file(
+def rewrite_pruned_file(
     path: Path,
     cutoff: datetime,
     lock: threading.Lock,
@@ -78,23 +90,23 @@ def _rewrite_pruned_file(
         # Re-check existence under the lock: a concurrent operator `rm`
         # between the pre-lock probe and acquiring the lock would
         # otherwise let `path.open` raise an unhandled FileNotFoundError.
-        if not _probe_exists(path):
+        if not probe_exists(path):
             return 0
-        kept_removed = _read_kept_records(path, cutoff)
+        kept_removed = read_kept_records(path, cutoff)
         if kept_removed is None:
             return 0
         kept, removed = kept_removed
         if removed == 0:
             return 0
         try:
-            _atomic_rewrite(path, kept)
+            atomic_rewrite(path, kept)
         except OSError as error:
             log.warning("could not rewrite file %s after prune: %s", path, error)
             return 0
         return removed
 
 
-def _prune_jsonl_records(
+def prune_jsonl_records(
     path: Optional[Path],
     days: int,
     lock: threading.Lock,
@@ -114,16 +126,16 @@ def _prune_jsonl_records(
     across the read + rewrite so a concurrent append cannot land on the
     soon-unlinked inode.
 
-    Every filesystem touch -- the existence probes (`_probe_exists`), the
-    read (`_read_kept_records`), and the rewrite (`_atomic_rewrite`) --
+    Every filesystem touch -- the existence probes (`probe_exists`), the
+    read (`read_kept_records`), and the rewrite (`atomic_rewrite`) --
     downgrades OSError to a logged no-op, so a misconfigured path (e.g.
     ENAMETOOLONG) never escapes to the per-tick caller.
     """
     if path is None or days <= 0:
         return 0
     # Pre-lock probe for the fast zero-cost no-op path on a disabled sink.
-    if not _probe_exists(path):
+    if not probe_exists(path):
         return 0
 
     cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=days)
-    return _rewrite_pruned_file(path, cutoff, lock)
+    return rewrite_pruned_file(path, cutoff, lock)

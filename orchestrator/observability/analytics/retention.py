@@ -1,47 +1,42 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Public analytics and trajectory retention entry points."""
+"""The by-age prune that keeps both JSONL sinks bounded.
+
+Three entry points, one per caller: the polling tick's fail-open wrapper, the
+analytics sink's prune, and the trajectory sink's. The two sinks are pruned
+separately all the way down -- each reads its own path and retention knob, and
+each takes its own lock -- so an operator can keep trajectories for a week and
+analytics for a year, and neither file's rewrite ever blocks on the other's
+append. The scan and rewrite steps beneath them are shared, which is what keeps
+the two answering the same way about a malformed line or a full disk.
+
+This owner sits above the recorders rather than beside the scan and rewrite
+leaves below it, for the same reason the trajectory sink's ``api`` does: it
+resolves *which* files a bare prune rewrites, and the answer is the settings
+holder captured by the ``events`` owner it was imported alongside. The analytics
+package bootstrap rebuilds both together for each instance it initializes, so a
+prune taken off one instance keeps rewriting what that instance was configured
+with. The locks deliberately do not live here -- they are minted on the ``io``
+owner, which is loaded once per process, so an append held across a rebuild
+still serializes against the rewrite happening under it.
+"""
 
 from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional
 
-from orchestrator.analytics._retention_rewrite import (
-    _atomic_rewrite as _atomic_rewrite,
-    _flush_fd_and_replace as _flush_fd_and_replace,
-    _prune_jsonl_records as _prune_jsonl_records,
-    _rewrite_pruned_file as _rewrite_pruned_file,
-    _unlink_quietly as _unlink_quietly,
-)
-from orchestrator.analytics._retention_scan import (
-    _PruneScan as _PruneScan,
-    _normalized_jsonl_line as _normalized_jsonl_line,
-    _probe_exists as _probe_exists,
-    _prune_timestamp as _prune_timestamp,
-    _read_kept_records as _read_kept_records,
-)
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics.recording.events import (
-    log as log,
-    settings_holder as _live_settings,
+    log,
+    settings_holder,
 )
 from orchestrator.observability.analytics.recording.io import (
-    ANALYTICS_FILE_LOCK as _FILE_LOCK,
-    TRAJECTORY_FILE_LOCK as _TRAJECTORY_FILE_LOCK,
+    ANALYTICS_FILE_LOCK,
+    TRAJECTORY_FILE_LOCK,
 )
-
-
-_COMPATIBILITY_EXPORTS = (
-    _atomic_rewrite,
-    _flush_fd_and_replace,
-    _rewrite_pruned_file,
-    _unlink_quietly,
-    _PruneScan,
-    _normalized_jsonl_line,
-    _probe_exists,
-    _prune_timestamp,
-    _read_kept_records,
+from orchestrator.observability.analytics.retention_rewrite import (
+    prune_jsonl_records,
 )
 
 
@@ -58,12 +53,12 @@ def prune_with_retention_logging() -> None:
     helper reads the file at most once and only rewrites it when at
     least one record is older than the retention window.
 
-    Delegates through the facade (`_live_settings().prune_old_records()`)
-    so the call stays interceptable via `patch.object(analytics,
-    "prune_old_records", ...)`.
+    Delegates through the settings holder
+    (`settings_holder().prune_old_records()`) so the call stays
+    interceptable via `patch.object(analytics, "prune_old_records", ...)`.
     """
     try:
-        removed = _live_settings().prune_old_records()
+        removed = settings_holder().prune_old_records()
     except Exception:
         log.exception("analytics retention prune raised; continuing")
         return
@@ -75,7 +70,7 @@ def prune_old_records(*, now: Optional[datetime] = None) -> int:
     """Remove records whose `ts` is older than `ANALYTICS_RETENTION_DAYS`.
 
     Reads the `ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS` bound on the
-    `orchestrator.analytics` facade (parsed from the env at import).
+    `orchestrator.analytics` settings holder (parsed from the env at import).
 
     Returns the number of records removed. No-op (returns 0) when the
     sink is disabled, retention is non-positive (keep forever), or the
@@ -91,7 +86,7 @@ def prune_old_records(*, now: Optional[datetime] = None) -> int:
     by `os.replace` so a crash mid-prune cannot truncate the analytics
     file.
 
-    Holds `_FILE_LOCK` across the read + rewrite so a concurrent
+    Holds `ANALYTICS_FILE_LOCK` across the read + rewrite so a concurrent
     `append_record` cannot land between the read and the `os.replace`
     -- without this, an append that observed the old inode after we
     read but before `os.replace` would write to the soon-unlinked inode
@@ -99,11 +94,11 @@ def prune_old_records(*, now: Optional[datetime] = None) -> int:
     the polling loop calls this between ticks, so serializing with
     `append_record` is what keeps that prune-window invisible.
     """
-    settings = analytics_config.settings_on(_live_settings())
-    return _prune_jsonl_records(
+    settings = analytics_config.settings_on(settings_holder())
+    return prune_jsonl_records(
         settings.log_path,
         settings.retention_days,
-        _FILE_LOCK,
+        ANALYTICS_FILE_LOCK,
         now,
     )
 
@@ -112,19 +107,19 @@ def prune_trajectory_records(*, now: Optional[datetime] = None) -> int:
     """Remove trajectory records older than `TRAJECTORY_RETENTION_DAYS`.
 
     Reads the `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS` bound on
-    the `orchestrator.analytics` facade. Mirrors `prune_old_records` exactly
-    (no-op when the sink is disabled, retention is non-positive, or the
-    file is absent; malformed / unparseable lines preserved; atomic
+    the `orchestrator.analytics` settings holder. Mirrors `prune_old_records`
+    exactly (no-op when the sink is disabled, retention is non-positive, or
+    the file is absent; malformed / unparseable lines preserved; atomic
     temp-file + `os.replace` rewrite) but operates solely on the
-    trajectory file under `_TRAJECTORY_FILE_LOCK` -- it never touches
+    trajectory file under `TRAJECTORY_FILE_LOCK` -- it never touches
     `ANALYTICS_LOG_PATH`, the analytics Postgres sync, or the dashboard
     rollups. `now` is parameter-overridable so tests can pin the
     comparison point.
     """
-    settings = analytics_config.settings_on(_live_settings())
-    return _prune_jsonl_records(
+    settings = analytics_config.settings_on(settings_holder())
+    return prune_jsonl_records(
         settings.trajectory_log_path,
         settings.trajectory_retention_days,
-        _TRAJECTORY_FILE_LOCK,
+        TRAJECTORY_FILE_LOCK,
         now,
     )

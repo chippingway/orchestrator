@@ -316,7 +316,7 @@ restart) so any in-flight workers complete cleanly. The signal handler also call
 synchronously the instant the signal lands, so the submit path is closed mid-tick.
 
 `main._run_tick` calls `scheduler.reap()` exactly once per polling pass (right before
-`analytics.prune_with_retention_logging()`) so worker failure-completion records drain before the next iteration.
+`retention.prune_with_retention_logging()`) so worker failure-completion records drain before the next iteration.
 `_dispatch_via_scheduler` deliberately does NOT reap.
 
 Non-positive or non-integer values for either cap (or for a per-entry `parallel_limit`) abort startup with a clear
@@ -352,7 +352,7 @@ an unmergeable PR.
   `stage_evaluation`, and `agent_exit` events. Set to empty / `off` / `disabled` / `none` to disable. See
   [`observability.md#analytics-sink`](observability.md#analytics-sink-analytics_log_path).
 - `ANALYTICS_RETENTION_DAYS` — default `90`. retention window for `ANALYTICS_LOG_PATH`. The polling loop calls
-  `analytics.prune_with_retention_logging()` once per tick. Set to `0` (or any non-positive value) to keep raw data
+  `retention.prune_with_retention_logging()` once per tick. Set to `0` (or any non-positive value) to keep raw data
   indefinitely.
 - `ANALYTICS_DB_URL` — default _(unset)_. libpq connection string for the analytics Postgres service in
   [`../analytics-db/compose.yml`](../analytics-db/compose.yml). NOT read by the polling loop — orchestrator

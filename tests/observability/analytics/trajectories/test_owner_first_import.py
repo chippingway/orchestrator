@@ -44,7 +44,9 @@ append_trajectory_record(record)
 
 from orchestrator import analytics
 
-prune_lock = analytics._retention._TRAJECTORY_FILE_LOCK
+prune_lock = sys.modules[
+    "orchestrator.observability.analytics.retention"
+].TRAJECTORY_FILE_LOCK
 if analytics._TRAJECTORY_FILE_LOCK is not prune_lock:
     sys.exit("the facade publishes a different lock than the prune takes")
 

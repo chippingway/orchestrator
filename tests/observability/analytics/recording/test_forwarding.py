@@ -45,10 +45,9 @@ def _owners_on_disk(package) -> tuple[str, ...]:
 
 class ForwardedRecorderTest(unittest.TestCase):
     """The recorders resolve off the analytics package to the owner's own
-    objects, and the by-age retention prune entry points stay in
-    `orchestrator.analytics._retention`. What the same package still forwards
-    for the opt-in trajectory sink is covered beside that owner under
-    `tests/observability/analytics/trajectories/`.
+    objects. What the same package forwards for the by-age prune and for the
+    opt-in trajectory sink is covered beside each of those owners, under
+    `tests/observability/analytics/`.
     """
 
     def test_recorders_forward_to_the_owner(self) -> None:
@@ -91,21 +90,6 @@ class ForwardedRecorderTest(unittest.TestCase):
             import_module(_ANALYTICS_PACKAGE)._FILE_LOCK,
             package.io.ANALYTICS_FILE_LOCK,
         )
-
-    def test_prune_entry_points_in_retention_module(self) -> None:
-        _, analytics = _reload()
-        for name in (
-            "prune_old_records",
-            "prune_trajectory_records",
-            "prune_with_retention_logging",
-        ):
-            with self.subTest(name=name):
-                member = getattr(analytics, name)
-                self.assertEqual(
-                    member.__module__,
-                    "orchestrator.analytics._retention",
-                )
-                self.assertIs(member, getattr(analytics._retention, name))
 
 
 if __name__ == "__main__":

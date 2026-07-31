@@ -4,18 +4,28 @@
 
 import tempfile
 import unittest
+from importlib import import_module
 from unittest.mock import patch
 
 from tests import main_helpers as _helpers
 
+_RETENTION_OWNER = "orchestrator.observability.analytics.retention"
+
+_PRUNE_ATTR = "prune_with_retention_logging"
+
+
+def _patched_prune():
+    """Intercept the prune on the owner the tick names inside its own call."""
+    return patch.object(import_module(_RETENTION_OWNER), _PRUNE_ATTR)
+
 
 class AnalyticsRetentionLoopWiringTest(unittest.TestCase):
-    """`main._run_tick` calls `analytics.prune_with_retention_logging`
-    once per tick so retention is actually applied. The wrapper itself
-    (exception swallow, log message, no-GitHub-writes guarantee) is
-    tested at the analytics boundary; the
-    tests here only verify the wiring: main calls the wrapper exactly
-    once per polling iteration regardless of repo count.
+    """`main._run_tick` calls the retention owner's
+    `prune_with_retention_logging` once per tick so retention is actually
+    applied. The wrapper itself (exception swallow, log message,
+    no-GitHub-writes guarantee) is tested beside that owner; the tests here
+    only verify the wiring: main calls the wrapper exactly once per polling
+    iteration regardless of repo count.
     """
 
     def test_single_repo_prunes_each_tick(self) -> None:
@@ -27,10 +37,7 @@ class AnalyticsRetentionLoopWiringTest(unittest.TestCase):
             with (
                 patch.object(main_mod, _helpers._GITHUB_CLIENT_ATTR, side_effect=clients),
                 patch.object(main_mod.workflow, _helpers._TICK_ATTR),
-                patch.object(
-                    main_mod.analytics,
-                    "prune_with_retention_logging",
-                ) as prune,
+                _patched_prune() as prune,
             ):
                 rc = main_mod.main(_helpers._ONCE_ARGS)
                 prune.assert_called_once_with()
@@ -55,10 +62,7 @@ class AnalyticsRetentionLoopWiringTest(unittest.TestCase):
             with (
                 patch.object(main_mod, _helpers._GITHUB_CLIENT_ATTR, side_effect=clients),
                 patch.object(main_mod.workflow, _helpers._TICK_ATTR),
-                patch.object(
-                    main_mod.analytics,
-                    "prune_with_retention_logging",
-                ) as prune,
+                _patched_prune() as prune,
             ):
                 rc = main_mod.main(_helpers._ONCE_ARGS)
                 prune.assert_called_once_with()

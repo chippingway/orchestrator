@@ -1,6 +1,19 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Retention timestamp parsing and kept-record scans."""
+"""What a by-age prune reads before it decides to rewrite anything.
+
+The read half of retention, shared by both JSONL sinks: how a record's age is
+established, what an unreadable one costs, and the split of a file into the
+lines that survive a cutoff and the count that did not. Nothing here opens a
+file for writing, so "is this record expired?" is answered in one place no
+matter which sink asked.
+
+The answer is deliberately conservative. A line that is not JSON, and a record
+whose ``ts`` is missing, not a string, or unparseable, is kept verbatim: a
+prune an operator cannot audit afterwards is worse than a file that keeps a few
+lines nobody can interpret. A naive ``ts`` is read as UTC to match what the
+writer emits.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +28,7 @@ from orchestrator.observability.analytics.recording.events import log
 _KeptRemoved = tuple[list[str], int]
 
 
-def _probe_exists(path: Path) -> bool:
+def probe_exists(path: Path) -> bool:
     """True if `path` exists; False when it is absent or the probe raised.
 
     `Path.exists()` re-raises OSErrors that do not mean "absent" -- e.g.
@@ -31,7 +44,7 @@ def _probe_exists(path: Path) -> bool:
         return False
 
 
-def _prune_timestamp(raw_line: str) -> Optional[datetime]:
+def prune_timestamp(raw_line: str) -> Optional[datetime]:
     """Parse a JSONL record timestamp, returning None for kept malformed data."""
     try:
         record = json.loads(raw_line)
@@ -49,14 +62,14 @@ def _prune_timestamp(raw_line: str) -> Optional[datetime]:
     return timestamp
 
 
-def _normalized_jsonl_line(raw_line: str) -> str:
+def normalized_jsonl_line(raw_line: str) -> str:
     if raw_line.endswith("\n"):
         return raw_line
     return f"{raw_line}\n"
 
 
 @dataclass
-class _PruneScan:
+class PruneScan:
     """Mutable partition of retained and expired JSONL records."""
 
     kept: list[str] = field(default_factory=list)
@@ -65,27 +78,24 @@ class _PruneScan:
     def add(self, raw_line: str, cutoff: datetime) -> None:
         if not raw_line.strip():
             return
-        timestamp = _prune_timestamp(raw_line)
+        timestamp = prune_timestamp(raw_line)
         if timestamp is not None and timestamp < cutoff:
             self.removed += 1
             return
-        self.kept.append(_normalized_jsonl_line(raw_line))
+        self.kept.append(normalized_jsonl_line(raw_line))
 
 
-def _read_kept_records(
+def read_kept_records(
     path: Path,
     cutoff: datetime,
 ) -> Optional[_KeptRemoved]:
     """Split `path`'s lines into (kept, removed_count) by the `cutoff` time.
 
     A record is removed only when its `ts` parses to a time strictly before
-    `cutoff`. Records whose `ts` is missing / non-string / unparseable, and
-    lines that are not valid JSON, are kept verbatim so the prune never
-    silently drops data an operator can clean up; a naive `ts` is read as UTC
-    to match the writer's forward-compat behavior. Returns None when the read
-    itself raises OSError, which the caller turns into a logged no-op.
+    `cutoff`. Returns None when the read itself raises OSError, which the
+    caller turns into a logged no-op.
     """
-    scan = _PruneScan()
+    scan = PruneScan()
     try:
         with path.open("r", encoding="utf-8") as fh:
             for raw_line in fh:

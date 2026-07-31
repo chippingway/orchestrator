@@ -104,8 +104,14 @@ class ForwardedTrajectorySinkTest(unittest.TestCase):
         for analytics in (first, second):
             with self.subTest(instance=id(analytics)):
                 self.assertIs(getattr(analytics, _SINK_LOCK), minted)
+                # The prune's own binding, reached through the function the
+                # package forwards: a reloaded instance's retention owner is
+                # installed under its name only inside that reload.
                 self.assertIs(
-                    analytics._retention._TRAJECTORY_FILE_LOCK, minted,
+                    analytics.prune_trajectory_records.__globals__[
+                        "TRAJECTORY_FILE_LOCK"
+                    ],
+                    minted,
                 )
 
 

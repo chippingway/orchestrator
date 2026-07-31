@@ -65,6 +65,7 @@ from orchestrator import analytics
 sink_lock = sys.modules[
     "orchestrator.observability.analytics.recording.io"
 ].ANALYTICS_FILE_LOCK
+prune_owner = sys.modules["orchestrator.observability.analytics.retention"]
 failures = []
 
 if producer.recording is not owner:
@@ -76,7 +77,7 @@ for name in {recorders!r}:
         failures.append("the facade stopped forwarding " + name)
 if analytics._FILE_LOCK is not sink_lock:
     failures.append("the facade append takes a different sink lock")
-if analytics._retention._FILE_LOCK is not sink_lock:
+if prune_owner.ANALYTICS_FILE_LOCK is not sink_lock:
     failures.append("the prune takes a different sink lock")
 
 # A patch aimed at the canonical owner has to reach the call the producer
@@ -129,7 +130,9 @@ append_record(record)
 
 from orchestrator import analytics
 
-prune_lock = analytics._retention._FILE_LOCK
+prune_lock = sys.modules[
+    "orchestrator.observability.analytics.retention"
+].ANALYTICS_FILE_LOCK
 
 
 def _append_again():
