@@ -129,25 +129,25 @@ Project-local JSONL sink for raw metric records, separate from `EVENT_LOG_PATH`.
 **Module layout.** The append side lives in `orchestrator/observability/analytics/recording/`, whose initializer
 publishes the six recorders a producer calls (`build_record`, `append_record`, `record_stage_enter`,
 `record_stage_evaluation`, `record_repo_skill_catalog`, `record_agent_exit`) as the `events` owner's own objects.
-Beside it are `io.py` (the locked JSONL line both sinks write through), `models.py` (typed requests and the keyword
-signatures a call is bound through), and the four owners one finished agent run is summarized by — `usage.py`,
-`skills.py`, `catalog.py`, and `agent_exit.py`. Every producer names that package:
-`orchestrator/github/client.py`, `orchestrator/workflow/engine/dispatch.py`,
+Beside it are `io.py` (the locked JSONL line both sinks write through, and the one lock each of them holds),
+`models.py` (typed requests and the keyword signatures a call is bound through), and the four owners one finished
+agent run is summarized by — `usage.py`, `skills.py`, `catalog.py`, and `agent_exit.py`. Every producer names that
+package: `orchestrator/github/client.py`, `orchestrator/workflow/engine/dispatch.py`,
 `orchestrator/workflow/engine/usage.py`, and `orchestrator/skills/catalog.py`.
 
 `orchestrator/analytics/__init__.py` stays an import-only compatibility facade re-exporting the same objects. Its
 bootstrap reparses the six sink knobs on every package import and assembles a fresh recorder, trajectory-append, and
 retention set — the recording `events` owner and the trajectory `api` owner are replaced with them — so references held
-across a package reload keep their historical isolation. The recording package above that owner is re-executed in place
+across a package reload keep their historical isolation. The recording package above `events` is re-executed in place
 rather than replaced, so the one module object every producer imported keeps publishing the live recorders, and the
-facade's bindings and a patch aimed at the canonical module stay the same objects whichever import came first. The sink
-lock the append and the prune must share is minted on `recording/io.py`, which no reload rebuilds, so a recorder taken
-off the package before the facade existed still serializes against the prune rather than writing into a file being
-rewritten under it. `_retention.py` retains the established patch/import surfaces; its implementation is split into
-focused `_retention_*` leaves for scanning and atomic rewrites. The read and sync surfaces are separate
-Postgres-facing families:
-`analytics.read` is a manifest-backed lazy facade, while `sync.py`, `connection.py`, `query.py`, `predicates.py`, and
-their private leaves own typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle.
+facade's bindings and a patch aimed at the canonical module stay the same objects whichever import came first. Each
+sink's lock — the object its append and its prune must share — is minted on `recording/io.py`, which no reload
+rebuilds, so an append taken off its owner before the facade existed still serializes against the prune rather than
+writing into a file being rewritten under it. `_retention.py` retains the established patch/import surfaces; its
+implementation is split into focused `_retention_*` leaves for scanning and atomic rewrites. The read and sync
+surfaces are separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py`,
+`connection.py`, `query.py`, `predicates.py`, and their private leaves own typed requests, SQL boundaries, row
+mapping, ingestion, and connection lifecycle.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
