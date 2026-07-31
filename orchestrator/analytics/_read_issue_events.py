@@ -1,46 +1,21 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Per-issue event-trace query and row projection."""
+"""Historical event-trace import site, answered by the query owner.
+
+Both names are bound to the owner's own functions, so the `(repo, issue)` pair
+spliced ahead of the generated predicate and the `id` tie-break that orders two
+events recorded in the same instant hold whichever module a caller names.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Sequence
-
-from orchestrator.analytics._read_raw_values import _float_or_none, _int_or_none
-from orchestrator.observability.analytics.query.conditions import prepend_where_condition
-from orchestrator.observability.analytics.query.execution import ReadQuery
-from orchestrator.observability.analytics.query.filters import WindowFilters
-from orchestrator.observability.analytics.query.predicates import build_window_where
-from orchestrator.observability.analytics.query.run_models import IssueEventRow
+from orchestrator.observability.analytics.query.issue_events import (
+    issue_event_from_row as _issue_event_from_row,
+    issue_event_rows as _issue_event_rows,
+)
 
 
-def _issue_event_from_row(row: Sequence[Any]) -> IssueEventRow:
-    return IssueEventRow(
-        ts=row[0],
-        event=row[1],
-        stage=row[2],
-        duration_s=_float_or_none(row[3]),
-        event_result=row[4],
-        agent_role=row[5],
-        backend=row[6],
-        exit_code=_int_or_none(row[7]),
-        cost_usd=_float_or_none(row[8]),
-    )
-
-
-def _issue_event_rows(
-    query: ReadQuery,
-    filters: WindowFilters,
-    repo: str,
-    issue: int,
-) -> list[IssueEventRow]:
-    where, bindings = build_window_where(filters)
-    where = prepend_where_condition(where, "repo = %s AND issue = %s")
-    rows = query.select(
-        "SELECT ts, event, stage, duration_s, result, "
-        "agent_role, backend, exit_code, cost_usd "
-        f"FROM analytics_events{where} "
-        "ORDER BY ts ASC, id ASC",
-        [repo, int(issue), *bindings],
-    )
-    return [_issue_event_from_row(row) for row in rows]
+_COMPATIBILITY_EXPORTS = (
+    _issue_event_from_row,
+    _issue_event_rows,
+)

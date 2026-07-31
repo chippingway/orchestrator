@@ -1,68 +1,22 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Recent agent-exit row query and projection."""
+"""Historical recent-exit projection import site, answered by the query owner.
+
+Both names are bound to the owner's own functions, so the pinned
+`event = 'agent_exit'`, the binding order it fixes, and the selections that
+leave the table nothing to ask for are decided in one place whichever module a
+caller names.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Sequence
-
-from orchestrator.analytics import _read_query_rows as query_rows
-from orchestrator.analytics._read_raw_values import (
-    _bool_or_none,
-    _empty_filter_selected,
-    _float_or_none,
-    _int_or_none,
+from orchestrator.observability.analytics.query.agent_exits import (
+    agent_exit_from_row as _agent_exit_from_row,
+    recent_agent_exit_rows as _recent_agent_exit_rows,
 )
-from orchestrator.observability.analytics.query.conditions import (
-    agent_event_excluded,
-    prepend_where_condition,
+
+
+_COMPATIBILITY_EXPORTS = (
+    _agent_exit_from_row,
+    _recent_agent_exit_rows,
 )
-from orchestrator.observability.analytics.query.execution import ReadQuery
-from orchestrator.observability.analytics.query.filters import WindowFilters
-from orchestrator.observability.analytics.query.predicates import build_window_where
-from orchestrator.observability.analytics.query.run_models import AgentExitRow
-
-
-def _agent_exit_from_row(row: Sequence[Any]) -> AgentExitRow:
-    query_row = query_rows.agent_exit_row(row)
-    return AgentExitRow(
-        ts=query_row.ts,
-        repo=query_row.repo,
-        issue=int(query_row.issue),
-        stage=query_row.stage,
-        agent_role=query_row.agent_role,
-        backend=query_row.backend,
-        duration_s=_float_or_none(query_row.duration_s),
-        exit_code=_int_or_none(query_row.exit_code),
-        timed_out=_bool_or_none(query_row.timed_out),
-        review_round=_int_or_none(query_row.review_round),
-        retry_count=_int_or_none(query_row.retry_count),
-        input_tokens=_int_or_none(query_row.input_tokens),
-        output_tokens=_int_or_none(query_row.output_tokens),
-        cost_usd=_float_or_none(query_row.cost_usd),
-        cost_source=query_row.cost_source,
-    )
-
-
-def _recent_agent_exit_rows(
-    query: ReadQuery,
-    filters: WindowFilters,
-    limit: int,
-) -> list[AgentExitRow]:
-    if agent_event_excluded(filters.events):
-        return []
-    if _empty_filter_selected(filters.stages):
-        return []
-    where, bindings = build_window_where(filters.without_events())
-    where = prepend_where_condition(where, "event = %s")
-    bindings.insert(0, "agent_exit")
-    bindings.append(int(limit))
-    rows = query.select(
-        "SELECT ts, repo, issue, stage, agent_role, backend, "
-        "duration_s, exit_code, timed_out, review_round, retry_count, "
-        "input_tokens, output_tokens, cost_usd, cost_source "
-        f"FROM analytics_events{where} "
-        "ORDER BY ts DESC LIMIT %s",
-        bindings,
-    )
-    return [_agent_exit_from_row(row) for row in rows]

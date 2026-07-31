@@ -157,9 +157,10 @@ The retention scan and rewrite leaves are deliberately *not* in that rebuilt set
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
 separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py` and the private
 read leaves own the SQL boundaries, row mapping, and ingestion. The filters a read is asked for, the binding of its
-keyword call, the connection lifecycle, the query execution, and the frozen models a read answers with are not among
-them — those belong to `observability/analytics/query/`, and the facade plus the `predicates.py`, `_predicate_*.py`,
-`read_request*.py`, and `read_models*.py` modules forward the historical names to it.
+keyword call, the connection lifecycle, the query execution, the frozen models a read answers with, and the raw reads
+answered off the events table row by row are not among them — those belong to `observability/analytics/query/`, and the
+facade plus the `predicates.py`, `_predicate_*.py`, `read_request*.py`, `read_models*.py`, `read_raw.py`, and the
+seven raw `_read_*.py` leaves forward the historical names to it.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -931,11 +932,12 @@ drill-downs and widgets the rollup cannot reconstruct exactly stay on the base t
 is Streamlit-free so the read path can be wired into any UI.
 
 `read.py` is a manifest-backed lazy facade with a complete `read.pyi`; it owns no query helpers and preserves the exact
-historical object identity, wildcard surface, and `from` imports. `read_raw.py`, `read_rollup.py`, and
-`read_dashboard.py` remain stable family hubs, backed by focused `_read_*` leaves for issue/event reads, summary and
-rollup series, cost/breakdown queries, skill views, and typed query-row conversion. The frozen result models they
-return are declared by the five result-family owners under `observability/analytics/query/` listed below;
-`read_models.py` and the `read_models_*` modules beside it forward the historical names to those owners' own classes.
+historical object identity, wildcard surface, and `from` imports. `read_rollup.py` and `read_dashboard.py` remain
+stable family hubs, backed by focused `_read_*` leaves for summary and rollup series, cost/breakdown queries, and skill
+views. The raw reads are owned by `raw_reads.py` and the projection owners beside it under
+`observability/analytics/query/`, and the frozen result models every family returns by the five result-family owners
+there; `read_raw.py` with the seven raw `_read_*` leaves beneath it, and `read_models.py` with the `read_models_*`
+modules beside it, forward the historical names to those owners' own functions and classes.
 
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
 `observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature
@@ -970,6 +972,20 @@ issue, and traced-event rows (`StageBreakdown`, `EventBreakdown`, `AgentExitRow`
 plus `public_event_result`, the accessor installed as the trace row's `result` property over its stored `event_result`
 column; and `skill_models.py` the skill cells (`SkillTriggerRateRow`, `SkillTriggerMatrixRow`, `SkillAdoptionRow`) with
 the zero-denominator-guarded share each derives.
+
+**Raw-read owners.** `raw_reads.py` owns the six reads answered off `analytics_events` row by row —
+`get_filter_options`, `get_data_extent`, `get_event_breakdown`, `get_recent_agent_exits`, `get_issues`, and
+`get_issue_events` — including the answers that need no database: an unconfigured URL with no caller-owned `conn=`, a
+non-positive `limit`, and a cleared multiselect each return the empty result without dialing, while an unknown
+`sort_by` raises before the connect. Each read hands its filtered window to a projection owner beside it:
+`filter_options.py` (the tagged union behind the five dropdowns, plus the in-Python bucketing and sort it is read back
+through), `event_breakdowns.py` (the per-event count), `agent_exits.py` (the pinned `event = 'agent_exit'` spliced
+ahead of the generated predicate, so its operand binds first and the `LIMIT` last), `issue_summaries.py` (the
+per-`(repo, issue)` aggregate scan, `SORT_BY_LAST_SEEN` / `SORT_BY_COST`, and the SQL ordering each becomes), and
+`issue_events.py` (one issue's trace, `ORDER BY ts ASC, id ASC`). Beneath them, `query_rows.py` names the columns of
+the three widest SELECT lists — recent exits, issue summaries, review-round buckets — padding a fixture row shorter
+than the list to the full width, and `raw_values.py` owns the NULL-preserving scalar coercions plus the probe for a
+cleared multiselect.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is
