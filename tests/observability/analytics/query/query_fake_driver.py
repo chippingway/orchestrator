@@ -27,6 +27,10 @@ _DRIVER = "psycopg"
 # One recorded dial: the URL asked for and the keywords it was asked with.
 _Dial = tuple[Optional[str], dict]
 
+# Canned rows, and the same keyed by a fragment of the scan that asks for them.
+_Rows = tuple[tuple, ...]
+_RoutedRows = dict[str, _Rows]
+
 
 class OperationalError(Exception):
     """Stand-in for `psycopg.OperationalError`, matched by class name."""
@@ -40,11 +44,14 @@ class FakeCursor:
     """Records every (sql, bindings) executed and returns canned rows.
 
     A context manager, so the production `with conn.cursor() as cur:` block
-    works unchanged.
+    works unchanged. The rows are picked at `execute` time rather than at
+    `fetchall`, so a read that runs two scans against one connection reads each
+    one's answer back rather than the last one's.
     """
 
     def __init__(self, conn: FakeConnection) -> None:
         self._conn = conn
+        self._rows: _Rows = ()
 
     def __enter__(self) -> FakeCursor:
         return self
@@ -56,20 +63,40 @@ class FakeCursor:
         self._conn.executed.append((sql, tuple(bindings)))
         if self._conn.raise_on_execute is not None:
             raise self._conn.raise_on_execute
+        self._rows = self._conn.rows_for_scan(sql)
 
     def fetchall(self) -> list[tuple]:
-        return list(self._conn.rows)
+        return list(self._rows)
 
 
 class FakeConnection:
-    """One in-memory connection, counting what the owner did to it."""
+    """One in-memory connection, counting what the owner did to it.
 
-    def __init__(self, rows: tuple[tuple, ...] = ()) -> None:
+    A read that issues one scan is answered with `rows`. A read that issues
+    several -- a catalog beside its runs, a window beside its history -- routes
+    through `rows_for`, keyed by a fragment distinctive enough to name one
+    scan, so a fixture says which answer belongs to which query instead of
+    depending on the order they run in.
+    """
+
+    def __init__(
+        self,
+        rows: _Rows = (),
+        rows_for: Optional[_RoutedRows] = None,
+    ) -> None:
         self.rows = rows
+        self.rows_for = dict(rows_for or {})
         self.executed: list[tuple[str, tuple]] = []
         self.raise_on_execute: Optional[Exception] = None
         self.raise_on_close: Optional[Exception] = None
         self.close_called = 0
+
+    def rows_for_scan(self, sql: str) -> _Rows:
+        """Pick the canned rows for one scan, by the fragment naming it."""
+        for fragment, rows in self.rows_for.items():
+            if fragment in sql:
+                return tuple(rows)
+        return tuple(self.rows)
 
     def cursor(self) -> FakeCursor:
         return FakeCursor(self)

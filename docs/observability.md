@@ -158,10 +158,11 @@ lock off the arguments the entry point hands them, so a second copy would buy no
 separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py` and the private
 read leaves own the SQL boundaries, row mapping, and ingestion. The filters a read is asked for, the binding of its
 keyword call, the connection lifecycle, the query execution, the frozen models a read answers with, the six reads that
-stay on the events table, the seven that scan the daily rollup above it, and the four whose grouping key that rollup
-threw away are not among them — those belong to `observability/analytics/query/`, and the facade plus the
-`predicates.py`, `_predicate_*.py`, `read_request*.py`, `read_models*.py`, `read_raw.py`, `read_rollup.py`, and the
-seven raw, seven rollup, and two breakdown `_read_*.py` leaves forward the historical names to it.
+stay on the events table, the seven that scan the daily rollup above it, the four whose grouping key that rollup threw
+away, and the three answered from a run's `extras` blob are not among them — those belong to
+`observability/analytics/query/`, and the facade plus the `predicates.py`, `_predicate_*.py`, `read_request*.py`,
+`read_models*.py`, `read_raw.py`, `read_rollup.py`, `read_dashboard.py`, and the seven raw, seven rollup, and nine
+breakdown-and-skill `_read_*.py` leaves forward the historical names to it.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -307,7 +308,8 @@ semantics that sit on top of these fields.
 
 The dashboard's **primary** skill metric is per-session *adoption* — for each `(repo, agent_role, backend, skill)`
 cell, what share of the logical agent sessions that had the skill available actually loaded it. It is computed by
-`analytics.read.get_skill_adoption` and rendered by the "Skill adoption" panel; the older per-run trigger views
+`observability/analytics/query/skill_reads.py`'s `get_skill_adoption` and rendered by the "Skill adoption" panel; the
+older per-run trigger views
 (`get_skill_trigger_rates` / `get_skill_trigger_matrix`) sit beneath it as a clearly named invocation-level diagnostic.
 The per-session adoption metric reads the opt-in `agent_exit` skill fields above, so it only carries signal once
 `TRACK_SKILL_TRIGGERS` has recorded a session's available and loaded skills. The invocation-level views degrade more
@@ -933,13 +935,16 @@ drill-downs and widgets the rollup cannot reconstruct exactly stay on the base t
 is Streamlit-free so the read path can be wired into any UI.
 
 `read.py` is a manifest-backed lazy facade with a complete `read.pyi`; it owns no query helpers and preserves the exact
-historical object identity, wildcard surface, and `from` imports. `read_dashboard.py` remains a stable family hub for
-the skill views, backed by focused `_read_*` leaves. The raw, rollup, and breakdown reads are owned by `raw_reads.py`,
-`rollup_reads.py`, and `breakdown_reads.py` with the projection owners beside them under
-`observability/analytics/query/`, and the frozen result models every family returns by the five result-family owners
-there; `read_raw.py` with the seven raw `_read_*` leaves beneath it, `read_rollup.py` with the seven rollup `_read_*`
-leaves beneath it, `read_dashboard.py` with the two breakdown `_read_*` leaves beneath it, and `read_models.py` with
-the `read_models_*` modules beside it, forward the historical names to those owners' own functions and classes.
+historical object identity, wildcard surface, and `from` imports. The raw, rollup, breakdown, and skill reads are
+owned by `raw_reads.py`, `rollup_reads.py`, `breakdown_reads.py`, and `skill_reads.py` with the projection owners
+beside them under `observability/analytics/query/`, and the frozen result models every family returns by the five
+result-family owners there; `read_raw.py` with the seven raw `_read_*` leaves beneath it, `read_rollup.py` with the
+seven rollup `_read_*` leaves beneath it, `read_dashboard.py` with the nine breakdown and skill `_read_*` leaves
+beneath it, and `read_models.py` with the `read_models_*` modules beside it, forward the historical names to those
+owners' own functions and classes. In-repository callers name an owner rather than that forwarding: the dashboard's
+three skill read wrappers (`_dashboard_read_skills.py` and `_read_skill_trigger_rates` beside them) reach
+`skill_reads.py` directly, so `analytics.read` stays a compatibility surface for those three rather than a hop the
+page depends on.
 
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
 `observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature
@@ -1013,12 +1018,26 @@ no-cache split), `cost_coverage.py` (the per-source rollup that keeps `unknown-p
 `backend_tokens.py` (the per-`(day, backend)` token cell), and `hourly_heatmaps.py` (the UTC normalization and the
 bound offset).
 
+**Skill-read owners.** `skill_reads.py` owns the last three — `get_skill_trigger_rates`, `get_skill_trigger_matrix`,
+and `get_skill_adoption`. Their fact is not a column: a skill name, a repository's offered set, and one run's load
+count ride in an `agent_exit` row's `extras` JSONB, which neither the rollup nor the agent-run view carries. All three
+therefore scan `analytics_events` and pin `conditions.py`'s `AGENT_EXIT_CONDITION` themselves, so an events selection
+that excludes `agent_exit` returns without dialing rather than running a query whose two conditions contradict; the
+two capped reads pass a non-positive `limit` through as "every cell". One aggregate owner sits under each:
+`skill_trigger_rates.py` (the whole-cohort denominator, the key-presence probe, and the summed trigger count),
+`skill_matrices.py` (the repository-scoped catalog scan, the window-scoped runs scan, and the zero-padding between
+them), and `skill_adoption.py` (the per-session ratio and the invocation / load / incidental diagnostics beside it).
+Beneath the last, `skill_sessions.py` owns the resume-then-session-then-row-id session key and the two scans' scopes —
+the window one picks which sessions count, the history one drops the start bound and the stage filter while keeping
+the end bound. Beneath both aggregates, `skill_values.py` owns the JSONB name-array coercion, the
+`(repo, role, backend)` cohort with its `"unknown"` bucketing, and the matrix ranking.
+
 Beneath the rollup and breakdown families, `cache_shares.py` owns the token-share SQL the cache / no-cache split is
 weighted by — spelled once for the rollup's `total_*` sums and once for the agent-run view's per-run columns — and
-`row_cells.py` the readings a cell passes through: a positional read with a default for a row narrower than the
-SELECT list, a nullable cost column read as a float, and a driver-widened `day` narrowed back to a date. The
-NULL-preserving float coercion the stage and backend projections share is `raw_values.py`'s, so both sides of the
-read path narrow a nullable duration the same way.
+`row_cells.py` the readings a cell from any family passes through: a positional read with a default for a row
+narrower than the SELECT list, a nullable cost column read as a float, and a driver-widened `day` narrowed back to a
+date. The NULL-preserving float coercion the stage and backend projections share is `raw_values.py`'s, so both sides
+of the read path narrow a nullable duration the same way.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is

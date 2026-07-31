@@ -63,6 +63,20 @@ _HOURLY_HEATMAPS = "orchestrator.observability.analytics.query.hourly_heatmaps"
 
 _REVIEW_ROUNDS = "orchestrator.observability.analytics.query.review_rounds"
 
+_SKILL_ADOPTION = "orchestrator.observability.analytics.query.skill_adoption"
+
+_SKILL_MATRICES = "orchestrator.observability.analytics.query.skill_matrices"
+
+_SKILL_READS = "orchestrator.observability.analytics.query.skill_reads"
+
+_SKILL_SESSIONS = "orchestrator.observability.analytics.query.skill_sessions"
+
+_SKILL_TRIGGER_RATES = (
+    "orchestrator.observability.analytics.query.skill_trigger_rates"
+)
+
+_SKILL_VALUES = "orchestrator.observability.analytics.query.skill_values"
+
 _KPI_TOTALS = "orchestrator.observability.analytics.query.kpi_totals"
 
 _REPO_BREAKDOWNS = "orchestrator.observability.analytics.query.repo_breakdowns"
@@ -308,6 +322,85 @@ _HOURLY_HEATMAP_NAMES = (
     ("_hourly_heatmap_rows", _HOURLY_HEATMAPS, "hourly_heatmap_rows"),
 )
 
+# The three skill reads, read by both checks below for the same reason as the
+# families above them, and the names each of their owners publishes. The leaf
+# that held the finished-run condition published it alone, and the key shapes
+# split across the two owners that answer for them: the cohort and its two
+# cells under the readings owner, the identity column offsets under the
+# sessions one.
+_SKILL_READ_NAMES = (
+    ("get_skill_adoption", _SKILL_READS, "get_skill_adoption"),
+    ("get_skill_trigger_matrix", _SKILL_READS, "get_skill_trigger_matrix"),
+    ("get_skill_trigger_rates", _SKILL_READS, "get_skill_trigger_rates"),
+)
+
+_AGENT_EXIT_CONDITION_NAMES = (
+    ("_AGENT_EXIT_CONDITION", _CONDITIONS, "AGENT_EXIT_CONDITION"),
+)
+
+_SKILL_VALUE_NAMES = (
+    ("_as_skill_names", _SKILL_VALUES, "as_skill_names"),
+    ("_label_or_unknown", _SKILL_VALUES, "label_or_unknown"),
+    ("_row_label", _SKILL_VALUES, "row_label"),
+    ("_skill_cohort", _SKILL_VALUES, "skill_cohort"),
+    ("_skill_matrix_order_key", _SKILL_VALUES, "skill_matrix_order_key"),
+)
+
+_SKILL_KEY_NAMES = (
+    ("_SESSION_ID_INDEX", _SKILL_SESSIONS, "SESSION_ID_INDEX"),
+    ("_SESSION_RESUME_INDEX", _SKILL_SESSIONS, "SESSION_RESUME_INDEX"),
+    ("_SESSION_ROW_INDEX", _SKILL_SESSIONS, "SESSION_ROW_INDEX"),
+    ("_SkillAdoptionKey", _SKILL_VALUES, "SkillAdoptionKey"),
+    ("_SkillCohort", _SKILL_VALUES, "SkillCohort"),
+    ("_SkillMatrixKey", _SKILL_VALUES, "SkillMatrixKey"),
+)
+
+_SKILL_TRIGGER_RATE_NAMES = (
+    (
+        "_skill_trigger_rate_from_row",
+        _SKILL_TRIGGER_RATES,
+        "skill_trigger_rate_from_row",
+    ),
+    ("_skill_trigger_rate_rows", _SKILL_TRIGGER_RATES, "skill_trigger_rate_rows"),
+    ("_skill_trigger_rate_sql", _SKILL_TRIGGER_RATES, "skill_trigger_rate_sql"),
+)
+
+# The two row caps, named apart from the groups they belong to because the
+# dashboard hub published them beside its reads and the leaves beside their
+# aggregates -- so both sites bind the one constant rather than a copy.
+_SKILL_MATRIX_LIMIT_NAME = (
+    "SKILL_MATRIX_ROW_LIMIT", _SKILL_MATRICES, "SKILL_MATRIX_ROW_LIMIT",
+)
+
+_SKILL_ADOPTION_LIMIT_NAME = (
+    "SKILL_ADOPTION_ROW_LIMIT", _SKILL_ADOPTION, "SKILL_ADOPTION_ROW_LIMIT",
+)
+
+_SKILL_MATRIX_NAMES = (
+    _SKILL_MATRIX_LIMIT_NAME,
+    ("_SkillMatrixCounts", _SKILL_MATRICES, "SkillMatrixCounts"),
+    ("_skill_catalog", _SKILL_MATRICES, "skill_catalog"),
+    ("_skill_catalog_rows", _SKILL_MATRICES, "skill_catalog_rows"),
+    ("_skill_run_rows", _SKILL_MATRICES, "skill_run_rows"),
+    ("_skill_trigger_matrix_rows", _SKILL_MATRICES, "skill_trigger_matrix_rows"),
+)
+
+_SKILL_SESSION_NAMES = (
+    ("_SessionEvidence", _SKILL_SESSIONS, "SessionEvidence"),
+    ("_SkillWindowRun", _SKILL_SESSIONS, "SkillWindowRun"),
+    ("_skill_history_rows", _SKILL_SESSIONS, "skill_history_rows"),
+    ("_skill_session_evidence", _SKILL_SESSIONS, "skill_session_evidence"),
+    ("_skill_session_key", _SKILL_SESSIONS, "skill_session_key"),
+    ("_skill_window_run", _SKILL_SESSIONS, "skill_window_run"),
+    ("_skill_window_rows", _SKILL_SESSIONS, "skill_window_rows"),
+)
+
+_SKILL_ADOPTION_NAMES = (
+    _SKILL_ADOPTION_LIMIT_NAME,
+    ("_SkillAdoption", _SKILL_ADOPTION, "SkillAdoption"),
+    ("_skill_adoption_rows", _SKILL_ADOPTION, "skill_adoption_rows"),
+)
+
 _SUMMARY_QUERY_NAMES = (
     ("_build_summary_sql", _SUMMARY_QUERIES, "build_summary_sql"),
     ("_build_summary_where", _SUMMARY_QUERIES, "build_summary_where"),
@@ -354,6 +447,7 @@ _FORWARDED = MappingProxyType({
             *_RAW_READ_NAMES,
             *_ROLLUP_READ_NAMES,
             *_BREAKDOWN_READ_NAMES,
+            *_SKILL_READ_NAMES,
         )
     },
 })
@@ -495,23 +589,34 @@ _FORWARDED_MODULES = MappingProxyType({
         *_AGENT_CACHE_SHARE_NAMES,
         *_REVIEW_ROUND_NAMES,
     ),
-})
-
-# A hub that still owns reads of its own cannot be held to the defines-nothing
-# rule, but every name it publishes beside them has the same contract: the four
-# reads it moved on from have to be the owners' functions, the projections
-# beneath them the ones those reads call, and the cost column a dashboard row
-# reads the one a rollup row reads -- or the families would disagree about what
-# a null cost is worth.
-_FORWARDED_ALIASES = MappingProxyType({
+    # The dashboard hub published the union of both families it held -- the
+    # seven reads, the projections beneath them, and the cost column a
+    # dashboard row is narrowed by -- so the whole union is pinned here.
     "orchestrator.analytics.read_dashboard": (
-        ("_cost_cell", _ROW_CELLS, "cost_cell"),
         *_BREAKDOWN_READ_NAMES,
+        *_SKILL_READ_NAMES,
         ("_backend_daily_token_rows", _BACKEND_TOKENS, "backend_daily_token_rows"),
+        ("_cost_cell", _ROW_CELLS, "cost_cell"),
         ("_cost_coverage_rows", _COST_COVERAGE, "cost_coverage_rows"),
         ("_hourly_heatmap_rows", _HOURLY_HEATMAPS, "hourly_heatmap_rows"),
         ("_review_round_rows", _REVIEW_ROUNDS, "review_round_rows"),
+        _SKILL_ADOPTION_LIMIT_NAME,
+        ("_skill_adoption_rows", _SKILL_ADOPTION, "skill_adoption_rows"),
+        _SKILL_MATRIX_LIMIT_NAME,
+        (
+            "_skill_trigger_matrix_rows",
+            _SKILL_MATRICES,
+            "skill_trigger_matrix_rows",
+        ),
+        ("_skill_trigger_rate_rows", _SKILL_TRIGGER_RATES, "skill_trigger_rate_rows"),
     ),
+    "orchestrator.analytics._read_dashboard_sql": _AGENT_EXIT_CONDITION_NAMES,
+    "orchestrator.analytics._read_skill_adoption": _SKILL_ADOPTION_NAMES,
+    "orchestrator.analytics._read_skill_matrix": _SKILL_MATRIX_NAMES,
+    "orchestrator.analytics._read_skill_sessions": _SKILL_SESSION_NAMES,
+    "orchestrator.analytics._read_skill_trigger_rates": _SKILL_TRIGGER_RATE_NAMES,
+    "orchestrator.analytics._read_skill_types": _SKILL_KEY_NAMES,
+    "orchestrator.analytics._read_skill_values": _SKILL_VALUE_NAMES,
 })
 
 
@@ -559,19 +664,6 @@ class ForwardedFlatModuleTest(unittest.TestCase):
             )
             with self.subTest(module=module_name):
                 self.assertEqual(defined, ())
-
-
-class ForwardedAliasTest(unittest.TestCase):
-    """A hub that still owns reads still resolves its aliases to the owner."""
-
-    def test_each_alias_resolves_to_the_owner(self) -> None:
-        for module_name, forwarded in _FORWARDED_ALIASES.items():
-            for name, owner_name, attribute in forwarded:
-                with self.subTest(module=module_name, name=name):
-                    self.assertIs(
-                        getattr(import_module(module_name), name),
-                        getattr(import_module(owner_name), attribute),
-                    )
 
 
 if __name__ == "__main__":

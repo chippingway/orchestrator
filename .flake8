@@ -208,16 +208,11 @@
 # cell, a cost breakdown, and a run row names the owner of each. Reaching them
 # through a single re-export site instead would put a module that defines
 # nothing between a reader and the class it constructs, so WPS201 is waived for
-# that file. orchestrator/analytics/read_dashboard.py names 14 because it is
-# two things at once: the hub that still owns the three skill reads and their
-# leaves, and the historical import site for the four breakdown reads that
-# moved -- which costs it the breakdown hub plus one projection owner per
-# private name it published while it owned them.
-# orchestrator/analytics/read_rollup.py names 13 for the same second reason: it
-# is the historical import site for a family whose responsibilities now sit
-# under twelve owners, and every name it binds is one a caller already
+# that file. orchestrator/analytics/read_rollup.py names 13 for a second
+# reason: it is the historical import site for a family whose responsibilities
+# now sit under twelve owners, and every name it binds is one a caller already
 # imported, so dropping any of them would break an import rather than tidy a
-# list. WPS201 is waived for those files too.
+# list. WPS201 is waived for that file too.
 #
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
@@ -272,7 +267,6 @@ per-file-ignores =
     orchestrator/workflow/stages/validating/requested_changes.py:WPS201
     orchestrator/workflow/stages/validating/reviewer.py:WPS201
     orchestrator/observability/analytics/config.py:WPS202
-    orchestrator/analytics/read_dashboard.py:WPS201
     orchestrator/analytics/read_rollup.py:WPS201
     orchestrator/observability/analytics/query/rollup_reads.py:WPS201
     orchestrator/agents/sessions.py:WPS202

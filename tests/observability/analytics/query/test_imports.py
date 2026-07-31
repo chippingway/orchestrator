@@ -71,6 +71,18 @@ _HOURLY_HEATMAPS_OWNER = "hourly_heatmaps"
 
 _REVIEW_ROUNDS_OWNER = "review_rounds"
 
+_SKILL_ADOPTION_OWNER = "skill_adoption"
+
+_SKILL_MATRICES_OWNER = "skill_matrices"
+
+_SKILL_READS_OWNER = "skill_reads"
+
+_SKILL_SESSIONS_OWNER = "skill_sessions"
+
+_SKILL_TRIGGER_RATES_OWNER = "skill_trigger_rates"
+
+_SKILL_VALUES_OWNER = "skill_values"
+
 _KPI_TOTALS_OWNER = "kpi_totals"
 
 _REPO_BREAKDOWNS_OWNER = "repo_breakdowns"
@@ -130,6 +142,12 @@ _OWNERS = _MODEL_OWNERS + (
     _REVIEW_ROUNDS_OWNER,
     _ROLLUP_READS_OWNER,
     _ROW_CELLS_OWNER,
+    _SKILL_ADOPTION_OWNER,
+    _SKILL_MATRICES_OWNER,
+    _SKILL_READS_OWNER,
+    _SKILL_SESSIONS_OWNER,
+    _SKILL_TRIGGER_RATES_OWNER,
+    _SKILL_VALUES_OWNER,
     _STAGE_BREAKDOWNS_OWNER,
     _SUMMARY_QUERIES_OWNER,
     _SUMMARY_RESULTS_OWNER,
@@ -159,12 +177,16 @@ _OWNERS = _MODEL_OWNERS + (
 # entry points under rollup_reads with one projection owner per read beneath
 # them, and the breakdown reads the four under breakdown_reads with one owner
 # each beneath them too, plus the cell readings a row from either is narrowed
-# by. Constants -- the rollup view name, the two request field names, the
-# `result` attribute name, the filter-option columns, the two sort modes, the
-# terminal throughput stages, the token-share fragments, the summary cast list,
-# and the signatures themselves -- are not reported here: the check reads
-# `__module__`, which only a class or function carries, which is why the
-# token-share owner declares an empty surface.
+# by. The skill reads are the three under skill_reads, the aggregate owner
+# behind each, the session identity and evidence the adoption one is built on,
+# and the payload coercion, cohort, and ranking all of them share. Constants --
+# the rollup view name, the two request field names, the `result` attribute
+# name, the filter-option columns, the two sort modes, the terminal throughput
+# stages, the token-share fragments, the finished-run condition, the two skill
+# row caps, the session column offsets, the summary cast list, and the
+# signatures themselves -- are not reported here: the check reads `__module__`,
+# which only a class or function carries, which is why the token-share owner
+# declares an empty surface.
 _SURFACES = MappingProxyType({
     _CONNECTIONS_OWNER: (
         "AnalyticsReadError",
@@ -358,6 +380,43 @@ _SURFACES = MappingProxyType({
     _HOURLY_HEATMAPS_OWNER: (
         "hourly_heatmap_from_row",
         "hourly_heatmap_rows",
+    ),
+    _SKILL_READS_OWNER: (
+        "get_skill_adoption",
+        "get_skill_trigger_matrix",
+        "get_skill_trigger_rates",
+    ),
+    _SKILL_TRIGGER_RATES_OWNER: (
+        "skill_trigger_rate_from_row",
+        "skill_trigger_rate_rows",
+        "skill_trigger_rate_sql",
+    ),
+    _SKILL_MATRICES_OWNER: (
+        "SkillMatrixCounts",
+        "skill_catalog",
+        "skill_catalog_rows",
+        "skill_run_rows",
+        "skill_trigger_matrix_rows",
+    ),
+    _SKILL_ADOPTION_OWNER: (
+        "SkillAdoption",
+        "skill_adoption_rows",
+    ),
+    _SKILL_SESSIONS_OWNER: (
+        "SessionEvidence",
+        "SkillWindowRun",
+        "skill_history_rows",
+        "skill_session_evidence",
+        "skill_session_key",
+        "skill_window_rows",
+        "skill_window_run",
+    ),
+    _SKILL_VALUES_OWNER: (
+        "as_skill_names",
+        "label_or_unknown",
+        "row_label",
+        "skill_cohort",
+        "skill_matrix_order_key",
     ),
     _CACHE_SHARES_OWNER: (),
     _ROW_CELLS_OWNER: (

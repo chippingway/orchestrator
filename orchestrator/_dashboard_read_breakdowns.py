@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from orchestrator.analytics import read as analytics_read
 from orchestrator._dashboard_read_core import _read_filtered
+from orchestrator.observability.analytics.query import skill_reads
 
 
 def _read_backend_efficiency(key: tuple):
@@ -36,4 +37,7 @@ def _read_backend_daily_tokens(key: tuple):
 
 
 def _read_skill_trigger_rates(key: tuple):
-    return _read_filtered(analytics_read.get_skill_trigger_rates, key)
+    # Named on the query owner beside its two siblings under
+    # `_dashboard_read_skills`, so no skill read reaches the compatibility
+    # facade the reads around it still resolve through.
+    return _read_filtered(skill_reads.get_skill_trigger_rates, key)

@@ -392,10 +392,11 @@ an unmergeable PR.
   capture); codex's stream carries no such frame, so it is backfilled out-of-band from the filesystem via
   `skills.discovery.discover_local_skills(cwd)` (a scan of the run's worktree `.agents/skills` / `.claude/skills` roots
   plus the global `$CODEX_HOME/skills`). Once on, the dashboard's "Skill adoption" panel leads with per-session adoption
-  (`analytics.read.get_skill_adoption`) — how many logical sessions had each skill available and how many loaded it,
-  with incidental references kept as a separate column that never raises the rate — above a collapsed invocation-level
-  diagnostic carrying the per-role/backend trigger rate (`analytics.read.get_skill_trigger_rates`) and the per-skill
-  trigger matrix (`analytics.read.get_skill_trigger_matrix`) pairing each repo's offered-skill catalog with the skills
+  (`skill_reads.get_skill_adoption`, under `observability/analytics/query/`) — how many logical sessions had each skill
+  available and how many loaded it, with incidental references kept as a separate column that never raises the rate —
+  above a collapsed invocation-level diagnostic carrying the per-role/backend trigger rate
+  (`skill_reads.get_skill_trigger_rates`) and the per-skill trigger matrix
+  (`skill_reads.get_skill_trigger_matrix`) pairing each repo's offered-skill catalog with the skills
   its runs triggered, over the accumulated fields. The `skills_evidence` tier carries only the emitted `confirmed` /
   `inferred` load values; the *incidental* bucket and the read-side *legacy* availability inference (a load whose
   session reported no `skills_available` metadata) are described alongside the per-session adoption semantics in
