@@ -14,8 +14,8 @@ from orchestrator.analytics.predicates import (
     _append_where_condition,
     _build_window_where,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import SkillTriggerRateRow
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _skill_trigger_rate_sql(clause: str) -> str:
@@ -46,7 +46,7 @@ def _skill_trigger_rate_from_row(row: Sequence[Any]) -> SkillTriggerRateRow:
 
 
 def _skill_trigger_rate_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[SkillTriggerRateRow]:
     event_where, event_bindings = _build_window_where(filters.without_events())

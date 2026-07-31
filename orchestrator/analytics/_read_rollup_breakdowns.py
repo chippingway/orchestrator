@@ -20,8 +20,8 @@ from orchestrator.analytics.predicates import (
     _append_where_condition,
     _build_rollup_window_where,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import BackendEfficiencyRow, StageBreakdown
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _stage_breakdown_sql(clause: str) -> str:
@@ -61,7 +61,7 @@ def _stage_breakdown_from_row(row: Sequence[Any]) -> StageBreakdown:
 
 
 def _stage_breakdown_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[StageBreakdown]:
     where, bindings = _build_rollup_window_where(filters)
@@ -108,7 +108,7 @@ def _backend_efficiency_from_row(
 
 
 def _backend_efficiency_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[BackendEfficiencyRow]:
     where, bindings = _build_rollup_window_where(filters.without_events())

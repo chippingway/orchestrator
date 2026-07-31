@@ -24,10 +24,10 @@ time.
   token / cost detail the analytics `agent_exit` record carries.
 
 Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners,
-the analytics configuration, recording, retention, and trajectory-sink owners (`analytics/config.py`,
-`analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`), and the packages the rest of the
-analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner
-in that tree, the module named for it below stays the import site. See
+the analytics configuration, recording, retention, trajectory-sink, and read-connection owners (`analytics/config.py`,
+`analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`, `analytics/query/`), and the packages the
+rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility
+has an owner in that tree, the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -155,9 +155,10 @@ and its prune must share — is minted on `recording/io.py`, which no reload reb
 before the facade existed still serializes against the prune rather than writing into a file being rewritten under it.
 The retention scan and rewrite leaves are deliberately *not* in that rebuilt set: they read every path, window, and
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
-separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py`, `connection.py`,
-`query.py`, `predicates.py`, and their private leaves own typed requests, SQL boundaries, row mapping, ingestion, and
-connection lifecycle.
+separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py`, `predicates.py`,
+and their private leaves own typed requests, SQL boundaries, row mapping, and ingestion. Connection lifecycle and query
+execution are no longer among them — those belong to `observability/analytics/query/`, and the facade forwards the
+historical names to it.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -937,9 +938,18 @@ the `read_models_*` modules and re-exported through `read_models.py`.
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`.
 `read_request.py` binds every historical keyword signature into that typed request before the family leaf executes, so
 existing calls and error behavior are unchanged while implementation helpers no longer thread large argument lists.
-`connection.py`, `query.py`, and `predicates.py` remain the stable plumbing hubs over focused connection,
-query, and predicate leaves; both connection paths resolve a caller's omitted `db_url=` through
-`observability/analytics/config.py`'s `resolve_db_url`, so the URL-source policy has one home.
+`predicates.py` remains the stable plumbing hub over focused predicate leaves, and every family leaf reaches
+`observability/analytics/query/execution.py`'s `ReadQuery` for the connection inputs one read carries. Both connection
+paths resolve a caller's omitted `db_url=` through `observability/analytics/config.py`'s `resolve_db_url`, so the
+URL-source policy has one home.
+
+**Connection owners.** `observability/analytics/query/` splits the connection half by what each owner decides.
+`connections.py` decides what a read dials with — the deferred psycopg import, the per-query and persistent connect
+factories over it, `AnalyticsReadError`, and the two judgments a caller makes about a socket rather than a query
+(whether a close failed, whether an escaped error means the socket is gone). `connection_cache.py` decides how long a
+socket lives: the thread-local entry, the URL it is keyed on, the two evictions, and the `analytics_connection` /
+`close_thread_local_connection` pair over them. `execution.py` decides whose connection a SELECT runs on, and closes
+only the descriptor it opened itself.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is
@@ -1046,7 +1056,7 @@ bounds collapse to day granularity (the rollup carries no finer resolution), but
 short-circuits every function to an empty / zero-valued result with no connection attempt, mirroring the sync's no-op
 contract. Connection or query failures (driver-level psycopg errors, schema mismatches, network unreachable) are wrapped
 in a single `AnalyticsReadError` whose `__cause__` preserves the underlying exception. The psycopg import is deferred to
-call time inside `_default_connect`; tests inject a fake `connect(db_url) -> connection` factory.
+call time inside `default_connect`; tests inject a fake `connect(db_url) -> connection` factory.
 
 Every public reader accepts an optional `conn=` so a caller (typically the dashboard, inside an `analytics_connection`
 scope) can run many reads on a single shared connection instead of paying the ~1 s psycopg handshake per call; absent

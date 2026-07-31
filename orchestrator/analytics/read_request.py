@@ -8,13 +8,13 @@ import inspect
 from typing import Any
 
 from orchestrator.analytics.predicates import _WindowFilters
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_request_models import (
     ReadConnection,
     ReadFilters,
     ReadOptions,
     ReadRequest,
 )
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 LIMIT_FIELD = "limit"
@@ -110,10 +110,10 @@ def bind_read_request(
     )
 
 
-def resolve_read_query(request: ReadRequest) -> _ReadQuery:
+def resolve_read_query(request: ReadRequest) -> ReadQuery:
     """Resolve one request's configured or caller-owned connection."""
     source = request.connection
-    return _ReadQuery.resolve(source.db_url, source.connect, source.conn)
+    return ReadQuery.resolve(source.db_url, source.connect, source.conn)
 
 
 def window_filters(

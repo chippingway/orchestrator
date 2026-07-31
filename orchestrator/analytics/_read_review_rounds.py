@@ -12,8 +12,8 @@ from orchestrator.analytics.predicates import (
     _append_where_condition,
     _build_view_window_where,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import ReviewRoundBucketRow
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 _AGENT_CACHE_TOKENS_SQL = (
     "(COALESCE(cached_tokens, 0) + COALESCE(cache_read_tokens, 0) + COALESCE(cache_write_tokens, 0))"
@@ -99,7 +99,7 @@ def _review_round_from_row(row: Sequence[Any]) -> ReviewRoundBucketRow:
 
 
 def _review_round_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[ReviewRoundBucketRow]:
     view_where, view_bindings = _build_view_window_where(filters)

@@ -19,8 +19,8 @@ from orchestrator.analytics.predicates import (
     _build_window_where,
     _prepend_where_condition,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import AgentExitRow
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _agent_exit_from_row(row: Sequence[Any]) -> AgentExitRow:
@@ -45,7 +45,7 @@ def _agent_exit_from_row(row: Sequence[Any]) -> AgentExitRow:
 
 
 def _recent_agent_exit_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
     limit: int,
 ) -> list[AgentExitRow]:

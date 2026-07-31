@@ -11,7 +11,7 @@ from orchestrator.analytics.predicates import (
     _WindowFilters,
     _build_rollup_window_where,
 )
-from orchestrator.analytics.query import _ReadQuery
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _build_summary_where(
@@ -68,7 +68,7 @@ def _build_summary_sql(where_clause: str) -> str:
 
 
 def _query_summary_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[tuple]:
     """Execute one summary query using the requested connection path."""

@@ -23,14 +23,14 @@ from orchestrator.analytics.predicates import (
     _append_where_condition,
     _build_window_where,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import SkillTriggerMatrixRow
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 SKILL_MATRIX_ROW_LIMIT = 100
 
 
 def _skill_catalog_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[tuple]:
     catalog_where, catalog_bindings = _build_window_where(filters.catalog_scope())
@@ -56,7 +56,7 @@ def _skill_catalog(rows: Sequence[tuple]) -> dict[str, set[str]]:
 
 
 def _skill_run_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[tuple]:
     run_where, run_bindings = _build_window_where(filters.without_events())
@@ -119,7 +119,7 @@ class _SkillMatrixCounts:
 
 
 def _skill_trigger_matrix_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
     limit: int,
 ) -> list[SkillTriggerMatrixRow]:

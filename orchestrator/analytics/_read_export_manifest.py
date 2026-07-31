@@ -8,19 +8,6 @@ from orchestrator._compat_exports import export_group
 
 EXPORTS = (
     *export_group(
-        "orchestrator.analytics.connection",
-        (
-            ("AnalyticsReadError", "AnalyticsReadError"),
-            ("analytics_connection", "analytics_connection"),
-            ("close_thread_local_connection", "close_thread_local_connection"),
-            ("_close_quietly", "_close_quietly"),
-            ("_default_connect", "_default_connect"),
-            ("_default_persistent_connect", "_default_persistent_connect"),
-            ("_is_broken_connection_exc", "_is_broken_connection_exc"),
-            ("_thread_local", "_thread_local"),
-        ),
-    ),
-    *export_group(
         "orchestrator.analytics.read_dashboard",
         (
             ("get_backend_daily_tokens", "get_backend_daily_tokens"),
@@ -99,6 +86,28 @@ EXPORTS = (
             ("get_summary", "get_summary"),
             ("get_throughput_breakdown", "get_throughput_breakdown"),
             ("get_time_series", "get_time_series"),
+        ),
+    ),
+    # The connection half of this surface answers off the canonical owners,
+    # under the underscore-prefixed names the facade published them as: a
+    # historical private name is what a caller already imported, and the owner
+    # it resolves to is where the behavior is now maintained.
+    *export_group(
+        "orchestrator.observability.analytics.query.connections",
+        (
+            ("AnalyticsReadError", "AnalyticsReadError"),
+            ("_close_quietly", "close_quietly"),
+            ("_default_connect", "default_connect"),
+            ("_default_persistent_connect", "default_persistent_connect"),
+            ("_is_broken_connection_exc", "is_broken_connection_exc"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.observability.analytics.query.connection_cache",
+        (
+            ("analytics_connection", "analytics_connection"),
+            ("close_thread_local_connection", "close_thread_local_connection"),
+            ("_thread_local", "thread_local"),
         ),
     ),
 )

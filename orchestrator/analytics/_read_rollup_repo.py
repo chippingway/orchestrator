@@ -14,12 +14,12 @@ from orchestrator.analytics.predicates import (
     _build_rollup_window_where,
     _prepend_where_condition,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import RepoBreakdownRow, ThroughputDayRow
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _repo_breakdown_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[RepoBreakdownRow]:
     where, bindings = _build_rollup_window_where(filters)
@@ -73,7 +73,7 @@ def _throughput_from_row(row: Sequence[Any]) -> ThroughputDayRow:
 
 
 def _throughput_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[ThroughputDayRow]:
     if filters.events is not None and "stage_enter" not in filters.events:
