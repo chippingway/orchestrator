@@ -66,8 +66,8 @@ EXPORTS = (
             ("SkillTriggerRateRow", "SkillTriggerRateRow"),
         ),
     ),
-    # The raw reads answer off the canonical owners too, so a call made
-    # through this facade runs the same SQL and short circuits as one made
+    # The raw and rollup reads answer off the canonical owners too, so a call
+    # made through this facade runs the same SQL and short circuits as one made
     # through the query package directly.
     *export_group(
         "orchestrator.observability.analytics.query.issue_summaries",
@@ -88,7 +88,7 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.analytics.read_rollup",
+        "orchestrator.observability.analytics.query.rollup_reads",
         (
             ("get_backend_efficiency", "get_backend_efficiency"),
             ("get_kpi_prev", "get_kpi_prev"),

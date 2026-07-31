@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Analytics repository, cost-coverage, and review-round read tests."""
+"""Analytics cost-coverage and review-round read tests."""
 
 import unittest
 
@@ -15,7 +15,6 @@ from tests.analytics_assertions import (
     assert_sql_fragments,
 )
 
-_PER_REPO_ROWS_EVENTS = 30
 _PRICE_PRESERVED_VERBATIM_TOTAL_TOKENS = 800_000
 _PRICE_PRESERVED_VERBATIM_TOTAL_T_SECONDARY = 60_000
 
@@ -26,66 +25,10 @@ _STAGE_ENTER = "stage_enter"
 _AGENT_RUNS_VIEW = "analytics_agent_runs"
 
 
-_ROLLUP_SCAN = "FROM analytics_daily_rollup"
-
-
 _UNKNOWN = "unknown"
 
 
 _UNKNOWN_PRICE = "unknown-price"
-
-
-class RepoBreakdownTest(unittest.TestCase):
-    """`get_repo_breakdown` reads the base table so the standard
-    event/stage/date/repo/issue filter shape applies (no agent_runs
-    short-circuit)."""
-
-    def test_unset_db_url_returns_empty(self) -> None:
-        analytics_read = _reload_read(db_url="")
-        self.assertEqual(
-            analytics_read.get_repo_breakdown(
-                connect=lambda url: _FakeConnection(),
-            ),
-            [],
-        )
-
-    def test_per_repo_rows(self) -> None:
-        analytics_read = _reload_read()
-        conn = _FakeConnection()
-        conn.rows_for = {
-            "GROUP BY repo": [
-                ("owner/a", 5, 30, 4, 0.5),
-                ("owner/b", 2, 10, 1, 0.1),
-            ],
-        }
-        rows = analytics_read.get_repo_breakdown(connect=conn.as_connect)
-        assert_row_fields(
-            self,
-            rows[0],
-            {
-                "repo": "owner/a",
-                "issues": 5,
-                "events": _PER_REPO_ROWS_EVENTS,
-                "agent_exits": 4,
-                "total_cost_usd": 0.5,
-            },
-        )
-        sql, _ = conn.first_query
-        # GROUP BY repo with distinct issue count per row -- safe
-        # because rollup rows are already scoped to one repo per bucket
-        # and the rollup key carries `issue`.
-        self.assertIn("COUNT(DISTINCT issue)", sql)
-        self.assertIn(_ROLLUP_SCAN, sql)
-
-    def test_event_filter_threaded(self) -> None:
-        # `get_repo_breakdown` honors the standard event filter because
-        # it reads the base table (which carries an `event` column).
-        # Cleared multiselect -> FALSE predicate.
-        analytics_read = _reload_read()
-        conn = _FakeConnection()
-        analytics_read.get_repo_breakdown(events=[], connect=conn.as_connect)
-        sql, _ = conn.first_query
-        self.assertIn("FALSE", sql)
 
 
 class CostCoverageTest(unittest.TestCase):

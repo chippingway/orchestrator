@@ -57,6 +57,28 @@ _RAW_READS_OWNER = "raw_reads"
 
 _RAW_VALUES_OWNER = "raw_values"
 
+_BACKEND_EFFICIENCY_OWNER = "backend_efficiency"
+
+_CACHE_SHARES_OWNER = "cache_shares"
+
+_KPI_TOTALS_OWNER = "kpi_totals"
+
+_REPO_BREAKDOWNS_OWNER = "repo_breakdowns"
+
+_ROLLUP_READS_OWNER = "rollup_reads"
+
+_ROW_CELLS_OWNER = "row_cells"
+
+_STAGE_BREAKDOWNS_OWNER = "stage_breakdowns"
+
+_SUMMARY_QUERIES_OWNER = "summary_queries"
+
+_SUMMARY_RESULTS_OWNER = "summary_results"
+
+_THROUGHPUT_DAYS_OWNER = "throughput_days"
+
+_TIME_SERIES_OWNER = "time_series"
+
 # The result families, kept as their own group because what they must not do is
 # checked separately from what they answer for.
 _MODEL_OWNERS = (
@@ -72,6 +94,8 @@ _MODEL_OWNERS = (
 # against.
 _OWNERS = _MODEL_OWNERS + (
     _AGENT_EXITS_OWNER,
+    _BACKEND_EFFICIENCY_OWNER,
+    _CACHE_SHARES_OWNER,
     _CONDITIONS_OWNER,
     _CONNECTION_CACHE_OWNER,
     _CONNECTIONS_OWNER,
@@ -81,12 +105,21 @@ _OWNERS = _MODEL_OWNERS + (
     _FILTERS_OWNER,
     _ISSUE_EVENTS_OWNER,
     _ISSUE_SUMMARIES_OWNER,
+    _KPI_TOTALS_OWNER,
     _PREDICATES_OWNER,
     _QUERY_ROWS_OWNER,
     _RAW_READS_OWNER,
     _RAW_VALUES_OWNER,
+    _REPO_BREAKDOWNS_OWNER,
     _REQUEST_MODELS_OWNER,
     _REQUESTS_OWNER,
+    _ROLLUP_READS_OWNER,
+    _ROW_CELLS_OWNER,
+    _STAGE_BREAKDOWNS_OWNER,
+    _SUMMARY_QUERIES_OWNER,
+    _SUMMARY_RESULTS_OWNER,
+    _THROUGHPUT_DAYS_OWNER,
+    _TIME_SERIES_OWNER,
 )
 
 # What each owner answers for, declared rather than discovered so a new public
@@ -107,11 +140,15 @@ _OWNERS = _MODEL_OWNERS + (
 # `result` alias, and the skill cells. The raw reads are the six public
 # entry points under raw_reads, one projection owner per family beneath them,
 # the named rows the widest SELECT lists are read back through, and the
-# coercions a raw column is narrowed by. Constants -- the rollup view name, the
-# two request field names, the `result` attribute name, the filter-option
-# columns, the two sort modes, and the signatures themselves -- are not
-# reported here: the check reads `__module__`, which only a class or function
-# carries.
+# coercions a raw column is narrowed by. The rollup reads are the seven public
+# entry points under rollup_reads with one projection owner per read beneath
+# them, plus the cell readings a rollup row is narrowed by. Constants -- the
+# rollup view name, the two request field names, the `result` attribute name,
+# the filter-option columns, the two sort modes, the terminal throughput
+# stages, the token-share fragments, the summary cast list, and the signatures
+# themselves -- are not reported here: the check reads `__module__`, which only
+# a class or function carries, which is why the token-share owner declares an
+# empty surface.
 _SURFACES = MappingProxyType({
     _CONNECTIONS_OWNER: (
         "AnalyticsReadError",
@@ -235,6 +272,59 @@ _SURFACES = MappingProxyType({
         "float_or_none",
         "int_or_none",
         "row_int",
+    ),
+    _ROLLUP_READS_OWNER: (
+        "get_backend_efficiency",
+        "get_kpi_prev",
+        "get_repo_breakdown",
+        "get_stage_breakdown",
+        "get_summary",
+        "get_throughput_breakdown",
+        "get_time_series",
+    ),
+    _SUMMARY_QUERIES_OWNER: (
+        "build_summary_sql",
+        "build_summary_where",
+        "query_summary_rows",
+    ),
+    _SUMMARY_RESULTS_OWNER: (
+        "ordered_summary_counts",
+        "summary_count_order",
+        "summary_from_rows",
+        "summary_total_values",
+        "summary_totals_row",
+    ),
+    _KPI_TOTALS_OWNER: (
+        "kpi_prev_sql",
+        "kpi_prev_summary",
+    ),
+    _TIME_SERIES_OWNER: (
+        "time_series_from_row",
+        "time_series_rows",
+    ),
+    _STAGE_BREAKDOWNS_OWNER: (
+        "stage_breakdown_from_row",
+        "stage_breakdown_rows",
+        "stage_breakdown_sql",
+    ),
+    _BACKEND_EFFICIENCY_OWNER: (
+        "backend_efficiency_from_row",
+        "backend_efficiency_rows",
+        "backend_efficiency_sql",
+    ),
+    _REPO_BREAKDOWNS_OWNER: (
+        "repo_breakdown_rows",
+    ),
+    _THROUGHPUT_DAYS_OWNER: (
+        "selected_throughput_stages",
+        "throughput_from_row",
+        "throughput_rows",
+    ),
+    _CACHE_SHARES_OWNER: (),
+    _ROW_CELLS_OWNER: (
+        "cost_cell",
+        "day_value",
+        "row_value",
     ),
 })
 

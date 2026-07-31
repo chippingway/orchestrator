@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from orchestrator.analytics._read_dashboard_sql import _AGENT_EXIT_CONDITION
-from orchestrator.analytics._read_row_values import _row_value
 from orchestrator.analytics._read_skill_values import (
     _as_skill_names,
     _skill_cohort,
@@ -22,6 +21,7 @@ from orchestrator.observability.analytics.query.conditions import append_where_c
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
+from orchestrator.observability.analytics.query.row_cells import row_value
 from orchestrator.observability.analytics.query.skill_models import SkillTriggerMatrixRow
 
 SKILL_MATRIX_ROW_LIMIT = 100
@@ -48,7 +48,7 @@ def _skill_catalog(rows: Sequence[tuple]) -> dict[str, set[str]]:
         if row[0] is None:
             continue
         repo = str(row[0])
-        names = _as_skill_names(_row_value(row, 1, None))
+        names = _as_skill_names(row_value(row, 1, None))
         catalog.setdefault(repo, set()).update(names)
     return catalog
 
@@ -82,7 +82,7 @@ class _SkillMatrixCounts:
         for row in rows:
             cohort = _skill_cohort(row)
             counts.cohort_runs[cohort] = counts.cohort_runs.get(cohort, 0) + 1
-            for skill in set(_as_skill_names(_row_value(row, 3, None))):
+            for skill in set(_as_skill_names(row_value(row, 3, None))):
                 key = (*cohort, skill)
                 counts.skill_runs[key] = counts.skill_runs.get(key, 0) + 1
         return counts

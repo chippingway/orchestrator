@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from typing import Any, Sequence
 
 from orchestrator.analytics._read_dashboard_sql import _AGENT_EXIT_CONDITION
-from orchestrator.analytics._read_row_values import _row_value
 from orchestrator.analytics._read_skill_values import (
     _as_skill_names,
     _skill_cohort,
@@ -23,6 +22,7 @@ from orchestrator.observability.analytics.query.conditions import append_where_c
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
+from orchestrator.observability.analytics.query.row_cells import row_value
 
 
 def _skill_session_key(row: Sequence[Any]) -> str:
@@ -36,13 +36,13 @@ def _skill_session_key(row: Sequence[Any]) -> str:
     single anonymous bucket. The primary key is stable across the window
     and history scans, so a shared ID-less row keys the same in both.
     """
-    resume = _row_value(row, _SESSION_RESUME_INDEX, None)
+    resume = row_value(row, _SESSION_RESUME_INDEX, None)
     if isinstance(resume, str) and resume:
         return resume
-    session = _row_value(row, _SESSION_ID_INDEX, None)
+    session = row_value(row, _SESSION_ID_INDEX, None)
     if isinstance(session, str) and session:
         return session
-    return f"row:{_row_value(row, _SESSION_ROW_INDEX, None)}"
+    return f"row:{row_value(row, _SESSION_ROW_INDEX, None)}"
 
 
 @dataclass
@@ -108,8 +108,8 @@ def _skill_window_run(row: Sequence[Any]) -> _SkillWindowRun:
     return _SkillWindowRun(
         session_key=_skill_session_key(row),
         cohort=_skill_cohort(row),
-        triggered=frozenset(_as_skill_names(_row_value(row, 6, None))),
-        incidental=frozenset(_as_skill_names(_row_value(row, 7, None))),
+        triggered=frozenset(_as_skill_names(row_value(row, 6, None))),
+        incidental=frozenset(_as_skill_names(row_value(row, 7, None))),
     )
 
 
@@ -180,8 +180,8 @@ def _skill_session_evidence(
         if session is None:
             continue
         session.observe(
-            available=_as_skill_names(_row_value(row, 6, None)),
-            available_present=bool(_row_value(row, 7, False)),
-            triggered=_as_skill_names(_row_value(row, 8, None)),
+            available=_as_skill_names(row_value(row, 6, None)),
+            available_present=bool(row_value(row, 7, False)),
+            triggered=_as_skill_names(row_value(row, 8, None)),
         )
     return evidence

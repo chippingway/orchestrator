@@ -1,31 +1,28 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Typed scalar access at analytics row boundaries."""
+"""Historical row-cell import site, answered by the query owners.
+
+The four names are bound to the owners' own functions, so what a short row, a
+null cost, and a widened `day` column read back as is decided once whichever
+module a caller names. The float coercion is the raw-value owner's, because a
+NULL that has to stay `None` reads the same on either side of the rollup.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, Optional, Sequence
+from orchestrator.observability.analytics.query.raw_values import (
+    float_or_none as _float_or_none,
+)
+from orchestrator.observability.analytics.query.row_cells import (
+    cost_cell as _cost_cell,
+    day_value as _day_value,
+    row_value as _row_value,
+)
 
 
-def _row_value(row: Sequence[Any], index: int, default: Any = 0) -> Any:
-    if len(row) <= index:
-        return default
-    return row[index]
-
-
-def _cost_cell(row: Sequence[Any], index: int) -> float:
-    """Read a nullable USD cost column as a float, treating null/missing as zero."""
-    return float(_row_value(row, index) or 0)
-
-
-def _day_value(day: Any) -> Any:
-    if isinstance(day, datetime):
-        return day.date()
-    return day
-
-
-def _float_or_none(raw: Any) -> Optional[float]:
-    if raw is None:
-        return None
-    return float(raw)
+_COMPATIBILITY_EXPORTS = (
+    _cost_cell,
+    _day_value,
+    _float_or_none,
+    _row_value,
+)

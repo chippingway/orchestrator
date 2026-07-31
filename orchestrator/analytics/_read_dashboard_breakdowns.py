@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from orchestrator.analytics._read_row_values import _day_value, _row_value
 from orchestrator.observability.analytics.query.activity_models import (
     BackendDailyTokensRow,
     HourlyHeatmapPoint,
@@ -18,13 +17,14 @@ from orchestrator.observability.analytics.query.predicates import (
     build_view_window_where,
     build_window_where,
 )
+from orchestrator.observability.analytics.query.row_cells import day_value, row_value
 
 
 def _cost_coverage_from_row(row: Sequence[Any]) -> CostCoverageRow:
     return CostCoverageRow(
         cost_source=str(row[0]),
         runs=int(row[1] or 0),
-        total_tokens=int(_row_value(row, 2) or 0),
+        total_tokens=int(row_value(row, 2) or 0),
     )
 
 
@@ -54,7 +54,7 @@ def _backend_daily_tokens_from_row(
     row: Sequence[Any],
 ) -> BackendDailyTokensRow:
     return BackendDailyTokensRow(
-        day=_day_value(row[0]),
+        day=day_value(row[0]),
         backend=str(row[1]),
         total_tokens=int(row[2] or 0),
     )
@@ -87,7 +87,7 @@ def _hourly_heatmap_from_row(row: Sequence[Any]) -> HourlyHeatmapPoint:
         weekday=int(row[0]),
         hour=int(row[1]),
         count=int(row[2] or 0),
-        total_tokens=int(_row_value(row, 3) or 0),
+        total_tokens=int(row_value(row, 3) or 0),
     )
 
 

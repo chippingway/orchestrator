@@ -49,6 +49,28 @@ _RAW_READS = "orchestrator.observability.analytics.query.raw_reads"
 
 _RAW_VALUES = "orchestrator.observability.analytics.query.raw_values"
 
+_BACKEND_EFFICIENCY = "orchestrator.observability.analytics.query.backend_efficiency"
+
+_CACHE_SHARES = "orchestrator.observability.analytics.query.cache_shares"
+
+_KPI_TOTALS = "orchestrator.observability.analytics.query.kpi_totals"
+
+_REPO_BREAKDOWNS = "orchestrator.observability.analytics.query.repo_breakdowns"
+
+_ROLLUP_READS = "orchestrator.observability.analytics.query.rollup_reads"
+
+_ROW_CELLS = "orchestrator.observability.analytics.query.row_cells"
+
+_STAGE_BREAKDOWNS = "orchestrator.observability.analytics.query.stage_breakdowns"
+
+_SUMMARY_QUERIES = "orchestrator.observability.analytics.query.summary_queries"
+
+_SUMMARY_RESULTS = "orchestrator.observability.analytics.query.summary_results"
+
+_THROUGHPUT_DAYS = "orchestrator.observability.analytics.query.throughput_days"
+
+_TIME_SERIES = "orchestrator.observability.analytics.query.time_series"
+
 # The result classes each family owner defines, named once and read by both
 # checks below: a page unpacks a row off the facade and constructs the empty
 # shape off a flat module, and an `isinstance` between the two has to hold.
@@ -165,6 +187,91 @@ _RAW_VALUE_NAMES = (
     ("_row_int", _RAW_VALUES, "row_int"),
 )
 
+# The seven rollup reads, named once and read by both checks below for the same
+# reason as the raw six: a page calls one off the facade, and the call has to
+# reach the owner's own function or a fix to the SQL under `query` would leave
+# the facade running the old one.
+_ROLLUP_READ_NAMES = (
+    ("get_backend_efficiency", _ROLLUP_READS, "get_backend_efficiency"),
+    ("get_kpi_prev", _ROLLUP_READS, "get_kpi_prev"),
+    ("get_repo_breakdown", _ROLLUP_READS, "get_repo_breakdown"),
+    ("get_stage_breakdown", _ROLLUP_READS, "get_stage_breakdown"),
+    ("get_summary", _ROLLUP_READS, "get_summary"),
+    ("get_throughput_breakdown", _ROLLUP_READS, "get_throughput_breakdown"),
+    ("get_time_series", _ROLLUP_READS, "get_time_series"),
+)
+
+# The names each rollup leaf publishes, grouped by the owner that defines them.
+# The hub above the leaves republishes every one under the same private
+# spelling, so a caller reaching either the leaf or the hub lands on the one
+# function the rollup families call.
+_STAGE_BREAKDOWN_NAMES = (
+    ("_stage_breakdown_from_row", _STAGE_BREAKDOWNS, "stage_breakdown_from_row"),
+    ("_stage_breakdown_rows", _STAGE_BREAKDOWNS, "stage_breakdown_rows"),
+    ("_stage_breakdown_sql", _STAGE_BREAKDOWNS, "stage_breakdown_sql"),
+)
+
+_BACKEND_EFFICIENCY_NAMES = (
+    (
+        "_backend_efficiency_from_row",
+        _BACKEND_EFFICIENCY,
+        "backend_efficiency_from_row",
+    ),
+    ("_backend_efficiency_rows", _BACKEND_EFFICIENCY, "backend_efficiency_rows"),
+    ("_backend_efficiency_sql", _BACKEND_EFFICIENCY, "backend_efficiency_sql"),
+)
+
+_CACHE_SHARE_NAMES = (
+    ("_ROLLUP_ALL_TOKENS_SQL", _CACHE_SHARES, "ROLLUP_ALL_TOKENS_SQL"),
+    ("_ROLLUP_CACHE_FRACTION_SQL", _CACHE_SHARES, "ROLLUP_CACHE_FRACTION_SQL"),
+    ("_ROLLUP_CACHE_TOKENS_SQL", _CACHE_SHARES, "ROLLUP_CACHE_TOKENS_SQL"),
+)
+
+_REPO_BREAKDOWN_NAMES = (
+    ("_repo_breakdown_rows", _REPO_BREAKDOWNS, "repo_breakdown_rows"),
+)
+
+_THROUGHPUT_NAMES = (
+    ("_THROUGHPUT_RESOLVED_STAGES", _THROUGHPUT_DAYS, "THROUGHPUT_RESOLVED_STAGES"),
+    ("_selected_throughput_stages", _THROUGHPUT_DAYS, "selected_throughput_stages"),
+    ("_throughput_from_row", _THROUGHPUT_DAYS, "throughput_from_row"),
+    ("_throughput_rows", _THROUGHPUT_DAYS, "throughput_rows"),
+)
+
+_KPI_TOTAL_NAMES = (
+    ("_kpi_prev_sql", _KPI_TOTALS, "kpi_prev_sql"),
+    ("_kpi_prev_summary", _KPI_TOTALS, "kpi_prev_summary"),
+)
+
+_TIME_SERIES_NAMES = (
+    ("_time_series_from_row", _TIME_SERIES, "time_series_from_row"),
+    ("_time_series_rows", _TIME_SERIES, "time_series_rows"),
+)
+
+_SUMMARY_QUERY_NAMES = (
+    ("_build_summary_sql", _SUMMARY_QUERIES, "build_summary_sql"),
+    ("_build_summary_where", _SUMMARY_QUERIES, "build_summary_where"),
+    ("_query_summary_rows", _SUMMARY_QUERIES, "query_summary_rows"),
+)
+
+_SUMMARY_RESULT_NAMES = (
+    ("_SUMMARY_TOTAL_FIELD_CASTS", _SUMMARY_RESULTS, "SUMMARY_TOTAL_FIELD_CASTS"),
+    ("_ordered_summary_counts", _SUMMARY_RESULTS, "ordered_summary_counts"),
+    ("_summary_count_order", _SUMMARY_RESULTS, "summary_count_order"),
+    ("_summary_from_rows", _SUMMARY_RESULTS, "summary_from_rows"),
+    ("_summary_total_values", _SUMMARY_RESULTS, "summary_total_values"),
+    ("_summary_totals_row", _SUMMARY_RESULTS, "summary_totals_row"),
+)
+
+# The cell readings split across two owners: the three a rollup row is narrowed
+# by, and the float coercion the raw owner answers for on both sides.
+_ROW_CELL_NAMES = (
+    ("_cost_cell", _ROW_CELLS, "cost_cell"),
+    ("_day_value", _ROW_CELLS, "day_value"),
+    ("_float_or_none", _RAW_VALUES, "float_or_none"),
+    ("_row_value", _ROW_CELLS, "row_value"),
+)
+
 # The historical facade name a caller already imports, and the owner attribute
 # it now resolves to. The underscored ones are the sharper half: a private name
 # a caller reached through the facade is still a name it reached, so it has to
@@ -182,7 +289,11 @@ _FORWARDED = MappingProxyType({
     ),
     **{
         name: (owner_name, attribute)
-        for name, owner_name, attribute in (*_MODEL_NAMES, *_RAW_READ_NAMES)
+        for name, owner_name, attribute in (
+            *_MODEL_NAMES,
+            *_RAW_READ_NAMES,
+            *_ROLLUP_READ_NAMES,
+        )
     },
 })
 
@@ -282,6 +393,48 @@ _FORWARDED_MODULES = MappingProxyType({
     ),
     "orchestrator.analytics._read_query_rows": _QUERY_ROW_NAMES,
     "orchestrator.analytics._read_raw_values": _RAW_VALUE_NAMES,
+    # The rollup hub published every leaf name it imported, the projections it
+    # called included, so the whole union is pinned here alongside the seven
+    # reads.
+    "orchestrator.analytics.read_rollup": (
+        *_ROLLUP_READ_NAMES,
+        *_BACKEND_EFFICIENCY_NAMES,
+        *_CACHE_SHARE_NAMES,
+        *_KPI_TOTAL_NAMES,
+        *_REPO_BREAKDOWN_NAMES,
+        *_ROW_CELL_NAMES,
+        *_STAGE_BREAKDOWN_NAMES,
+        *_SUMMARY_QUERY_NAMES,
+        *_SUMMARY_RESULT_NAMES,
+        *_THROUGHPUT_NAMES,
+        *_TIME_SERIES_NAMES,
+    ),
+    "orchestrator.analytics._read_rollup_breakdowns": (
+        *_BACKEND_EFFICIENCY_NAMES,
+        *_STAGE_BREAKDOWN_NAMES,
+    ),
+    "orchestrator.analytics._read_rollup_cost_sql": _CACHE_SHARE_NAMES,
+    "orchestrator.analytics._read_rollup_repo": (
+        *_REPO_BREAKDOWN_NAMES,
+        *_THROUGHPUT_NAMES,
+    ),
+    "orchestrator.analytics._read_rollup_series": (
+        *_KPI_TOTAL_NAMES,
+        *_TIME_SERIES_NAMES,
+    ),
+    "orchestrator.analytics._read_row_values": _ROW_CELL_NAMES,
+    "orchestrator.analytics._read_summary_query": _SUMMARY_QUERY_NAMES,
+    "orchestrator.analytics._read_summary_result": _SUMMARY_RESULT_NAMES,
+})
+
+# A hub that still owns reads of its own cannot be held to the defines-nothing
+# rule, but the historical alias beside them has the same contract: the cost
+# column a dashboard row reads has to be the one a rollup row reads, or the two
+# families would disagree about what a null cost is worth.
+_FORWARDED_ALIASES = MappingProxyType({
+    "orchestrator.analytics.read_dashboard": (
+        ("_cost_cell", _ROW_CELLS, "cost_cell"),
+    ),
 })
 
 
@@ -329,6 +482,19 @@ class ForwardedFlatModuleTest(unittest.TestCase):
             )
             with self.subTest(module=module_name):
                 self.assertEqual(defined, ())
+
+
+class ForwardedAliasTest(unittest.TestCase):
+    """A hub that still owns reads still resolves its aliases to the owner."""
+
+    def test_each_alias_resolves_to_the_owner(self) -> None:
+        for module_name, forwarded in _FORWARDED_ALIASES.items():
+            for name, owner_name, attribute in forwarded:
+                with self.subTest(module=module_name, name=name):
+                    self.assertIs(
+                        getattr(import_module(module_name), name),
+                        getattr(import_module(owner_name), attribute),
+                    )
 
 
 if __name__ == "__main__":
