@@ -41,6 +41,22 @@ projection reads them by field rather than by index, and ``raw_values`` narrows
 one column to what its result field declares, plus the cleared multiselect no
 row can match.
 
+So is the other family. ``rollup_reads`` owns the seven answered off the
+day-bucketed rollup instead -- what a window totalled, what the window before it
+did, its daily series, and its stage, backend, repository, and throughput
+breakdowns -- and again names one projection owner per read.
+``summary_queries`` owns the single round-trip totals and both breakdowns come
+back from and ``summary_results`` the ranking and defaulting they are read back
+with; ``kpi_totals`` the trimmed scalar scan a delta is measured against;
+``time_series`` the per-day-and-event cell a chart pivots; ``stage_breakdowns``
+and ``backend_efficiency`` the two axes a run's spend and duration are compared
+along; ``repo_breakdowns`` each repository's share of the window; and
+``throughput_days`` the two terminal stages a day resolved or turned away.
+Beneath them, ``cache_shares`` owns the token share one bucket's cost is split
+into cache and no-cache bands by, and ``row_cells`` the readings a rollup cell
+passes through before it lands in a result field -- alongside ``raw_values``,
+whose NULL-preserving coercions both families project through.
+
 Callers import the owner they need, so this initializer binds nothing, and the
 connection stays under the owner that opens it -- a read model is a plain
 dataclass, and importing one must not reach a database.

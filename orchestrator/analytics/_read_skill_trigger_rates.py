@@ -7,12 +7,12 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from orchestrator.analytics._read_dashboard_sql import _AGENT_EXIT_CONDITION
-from orchestrator.analytics._read_row_values import _row_value
 from orchestrator.analytics._read_skill_values import _label_or_unknown
 from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
+from orchestrator.observability.analytics.query.row_cells import row_value
 from orchestrator.observability.analytics.query.skill_models import SkillTriggerRateRow
 
 
@@ -38,8 +38,8 @@ def _skill_trigger_rate_from_row(row: Sequence[Any]) -> SkillTriggerRateRow:
         agent_role=_label_or_unknown(row[0]),
         backend=_label_or_unknown(row[1]),
         runs=int(row[2] or 0),
-        skill_runs=int(_row_value(row, 3) or 0),
-        total_triggers=int(_row_value(row, 4) or 0),
+        skill_runs=int(row_value(row, 3) or 0),
+        total_triggers=int(row_value(row, 4) or 0),
     )
 
 

@@ -12,7 +12,6 @@ from orchestrator.analytics._read_dashboard_breakdowns import (
     _hourly_heatmap_rows,
 )
 from orchestrator.analytics._read_review_rounds import _review_round_rows
-from orchestrator.analytics._read_row_values import _cost_cell as _cost_cell
 from orchestrator.analytics._read_skill_adoption import (
     SKILL_ADOPTION_ROW_LIMIT as SKILL_ADOPTION_ROW_LIMIT,
     _skill_adoption_rows,
@@ -41,6 +40,7 @@ from orchestrator.observability.analytics.query.requests import (
     resolve_read_query,
     window_filters,
 )
+from orchestrator.observability.analytics.query.row_cells import cost_cell as _cost_cell
 from orchestrator.observability.analytics.query.skill_models import (
     SkillAdoptionRow,
     SkillTriggerMatrixRow,

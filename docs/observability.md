@@ -932,12 +932,13 @@ drill-downs and widgets the rollup cannot reconstruct exactly stay on the base t
 is Streamlit-free so the read path can be wired into any UI.
 
 `read.py` is a manifest-backed lazy facade with a complete `read.pyi`; it owns no query helpers and preserves the exact
-historical object identity, wildcard surface, and `from` imports. `read_rollup.py` and `read_dashboard.py` remain
-stable family hubs, backed by focused `_read_*` leaves for summary and rollup series, cost/breakdown queries, and skill
-views. The raw reads are owned by `raw_reads.py` and the projection owners beside it under
+historical object identity, wildcard surface, and `from` imports. `read_dashboard.py` remains a stable family hub,
+backed by focused `_read_*` leaves for cost/breakdown queries and skill views. The raw and rollup reads are owned by
+`raw_reads.py` and `rollup_reads.py` with the projection owners beside them under
 `observability/analytics/query/`, and the frozen result models every family returns by the five result-family owners
-there; `read_raw.py` with the seven raw `_read_*` leaves beneath it, and `read_models.py` with the `read_models_*`
-modules beside it, forward the historical names to those owners' own functions and classes.
+there; `read_raw.py` with the seven raw `_read_*` leaves beneath it, `read_rollup.py` with the seven rollup `_read_*`
+leaves beneath it, and `read_models.py` with the `read_models_*` modules beside it, forward the historical names to
+those owners' own functions and classes.
 
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
 `observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature
@@ -987,6 +988,22 @@ the three SELECT lists read back by field rather than by index — recent exits,
 The latter two pad a row shorter than the list to the full width, which is what lets an older, narrower fixture
 round-trip with its missing columns unset; the recent-exit row unpacks strictly, so a row short of its fifteen columns
 raises. `raw_values.py` owns the NULL-preserving scalar coercions plus the probe for a cleared multiselect.
+
+**Rollup-read owners.** `rollup_reads.py` owns the seven reads that scan `analytics_daily_rollup` instead —
+`get_summary`, `get_kpi_prev`, `get_time_series`, `get_stage_breakdown`, `get_backend_efficiency`,
+`get_repo_breakdown`, and `get_throughput_breakdown`. A window bounded by whole days is what they have in common, and
+what lets them read the rollup rather than a row's own `ts`. It decides the same no-database answers the raw hub does,
+plus the agent-run event-filter short-circuit `get_backend_efficiency` returns on. One projection owner sits under
+each read: `summary_queries.py` (the `WITH win AS (...)` CTE and its three `UNION ALL` branches) with
+`summary_results.py` beside it (the in-Python `count DESC, label ASC` ranking, and the cast list that leaves a short
+totals row's trailing fields at their model defaults), `kpi_totals.py` (the trimmed previous-window scalars),
+`time_series.py` (the per-`(day, event)` cell), `stage_breakdowns.py`, `backend_efficiency.py`, `repo_breakdowns.py`,
+and `throughput_days.py` (the `done` / `rejected` terminals, the stage-selection intersection, and the two
+short-circuits that leave nothing to count). Beneath them, `cache_shares.py` owns the token-share SQL the cache /
+no-cache split is weighted by, and `row_cells.py` the readings a rollup cell passes through — a positional read with a
+default for a row narrower than the SELECT list, a nullable cost column read as a float, and a driver-widened `day`
+narrowed back to a date. The NULL-preserving float coercion the stage and backend projections share is
+`raw_values.py`'s, so both sides of the read path narrow a nullable duration the same way.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is

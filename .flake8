@@ -199,16 +199,21 @@
 # splitting the parse away from either half would let what "off" spells and
 # what it costs drift apart. WPS202 is waived.
 #
-# orchestrator/analytics/read_rollup.py and read_dashboard.py are the two read
-# family hubs with the widest result span, so they name 15 and 13 imports past
-# the WPS201 ceiling of 12. Each list is the union of what one family is built
-# from and hands back: the focused projection leaves beneath the hub, the
-# keyword vocabulary its public reads are bound through, and one import per
-# result family under orchestrator/observability/analytics/query/ -- a hub that
-# returns an activity cell, a cost breakdown, and a skill cell names the owner
-# of each. Reaching them through a single re-export site instead would put a
-# module that defines nothing between a reader and the class it constructs, so
-# WPS201 is waived for those files.
+# orchestrator/observability/analytics/query/rollup_reads.py and
+# orchestrator/analytics/read_dashboard.py are the two read family hubs with the
+# widest result span, so they name 16 and 13 imports past the WPS201 ceiling of
+# 12. Each list is the union of what one family is built from and hands back:
+# one projection owner per public read, the keyword vocabulary those reads are
+# bound through, and one import per result family under
+# orchestrator/observability/analytics/query/ -- a hub that returns an activity
+# cell, a cost breakdown, and a run row names the owner of each. Reaching them
+# through a single re-export site instead would put a module that defines
+# nothing between a reader and the class it constructs, so WPS201 is waived for
+# those files. orchestrator/analytics/read_rollup.py names 13 for the mirror
+# reason: it is the historical import site for a family whose responsibilities
+# now sit under twelve owners, and every name it binds is one a caller already
+# imported, so dropping any of them would break an import rather than tidy a
+# list. WPS201 is waived there too.
 #
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
@@ -265,6 +270,7 @@ per-file-ignores =
     orchestrator/observability/analytics/config.py:WPS202
     orchestrator/analytics/read_dashboard.py:WPS201
     orchestrator/analytics/read_rollup.py:WPS201
+    orchestrator/observability/analytics/query/rollup_reads.py:WPS201
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

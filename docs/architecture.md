@@ -458,16 +458,15 @@ orchestrator/
     __init__.py         import-only package compatibility facade and sink bootstrap
     _package_*.py       package initialization, immutable inventory, and hooks
     read.py             lazy read-model compatibility facade with a `.pyi` surface
-    _read_*.py          rollup, dashboard, summary, and skill query
-                        implementations, their row coercions, and hooks — plus
-                        the seven raw leaves beneath `read_raw.py`, which
+    _read_*.py          dashboard and skill query implementations and hooks —
+                        plus the seven raw leaves beneath `read_raw.py` and the
+                        seven rollup leaves beneath `read_rollup.py`, which
                         forward to the query owners
-    read_rollup.py / read_dashboard.py
-                        stable rollup and dashboard query-family hubs
-    predicates.py / _predicate_*.py / read_request*.py / read_models*.py / read_raw.py
+    read_dashboard.py   stable dashboard query-family hub
+    predicates.py / _predicate_*.py / read_request*.py / read_models*.py / read_raw.py / read_rollup.py
                         historical filter, request-model, keyword-binding,
-                        result-model, and raw-read import sites forwarding to
-                        the query owners
+                        result-model, raw-read, and rollup-read import sites
+                        forwarding to the query owners
     sync.py / _sync_*.py
                         CLI, ingestion, row parsing/mapping, and database lifecycle
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
@@ -567,6 +566,32 @@ orchestrator/
                         back through
         raw_values.py   the coercion one raw column is narrowed by, and the
                         cleared multiselect no row can match
+        rollup_reads.py the seven reads answered off the day-bucketed rollup
+                        rather than the events table beneath it
+        summary_queries.py
+                        the one round-trip a window's totals and both its
+                        breakdowns come back from
+        summary_results.py
+                        the ranking those breakdowns are read in, and the
+                        trailing fields a short totals row leaves at default
+        kpi_totals.py   the trimmed previous-window scan a delta is measured
+                        against
+        time_series.py  one window's volume, spend, and tokens per day and
+                        event
+        stage_breakdowns.py
+                        what each workflow stage counted, cost, and served
+                        from cache
+        backend_efficiency.py
+                        what each backend ran, failed, and spent
+        repo_breakdowns.py
+                        each repository's share of one window
+        throughput_days.py
+                        the two terminal stages each day resolved or turned
+                        away, and the selections that leave nothing to count
+        cache_shares.py the token share one bucket's cost is split into cache
+                        and no-cache bands by
+        row_cells.py    the readings one rollup cell passes through before it
+                        lands in a result field
       sync/             destination for the JSONL -> Postgres ingestion
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
