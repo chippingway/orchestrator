@@ -155,14 +155,15 @@ and its prune must share — is minted on `recording/io.py`, which no reload reb
 before the facade existed still serializes against the prune rather than writing into a file being rewritten under it.
 The retention scan and rewrite leaves are deliberately *not* in that rebuilt set: they read every path, window, and
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
-separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py` and the private
-read leaves own the SQL boundaries, row mapping, and ingestion. The filters a read is asked for, the binding of its
-keyword call, the connection lifecycle, the query execution, the frozen models a read answers with, the six reads that
-stay on the events table, the seven that scan the daily rollup above it, the four whose grouping key that rollup threw
-away, and the three answered from a run's `extras` blob are not among them — those belong to
-`observability/analytics/query/`, and the facade plus the `predicates.py`, `_predicate_*.py`, `read_request*.py`,
-`read_models*.py`, `read_raw.py`, `read_rollup.py`, `read_dashboard.py`, and the seven raw, seven rollup, and nine
-breakdown-and-skill `_read_*.py` leaves forward the historical names to it.
+separate Postgres-facing families, and only one of them still has an owner in this package: `sync.py` and its leaves
+hold the ingestion SQL and row mapping, while every read responsibility has moved out. The filters a read is asked
+for, the binding of its keyword call, the connection lifecycle, the query execution, the frozen models a read answers
+with, the six reads that stay on the events table, the seven that scan the daily rollup above it, the four whose
+grouping key that rollup threw away, and the three answered from a run's `extras` blob all belong to
+`observability/analytics/query/`. What is left here is forwarding: `analytics.read` is a manifest-backed lazy facade,
+and `predicates.py`, `_predicate_*.py`, `read_request*.py`, `read_models*.py`, `read_raw.py`, `read_rollup.py`,
+`read_dashboard.py`, and the seven raw, seven rollup, and nine breakdown-and-skill `_read_*.py` leaves define nothing
+of their own — each binds the owner's object under the name a historical caller imported.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -942,9 +943,9 @@ result-family owners there; `read_raw.py` with the seven raw `_read_*` leaves be
 seven rollup `_read_*` leaves beneath it, `read_dashboard.py` with the nine breakdown and skill `_read_*` leaves
 beneath it, and `read_models.py` with the `read_models_*` modules beside it, forward the historical names to those
 owners' own functions and classes. In-repository callers name an owner rather than that forwarding: the dashboard's
-three skill read wrappers (`_dashboard_read_skills.py` and `_read_skill_trigger_rates` beside them) reach
-`skill_reads.py` directly, so `analytics.read` stays a compatibility surface for those three rather than a hop the
-page depends on.
+three skill read wrappers — the two in `_dashboard_read_skills.py` and `_read_skill_trigger_rates` in
+`_dashboard_read_breakdowns.py` — reach `skill_reads.py` directly, so `analytics.read` stays a compatibility surface
+for those three rather than a hop the page depends on.
 
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
 `observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature

@@ -1195,19 +1195,20 @@ evicts it before re-raising. Reuse is the point, so a normal exit leaves the con
 `close_thread_local_connection` is what drains it. `execution` decides whose connection one SELECT runs on: a
 caller-owned `conn=` is used as-is and never closed, because its lifetime belongs to the `analytics_connection` scope
 that opened it, while a query without one opens and closes its own descriptor in a `finally`. Both connection paths
-resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families still under
-`orchestrator/analytics/` name these owners directly — the `analytics.read` facade forwards the historical connection
-names, including the underscored ones, to their own objects — and the result classes too, so a row unpacked off the
-facade is the class the read family constructed, and all four families of reads themselves. On the input side
-`predicates.py`, the three `_predicate_*` leaves, and `read_request*.py` do the same; on the result side the five
-`read_models_*` family modules do; and on the read side `read_raw.py` with its seven `_read_*` leaves,
-`read_rollup.py` with its seven, and `read_dashboard.py` with its nine, under the private projection, fragment,
-condition, and coercion names each published while it owned them. Each of those flat modules names an owner itself
-and defines nothing, and the hub above each group sits beside its leaves rather than on top of them:
-`predicates.py`, `read_models.py`, `read_raw.py`, and `read_rollup.py` republish everything the leaves beneath them
-do, `read_dashboard.py` the subset it published while it owned the two families, and the query rows are the one
-group no hub ever published — they were reached on `_read_query_rows.py` then and are still reached there. Whichever
-module a historical caller imported hands back the owner's object rather than a copy of it.
+resolve an omitted `db_url=` through `config.resolve_db_url`, and every caller that has an owner names it: the
+dashboard's three skill read wrappers reach `skill_reads` rather than the facade in front of it. Nothing under
+`orchestrator/analytics/` implements a read any more, so what is left there forwards — the `analytics.read` facade
+answers the historical connection names, including the underscored ones, with their own objects, and the result classes
+too, so a row unpacked off the facade is the class the read family constructed, and all four families of reads
+themselves. On the input side `predicates.py`, the three `_predicate_*` leaves, and `read_request*.py` do the same; on
+the result side the five `read_models_*` family modules do; and on the read side `read_raw.py` with its seven `_read_*`
+leaves, `read_rollup.py` with its seven, and `read_dashboard.py` with its nine, under the private projection,
+fragment, condition, and coercion names each published while it owned them. Each of those flat modules names an owner
+itself and defines nothing, and the hub above each group sits beside its leaves rather than on top of them:
+`predicates.py`, `read_models.py`, `read_raw.py`, and `read_rollup.py` republish everything the leaves beneath them do,
+`read_dashboard.py` the subset it published while it owned the two families, and the query rows are the one group no
+hub ever published — they were reached on `_read_query_rows.py` then and are still reached there. Whichever module a
+historical caller imported hands back the owner's object rather than a copy of it.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
