@@ -464,7 +464,7 @@ orchestrator/
                         leaves beneath `read_dashboard.py`, which forward to
                         the query owners
     read_dashboard.py   stable skill query-family hub, and the historical
-                        import site for the four breakdown reads beside them
+                        import site for the four breakdown reads that moved
     predicates.py / _predicate_*.py / read_request*.py / read_models*.py / read_raw.py / read_rollup.py
                         historical filter, request-model, keyword-binding,
                         result-model, raw-read, and rollup-read import sites
