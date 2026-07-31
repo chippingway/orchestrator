@@ -459,10 +459,11 @@ orchestrator/
     _package_*.py       package initialization, immutable inventory, and hooks
     read.py             lazy read-model compatibility facade with a `.pyi` surface
     _read_*.py          query-family implementations, typed query rows, and hooks
-    read_*.py           stable raw, rollup, dashboard, and model compatibility hubs
-    predicates.py / _predicate_*.py / read_request*.py
-                        historical filter, request-model, and keyword-binding
-                        import sites forwarding to the query owners
+    read_raw.py / read_rollup.py / read_dashboard.py
+                        stable raw, rollup, and dashboard query-family hubs
+    predicates.py / _predicate_*.py / read_request*.py / read_models*.py
+                        historical filter, request-model, keyword-binding, and
+                        result-model import sites forwarding to the query owners
     sync.py / _sync_*.py
                         CLI, ingestion, row parsing/mapping, and database lifecycle
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
@@ -485,7 +486,7 @@ orchestrator/
     analytics/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, and
-                        what a read is asked for and dials with
+                        what a read is asked for, dials with, and answers with
       config.py         the six sink / database environment knobs, the parse
                         the flat package's bootstrap binds, the `Settings`
                         view every adapter reads one back through, and the
