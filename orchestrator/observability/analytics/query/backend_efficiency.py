@@ -20,7 +20,10 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from orchestrator.observability.analytics.query.conditions import append_where_condition
+from orchestrator.observability.analytics.query.conditions import (
+    AGENT_EXIT_CONDITION,
+    append_where_condition,
+)
 from orchestrator.observability.analytics.query.cost_models import BackendEfficiencyRow
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
@@ -77,6 +80,6 @@ def backend_efficiency_rows(
 ) -> list[BackendEfficiencyRow]:
     """Return one aggregate row per backend in the selected window."""
     where, bindings = build_rollup_window_where(filters.without_events())
-    clause = append_where_condition(where, "event = 'agent_exit'")
+    clause = append_where_condition(where, AGENT_EXIT_CONDITION)
     rows = query.select(backend_efficiency_sql(clause), bindings)
     return [backend_efficiency_from_row(row) for row in rows]

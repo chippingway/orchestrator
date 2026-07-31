@@ -11,11 +11,19 @@ caller composes the bindings in the same order it composed the clause.
 
 The exclusion probe is the other half of the same contract, for the reads whose
 view cannot carry an `event` clause at all.
+
+The finished-run condition is spelled here rather than in each scan that pins
+it, because a read narrowing to completed agent runs and a read short
+circuiting on the absence of them are two halves of one answer: the literal and
+the probe have to name the same event or a cleared multiselect would skip a
+scan that would have matched.
 """
 
 from __future__ import annotations
 
 from typing import Optional, Sequence
+
+AGENT_EXIT_CONDITION = "event = 'agent_exit'"
 
 
 def append_where_condition(where: str, condition: str) -> str:

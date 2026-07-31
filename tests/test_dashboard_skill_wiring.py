@@ -98,6 +98,23 @@ SKILL_MATRIX_READER_MEMBER = "_read_skill_trigger_matrix"
 SKILL_ADOPTION_READER_MEMBER = "_read_skill_adoption"
 
 
+SKILL_TRIGGER_RATES_READER_MEMBER = "_read_skill_trigger_rates"
+
+
+FACADE_REFERENCE = "analytics_read."
+
+
+# Each dashboard skill reader and the query owner's read it names. The
+# `analytics.read` facade forwards the same three objects, so a reader reaching
+# through it would pass every behavioral check while keeping a compatibility
+# surface load-bearing.
+SKILL_READER_OWNER_CALLS = (
+    (SKILL_MATRIX_READER_MEMBER, "skill_reads.get_skill_trigger_matrix"),
+    (SKILL_ADOPTION_READER_MEMBER, "skill_reads.get_skill_adoption"),
+    (SKILL_TRIGGER_RATES_READER_MEMBER, "skill_reads.get_skill_trigger_rates"),
+)
+
+
 class _MainSourceTest(unittest.TestCase):
     """Base for source checks over the lazy entrypoint and page helpers.
 
@@ -117,6 +134,17 @@ class _MainSourceTest(unittest.TestCase):
         return inspect.getsource(getattr(dashboard, name))
 
 
+class SkillReadOwnerTest(_MainSourceTest):
+    """Every skill reader names the query owner, not the read facade."""
+
+    def test_each_reader_calls_the_query_owner(self) -> None:
+        for reader, owner_call in SKILL_READER_OWNER_CALLS:
+            with self.subTest(reader=reader):
+                src = self._source_of(reader)
+                self.assertIn(owner_call, src)
+                self.assertNotIn(FACADE_REFERENCE, src)
+
+
 class SkillMatrixWiringTest(_MainSourceTest):
     """The invocation-level per-skill trigger matrix rides the same cached
     / fan-out read pattern as every other widget (its wrapper lives in
@@ -127,10 +155,6 @@ class SkillMatrixWiringTest(_MainSourceTest):
     Streamlit.
     """
 
-    def test_matrix_read_calls_matrix_read_model(self) -> None:
-        src = self._source_of(SKILL_MATRIX_READER_MEMBER)
-        self.assertIn("analytics_read.get_skill_trigger_matrix", src)
-
     def test_matrix_read_forwards_scoped_connection(self) -> None:
         # Reuse the cached-read pattern: the matrix wrapper delegates via
         # `_read_filtered` to `_scoped_read`, which checks out the thread-local
@@ -138,7 +162,6 @@ class SkillMatrixWiringTest(_MainSourceTest):
         # read shares the open socket rather than opening its own.
         src = self._source_of(SKILL_MATRIX_READER_MEMBER)
         self.assertIn("_read_filtered(", src)
-        self.assertIn("analytics_read.get_skill_trigger_matrix", src)
         filtered_src = self._source_of("_read_filtered")
         self.assertIn(SCOPED_READ_CALL_FRAGMENT, filtered_src)
         scoped_src = self._source_of(SCOPED_READ_MEMBER)
@@ -197,10 +220,6 @@ class SkillAdoptionWiringTest(_MainSourceTest):
     rather than driving the page under Streamlit.
     """
 
-    def test_adoption_read_calls_adoption_read_model(self) -> None:
-        src = self._source_of(SKILL_ADOPTION_READER_MEMBER)
-        self.assertIn("analytics_read.get_skill_adoption", src)
-
     def test_adoption_read_forwards_scoped_connection(self) -> None:
         # Reuse the cached-read pattern: the adoption wrapper delegates via
         # `_read_filtered` to `_scoped_read`, which checks out the
@@ -208,7 +227,6 @@ class SkillAdoptionWiringTest(_MainSourceTest):
         # adoption read shares the open socket rather than opening its own.
         src = self._source_of(SKILL_ADOPTION_READER_MEMBER)
         self.assertIn("_read_filtered(", src)
-        self.assertIn("analytics_read.get_skill_adoption", src)
 
     def test_adoption_read_cache_key_omits_connection(self) -> None:
         # `conn` must not appear in the wrapper's parameter list -- it

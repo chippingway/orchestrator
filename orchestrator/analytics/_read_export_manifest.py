@@ -7,14 +7,6 @@ from __future__ import annotations
 from orchestrator._compat_exports import export_group
 
 EXPORTS = (
-    *export_group(
-        "orchestrator.analytics.read_dashboard",
-        (
-            ("get_skill_adoption", "get_skill_adoption"),
-            ("get_skill_trigger_matrix", "get_skill_trigger_matrix"),
-            ("get_skill_trigger_rates", "get_skill_trigger_rates"),
-        ),
-    ),
     # The result models answer off the canonical owners too, so a row a caller
     # unpacks off this facade is the class the read families constructed --
     # `isinstance` against either import site holds.
@@ -62,9 +54,9 @@ EXPORTS = (
             ("SkillTriggerRateRow", "SkillTriggerRateRow"),
         ),
     ),
-    # The raw, breakdown, and rollup reads answer off the canonical owners too,
-    # so a call made through this facade runs the same SQL and short circuits as
-    # one made through the query package directly.
+    # Every read answers off its canonical owner, so a call made through this
+    # facade runs the same SQL and short circuits as one made through the query
+    # package directly.
     *export_group(
         "orchestrator.observability.analytics.query.issue_summaries",
         (
@@ -90,6 +82,14 @@ EXPORTS = (
             ("get_cost_coverage", "get_cost_coverage"),
             ("get_hourly_heatmap", "get_hourly_heatmap"),
             ("get_review_round_breakdown", "get_review_round_breakdown"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.observability.analytics.query.skill_reads",
+        (
+            ("get_skill_adoption", "get_skill_adoption"),
+            ("get_skill_trigger_matrix", "get_skill_trigger_matrix"),
+            ("get_skill_trigger_rates", "get_skill_trigger_rates"),
         ),
     ),
     *export_group(

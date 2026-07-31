@@ -19,7 +19,8 @@ public read is called by and the bind of one such call into the typed parts
 onto and the builder a predicate and its bindings accumulate in together;
 ``predicates`` owns the `WHERE` clause that selection becomes against each of
 the three tables it can be scanned on; and ``conditions`` owns the splice of a
-table's own required condition into it, plus the probe that decides whether an
+table's own required condition into it, the finished-run condition the reads
+narrowing to completed runs splice, plus the probe that decides whether an
 event filter leaves a view-backed read any rows at all.
 
 So is what a read answers with, one owner per result family:
@@ -63,11 +64,25 @@ a window's spend could be attributed to, ``backend_tokens`` the per-day stack
 each backend contributes, and ``hourly_heatmaps`` the weekday-and-hour cell,
 with the offset that cell is bucketed in bound rather than spliced.
 
-Beneath the last two families, ``cache_shares`` owns the token share one row's
-cost is split into cache and no-cache bands by, once per set of column names
-the two scan targets spell it with, and ``row_cells`` the readings a cell
-passes through before it lands in a result field -- alongside ``raw_values``,
-whose NULL-preserving coercions every family projects through.
+So is the fourth. ``skill_reads`` owns the three answered from the `extras`
+JSONB blob no table above the events one carries: how often a cohort reaches
+for a skill at all, which of a repository's offered skills each cohort
+triggered, and how many sessions that could have used one did.
+``skill_trigger_rates`` owns the cohort denominator a quiet role still reports
+against, ``skill_matrices`` the catalog scan the observed cells are padded from
+and the narrower filtering that repository-level scan takes, ``skill_adoption``
+the per-session ratio and the window diagnostics that ride beside it without
+moving it, and ``skill_sessions`` which row belongs to which logical session and
+how far back the evidence for one reaches. Beneath them, ``skill_values`` owns
+the coercion a JSONB name array is read through, the cohort a row is filed
+under, and the ranking a matrix cell is sorted by.
+
+Beneath the rollup and breakdown families, ``cache_shares`` owns the token
+share one row's cost is split into cache and no-cache bands by, once per set of
+column names the two scan targets spell it with. ``row_cells`` owns the
+readings a cell from any of the four passes through before it lands in a result
+field -- alongside ``raw_values``, whose NULL-preserving coercions every family
+projects through.
 
 Callers import the owner they need, so this initializer binds nothing, and the
 connection stays under the owner that opens it -- a read model is a plain
