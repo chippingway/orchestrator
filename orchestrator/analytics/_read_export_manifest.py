@@ -66,11 +66,19 @@ EXPORTS = (
             ("SkillTriggerRateRow", "SkillTriggerRateRow"),
         ),
     ),
+    # The raw reads answer off the canonical owners too, so a call made
+    # through this facade runs the same SQL and short circuits as one made
+    # through the query package directly.
     *export_group(
-        "orchestrator.analytics.read_raw",
+        "orchestrator.observability.analytics.query.issue_summaries",
         (
             ("SORT_BY_COST", "SORT_BY_COST"),
             ("SORT_BY_LAST_SEEN", "SORT_BY_LAST_SEEN"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.observability.analytics.query.raw_reads",
+        (
             ("get_data_extent", "get_data_extent"),
             ("get_event_breakdown", "get_event_breakdown"),
             ("get_filter_options", "get_filter_options"),

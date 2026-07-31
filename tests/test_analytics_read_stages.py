@@ -32,12 +32,6 @@ _TOKENS_RUNS_CACHE_NO_CACHE_COST_SECONDARY = 0.06
 _ROLLUP_SCAN = "FROM analytics_daily_rollup"
 
 
-_AGENT_EXIT = "agent_exit"
-
-
-_STAGE_ENTER = "stage_enter"
-
-
 _STAGE_IMPLEMENTING = "implementing"
 
 
@@ -59,7 +53,7 @@ _CACHE_COST_FIELD = "cache_cost_usd"
 _NO_CACHE_COST_FIELD = "no_cache_cost_usd"
 
 
-class StageEventBreakdownTest(unittest.TestCase):
+class StageBreakdownTest(unittest.TestCase):
     def test_stage_breakdown_empty_when_db_url_unset(self) -> None:
         analytics_read = _reload_read(db_url="")
         self.assertEqual(
@@ -101,16 +95,6 @@ class StageEventBreakdownTest(unittest.TestCase):
         # base-table `AVG(duration_s)`.
         self.assertIn("SUM(duration_s_sum)", sql)
         self.assertIn("NULLIF(SUM(duration_s_count), 0)", sql)
-
-    def test_event_breakdown_returns_rows(self) -> None:
-        analytics_read = _reload_read()
-        conn = _FakeConnection()
-        conn.rows_for = {
-            "GROUP BY event": [(_AGENT_EXIT, 5), (_STAGE_ENTER, 3)],
-        }
-        rows = analytics_read.get_event_breakdown(connect=conn.as_connect)
-        assert_row_fields(self, rows[0], {"event": _AGENT_EXIT, "count": 5})
-        assert_row_fields(self, rows[1], {"event": _STAGE_ENTER, "count": 3})
 
 
 class StageBreakdownExtensionTest(unittest.TestCase):

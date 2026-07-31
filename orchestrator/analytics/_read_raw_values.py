@@ -1,37 +1,27 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Scalar coercion helpers for raw analytics rows."""
+"""Historical raw-coercion import site, answered by the query owner.
+
+The five names are bound to the owner's own functions, so what a NULL column
+reads back as -- and what a cleared multiselect is told apart from an
+unfiltered one by -- is decided once whichever module a caller names.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence
+from orchestrator.observability.analytics.query.raw_values import (
+    bool_or_none as _bool_or_none,
+    empty_filter_selected as _empty_filter_selected,
+    float_or_none as _float_or_none,
+    int_or_none as _int_or_none,
+    row_int as _row_int,
+)
 
 
-def _int_or_none(raw: Any) -> Optional[int]:
-    if raw is None:
-        return None
-    return int(raw)
-
-
-def _float_or_none(raw: Any) -> Optional[float]:
-    if raw is None:
-        return None
-    return float(raw)
-
-
-def _row_int(row: Sequence[Any], index: int) -> int:
-    if len(row) <= index:
-        return 0
-    return int(row[index] or 0)
-
-
-def _bool_or_none(raw: Any) -> Optional[bool]:
-    if raw is None:
-        return None
-    return bool(raw)
-
-
-def _empty_filter_selected(selection: Optional[Sequence[str]]) -> bool:
-    if selection is None:
-        return False
-    return len(selection) == 0
+_COMPATIBILITY_EXPORTS = (
+    _bool_or_none,
+    _empty_filter_selected,
+    _float_or_none,
+    _int_or_none,
+    _row_int,
+)

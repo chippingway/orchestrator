@@ -30,6 +30,17 @@ the run, issue, and traced-event rows plus the accessor behind the trace row's
 `result` alias, and ``skill_models`` for the cells a skill's reach is reported
 in with the share each derives.
 
+So is one family of reads itself. ``raw_reads`` owns the six answered off the
+events table row by row -- the values its filters offer, how far its data
+reaches, what each event counted, the newest agent runs, one row per issue, and
+one issue's trace -- and each names the projection owner beside it:
+``filter_options``, ``event_breakdowns``, ``agent_exits``, ``issue_summaries``,
+and ``issue_events`` each own one family's SQL and the rows it is read back as.
+Under them, ``query_rows`` names the columns of the widest SELECT lists so a
+projection reads them by field rather than by index, and ``raw_values`` narrows
+one column to what its result field declares, plus the cleared multiselect no
+row can match.
+
 Callers import the owner they need, so this initializer binds nothing, and the
 connection stays under the owner that opens it -- a read model is a plain
 dataclass, and importing one must not reach a database.

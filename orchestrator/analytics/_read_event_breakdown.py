@@ -1,22 +1,19 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Raw event-breakdown query projection."""
+"""Historical event-count import site, answered by the query owner.
+
+The name is bound to the owner's own function, so the table the counts are
+scanned off and the tie-break that keeps them stable are the same whichever
+module a caller names.
+"""
 
 from __future__ import annotations
 
-from orchestrator.observability.analytics.query.execution import ReadQuery
-from orchestrator.observability.analytics.query.filters import WindowFilters
-from orchestrator.observability.analytics.query.predicates import build_window_where
-from orchestrator.observability.analytics.query.run_models import EventBreakdown
+from orchestrator.observability.analytics.query.event_breakdowns import (
+    event_breakdown_rows as _event_breakdown_rows,
+)
 
 
-def _event_breakdown_rows(
-    query: ReadQuery,
-    filters: WindowFilters,
-) -> list[EventBreakdown]:
-    where, bindings = build_window_where(filters)
-    rows = query.select(
-        f"SELECT event, COUNT(*) AS c FROM analytics_events{where} GROUP BY event ORDER BY c DESC, event ASC",
-        bindings,
-    )
-    return [EventBreakdown(event=event, count=int(count)) for event, count in rows]
+_COMPATIBILITY_EXPORTS = (
+    _event_breakdown_rows,
+)

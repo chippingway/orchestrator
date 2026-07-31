@@ -41,6 +41,22 @@ _RUN_MODELS_OWNER = "run_models"
 
 _SKILL_MODELS_OWNER = "skill_models"
 
+_AGENT_EXITS_OWNER = "agent_exits"
+
+_EVENT_BREAKDOWNS_OWNER = "event_breakdowns"
+
+_FILTER_OPTIONS_OWNER = "filter_options"
+
+_ISSUE_EVENTS_OWNER = "issue_events"
+
+_ISSUE_SUMMARIES_OWNER = "issue_summaries"
+
+_QUERY_ROWS_OWNER = "query_rows"
+
+_RAW_READS_OWNER = "raw_reads"
+
+_RAW_VALUES_OWNER = "raw_values"
+
 # The result families, kept as their own group because what they must not do is
 # checked separately from what they answer for.
 _MODEL_OWNERS = (
@@ -55,12 +71,20 @@ _MODEL_OWNERS = (
 # in the module map, which is what the inventory check compares the directory
 # against.
 _OWNERS = _MODEL_OWNERS + (
+    _AGENT_EXITS_OWNER,
     _CONDITIONS_OWNER,
     _CONNECTION_CACHE_OWNER,
     _CONNECTIONS_OWNER,
+    _EVENT_BREAKDOWNS_OWNER,
     _EXECUTION_OWNER,
+    _FILTER_OPTIONS_OWNER,
     _FILTERS_OWNER,
+    _ISSUE_EVENTS_OWNER,
+    _ISSUE_SUMMARIES_OWNER,
     _PREDICATES_OWNER,
+    _QUERY_ROWS_OWNER,
+    _RAW_READS_OWNER,
+    _RAW_VALUES_OWNER,
     _REQUEST_MODELS_OWNER,
     _REQUESTS_OWNER,
 )
@@ -80,10 +104,14 @@ _OWNERS = _MODEL_OWNERS + (
 # splices and the exclusion probe. On the result side each family owns the rows
 # a page reads back off it -- the time cells, the window frame, the spend
 # breakdowns, the run and issue rows plus the accessor behind the trace row's
-# `result` alias, and the skill cells. Constants -- the rollup view name, the
-# two request field names, the `result` attribute name, and the signatures
-# themselves -- are not reported here: the check reads `__module__`, which only
-# a class or function carries.
+# `result` alias, and the skill cells. The raw reads are the six public
+# entry points under raw_reads, one projection owner per family beneath them,
+# the named rows the widest SELECT lists are read back through, and the
+# coercions a raw column is narrowed by. Constants -- the rollup view name, the
+# two request field names, the `result` attribute name, the filter-option
+# columns, the two sort modes, and the signatures themselves -- are not
+# reported here: the check reads `__module__`, which only a class or function
+# carries.
 _SURFACES = MappingProxyType({
     _CONNECTIONS_OWNER: (
         "AnalyticsReadError",
@@ -163,6 +191,50 @@ _SURFACES = MappingProxyType({
         "SkillAdoptionRow",
         "SkillTriggerMatrixRow",
         "SkillTriggerRateRow",
+    ),
+    _AGENT_EXITS_OWNER: (
+        "agent_exit_from_row",
+        "recent_agent_exit_rows",
+    ),
+    _EVENT_BREAKDOWNS_OWNER: (
+        "event_breakdown_rows",
+    ),
+    _FILTER_OPTIONS_OWNER: (
+        "filter_options_from_rows",
+        "filter_options_sql",
+    ),
+    _ISSUE_EVENTS_OWNER: (
+        "issue_event_from_row",
+        "issue_event_rows",
+    ),
+    _ISSUE_SUMMARIES_OWNER: (
+        "issue_order_sql",
+        "issue_summary_from_row",
+        "issue_summary_rows",
+        "issues_sql",
+    ),
+    _QUERY_ROWS_OWNER: (
+        "AgentExitQueryRow",
+        "IssueSummaryQueryRow",
+        "ReviewRoundQueryRow",
+        "agent_exit_row",
+        "issue_summary_row",
+        "review_round_row",
+    ),
+    _RAW_READS_OWNER: (
+        "get_data_extent",
+        "get_event_breakdown",
+        "get_filter_options",
+        "get_issue_events",
+        "get_issues",
+        "get_recent_agent_exits",
+    ),
+    _RAW_VALUES_OWNER: (
+        "bool_or_none",
+        "empty_filter_selected",
+        "float_or_none",
+        "int_or_none",
+        "row_int",
     ),
 })
 

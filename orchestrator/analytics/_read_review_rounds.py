@@ -6,12 +6,12 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from orchestrator.analytics import _read_query_rows as query_rows
 from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.cost_models import ReviewRoundBucketRow
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_view_window_where
+from orchestrator.observability.analytics.query.query_rows import review_round_row
 
 _AGENT_CACHE_TOKENS_SQL = (
     "(COALESCE(cached_tokens, 0) + COALESCE(cache_read_tokens, 0) + COALESCE(cache_write_tokens, 0))"
@@ -71,7 +71,7 @@ def _review_round_sql(where: str) -> str:
 
 
 def _review_round_from_row(row: Sequence[Any]) -> ReviewRoundBucketRow:
-    query_row = query_rows.review_round_row(row)
+    query_row = review_round_row(row)
     return ReviewRoundBucketRow(
         bucket=str(query_row.bucket),
         runs=int(query_row.runs or 0),

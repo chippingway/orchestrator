@@ -458,12 +458,16 @@ orchestrator/
     __init__.py         import-only package compatibility facade and sink bootstrap
     _package_*.py       package initialization, immutable inventory, and hooks
     read.py             lazy read-model compatibility facade with a `.pyi` surface
-    _read_*.py          query-family implementations, typed query rows, and hooks
-    read_raw.py / read_rollup.py / read_dashboard.py
-                        stable raw, rollup, and dashboard query-family hubs
-    predicates.py / _predicate_*.py / read_request*.py / read_models*.py
-                        historical filter, request-model, keyword-binding, and
-                        result-model import sites forwarding to the query owners
+    _read_*.py          rollup, dashboard, summary, and skill query
+                        implementations, their row coercions, and hooks — plus
+                        the seven raw leaves beneath `read_raw.py`, which
+                        forward to the query owners
+    read_rollup.py / read_dashboard.py
+                        stable rollup and dashboard query-family hubs
+    predicates.py / _predicate_*.py / read_request*.py / read_models*.py / read_raw.py
+                        historical filter, request-model, keyword-binding,
+                        result-model, and raw-read import sites forwarding to
+                        the query owners
     sync.py / _sync_*.py
                         CLI, ingestion, row parsing/mapping, and database lifecycle
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
@@ -546,6 +550,22 @@ orchestrator/
                         behind the trace row's `result` alias
         skill_models.py the cells a skill's reach is reported in, and the share
                         each derives
+        raw_reads.py    the six reads answered off the events table row by row
+        filter_options.py
+                        the unioned distinct-value scan behind the dropdowns,
+                        and the bucketing of its tagged rows
+        event_breakdowns.py
+                        the per-event count inside one window
+        agent_exits.py  the newest agent runs in a window, and the selections
+                        that leave the table nothing to ask for
+        issue_summaries.py
+                        the per-issue aggregate scan and the two orderings it
+                        is read in
+        issue_events.py one issue's event trace, oldest first
+        query_rows.py   the named columns the widest SELECT lists are read
+                        back through
+        raw_values.py   the coercion one raw column is narrowed by, and the
+                        cleared multiselect no row can match
       sync/             destination for the JSONL -> Postgres ingestion
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
@@ -1020,6 +1040,23 @@ the two spellings can never hold different values. `skill_models` holds the cell
 pairing a numerator with the cohort it is read against and deriving that share itself, guarded against a zero
 denominator so a cell that exists only for its window diagnostics still renders.
 
+The first family of reads themselves is here too. `raw_reads` owns the six answered off `analytics_events` row by row:
+each binds its keyword call against the signature its family is declared with, decides the answers that need no
+database — an unconfigured one, a cap of zero, a cleared multiselect — and hands the filtered window to the projection
+owner beside it. Those owners split by what each one's SQL decides. `filter_options` collapses five `SELECT DISTINCT`
+round-trips into one tagged union and buckets the rows back into the five dropdowns, sorting in Python so the ordering
+stays the reader's choice and a tag it does not know is dropped rather than routed to a bucket the result model has no
+field for. `event_breakdowns` counts per event off the events table itself, so the counts stay exact against the
+window's own bounds rather than the day a rollup would round them to. `agent_exits` pins `event = 'agent_exit'` ahead
+of the generated predicate — which is what fixes its operand binding first and the cap last — and drops the `events`
+selection that pin makes redundant. `issue_summaries` aggregates one row per `(repo, issue)` pair and owns the two
+orderings that table is read in, ranking by cost in SQL because ordering after the `LIMIT` would silently drop the
+older expensive issues that mode exists to surface. `issue_events` traces one issue oldest first, breaking ties on
+`id` so two events recorded in the same instant read back in the order they happened. Beneath all five, `query_rows`
+names the columns of the three widest SELECT lists so a projection reads them by field rather than by index and a
+fixture written against a shorter list still pads to a full row, and `raw_values` narrows one raw column to what its
+result field declares — a NULL stays `None` rather than becoming a zero a page would render as a measurement.
+
 On the connection side, `connections` decides what a read dials with: the psycopg import deferred to call time, so a
 caller that only consumes the read dataclasses never pays for the driver and a test injects a `connect(db_url)`
 factory instead of installing one; the two factories that use it, differing only in whether the socket outlives the
@@ -1033,11 +1070,14 @@ that opened it, while a query without one opens and closes its own descriptor in
 resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families still under
 `orchestrator/analytics/` name these owners directly — the `analytics.read` facade forwards the historical connection
 names, including the underscored ones, to their own objects — and the result classes too, so a row unpacked off the
-facade is the class the read family constructed. On the input side `predicates.py`, the three `_predicate_*` leaves,
-and `read_request*.py` do the same, and on the result side the five `read_models_*` family modules do. Each of those
-flat modules names an owner itself and defines nothing — the hub above each group (`predicates.py`, `read_models.py`)
-publishes the union of what the leaves publish rather than sitting on top of them — so whichever one a historical
-caller imported hands back the owner's object rather than a copy of it.
+facade is the class the read family constructed, and the raw reads themselves. On the input side `predicates.py`, the
+three `_predicate_*` leaves, and `read_request*.py` do the same; on the result side the five `read_models_*` family
+modules do; and on the raw side `read_raw.py` and the seven `_read_*` leaves beneath it do, under the private
+projection and coercion names each published while it owned them. Each of those flat modules names an owner itself and
+defines nothing — the hub above each group (`predicates.py`, `read_models.py`, `read_raw.py`) republishes what the
+leaves publish rather than sitting on top of them, the one exception being the query rows, which were only ever
+reached on `_read_query_rows.py` and are still reached there — so whichever module a historical caller imported hands
+back the owner's object rather than a copy of it.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller

@@ -33,6 +33,22 @@ _RUN_MODELS = "orchestrator.observability.analytics.query.run_models"
 
 _SKILL_MODELS = "orchestrator.observability.analytics.query.skill_models"
 
+_AGENT_EXITS = "orchestrator.observability.analytics.query.agent_exits"
+
+_EVENT_BREAKDOWNS = "orchestrator.observability.analytics.query.event_breakdowns"
+
+_FILTER_OPTIONS = "orchestrator.observability.analytics.query.filter_options"
+
+_ISSUE_EVENTS = "orchestrator.observability.analytics.query.issue_events"
+
+_ISSUE_SUMMARIES = "orchestrator.observability.analytics.query.issue_summaries"
+
+_QUERY_ROWS = "orchestrator.observability.analytics.query.query_rows"
+
+_RAW_READS = "orchestrator.observability.analytics.query.raw_reads"
+
+_RAW_VALUES = "orchestrator.observability.analytics.query.raw_values"
+
 # The result classes each family owner defines, named once and read by both
 # checks below: a page unpacks a row off the facade and constructs the empty
 # shape off a flat module, and an `isinstance` between the two has to hold.
@@ -78,6 +94,77 @@ _MODEL_NAMES = (
     *_SKILL_MODEL_NAMES,
 )
 
+# The two orderings the issues table is read in, published under the same name
+# by the facade, the raw hub, and the leaf beneath it.
+_SORT_MODE_NAMES = (
+    ("SORT_BY_COST", _ISSUE_SUMMARIES, "SORT_BY_COST"),
+    ("SORT_BY_LAST_SEEN", _ISSUE_SUMMARIES, "SORT_BY_LAST_SEEN"),
+)
+
+# The six public raw reads and the sort modes beside them, named once and read
+# by both checks below: a page calls one off the facade, and the call has to
+# reach the owner's own function or a fix to the SQL under `query` would leave
+# the facade running the old one.
+_RAW_READ_NAMES = (
+    *_SORT_MODE_NAMES,
+    ("get_data_extent", _RAW_READS, "get_data_extent"),
+    ("get_event_breakdown", _RAW_READS, "get_event_breakdown"),
+    ("get_filter_options", _RAW_READS, "get_filter_options"),
+    ("get_issue_events", _RAW_READS, "get_issue_events"),
+    ("get_issues", _RAW_READS, "get_issues"),
+    ("get_recent_agent_exits", _RAW_READS, "get_recent_agent_exits"),
+)
+
+# The names each raw leaf publishes, grouped by the owner that defines them.
+# The hub above the leaves republishes each projection and coercion under the
+# same private spelling, so a caller reaching either the leaf or the hub lands
+# on the one function the read families call.
+_AGENT_EXIT_NAMES = (
+    ("_agent_exit_from_row", _AGENT_EXITS, "agent_exit_from_row"),
+    ("_recent_agent_exit_rows", _AGENT_EXITS, "recent_agent_exit_rows"),
+)
+
+_EVENT_BREAKDOWN_NAMES = (
+    ("_event_breakdown_rows", _EVENT_BREAKDOWNS, "event_breakdown_rows"),
+)
+
+_FILTER_OPTION_NAMES = (
+    ("_FILTER_OPTION_COLUMNS", _FILTER_OPTIONS, "FILTER_OPTION_COLUMNS"),
+    ("_filter_options_from_rows", _FILTER_OPTIONS, "filter_options_from_rows"),
+    ("_filter_options_sql", _FILTER_OPTIONS, "filter_options_sql"),
+)
+
+_ISSUE_EVENT_NAMES = (
+    ("_issue_event_from_row", _ISSUE_EVENTS, "issue_event_from_row"),
+    ("_issue_event_rows", _ISSUE_EVENTS, "issue_event_rows"),
+)
+
+_ISSUE_SUMMARY_NAMES = (
+    ("_issue_order_sql", _ISSUE_SUMMARIES, "issue_order_sql"),
+    ("_issue_summary_from_row", _ISSUE_SUMMARIES, "issue_summary_from_row"),
+    ("_issue_summary_rows", _ISSUE_SUMMARIES, "issue_summary_rows"),
+    ("_issues_sql", _ISSUE_SUMMARIES, "issues_sql"),
+)
+
+# The query rows are the one raw group the hub never published: they were only
+# ever reached on this leaf, which is why it has to keep answering for them.
+_QUERY_ROW_NAMES = (
+    ("AgentExitQueryRow", _QUERY_ROWS, "AgentExitQueryRow"),
+    ("IssueSummaryQueryRow", _QUERY_ROWS, "IssueSummaryQueryRow"),
+    ("ReviewRoundQueryRow", _QUERY_ROWS, "ReviewRoundQueryRow"),
+    ("agent_exit_row", _QUERY_ROWS, "agent_exit_row"),
+    ("issue_summary_row", _QUERY_ROWS, "issue_summary_row"),
+    ("review_round_row", _QUERY_ROWS, "review_round_row"),
+)
+
+_RAW_VALUE_NAMES = (
+    ("_bool_or_none", _RAW_VALUES, "bool_or_none"),
+    ("_empty_filter_selected", _RAW_VALUES, "empty_filter_selected"),
+    ("_float_or_none", _RAW_VALUES, "float_or_none"),
+    ("_int_or_none", _RAW_VALUES, "int_or_none"),
+    ("_row_int", _RAW_VALUES, "row_int"),
+)
+
 # The historical facade name a caller already imports, and the owner attribute
 # it now resolves to. The underscored ones are the sharper half: a private name
 # a caller reached through the facade is still a name it reached, so it has to
@@ -95,7 +182,7 @@ _FORWARDED = MappingProxyType({
     ),
     **{
         name: (owner_name, attribute)
-        for name, owner_name, attribute in _MODEL_NAMES
+        for name, owner_name, attribute in (*_MODEL_NAMES, *_RAW_READ_NAMES)
     },
 })
 
@@ -169,6 +256,32 @@ _FORWARDED_MODULES = MappingProxyType({
         ("public_event_result", _RUN_MODELS, "public_event_result"),
     ),
     "orchestrator.analytics.read_models_skills": _SKILL_MODEL_NAMES,
+    # The raw hub published its projections and coercions under private names
+    # while it owned them, so each is pinned here alongside the six reads: a
+    # private name a caller already imported is still a name it imported. The
+    # sort-mode set is the one spelling the hub aliased -- it published the
+    # frozenset under a leading underscore the leaf never used.
+    "orchestrator.analytics.read_raw": (
+        *_RAW_READ_NAMES,
+        ("_ISSUE_SORT_BY_OPTIONS", _ISSUE_SUMMARIES, "ISSUE_SORT_BY_OPTIONS"),
+        *_AGENT_EXIT_NAMES,
+        *_EVENT_BREAKDOWN_NAMES,
+        *_FILTER_OPTION_NAMES,
+        *_ISSUE_EVENT_NAMES,
+        *_ISSUE_SUMMARY_NAMES,
+        *_RAW_VALUE_NAMES,
+    ),
+    "orchestrator.analytics._read_agent_exits": _AGENT_EXIT_NAMES,
+    "orchestrator.analytics._read_event_breakdown": _EVENT_BREAKDOWN_NAMES,
+    "orchestrator.analytics._read_filter_options": _FILTER_OPTION_NAMES,
+    "orchestrator.analytics._read_issue_events": _ISSUE_EVENT_NAMES,
+    "orchestrator.analytics._read_issues": (
+        *_SORT_MODE_NAMES,
+        ("ISSUE_SORT_BY_OPTIONS", _ISSUE_SUMMARIES, "ISSUE_SORT_BY_OPTIONS"),
+        *_ISSUE_SUMMARY_NAMES,
+    ),
+    "orchestrator.analytics._read_query_rows": _QUERY_ROW_NAMES,
+    "orchestrator.analytics._read_raw_values": _RAW_VALUE_NAMES,
 })
 
 
