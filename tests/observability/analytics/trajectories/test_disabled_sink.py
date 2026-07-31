@@ -24,7 +24,7 @@ class TrajectoryDisabledSinkAppendTest(unittest.TestCase):
     just an explicit `off` -- `append_trajectory_record` is a silent no-op: no
     file is ever opened and the helper does not raise. The prune side of the
     same switch is covered beside its owner in
-    `tests/test_analytics_trajectory_prune.py`.
+    `tests/observability/analytics/test_retention_trajectory.py`.
     """
 
     def test_append_creates_no_file_when_unset(self) -> None:

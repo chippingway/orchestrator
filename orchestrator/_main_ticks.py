@@ -72,4 +72,10 @@ def run_tick(
     else:
         fan_out_repo_ticks(clients, scheduler)
     scheduler.reap()
-    _main_module().analytics.prune_with_retention_logging()
+    # Named inside the call, like every other collaborator here: the analytics
+    # package rebuilds this owner for each instance it initializes, so a module
+    # bound at import could be one generation behind the settings the prune has
+    # to read.
+    from orchestrator.observability.analytics import retention
+
+    retention.prune_with_retention_logging()

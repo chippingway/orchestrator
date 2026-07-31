@@ -461,7 +461,6 @@ orchestrator/
     _read_*.py          query-family implementations, typed query rows, and hooks
     read_*.py           stable raw, rollup, dashboard, and model compatibility hubs
     read_request*.py    typed filters, connection inputs, options, and legacy binding
-    _retention*.py      retention scanning and atomic rewrite leaves
     sync.py / _sync_*.py
                         CLI, ingestion, row parsing/mapping, and database lifecycle
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
@@ -477,17 +476,24 @@ orchestrator/
                         viewer bootstrap, page controls, rendering, and HTML leaves
   observability/
     __init__.py         package marker only; home of the usage parsers, the
-                        analytics configuration owner and the recording
-                        owners beside it, and the destination the
+                        analytics configuration, recording, and retention
+                        owners beside them, and the destination the
                         observation-only surfaces above migrate the rest of
                         their responsibilities to
     analytics/
-      __init__.py       package marker only; home of the sink configuration
-                        and its append side
+      __init__.py       package marker only; home of the sink configuration,
+                        its append side, and the by-age prune that bounds it
       config.py         the six sink / database environment knobs, the parse
                         the flat package's bootstrap binds, the `Settings`
                         view every adapter reads one back through, and the
                         read-path URL fallback
+      retention.py      the three prune entry points: the polling tick's
+                        fail-open wrapper and one by-age prune per sink
+      retention_scan.py the timestamp a record is judged by and the split of
+                        a file into kept lines and a removed count
+      retention_rewrite.py
+                        the same-directory temp file, the atomic replace, and
+                        the lock held across the read and that swap
       recording/        the append side of that sink
         __init__.py     stable recording surface: the six recorders a
                         producer appends through (`__all__`)
@@ -863,9 +869,9 @@ objects, and nothing on the tick path imports it any more — which is what make
 sinks and the Postgres surfaces are configured by, the `off` / `disabled` / `none` disable vocabulary three of them
 share, the whole set parsed under the names the flat package binds them to, the `Settings` view an adapter reads one
 back through, and the fallback a read's `db_url=None` resolves through. Every adapter obtains configuration there —
-the flat package's bootstrap, both sinks' append and prune paths, the two skill readers that take their holder off an
-exit context, the read-path modules (`connection.py`, `query.py`), and the sync request — so a knob's name appears in
-one place, and the flat package keeps no settings leaf of its own.
+the flat package's bootstrap, both sinks' appends and the prune beside them, the two skill readers that take their
+holder off an exit context, the read-path modules (`connection.py`, `query.py`), and the sync request — so a knob's
+name appears in one place, and the flat package keeps no settings leaf of its own.
 
 What the flat package still owns is *which* values are in force: it binds the parsed set at import and is where a
 caller patches one, so the view reads them back off it rather than re-parsing. Which *instance* it reads is the
@@ -911,9 +917,26 @@ appends that take them. An append and the retention prune that rewrites the file
 one lock object, and a caller is free to take `append_record` — or `append_trajectory_record` — off its owner rather
 than call through the package: a reference the rebuild never rebinds, and one whose *first* call is what initializes
 the facade and triggers that rebuild. Minting each lock on the owner that is loaded once per process is what keeps
-every such reference, the facade's `_FILE_LOCK` / `_TRAJECTORY_FILE_LOCK`, and `_retention`'s serializing against each
+every such reference, the facade's `_FILE_LOCK` / `_TRAJECTORY_FILE_LOCK`, and `retention.py`'s serializing against each
 other instead of drifting apart at the first reload. The two locks stay separate objects, so neither sink's writers
 ever block on the other's file.
+
+`analytics/retention.py` is the other side of that pair: the by-age prune both sinks are bounded by. It publishes
+three entry points, one caller each — the polling tick's fail-open wrapper, and one prune per sink — over
+`retention_scan.py` (the timestamp a record is judged by, and the split of a file into kept lines and a removed count)
+and `retention_rewrite.py` (the same-directory temp file, the `os.replace` that swaps it in, and the lock held across
+the read and that swap). Each sink brings its own path, its own retention knob, and its own lock, so an operator can
+keep the two files for different windows and neither rewrite ever blocks on the other's append; the scan and the
+rewrite are shared, so the two cannot disagree about what an expired or malformed record costs. Like
+`trajectories/api`, this owner sits *above* the recorders and is rebuilt for each package instance, because *which*
+files a bare prune rewrites is answered by the settings holder the `events` owner beside it captured. Every filesystem
+touch downgrades `OSError` to a logged no-op, and the wrapper swallows anything else, so a misconfigured sink costs a
+warning rather than a tick.
+
+`main._run_tick` names that owner directly, and names it inside the call for the same reason the read path resolves
+`live_settings` there: a module bound at import could be one generation behind the settings the prune has to read. The
+wrapper it calls delegates back through the settings holder, so `patch.object(analytics, "prune_old_records", ...)`
+still intercepts.
 
 `analytics/trajectories/` is the opt-in per-run reasoning sink, and its owners divide by what one record passes
 through on the way to disk: `models` holds the head/tail and whole-record caps, the view they are read back through,
@@ -925,7 +948,7 @@ settings holder off the exit context rather than importing a package to ask. `ap
 the recorders — a bare `append_trajectory_record`, reached by an operator or the compatibility facade rather than by a
 tracked run, has no context to read, so it resolves the path through the same captured holder the recorders use and is
 rebuilt alongside them for each package instance. Its lock is the one exception to that rebuild — minted on `io.py`
-with the analytics sink's, for the reason above — and `_retention`'s trajectory prune takes that same object, so the
+with the analytics sink's, for the reason above — and `retention.py`'s trajectory prune takes that same object, so the
 trajectory file serializes its own append-versus-prune race without ever blocking against the analytics one.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
@@ -1392,7 +1415,7 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
    │            N  > 1 → ThreadPoolExecutor fans workflow.tick across     │
    │                     one worker thread per repo                       │
    │       3. scheduler.reap()  (drain completions; surface failures)     │
-   │       4. analytics.prune_with_retention_logging()                    │
+   │       4. retention.prune_with_retention_logging()                    │
    │     shutdown: scheduler.shutdown(wait=True) drains workers on        │
    │               --once / self-restart; a signal stop first kills       │
    │               in-flight agent+verify groups, and a watchdog          │

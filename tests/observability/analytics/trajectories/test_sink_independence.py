@@ -27,7 +27,7 @@ class TrajectoryAppendIndependenceTest(unittest.TestCase):
     opens or writes `ANALYTICS_LOG_PATH`, and it holds a dedicated lock so
     the two sinks do not serialize against one another. The prune side of the
     same independence is covered beside its owner in
-    `tests/test_analytics_trajectory_isolation.py`.
+    `tests/observability/analytics/test_retention_independence.py`.
     """
 
     def test_dedicated_lock_is_distinct(self) -> None:

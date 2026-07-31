@@ -36,11 +36,16 @@ TRAJECTORY_API = f"{TRAJECTORY_PACKAGE}.api"
 
 TRAJECTORY_MODELS = f"{TRAJECTORY_PACKAGE}.models"
 
-# Reloaded with the rest so each package instance gets its own recorders and
-# its own trajectory sink. `events` and the trajectory `api` are the only
-# owners listed because they are the only ones carrying per-instance state --
-# each captures the instance it was imported alongside, while everything
-# beneath them reads the settings off the request or the context it is handed.
+RETENTION = "orchestrator.observability.analytics.retention"
+
+# Reloaded with the rest so each package instance gets its own recorders, its
+# own trajectory sink, and its own by-age prune. `events`, the trajectory
+# `api`, and the retention owner are the only ones listed because they are the
+# only ones carrying per-instance state -- each captures the instance it was
+# imported alongside, while everything beneath them reads the settings off the
+# request or the context it is handed. The retention scan and rewrite leaves
+# stay put for that reason, and so does `io`: re-executing it would mint a
+# second lock for an append and the rewrite to take one each of.
 # The recording package above `events` is *re-executed* rather than evicted, so
 # its module object survives: a producer imported it under its own name and
 # holds that object, and swapping it would leave the producer calling recorders
@@ -49,7 +54,5 @@ TRAJECTORY_MODELS = f"{TRAJECTORY_PACKAGE}.models"
 IMPLEMENTATION_MODULES = (
     RECORDING_EVENTS,
     TRAJECTORY_API,
-    "orchestrator.analytics._retention",
-    "orchestrator.analytics._retention_rewrite",
-    "orchestrator.analytics._retention_scan",
+    RETENTION,
 )

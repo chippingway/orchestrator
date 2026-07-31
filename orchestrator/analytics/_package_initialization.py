@@ -18,6 +18,7 @@ from orchestrator.analytics._package_manifest import (
     RECORDING_EVENTS,
     RECORDING_EVENTS_ATTRIBUTE,
     RECORDING_PACKAGE,
+    RETENTION,
     TRAJECTORY_API,
     TRAJECTORY_MODELS,
 )
@@ -72,7 +73,7 @@ def _load_modules() -> _AnalyticsModules:
         recording_events=importlib.import_module(RECORDING_EVENTS),
         trajectory_api=importlib.import_module(TRAJECTORY_API),
         trajectory_models=importlib.import_module(TRAJECTORY_MODELS),
-        retention=importlib.import_module("orchestrator.analytics._retention"),
+        retention=importlib.import_module(RETENTION),
     )
 
 
