@@ -1004,19 +1004,21 @@ short-circuits that leave nothing to count).
 
 **Breakdown-read owners.** `breakdown_reads.py` owns the remaining four, the ones whose grouping key the rollup threw
 away — `get_review_round_breakdown`, `get_cost_coverage`, `get_backend_daily_tokens`, and `get_hourly_heatmap`. The
-first three read per-run facts a day bucket aggregated over, so they scan `analytics_agent_runs` and carry the same
-agent-exit short-circuit `get_backend_efficiency` does; the fourth needs the hour that bucket rounded off, so it stays
-on `analytics_events`, where the events selection becomes an ordinary predicate instead. One projection owner sits
-under each: `review_rounds.py` (the bucket labelling, the two roles, and each role's cache / no-cache split),
-`cost_coverage.py` (the per-source rollup that keeps `unknown-price` distinct from `unknown`), `backend_tokens.py`
-(the per-`(day, backend)` token cell), and `hourly_heatmaps.py` (the UTC normalization and the bound offset).
+first three read per-run facts a day bucket aggregated over, so they scan `analytics_agent_runs`; the fourth needs the
+hour that bucket rounded off, so it stays on `analytics_events`. It decides the same unconfigured-database answer the
+other two hubs do, and the agent-run event-filter short-circuit applies to the three view-backed reads only — the
+heatmap's scan has an `event` column, so the selection becomes an ordinary bound predicate there instead. One
+projection owner sits under each: `review_rounds.py` (the bucket labelling, the two roles, and each role's cache /
+no-cache split), `cost_coverage.py` (the per-source rollup that keeps `unknown-price` distinct from `unknown`),
+`backend_tokens.py` (the per-`(day, backend)` token cell), and `hourly_heatmaps.py` (the UTC normalization and the
+bound offset).
 
 Beneath the rollup and breakdown families, `cache_shares.py` owns the token-share SQL the cache / no-cache split is
 weighted by — spelled once for the rollup's `total_*` sums and once for the agent-run view's per-run columns — and
-`row_cells.py` the readings a cell passes through: a positional read with a
-default for a row narrower than the SELECT list, a nullable cost column read as a float, and a driver-widened `day`
-narrowed back to a date. The NULL-preserving float coercion the stage and backend projections share is
-`raw_values.py`'s, so both sides of the read path narrow a nullable duration the same way.
+`row_cells.py` the readings a cell passes through: a positional read with a default for a row narrower than the
+SELECT list, a nullable cost column read as a float, and a driver-widened `day` narrowed back to a date. The
+NULL-preserving float coercion the stage and backend projections share is `raw_values.py`'s, so both sides of the
+read path narrow a nullable duration the same way.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is
