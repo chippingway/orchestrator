@@ -464,8 +464,6 @@ orchestrator/
     _retention*.py      retention scanning and atomic rewrite leaves
     sync.py / _sync_*.py
                         CLI, ingestion, row parsing/mapping, and database lifecycle
-    _trajectories.py / _trajectory_*.py
-                        trajectory serialization, sanitization, and persistence
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
   dashboard_*.py        stable component, read, chart, state, and widget hubs
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
@@ -496,7 +494,7 @@ orchestrator/
         events.py       the record envelope, the sink append under it, and
                         the four producer-facing recorders
         io.py           the locked JSONL append both sinks write through,
-                        and the analytics sink's own lock
+                        and the one lock each of them holds
         models.py       typed requests and the keyword signatures a call
                         is bound through
         agent_exit.py   the order one finished run is summarized and
@@ -506,7 +504,18 @@ orchestrator/
         catalog.py      the out-of-band Codex capabilities they fall back to
       query/            destination for the reads of the Postgres target
       sync/             destination for the JSONL -> Postgres ingestion
-      trajectories/     destination for the opt-in per-run reasoning sink
+      trajectories/     the opt-in per-run reasoning sink
+        __init__.py     package marker only; callers import an owner directly
+        models.py       the head/tail and whole-record caps, the view they are
+                        read back through, and the headline and running budget
+                        one record is charged as
+        sanitize.py     leaf-by-leaf redaction and head/tail truncation
+        serialize.py    the record's shape and the order its arrays are
+                        charged to the budget in
+        persistence.py  the opt-in gate, the parse, the Codex backfill, and
+                        the fail-open guard around the write
+        api.py          the sink append a caller outside a tracked run
+                        reaches
     usage/              the provider payload parsers
       __init__.py       stable parser surface: the nine parsers and the
                         five result types they return (`__all__`)
@@ -886,8 +895,9 @@ would cycle. The analytics bootstrap replaces `events` with the rest of its impl
 each package instance its own capture — a reference held across a reload keeps recording into the instance its own
 callers patched — and dispatching `append_record` through that holder is what keeps
 `patch.object(analytics, "append_record", ...)` intercepting an internal append. A producer that imported the owner
-with no package behind it captures nothing and resolves the name inside the call instead. The trajectory sink is
-reached the same way until it has an owner here, so one run's two records stay on one instance.
+with no package behind it captures nothing and resolves the name inside the call instead. `agent_exit` carries that
+same instance on the exit context, so the trajectory owner it hands one run's second record to answers for the
+instance the caller entered on without reaching the package through it.
 
 `recording/__init__.py` is *re-executed in place* rather than replaced, and that asymmetry is the compatibility
 contract with the producers. A producer names the package at its own import and keeps the object it got back, which for
@@ -896,12 +906,27 @@ producer on recorders answering for an instance nobody holds and put a patch aim
 call path. Re-executing the initializer over the fresh `events` instead leaves one package object whose published names
 and the facade's bindings are the same objects in every import order.
 
-The sink lock answers the same question one layer down, and is why it lives on `io.py` rather than beside the
-recorders. An append and the retention prune that rewrites the file under it are safe only while both hold one lock
-object, and a caller is free to take `append_record` off the package rather than call through it — a reference the
-rebuild never rebinds, and one whose *first* call is what initializes the facade and triggers that rebuild. Minting the
-lock on the owner that is loaded once per process is what keeps every such reference, the facade's `_FILE_LOCK`, and
-`_retention`'s serializing against each other instead of drifting apart at the first reload.
+Both sinks' locks answer the same question one layer down, and that is why they live on `io.py` rather than beside the
+appends that take them. An append and the retention prune that rewrites the file under it are safe only while both hold
+one lock object, and a caller is free to take `append_record` — or `append_trajectory_record` — off its owner rather
+than call through the package: a reference the rebuild never rebinds, and one whose *first* call is what initializes
+the facade and triggers that rebuild. Minting each lock on the owner that is loaded once per process is what keeps
+every such reference, the facade's `_FILE_LOCK` / `_TRAJECTORY_FILE_LOCK`, and `_retention`'s serializing against each
+other instead of drifting apart at the first reload. The two locks stay separate objects, so neither sink's writers
+ever block on the other's file.
+
+`analytics/trajectories/` is the opt-in per-run reasoning sink, and its owners divide by what one record passes
+through on the way to disk: `models` holds the head/tail and whole-record caps, the view they are read back through,
+and the headline and running budget a record is charged as; `sanitize` the leaf-by-leaf redaction and the head/tail
+cut; `serialize` the record's shape and the order the turn and step arrays are drawn from the budget in; `persistence`
+the opt-in gate, the parse, the Codex backfill, and the fail-open guard the whole write rides. The direction is the
+point: `recording/agent_exit` names `persistence`, never the reverse, and everything from `persistence` down reads its
+settings holder off the exit context rather than importing a package to ask. `api` is the exception and sits *above*
+the recorders — a bare `append_trajectory_record`, reached by an operator or the compatibility facade rather than by a
+tracked run, has no context to read, so it resolves the path through the same captured holder the recorders use and is
+rebuilt alongside them for each package instance. Its lock is the one exception to that rebuild — minted on `io.py`
+with the analytics sink's, for the reason above — and `_retention`'s trajectory prune takes that same object, so the
+trajectory file serializes its own append-versus-prune race without ever blocking against the analytics one.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
@@ -915,8 +940,9 @@ inside every tracked agent run, and a binding would put the query owners and the
 parsers and the recorders are each reached through their package, so one re-exports the nine parsers and the five result
 types they return under an `__all__` and the other the six recorders — and the check that excuses them is keyed on that
 `__all__`, so a third publishing initializer is a deliberate edit rather than a silent one. What a publisher may charge
-for beyond its own owners is declared per package: recording is configured by `analytics/config.py` and meters a run
-through `usage/`, so naming it buys those two chains and nothing else.
+for beyond its own owners is declared per package: recording is configured by `analytics/config.py`, meters a run
+through `usage/`, and hands that run's second record to `analytics/trajectories/`, so naming it buys those three chains
+and nothing else.
 Nothing under the tree carries an export manifest, a resolver hook, or a `.pyi` surface — a re-export is the owner's own
 object, bound once at import rather than resolved per lookup, so the module defining a name stays where a reader finds
 it and where a patch has to land, rather than a facade answering for it — the compatibility layer this destination

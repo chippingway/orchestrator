@@ -30,23 +30,26 @@ RECORDING_EVENTS_ATTRIBUTE = "events"
 
 RECORDING_EVENTS = f"{RECORDING_PACKAGE}.{RECORDING_EVENTS_ATTRIBUTE}"
 
-# Reloaded with the rest so each package instance gets its own recorders.
-# `events` is the only recording owner listed because it is the only one
-# carrying per-instance state -- it captures the instance it was imported
-# alongside, while everything beneath it reads settings off the request it is
-# handed. The package above it is *re-executed* rather than evicted, so its
-# module object survives: a producer imported it under its own name and holds
-# that object, and swapping it would leave the producer calling recorders this
-# package no longer publishes.
+TRAJECTORY_PACKAGE = "orchestrator.observability.analytics.trajectories"
+
+TRAJECTORY_API = f"{TRAJECTORY_PACKAGE}.api"
+
+TRAJECTORY_MODELS = f"{TRAJECTORY_PACKAGE}.models"
+
+# Reloaded with the rest so each package instance gets its own recorders and
+# its own trajectory sink. `events` and the trajectory `api` are the only
+# owners listed because they are the only ones carrying per-instance state --
+# each captures the instance it was imported alongside, while everything
+# beneath them reads the settings off the request or the context it is handed.
+# The recording package above `events` is *re-executed* rather than evicted, so
+# its module object survives: a producer imported it under its own name and
+# holds that object, and swapping it would leave the producer calling recorders
+# this package no longer publishes. The trajectories package is a marker that
+# binds nothing, so it needs no such republish.
 IMPLEMENTATION_MODULES = (
     RECORDING_EVENTS,
+    TRAJECTORY_API,
     "orchestrator.analytics._retention",
     "orchestrator.analytics._retention_rewrite",
     "orchestrator.analytics._retention_scan",
-    "orchestrator.analytics._trajectories",
-    "orchestrator.analytics._trajectory_dependencies",
-    "orchestrator.analytics._trajectory_models",
-    "orchestrator.analytics._trajectory_persistence",
-    "orchestrator.analytics._trajectory_sanitize",
-    "orchestrator.analytics._trajectory_serialize",
 )

@@ -1,53 +1,63 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Trajectory usage, turn, step, and record serialization."""
+"""Trajectory usage, turn, step, and record serialization.
+
+One owner for the shape an `agent_trajectory` record has: which run metadata
+rides along, which free-text fields are sanitized on the way in, and the order
+the variable arrays are charged to the record budget in. The budget order is
+part of the shape -- the per-turn array is drawn down before the steps, so a
+run with thousands of turns and no steps is bounded the same way a run with
+thousands of steps is.
+
+The settings holder arrives on the exit context rather than being resolved
+here: it is what the caps are read off and what the record envelope is built
+through, so one run's two records -- the baseline `agent_exit` and this one --
+are answered for by the same package instance the caller entered on, and a
+caps value patched around a call reaches it.
+"""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from orchestrator.analytics._trajectory_models import (
-    _TrajectoryBudget,
-    _TrajectoryHeadline,
-)
-from orchestrator.analytics._trajectory_sanitize import (
-    _Redactor,
-    _redact_and_truncate,
-)
-from orchestrator.observability.analytics.recording.events import (
-    build_record,
-    settings_holder,
-)
-from orchestrator.observability.analytics.recording.models import AgentExitContext
+from orchestrator.observability.analytics.trajectories import models, sanitize
 from orchestrator.observability.usage import (
     metrics as usage_metrics,
     trajectory_models as usage_trajectory_models,
 )
 
+if TYPE_CHECKING:
+    from orchestrator.observability.analytics.recording.models import AgentExitContext
 
-def _trajectory_usage(metrics: usage_metrics.UsageMetrics) -> dict[str, Any]:
+
+def trajectory_usage(metrics: usage_metrics.UsageMetrics) -> dict[str, Any]:
     run_usage = metrics.to_dict()
     run_usage.pop("backend", None)
     return run_usage
 
 
-def _trajectory_headline(
+def trajectory_headline(
     context: AgentExitContext,
     trajectory: usage_trajectory_models.AgentTrajectory,
     metrics: usage_metrics.UsageMetrics,
-    redact: _Redactor,
-) -> _TrajectoryHeadline:
-    return _TrajectoryHeadline(
-        user_input=_redact_and_truncate(context.prompt, redact),
-        system_prompt=_redact_and_truncate(trajectory.system_prompt, redact),
-        output=_redact_and_truncate(trajectory.final_output, redact),
-        run_usage=_trajectory_usage(metrics),
+    redact: sanitize.Redactor,
+    limits: models.TrajectoryLimits,
+) -> models.TrajectoryHeadline:
+    return models.TrajectoryHeadline(
+        user_input=sanitize.redact_and_truncate(context.prompt, redact, limits),
+        system_prompt=sanitize.redact_and_truncate(
+            trajectory.system_prompt, redact, limits,
+        ),
+        output=sanitize.redact_and_truncate(
+            trajectory.final_output, redact, limits,
+        ),
+        run_usage=trajectory_usage(metrics),
     )
 
 
-def _bounded_trajectory_turns(
+def bounded_trajectory_turns(
     trajectory: usage_trajectory_models.AgentTrajectory,
-    budget: _TrajectoryBudget,
+    budget: models.TrajectoryBudget,
 ) -> list[dict[str, Any]]:
     turns: list[dict[str, Any]] = []
     for turn in trajectory.turns:
@@ -58,39 +68,44 @@ def _bounded_trajectory_turns(
     return turns
 
 
-def _trajectory_step(step: usage_trajectory_models.TrajectoryStep, redact: _Redactor) -> dict[str, Any]:
+def trajectory_step(
+    step: usage_trajectory_models.TrajectoryStep,
+    redact: sanitize.Redactor,
+    limits: models.TrajectoryLimits,
+) -> dict[str, Any]:
     step_dict: dict[str, Any] = {
         "kind": step.kind,
         "name": step.name or None,
         "tool_id": step.tool_id or None,
-        "content": _redact_and_truncate(step.content, redact),
+        "content": sanitize.redact_and_truncate(step.content, redact, limits),
     }
     if step.turn is not None:
         step_dict["turn"] = step.turn
     return step_dict
 
 
-def _bounded_trajectory_steps(
+def bounded_trajectory_steps(
     trajectory: usage_trajectory_models.AgentTrajectory,
-    budget: _TrajectoryBudget,
-    redact: _Redactor,
+    budget: models.TrajectoryBudget,
+    redact: sanitize.Redactor,
+    limits: models.TrajectoryLimits,
 ) -> list[dict[str, Any]]:
     steps: list[dict[str, Any]] = []
     if budget.truncated:
         return steps
     for step in trajectory.steps:
-        step_dict = _trajectory_step(step, redact)
+        step_dict = trajectory_step(step, redact, limits)
         if not budget.include(step_dict):
             break
         steps.append(step_dict)
     return steps
 
 
-def _build_trajectory_record(
+def build_trajectory_record(
     context: AgentExitContext,
     trajectory: usage_trajectory_models.AgentTrajectory,
     metrics: usage_metrics.UsageMetrics,
-    redact: _Redactor,
+    redact: sanitize.Redactor,
 ) -> dict:
     """Assemble one redacted, truncated `agent_trajectory` record.
 
@@ -110,21 +125,22 @@ def _build_trajectory_record(
     the budget. The per-turn `turns` array is charged and truncated the same
     way (a run with thousands of turns and no steps would otherwise write the
     whole array in full and blow the budget); it is drawn down before the
-    steps, so once the running total crosses `_TRAJECTORY_RECORD_BUDGET` the
-    remaining turns -- then steps -- are dropped and `truncated` is set. Only
-    the small fixed `run_usage` summary is always kept whole. `build_record`
-    drops every `None`-valued field, so an absent prompt, empty system prompt,
-    no-trigger skill set, or codex's empty per-turn array leaves its key off
-    rather than storing a null.
+    steps, so once the running total crosses the record budget the remaining
+    turns -- then steps -- are dropped and `truncated` is set. Only the small
+    fixed `run_usage` summary is always kept whole. `build_record` drops every
+    `None`-valued field, so an absent prompt, empty system prompt, no-trigger
+    skill set, or codex's empty per-turn array leaves its key off rather than
+    storing a null.
     """
-    headline = _trajectory_headline(context, trajectory, metrics, redact)
-    budget = _TrajectoryBudget(
+    limits = models.limits_on(context.analytics_package)
+    headline = trajectory_headline(context, trajectory, metrics, redact, limits)
+    budget = models.TrajectoryBudget(
         headline.serialized_size,
-        settings_holder()._TRAJECTORY_RECORD_BUDGET,
+        limits.record_budget,
     )
-    turns = _bounded_trajectory_turns(trajectory, budget)
-    steps = _bounded_trajectory_steps(trajectory, budget, redact)
-    return build_record(
+    turns = bounded_trajectory_turns(trajectory, budget)
+    steps = bounded_trajectory_steps(trajectory, budget, redact, limits)
+    return context.analytics_package.build_record(
         repo=context.repo,
         issue=context.issue,
         event="agent_trajectory",

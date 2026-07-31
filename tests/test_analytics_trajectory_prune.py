@@ -173,9 +173,18 @@ class TrajectoryPruneSelectionTest(unittest.TestCase):
 
 class TrajectoryPruneBoundaryTest(unittest.TestCase):
     """`prune_trajectory_records` mirrors `prune_old_records`: removes
-    records past `TRAJECTORY_RETENTION_DAYS`, no-ops at retention <= 0 or
-    on an absent file, and preserves malformed / unparseable lines.
+    records past `TRAJECTORY_RETENTION_DAYS`, no-ops at retention <= 0, on an
+    absent file, and whenever the opt-in sink is off -- unset or disabled --
+    and preserves malformed / unparseable lines.
     """
+
+    def test_prune_returns_zero_when_disabled(self) -> None:
+        _, analytics = _reload({_TRAJECTORY_LOG_PATH: "disabled"})
+        self.assertEqual(analytics.prune_trajectory_records(), 0)
+
+    def test_prune_returns_zero_when_unset(self) -> None:
+        _, analytics = _reload()
+        self.assertEqual(analytics.prune_trajectory_records(), 0)
 
     def test_zero_retention_is_no_op(self) -> None:
         now = PRUNE_NOW

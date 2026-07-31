@@ -15,6 +15,8 @@ from unittest.mock import patch
 from tests.import_world_helpers import (
     CONFIG_MODULE,
     RECORDING_EVENTS,
+    TRAJECTORY_API,
+    TRAJECTORY_PACKAGE,
     republish_recording,
 )
 
@@ -31,6 +33,7 @@ _MISSING = object()
 _PARENT_BINDINGS = (
     ("orchestrator", "analytics"),
     ("orchestrator", "config"),
+    (TRAJECTORY_PACKAGE, "api"),
 )
 
 
@@ -78,18 +81,21 @@ def _reloaded(module_name: str) -> bool:
 
     This mirrors the package bootstrap's own reload inventory rather than
     sweeping a prefix, because over-clearing rebuilds more than the bootstrap
-    does. `events` is named exactly, and its recording siblings deliberately
-    are not: it is the only one carrying per-instance state -- each instance's
-    recorders capture the instance they were imported alongside, which is what
-    a reference held across a reload keeps dispatching to -- while clearing
-    the rest would have the re-execution mint a second `io` and, with it, a
-    second sink lock for the append and the prune to take one each of. The
-    package above them is re-executed in place rather than replaced, so it is
-    not cleared either.
+    does. `events` and the trajectory `api` are named exactly, and their
+    siblings deliberately are not: they are the ones carrying per-instance
+    state -- each instance's recorders and its trajectory append capture the
+    instance they were imported alongside, which is what a reference held
+    across a reload keeps dispatching to -- while clearing the rest would have
+    the re-execution mint a second `io` and, with it, a second sink lock for
+    the append and the prune to take one each of. The recording package above
+    those owners is re-executed in place rather than replaced, so it is not
+    cleared either.
     """
-    return module_name in {_CONFIG_MODULE, RECORDING_EVENTS} or (
-        module_name.startswith(_MODULE_PREFIX)
-    )
+    return module_name in {
+        _CONFIG_MODULE,
+        RECORDING_EVENTS,
+        TRAJECTORY_API,
+    } or module_name.startswith(_MODULE_PREFIX)
 
 
 def _parent_namespace(binding: tuple[str, str]) -> dict:

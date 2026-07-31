@@ -49,16 +49,17 @@ _VACATED_LEAVES = (
 # Every adapter that has to obtain configuration from the owner: the package
 # bootstrap that binds the parsed knobs, the append and prune paths of both
 # sinks, the two skill readers that take their holder off an exit context, the
-# two read-path modules that resolve a query's URL, and the sync request that
-# falls back to both sink knobs.
+# gate the opt-in trajectory write runs behind, the two read-path modules that
+# resolve a query's URL, and the sync request that falls back to both sink
+# knobs.
 _ADAPTERS = (
     "orchestrator.analytics._package_initialization",
     "orchestrator.observability.analytics.recording.events",
     "orchestrator.observability.analytics.recording.catalog",
     "orchestrator.observability.analytics.recording.skills",
     "orchestrator.analytics._retention",
-    "orchestrator.analytics._trajectories",
-    "orchestrator.analytics._trajectory_persistence",
+    "orchestrator.observability.analytics.trajectories.api",
+    "orchestrator.observability.analytics.trajectories.persistence",
     "orchestrator.analytics.connection",
     "orchestrator.analytics.query",
     "orchestrator.analytics._sync_run",

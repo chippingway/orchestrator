@@ -6,16 +6,19 @@ One owner for how a record reaches disk, so the two sinks cannot disagree
 about it: the same encoding, the same locking discipline, and the same
 fail-open answer to a filesystem that refuses the write. *Which* file a record
 is written to is the caller's, which is why the path arrives as an argument
-rather than being read here; the trajectory sink still brings its own lock
-along with it until it has an owner beside this one.
+rather than being read here.
 
-The analytics sink's lock is minted here rather than beside the recorders
-because this owner is loaded once per process while `events` is rebuilt for
-each analytics package instance. Two things have to take the same lock object
-for the sink to be safe -- the append and the retention prune that rewrites
-the file under it -- and a lock recreated with the recorders would leave any
-reference taken before a rebuild serializing against nothing, which is exactly
-the append-during-prune race the lock exists to close.
+Both sinks' locks are minted here rather than beside the append that takes
+each, because this owner is loaded once per process while those appends --
+`events` and the trajectory `api` -- are rebuilt for each analytics package
+instance. Two things have to take the same lock object for a sink to be safe:
+the append and the retention prune that rewrites the file under it. A lock
+recreated with its append would leave any reference taken before a rebuild
+serializing against nothing, which is exactly the append-during-prune race the
+lock exists to close -- and a caller is free to hold an append it imported
+directly, a reference no rebuild ever rebinds, whose own first call is what
+triggers the rebuild. The two locks stay separate objects so the two files
+never serialize against one another.
 """
 
 from __future__ import annotations
@@ -27,16 +30,18 @@ from typing import Optional
 
 ANALYTICS_FILE_LOCK = threading.Lock()
 
+TRAJECTORY_FILE_LOCK = threading.Lock()
+
 
 def append_jsonl_record(path: Optional[Path], lock: threading.Lock, record: dict) -> None:
     """Append one JSONL line to `path` under `lock`; no-op when `path` is
     None.
 
     Shared core for the analytics and trajectory sinks: each passes its
-    own path and dedicated lock so the two files never serialize against
-    one another. OSError is logged and swallowed so a misconfigured path
-    (read-only mount, disk full, permission failure) cannot stop the
-    per-issue tick from making progress.
+    own path and the lock minted above for its file, so the two never
+    serialize against one another. OSError is logged and swallowed so a
+    misconfigured path (read-only mount, disk full, permission failure)
+    cannot stop the per-issue tick from making progress.
 
     Holds `lock` around the actual filesystem ops so a concurrent prune
     cannot rewrite the file (via `os.replace`) between this append's open

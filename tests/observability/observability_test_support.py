@@ -40,12 +40,17 @@ _PUBLISHING_PACKAGES = frozenset((
 ))
 
 # What a publishing package pays for beyond its own owners: the siblings it
-# composes. Recording is configured by the analytics `config` owner and meters
-# a finished run through the `usage` parsers, so naming it buys those two
-# chains as well -- and nothing else, which is what keeps the query, sync, and
-# page graphs out of the one analytics path the orchestrator process runs.
+# composes. Recording is configured by the analytics `config` owner, meters a
+# finished run through the `usage` parsers, and hands that run's second record
+# to the `trajectories` writers, so naming it buys those three chains as well
+# -- and nothing else, which is what keeps the query, sync, and page graphs out
+# of the one analytics path the orchestrator process runs.
 _COMPOSED_PACKAGES = MappingProxyType({
-    f"{_ANALYTICS}.recording": (f"{_ANALYTICS}.config", f"{_ROOT}.usage"),
+    f"{_ANALYTICS}.recording": (
+        f"{_ANALYTICS}.config",
+        f"{_ANALYTICS}.trajectories",
+        f"{_ROOT}.usage",
+    ),
 })
 
 _PACKAGE_ROOT = Path(import_module(_ROOT).__file__).parent
