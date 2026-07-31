@@ -157,10 +157,10 @@ The retention scan and rewrite leaves are deliberately *not* in that rebuilt set
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
 separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py` and the private
 read leaves own the SQL boundaries, row mapping, and ingestion. The filters a read is asked for, the binding of its
-keyword call, the connection lifecycle, the query execution, the frozen models a read answers with, and the raw reads
-answered off the events table row by row are not among them — those belong to `observability/analytics/query/`, and the
-facade plus the `predicates.py`, `_predicate_*.py`, `read_request*.py`, `read_models*.py`, `read_raw.py`, and the
-seven raw `_read_*.py` leaves forward the historical names to it.
+keyword call, the connection lifecycle, the query execution, the frozen models a read answers with, and the six reads
+that stay on the events table rather than the rollup are not among them — those belong to
+`observability/analytics/query/`, and the facade plus the `predicates.py`, `_predicate_*.py`, `read_request*.py`,
+`read_models*.py`, `read_raw.py`, and the seven raw `_read_*.py` leaves forward the historical names to it.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -973,19 +973,20 @@ plus `public_event_result`, the accessor installed as the trace row's `result` p
 column; and `skill_models.py` the skill cells (`SkillTriggerRateRow`, `SkillTriggerMatrixRow`, `SkillAdoptionRow`) with
 the zero-denominator-guarded share each derives.
 
-**Raw-read owners.** `raw_reads.py` owns the six reads answered off `analytics_events` row by row —
-`get_filter_options`, `get_data_extent`, `get_event_breakdown`, `get_recent_agent_exits`, `get_issues`, and
-`get_issue_events` — including the answers that need no database: an unconfigured URL with no caller-owned `conn=`, a
-non-positive `limit`, and a cleared multiselect each return the empty result without dialing, while an unknown
-`sort_by` raises before the connect. Each read hands its filtered window to a projection owner beside it:
+**Raw-read owners.** `raw_reads.py` owns the six reads that stay on `analytics_events` rather than the day-bucketed
+rollup above it — `get_filter_options`, `get_data_extent`, `get_event_breakdown`, `get_recent_agent_exits`,
+`get_issues`, and `get_issue_events`. It also decides the answers that need no database: an unconfigured URL with no
+caller-owned `conn=`, a non-positive `limit`, and a cleared multiselect each return the empty result without dialing,
+while an unknown `sort_by` raises before the connect. Each read hands its filtered window to a projection owner:
 `filter_options.py` (the tagged union behind the five dropdowns, plus the in-Python bucketing and sort it is read back
 through), `event_breakdowns.py` (the per-event count), `agent_exits.py` (the pinned `event = 'agent_exit'` spliced
 ahead of the generated predicate, so its operand binds first and the `LIMIT` last), `issue_summaries.py` (the
 per-`(repo, issue)` aggregate scan, `SORT_BY_LAST_SEEN` / `SORT_BY_COST`, and the SQL ordering each becomes), and
 `issue_events.py` (one issue's trace, `ORDER BY ts ASC, id ASC`). Beneath them, `query_rows.py` names the columns of
-the three widest SELECT lists — recent exits, issue summaries, review-round buckets — padding a fixture row shorter
-than the list to the full width, and `raw_values.py` owns the NULL-preserving scalar coercions plus the probe for a
-cleared multiselect.
+the three SELECT lists read back by field rather than by index — recent exits, issue summaries, review-round buckets.
+The latter two pad a row shorter than the list to the full width, which is what lets an older, narrower fixture
+round-trip with its missing columns unset; the recent-exit row unpacks strictly, so a row short of its fifteen columns
+raises. `raw_values.py` owns the NULL-preserving scalar coercions plus the probe for a cleared multiselect.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is

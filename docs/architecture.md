@@ -550,7 +550,8 @@ orchestrator/
                         behind the trace row's `result` alias
         skill_models.py the cells a skill's reach is reported in, and the share
                         each derives
-        raw_reads.py    the six reads answered off the events table row by row
+        raw_reads.py    the six reads that stay on the events table rather than
+                        the day-bucketed rollup above it
         filter_options.py
                         the unioned distinct-value scan behind the dropdowns,
                         and the bucketing of its tagged rows
@@ -1040,22 +1041,25 @@ the two spellings can never hold different values. `skill_models` holds the cell
 pairing a numerator with the cohort it is read against and deriving that share itself, guarded against a zero
 denominator so a cell that exists only for its window diagnostics still renders.
 
-The first family of reads themselves is here too. `raw_reads` owns the six answered off `analytics_events` row by row:
-each binds its keyword call against the signature its family is declared with, decides the answers that need no
-database — an unconfigured one, a cap of zero, a cleared multiselect — and hands the filtered window to the projection
-owner beside it. Those owners split by what each one's SQL decides. `filter_options` collapses five `SELECT DISTINCT`
-round-trips into one tagged union and buckets the rows back into the five dropdowns, sorting in Python so the ordering
-stays the reader's choice and a tag it does not know is dropped rather than routed to a bucket the result model has no
-field for. `event_breakdowns` counts per event off the events table itself, so the counts stay exact against the
-window's own bounds rather than the day a rollup would round them to. `agent_exits` pins `event = 'agent_exit'` ahead
-of the generated predicate — which is what fixes its operand binding first and the cap last — and drops the `events`
-selection that pin makes redundant. `issue_summaries` aggregates one row per `(repo, issue)` pair and owns the two
-orderings that table is read in, ranking by cost in SQL because ordering after the `LIMIT` would silently drop the
-older expensive issues that mode exists to surface. `issue_events` traces one issue oldest first, breaking ties on
-`id` so two events recorded in the same instant read back in the order they happened. Beneath all five, `query_rows`
-names the columns of the three widest SELECT lists so a projection reads them by field rather than by index and a
-fixture written against a shorter list still pads to a full row, and `raw_values` narrows one raw column to what its
-result field declares — a NULL stays `None` rather than becoming a zero a page would render as a measurement.
+The first family of reads themselves is here too. `raw_reads` owns the six that stay on `analytics_events` rather than
+the day-bucketed rollup above it. Each binds its keyword call against the signature its family is declared with,
+decides the answers that need no database — an unconfigured one, a cap of zero, a cleared multiselect — and hands the
+filtered window to the projection owner beside it. Those owners split by what each one's SQL decides. `filter_options`
+collapses five `SELECT DISTINCT` round-trips into one tagged union and buckets the rows back into the five dropdowns,
+sorting in Python so the ordering stays the reader's choice and a tag it does not know is dropped rather than routed
+to a bucket the result model has no field for. `event_breakdowns` counts per event off the events table itself, so the
+counts stay exact against the window's own bounds rather than the day a rollup would round them to. `agent_exits` pins
+`event = 'agent_exit'` ahead of the generated predicate — which is what fixes its operand binding first and the cap
+last — and drops the `events` selection that pin makes redundant. `issue_summaries` aggregates one row per
+`(repo, issue)` pair and owns the two orderings that table is read in, ranking by cost in SQL because ordering after
+the `LIMIT` would silently drop the older expensive issues that mode exists to surface. `issue_events` traces one
+issue oldest first, breaking ties on `id` so two events recorded in the same instant read back in the order they
+happened. Beneath all five, `query_rows` names the columns of the three SELECT lists wide enough that an unpack read
+by index stopped being checkable by eye, so a projection reads those by field instead while the narrower lists stay
+positional. Two of the three pad a short row to full width, which is what lets a fixture written against an older,
+narrower list still read back with the columns it never carried unset; the recent-exit row does not, so a row short of
+its fifteen columns raises rather than filling a run in half. `raw_values` narrows one raw column to what its result
+field declares — a NULL stays `None` rather than becoming a zero a page would render as a measurement.
 
 On the connection side, `connections` decides what a read dials with: the psycopg import deferred to call time, so a
 caller that only consumes the read dataclasses never pays for the driver and a test injects a `connect(db_url)`
