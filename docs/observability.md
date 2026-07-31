@@ -152,9 +152,10 @@ historical isolation. The recording package above `events` is re-executed in pla
 module object every producer imported keeps publishing the live recorders, and the facade's bindings and a patch aimed
 at the canonical module stay the same objects whichever import came first. Each sink's lock — the object its append
 and its prune must share — is minted on `recording/io.py`, which no reload rebuilds, so an append taken off its owner
-before the facade existed still serializes against the prune rather than writing into a file being rewritten under it;
-the retention scan and rewrite leaves stay put for the same reason. The read and sync surfaces are separate
-Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py`, `connection.py`,
+before the facade existed still serializes against the prune rather than writing into a file being rewritten under it.
+The retention scan and rewrite leaves are deliberately *not* in that rebuilt set: they read every path, window, and
+lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
+separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py`, `connection.py`,
 `query.py`, `predicates.py`, and their private leaves own typed requests, SQL boundaries, row mapping, ingestion, and
 connection lifecycle.
 
@@ -667,7 +668,8 @@ archive file, or a custom high-water-mark shipper.
 
 Because `prune_trajectory_records()` is not called by the polling loop, drive trajectory retention explicitly when you
 want `TRAJECTORY_RETENTION_DAYS` to affect the file. The value may live in `.env` like the other non-secret knobs; it is
-parsed when the prune process imports `orchestrator.analytics`. The cron entry below relies on `.env` for both
+parsed when the prune process imports `orchestrator.analytics`, which is why the recipe below names that package rather
+than the `observability/analytics/retention.py` owner it forwards to. The cron entry relies on `.env` for both
 `TRAJECTORY_LOG_PATH` and `TRAJECTORY_RETENTION_DAYS`, runs the prune helper, and logs how many records were removed:
 
 ```cron
