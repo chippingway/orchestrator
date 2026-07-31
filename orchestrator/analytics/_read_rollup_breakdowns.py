@@ -14,14 +14,14 @@ from orchestrator.analytics._read_row_values import (
 from orchestrator.analytics._read_rollup_cost_sql import (
     _ROLLUP_CACHE_FRACTION_SQL,
 )
-from orchestrator.analytics.predicates import (
-    _DAILY_ROLLUP_VIEW,
-    _WindowFilters,
-    _append_where_condition,
-    _build_rollup_window_where,
-)
 from orchestrator.analytics.read_models import BackendEfficiencyRow, StageBreakdown
+from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import (
+    DAILY_ROLLUP_VIEW,
+    build_rollup_window_where,
+)
 
 
 def _stage_breakdown_sql(clause: str) -> str:
@@ -41,7 +41,7 @@ def _stage_breakdown_sql(clause: str) -> str:
         "COALESCE(SUM(COALESCE(total_cost_usd, 0) "
         f"* (1 - ({_ROLLUP_CACHE_FRACTION_SQL}))), 0) "
         "AS stage_no_cache_cost_usd "
-        f"FROM {_DAILY_ROLLUP_VIEW}{clause} "
+        f"FROM {DAILY_ROLLUP_VIEW}{clause} "
         "GROUP BY stage ORDER BY c DESC, stage ASC"
     )
 
@@ -62,10 +62,10 @@ def _stage_breakdown_from_row(row: Sequence[Any]) -> StageBreakdown:
 
 def _stage_breakdown_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[StageBreakdown]:
-    where, bindings = _build_rollup_window_where(filters)
-    clause = _append_where_condition(where, "stage IS NOT NULL")
+    where, bindings = build_rollup_window_where(filters)
+    clause = append_where_condition(where, "stage IS NOT NULL")
     rows = query.select(_stage_breakdown_sql(clause), bindings)
     return [_stage_breakdown_from_row(row) for row in rows]
 
@@ -85,7 +85,7 @@ def _backend_efficiency_sql(clause: str) -> str:
         "  AS backend_cache_read_tokens, "
         "COALESCE(SUM(total_cache_write_tokens), 0) "
         "  AS backend_cache_write_tokens "
-        f"FROM {_DAILY_ROLLUP_VIEW}{clause} "
+        f"FROM {DAILY_ROLLUP_VIEW}{clause} "
         "GROUP BY backend_label "
         "ORDER BY runs DESC, backend_label ASC"
     )
@@ -109,9 +109,9 @@ def _backend_efficiency_from_row(
 
 def _backend_efficiency_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[BackendEfficiencyRow]:
-    where, bindings = _build_rollup_window_where(filters.without_events())
-    clause = _append_where_condition(where, "event = 'agent_exit'")
+    where, bindings = build_rollup_window_where(filters.without_events())
+    clause = append_where_condition(where, "event = 'agent_exit'")
     rows = query.select(_backend_efficiency_sql(clause), bindings)
     return [_backend_efficiency_from_row(row) for row in rows]

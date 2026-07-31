@@ -17,9 +17,9 @@ from orchestrator.analytics._read_skill_types import (
     _SkillAdoptionKey,
     _SkillCohort,
 )
-from orchestrator.analytics.predicates import _WindowFilters
 from orchestrator.analytics.read_models import SkillAdoptionRow
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
 
 SKILL_ADOPTION_ROW_LIMIT = 100
 
@@ -127,7 +127,7 @@ class _SkillAdoption:
 
 def _skill_adoption_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
     limit: int,
 ) -> list[SkillAdoptionRow]:
     window_runs = _skill_window_rows(query, filters)

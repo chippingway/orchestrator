@@ -9,13 +9,11 @@ from typing import Any, Sequence
 from orchestrator.analytics._read_dashboard_sql import _AGENT_EXIT_CONDITION
 from orchestrator.analytics._read_row_values import _row_value
 from orchestrator.analytics._read_skill_values import _label_or_unknown
-from orchestrator.analytics.predicates import (
-    _WindowFilters,
-    _append_where_condition,
-    _build_window_where,
-)
 from orchestrator.analytics.read_models import SkillTriggerRateRow
+from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import build_window_where
 
 
 def _skill_trigger_rate_sql(clause: str) -> str:
@@ -47,9 +45,9 @@ def _skill_trigger_rate_from_row(row: Sequence[Any]) -> SkillTriggerRateRow:
 
 def _skill_trigger_rate_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[SkillTriggerRateRow]:
-    event_where, event_bindings = _build_window_where(filters.without_events())
-    clause = _append_where_condition(event_where, _AGENT_EXIT_CONDITION)
+    event_where, event_bindings = build_window_where(filters.without_events())
+    clause = append_where_condition(event_where, _AGENT_EXIT_CONDITION)
     rows = query.select(_skill_trigger_rate_sql(clause), event_bindings)
     return [_skill_trigger_rate_from_row(row) for row in rows]

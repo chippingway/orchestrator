@@ -51,7 +51,6 @@ from orchestrator.analytics._read_summary_result import (
     _summary_total_values as _summary_total_values,
     _summary_totals_row as _summary_totals_row,
 )
-from orchestrator.analytics.predicates import _agent_event_excluded
 from orchestrator.analytics.read_models import (
     BackendEfficiencyRow,
     RepoBreakdownRow,
@@ -60,7 +59,8 @@ from orchestrator.analytics.read_models import (
     ThroughputDayRow,
     TimeSeriesPoint,
 )
-from orchestrator.analytics.read_request import (
+from orchestrator.observability.analytics.query.conditions import agent_event_excluded
+from orchestrator.observability.analytics.query.requests import (
     FILTERED_READ_SIGNATURE,
     bind_read_request,
     resolve_read_query,
@@ -177,7 +177,7 @@ def get_backend_efficiency(
     query = resolve_read_query(request)
     if not query.available:
         return []
-    if _agent_event_excluded(request.filters.events):
+    if agent_event_excluded(request.filters.events):
         return []
     return _backend_efficiency_rows(query, window_filters(request))
 

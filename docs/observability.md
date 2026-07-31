@@ -155,10 +155,11 @@ and its prune must share — is minted on `recording/io.py`, which no reload reb
 before the facade existed still serializes against the prune rather than writing into a file being rewritten under it.
 The retention scan and rewrite leaves are deliberately *not* in that rebuilt set: they read every path, window, and
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
-separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py`, `predicates.py`,
-and their private leaves own typed requests, SQL boundaries, row mapping, and ingestion. Connection lifecycle and query
-execution are no longer among them — those belong to `observability/analytics/query/`, and the facade forwards the
-historical names to it.
+separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py` and the private
+read leaves own the SQL boundaries, row mapping, and ingestion. The filters a read is asked for, the binding of its
+keyword call, the connection lifecycle, and the query execution are not among them — those belong to
+`observability/analytics/query/`, and the facade plus the `predicates.py`, `_predicate_*.py`, and `read_request*.py`
+modules forward the historical names to it.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -342,7 +343,7 @@ bucket, and the primary-key fallback is stable across both scans below.
 
 - The **active-window** scan applies the full reporting-window filters (date `[start, end)` / repo / stage / issue). It
   selects the *active* sessions (those with a run in the window) and computes the window-scoped invocation diagnostics.
-- The **historical-lookback** scan (`_WindowFilters.historical_scope`) gathers each active session's availability + load
+- The **historical-lookback** scan (`WindowFilters.historical_scope`) gathers each active session's availability + load
   evidence from every `agent_exit` row *before the window end*, deliberately dropping the window `start` bound and the
   stage / events filters while keeping `end` / repo / issue — so a load or an availability report from a prior
   stage, or from before the reporting window, still counts toward that session's denominator and `adopted`. History
@@ -935,21 +936,27 @@ historical object identity, wildcard surface, and `from` imports. `read_raw.py`,
 rollup series, cost/breakdown queries, skill views, and typed query-row conversion. Frozen result models are grouped in
 the `read_models_*` modules and re-exported through `read_models.py`.
 
-The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`.
-`read_request.py` binds every historical keyword signature into that typed request before the family leaf executes, so
-existing calls and error behavior are unchanged while implementation helpers no longer thread large argument lists.
-`predicates.py` remains the stable plumbing hub over focused predicate leaves, and every family leaf reaches
-`observability/analytics/query/execution.py`'s `ReadQuery` for the connection inputs one read carries. Both connection
-paths resolve a caller's omitted `db_url=` through `observability/analytics/config.py`'s `resolve_db_url`, so the
-URL-source policy has one home.
+The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
+`observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature
+into that typed request before the family leaf executes, so existing calls and error behavior are unchanged while
+implementation helpers no longer thread large argument lists. Every family leaf reaches `execution.py`'s `ReadQuery`
+for the connection inputs one read carries. Both connection paths resolve a caller's omitted `db_url=` through
+`observability/analytics/config.py`'s `resolve_db_url`, so the URL-source policy has one home.
 
-**Connection owners.** `observability/analytics/query/` splits the connection half by what each owner decides.
-`connections.py` decides what a read dials with — the deferred psycopg import, the per-query and persistent connect
-factories over it, `AnalyticsReadError`, and the two judgments a caller makes about a socket rather than a query
-(whether a close failed, whether an escaped error means the socket is gone). `connection_cache.py` decides how long a
-socket lives: the thread-local entry, the URL it is keyed on, the two evictions, and the `analytics_connection` /
-`close_thread_local_connection` pair over them. `execution.py` decides whose connection a SELECT runs on, and closes
-only the descriptor it opened itself.
+**Input owners.** `filters.py` owns `WindowFilters` — the selection a read narrows by, plus the three scoped
+projections (`without_events` for a view with no `event` column, `catalog_scope` for repo-level catalog rows,
+`historical_scope` for a session's evidence from before the window) — and the builder that accumulates a clause and its
+bindings together. `predicates.py` owns the one `WHERE` builder behind all three scan targets, so the events table, the
+agent-run view, and the daily rollup read a filter the same way. `conditions.py` owns the two splices that add a
+table's own required condition to either end of a generated clause (which fixes whether its operand binds first or
+last) and `agent_event_excluded`, the probe view-backed readers short-circuit on.
+
+**Connection owners.** `connections.py` decides what a read dials with — the deferred psycopg import, the per-query and
+persistent connect factories over it, `AnalyticsReadError`, and the two judgments a caller makes about a socket rather
+than a query (whether a close failed, whether an escaped error means the socket is gone). `connection_cache.py` decides
+how long a socket lives: the thread-local entry, the URL it is keyed on, the two evictions, and the
+`analytics_connection` / `close_thread_local_connection` pair over them. `execution.py` decides whose connection a
+SELECT runs on, and closes only the descriptor it opened itself.
 
 - `get_summary` (rollup) — date-bounded totals + per-event / per-stage breakdowns + token / cost sums, plus
   `total_agent_runs` / `failed_agent_runs` / `timed_out_agent_runs` scoped to `event='agent_exit'`. `distinct_issues` is
@@ -1005,7 +1012,7 @@ only the descriptor it opened itself.
   adopting session, not several. Two `agent_exit` base-table scans combine in Python. The first applies the full
   reporting-window filters and selects the *active* sessions plus the window-scoped diagnostics; the second reads each
   active session's evidence from every `agent_exit` row *before the window end*, deliberately dropping the window start
-  and the stage filter (`_WindowFilters.historical_scope`) so a load from a prior stage or from before the window stays
+  and the stage filter (`WindowFilters.historical_scope`) so a load from a prior stage or from before the window stays
   visible, while the retained `end` bound stops a later load from leaking backward. A session is keyed by
   `resume_session_id`, then `session_id`, then the row's primary key (an ID-less row is its own session, never merged
   into one anonymous bucket). `sessions` is the denominator — sessions in the cohort with the skill available (its
@@ -1045,7 +1052,7 @@ only the descriptor it opened itself.
 **Filter contract.** The agent-run view has no `event` column (its WHERE `event = 'agent_exit'` is baked in), so
 view-backed functions cannot push an `event IN (...)` clause down. They honor the dashboard's event-filter contract by
 short-circuiting to empty when the operator's events selection excludes `agent_exit` (or is cleared). Rollup readers
-preserve the same contract through `_build_rollup_window_where`, which emits a tautologically-false predicate on a
+preserve the same contract through `build_rollup_window_where`, which emits a tautologically-false predicate on a
 cleared multiselect and a parameterised `IN (...)` on a non-empty one.
 
 The rollup window helper translates the dashboard's midnight-aligned UTC `[start, end)` datetimes to `day >=
@@ -1184,7 +1191,7 @@ futures, so every `st.*` write runs on the main thread). The second wave is skip
    offset via `shift_ts`.
 10. Per-issue drill-down when a number is entered.
 
-**Filter contract.** `_build_window_where` distinguishes three cases for the event / stage selections: `None` is "no
+**Filter contract.** `build_window_where` distinguishes three cases for the event / stage selections: `None` is "no
 filter on this column", a non-empty sequence emits a parameterised `IN (...)`, and an empty sequence emits a
 tautologically-false predicate (`FALSE`). The event multiselect maps straight through (`event` is `NOT NULL` in the
 schema). The stage multiselect routes through `resolve_stage_filter(selected, available)` because `options.stages` only

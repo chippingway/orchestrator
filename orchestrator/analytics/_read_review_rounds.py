@@ -7,13 +7,11 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from orchestrator.analytics import _read_query_rows as query_rows
-from orchestrator.analytics.predicates import (
-    _WindowFilters,
-    _append_where_condition,
-    _build_view_window_where,
-)
 from orchestrator.analytics.read_models import ReviewRoundBucketRow
+from orchestrator.observability.analytics.query.conditions import append_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import build_view_window_where
 
 _AGENT_CACHE_TOKENS_SQL = (
     "(COALESCE(cached_tokens, 0) + COALESCE(cache_read_tokens, 0) + COALESCE(cache_write_tokens, 0))"
@@ -100,10 +98,10 @@ def _review_round_from_row(row: Sequence[Any]) -> ReviewRoundBucketRow:
 
 def _review_round_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[ReviewRoundBucketRow]:
-    view_where, view_bindings = _build_view_window_where(filters)
-    view_where = _append_where_condition(
+    view_where, view_bindings = build_view_window_where(filters)
+    view_where = append_where_condition(
         view_where,
         "agent_role IN ('developer', 'reviewer')",
     )

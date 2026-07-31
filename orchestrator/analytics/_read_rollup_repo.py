@@ -8,21 +8,21 @@ from dataclasses import replace
 from typing import Any, Optional, Sequence
 
 from orchestrator.analytics._read_row_values import _cost_cell, _day_value
-from orchestrator.analytics.predicates import (
-    _DAILY_ROLLUP_VIEW,
-    _WindowFilters,
-    _build_rollup_window_where,
-    _prepend_where_condition,
-)
 from orchestrator.analytics.read_models import RepoBreakdownRow, ThroughputDayRow
+from orchestrator.observability.analytics.query.conditions import prepend_where_condition
 from orchestrator.observability.analytics.query.execution import ReadQuery
+from orchestrator.observability.analytics.query.filters import WindowFilters
+from orchestrator.observability.analytics.query.predicates import (
+    DAILY_ROLLUP_VIEW,
+    build_rollup_window_where,
+)
 
 
 def _repo_breakdown_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[RepoBreakdownRow]:
-    where, bindings = _build_rollup_window_where(filters)
+    where, bindings = build_rollup_window_where(filters)
     rows = query.select(
         "SELECT repo, "
         "COUNT(DISTINCT issue) AS repo_issues, "
@@ -31,7 +31,7 @@ def _repo_breakdown_rows(
         "                  THEN event_count ELSE 0 END), 0) "
         "  AS repo_agent_exits, "
         "COALESCE(SUM(total_cost_usd), 0) AS repo_cost_usd "
-        f"FROM {_DAILY_ROLLUP_VIEW}{where} "
+        f"FROM {DAILY_ROLLUP_VIEW}{where} "
         "GROUP BY repo "
         "ORDER BY repo_events DESC, repo ASC",
         bindings,
@@ -74,7 +74,7 @@ def _throughput_from_row(row: Sequence[Any]) -> ThroughputDayRow:
 
 def _throughput_rows(
     query: ReadQuery,
-    filters: _WindowFilters,
+    filters: WindowFilters,
 ) -> list[ThroughputDayRow]:
     if filters.events is not None and "stage_enter" not in filters.events:
         return []
@@ -82,8 +82,8 @@ def _throughput_rows(
     if not active_stages:
         return []
     scoped_filters = replace(filters, events=None, stages=active_stages)
-    where, bindings = _build_rollup_window_where(scoped_filters)
-    where = _prepend_where_condition(where, "event = %s")
+    where, bindings = build_rollup_window_where(scoped_filters)
+    where = prepend_where_condition(where, "event = %s")
     bindings.insert(0, "stage_enter")
     rows = query.select(
         "SELECT day, "
@@ -91,7 +91,7 @@ def _throughput_rows(
         "                  THEN event_count ELSE 0 END), 0) AS resolved, "
         "COALESCE(SUM(CASE WHEN stage = 'rejected' "
         "                  THEN event_count ELSE 0 END), 0) AS rejected "
-        f"FROM {_DAILY_ROLLUP_VIEW}{where} "
+        f"FROM {DAILY_ROLLUP_VIEW}{where} "
         "GROUP BY day "
         "ORDER BY day ASC",
         bindings,

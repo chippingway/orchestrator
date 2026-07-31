@@ -56,6 +56,15 @@ _YEAR = 2026
 _NOON_TS = datetime(_YEAR, 5, _NOON_TS_DAY, _NOON_TS_HOUR, 0, tzinfo=timezone.utc)
 
 
+_WINDOW_END_DAY = 28
+
+
+_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+
+
+_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=timezone.utc)
+
+
 class IssueEventsTest(unittest.TestCase):
     def test_unset_db_url_returns_empty(self) -> None:
         analytics_read = _reload_read(db_url="")
@@ -93,3 +102,46 @@ class IssueEventsTest(unittest.TestCase):
         # Parameterised, not interpolated.
         _, query_params = conn.first_query
         self.assertEqual(query_params, (_REPO_SHORT, 7))
+
+
+class IssueEventsFilterTest(unittest.TestCase):
+    """The drill-down takes the same window / event / stage filters as the
+    dashboard above it, so a per-issue trace stays consistent with what the
+    widgets around it show.
+    """
+
+    def test_window_and_events_threaded(self) -> None:
+        analytics_read = _reload_read()
+        conn = _FakeConnection()
+        analytics_read.get_issue_events(
+            repo=_REPO_SHORT,
+            issue=7,
+            start=_WINDOW_START,
+            end=_WINDOW_END,
+            events=[_AGENT_EXIT],
+            connect=conn.as_connect,
+        )
+        # The pinned repo / issue pair binds ahead of the generated
+        # window predicate.
+        sql, query_params = conn.first_query
+        self.assertIn("ts >= %s", sql)
+        self.assertIn("ts < %s", sql)
+        self.assertIn("event IN (%s)", sql)
+        self.assertEqual(
+            query_params,
+            (_REPO_SHORT, 7, _WINDOW_START, _WINDOW_END, _AGENT_EXIT),
+        )
+
+    def test_empty_events_short_circuits(self) -> None:
+        # The cleared multiselect means no row matches, so the trace
+        # never reaches the database.
+        analytics_read = _reload_read()
+        conn = _FakeConnection()
+        rows = analytics_read.get_issue_events(
+            repo=_REPO_SHORT,
+            issue=7,
+            events=[],
+            connect=conn.as_connect,
+        )
+        self.assertEqual(rows, [])
+        self.assertEqual(conn.executed, [])

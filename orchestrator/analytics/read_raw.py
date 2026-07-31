@@ -46,7 +46,7 @@ from orchestrator.analytics.read_models import (
     IssueEventRow,
     IssueSummaryRow,
 )
-from orchestrator.analytics.read_request import (
+from orchestrator.observability.analytics.query.requests import (
     FILTERED_READ_SIGNATURE,
     ISSUES_SIGNATURE,
     ISSUE_EVENTS_SIGNATURE,
