@@ -1066,7 +1066,7 @@ the two spellings can never hold different values. `skill_models` holds the cell
 pairing a numerator with the cohort it is read against and deriving that share itself, guarded against a zero
 denominator so a cell that exists only for its window diagnostics still renders.
 
-The first family of reads themselves is here too. `raw_reads` owns the six that stay on `analytics_events` rather than
+Both families of reads themselves are here too. `raw_reads` owns the six that stay on `analytics_events` rather than
 the day-bucketed rollup above it. Each binds its keyword call against the signature its family is declared with,
 decides the answers that need no database — an unconfigured one, a cap of zero, a cleared multiselect — and hands the
 filtered window to the projection owner beside it. Those owners split by what each one's SQL decides. `filter_options`
@@ -1086,6 +1086,34 @@ narrower list still read back with the columns it never carried unset; the recen
 its fifteen columns raises rather than filling a run in half. `raw_values` narrows one raw column to what its result
 field declares — a NULL stays `None` rather than becoming a zero a page would render as a measurement.
 
+`rollup_reads` owns the other seven, the ones a whole-day window lets scan the rollup instead: what one window
+totalled, what the window before it did, its daily series, and its stage, backend, repository, and throughput
+breakdowns. It answers the same no-database cases the raw hub does, plus the one short circuit that is about rows
+rather than configuration — a backend comparison is about finished runs, so an event selection without `agent_exit`
+returns nothing without dialing. One projection owner sits under each read. `summary_queries` applies the window once
+in a CTE and reads it back through three `UNION ALL` branches tagged by kind, so a page pays one round-trip for
+totals and both breakdowns instead of three scans of the same days, and counts distinct issues over `(repo, issue)`
+pairs because issue numbers repeat across repositories. `summary_results` reads those branches back, ranking each
+breakdown in Python — count descending, label breaking ties, so a redraw cannot reshuffle a table — and mapping the
+totals row through a declared cast list rather than unpacking it, which is what lets a row that predates a column
+leave its field at the model default. `kpi_totals` is the trimmed variant a delta pill is measured against, carrying
+none of the groupings or distinct counts so the comparison window costs one aggregate pass. `time_series` hangs cost
+and the four token bands off the same `(day, event)` cell as the count, so the volume, spend, and token charts pivot
+one result. `stage_breakdowns` and `backend_efficiency` both recover the row-weighted mean duration as
+`SUM(sum) / SUM(count)` — averaging per-day averages would weight a quiet day like a busy one — and a window with no
+recorded duration stays NULL rather than reading as instant; the backend one pins `event = 'agent_exit'` into the
+clause and drops the caller's event selection that pin contradicts, bucketing an unrecorded backend under
+`"unknown"`. `repo_breakdowns` can count distinct issues bare precisely because it groups by repository already.
+`throughput_days` pins `stage_enter` and intersects the caller's stage selection with the two terminals, returning
+nothing rather than an empty scan when either selection leaves it nothing to count. Beneath them, `cache_shares`
+owns the token share a bucket's cost is split into cache and no-cache bands by — the Codex `total_cached_tokens`
+counter is already inside `total_input_tokens`, so it weighs in the numerator only, and a bucket with no tokens
+attributes its whole cost to no-cache instead of dividing by zero — and `row_cells` owns the three readings a rollup
+cell passes through: a positional read with a default for a row narrower than the SELECT list, a nullable cost column
+read as a float because a page sums it, and a `day` some drivers widen to a timestamp narrowed back to the date it
+was grouped by. The NULL-preserving float coercion those projections share is `raw_values`', so both families narrow
+a nullable duration the same way.
+
 On the connection side, `connections` decides what a read dials with: the psycopg import deferred to call time, so a
 caller that only consumes the read dataclasses never pays for the driver and a test injects a `connect(db_url)`
 factory instead of installing one; the two factories that use it, differing only in whether the socket outlives the
@@ -1099,14 +1127,16 @@ that opened it, while a query without one opens and closes its own descriptor in
 resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families still under
 `orchestrator/analytics/` name these owners directly — the `analytics.read` facade forwards the historical connection
 names, including the underscored ones, to their own objects — and the result classes too, so a row unpacked off the
-facade is the class the read family constructed, and the raw reads themselves. On the input side `predicates.py`, the
-three `_predicate_*` leaves, and `read_request*.py` do the same; on the result side the five `read_models_*` family
-modules do; and on the raw side `read_raw.py` and the seven `_read_*` leaves beneath it do, under the private
-projection and coercion names each published while it owned them. Each of those flat modules names an owner itself and
-defines nothing — the hub above each group (`predicates.py`, `read_models.py`, `read_raw.py`) republishes what the
-leaves publish rather than sitting on top of them, the one exception being the query rows, which were only ever
-reached on `_read_query_rows.py` and are still reached there — so whichever module a historical caller imported hands
-back the owner's object rather than a copy of it.
+facade is the class the read family constructed, and the raw and rollup reads themselves. On the input side
+`predicates.py`, the three `_predicate_*` leaves, and `read_request*.py` do the same; on the result side the five
+`read_models_*` family modules do; and on the read side `read_raw.py` with its seven `_read_*` leaves and
+`read_rollup.py` with its seven do, under the private projection, fragment, and coercion names each published while it
+owned them. Each of those flat modules names an owner itself and defines nothing — the hub above each group
+(`predicates.py`, `read_models.py`, `read_raw.py`, `read_rollup.py`) republishes what the leaves publish rather than
+sitting on top of them, the one exception being the query rows, which were only ever reached on `_read_query_rows.py`
+and are still reached there — so whichever module a historical caller imported hands back the owner's object rather
+than a copy of it. `read_dashboard.py` still owns reads of its own, so it is not one of those forwarders, but the cell
+reading it publishes under a private name is the same owner's object the rollup projections call.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller

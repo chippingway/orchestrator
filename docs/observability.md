@@ -157,10 +157,11 @@ The retention scan and rewrite leaves are deliberately *not* in that rebuilt set
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
 separate Postgres-facing families: `analytics.read` is a manifest-backed lazy facade, while `sync.py` and the private
 read leaves own the SQL boundaries, row mapping, and ingestion. The filters a read is asked for, the binding of its
-keyword call, the connection lifecycle, the query execution, the frozen models a read answers with, and the six reads
-that stay on the events table rather than the rollup are not among them — those belong to
+keyword call, the connection lifecycle, the query execution, the frozen models a read answers with, the six reads that
+stay on the events table, and the seven that scan the daily rollup above it are not among them — those belong to
 `observability/analytics/query/`, and the facade plus the `predicates.py`, `_predicate_*.py`, `read_request*.py`,
-`read_models*.py`, `read_raw.py`, and the seven raw `_read_*.py` leaves forward the historical names to it.
+`read_models*.py`, `read_raw.py`, `read_rollup.py`, and the seven raw and seven rollup `_read_*.py` leaves forward the
+historical names to it.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
