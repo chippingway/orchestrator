@@ -157,7 +157,7 @@ class TrajectoryRecordingTest(unittest.TestCase):
         gh = FakeGitHubClient()
         record_mock = MagicMock(return_value=None)
         with patch.object(
-            analytics, "record_agent_exit", record_mock,
+            engine_usage.recording, "record_agent_exit", record_mock,
         ), patch.object(workflow, _RUN_AGENT_ATTR) as run_mock:
             run_mock.return_value = AgentResult(
                 session_id="s", last_message="", exit_code=0,

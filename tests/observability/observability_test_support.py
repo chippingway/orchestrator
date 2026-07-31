@@ -8,6 +8,7 @@ import sys
 from functools import cache
 from importlib import import_module
 from pathlib import Path
+from types import MappingProxyType
 
 
 _ROOT = "orchestrator.observability"
@@ -29,10 +30,23 @@ _PACKAGES = (
 )
 
 # The packages whose initializer publishes a public surface instead of staying
-# a marker. A caller reaches the usage parsers through their package, so it
-# re-exports them under an `__all__` and an importer of one owner pays for the
-# rest; every other initializer here still binds nothing.
-_PUBLISHING_PACKAGES = frozenset((f"{_ROOT}.usage",))
+# a marker. A caller reaches the usage parsers, and the recorders a producer
+# appends with, through their package, so each re-exports them under an
+# `__all__` and an importer of one owner pays for the rest; every other
+# initializer here still binds nothing.
+_PUBLISHING_PACKAGES = frozenset((
+    f"{_ANALYTICS}.recording",
+    f"{_ROOT}.usage",
+))
+
+# What a publishing package pays for beyond its own owners: the siblings it
+# composes. Recording is configured by the analytics `config` owner and meters
+# a finished run through the `usage` parsers, so naming it buys those two
+# chains as well -- and nothing else, which is what keeps the query, sync, and
+# page graphs out of the one analytics path the orchestrator process runs.
+_COMPOSED_PACKAGES = MappingProxyType({
+    f"{_ANALYTICS}.recording": (f"{_ANALYTICS}.config", f"{_ROOT}.usage"),
+})
 
 _PACKAGE_ROOT = Path(import_module(_ROOT).__file__).parent
 
@@ -43,6 +57,22 @@ import sys
 import {module}
 print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 """
+
+
+def _under(module: str, roots: tuple[str, ...]) -> bool:
+    """Whether `module` is one of `roots` or lives beneath one of them."""
+    return any(
+        module == root or module.startswith(f"{root}.") for root in roots
+    )
+
+
+def _payable_import(package: str, imported: str) -> bool:
+    """Whether a publishing package's import is one it pays for.
+
+    Its own owners are, and so are the siblings declared above -- everything
+    else is a chain an importer of the package did not ask for.
+    """
+    return _under(imported, (package,) + _COMPOSED_PACKAGES.get(package, ()))
 
 
 def _dotted_name(path: Path) -> str:

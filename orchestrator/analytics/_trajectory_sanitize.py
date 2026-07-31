@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable, Optional
 
-from orchestrator.analytics._recording import _live_settings
+from orchestrator.observability.analytics.recording.events import settings_holder
 
 _Redactor = Callable[[str], str]
 
@@ -77,7 +77,7 @@ def _redact_and_truncate(field_value: Any, redact: _Redactor) -> Optional[str]:
         text = redact(text)
     if not text:
         return None
-    settings = _live_settings()
+    settings = settings_holder()
     return _truncate_head_tail(
         text,
         settings._TRAJECTORY_FIELD_HEAD,

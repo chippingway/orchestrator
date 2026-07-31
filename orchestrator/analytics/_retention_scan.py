@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from orchestrator.analytics._recording import log
+from orchestrator.observability.analytics.recording.events import log
 
 _KeptRemoved = tuple[list[str], int]
 

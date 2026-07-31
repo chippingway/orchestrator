@@ -7,15 +7,14 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-from orchestrator.analytics._recording import (
-    _AgentExitContext,
-    _CodexCatalog,
-    _live_settings,
-    log,
-)
 from orchestrator.analytics._trajectory_serialize import _build_trajectory_record
 from orchestrator.config import credentials
 from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics.recording.events import log, settings_holder
+from orchestrator.observability.analytics.recording.models import (
+    AgentExitContext,
+    CodexCatalog,
+)
 from orchestrator.observability.usage import (
     metrics as usage_metrics,
     trajectory as usage_trajectory,
@@ -25,7 +24,7 @@ from orchestrator.observability.usage import (
 
 def _codex_trajectory_changes(
     trajectory: usage_trajectory_models.AgentTrajectory,
-    catalog: _CodexCatalog,
+    catalog: CodexCatalog,
 ) -> dict[str, Any]:
     changes: dict[str, Any] = {}
     if catalog.available_skills and not trajectory.skills.available:
@@ -39,8 +38,8 @@ def _codex_trajectory_changes(
 
 
 def _agent_trajectory(
-    context: _AgentExitContext,
-    catalog: _CodexCatalog,
+    context: AgentExitContext,
+    catalog: CodexCatalog,
 ) -> usage_trajectory_models.AgentTrajectory:
     trajectory = usage_trajectory.parse_agent_trajectory(
         context.backend,
@@ -55,21 +54,21 @@ def _agent_trajectory(
 
 
 def _persist_trajectory_record(
-    context: _AgentExitContext,
+    context: AgentExitContext,
     metrics: usage_metrics.UsageMetrics,
-    codex_catalog: _CodexCatalog,
+    codex_catalog: CodexCatalog,
 ) -> None:
     """Build and append the denormalized trajectory record."""
     trajectory = _agent_trajectory(context, codex_catalog)
-    _live_settings().append_trajectory_record(
+    settings_holder().append_trajectory_record(
         _build_trajectory_record(context, trajectory, metrics, credentials.redact_secrets),
     )
 
 
 def _maybe_record_trajectory(
-    context: _AgentExitContext,
+    context: AgentExitContext,
     metrics: usage_metrics.UsageMetrics,
-    codex_catalog: _CodexCatalog,
+    codex_catalog: CodexCatalog,
 ) -> None:
     """Parse, redact, truncate, and append one trajectory record -- gated on
     the opt-in `TRAJECTORY_LOG_PATH` and wrapped in its own fail-open guard.
@@ -93,7 +92,7 @@ def _maybe_record_trajectory(
     and "Tools offered" chips match a claude run's; a non-empty stream-parsed
     set is never overridden.
     """
-    if analytics_config.settings_on(_live_settings()).trajectory_log_path is None:
+    if analytics_config.settings_on(settings_holder()).trajectory_log_path is None:
         return
     try:
         _persist_trajectory_record(context, metrics, codex_catalog)

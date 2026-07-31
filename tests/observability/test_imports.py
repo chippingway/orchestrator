@@ -14,6 +14,7 @@ from tests.observability.observability_test_support import (
     _imported_orchestrator_modules,
     _observability_modules,
     _observability_packages,
+    _payable_import,
     _run_import_probe,
 )
 
@@ -129,13 +130,15 @@ class LayeringTest(unittest.TestCase):
     def test_a_publishing_package_costs_its_owners(self) -> None:
         # A package that publishes a surface pays for the owners behind it,
         # which is what an importer buys by naming the package rather than
-        # one of them. What it must still not pay for is anything outside.
+        # one of them, plus the siblings it composes -- declared per package,
+        # so a new chain behind an import is a deliberate edit. What it must
+        # still not pay for is anything else.
         for package in _PUBLISHING_PACKAGES:
             planted = _imported_orchestrator_modules(package)
             outside = planted - _ROOT_PACKAGE_MODULES - _package_chain(package)
             for imported in outside:
                 with self.subTest(package=package, imported=imported):
-                    self.assertTrue(imported.startswith(f"{package}."))
+                    self.assertTrue(_payable_import(package, imported))
 
     def test_no_module_reaches_the_workflow_layer(self) -> None:
         for module in _observability_modules():

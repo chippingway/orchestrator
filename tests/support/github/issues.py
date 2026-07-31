@@ -5,10 +5,11 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Optional
 
-from orchestrator import analytics, config
+from orchestrator import config
 from orchestrator.github import events as _events
 from orchestrator.github.labels import WORKFLOW_LABELS
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER, PinnedState
+from orchestrator.observability.analytics import recording
 from orchestrator.workflow.state import (
     WorkflowLabel,
     coerce_workflow_label,
@@ -62,7 +63,7 @@ def _set_workflow_label(
             issue_number=issue.number,
             stage=resolved_label,
         )
-        analytics.record_stage_enter(
+        recording.record_stage_enter(
             repo=client._repo_slug,
             issue=issue.number,
             stage=resolved_label,

@@ -24,15 +24,22 @@ EXPORTED_NAMES = (
     "record_stage_evaluation",
 )
 
+RECORDING_PACKAGE = "orchestrator.observability.analytics.recording"
+
+RECORDING_EVENTS_ATTRIBUTE = "events"
+
+RECORDING_EVENTS = f"{RECORDING_PACKAGE}.{RECORDING_EVENTS_ATTRIBUTE}"
+
+# Reloaded with the rest so each package instance gets its own recorders.
+# `events` is the only recording owner listed because it is the only one
+# carrying per-instance state -- it captures the instance it was imported
+# alongside, while everything beneath it reads settings off the request it is
+# handed. The package above it is *re-executed* rather than evicted, so its
+# module object survives: a producer imported it under its own name and holds
+# that object, and swapping it would leave the producer calling recorders this
+# package no longer publishes.
 IMPLEMENTATION_MODULES = (
-    "orchestrator.analytics._recording",
-    "orchestrator.analytics._recording_agent_exit",
-    "orchestrator.analytics._recording_catalog",
-    "orchestrator.analytics._recording_dependencies",
-    "orchestrator.analytics._recording_io",
-    "orchestrator.analytics._recording_models",
-    "orchestrator.analytics._recording_skills",
-    "orchestrator.analytics._recording_usage",
+    RECORDING_EVENTS,
     "orchestrator.analytics._retention",
     "orchestrator.analytics._retention_rewrite",
     "orchestrator.analytics._retention_scan",

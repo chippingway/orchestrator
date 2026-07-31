@@ -53,9 +53,9 @@ _VACATED_LEAVES = (
 # falls back to both sink knobs.
 _ADAPTERS = (
     "orchestrator.analytics._package_initialization",
-    "orchestrator.analytics._recording",
-    "orchestrator.analytics._recording_catalog",
-    "orchestrator.analytics._recording_skills",
+    "orchestrator.observability.analytics.recording.events",
+    "orchestrator.observability.analytics.recording.catalog",
+    "orchestrator.observability.analytics.recording.skills",
     "orchestrator.analytics._retention",
     "orchestrator.analytics._trajectories",
     "orchestrator.analytics._trajectory_persistence",

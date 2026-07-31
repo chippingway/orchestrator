@@ -7,11 +7,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from orchestrator.analytics._recording import (
-    _FILE_LOCK as _FILE_LOCK,
-    _live_settings as _live_settings,
-    log as log,
-)
 from orchestrator.analytics._retention_rewrite import (
     _atomic_rewrite as _atomic_rewrite,
     _flush_fd_and_replace as _flush_fd_and_replace,
@@ -30,6 +25,13 @@ from orchestrator.analytics._trajectories import (
     _TRAJECTORY_FILE_LOCK as _TRAJECTORY_FILE_LOCK,
 )
 from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics.recording.events import (
+    log as log,
+    settings_holder as _live_settings,
+)
+from orchestrator.observability.analytics.recording.io import (
+    ANALYTICS_FILE_LOCK as _FILE_LOCK,
+)
 
 
 _COMPATIBILITY_EXPORTS = (

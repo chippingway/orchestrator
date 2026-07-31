@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Analytics JSONL append tests."""
+"""The record envelope and the JSONL line one append writes."""
 
 import contextlib
 

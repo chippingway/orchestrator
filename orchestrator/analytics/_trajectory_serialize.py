@@ -6,11 +6,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from orchestrator.analytics._recording import (
-    _AgentExitContext,
-    _live_settings,
-    build_record,
-)
 from orchestrator.analytics._trajectory_models import (
     _TrajectoryBudget,
     _TrajectoryHeadline,
@@ -19,6 +14,11 @@ from orchestrator.analytics._trajectory_sanitize import (
     _Redactor,
     _redact_and_truncate,
 )
+from orchestrator.observability.analytics.recording.events import (
+    build_record,
+    settings_holder,
+)
+from orchestrator.observability.analytics.recording.models import AgentExitContext
 from orchestrator.observability.usage import (
     metrics as usage_metrics,
     trajectory_models as usage_trajectory_models,
@@ -32,7 +32,7 @@ def _trajectory_usage(metrics: usage_metrics.UsageMetrics) -> dict[str, Any]:
 
 
 def _trajectory_headline(
-    context: _AgentExitContext,
+    context: AgentExitContext,
     trajectory: usage_trajectory_models.AgentTrajectory,
     metrics: usage_metrics.UsageMetrics,
     redact: _Redactor,
@@ -87,7 +87,7 @@ def _bounded_trajectory_steps(
 
 
 def _build_trajectory_record(
-    context: _AgentExitContext,
+    context: AgentExitContext,
     trajectory: usage_trajectory_models.AgentTrajectory,
     metrics: usage_metrics.UsageMetrics,
     redact: _Redactor,
@@ -120,7 +120,7 @@ def _build_trajectory_record(
     headline = _trajectory_headline(context, trajectory, metrics, redact)
     budget = _TrajectoryBudget(
         headline.serialized_size,
-        _live_settings()._TRAJECTORY_RECORD_BUDGET,
+        settings_holder()._TRAJECTORY_RECORD_BUDGET,
     )
     turns = _bounded_trajectory_turns(trajectory, budget)
     steps = _bounded_trajectory_steps(trajectory, budget, redact)

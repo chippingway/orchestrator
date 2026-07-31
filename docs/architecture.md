@@ -461,7 +461,6 @@ orchestrator/
     _read_*.py          query-family implementations, typed query rows, and hooks
     read_*.py           stable raw, rollup, dashboard, and model compatibility hubs
     read_request*.py    typed filters, connection inputs, options, and legacy binding
-    _recording*.py      event-family recording, usage, and JSONL persistence
     _retention*.py      retention scanning and atomic rewrite leaves
     sync.py / _sync_*.py
                         CLI, ingestion, row parsing/mapping, and database lifecycle
@@ -479,17 +478,32 @@ orchestrator/
   _trajectory_dashboard_*.py
                         viewer bootstrap, page controls, rendering, and HTML leaves
   observability/
-    __init__.py         package marker only; home of the usage parsers and
-                        the analytics configuration owner, and the
-                        destination the observation-only surfaces above
-                        migrate the rest of their responsibilities to
+    __init__.py         package marker only; home of the usage parsers, the
+                        analytics configuration owner and the recording
+                        owners beside it, and the destination the
+                        observation-only surfaces above migrate the rest of
+                        their responsibilities to
     analytics/
-      __init__.py       package marker only; destination for the JSONL sink
+      __init__.py       package marker only; home of the sink configuration
+                        and its append side
       config.py         the six sink / database environment knobs, the parse
                         the flat package's bootstrap binds, the `Settings`
                         view every adapter reads one back through, and the
                         read-path URL fallback
-      recording/        destination for the append side of that sink
+      recording/        the append side of that sink
+        __init__.py     stable recording surface: the six recorders a
+                        producer appends through (`__all__`)
+        events.py       the record envelope, the sink append under it, and
+                        the four producer-facing recorders
+        io.py           the locked JSONL append both sinks write through,
+                        and the analytics sink's own lock
+        models.py       typed requests and the keyword signatures a call
+                        is bound through
+        agent_exit.py   the order one finished run is summarized and
+                        written in
+        usage.py        token / cost parsing for that run
+        skills.py       its opt-in skill fields
+        catalog.py      the out-of-band Codex capabilities they fall back to
       query/            destination for the reads of the Postgres target
       sync/             destination for the JSONL -> Postgres ingestion
       trajectories/     destination for the opt-in per-run reasoning sink
@@ -854,6 +868,41 @@ at module scope would cycle and make the compatibility package load-bearing rath
 attribute on demand, so a knob patched between two reads reaches the second and a holder carrying only the knobs its
 caller touches stays usable.
 
+`analytics/recording/` is the append side of that sink, and the second publishing initializer in the tree: its
+`__all__` is the six recorders a producer calls — the `build_record` envelope, the `append_record` beneath it, and one
+each for a stage entered, a stage evaluated, a repo's skill catalog scanned, and a tracked agent run finished — bound
+once, at import, to the `events` owner's own objects. The owners under it divide by what a record costs to produce:
+`events` holds the envelope and the recorders, `io` the locked JSONL line both sinks write through, `models` the typed
+requests and the keyword signatures a call is bound through, and the four steps a finished run is summarized by are
+`usage` (tokens and cost), `skills` (the opt-in evidence), `catalog` (the out-of-band Codex capabilities either falls
+back to), and `agent_exit` (the order they compose and write in). Every producer names the package — `github/client.py`
+for the paired audit / analytics stage-enter hook, `workflow/engine/dispatch.py` for the timed handler,
+`workflow/engine/usage.py` for the tracked run, and `skills/catalog.py` for the per-tick catalog — and none of them
+imports the flat analytics package any more.
+
+They still *reach* it, at call time. It is the settings holder: `events.settings_holder` answers with the package
+instance the module was imported alongside, read out of `sys.modules` rather than imported, because binding that import
+would cycle. The analytics bootstrap replaces `events` with the rest of its implementation set, which is what gives
+each package instance its own capture — a reference held across a reload keeps recording into the instance its own
+callers patched — and dispatching `append_record` through that holder is what keeps
+`patch.object(analytics, "append_record", ...)` intercepting an internal append. A producer that imported the owner
+with no package behind it captures nothing and resolves the name inside the call instead. The trajectory sink is
+reached the same way until it has an owner here, so one run's two records stay on one instance.
+
+`recording/__init__.py` is *re-executed in place* rather than replaced, and that asymmetry is the compatibility
+contract with the producers. A producer names the package at its own import and keeps the object it got back, which for
+an owner-first import order is an object that predates the flat package entirely; swapping it would strand that
+producer on recorders answering for an instance nobody holds and put a patch aimed at the canonical module outside its
+call path. Re-executing the initializer over the fresh `events` instead leaves one package object whose published names
+and the facade's bindings are the same objects in every import order.
+
+The sink lock answers the same question one layer down, and is why it lives on `io.py` rather than beside the
+recorders. An append and the retention prune that rewrites the file under it are safe only while both hold one lock
+object, and a caller is free to take `append_record` off the package rather than call through it — a reference the
+rebuild never rebinds, and one whose *first* call is what initializes the facade and triggers that rebuild. Minting the
+lock on the owner that is loaded once per process is what keeps every such reference, the facade's `_FILE_LOCK`, and
+`_retention`'s serializing against each other instead of drifting apart at the first reload.
+
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
 names until the one it needs has an owner here.
@@ -862,9 +911,12 @@ Four rules hold for whatever lands there, each with a check under `tests/observa
 off disk so a new owner is covered the day it appears. An initializer binds nothing unless the surface it fronts is what
 a caller asks for by name, so importing one owner does not charge the importer for its siblings: the recording path runs
 inside every tracked agent run, and a binding would put the query owners and the database driver behind that import.
-`usage/__init__.py` is the one exception and pays that cost deliberately — the parsers are reached through their
-package, so it re-exports the nine parsers and the five result types they return under an `__all__` — and the check that
-excuses it is keyed on that `__all__`, so a second publishing initializer is a deliberate edit rather than a silent one.
+`usage/__init__.py` and `analytics/recording/__init__.py` are the two exceptions and pay that cost deliberately — the
+parsers and the recorders are each reached through their package, so one re-exports the nine parsers and the five result
+types they return under an `__all__` and the other the six recorders — and the check that excuses them is keyed on that
+`__all__`, so a third publishing initializer is a deliberate edit rather than a silent one. What a publisher may charge
+for beyond its own owners is declared per package: recording is configured by `analytics/config.py` and meters a run
+through `usage/`, so naming it buys those two chains and nothing else.
 Nothing under the tree carries an export manifest, a resolver hook, or a `.pyi` surface — a re-export is the owner's own
 object, bound once at import rather than resolved per lookup, so the module defining a name stays where a reader finds
 it and where a patch has to land, rather than a facade answering for it — the compatibility layer this destination

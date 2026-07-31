@@ -21,9 +21,9 @@ time.
   token / cost detail the analytics `agent_exit` record carries.
 
 Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners,
-the analytics configuration owner (`analytics/config.py`), and the packages the rest of the analytics sink, the
-dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree, the
-module named for it below stays the import site. See
+the analytics configuration and recording owners (`analytics/config.py`, `analytics/recording/`), and the packages the
+rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility
+has an owner in that tree, the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -122,14 +122,28 @@ any time without affecting workflow correctness.
 Project-local JSONL sink for raw metric records, separate from `EVENT_LOG_PATH`. Opts in or out independently via
 `ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS` and the helpers in `orchestrator/analytics/`.
 
-**Module layout.** `orchestrator/analytics/__init__.py` is an import-only compatibility facade. Its bootstrap reparses
-the six sink knobs on every package import and assembles fresh recording, trajectory, and retention hubs so references
-held across a package reload keep their historical isolation. `_recording.py`, `_trajectories.py`, and `_retention.py`
-retain the established patch/import surfaces; their implementations are split into focused `_recording_*`,
-`_trajectory_*`, and `_retention_*` leaves for event families, serialization, sanitization, persistence,
-scanning, and atomic rewrites. The read and sync surfaces are separate Postgres-facing families: `analytics.read` is a
-manifest-backed lazy facade, while `sync.py`, `connection.py`, `query.py`, `predicates.py`, and their private leaves own
-typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle.
+**Module layout.** The append side lives in `orchestrator/observability/analytics/recording/`, whose initializer
+publishes the six recorders a producer calls (`build_record`, `append_record`, `record_stage_enter`,
+`record_stage_evaluation`, `record_repo_skill_catalog`, `record_agent_exit`) as the `events` owner's own objects.
+Beside it are `io.py` (the locked JSONL line both sinks write through), `models.py` (typed requests and the keyword
+signatures a call is bound through), and the four owners one finished agent run is summarized by — `usage.py`,
+`skills.py`, `catalog.py`, and `agent_exit.py`. Every producer names that package:
+`orchestrator/github/client.py`, `orchestrator/workflow/engine/dispatch.py`,
+`orchestrator/workflow/engine/usage.py`, and `orchestrator/skills/catalog.py`.
+
+`orchestrator/analytics/__init__.py` stays an import-only compatibility facade re-exporting the same objects. Its
+bootstrap reparses the six sink knobs on every package import and assembles a fresh recorder, trajectory, and retention
+set — the recording `events` owner is replaced with them — so references held across a package reload keep their
+historical isolation. The recording package above that owner is re-executed in place rather than replaced, so the one
+module object every producer imported keeps publishing the live recorders, and the facade's bindings and a patch aimed
+at the canonical module stay the same objects whichever import came first. The sink lock the append and the prune must
+share is minted on `recording/io.py`, which no reload rebuilds, so a recorder taken off the package before the facade
+existed still serializes against the prune rather than writing into a file being rewritten under it.
+`_trajectories.py` and `_retention.py` retain the established patch/import surfaces; their implementations are split
+into focused `_trajectory_*` and `_retention_*` leaves for serialization, sanitization, persistence, scanning, and
+atomic rewrites. The read and sync surfaces are separate Postgres-facing families:
+`analytics.read` is a manifest-backed lazy facade, while `sync.py`, `connection.py`, `query.py`, `predicates.py`, and
+their private leaves own typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -140,10 +154,12 @@ fallback a read's omitted `db_url=` resolves through. The values stay exposed as
 (`analytics.ANALYTICS_LOG_PATH`, etc.) that tests patch directly via
 `patch.object(analytics, "ANALYTICS_LOG_PATH", ...)`, and every adapter reads one back through the owner's `Settings`
 view, which reads its attribute on demand so a patch reaches the next read. The two entry points differ only in whose
-instance answers: the recorders in `_recording` / `_trajectories`, the prune wrappers in `_retention`, and the skill
-readers pass `config.settings_on` the package instance they captured at their own import (a package reloaded against a
-patched env is what its own callers drive), while the read and sync paths have nothing captured and use
-`config.live_settings`, which resolves the package name. The audit event log (`config.EVENT_LOG_PATH`) stays in
+instance answers: the recorders in `recording/events.py` and `_trajectories`, the prune wrappers in `_retention`, and
+the skill readers pass `config.settings_on` the package instance they captured at their own import (a package reloaded
+against a patched env is what its own callers drive) — `events.settings_holder` is where that capture is read out of
+`sys.modules`, and a producer that imported the recording owner with no analytics package behind it resolves the name
+inside the call instead — while the read and sync paths have nothing captured and use `config.live_settings`, which
+resolves the package name. The audit event log (`config.EVENT_LOG_PATH`) stays in
 `config` because `GitHubClient.emit_event` is a general-purpose audit surface.
 
 **Filesystem only.** No PostgreSQL, Streamlit, or external services — the sink is one JSONL file under the project log
@@ -441,7 +457,7 @@ any other value is the explicit opt-in path. `TRAJECTORY_RETENTION_DAYS` default
 after `mkdir(parents=True, exist_ok=True)`, downgrading `OSError` to a `log.warning`; `prune_trajectory_records(*,
 now=None)` removes records older than `TRAJECTORY_RETENTION_DAYS` through a temp-file + `os.replace` rewrite, preserves
 malformed / unparseable lines verbatim, and no-ops when the sink is disabled, retention is non-positive, or the file is
-absent. Both reuse the shared append (`_recording`) and prune (`_retention`) cores but hold a **dedicated**
+absent. Both reuse the shared append (`recording/io.py`) and prune (`_retention`) cores but hold a **dedicated**
 `threading.Lock`, so the trajectory file serializes its own append-vs-prune race without ever blocking against — or
 touching — `ANALYTICS_LOG_PATH`, the analytics Postgres sync, or the dashboard.
 

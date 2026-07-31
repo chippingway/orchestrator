@@ -275,16 +275,19 @@ class CallSiteTest(unittest.TestCase):
         # Patching the owner is what intercepts a codex run's offered skills
         # and tools, which holds only while the writer names it: the site left
         # behind binds the same objects but resolves nothing later.
-        from orchestrator.analytics import _recording_catalog
+        from orchestrator.observability.analytics.recording import (
+            catalog as recording_catalog,
+            models as recording_models,
+        )
 
         owner = _OWNER_MODULES[_DISCOVERY_OWNER]
-        catalog = _recording_catalog._CodexCatalog()
+        catalog = recording_models.CodexCatalog()
         with patch.object(
             owner, "discover_local_skills", lambda _cwd: ("scanned",),
         ), patch.object(
             owner, "discover_codex_tools", lambda: ("offered",),
         ):
-            _recording_catalog._populate_codex_catalog(_CODEX_CONTEXT, catalog)
+            recording_catalog.populate_codex_catalog(_CODEX_CONTEXT, catalog)
         self.assertEqual(catalog.available_skills, ["scanned"])
         self.assertEqual(catalog.tools, ["offered"])
 
