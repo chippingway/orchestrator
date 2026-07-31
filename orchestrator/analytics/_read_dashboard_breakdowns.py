@@ -12,12 +12,12 @@ from orchestrator.analytics.predicates import (
     _build_view_window_where,
     _build_window_where,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import (
     BackendDailyTokensRow,
     CostCoverageRow,
     HourlyHeatmapPoint,
 )
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _cost_coverage_from_row(row: Sequence[Any]) -> CostCoverageRow:
@@ -29,7 +29,7 @@ def _cost_coverage_from_row(row: Sequence[Any]) -> CostCoverageRow:
 
 
 def _cost_coverage_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[CostCoverageRow]:
     coverage_where, coverage_bindings = _build_view_window_where(filters)
@@ -61,7 +61,7 @@ def _backend_daily_tokens_from_row(
 
 
 def _backend_daily_token_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[BackendDailyTokensRow]:
     daily_where, daily_bindings = _build_view_window_where(filters)
@@ -92,7 +92,7 @@ def _hourly_heatmap_from_row(row: Sequence[Any]) -> HourlyHeatmapPoint:
 
 
 def _hourly_heatmap_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
     tz_offset_hours: int,
 ) -> list[HourlyHeatmapPoint]:

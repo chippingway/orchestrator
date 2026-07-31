@@ -476,13 +476,14 @@ orchestrator/
                         viewer bootstrap, page controls, rendering, and HTML leaves
   observability/
     __init__.py         package marker only; home of the usage parsers, the
-                        analytics configuration, recording, and retention
-                        owners beside them, and the destination the
-                        observation-only surfaces above migrate the rest of
-                        their responsibilities to
+                        analytics configuration, recording, retention, and
+                        read-connection owners beside them, and the
+                        destination the observation-only surfaces above
+                        migrate the rest of their responsibilities to
     analytics/
       __init__.py       package marker only; home of the sink configuration,
-                        its append side, and the by-age prune that bounds it
+                        its append side, the by-age prune that bounds it, and
+                        the connection half of the read path
       config.py         the six sink / database environment knobs, the parse
                         the flat package's bootstrap binds, the `Settings`
                         view every adapter reads one back through, and the
@@ -508,7 +509,17 @@ orchestrator/
         usage.py        token / cost parsing for that run
         skills.py       its opt-in skill fields
         catalog.py      the out-of-band Codex capabilities they fall back to
-      query/            destination for the reads of the Postgres target
+      query/            the read side of the Postgres target
+        __init__.py     package marker only; callers import an owner directly
+        connections.py  the deferred driver import, the two connect factories
+                        under it, and the one exception a driver failure is
+                        wrapped in
+        connection_cache.py
+                        the persistent socket one thread reuses, and the
+                        changed URL or torn-down socket that evicts it
+        execution.py    the resolved inputs one read carries, and the single
+                        SELECT run on a caller-owned or freshly opened
+                        connection
       sync/             destination for the JSONL -> Postgres ingestion
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
@@ -870,7 +881,7 @@ sinks and the Postgres surfaces are configured by, the `off` / `disabled` / `non
 share, the whole set parsed under the names the flat package binds them to, the `Settings` view an adapter reads one
 back through, and the fallback a read's `db_url=None` resolves through. Every adapter obtains configuration there —
 the flat package's bootstrap, both sinks' appends and the prune beside them, the two skill readers that take their
-holder off an exit context, the read-path modules (`connection.py`, `query.py`), and the sync request — so a knob's
+holder off an exit context, the two read-path owners under `analytics/query/`, and the sync request — so a knob's
 name appears in one place, and the flat package keeps no settings leaf of its own.
 
 What the flat package still owns is *which* values are in force: it binds the parsed set at import and is where a
@@ -950,6 +961,20 @@ tracked run, has no context to read, so it resolves the path through the same ca
 rebuilt alongside them for each package instance. Its lock is the one exception to that rebuild — minted on `io.py`
 with the analytics sink's, for the reason above — and `retention.py`'s trajectory prune takes that same object, so the
 trajectory file serializes its own append-versus-prune race without ever blocking against the analytics one.
+
+`analytics/query/` holds the connection half of the read path, split by what each owner decides. `connections` decides
+what a read dials with: the psycopg import deferred to call time, so a caller that only consumes the read dataclasses
+never pays for the driver and a test injects a `connect(db_url)` factory instead of installing one; the two factories
+that use it, differing only in whether the socket outlives the query; and `AnalyticsReadError`, the single exception
+every driver failure is wrapped in with the original kept as `__cause__`. `connection_cache` decides how long a socket
+lives: one thread-local entry keyed on the resolved URL, so a `with` block asking for a different `db_url=` closes the
+stale one, and a broken-socket error escaping the block evicts it before re-raising. Reuse is the point, so a normal
+exit leaves the connection open and `close_thread_local_connection` is what drains it. `execution` decides whose
+connection one SELECT runs on: a caller-owned `conn=` is used as-is and never closed, because its lifetime belongs to
+the `analytics_connection` scope that opened it, while a query without one opens and closes its own descriptor in a
+`finally`. Both connection paths resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families
+still under `orchestrator/analytics/` name `execution`'s `ReadQuery` directly — the `analytics.read` facade forwards
+the historical connection names, including the underscored ones, to these owners' own objects.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller

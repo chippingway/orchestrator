@@ -1,14 +1,24 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Single-SELECT query execution for the analytics read path.
+"""Running one read-only SELECT, and deciding whose connection it runs on.
 
-`_ReadQuery` resolves the configured URL and injected connection path for a
-reader. `_query` runs one read-only SELECT and returns every row as a tuple,
-either reusing a caller-owned `conn=` (typically an
-`analytics_connection` scope) or opening and closing a fresh
-connection via the injected `connect_fn`. Driver-level failures are
-wrapped in `AnalyticsReadError` so callers have one exception type to
-catch regardless of which step failed.
+`ReadQuery` is the resolved connection input one public read operation carries:
+the caller's `db_url=` or the configured knob behind it, the caller's
+`connect=` factory or the default, and the caller's `conn=` when it owns one
+already. `available` is what a reader short-circuits on, so a read with neither
+a supplied connection nor a configured URL returns an empty model instead of
+dialing nowhere.
+
+`select_rows` is the two connection paths that answer for. A caller-owned
+`conn=` -- typically an `analytics_connection` scope running many reads on one
+socket -- is used as-is and never closed, because its lifetime belongs to that
+scope and not to this query. Without one, a fresh connection is opened and
+closed in a `finally`, so a query that raises mid-stream cannot leak the
+descriptor. Read-only either way: no commit, no rollback.
+
+Every driver-level failure -- the connect, the cursor, the execute, or the
+fetch -- comes back as `AnalyticsReadError`, so a caller has one type to catch
+regardless of which step broke.
 """
 
 from __future__ import annotations
@@ -17,16 +27,16 @@ import contextlib
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Sequence
 
-from orchestrator.analytics.connection import (
-    AnalyticsReadError,
-    _close_quietly,
-    _default_connect,
-)
 from orchestrator.observability.analytics.config import resolve_db_url
+from orchestrator.observability.analytics.query.connections import (
+    AnalyticsReadError,
+    close_quietly,
+    default_connect,
+)
 
 
 @dataclass(frozen=True)
-class _ReadQuery:
+class ReadQuery:
     """Resolved connection inputs shared by one public read operation."""
 
     db_url: Optional[str]
@@ -39,10 +49,10 @@ class _ReadQuery:
         db_url: Optional[str],
         connect: Optional[Callable[[str], Any]],
         conn: Any,
-    ) -> _ReadQuery:
+    ) -> ReadQuery:
         return cls(
             db_url=resolve_db_url(db_url),
-            connect_fn=connect or _default_connect,
+            connect_fn=connect or default_connect,
             conn=conn,
         )
 
@@ -57,7 +67,7 @@ class _ReadQuery:
         bindings: Sequence[Any] = (),
     ) -> list[tuple]:
         """Execute one SELECT through the resolved connection path."""
-        return _query(
+        return select_rows(
             self.connect_fn,
             self.db_url,
             sql,
@@ -66,16 +76,14 @@ class _ReadQuery:
         )
 
 
-def _execute_select(
+def execute_select(
     conn: Any,
     sql: str,
     bindings: Sequence[Any],
 ) -> list[tuple]:
     """Run one SELECT on `conn` and return every row as a tuple.
 
-    Neither opens nor closes `conn` -- the caller owns its lifetime. Any
-    driver-level exception (cursor, execute, or fetch) is wrapped in
-    `AnalyticsReadError` so callers have one type to catch.
+    Neither opens nor closes `conn` -- the caller owns its lifetime.
     """
     try:
         with conn.cursor() as cur:
@@ -86,17 +94,16 @@ def _execute_select(
     return list(rows or [])
 
 
-def _connect_for_read(
+def connect_for_read(
     connect_fn: Callable[[str], Any],
     db_url: Optional[str],
 ) -> Any:
-    """Open a fresh read connection, normalizing failures to
-    `AnalyticsReadError`.
+    """Open a fresh read connection, normalizing failures.
 
     An `AnalyticsReadError` the factory already raised (the default psycopg
-    factory wraps its own connect failure) passes through unchanged rather
-    than being double-wrapped; any other exception is wrapped so the caller
-    sees a single type regardless of which driver raised it.
+    factory wraps its own connect failure) passes through unchanged rather than
+    being double-wrapped; any other exception is wrapped so the caller sees a
+    single type regardless of which driver raised it.
     """
     try:
         return connect_fn(db_url)
@@ -107,17 +114,17 @@ def _connect_for_read(
 
 
 @contextlib.contextmanager
-def _read_connection(connect_fn: Callable[[str], Any], db_url: Optional[str]):
+def read_connection(connect_fn: Callable[[str], Any], db_url: Optional[str]):
     """Open a fresh read connection and close it (best-effort) on exit, so a
     query that raises mid-stream never leaks the descriptor."""
-    opened = _connect_for_read(connect_fn, db_url)
+    opened = connect_for_read(connect_fn, db_url)
     try:
         yield opened
     finally:
-        _close_quietly(opened)
+        close_quietly(opened)
 
 
-def _query(
+def select_rows(
     connect_fn: Callable[[str], Any],
     db_url: Optional[str],
     sql: str,
@@ -127,18 +134,10 @@ def _query(
 ) -> list[tuple]:
     """Run a single SELECT and return all rows as tuples.
 
-    When `conn` is provided, reuse it -- the caller owns the
-    connection's lifetime (typically an `analytics_connection`
-    scope) and the query path neither opens nor closes a descriptor.
-    Otherwise open a fresh connection via `connect_fn(db_url)`, run
-    the SELECT, and close it in a `finally` so a query that raises
-    mid-stream does not leak the descriptor. Read-only path either
-    way -- no commit, no rollback. Any driver-level exception is
-    wrapped in `AnalyticsReadError` so callers have one type to catch
-    regardless of whether the failure was the connect, the execute,
-    or the fetch.
+    Reuses `conn` when the caller supplied one and opens a fresh connection
+    otherwise; see the module docstring for which lifetime each path owns.
     """
     if conn is not None:
-        return _execute_select(conn, sql, bindings)
-    with _read_connection(connect_fn, db_url) as opened:
-        return _execute_select(opened, sql, bindings)
+        return execute_select(conn, sql, bindings)
+    with read_connection(connect_fn, db_url) as opened:
+        return execute_select(opened, sql, bindings)

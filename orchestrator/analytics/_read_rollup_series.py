@@ -16,8 +16,8 @@ from orchestrator.analytics.predicates import (
     _WindowFilters,
     _build_rollup_window_where,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import Summary, TimeSeriesPoint
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _kpi_prev_sql(where: str) -> str:
@@ -38,7 +38,7 @@ def _kpi_prev_sql(where: str) -> str:
 
 
 def _kpi_prev_summary(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> Summary:
     where, bindings = _build_rollup_window_where(filters)
@@ -70,7 +70,7 @@ def _time_series_from_row(row: Sequence[Any]) -> TimeSeriesPoint:
 
 
 def _time_series_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[TimeSeriesPoint]:
     where, bindings = _build_rollup_window_where(filters)

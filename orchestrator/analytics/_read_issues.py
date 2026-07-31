@@ -12,8 +12,8 @@ from orchestrator.analytics._read_raw_values import (
     _int_or_none,
 )
 from orchestrator.analytics.predicates import _WindowFilters, _build_window_where
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import IssueSummaryRow
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 SORT_BY_LAST_SEEN = "last_seen"
 SORT_BY_COST = "cost"
@@ -71,7 +71,7 @@ def _issue_summary_from_row(row: Sequence[Any]) -> IssueSummaryRow:
 
 
 def _issue_summary_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
     limit: int,
     sort_by: str,

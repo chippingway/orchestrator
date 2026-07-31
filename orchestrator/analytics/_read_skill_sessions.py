@@ -24,7 +24,7 @@ from orchestrator.analytics.predicates import (
     _append_where_condition,
     _build_window_where,
 )
-from orchestrator.analytics.query import _ReadQuery
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _skill_session_key(row: Sequence[Any]) -> str:
@@ -116,7 +116,7 @@ def _skill_window_run(row: Sequence[Any]) -> _SkillWindowRun:
 
 
 def _skill_window_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[_SkillWindowRun]:
     window_where, window_bindings = _build_window_where(filters.without_events())
@@ -135,7 +135,7 @@ def _skill_window_rows(
 
 
 def _skill_history_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[tuple]:
     history_where, history_bindings = _build_window_where(
@@ -156,7 +156,7 @@ def _skill_history_rows(
 
 
 def _skill_session_evidence(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
     window_runs: Sequence[_SkillWindowRun],
 ) -> dict[str, _SessionEvidence]:

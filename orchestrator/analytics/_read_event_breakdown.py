@@ -5,12 +5,12 @@
 from __future__ import annotations
 
 from orchestrator.analytics.predicates import _WindowFilters, _build_window_where
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import EventBreakdown
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _event_breakdown_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
 ) -> list[EventBreakdown]:
     where, bindings = _build_window_where(filters)

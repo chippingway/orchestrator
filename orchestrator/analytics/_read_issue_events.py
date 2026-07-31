@@ -12,8 +12,8 @@ from orchestrator.analytics.predicates import (
     _build_window_where,
     _prepend_where_condition,
 )
-from orchestrator.analytics.query import _ReadQuery
 from orchestrator.analytics.read_models import IssueEventRow
+from orchestrator.observability.analytics.query.execution import ReadQuery
 
 
 def _issue_event_from_row(row: Sequence[Any]) -> IssueEventRow:
@@ -31,7 +31,7 @@ def _issue_event_from_row(row: Sequence[Any]) -> IssueEventRow:
 
 
 def _issue_event_rows(
-    query: _ReadQuery,
+    query: ReadQuery,
     filters: _WindowFilters,
     repo: str,
     issue: int,
