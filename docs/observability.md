@@ -1069,7 +1069,10 @@ subsequent `with` blocks on the same thread reuse it; a broken-connection error 
 inside the scope close-and-replaces the cached socket before re-raise. `close_thread_local_connection()` drains it
 explicitly for shutdown hooks or test teardown. The thread-local cache is keyed on the resolved URL: a later `with`
 block on the same thread requesting a different `db_url=` closes the stale socket first. The connection is not part of
-any Streamlit cache key (a raw `psycopg.Connection` is not hashable). Close-time exceptions are logged and swallowed.
+any Streamlit cache key (a raw `psycopg.Connection` is not hashable). Close-time exceptions are logged and swallowed,
+through the `orchestrator.analytics.connection` logger. That name is spelled out literally in
+`observability/analytics/query/connections.py` rather than derived from the module path, so an operator log filter
+selects on it regardless of which module the close lives in.
 
 The read model is deliberately separate from `analytics/sync.py`: the sync owns the JSONL → Postgres write path, while
 reads have a different error story and injection shape.
