@@ -41,7 +41,7 @@ projection reads them by field rather than by index, and ``raw_values`` narrows
 one column to what its result field declares, plus the cleared multiselect no
 row can match.
 
-So is the other family. ``rollup_reads`` owns the seven answered off the
+So is the second family. ``rollup_reads`` owns the seven answered off the
 day-bucketed rollup instead -- what a window totalled, what the window before it
 did, its daily series, and its stage, backend, repository, and throughput
 breakdowns -- and again names one projection owner per read.
@@ -52,10 +52,22 @@ with; ``kpi_totals`` the trimmed scalar scan a delta is measured against;
 and ``backend_efficiency`` the two axes a run's spend and duration are compared
 along; ``repo_breakdowns`` each repository's share of the window; and
 ``throughput_days`` the two terminal stages a day resolved or turned away.
-Beneath them, ``cache_shares`` owns the token share one bucket's cost is split
-into cache and no-cache bands by, and ``row_cells`` the readings a rollup cell
+
+So is the third. ``breakdown_reads`` owns the four whose grouping key that
+rollup threw away: a review round, a cost source, and one run's own token split
+are per-run facts the day bucket aggregated over, so those three scan the
+agent-run view, and an hour of day is what it rounded off, so the heatmap stays
+on the events table. ``review_rounds`` owns the bucketing a round is labelled
+by and the two roles each bucket is reported per, ``cost_coverage`` the sources
+a window's spend could be attributed to, ``backend_tokens`` the per-day stack
+each backend contributes, and ``hourly_heatmaps`` the weekday-and-hour cell,
+with the offset that cell is bucketed in bound rather than spliced.
+
+Beneath the last two families, ``cache_shares`` owns the token share one row's
+cost is split into cache and no-cache bands by, once per set of column names
+the two scan targets spell it with, and ``row_cells`` the readings a cell
 passes through before it lands in a result field -- alongside ``raw_values``,
-whose NULL-preserving coercions both families project through.
+whose NULL-preserving coercions every family projects through.
 
 Callers import the owner they need, so this initializer binds nothing, and the
 connection stays under the owner that opens it -- a read model is a plain

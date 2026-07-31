@@ -10,10 +10,6 @@ EXPORTS = (
     *export_group(
         "orchestrator.analytics.read_dashboard",
         (
-            ("get_backend_daily_tokens", "get_backend_daily_tokens"),
-            ("get_cost_coverage", "get_cost_coverage"),
-            ("get_hourly_heatmap", "get_hourly_heatmap"),
-            ("get_review_round_breakdown", "get_review_round_breakdown"),
             ("get_skill_adoption", "get_skill_adoption"),
             ("get_skill_trigger_matrix", "get_skill_trigger_matrix"),
             ("get_skill_trigger_rates", "get_skill_trigger_rates"),
@@ -66,9 +62,9 @@ EXPORTS = (
             ("SkillTriggerRateRow", "SkillTriggerRateRow"),
         ),
     ),
-    # The raw and rollup reads answer off the canonical owners too, so a call
-    # made through this facade runs the same SQL and short circuits as one made
-    # through the query package directly.
+    # The raw, breakdown, and rollup reads answer off the canonical owners too,
+    # so a call made through this facade runs the same SQL and short circuits as
+    # one made through the query package directly.
     *export_group(
         "orchestrator.observability.analytics.query.issue_summaries",
         (
@@ -85,6 +81,15 @@ EXPORTS = (
             ("get_issue_events", "get_issue_events"),
             ("get_issues", "get_issues"),
             ("get_recent_agent_exits", "get_recent_agent_exits"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.observability.analytics.query.breakdown_reads",
+        (
+            ("get_backend_daily_tokens", "get_backend_daily_tokens"),
+            ("get_cost_coverage", "get_cost_coverage"),
+            ("get_hourly_heatmap", "get_hourly_heatmap"),
+            ("get_review_round_breakdown", "get_review_round_breakdown"),
         ),
     ),
     *export_group(

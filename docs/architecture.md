@@ -458,11 +458,13 @@ orchestrator/
     __init__.py         import-only package compatibility facade and sink bootstrap
     _package_*.py       package initialization, immutable inventory, and hooks
     read.py             lazy read-model compatibility facade with a `.pyi` surface
-    _read_*.py          dashboard and skill query implementations and hooks —
-                        plus the seven raw leaves beneath `read_raw.py` and the
-                        seven rollup leaves beneath `read_rollup.py`, which
-                        forward to the query owners
-    read_dashboard.py   stable dashboard query-family hub
+    _read_*.py          skill query implementations and hooks — plus the seven
+                        raw leaves beneath `read_raw.py`, the seven rollup
+                        leaves beneath `read_rollup.py`, and the two breakdown
+                        leaves beneath `read_dashboard.py`, which forward to
+                        the query owners
+    read_dashboard.py   stable skill query-family hub, and the historical
+                        import site for the four breakdown reads beside them
     predicates.py / _predicate_*.py / read_request*.py / read_models*.py / read_raw.py / read_rollup.py
                         historical filter, request-model, keyword-binding,
                         result-model, raw-read, and rollup-read import sites
@@ -588,8 +590,22 @@ orchestrator/
         throughput_days.py
                         the two terminal stages each day resolved or turned
                         away, and the selections that leave nothing to count
-        cache_shares.py the token share one bucket's cost is split into cache
-                        and no-cache bands by
+        breakdown_reads.py
+                        the four reads whose grouping key the day-bucketed
+                        rollup threw away
+        review_rounds.py
+                        what a window cost per review round, and per role
+                        inside each one
+        cost_coverage.py
+                        which sources that spend could be attributed to
+        backend_tokens.py
+                        each backend's share of the window's tokens, day by
+                        day
+        hourly_heatmaps.py
+                        one weekday-and-hour activity cell, bucketed in the
+                        zone the caller asked for
+        cache_shares.py the token share one row's cost is split into cache
+                        and no-cache bands by, per scan target
         row_cells.py    the readings one rollup cell passes through before it
                         lands in a result field
       sync/             destination for the JSONL -> Postgres ingestion
@@ -1066,8 +1082,8 @@ the two spellings can never hold different values. `skill_models` holds the cell
 pairing a numerator with the cohort it is read against and deriving that share itself, guarded against a zero
 denominator so a cell that exists only for its window diagnostics still renders.
 
-Both families of reads themselves are here too. `raw_reads` owns the six that stay on `analytics_events` rather than
-the day-bucketed rollup above it. Each binds its keyword call against the signature its family is declared with,
+All three families of reads themselves are here too. `raw_reads` owns the six that stay on `analytics_events` rather
+than the day-bucketed rollup above it. Each binds its keyword call against the signature its family is declared with,
 decides the answers that need no database — an unconfigured one, a cap of zero, a cleared multiselect — and hands the
 filtered window to the projection owner beside it. Those owners split by what each one's SQL decides. `filter_options`
 collapses five `SELECT DISTINCT` round-trips into one tagged union and buckets the rows back into the five dropdowns,
@@ -1105,13 +1121,31 @@ recorded duration stays NULL rather than reading as instant; the backend one pin
 clause and drops the caller's event selection that pin contradicts, bucketing an unrecorded backend under
 `"unknown"`. `repo_breakdowns` can count distinct issues bare precisely because it groups by repository already.
 `throughput_days` pins `stage_enter` and intersects the caller's stage selection with the two terminals, returning
-nothing rather than an empty scan when either selection leaves it nothing to count. Beneath them, `cache_shares`
-owns the token share a bucket's cost is split into cache and no-cache bands by — the Codex `total_cached_tokens`
-counter is already inside `total_input_tokens`, so it weighs in the numerator only, and a bucket with no tokens
-attributes its whole cost to no-cache instead of dividing by zero — and `row_cells` owns the three readings a rollup
-cell passes through: a positional read with a default for a row narrower than the SELECT list, a nullable cost column
+nothing rather than an empty scan when either selection leaves it nothing to count.
+
+`breakdown_reads` owns the remaining four, the ones whose grouping key that rollup threw away. A review round, a cost
+source, and one run's own token split are per-run facts a day bucket aggregated over, so those three scan
+`analytics_agent_runs` and carry the same agent-exit short circuit `get_backend_efficiency` does — the view has no
+`event` column to push a selection into. An hour of day is what the bucket rounded off instead, so the heatmap stays
+on the events table, where that selection becomes an ordinary predicate and no short circuit applies. One projection
+owner sits under each: `review_rounds` labels the bucket rather than numbering it, because the axis has to hold a
+developer run still in `implementing` (round zero, not yet reviewed), a run with no round recorded at all
+(`unknown`, kept separate from it), and the tail past the sixth (one `6+` bucket, so a rare twelve-round issue cannot
+stretch the axis), and reports each bucket's cost per role with each role split into cache and no-cache bands.
+`cost_coverage` groups by the usage parser's own verdict and never folds `unknown-price` — a model the price tables
+carry no entry for — into the `unknown` a run with no recorded source falls to, since only the first is a table to
+extend. `backend_tokens` aggregates the whole window off the view rather than the capped newest-runs read, so a
+backend busy early in a long window does not flatten toward zero. `hourly_heatmaps` normalizes `ts` to UTC before
+adding the caller's offset — a session whose own timezone is not UTC would otherwise shift every bucket a second
+time — and binds that offset as a parameter rather than splicing it.
+
+Beneath the last two families, `cache_shares` owns the token share a row's cost is split into cache and no-cache
+bands by, spelled once per set of column names the rollup and the agent-run view use for it — the Codex
+cached-tokens counter is already inside the input total, so it weighs in the numerator only, and a row with no tokens
+attributes its whole cost to no-cache instead of dividing by zero — and `row_cells` owns the three readings a cell
+passes through: a positional read with a default for a row narrower than the SELECT list, a nullable cost column
 read as a float because a page sums it, and a `day` some drivers widen to a timestamp narrowed back to the date it
-was grouped by. The NULL-preserving float coercion those projections share is `raw_values`', so both families narrow
+was grouped by. The NULL-preserving float coercion those projections share is `raw_values`', so every family narrows
 a nullable duration the same way.
 
 On the connection side, `connections` decides what a read dials with: the psycopg import deferred to call time, so a
@@ -1127,16 +1161,18 @@ that opened it, while a query without one opens and closes its own descriptor in
 resolve an omitted `db_url=` through `config.resolve_db_url`, and the read families still under
 `orchestrator/analytics/` name these owners directly — the `analytics.read` facade forwards the historical connection
 names, including the underscored ones, to their own objects — and the result classes too, so a row unpacked off the
-facade is the class the read family constructed, and the raw and rollup reads themselves. On the input side
+facade is the class the read family constructed, and all three families of reads themselves. On the input side
 `predicates.py`, the three `_predicate_*` leaves, and `read_request*.py` do the same; on the result side the five
-`read_models_*` family modules do; and on the read side `read_raw.py` with its seven `_read_*` leaves and
-`read_rollup.py` with its seven do, under the private projection, fragment, and coercion names each published while it
+`read_models_*` family modules do; and on the read side `read_raw.py` with its seven `_read_*` leaves,
+`read_rollup.py` with its seven, and `_read_dashboard_breakdowns.py` and `_read_review_rounds.py` beneath
+`read_dashboard.py`, under the private projection, fragment, and coercion names each published while it
 owned them. Each of those flat modules names an owner itself and defines nothing — the hub above each group
 (`predicates.py`, `read_models.py`, `read_raw.py`, `read_rollup.py`) republishes what the leaves publish rather than
 sitting on top of them, the one exception being the query rows, which were only ever reached on `_read_query_rows.py`
 and are still reached there — so whichever module a historical caller imported hands back the owner's object rather
-than a copy of it. `read_dashboard.py` still owns reads of its own, so it is not one of those forwarders, but the cell
-reading it publishes under a private name is the same owner's object the rollup projections call.
+than a copy of it. `read_dashboard.py` still owns the three skill reads, so it is not one of those forwarders, but
+every name beside them — the four breakdown reads, the projections they call, and the cell reading it publishes under
+a private name — is the owner's own object.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
