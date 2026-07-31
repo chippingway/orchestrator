@@ -24,7 +24,7 @@ time.
   token / cost detail the analytics `agent_exit` record carries.
 
 Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners,
-the analytics configuration, recording, retention, trajectory-sink, and read-connection owners (`analytics/config.py`,
+the analytics configuration, recording, retention, trajectory-sink, and read-path owners (`analytics/config.py`,
 `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`, `analytics/query/`), and the packages the
 rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility
 has an owner in that tree, the module named for it below stays the import site. See
@@ -934,8 +934,8 @@ is Streamlit-free so the read path can be wired into any UI.
 historical object identity, wildcard surface, and `from` imports. `read_raw.py`, `read_rollup.py`, and
 `read_dashboard.py` remain stable family hubs, backed by focused `_read_*` leaves for issue/event reads, summary and
 rollup series, cost/breakdown queries, skill views, and typed query-row conversion. The frozen result models they
-return are declared by the five `*_models.py` owners under `observability/analytics/query/`; `read_models.py` and the
-`read_models_*` modules beside it forward the historical names to those owners' own classes.
+return are declared by the five result-family owners under `observability/analytics/query/` listed below;
+`read_models.py` and the `read_models_*` modules beside it forward the historical names to those owners' own classes.
 
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
 `observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature
