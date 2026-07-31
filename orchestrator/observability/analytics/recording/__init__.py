@@ -4,7 +4,7 @@
 
 Home of the append side of the analytics sink. The owners divide by what a
 record costs to produce: the envelope and the four producer-facing recorders
-that write one (``events``), the JSONL line and the locking under it
+that write one (``events``), the JSONL line and both sinks' locking under it
 (``io``), the typed requests and keyword signatures a call is bound through
 (``models``), and the four steps a finished agent run is summarized by --
 usage and cost (``usage``), the opt-in skill evidence (``skills``), the
@@ -24,8 +24,16 @@ the ``config`` owner beside this package rather than here: the read path and
 the sync ask the same owner, and a knob has one home. What *is* asked of the
 flat ``orchestrator.analytics`` package is which values are in force and where
 an interception lands -- ``events.settings_holder`` documents which instance
-of it answers, and until the trajectory sink has an owner here, an
-``agent_exit`` hands its second record over through that same instance.
+of it answers.
+
+One finished run's second record -- the opt-in trajectory -- belongs to the
+``trajectories`` package beside this one, and ``agent_exit`` calls its
+``persistence`` owner directly. That instance travels with it: the settings
+holder rides on the exit context, so the gate the write runs behind and the
+append that ends it answer for the same instance the baseline record did,
+without the sink being reached back through it. The dependency runs one way --
+nothing under ``trajectories`` imports these recorders except the sink append
+a caller outside a tracked run reaches, which sits above them.
 
 This is the one analytics path the orchestrator process itself runs, and it
 runs fail-open inside a tracked agent run, so it stays free of the query,

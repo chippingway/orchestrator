@@ -18,16 +18,22 @@ from orchestrator.analytics._package_manifest import (
     RECORDING_EVENTS,
     RECORDING_EVENTS_ATTRIBUTE,
     RECORDING_PACKAGE,
+    TRAJECTORY_API,
+    TRAJECTORY_MODELS,
 )
 from orchestrator.observability.analytics import config as analytics_config
-from orchestrator.observability.analytics.recording.io import ANALYTICS_FILE_LOCK
+from orchestrator.observability.analytics.recording.io import (
+    ANALYTICS_FILE_LOCK,
+    TRAJECTORY_FILE_LOCK,
+)
 
 
 @dataclass(frozen=True)
 class _AnalyticsModules:
     recording: ModuleType
     recording_events: ModuleType
-    trajectories: ModuleType
+    trajectory_api: ModuleType
+    trajectory_models: ModuleType
     retention: ModuleType
 
 
@@ -64,9 +70,8 @@ def _load_modules() -> _AnalyticsModules:
     return _AnalyticsModules(
         recording=_rebuilt_recording(),
         recording_events=importlib.import_module(RECORDING_EVENTS),
-        trajectories=importlib.import_module(
-            "orchestrator.analytics._trajectories",
-        ),
+        trajectory_api=importlib.import_module(TRAJECTORY_API),
+        trajectory_models=importlib.import_module(TRAJECTORY_MODELS),
         retention=importlib.import_module("orchestrator.analytics._retention"),
     )
 
@@ -75,11 +80,10 @@ def _public_exports(modules: _AnalyticsModules) -> dict[str, Any]:
     from orchestrator import config
 
     recording = modules.recording
-    trajectories = modules.trajectories
     retention = modules.retention
     return {
         "append_record": recording.append_record,
-        "append_trajectory_record": trajectories.append_trajectory_record,
+        "append_trajectory_record": modules.trajectory_api.append_trajectory_record,
         "build_record": recording.build_record,
         "config": config,
         "prune_old_records": retention.prune_old_records,
@@ -93,17 +97,26 @@ def _public_exports(modules: _AnalyticsModules) -> dict[str, Any]:
 
 
 def _compatibility_exports(modules: _AnalyticsModules) -> dict[str, Any]:
+    """Bind the private names a caller patches or observes a sink through.
+
+    The three trajectory caps are bound from the owner that declares them and
+    read back off this package by every write, so shrinking one here is what
+    bounds the next record. Both sink locks come from the `io` owner rather
+    than from the appends that take them: no reload rebuilds it, so the object
+    bound here is the one an append held across a rebuild still takes -- and
+    the one each prune serializes against.
+    """
     events = modules.recording_events
-    trajectories = modules.trajectories
+    trajectory_models = modules.trajectory_models
     return {
         "AgentResult": AgentResult,
         "_FILE_LOCK": ANALYTICS_FILE_LOCK,
         "log": events.log,
         "os": os,
-        "_TRAJECTORY_FIELD_HEAD": trajectories._TRAJECTORY_FIELD_HEAD,
-        "_TRAJECTORY_FIELD_TAIL": trajectories._TRAJECTORY_FIELD_TAIL,
-        "_TRAJECTORY_FILE_LOCK": trajectories._TRAJECTORY_FILE_LOCK,
-        "_TRAJECTORY_RECORD_BUDGET": trajectories._TRAJECTORY_RECORD_BUDGET,
+        "_TRAJECTORY_FIELD_HEAD": trajectory_models.TRAJECTORY_FIELD_HEAD,
+        "_TRAJECTORY_FIELD_TAIL": trajectory_models.TRAJECTORY_FIELD_TAIL,
+        "_TRAJECTORY_FILE_LOCK": TRAJECTORY_FILE_LOCK,
+        "_TRAJECTORY_RECORD_BUDGET": trajectory_models.TRAJECTORY_RECORD_BUDGET,
     }
 
 

@@ -11,7 +11,8 @@ time.
   are owned by `orchestrator/observability/analytics/recording/`; the retention prune, the read models, and the sync
   are still in the `orchestrator/analytics/` package.
 - **Trajectory sink** (`TRAJECTORY_LOG_PATH`) — opt-in, default-off JSONL sink for per-run agent reasoning
-  trajectories, a sibling sink still owned by the `orchestrator/analytics/` package. `record_agent_exit` is its
+  trajectories, a sibling sink whose writers live in `orchestrator/observability/analytics/trajectories/`;
+  the by-age prune beside them is still in `orchestrator/analytics/`. `record_agent_exit` is its
   producer: when the sink is on it parses each tracked run's trajectory from the same stdout, redacts and head/tail
   truncates every free-text field, and appends one `agent_trajectory` record — all behind its own fail-open guard. A
   dedicated, file-backed **trajectory viewer** (`orchestrator/trajectory_dashboard.py`) renders it as a separate
@@ -22,9 +23,10 @@ time.
   token / cost detail the analytics `agent_exit` record carries.
 
 Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners,
-the analytics configuration and recording owners (`analytics/config.py`, `analytics/recording/`), and the packages the
-rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility
-has an owner in that tree, the module named for it below stays the import site. See
+the analytics configuration, recording, and trajectory-sink owners (`analytics/config.py`, `analytics/recording/`,
+`analytics/trajectories/`), and the packages the rest of the analytics sink, the dashboard, and the trajectory viewer
+are each migrating into; until a responsibility has an owner in that tree, the module named for it below stays the
+import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -134,16 +136,16 @@ signatures a call is bound through), and the four owners one finished agent run 
 `orchestrator/workflow/engine/usage.py`, and `orchestrator/skills/catalog.py`.
 
 `orchestrator/analytics/__init__.py` stays an import-only compatibility facade re-exporting the same objects. Its
-bootstrap reparses the six sink knobs on every package import and assembles a fresh recorder, trajectory, and retention
-set — the recording `events` owner is replaced with them — so references held across a package reload keep their
-historical isolation. The recording package above that owner is re-executed in place rather than replaced, so the one
-module object every producer imported keeps publishing the live recorders, and the facade's bindings and a patch aimed
-at the canonical module stay the same objects whichever import came first. The sink lock the append and the prune must
-share is minted on `recording/io.py`, which no reload rebuilds, so a recorder taken off the package before the facade
-existed still serializes against the prune rather than writing into a file being rewritten under it.
-`_trajectories.py` and `_retention.py` retain the established patch/import surfaces; their implementations are split
-into focused `_trajectory_*` and `_retention_*` leaves for serialization, sanitization, persistence, scanning, and
-atomic rewrites. The read and sync surfaces are separate Postgres-facing families:
+bootstrap reparses the six sink knobs on every package import and assembles a fresh recorder, trajectory-append, and
+retention set — the recording `events` owner and the trajectory `api` owner are replaced with them — so references held
+across a package reload keep their historical isolation. The recording package above that owner is re-executed in place
+rather than replaced, so the one module object every producer imported keeps publishing the live recorders, and the
+facade's bindings and a patch aimed at the canonical module stay the same objects whichever import came first. The sink
+lock the append and the prune must share is minted on `recording/io.py`, which no reload rebuilds, so a recorder taken
+off the package before the facade existed still serializes against the prune rather than writing into a file being
+rewritten under it. `_retention.py` retains the established patch/import surfaces; its implementation is split into
+focused `_retention_*` leaves for scanning and atomic rewrites. The read and sync surfaces are separate
+Postgres-facing families:
 `analytics.read` is a manifest-backed lazy facade, while `sync.py`, `connection.py`, `query.py`, `predicates.py`, and
 their private leaves own typed requests, SQL boundaries, row mapping, ingestion, and connection lifecycle.
 
@@ -156,12 +158,13 @@ fallback a read's omitted `db_url=` resolves through. The values stay exposed as
 (`analytics.ANALYTICS_LOG_PATH`, etc.) that tests patch directly via
 `patch.object(analytics, "ANALYTICS_LOG_PATH", ...)`, and every adapter reads one back through the owner's `Settings`
 view, which reads its attribute on demand so a patch reaches the next read. The two entry points differ only in whose
-instance answers: the recorders in `recording/events.py` and `_trajectories`, the prune wrappers in `_retention`, and
-the skill readers pass `config.settings_on` the package instance they captured at their own import (a package reloaded
-against a patched env is what its own callers drive) — `events.settings_holder` is where that capture is read out of
-`sys.modules`, and a producer that imported the recording owner with no analytics package behind it resolves the name
-inside the call instead — while the read and sync paths have nothing captured and use `config.live_settings`, which
-resolves the package name. The audit event log (`config.EVENT_LOG_PATH`) stays in
+instance answers: the recorders in `recording/events.py`, the sink append in `trajectories/api.py`, the prune wrappers
+in `_retention`, and the skill readers pass `config.settings_on` the package instance they captured at their own import
+(a package reloaded against a patched env is what its own callers drive) — `events.settings_holder` is where that
+capture is read out of `sys.modules`, and a producer that imported the recording owner with no analytics package behind
+it resolves the name inside the call instead — while the trajectory writers below the append take that same instance
+off the exit context they are handed, and the read and sync paths have nothing captured and use `config.live_settings`,
+which resolves the package name. The audit event log (`config.EVENT_LOG_PATH`) stays in
 `config` because `GitHubClient.emit_event` is a general-purpose audit surface.
 
 **Filesystem only.** No PostgreSQL, Streamlit, or external services — the sink is one JSONL file under the project log
@@ -376,14 +379,27 @@ so catalog collection never disturbs the polling tick. An empty catalog still re
 ## Trajectory sink (`TRAJECTORY_LOG_PATH`)
 
 A sibling, opt-in JSONL sink for agent *reasoning trajectories* — the ordered timeline of tool calls / results
-interleaved with the assistant / user text turns, plus the final output a run produced — owned by the same
-`orchestrator/analytics/` package, its two knobs parsed alongside the analytics ones by
+interleaved with the assistant / user text turns, plus the final output a run produced — written by
+`orchestrator/observability/analytics/trajectories/`, its two knobs parsed alongside the analytics ones by
 `observability/analytics/config.py`. It is kept deliberately
 **separate** from the analytics sink so the large free-text trajectory bodies never enter the numeric usage rollup, its
 Postgres aggregation, or the dashboard.
 
+**Module layout.** The writers divide by what one record passes through: `models.py` holds the head/tail and
+whole-record caps, the view an adapter reads whichever values are in force back through, and the headline and running
+budget a record is charged as; `sanitize.py` the leaf-by-leaf redaction and head/tail truncation; `serialize.py` the
+record's shape and the order its turn / step arrays are drawn from the budget in; `persistence.py` the opt-in gate, the
+stdout parse, the Codex backfill, and the fail-open guard around the write; and `api.py` the bare
+`append_trajectory_record` an operator or the compatibility facade reaches.
+`recording/agent_exit.py` names `persistence` directly and never the reverse; everything from `persistence` down reads
+its settings holder off the exit context it is handed, so a record answers for the package instance the caller entered
+on. The by-age prune (`prune_trajectory_records`) is still in `orchestrator/analytics/_retention.py`; it and the append
+take the sink's dedicated lock, which is minted on `recording/io.py` beside the analytics one — see the append / prune
+discipline below for why it cannot live next to the append itself.
+
 **Producer: `record_agent_exit`.** After the baseline `agent_exit` analytics record (and the opt-in skill parse) are
-produced, `record_agent_exit` calls `_maybe_record_trajectory`, which — only when `TRAJECTORY_LOG_PATH` is enabled —
+produced, `record_agent_exit` calls `trajectories.persistence.maybe_record_trajectory`, which — only when
+`TRAJECTORY_LOG_PATH` is enabled —
 parses the run's trajectory from the same stdout (`observability/usage/trajectory.py`'s `parse_agent_trajectory`),
 redacts and truncates it, and appends one `event="agent_trajectory"` record. `_run_agent_tracked` (in
 `workflow/engine/usage.py`) forwards its
@@ -430,7 +446,9 @@ token row for the same run without ever being stored alongside it — the whole 
 `output` — is passed through `config.credentials.redact_secrets` (the same secret-shaped-env-value masker used on
 agent stderr) **before** truncation, so a secret straddling an elided boundary cannot survive as two halves. Each field
 is then head/tail truncated to its first `_TRAJECTORY_FIELD_HEAD` (`2000`) and last `_TRAJECTORY_FIELD_TAIL` (`2000`)
-characters with an `...[N chars elided]...` marker in between — the head keeps the request/intent, the tail the
+characters — declared by `trajectories/models.py`, republished under those private names on the analytics package,
+which is where a caller shrinks one — with an `...[N chars elided]...` marker in between; the head keeps the
+request/intent, the tail the
 result/answer. The whole record is additionally bounded: each step is charged its full **serialized** size — the JSON
 metadata (`kind` / `name` / `tool_id` / `turn`) plus its truncated content, not just `len(content)`, so even thousands
 of empty- or metadata-only steps still consume the budget — and the per-turn `turns` array is charged **and
@@ -439,9 +457,9 @@ turns with no tool calls cannot write the whole array in full and blow the budge
 `_TRAJECTORY_RECORD_BUDGET` (`200_000`) bytes the remaining turns — then steps — are dropped and a `truncated: true`
 flag is set; only the small fixed `run_usage` summary is always kept whole, so one pathological run (thousands of turns
 or tool calls) cannot write an unbounded line. Non-string step content (claude tool inputs are dicts; `tool_result`
-content a list) is redacted **leaf-by-leaf before** JSON serialization (`_redact_tree`) — serializing first would
-escape a multiline secret's newlines into `\n`, leaving the literal `str.replace` in `redact_secrets` unable to match
-the raw env value, so the secret would leak into the serialized content.
+content a list) is redacted **leaf-by-leaf before** JSON serialization (`sanitize.redact_tree`) — serializing first
+would escape a multiline secret's newlines into `\n`, leaving the literal `str.replace` in `redact_secrets` unable to
+match the raw env value, so the secret would leak into the serialized content.
 
 **Privacy contract — redaction is not anonymization.** The redactor masks only *secret-shaped* values: env vars whose
 name is in the secret-key set or ends in a secret suffix, plus the resolved `GITHUB_TOKEN`, each verbatim occurrence
@@ -464,7 +482,12 @@ now=None)` removes records older than `TRAJECTORY_RETENTION_DAYS` through a temp
 malformed / unparseable lines verbatim, and no-ops when the sink is disabled, retention is non-positive, or the file is
 absent. Both reuse the shared append (`recording/io.py`) and prune (`_retention`) cores but hold a **dedicated**
 `threading.Lock`, so the trajectory file serializes its own append-vs-prune race without ever blocking against — or
-touching — `ANALYTICS_LOG_PATH`, the analytics Postgres sync, or the dashboard.
+touching — `ANALYTICS_LOG_PATH`, the analytics Postgres sync, or the dashboard. That lock is minted on
+`recording/io.py`, beside the analytics sink's and for the same reason: `io.py` is loaded once per process while
+`trajectories/api.py` is rebuilt for every analytics package instance, and a caller may hold an
+`append_trajectory_record` it imported before any rebuild — a reference the rebuild never rebinds, whose own first call
+is what triggers one. A lock re-minted with the append would leave that reference serializing against nothing while the
+prune took the replacement, which is precisely the append-during-prune race the lock exists to close.
 
 **No built-in rotation.** As with the audit and analytics sinks, each append reopens the file after `mkdir`; there is no
 size cap, long-lived descriptor, or compression. `prune_trajectory_records` is **not yet wired into the polling loop**,
@@ -1362,7 +1385,8 @@ backend's stream does not expose them (codex exposes neither); the analytics wri
 from `skills.discovery.discover_codex_tools()`. Malformed JSONL lines are skipped and a missing / renamed field
 yields an empty section rather than an exception. Unlike the skill extractor, this classifier records the **raw** stream
 payload — tool inputs, tool outputs, and the final text — verbatim: it deliberately does **not** redact, truncate,
-or write any file. Those concerns belong to its downstream writer, `analytics._trajectories._maybe_record_trajectory`
+or write any file. Those concerns belong to its downstream writer,
+`observability/analytics/trajectories/`'s `persistence.maybe_record_trajectory`
 (called from `record_agent_exit`), which redacts every free-text field, applies the head/tail and total-record
 truncation caps, and appends the `agent_trajectory` record to the
 [trajectory sink](#trajectory-sink-trajectory_log_path) — only when `TRAJECTORY_LOG_PATH` is enabled and always behind

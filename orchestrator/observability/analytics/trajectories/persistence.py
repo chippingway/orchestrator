@@ -1,19 +1,28 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Trajectory parsing, Codex enrichment, and fail-open persistence."""
+"""Trajectory parsing, Codex enrichment, and fail-open persistence.
+
+One owner for the whole opt-in write: whether it happens at all, what the
+stream is parsed into, what a Codex run's missing capabilities are backfilled
+from, and the guard the entire block rides. They sit together because they are
+one decision -- the sink being off is what makes the parse never run, and the
+parse failing is what the guard exists to swallow.
+
+The settings holder arrives on the exit context: the knob that gates this and
+the append that ends it are both answered by the package instance the caller
+entered on, which is what keeps one run's two records on the same instance.
+The redactor and the logger are named inside the call, so the append path
+costs neither until the sink an operator turned on has something to write.
+"""
 
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from orchestrator.analytics._trajectory_serialize import _build_trajectory_record
-from orchestrator.config import credentials
 from orchestrator.observability.analytics import config as analytics_config
-from orchestrator.observability.analytics.recording.events import log, settings_holder
-from orchestrator.observability.analytics.recording.models import (
-    AgentExitContext,
-    CodexCatalog,
+from orchestrator.observability.analytics.trajectories.serialize import (
+    build_trajectory_record,
 )
 from orchestrator.observability.usage import (
     metrics as usage_metrics,
@@ -21,8 +30,14 @@ from orchestrator.observability.usage import (
     trajectory_models as usage_trajectory_models,
 )
 
+if TYPE_CHECKING:
+    from orchestrator.observability.analytics.recording.models import (
+        AgentExitContext,
+        CodexCatalog,
+    )
 
-def _codex_trajectory_changes(
+
+def codex_trajectory_changes(
     trajectory: usage_trajectory_models.AgentTrajectory,
     catalog: CodexCatalog,
 ) -> dict[str, Any]:
@@ -37,7 +52,7 @@ def _codex_trajectory_changes(
     return changes
 
 
-def _agent_trajectory(
+def agent_trajectory(
     context: AgentExitContext,
     catalog: CodexCatalog,
 ) -> usage_trajectory_models.AgentTrajectory:
@@ -47,25 +62,38 @@ def _agent_trajectory(
     )
     if context.backend != "codex":
         return trajectory
-    changes = _codex_trajectory_changes(trajectory, catalog)
+    changes = codex_trajectory_changes(trajectory, catalog)
     if not changes:
         return trajectory
     return replace(trajectory, **changes)
 
 
-def _persist_trajectory_record(
+def persist_trajectory_record(
     context: AgentExitContext,
     metrics: usage_metrics.UsageMetrics,
     codex_catalog: CodexCatalog,
 ) -> None:
-    """Build and append the denormalized trajectory record."""
-    trajectory = _agent_trajectory(context, codex_catalog)
-    settings_holder().append_trajectory_record(
-        _build_trajectory_record(context, trajectory, metrics, credentials.redact_secrets),
+    """Build and append the denormalized trajectory record.
+
+    The redactor is reached inside the write rather than bound at import: it
+    is the one thing this owner needs from outside the observability tree, and
+    naming it here keeps a producer that imports the recording path from
+    paying for the credential owner behind a sink that is off by default.
+    """
+    from orchestrator.config import credentials
+
+    trajectory = agent_trajectory(context, codex_catalog)
+    context.analytics_package.append_trajectory_record(
+        build_trajectory_record(
+            context,
+            trajectory,
+            metrics,
+            credentials.redact_secrets,
+        ),
     )
 
 
-def _maybe_record_trajectory(
+def maybe_record_trajectory(
     context: AgentExitContext,
     metrics: usage_metrics.UsageMetrics,
     codex_catalog: CodexCatalog,
@@ -92,12 +120,14 @@ def _maybe_record_trajectory(
     and "Tools offered" chips match a claude run's; a non-empty stream-parsed
     set is never overridden.
     """
-    if analytics_config.settings_on(settings_holder()).trajectory_log_path is None:
+    if analytics_config.settings_on(context.analytics_package).trajectory_log_path is None:
         return
     try:
-        _persist_trajectory_record(context, metrics, codex_catalog)
+        persist_trajectory_record(context, metrics, codex_catalog)
     except Exception:
-        log.exception(
+        from orchestrator.observability.analytics.recording import events
+
+        events.log.exception(
             "issue=#%d analytics: trajectory record(%s) failed; baseline agent_exit record is unaffected",
             context.issue,
             context.backend,

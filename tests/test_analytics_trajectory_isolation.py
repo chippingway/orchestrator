@@ -63,30 +63,12 @@ def _write_old_records(analytics_path: Path, trajectory_path: Path) -> None:
 
 
 class TrajectorySinkIndependenceTest(unittest.TestCase):
-    """The trajectory sink is a fully independent file: its append /
-    prune never open, write, or rewrite `ANALYTICS_LOG_PATH`, and it
-    holds a dedicated lock so the two sinks do not serialize against one
-    another.
+    """Neither prune rewrites the other sink's file: pruning trajectories
+    leaves an equally-old analytics record byte-for-byte alone, and the
+    analytics prune leaves the trajectory file alone. The append side of the
+    same independence is covered beside its owner under
+    `tests/observability/analytics/trajectories/`.
     """
-
-    def test_dedicated_lock_is_distinct(self) -> None:
-        _, analytics = _reload()
-        self.assertIsNot(analytics._FILE_LOCK, analytics._TRAJECTORY_FILE_LOCK)
-
-    def test_append_leaves_analytics_file_untouched(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            a_path = Path(td) / "analytics.jsonl"
-            t_path = Path(td) / "trajectory.jsonl"
-            _, analytics = _reload(
-                {
-                    _ANALYTICS_LOG_PATH: str(a_path),
-                    _TRAJECTORY_LOG_PATH: str(t_path),
-                }
-            )
-            analytics.append_trajectory_record({"session_id": "s"})
-            self.assertTrue(t_path.exists())
-            # The analytics file was never opened by the trajectory append.
-            self.assertFalse(a_path.exists())
 
     def test_prune_leaves_analytics_file_untouched(self) -> None:
         with tempfile.TemporaryDirectory() as td:

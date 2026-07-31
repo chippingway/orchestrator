@@ -27,16 +27,16 @@ from tests.analytics_jsonl_helpers import (
     read_lines as _read_lines,
 )
 
+
+from tests.observability.analytics.trajectories.trajectories_test_support import (
+    TRAJECTORY_LOG_PATH as _TRAJECTORY_LOG_PATH,
+    trajectory_sink as _trajectory_sink,
+)
+
 _COUNTER_KEY = 'n'
 
 
 _ENCODING = "utf-8"
-
-
-_TRAJECTORY_LOG_PATH = "TRAJECTORY_LOG_PATH"
-
-
-_TRAJECTORY_RETENTION_DAYS = "TRAJECTORY_RETENTION_DAYS"
 
 
 def _logged_call(test_case, logger, action):
@@ -48,34 +48,11 @@ def _logged_call(test_case, logger, action):
     return call_result, list(captured.output)
 
 
-@contextlib.contextmanager
-def _trajectory_sink(retention: str | None = None):
-    """Reload the analytics package against a temporary `trajectory.jsonl`
-    sink, yielding `(path, analytics)`.
-    """
-    with tempfile.TemporaryDirectory() as td:
-        path = Path(td) / "trajectory.jsonl"
-        env = {_TRAJECTORY_LOG_PATH: str(path)}
-        if retention is not None:
-            env[_TRAJECTORY_RETENTION_DAYS] = retention
-        _, analytics = _reload(env)
-        yield path, analytics
-
-
 class TrajectoryAppendTest(unittest.TestCase):
     """`append_trajectory_record` reopens append per record, creates
     parent directories, never overwrites, and downgrades OSError to a
     warning rather than propagating it.
     """
-
-    def test_both_entry_points_are_published(self) -> None:
-        # The sink is driven off the package, so its two helpers stay part of
-        # what the package publishes rather than private leaves a caller has
-        # to reach past it for.
-        _, analytics = _reload()
-        for name in ("append_trajectory_record", "prune_trajectory_records"):
-            with self.subTest(name=name):
-                self.assertIn(name, analytics.__all__)
 
     def test_append_writes_one_line_per_record(self) -> None:
         with _trajectory_sink() as (path, analytics):
@@ -120,3 +97,7 @@ class TrajectoryAppendTest(unittest.TestCase):
             )
             self.assertFalse(path.exists())
             self.assertTrue(any("could not write" in message for message in log_output))
+
+
+if __name__ == "__main__":
+    unittest.main()

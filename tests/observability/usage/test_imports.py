@@ -92,8 +92,8 @@ _CALLERS = (
     ("orchestrator.workflow.engine.usage", _METRICS_OWNER),
     ("orchestrator.observability.analytics.recording.usage", _METRICS_OWNER),
     ("orchestrator.observability.analytics.recording.skills", "skills"),
-    ("orchestrator.analytics._trajectory_persistence", "trajectory"),
-    ("orchestrator.analytics._trajectory_serialize", _RECORD_OWNER),
+    ("orchestrator.observability.analytics.trajectories.persistence", "trajectory"),
+    ("orchestrator.observability.analytics.trajectories.serialize", _RECORD_OWNER),
 )
 
 # `from __future__ import annotations` binds its own feature flag, which is

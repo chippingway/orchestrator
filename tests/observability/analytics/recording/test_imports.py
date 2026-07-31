@@ -79,12 +79,14 @@ _PRODUCERS = (
 _ANALYTICS_PACKAGE = "orchestrator.analytics"
 
 # What an owner here is allowed to reach: its siblings, the configuration
-# owner every knob is read through, and the parsers a finished run is metered
-# by. The query, sync, and page graphs are deliberately absent -- this is the
-# one analytics path the orchestrator process itself runs.
+# owner every knob is read through, the parsers a finished run is metered by,
+# and the trajectory writers an `agent_exit` hands that run's second record to.
+# The query, sync, and page graphs are deliberately absent -- this is the one
+# analytics path the orchestrator process itself runs.
 _REACHABLE = (
     _PACKAGE,
     "orchestrator.observability.analytics.config",
+    "orchestrator.observability.analytics.trajectories",
     "orchestrator.observability.usage",
     "orchestrator.observability",
     "orchestrator._package",

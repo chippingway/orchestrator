@@ -24,6 +24,9 @@ from orchestrator.observability.analytics.recording.models import (
 )
 from orchestrator.observability.analytics.recording.skills import parse_agent_exit_skills
 from orchestrator.observability.analytics.recording.usage import parse_agent_exit_usage
+from orchestrator.observability.analytics.trajectories import (
+    persistence as trajectory_persistence,
+)
 from orchestrator.observability.usage import metrics as usage_metrics
 
 
@@ -74,16 +77,16 @@ def persist_agent_exit(
 ) -> None:
     """Write the baseline event, then the independently guarded trajectory.
 
-    Both writes go through the settings holder on the context rather than a
-    direct import: the trajectory sink is still owned by the flat analytics
-    package, and dispatching there is what keeps one run's two records on the
-    same package instance the caller entered on.
+    The baseline append goes through the settings holder on the context, which
+    is what makes `patch.object(analytics, "append_record", ...)` intercept it.
+    The trajectory owner is named directly and reads that same holder off the
+    context it is handed, so one run's two records stay on the package instance
+    the caller entered on without the sink being reached through it.
     """
-    analytics_package = context.analytics_package
-    analytics_package.append_record(
+    context.analytics_package.append_record(
         build_agent_exit_record(context, metrics, skill_fields),
     )
-    analytics_package._trajectories._maybe_record_trajectory(
+    trajectory_persistence.maybe_record_trajectory(
         context,
         metrics,
         codex_catalog,

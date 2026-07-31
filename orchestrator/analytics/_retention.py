@@ -21,9 +21,6 @@ from orchestrator.analytics._retention_scan import (
     _prune_timestamp as _prune_timestamp,
     _read_kept_records as _read_kept_records,
 )
-from orchestrator.analytics._trajectories import (
-    _TRAJECTORY_FILE_LOCK as _TRAJECTORY_FILE_LOCK,
-)
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics.recording.events import (
     log as log,
@@ -31,6 +28,7 @@ from orchestrator.observability.analytics.recording.events import (
 )
 from orchestrator.observability.analytics.recording.io import (
     ANALYTICS_FILE_LOCK as _FILE_LOCK,
+    TRAJECTORY_FILE_LOCK as _TRAJECTORY_FILE_LOCK,
 )
 
 
