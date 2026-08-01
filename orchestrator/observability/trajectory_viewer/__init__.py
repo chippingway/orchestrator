@@ -43,10 +43,14 @@ What that read is then drawn as begins to arrive after it, and none of it
 imports Streamlit either. ``css`` is the stylesheet this page adds on top of
 the chrome both pages share, written against the same geometry owner the
 analytics page is set in; ``summary_html`` the banner and the five tiles a
-whole read is summarized in, built off the summary rather than the runs; and
+whole read is summarized in, built off the summary rather than the runs;
 ``run_html`` the three renderings one run is identified by -- the metadata
-grid, the overview row, and the picker label. What a caller passes into any of
-them is escaped before it reaches the markup, because a page writes these with
+grid, the overview row, and the picker label; ``usage_html`` what a run cost,
+tallied once for the whole run and once per assistant turn, with the note
+saying why the authoritative figure and the estimates beneath it need not sum;
+and ``timeline_html`` the header one entry is read by and the decision of which
+entry a usage strip belongs above. What a caller passes into any of them is
+escaped before it reaches the markup, because a page writes these with
 ``unsafe_allow_html=True`` and every value in them is record text this viewer
 does not own.
 
