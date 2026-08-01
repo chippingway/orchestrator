@@ -20,6 +20,14 @@ picked by, and the tells that mark it a fixture. ``parsing`` is what turns a
 decoded line into one of those records -- the event it is accepted for, the
 position it is stamped with, and the narrowing every field goes through.
 
+The read over them arrives with it. ``reading`` is the whole of one pass over
+the file: the blank, malformed, and foreign lines skipped rather than raised
+over, the newest-first order the records come back in, and the missing file
+answered silently where any other read error is warned about first.
+``log_paths`` answers *which* file that is -- read off the settings holder a
+caller hands in, so two reader worlds stay apart -- and what an operator gets
+instead when the opt-in sink was never switched on.
+
 Callers import the owner they need, so this initializer binds nothing, and
 Streamlit stays behind a function-local import for the same reason it does
 in ``dashboard`` -- with one more: the read model here is pure, and its

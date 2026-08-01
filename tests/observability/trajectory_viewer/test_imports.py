@@ -20,9 +20,13 @@ _COERCION_OWNER = "coercion"
 
 _CONSTANTS_OWNER = "constants"
 
+_LOG_PATHS_OWNER = "log_paths"
+
 _MODELS_OWNER = "models"
 
 _PARSING_OWNER = "parsing"
+
+_READING_OWNER = "reading"
 
 _RUNS_OWNER = "runs"
 
@@ -36,8 +40,10 @@ _USAGE_OWNER = "usage_views"
 _OWNERS = (
     _COERCION_OWNER,
     _CONSTANTS_OWNER,
+    _LOG_PATHS_OWNER,
     _MODELS_OWNER,
     _PARSING_OWNER,
+    _READING_OWNER,
     _RUNS_OWNER,
     _TIMELINE_OWNER,
     _USAGE_OWNER,
@@ -61,6 +67,11 @@ _SURFACES = MappingProxyType({
         "coerce_str_tuple",
     ),
     _CONSTANTS_OWNER: (),
+    _LOG_PATHS_OWNER: (
+        "configured_path",
+        "resolve_path",
+        "unconfigured_message",
+    ),
     _MODELS_OWNER: (
         "public_entry_content",
         "public_step_content",
@@ -70,6 +81,12 @@ _SURFACES = MappingProxyType({
         "parse_run_usage",
         "parse_step",
         "parse_turn",
+    ),
+    _READING_OWNER: (
+        "parse_trajectory_line",
+        "read_trajectories",
+        "read_trajectory_file",
+        "run_sort_key",
     ),
     _RUNS_OWNER: (),
     _TIMELINE_OWNER: (
@@ -98,15 +115,28 @@ _SURFACES = MappingProxyType({
 # the cycle this rejects, and is why the views name the record at type-check
 # time, where no import happens at all: the record is absent from every chain
 # but its own and the parse that builds it. The parse sits above the whole
-# package for that reason, and nothing here names it back.
+# package for that reason, and nothing here names it back; the read that drives
+# it sits above the parse for the same one. `log_paths` is off to the side of
+# both: naming the file a read opens costs the vocabulary its banner is spelled
+# in and nothing else here.
 _PLANTED = MappingProxyType({
     _COERCION_OWNER: (),
     _CONSTANTS_OWNER: (),
+    _LOG_PATHS_OWNER: (_CONSTANTS_OWNER,),
     _MODELS_OWNER: (_CONSTANTS_OWNER,),
     _PARSING_OWNER: (
         _COERCION_OWNER,
         _CONSTANTS_OWNER,
         _MODELS_OWNER,
+        _RUNS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
+    _READING_OWNER: (
+        _COERCION_OWNER,
+        _CONSTANTS_OWNER,
+        _MODELS_OWNER,
+        _PARSING_OWNER,
         _RUNS_OWNER,
         _TIMELINE_OWNER,
         _USAGE_OWNER,
@@ -129,6 +159,19 @@ _ALWAYS_PLANTED = frozenset((
     "orchestrator.observability",
     _PACKAGE,
 ))
+
+# The one chain an owner here may reach for, declared per owner: the analytics
+# configuration owner, which is where the knob naming the file this page reads
+# is parsed. `log_paths` names it so the viewer answers with the sink's own
+# setting rather than a second parse of the same variable, and what it names is
+# the settings *view* -- not the analytics package the parsed values are bound
+# on, which is the distinction the check below turns on.
+_EXTERNAL_CHAINS = MappingProxyType({
+    _LOG_PATHS_OWNER: (
+        "orchestrator.observability.analytics",
+        "orchestrator.observability.analytics.config",
+    ),
+})
 
 # The flat modules the viewer's remaining halves still live on. The record
 # facade among them plants the analytics package to resolve the log path, so an
@@ -205,19 +248,24 @@ class LayeringTest(unittest.TestCase):
             with self.subTest(owner=owner):
                 self.assertEqual(_planted_siblings(owner), tuple(sorted(planted)))
 
-    def test_no_owner_reaches_outside_the_package(self) -> None:
+    def test_owner_reaches_only_its_declared_chain(self) -> None:
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
             outside = planted - _ALWAYS_PLANTED - {
                 _qualified(sibling) for sibling in _OWNERS
             }
             with self.subTest(owner=owner):
-                self.assertEqual(outside, frozenset())
+                self.assertEqual(
+                    tuple(sorted(outside)), _EXTERNAL_CHAINS.get(owner, ()),
+                )
 
     def test_no_owner_plants_the_flat_leaves(self) -> None:
         # The sharpest case the check above rejects, named on its own: those
         # leaves forward *to* these owners, and the record facade among them
-        # dials the analytics settings to resolve the log path.
+        # dials the analytics settings to resolve the log path. The
+        # configuration owner one of these may name is not that package: it
+        # parses a knob, while the package binds the parsed values, reads the
+        # dotenv behind them, and imports these owners back.
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
             reached = tuple(sorted(

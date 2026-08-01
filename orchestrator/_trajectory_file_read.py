@@ -1,65 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Trajectory JSONL file decoding, ordering, and error handling."""
+"""Historical import site for the JSONL read, answered by its owner.
+
+The four functions are the owner's own, so the line that is skipped, the order
+runs come back in, and the read error that is warned about rather than raised
+are decided once rather than per import site.
+"""
 
 from __future__ import annotations
 
-import json
-import logging
-from pathlib import Path
-from typing import Callable, Optional
-
-from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
+from orchestrator.observability.trajectory_viewer import reading
 
 
-log = logging.getLogger("orchestrator.trajectory_reader")
-RecordParser = Callable[..., Optional[TrajectoryRun]]
-
-
-def parse_trajectory_line(
-    line: str,
-    *,
-    sequence: int,
-    parser: RecordParser,
-) -> Optional[TrajectoryRun]:
-    if not line.strip():
-        return None
-    try:
-        record_object = json.loads(line)
-    except json.JSONDecodeError:
-        return None
-    return parser(record_object, seq=sequence)
-
-
-def read_trajectory_file(
-    path: Path,
-    parser: RecordParser,
-) -> list[TrajectoryRun]:
-    runs: list[TrajectoryRun] = []
-    with path.open("r", encoding="utf-8") as trajectory_file:
-        for sequence, line in enumerate(trajectory_file):
-            run = parse_trajectory_line(line, sequence=sequence, parser=parser)
-            if run is not None:
-                runs.append(run)
-    return runs
-
-
-def read_trajectories(
-    log_path: Optional[Path],
-    parser: RecordParser,
-) -> list[TrajectoryRun]:
-    if log_path is None:
-        return []
-    try:
-        runs = read_trajectory_file(log_path, parser)
-    except FileNotFoundError:
-        return []
-    except OSError as error:
-        log.warning("could not read trajectory log %s: %s", log_path, error)
-        return []
-    runs.sort(key=run_sort_key, reverse=True)
-    return runs
-
-
-def run_sort_key(run: TrajectoryRun) -> tuple[str, int]:
-    return run.ts, run.seq
+parse_trajectory_line = reading.parse_trajectory_line
+read_trajectory_file = reading.read_trajectory_file
+read_trajectories = reading.read_trajectories
+run_sort_key = reading.run_sort_key

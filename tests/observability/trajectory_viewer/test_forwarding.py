@@ -18,6 +18,8 @@ _MODELS = f"{_PACKAGE}.models"
 
 _PARSING = f"{_PACKAGE}.parsing"
 
+_READING = f"{_PACKAGE}.reading"
+
 _RUNS = f"{_PACKAGE}.runs"
 
 _TIMELINE = f"{_PACKAGE}.timeline_views"
@@ -92,6 +94,13 @@ _PARSE_NAMES = (
     "parse_turn",
 )
 
+_READ_NAMES = (
+    "parse_trajectory_line",
+    "read_trajectories",
+    "read_trajectory_file",
+    "run_sort_key",
+)
+
 # The flat modules a historical caller reaches the record side through, and the
 # owner each one's names resolve to. A name reached through one of these is
 # still a name it reached, so it has to keep answering -- with the owner's own
@@ -105,6 +114,7 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._trajectory_run_views": (_USAGE, _USAGE_NAMES),
     "orchestrator._trajectory_run_timeline": (_TIMELINE, _TIMELINE_NAMES),
     "orchestrator._trajectory_record_parse": (_PARSING, _PARSE_NAMES),
+    "orchestrator._trajectory_file_read": (_READING, _READ_NAMES),
 })
 
 # What the record facade publishes off these owners. It is the module the

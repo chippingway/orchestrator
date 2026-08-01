@@ -484,9 +484,8 @@ orchestrator/
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
   trajectory_reader.py  pure file-backed filter and summary read model
-  _trajectory_*.py      filtering and file-read leaves, plus the seven
-                        record/view/parse leaves forwarding to the
-                        trajectory-viewer owners
+  _trajectory_*.py      filtering leaves, plus the eight record/view/parse/read
+                        leaves forwarding to the trajectory-viewer owners
   trajectory_dashboard.py
                         lazy compatibility facade and direct Streamlit entrypoint
   _trajectory_dashboard_*.py
@@ -739,6 +738,12 @@ orchestrator/
       parsing.py        one decoded line read back as a record: the event it
                         is accepted for, the position it is stamped with, and
                         the step and turn narrowing under it
+      reading.py        one pass over the file: the lines skipped, the
+                        newest-first order records come back in, and the read
+                        error warned about rather than raised
+      log_paths.py      which file that is, read off the settings holder a
+                        caller hands in, and the banner an unconfigured sink
+                        answers with instead
   skills/               the two skill-enumeration owners
     __init__.py         package marker only; callers name an owner
     catalog.py          per-tick repo skill-catalog collection: enumerate
@@ -1056,8 +1061,8 @@ rather than state a handler consults.
 `orchestrator/observability/` is the destination for the four surfaces that watch a run without steering it: the
 analytics sink and everything downstream of it (`analytics/` over `recording/`, `query/`, `sync/`, and `trajectories/`),
 the parser that meters one finished agent run (`usage/`), the Streamlit page over the operator's Postgres target
-(`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`, holding that page's record
-side). The parser is the first to
+(`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`, holding that page's read
+model). The parser is the first to
 arrive: its owners live under `usage/`, whose initializer publishes the parser surface, while the callers that meter a
 run — `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers — name the
 owner they need. Root-level `usage.py` stays behind as a temporary compatibility site re-exporting those owners' own
@@ -1381,19 +1386,19 @@ leaves it used to hold — `_dashboard_windows.py`, `_dashboard_filter_state.py`
 define nothing and forward each historical name, the private `_TRUTHY` and `_extent_dates` spellings included, to the
 owner's own object.
 
-`trajectory_viewer/` is the fourth destination opening, and what has arrived is the record side of the file-backed
-page: how a line is read, what it is read back as, and what a run then reports. `constants` is the vocabulary — the one
-event this viewer reads, the two brackets a run's prompt and final output are rendered as (the sink writes neither as a
-step, so there is nothing on the write side for them to agree with), the three tells that mark a fixture, and the
-banner an operator gets when the sink was never switched on. `coercion` is the narrowing under every field: the JSONL
-is append-only and was written by whichever version was running at the time, so a missing field, a number spelled as a
-string, or a scalar where an array belongs each yields the declared type's empty value rather than an exception — and a
-`bool` is refused ahead of `int`, because it is one in Python and a `true` where a token count belongs is a corrupt
-record. `models` holds the four frozen views a record is read back as, and their bodies are why two of them declare a
-constructor signature instead of taking the generated one: a dataclass cannot hold a field and a property of the same
-name, so the field is named apart while the keyword a caller passes and the attribute it reads back stay `content` —
-the spelling the sink writes — and binding the call against that declared signature is what keeps positional
-construction, keyword construction, and `inspect.signature` all reporting the one public shape.
+`trajectory_viewer/` is the fourth destination opening, and what has arrived is the whole read side of the file-backed
+page: which file it opens, how a line in it is read, what that line is read back as, and what a run then reports.
+`constants` is the vocabulary — the one event this viewer reads, the two brackets a run's prompt and final output are
+rendered as (the sink writes neither as a step, so there is nothing on the write side for them to agree with), the three
+tells that mark a fixture, and the banner an operator gets when the sink was never switched on. `coercion` is the
+narrowing under every field: the JSONL is append-only and was written by whichever version was running at the time, so a
+missing field, a number spelled as a string, or a scalar where an array belongs each yields the declared type's empty
+value rather than an exception — and a `bool` is refused ahead of `int`, because it is one in Python and a `true` where
+a token count belongs is a corrupt record. `models` holds the four frozen views a record is read back as, and their
+bodies are why two of them declare a constructor signature instead of taking the generated one: a dataclass cannot hold
+a field and a property of the same name, so the field is named apart while the keyword a caller passes and the attribute
+it reads back stay `content` — the spelling the sink writes — and binding the call against that declared signature is
+what keeps positional construction, keyword construction, and `inspect.signature` all reporting the one public shape.
 
 `runs` is the record those pieces compose into, and it deliberately defines no view of its own: `usage_views` and
 `timeline_views` do, bound on as properties so a caller reads `run.timeline` and `run.cost_usd` rather than calling a
@@ -1419,20 +1424,38 @@ and a scalar where an array belongs are each dropped, so one hand-edited entry c
 around it — which is also why a record written before the usage feature parses at all, with `run_usage=None`, no
 turns, and every `step.turn` unset.
 
+`reading` drives that parse over a whole file and sits above it, and the two of them are the only owners here that
+decide what a bad line costs: a blank line, a line that is not JSON, and a record another producer wrote are each
+skipped, and what is left comes back newest first with the position each line was counted off with as the tiebreak —
+timestamps are second-precision, and the file is append-only, so the record appended later is the more recent one. The
+two ways the read itself fails part company on purpose: a missing file is what a sink switched on but not yet written
+to looks like, so it answers empty and silently, while every other `OSError` is warned about first — on the
+`orchestrator.trajectory_reader` logger, the name an operator's filter is keyed on, whichever module the read is
+reached through — and then answers empty too, because a page that stays up showing nothing is what an unreadable file
+should cost. `log_paths` answers which file that is, and it is the one owner here that names something outside the
+package: the trajectory knob is parsed by `analytics/config.py`, so the viewer reads the sink's own setting rather
+than a second parse of the same variable. What it names is the settings *view*, not the analytics package the parsed
+values are bound on — the holder is handed in by the caller, so importing this owner costs neither that package's
+dotenv read nor a loop back through the flat leaves, and *which* instance a read resolves against stays the caller's
+question. That is what keeps two reader worlds apart, and what makes a patch on a caller's own analytics package the
+interception every read it makes goes through. When the knob is unset — the sink is opt-in and default-off — the
+answer is the banner naming the knob and the relaunch that lands it, rather than an empty table an operator would
+read as "nothing ran".
+
 Root-level `_trajectory_constants.py`, `_trajectory_record_values.py`, `_trajectory_view_models.py`,
-`_trajectory_run_model.py`, `_trajectory_run_views.py`, `_trajectory_run_timeline.py`, and
-`_trajectory_record_parse.py` define nothing now and forward each historical name to the owner's own object — which
-they have to, because the functions the record binds its properties to are those very objects. The four views and the
-record still report `orchestrator._trajectory_records` as their module: that is the import site their API is
-documented at, and what a repr, a pickle, or a reader following `__module__` lands on. That module is also where the
-parse keeps its historical call shape: it binds a caller's `obj` / `seq` against a declared signature and hands the
-owner its own `sequence` keyword, so the file read and every caller that already spells `seq` are unaffected by where
-the parse now lives.
+`_trajectory_run_model.py`, `_trajectory_run_views.py`, `_trajectory_run_timeline.py`,
+`_trajectory_record_parse.py`, and `_trajectory_file_read.py` define nothing now and forward each historical name to
+the owner's own object — which they have to, because the functions the record binds its properties to are those very
+objects. The four views and the record still report `orchestrator._trajectory_records` as their module: that is the
+import site their API is documented at, and what a repr, a pickle, or a reader following `__module__` lands on. That
+module is also the one place a caller's world is bound: the parse keeps its historical call shape there, binding an
+`obj` / `seq` pair against a declared signature and handing the owner its own `sequence` keyword, and the log path,
+the banner, and the read each hand the owner the analytics package that leaf captured at its own import.
 
 Every other responsibility of those four surfaces is still where it was: `orchestrator/analytics/`, the rest of
-`dashboard*.py`, `trajectory_dashboard.py`, and — for the filtering, the file read, and the summary aggregation over
-these owners — `trajectory_reader.py` and the leaves under it stay the import site every historical caller names until
-the one it needs has an owner here.
+`dashboard*.py`, `trajectory_dashboard.py`, and — for the filtering and the summary aggregation over these owners —
+`trajectory_reader.py` and the leaves under it stay the import site every historical caller names until the one it
+needs has an owner here.
 
 Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own subjects
 off disk so a new owner is covered the day it appears. An initializer binds nothing unless the surface it fronts is what
