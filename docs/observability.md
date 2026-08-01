@@ -10,8 +10,8 @@ time.
 - **Analytics sink** (`ANALYTICS_LOG_PATH`) — project-local JSONL of raw metric records. The recorders that append it
   are owned by `orchestrator/observability/analytics/recording/` and the by-age prune that bounds it by
   `orchestrator/observability/analytics/retention.py`; the read models are still entered through the
-  `orchestrator/analytics/` package, and so is the sync command, though the reads and the replay it drives are owned
-  beside them under `orchestrator/observability/analytics/`.
+  `orchestrator/analytics/` package, though the reads themselves — and the whole sync, the command that starts one
+  included — are owned beside them under `orchestrator/observability/analytics/`.
 - **Trajectory sink** (`TRAJECTORY_LOG_PATH`) — opt-in, default-off JSONL sink for per-run agent reasoning
   trajectories, a sibling sink whose writers live in `orchestrator/observability/analytics/trajectories/` and whose
   by-age prune is the same `retention.py` owner, reading its own knobs. `record_agent_exit` is its
