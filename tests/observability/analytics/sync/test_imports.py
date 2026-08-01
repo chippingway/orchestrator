@@ -18,31 +18,67 @@ _PACKAGE = "orchestrator.observability.analytics.sync"
 
 _COLUMNS_OWNER = "columns"
 
+_DATABASE_OWNER = "database"
+
+_INGEST_OWNER = "ingest"
+
+_MODELS_OWNER = "models"
+
 _RECORDS_OWNER = "records"
 
+_REDACTION_OWNER = "redaction"
+
 _ROWS_OWNER = "rows"
+
+_RUN_OWNER = "run"
 
 # The declared inventory. A new owner is a deliberate edit here and a paragraph
 # in the module map, which is what the inventory check compares the directory
 # against.
 _OWNERS = (
     _COLUMNS_OWNER,
+    _DATABASE_OWNER,
+    _INGEST_OWNER,
+    _MODELS_OWNER,
     _RECORDS_OWNER,
+    _REDACTION_OWNER,
     _ROWS_OWNER,
+    _RUN_OWNER,
 )
 
 # What each owner answers for, declared rather than discovered so a new public
-# name is a deliberate edit: a second way to hash a record or to lay a row out
-# is a second place the dedup key or the INSERT's parameter order could
-# disagree with the one the table is written through. The parse is the
-# encoding a hash is taken over and the five coercions a field is narrowed by;
-# the mapping is the statement, the tuple that fills it, the provenance
-# travelling beside it, and the two shapes a line resolves to. The inventory
-# owner reports nothing because the check reads `__module__`, which only a
-# class or a function carries -- its whole surface is the four column names,
-# the promoted list, the JSONB pair, and the required keys.
+# name is a deliberate edit: a second way to hash a record, lay a row out, or
+# decide what a replay was asked for is a second place the dedup key, the
+# INSERT's parameter order, or the no-op contract could disagree with the one
+# the table is written through. The inventory owner reports nothing because the
+# check reads `__module__`, which only a class or a function carries -- its
+# whole surface is the four column names, the promoted list, the JSONB pair,
+# and the required keys. `database` is likewise short one name: the view the
+# refresh names is a string.
 _SURFACES = MappingProxyType({
     _COLUMNS_OWNER: (),
+    _DATABASE_OWNER: (
+        "close_quietly",
+        "default_connect",
+        "default_json_adapter",
+        "execute_rollup_refresh",
+        "refresh_daily_rollup",
+        "rollback_quietly",
+    ),
+    _INGEST_OWNER: (
+        "RecordIngester",
+        "emit_progress",
+        "existing_hashes",
+        "flush_batch",
+        "ingest_records",
+        "note_malformed_line",
+        "stream_records",
+    ),
+    _MODELS_OWNER: (
+        "IngestContext",
+        "SyncCounters",
+        "SyncResult",
+    ),
     _RECORDS_OWNER: (
         "canonical_json",
         "content_hash",
@@ -52,6 +88,11 @@ _SURFACES = MappingProxyType({
         "required_columns",
         "required_text",
     ),
+    _REDACTION_OWNER: (
+        "redact_db_url",
+        "redacted_netloc",
+        "redacted_query",
+    ),
     _ROWS_OWNER: (
         "PreparedRecord",
         "RowProvenance",
@@ -60,26 +101,33 @@ _SURFACES = MappingProxyType({
         "row_values",
         "split_row",
     ),
+    _RUN_OWNER: (
+        "SyncRequest",
+        "SyncRun",
+        "sync_jsonl_to_postgres",
+    ),
 })
 
-# Every caller that has to obtain the row translation from this package: the
-# ingest loop that turns each line into a batched tuple, and the run that
-# builds the statement those tuples are sent under once.
-_CALLERS = (
-    "orchestrator.analytics._sync_ingest",
-    "orchestrator.analytics._sync_run",
-)
+# The one live caller left outside the package: the command the replay is
+# driven by, which resolves the service owner rather than running it itself.
+_CLI = "orchestrator.analytics.sync"
+
+# Every owner that has to obtain the row translation from a sibling: the ingest
+# loop that turns each line into a batched tuple, and the run that builds the
+# statement those tuples are sent under once.
+_TRANSLATION_CALLERS = (_INGEST_OWNER, _RUN_OWNER)
 
 # The package the sync's settings and its remaining flat leaves still live on.
 # No owner here may plant it -- that is what keeps the compatibility package
 # retirable rather than load-bearing, and what makes the forwarding beside it
-# one-directional.
+# one-directional. The run resolves it inside the call, where an import probe
+# cannot see it, which is the point.
 _ANALYTICS_PACKAGE = "orchestrator.analytics"
 
 # The driver the ingestion opens its connection with. It is imported lazily
-# inside the connect helper, and nothing here dials anything, so a caller that
-# only hashes a record or lays a row out must not pay for it -- nor be unable
-# to do either on a machine with no Postgres client installed.
+# inside the connect helper, and nothing here dials anything at import, so a
+# caller that only hashes a record or lays a row out must not pay for it -- nor
+# be unable to do either on a machine with no Postgres client installed.
 _DRIVER_PROBE = """
 import sys
 import {module}
@@ -136,8 +184,8 @@ class PublicSurfaceTest(unittest.TestCase):
 
 
 class LayeringTest(unittest.TestCase):
-    """The owners reach only siblings, never the driver, and every caller
-    names the one it composes.
+    """The owners reach only siblings, never the driver, and the command names
+    the service it drives.
     """
 
     def test_no_owner_reaches_outside_the_package(self) -> None:
@@ -156,7 +204,7 @@ class LayeringTest(unittest.TestCase):
         # The sharpest case the check above rejects, named on its own: the
         # leaves a historical caller still imports forward *to* these owners,
         # so an import back would close the loop and make the flat package
-        # part of what a row translation costs.
+        # part of what a replay costs.
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
             with self.subTest(owner=owner):
@@ -172,12 +220,19 @@ class LayeringTest(unittest.TestCase):
                 )
 
     def test_every_caller_names_the_mapping_owner(self) -> None:
-        for caller in _CALLERS:
+        for caller in _TRANSLATION_CALLERS:
             with self.subTest(caller=caller):
                 self.assertIn(
                     _qualified(_ROWS_OWNER),
-                    _imported_orchestrator_modules(caller),
+                    _imported_orchestrator_modules(_qualified(caller)),
                 )
+
+    def test_the_command_names_the_service_owner(self) -> None:
+        # The CLI keeps the parser, the logging, and the stdout summary; the
+        # replay under them is the owner's, so the command has to name it.
+        self.assertIn(
+            _qualified(_RUN_OWNER), _imported_orchestrator_modules(_CLI),
+        )
 
 
 if __name__ == "__main__":

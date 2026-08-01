@@ -469,9 +469,11 @@ orchestrator/
                         historical filter, request-model, keyword-binding,
                         result-model, raw-read, and rollup-read import sites
                         forwarding to the query owners
-    sync.py / _sync_*.py
-                        CLI, ingestion, and database lifecycle, plus the four
-                        row-translation leaves forwarding to the sync owners
+    sync.py / _sync_cli.py
+                        the sync command: parser, UTC-pinned logging, and the
+                        stdout summary over the sync owners
+    _sync_*.py          the dependency hub the facade resolves through, plus
+                        the nine leaves forwarding to the sync owners
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
   dashboard_*.py        stable component, read, chart, state, and widget hubs
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
@@ -485,14 +487,15 @@ orchestrator/
                         viewer bootstrap, page controls, rendering, and HTML leaves
   observability/
     __init__.py         package marker only; home of the usage parsers, the
-                        analytics configuration, recording, retention, and
-                        read-path owners beside them, and the destination the
-                        observation-only surfaces above migrate the rest of
-                        their responsibilities to
+                        analytics configuration, recording, retention,
+                        read-path, and replay owners beside them, and the
+                        destination the observation-only surfaces above
+                        migrate the rest of their responsibilities to
     analytics/
       __init__.py       package marker only; home of the sink configuration,
-                        its append side, the by-age prune that bounds it, and
-                        what a read is asked for, dials with, and answers with
+                        its append side, the by-age prune that bounds it, what
+                        a read is asked for, dials with, and answers with, and
+                        the replay that fills the database behind it
       config.py         the six sink / database environment knobs, the parse
                         the flat package's bootstrap binds, the `Settings`
                         view every adapter reads one back through, and the
@@ -625,7 +628,7 @@ orchestrator/
                         and no-cache bands by, per scan target
         row_cells.py    the readings one rollup cell passes through before it
                         lands in a result field
-      sync/             destination for the JSONL -> Postgres ingestion
+      sync/             the JSONL -> Postgres ingestion, less its command
         __init__.py     package marker only; callers import an owner directly
         columns.py      what a record must carry, which fields the table
                         promotes, and the two columns that hold JSON
@@ -633,6 +636,20 @@ orchestrator/
                         and the coercion each required field is narrowed by
         rows.py         the INSERT a batch is sent under, the positional tuple
                         that fills it, and the reason a line is skipped for
+        models.py       the counts a replay is read back as, the mutable
+                        tallies behind them, and what one pass carries
+                        between lines
+        ingest.py       the startup scan and the in-file skip set both dedup
+                        filters read, the batched flush, and the progress and
+                        malformed records dropped along the way
+        database.py     the lazily imported driver, the two adapters a caller
+                        may replace, the quiet rollback and close, and the
+                        rollup left refreshed
+        redaction.py    what the dialled URL looks like once it reaches a log
+                        line
+        run.py          the service entry point: what one replay resolves to,
+                        which configured states are a no-op, and the
+                        transaction shape around the ingest
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
         models.py       the head/tail and whole-record caps, the view they are
@@ -1218,8 +1235,8 @@ itself and defines nothing, and the hub above each group sits beside its leaves 
 hub ever published — they were reached on `_read_query_rows.py` then and are still reached there. Whichever module a
 historical caller imported hands back the owner's object rather than a copy of it.
 
-`analytics/sync/` is the destination for the other Postgres-facing family, and the translation between a JSONL record
-and a table row is the first of it to arrive. `columns` owns the inventory both shapes meet on — the four fields a
+`analytics/sync/` is the other Postgres-facing family, and everything a replay does now lives there — only the command
+that starts one does not. `columns` owns the inventory both shapes meet on — the four fields a
 record must carry, the list the table promotes a column of its own for, and which columns hold JSON — kept in one
 place because the required-key guard, the promotion, and the INSERT's parameter order all read it and a row lands in
 the wrong column the moment two of them disagree. Anything outside the promoted list goes to the `extras` JSONB
@@ -1237,11 +1254,32 @@ field the table would reject — resolves to a reason string rather than an exce
 JSONL file must not abort the replay of the thousands after it. A blank line is the one case that is not a failure at
 all: it comes back with neither a row nor a reason, which is what keeps it out of the malformed tally the operator
 reads. None of the three names psycopg, so a caller
-can hash a record or lay a row out on a machine with no driver installed. The CLI, the batched ingest, the redaction,
-and the database lifecycle are still `sync.py` and its remaining flat leaves; the four that moved —
-`_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, and the `_sync_rows.py` hub that grouped them —
-define nothing now and forward each historical private name to the owner's own object, while the live callers name
-the owner: `_sync_ingest.py` for the per-line translation, and `_sync_run.py` for the statement it builds once.
+can hash a record or lay a row out on a machine with no driver installed.
+
+Above them, `run` is the service: `sync_jsonl_to_postgres` resolves each of the four inputs to the caller's own value
+or the configured knob — read live rather than at import, so a replay follows whichever environment the settings were
+resolved against — and answers three configured states with empty counts and a log line rather than a failure, because
+the CLI is scheduled by an operator who may not have deployed Postgres yet. What a real run then guarantees is the
+transaction shape: a driver error rolls back and propagates so the command exits non-zero rather than reporting
+success over a half-inserted batch, the connection is closed either way, and a successful commit is always followed by
+the rollup refresh — including on a run that inserted nothing, since rerunning the sync is the documented recovery
+path for a rollup an earlier failed refresh left behind. `ingest` owns the two dedup filters and the batching between
+them: one scan of the unique `content_hash` index answers for the whole file, a hash queued earlier in that same file
+joins the set the lines after it are measured against, and `ON CONFLICT (content_hash) DO NOTHING` stays the
+authoritative backstop underneath both because a concurrent writer can land a row after the scan already answered. The
+buffer size is read off the module as a pass starts rather than frozen into a default, so a caller that pins a smaller
+one is driving the loop that actually runs. `database` keeps psycopg inside the two factories a caller may replace, so
+the load path stays driver-free and the ImportError only surfaces on a sync that really dials; the rollback, the
+close, and the view refresh around it are each logged and swallowed, because rows already committed must not be turned
+into a failed sync by cleanup. `redaction` is what the dialled URL looks like in a log line: credentials collapse to
+`***` in both places libpq accepts them while the host, database, and every other parameter survive, so the operator
+can still tell which endpoint answered.
+
+What is left flat is the command. `sync.py` keeps the parser, the UTC-pinned logging, and the stdout summary, and
+resolves the run through the owner; `_sync_cli.py` beside it is the only flat leaf that still implements anything. The
+nine that moved — `_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, the `_sync_rows.py` hub that
+grouped them, and `_sync_models.py`, `_sync_redaction.py`, `_sync_database.py`, `_sync_ingest.py`, and `_sync_run.py`
+— define nothing now and forward each historical name, private spelling included, to the owner's own object.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller

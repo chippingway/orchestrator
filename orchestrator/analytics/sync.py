@@ -1,16 +1,26 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""JSONL-to-Postgres analytics sync facade and CLI entry point."""
+"""JSONL-to-Postgres analytics sync facade and CLI entry point.
+
+The command is here -- the parser, the UTC-pinned logging it installs, and the
+stdout summary an operator reads -- while the replay it drives belongs to
+`observability/analytics/sync/`. Every name the sync ever published stays
+resolvable on this module with the owner's own object behind it, so a caller
+that imported one still lands on what the run uses.
+"""
 
 from __future__ import annotations
 
 import argparse
 import importlib
 import logging
-import pathlib
 import sys
 import time
 import typing
+
+from orchestrator.observability.analytics.sync.run import (
+    sync_jsonl_to_postgres as sync_jsonl_to_postgres,
+)
 
 _deps = importlib.import_module("orchestrator.analytics._sync_dependencies")
 
@@ -44,29 +54,12 @@ _configure_cli_logging = _deps._sync_cli._configure_cli_logging
 _cli_parser = _deps._sync_cli._cli_parser
 _print_cli_result = _deps._sync_cli._print_cli_result
 _BATCH_SIZE = _deps._sync_ingest._BATCH_SIZE
+# A progress record drops per flush, so the interval a caller reads off this
+# module is the buffer size the ingest is running with.
 _PROGRESS_INTERVAL = _BATCH_SIZE
 _DAILY_ROLLUP_VIEW = _deps._sync_database._DAILY_ROLLUP_VIEW
 
 log = logging.getLogger(__name__)
-
-
-def sync_jsonl_to_postgres(
-    *,
-    log_path: typing.Optional[pathlib.Path] = None,
-    db_url: typing.Optional[str] = None,
-    connect: typing.Optional[typing.Callable[[str], typing.Any]] = None,
-    json_adapter: typing.Optional[typing.Callable[[typing.Any], typing.Any]] = None,
-) -> SyncResult:
-    """Replay the configured analytics JSONL records into Postgres."""
-    request = _SyncRequest.resolve(
-        log_path,
-        db_url,
-        connect,
-        json_adapter,
-    )
-    if not request.ready():
-        return SyncResult()
-    return _SyncRun(request).execute()
 
 
 def _run_cli(args: argparse.Namespace) -> int:

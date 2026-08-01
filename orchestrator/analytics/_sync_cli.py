@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from orchestrator.analytics._sync_models import SyncResult
+from orchestrator.observability.analytics.sync.models import SyncResult
 
 
 def _configure_cli_logging(level: str) -> None:

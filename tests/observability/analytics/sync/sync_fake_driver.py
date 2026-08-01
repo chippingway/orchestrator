@@ -1,14 +1,35 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""In-memory connection and cursor doubles for analytics sync tests."""
+"""The connection a replay is driven over when no Postgres is involved.
 
+The double answers the two statements the ingest issues and records what each
+one carried: the startup scan reads back whatever hashes the test says the
+database already holds, and `executemany` files each row as an insert or a
+duplicate the way `ON CONFLICT DO NOTHING` would, then reports the count back
+as the rowcount the counters are split on. Keeping the stored hashes separate
+from the ones the scan answers with is what lets a test model a writer that
+landed rows *after* the scan.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
+from orchestrator.observability.analytics.sync.records import content_hash
 
-REFRESH_STATEMENT = "REFRESH MATERIALIZED VIEW"
+_REFRESH_STATEMENT = "REFRESH MATERIALIZED VIEW"
+
 Batch = tuple[str, list[tuple]]
+
+
+def keep_payload(payload: Any) -> Any:
+    """Leave a JSON cell as the Python object the fake records it as."""
+    return payload
+
+
+def seed_stored_records(connection: "FakeConnection", stored: list[dict]) -> None:
+    """Tell the double which records the database already holds."""
+    connection.seen_hashes.update(content_hash(record) for record in stored)
 
 
 class FakeCursor:
@@ -27,7 +48,7 @@ class FakeCursor:
 
     def execute(self, sql: str, sql_params=None) -> None:
         self._store.select_calls.append((sql, sql_params))
-        if self._store.raise_on_refresh is not None and REFRESH_STATEMENT in sql.upper():
+        if self._store.raise_on_refresh is not None and _REFRESH_STATEMENT in sql.upper():
             raise self._store.raise_on_refresh
         if sql.lstrip().upper().startswith("SELECT"):
             source = self._store.pre_check_hashes
