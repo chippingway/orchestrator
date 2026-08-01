@@ -1,95 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Parse decoded trajectory JSON objects into typed views."""
+"""Historical import site for the trajectory parse, answered by its owner.
+
+The four functions are the owner's own, so the event a line is accepted for,
+the narrowing each field passes through, and the step or turn that is dropped
+rather than raised over are decided once rather than per import site.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Optional
-
-from orchestrator.observability.trajectory_viewer import coercion
-from orchestrator.observability.trajectory_viewer import constants
-from orchestrator.observability.trajectory_viewer.models import (
-    RunUsageView,
-    TrajectoryStepView,
-    TurnUsageView,
-)
-from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
+from orchestrator.observability.trajectory_viewer import parsing
 
 
-def parse_step(raw_step: Any) -> Optional[TrajectoryStepView]:
-    if not isinstance(raw_step, dict):
-        return None
-    kind = coercion.coerce_str(raw_step.get("kind"))
-    if not kind:
-        return None
-    return TrajectoryStepView(
-        kind=kind,
-        name=coercion.coerce_str(raw_step.get("name")),
-        tool_id=coercion.coerce_str(raw_step.get("tool_id")),
-        content=coercion.coerce_str(raw_step.get("content")),
-        turn=coercion.coerce_int(raw_step.get("turn")),
-    )
-
-
-def parse_run_usage(raw_usage: Any) -> Optional[RunUsageView]:
-    if not isinstance(raw_usage, dict):
-        return None
-    return RunUsageView(
-        models=coercion.coerce_str_tuple(raw_usage.get("models")),
-        turns=coercion.coerce_int(raw_usage.get("turns")),
-        input_tokens=coercion.coerce_int(raw_usage.get("input_tokens")) or 0,
-        output_tokens=coercion.coerce_int(raw_usage.get("output_tokens")) or 0,
-        cached_tokens=coercion.coerce_int(raw_usage.get("cached_tokens")) or 0,
-        cache_read_tokens=coercion.coerce_int(raw_usage.get("cache_read_tokens")) or 0,
-        cache_write_tokens=coercion.coerce_int(raw_usage.get("cache_write_tokens")) or 0,
-        cost_usd=coercion.coerce_float(raw_usage.get("cost_usd")),
-        cost_source=coercion.coerce_str(raw_usage.get("cost_source")),
-    )
-
-
-def parse_turn(raw_turn: Any) -> Optional[TurnUsageView]:
-    if not isinstance(raw_turn, dict):
-        return None
-    return TurnUsageView(
-        turn=coercion.coerce_int(raw_turn.get("turn")),
-        model=coercion.coerce_str(raw_turn.get("model")),
-        input_tokens=coercion.coerce_int(raw_turn.get("input_tokens")) or 0,
-        output_tokens=coercion.coerce_int(raw_turn.get("output_tokens")) or 0,
-        cache_read_tokens=coercion.coerce_int(raw_turn.get("cache_read_tokens")) or 0,
-        cache_write_tokens=coercion.coerce_int(raw_turn.get("cache_write_tokens")) or 0,
-        cost_usd=coercion.coerce_float(raw_turn.get("cost_usd")),
-        cost_source=coercion.coerce_str(raw_turn.get("cost_source")),
-    )
-
-
-def parse_record(record_object: Any, *, sequence: int) -> Optional[TrajectoryRun]:
-    if not isinstance(record_object, dict):
-        return None
-    if record_object.get("event") != constants.TRAJECTORY_EVENT:
-        return None
-    raw_steps = coercion.as_list(record_object.get("steps"))
-    raw_turns = coercion.as_list(record_object.get("turns"))
-    steps = tuple(step for step in map(parse_step, raw_steps) if step is not None)
-    turns = tuple(turn for turn in map(parse_turn, raw_turns) if turn is not None)
-    return TrajectoryRun(
-        seq=sequence,
-        ts=coercion.coerce_str(record_object.get("ts")),
-        repo=coercion.coerce_str(record_object.get("repo")),
-        issue=coercion.coerce_int(record_object.get("issue")) or 0,
-        stage=coercion.coerce_str(record_object.get("stage")),
-        agent_role=coercion.coerce_str(record_object.get("agent_role")),
-        backend=coercion.coerce_str(record_object.get("backend")),
-        session_id=coercion.coerce_str(record_object.get("session_id")),
-        review_round=coercion.coerce_int(record_object.get("review_round")),
-        retry_count=coercion.coerce_int(record_object.get("retry_count")),
-        user_input=coercion.coerce_str(record_object.get("user_input")),
-        system_prompt=coercion.coerce_str(record_object.get("system_prompt")),
-        output=coercion.coerce_str(record_object.get("output")),
-        tools=coercion.coerce_str_tuple(record_object.get("tools")),
-        skills_triggered=coercion.coerce_str_tuple(record_object.get("skills_triggered")),
-        skills_available=coercion.coerce_str_tuple(record_object.get("skills_available")),
-        steps=steps,
-        run_usage=parse_run_usage(record_object.get("run_usage")),
-        turns=turns,
-        truncated=bool(record_object.get("truncated")),
-    )
+parse_step = parsing.parse_step
+parse_run_usage = parsing.parse_run_usage
+parse_turn = parsing.parse_turn
+parse_record = parsing.parse_record

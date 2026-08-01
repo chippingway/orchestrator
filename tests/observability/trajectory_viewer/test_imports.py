@@ -22,6 +22,8 @@ _CONSTANTS_OWNER = "constants"
 
 _MODELS_OWNER = "models"
 
+_PARSING_OWNER = "parsing"
+
 _RUNS_OWNER = "runs"
 
 _TIMELINE_OWNER = "timeline_views"
@@ -35,6 +37,7 @@ _OWNERS = (
     _COERCION_OWNER,
     _CONSTANTS_OWNER,
     _MODELS_OWNER,
+    _PARSING_OWNER,
     _RUNS_OWNER,
     _TIMELINE_OWNER,
     _USAGE_OWNER,
@@ -62,6 +65,12 @@ _SURFACES = MappingProxyType({
         "public_entry_content",
         "public_step_content",
     ),
+    _PARSING_OWNER: (
+        "parse_record",
+        "parse_run_usage",
+        "parse_step",
+        "parse_turn",
+    ),
     _RUNS_OWNER: (),
     _TIMELINE_OWNER: (
         "detail_label",
@@ -88,11 +97,20 @@ _SURFACES = MappingProxyType({
 # other way -- a view importing the record its functions are bound onto -- is
 # the cycle this rejects, and is why the views name the record at type-check
 # time, where no import happens at all: the record is absent from every chain
-# but its own.
+# but its own and the parse that builds it. The parse sits above the whole
+# package for that reason, and nothing here names it back.
 _PLANTED = MappingProxyType({
     _COERCION_OWNER: (),
     _CONSTANTS_OWNER: (),
     _MODELS_OWNER: (_CONSTANTS_OWNER,),
+    _PARSING_OWNER: (
+        _COERCION_OWNER,
+        _CONSTANTS_OWNER,
+        _MODELS_OWNER,
+        _RUNS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
     _RUNS_OWNER: (
         _CONSTANTS_OWNER,
         _MODELS_OWNER,

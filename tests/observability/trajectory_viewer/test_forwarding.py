@@ -16,6 +16,8 @@ _CONSTANTS = f"{_PACKAGE}.constants"
 
 _MODELS = f"{_PACKAGE}.models"
 
+_PARSING = f"{_PACKAGE}.parsing"
+
 _RUNS = f"{_PACKAGE}.runs"
 
 _TIMELINE = f"{_PACKAGE}.timeline_views"
@@ -83,6 +85,13 @@ _TIMELINE_NAMES = (
     "turn_map",
 )
 
+_PARSE_NAMES = (
+    "parse_record",
+    "parse_run_usage",
+    "parse_step",
+    "parse_turn",
+)
+
 # The flat modules a historical caller reaches the record side through, and the
 # owner each one's names resolve to. A name reached through one of these is
 # still a name it reached, so it has to keep answering -- with the owner's own
@@ -95,12 +104,15 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._trajectory_run_model": (_RUNS, ("TrajectoryRun",)),
     "orchestrator._trajectory_run_views": (_USAGE, _USAGE_NAMES),
     "orchestrator._trajectory_run_timeline": (_TIMELINE, _TIMELINE_NAMES),
+    "orchestrator._trajectory_record_parse": (_PARSING, _PARSE_NAMES),
 })
 
 # What the record facade publishes off these owners. It is the module the
 # reader re-exports from and the one the views name as their own, so this pins
 # the far end of the chain: whichever site a caller imported a record name
-# through, the object it holds is the one the page renders.
+# through, the object it holds is the one the page renders. Its `parse_record`
+# is absent on purpose: the facade binds the parse against the historical
+# `obj` / `seq` call shape rather than republishing the owner's function.
 _FORWARDED_FACADE = (
     ("RunUsageView", _MODELS),
     ("TimelineEntry", _MODELS),

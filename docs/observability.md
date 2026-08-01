@@ -29,7 +29,7 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the trajectory viewer's
-record and run models (`trajectory_viewer/`), and the packages the
+record parse and run models (`trajectory_viewer/`), and the packages the
 rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility
 has an owner in that tree, the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
@@ -718,11 +718,13 @@ dashboard reads the numeric usage / cost rollup from Postgres, while the viewer 
 the file on disk (no database, no `analytics.sync`).
 
 **Read model (`orchestrator/trajectory_reader.py`).** A pure, import-light, Streamlit-free reader (the file-backed
-analogue of `orchestrator/analytics/read.py`). `_trajectory_records.py` preserves the historical record API while the
-record parser and the file reader live in focused `_trajectory_*` leaves. The record vocabulary (`constants`), the
-field coercion under it (`coercion`), the immutable sub-views (`models`), the run model (`runs`), and the usage and
-timeline/label views bound onto it (`usage_views`, `timeline_views`) live under
-`orchestrator/observability/trajectory_viewer/`; the six root-level leaves they moved off forward every historical
+analogue of `orchestrator/analytics/read.py`). `_trajectory_records.py` preserves the historical record API — the
+`obj` / `seq` parse call shape included, which it binds against a declared signature and hands the owner as
+`sequence` — while the file reader lives in a focused `_trajectory_*` leaf. The record vocabulary (`constants`), the
+field coercion under it (`coercion`), the immutable sub-views (`models`), the run model (`runs`), the usage and
+timeline/label views bound onto it (`usage_views`, `timeline_views`), and the parse one decoded line becomes a record
+through (`parsing`) live under
+`orchestrator/observability/trajectory_viewer/`; the seven root-level leaves they moved off forward every historical
 name to those owners' own objects, and the views and the record still report `orchestrator._trajectory_records` as
 their module. `trajectory_reader` owns the typed filter request, free-text matching, filter-option projection,
 and summary aggregation while re-exporting the original record names. Together they read `TRAJECTORY_LOG_PATH`, parse
