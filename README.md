@@ -165,7 +165,7 @@ For dashboard views, point `ANALYTICS_DB_URL` at the optional Postgres service, 
 Streamlit:
 
 ```sh
-uv run python -m orchestrator.analytics.sync
+uv run python -m orchestrator.observability.analytics.sync.cli
 uv sync --group dashboard
 uv run streamlit run orchestrator/dashboard.py
 ```

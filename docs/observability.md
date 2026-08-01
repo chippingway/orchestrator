@@ -157,23 +157,24 @@ and its prune must share — is minted on `recording/io.py`, which no reload reb
 before the facade existed still serializes against the prune rather than writing into a file being rewritten under it.
 The retention scan and rewrite leaves are deliberately *not* in that rebuilt set: they read every path, window, and
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
-separate Postgres-facing families, and what is left of either here is what has not moved yet: `sync.py` and
-`_sync_cli.py` hold the command — the parser, the UTC-pinned logging, and the stdout summary — while every read
-responsibility and the whole replay beneath that command have moved out. The column inventory both shapes meet on, the
-canonical encoding a content hash is taken over, the coercion each required field is narrowed by, the INSERT with the
-positional tuple that fills it, the counts a replay is read back as, the batched ingestion and its two dedup filters,
-the connection lifecycle and rollup refresh around them, the URL redaction, and `sync_jsonl_to_postgres` itself all
-belong to `observability/analytics/sync/`. The filters a read is asked
+separate Postgres-facing families, and neither has a responsibility left here: the whole sync has moved out, `sync.py`
+included. The column inventory both shapes meet on, the canonical encoding a content hash is taken over, the coercion
+each required field is narrowed by, the INSERT with the positional tuple that fills it, the counts a replay is read
+back as, the batched ingestion and its two dedup filters, the connection lifecycle and rollup refresh around them, the
+URL redaction, `sync_jsonl_to_postgres` itself, and the command that drives it — arguments, UTC-pinned logging, exit
+code, and stdout summary — all belong to `observability/analytics/sync/`. The filters a read is asked
 for, the binding of its keyword call, the connection lifecycle, the query execution, the frozen models a read answers
 with, the six reads that stay on the events table, the seven that scan the daily rollup above it, the four whose
 grouping key that rollup threw away, and the three answered from a run's `extras` blob all belong to
 `observability/analytics/query/`. What is left here is forwarding: `analytics.read` is a manifest-backed lazy facade,
 and `predicates.py`, `_predicate_*.py`, `read_request*.py`, `read_models*.py`, `read_raw.py`, `read_rollup.py`,
 `read_dashboard.py`, and the seven raw, seven rollup, and nine breakdown-and-skill `_read_*.py` leaves define nothing
-of their own — each binds the owner's object under the name a historical caller imported. The nine sync leaves
-`_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, the `_sync_rows.py` hub that grouped them, and
-`_sync_models.py`, `_sync_redaction.py`, `_sync_database.py`, `_sync_ingest.py`, and `_sync_run.py` forward the same
-way, under the private spellings each published while it owned them.
+of their own — each binds the owner's object under the name a historical caller imported. `sync.py` and the nine
+leaves `_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, the `_sync_rows.py` hub that grouped them,
+and `_sync_models.py`, `_sync_redaction.py`, `_sync_database.py`, `_sync_ingest.py`, and `_sync_run.py` forward the
+same way, under the private spellings each published while it owned them — `sync.py` additionally stays a working `-m`
+target, so an operator's scheduled `python -m orchestrator.analytics.sync` reaches the command owner rather than
+breaking.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -539,11 +540,11 @@ or correctness.
 
 ### Trajectory operator workflow
 
-There is no trajectory equivalent of `python -m orchestrator.analytics.sync`: trajectories are deliberately file-backed
-only, and the analytics Postgres schema does not ingest their free-text bodies. To browse trajectories on another host,
-mirror `TRAJECTORY_LOG_PATH` as a file and run the dedicated viewer on that host with `TRAJECTORY_LOG_PATH` pointing at
-the mirrored JSONL. Scope the remote path like source code or issue content: redaction masks secret-shaped values, not
-repository text or agent reasoning.
+There is no trajectory equivalent of `python -m orchestrator.observability.analytics.sync.cli`: trajectories are
+deliberately file-backed only, and the analytics Postgres schema does not ingest their free-text bodies. To browse
+trajectories on another host, mirror `TRAJECTORY_LOG_PATH` as a file and run the dedicated viewer on that host with
+`TRAJECTORY_LOG_PATH` pointing at the mirrored JSONL. Scope the remote path like source code or issue content:
+redaction masks secret-shaped values, not repository text or agent reasoning.
 
 For an unattended deployment, mirror the file with SSH-based tooling such as `rsync`. Use a dedicated receiver account
 whose key can only write into the trajectory directory. On an Ubuntu receiver, use a neutral shared directory such as
@@ -776,10 +777,9 @@ identity without pulling Streamlit into imports.
 ## Analytics database (`analytics-db/`)
 
 Local Postgres service that is the aggregation target for the JSONL sink. The service contract and schema are
-operator-deployed via Docker compose; the JSONL→Postgres replay is owned by
-`orchestrator/observability/analytics/sync/` and driven by the operator through the CLI in
-`orchestrator/analytics/sync.py` — NOT wired into the polling tick. Orchestrator correctness must not depend on
-database availability.
+operator-deployed via Docker compose; the JSONL→Postgres replay and the CLI the operator drives it through are both
+owned by `orchestrator/observability/analytics/sync/` — NOT wired into the polling tick. Orchestrator correctness must
+not depend on database availability.
 
 ### Service layout
 
@@ -849,15 +849,18 @@ operator-driven case (`psql -f` against an existing instance) and migrate a pre-
 dropping data. MV column changes require `DROP MATERIALIZED VIEW analytics_daily_rollup` followed by a reapply; the
 sync's refresh hook does NOT recover from a column mismatch.
 
-### Sync CLI (`orchestrator/analytics/sync.py`)
+### Sync CLI (`orchestrator/observability/analytics/sync/cli.py`)
 
-The command lives here — the argument parser, the UTC-pinned log formatter, and the stdout summary — over the replay
-`orchestrator/observability/analytics/sync/run.py` owns. Run on demand:
+The command lives here — the argument parser, the UTC-pinned log formatter, the stdout summary, and the exit code —
+over the replay `orchestrator/observability/analytics/sync/run.py` owns. Run on demand:
 
 ```sh
-uv run python -m orchestrator.analytics.sync                                                # uses configured env vars
-uv run python -m orchestrator.analytics.sync --log-path /path/to/rotated.jsonl --db-url postgresql://other/db
+uv run python -m orchestrator.observability.analytics.sync.cli   # uses configured env vars
+uv run python -m orchestrator.observability.analytics.sync.cli --log-path /path/to/rotated.jsonl --db-url postgresql://other/db
 ```
+
+`python -m orchestrator.analytics.sync` still starts the same run and is kept working for schedulers that already
+spell it that way, but it is a temporary forwarder — new cron entries and scripts should name the module above.
 
 **Batched inserts.** Reads `ANALYTICS_LOG_PATH` line by line, accumulates validated row tuples into a buffer sized by
 `sync/ingest.py`'s `BATCH_SIZE` (default 500), and flushes each full batch via `cur.executemany("INSERT ... ON CONFLICT
@@ -902,9 +905,11 @@ builds the INSERT, and lays out the positional tuple that fills it. Those three 
 record or build a row with no psycopg installed. `models.py` owns `SyncResult` and the mutable tallies behind it,
 `ingest.py` the pre-check, the in-file skip set, the batched flush, and the progress and malformed records,
 `database.py` the lazily imported driver plus the quiet rollback / close and the rollup refresh, `redaction.py` the
-credential stripping, and `run.py` the resolved request, the no-op gate, the transaction shape, and
-`sync_jsonl_to_postgres` itself. `sync.py` stays the stable CLI surface over them, with `_sync_cli.py` beside it, and
-the nine flat `_sync_*.py` leaves are forwarders answering the historical private names with those owners' own objects.
+credential stripping, `run.py` the resolved request, the no-op gate, the transaction shape, and
+`sync_jsonl_to_postgres` itself, and `cli.py` the arguments, the UTC-pinned logging, the stdout summary, and the exit
+code. `orchestrator/analytics/sync.py` and the nine flat `_sync_*.py` leaves implement none of it: they are forwarders
+answering the historical names — private spellings included — with those owners' own objects, and `sync.py` keeps
+working as an `-m` target on top of that.
 
 ### Operator feedback
 
@@ -913,7 +918,7 @@ The sync surfaces feedback through one logger and the stdout summary. Every owne
 from the module path, so an operator's log filter keeps selecting the whole replay regardless of which module a line
 comes from:
 
-- Every log line is timestamped (UTC, with an explicit `UTC` suffix) via `_configure_cli_logging`'s `%(asctime)s`
+- Every log line is timestamped (UTC, with an explicit `UTC` suffix) via `configure_cli_logging`'s `%(asctime)s`
   formatter and `formatter.converter = time.gmtime`.
 - A `connecting to <redacted-url>` / `connection established` pair brackets the connect call so a remote-Postgres
   reachability problem surfaces immediately.
@@ -928,16 +933,16 @@ comes from:
 
 ### Operator workflow
 
-Run `uv run python -m orchestrator.analytics.sync` on whatever cadence you prefer; `--log-path` and `--db-url` override
-the env values for one-off replays of archived JSONL files. The default cadence is operator-chosen because the JSONL
-sink is already the authoritative analytics surface on disk — the database is for aggregation and reporting, not
-durability.
+Run `uv run python -m orchestrator.observability.analytics.sync.cli` on whatever cadence you prefer; `--log-path` and
+`--db-url` override the env values for one-off replays of archived JSONL files. The default cadence is operator-chosen
+because the JSONL sink is already the authoritative analytics surface on disk — the database is for aggregation and
+reporting, not durability.
 
 For an unattended deployment, drive the sync from `cron`. A typical entry runs hourly, guards against overlap with
 `flock`, and captures output:
 
 ```cron
-00 * * * * cd /path/to/agent-orchestrator && /usr/bin/flock -n /tmp/agent-orchestrator-analytics-sync.lock /home/<user>/.local/bin/uv run python -m orchestrator.analytics.sync --log-path /path/to/agent-orchestrator/logs/analytics.jsonl --db-url 'postgresql://<user>:<password>@<host>:<port>/<database>' >> /path/to/agent-orchestrator/logs/analytics-sync.cron.log 2>&1
+00 * * * * cd /path/to/agent-orchestrator && /usr/bin/flock -n /tmp/agent-orchestrator-analytics-sync.lock /home/<user>/.local/bin/uv run python -m orchestrator.observability.analytics.sync.cli --log-path /path/to/agent-orchestrator/logs/analytics.jsonl --db-url 'postgresql://<user>:<password>@<host>:<port>/<database>' >> /path/to/agent-orchestrator/logs/analytics-sync.cron.log 2>&1
 ```
 
 - `cd /path/to/agent-orchestrator` so `uv run` finds the project's `pyproject.toml`.
@@ -1369,7 +1374,7 @@ as a labeled banner.
   [Service layout](#service-layout)).
 - `No analytics events have been recorded yet. …` (top-level `st.info`, app stops) — *data* — The
   `analytics_events` table holds zero rows. Confirm the JSONL sink is on (`ANALYTICS_LOG_PATH`), that recent workflow
-  activity produced records, and run `python -m orchestrator.analytics.sync` to populate Postgres.
+  activity produced records, and run `python -m orchestrator.observability.analytics.sync.cli` to populate Postgres.
 - `No analytics events match the current filters.` (page banner) — *data* — The data extent is non-empty but every
   row was filtered out. Widen the window preset, pick `All` for the repo, blank the issue-number input, and confirm the
   event / stage multi-selects still have **every option selected** (an empty multi-select is the documented "show
@@ -1395,9 +1400,9 @@ If a sidebar multi-select is **explicitly cleared** (no items selected), every d
 — that is the documented "show nothing for this dimension" signal. Re-select the items (or hit the `↺` reset chip
 Streamlit renders on the widget) to restore the default unfiltered shape.
 
-If `python -m orchestrator.analytics.sync` runs cleanly (non-zero `inserted=`) but the dashboard still shows zero rows,
-double-check the `ANALYTICS_DB_URL` the sync used — passing `--db-url postgresql://other/db` (or a different shell
-environment) populates a different database than the one the dashboard is reading.
+If `python -m orchestrator.observability.analytics.sync.cli` runs cleanly (non-zero `inserted=`) but the dashboard
+still shows zero rows, double-check the `ANALYTICS_DB_URL` the sync used — passing `--db-url postgresql://other/db`
+(or a different shell environment) populates a different database than the one the dashboard is reading.
 
 ## Usage parser (`orchestrator/observability/usage/`)
 

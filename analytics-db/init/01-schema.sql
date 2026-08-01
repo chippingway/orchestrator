@@ -272,7 +272,7 @@ WHERE event = 'agent_exit';
 -- once to build the initial snapshot. The `IF NOT EXISTS` guard
 -- keeps subsequent reapplies a no-op, so that initial scan is the
 -- only migration cost the operator pays for this view. The
--- operator-driven sync (see `orchestrator/analytics/sync.py`)
+-- operator-driven sync (see `orchestrator/observability/analytics/sync/`)
 -- issues `REFRESH MATERIALIZED VIEW analytics_daily_rollup` after
 -- every successful commit -- rerunning the sync is therefore the
 -- documented recovery path for a stale rollup (e.g. when a

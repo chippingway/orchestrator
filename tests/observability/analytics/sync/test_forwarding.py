@@ -11,6 +11,8 @@ _SYNC_FACADE = "orchestrator.analytics.sync"
 
 _PACKAGE = "orchestrator.observability.analytics.sync"
 
+_CLI = f"{_PACKAGE}.cli"
+
 _COLUMNS = f"{_PACKAGE}.columns"
 
 _DATABASE = f"{_PACKAGE}.database"
@@ -108,6 +110,17 @@ _RUN_NAMES = (
     ("_SyncRun", _RUN, "SyncRun"),
 )
 
+# The entry point an operator's scheduled `-m` invocation runs keeps its public
+# spelling; the four pieces beneath it keep the private ones the facade
+# published them under while it held them.
+_CLI_NAMES = (
+    ("_cli_parser", _CLI, "cli_parser"),
+    ("_configure_cli_logging", _CLI, "configure_cli_logging"),
+    ("_print_cli_result", _CLI, "print_cli_result"),
+    ("_run_cli", _CLI, "run_cli"),
+    ("main", _CLI, "main"),
+)
+
 # The flat modules a caller reaches the sync through, and what each name they
 # publish resolves to. The row hub is the union of the three leaves beneath it,
 # because it is the spelling the ingest and the facade were written against: a
@@ -129,10 +142,10 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator.analytics._sync_run": _RUN_NAMES,
 })
 
-# What the sync facade binds at import out of the owners the CLI drives. It
-# resolves most of them through the leaves above, so this pins the far end of
-# that chain: whichever module a historical caller named, the object it holds
-# is the one the replay runs on.
+# What the historical `-m` target binds at import. It names the same owners the
+# leaves above do, so this pins the far end of that chain: whichever module a
+# historical caller reached a name through, the object it holds is the one the
+# command and the replay under it run on.
 _FORWARDED_FACADE = (
     ("_RowProvenance", _ROWS, "RowProvenance"),
     ("_build_insert_sql", _ROWS, "build_insert_sql"),
@@ -143,6 +156,7 @@ _FORWARDED_FACADE = (
     *_DATABASE_NAMES,
     *_INGEST_NAMES,
     *_RUN_NAMES,
+    *_CLI_NAMES,
     (_ENTRY_POINT, _RUN, _ENTRY_POINT),
 )
 
@@ -174,7 +188,7 @@ class ForwardedFlatModuleTest(unittest.TestCase):
 
 
 class ForwardedSyncFacadeTest(unittest.TestCase):
-    """The CLI surface binds the owners' objects, not copies."""
+    """The historical `-m` target binds the owners' objects, not copies."""
 
     def test_each_name_resolves_to_the_owner(self) -> None:
         facade = import_module(_SYNC_FACADE)
@@ -185,16 +199,18 @@ class ForwardedSyncFacadeTest(unittest.TestCase):
                     getattr(import_module(owner_name), attribute),
                 )
 
-    def test_the_entry_point_is_the_one_the_cli_calls(self) -> None:
-        # The command reads the name off its own module at call time, which is
-        # what lets an operator-facing failure be simulated by patching there;
-        # binding it into `_run_cli` instead would leave that interception
-        # pointing at nothing.
+    def test_it_defines_nothing_of_its_own(self) -> None:
+        # The same rule the private leaves are held to, applied to the module
+        # an operator still runs: an implementation here would be a second
+        # command the check above cannot see, because it only compares the
+        # names the module was asked for.
         facade = import_module(_SYNC_FACADE)
-        self.assertIs(
-            facade._run_cli.__globals__[_ENTRY_POINT],
-            getattr(import_module(_RUN), _ENTRY_POINT),
+        defined = tuple(
+            name
+            for name, member in facade.__dict__.items()
+            if getattr(member, "__module__", None) == _SYNC_FACADE
         )
+        self.assertEqual(defined, ())
 
 
 if __name__ == "__main__":

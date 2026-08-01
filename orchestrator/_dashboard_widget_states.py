@@ -13,7 +13,7 @@ from orchestrator.dashboard_html import _topbar_html
 
 NO_DATA_MESSAGE = (
     "No analytics events have been recorded yet. Run "
-    "`uv run python -m orchestrator.analytics.sync` after some "
+    "`uv run python -m orchestrator.observability.analytics.sync.cli` after some "
     "workflow activity to populate the dashboard."
 )
 EMPTY_WINDOW_MESSAGE = (
