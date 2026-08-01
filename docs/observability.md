@@ -27,7 +27,8 @@ time.
 Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners,
 the analytics configuration, recording, retention, trajectory-sink, read-path, and sync owners
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
-`analytics/query/`, `analytics/sync/`), and the packages the
+`analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
+`dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), and the packages the
 rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility
 has an owner in that tree, the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
@@ -742,9 +743,9 @@ already redacted and truncated by the sink, so the viewer is a read-only window 
 adds no redaction of its own and must be scoped (filesystem permissions, who can reach the Streamlit port) with the same
 care as the trajectory file itself.
 
-**Page (`orchestrator/trajectory_dashboard.py`).** Reuses the analytics dashboard's `orchestrator/dashboard_theme.py`
-chrome (CSS variables, fonts, `fmt_*` formatters) so the two pages read as one family, and reuses
-`dashboard_state.parse_issue_number` for the issue filter. Streamlit is imported lazily inside `main()` and the
+**Page (`orchestrator/trajectory_dashboard.py`).** Reuses the analytics dashboard's theme through
+`orchestrator/dashboard_theme.py` (CSS variables, fonts, `fmt_*` formatters) so the two pages read as one family, and
+reuses `dashboard_state.parse_issue_number` for the issue filter. Streamlit is imported lazily inside `main()` and the
 repo-root `sys.path` shim comes from the shared `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`)
 that `orchestrator/dashboard.py` also calls, so importing the module (or the polling tick) never needs the
 `dashboard` group — `tests/test_trajectory_dashboard.py` guards both the lazy-import and the script-launch
@@ -1196,9 +1197,9 @@ path, while reads have a different error story and injection shape.
 
 Streamlit app over the read model. Opt-in via the `dashboard` dependency group so the default `uv sync --locked` keeps
 installing only the polling runtime plus `pytest`, `ruff`, and `wemake-python-styleguide`. Streamlit (and its transitive
-pandas), `plotly`, the Plotly figure builders in `orchestrator/dashboard_charts.py`, and the plotly-free theme tokens in
-`orchestrator/dashboard_theme.py` are imported lazily inside `main()` — importing `orchestrator.dashboard` from a test
-or non-dashboard caller does not require the group to be installed. A regression-guard test in
+pandas), `plotly`, the Plotly figure builders in `orchestrator/dashboard_charts.py`, and the plotly-free theme reached
+through `orchestrator/dashboard_theme.py` are imported lazily inside `main()` — importing `orchestrator.dashboard` from
+a test or non-dashboard caller does not require the group to be installed. A regression-guard test in
 `tests/test_dashboard.py` asserts that loading `orchestrator.dashboard` keeps `streamlit`, `pandas`, `plotly`, and
 `orchestrator.dashboard_charts` out of `sys.modules`.
 
@@ -1345,12 +1346,17 @@ skill-adoption matrix (its `adopt_sort` / `adopt_dir` sort-param parser and the 
 `mtx_dir` sort-param parser and the sortable table) in `orchestrator/dashboard_skill_matrix.py` (all re-exported through
 `dashboard.py`).
 
-**Theme.** `orchestrator/dashboard_theme.py` is a plotly-free token module: palette (cool gray `#f4f5f8` page, white
-cards, indigo accent, muted ink tints), spacing tokens, the `1480px` content max-width, per-token-type / per-backend /
-per-agent-role / per-review-round / per-stage / per-`cost_source` palettes, a shared `base_layout(title=...)` Plotly
-dict, the `PAGE_CSS` string the dashboard injects through `st.markdown(unsafe_allow_html=True)`, and the `fmt_money` /
-`fmt_money_exact` / `fmt_tokens` / `fmt_num` formatters. `.streamlit/config.toml` mirrors the palette into Streamlit's
-`[theme]` and disables the `[browser] gatherUsageStats` POST so the launch stays local-observability-only.
+**Theme.** The plotly-free theme lives under `orchestrator/observability/dashboard/`, split by what a value is.
+`palette.py` holds the chrome colors (cool gray `#f4f5f8` page, white cards, indigo accent, muted ink tints), the
+semantic trio the delta pills and insight banners are tinted from, the per-token-type / per-backend / per-agent-role /
+per-review-round / per-stage / per-`cost_source` maps, and the `color_for(...)` fallback a value no map covers resolves
+through. `tokens.py` holds the spacing tokens, the `1480px` content max-width, and the IBM Plex Sans / Mono stacks.
+`layout.py` builds the shared `base_layout(title=...)` Plotly dict; `css.py` interpolates both token owners into the
+`PAGE_CSS` string the dashboard injects through `st.markdown(unsafe_allow_html=True)`; and `formatting.py` holds the
+`fmt_money` / `fmt_money_exact` / `fmt_tokens` / `fmt_num` formatters. `orchestrator/dashboard_theme.py` stays the
+historical import site both pages spell as `theme`, forwarding every name to the owner's own object and implementing
+nothing. `.streamlit/config.toml` mirrors the palette into Streamlit's `[theme]` and disables the `[browser]
+gatherUsageStats` POST so the launch stays local-observability-only.
 
 **Independence.** The dashboard process is independent of the polling tick: it does not open a GitHub session, does not
 write to Postgres, and can be deployed off-host by repointing `ANALYTICS_DB_URL` at a managed Postgres endpoint without
