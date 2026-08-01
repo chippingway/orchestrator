@@ -495,8 +495,8 @@ orchestrator/
   _trajectory_dashboard_usage_html.py / _trajectory_dashboard_timeline_html.py
   _trajectory_dashboard_models.py / _trajectory_dashboard_filters.py
   _trajectory_dashboard_picker.py / _trajectory_dashboard_run_render.py
-                        historical HTML, page-state, and control import sites
-                        forwarding to the trajectory-viewer owners
+                        historical HTML, page-state, control, and run-card
+                        import sites forwarding to the trajectory-viewer owners
   _trajectory_dashboard_page.py
                         historical page-setup import site, binding a caller's
                         analytics world onto the owner behind it
@@ -1560,8 +1560,9 @@ than this package's naming, because `__module__` and `__qualname__` together are
 through, so a stamp naming a module that answers to some other name is a load error rather than a cosmetic
 difference. The builders beside it report their owner, because a function's module is the owner that defines it.
 
-The five page owners sit above both halves, and none of them imports Streamlit either: it is handed in, the way the
-run and the settings holder are, so drawing a page costs nothing at import and every control is testable without it.
+The five page owners sit above both halves, and none of them imports Streamlit either: the four that draw take it in
+as an argument, the way a run and a settings holder are handed in, so drawing a page costs nothing at import and every
+control is testable without it.
 `page_models` holds the two frozen shapes one run carries — the file as it was read and what the controls then
 answered — kept apart because different halves of the run answer them, with the total a property rather than a stored
 field so a page cannot claim a count its own runs disagree with. Both report `orchestrator._trajectory_dashboard_models`
