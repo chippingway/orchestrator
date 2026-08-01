@@ -33,10 +33,11 @@ read-mode state one run of the analytics page carries (`dashboard/windows.py`, `
 `dashboard/read_mode.py`), the trajectory viewer's whole read model — its file read, record parse, run models, and the
 filtering and summary aggregation over them — plus the styling and every inline-HTML builder that read is drawn with,
 and the page state, setup, controls, picker, run card, and whole-page composition one run of it is driven by
-(`trajectory_viewer/`), and the `streamlit run` target that composes them (`apps/trajectory_dashboard.py`; the
-analytics page's own target is still `orchestrator/dashboard.py`), plus the packages the rest of the analytics sink,
+(`trajectory_viewer/`), and the packages the rest of the analytics sink,
 the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree,
-the module named for it below stays the import site. See
+the module named for it below stays the import site. The page that composes those viewer owners is not one of them:
+it sits beside the tree, at `orchestrator/apps/trajectory_dashboard.py`, and the analytics page is still started at
+`orchestrator/dashboard.py`. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
