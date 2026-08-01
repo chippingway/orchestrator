@@ -891,8 +891,9 @@ the import is lazy inside the connect helper so the module load path remains dri
 
 **Row mapping.** The translation between a JSONL record and a table row is owned by
 `observability/analytics/sync/`, split by boundary: `columns.py` owns the promoted / JSONB / required column
-inventory, `records.py` owns canonical JSON, `content_hash`, and the coercion each required field is narrowed by, and
-`rows.py` validates records, routes extras, builds the INSERT, and lays out the positional tuple that fills it. All
+inventory, `records.py` owns canonical JSON, `content_hash`, the coercion each required field is narrowed by, and the
+routing of everything else into `extras`, and `rows.py` validates one line, builds the INSERT, and lays out the
+positional tuple that fills it. All
 three are driver-free, so a caller can hash a record or build a row with no psycopg installed. `sync.py` remains the
 stable CLI surface over focused ingestion, database, redaction, and run leaves, and the four flat `_sync_row*.py`
 modules stay as forwarders answering the historical private names with those owners' own objects.
