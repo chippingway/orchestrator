@@ -438,7 +438,7 @@ Postgres or Streamlit, so deferring or disabling the dashboard never affects wor
 4. **Populate Postgres from JSONL.** Run the sync on demand:
 
    ```sh
-   uv run python -m orchestrator.analytics.sync
+   uv run python -m orchestrator.observability.analytics.sync.cli
    ```
 
    Inserts dedupe by `content_hash`, so re-running is idempotent. No-op when `ANALYTICS_DB_URL` is unset/disabled,
@@ -675,7 +675,7 @@ When each setting's change takes effect:
   `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, `TRACK_SKILL_TRIGGERS`, `TRAJECTORY_LOG_PATH`,
   `TRAJECTORY_RETENTION_DAYS`, `REPO` / `REPOS` / `TARGET_REPO_ROOT` / `BASE_BRANCH` / `REMOTE_NAME`, `HITL_HANDLE`,
   `ALLOWED_ISSUE_AUTHORS` — next Python start
-- `ANALYTICS_DB_URL` — next `python -m orchestrator.analytics.sync` invocation, and next
+- `ANALYTICS_DB_URL` — next `python -m orchestrator.observability.analytics.sync.cli` invocation, and next
   `streamlit run orchestrator/dashboard.py` start (the dashboard reads it from the imported analytics module, so a
   browser reload is not enough — relaunch Streamlit). The polling loop does not read this setting.
 - `DASHBOARD_PARALLEL_READS` — next `streamlit run orchestrator/dashboard.py` start. Parsed at dashboard import.

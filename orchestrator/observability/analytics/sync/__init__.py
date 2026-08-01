@@ -4,8 +4,8 @@
 
 Home of the ingestion that fills the operator's Postgres target from the
 project-local JSONL: what one replay is asked for and counted by, the
-translation between a record and a row, the deduplicating insert, and the
-database lifecycle around it. Only the command it is driven by lives elsewhere.
+translation between a record and a row, the deduplicating insert, the database
+lifecycle around it, and the command an operator starts the whole thing with.
 
 The owners split by what each half is answerable to. ``columns`` owns the
 inventory the record shape and the table shape meet on -- what a record must
@@ -25,7 +25,10 @@ and one open cursor, ``database`` owns the connection those batches ride and
 the rollup left refreshed behind them, ``redaction`` owns what the dialled URL
 looks like once it reaches a log line, and ``run`` owns the service itself --
 what one replay resolves to, the configured states that are a no-op rather than
-a failure, and the transaction shape around the ingest.
+a failure, and the transaction shape around the ingest. ``cli`` sits on top as
+the entry point an operator schedules: the arguments one replay is asked for
+through, the UTC-pinned logging it is watched by, and the exit code and stdout
+summary it is read back as.
 
 Callers import the owner they need, so this initializer binds nothing: the
 sync is its own command run against its own schema, and nothing in the

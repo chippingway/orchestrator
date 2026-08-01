@@ -16,6 +16,8 @@ from tests.observability.observability_test_support import (
 
 _PACKAGE = "orchestrator.observability.analytics.sync"
 
+_CLI_OWNER = "cli"
+
 _COLUMNS_OWNER = "columns"
 
 _DATABASE_OWNER = "database"
@@ -36,6 +38,7 @@ _RUN_OWNER = "run"
 # in the module map, which is what the inventory check compares the directory
 # against.
 _OWNERS = (
+    _CLI_OWNER,
     _COLUMNS_OWNER,
     _DATABASE_OWNER,
     _INGEST_OWNER,
@@ -50,12 +53,20 @@ _OWNERS = (
 # name is a deliberate edit: a second way to hash a record, lay a row out, or
 # decide what a replay was asked for is a second place the dedup key, the
 # INSERT's parameter order, or the no-op contract could disagree with the one
-# the table is written through. The inventory owner reports nothing because the
-# check reads `__module__`, which only a class or a function carries -- its
-# whole surface is the four column names, the promoted list, the JSONB pair,
-# and the required keys. `database` is likewise short one name: the view the
-# refresh names is a string.
+# the table is written through, and a second way to start one is a second place
+# the arguments an operator passes and the code they read back could. The
+# inventory owner reports nothing because the check reads `__module__`, which
+# only a class or a function carries -- its whole surface is the four column
+# names, the promoted list, the JSONB pair, and the required keys. `database`
+# is likewise short one name: the view the refresh names is a string.
 _SURFACES = MappingProxyType({
+    _CLI_OWNER: (
+        "cli_parser",
+        "configure_cli_logging",
+        "main",
+        "print_cli_result",
+        "run_cli",
+    ),
     _COLUMNS_OWNER: (),
     _DATABASE_OWNER: (
         "close_quietly",
@@ -108,9 +119,19 @@ _SURFACES = MappingProxyType({
     ),
 })
 
-# The one live caller left outside the package: the command the replay is
-# driven by, which resolves the service owner rather than running it itself.
-_CLI = "orchestrator.analytics.sync"
+# The historical `-m` target and import site left outside the package. It
+# implements nothing, so what it still has to prove is that an operator's
+# scheduled command reaches the owner that now holds one.
+_COMPATIBILITY_COMMAND = "orchestrator.analytics.sync"
+
+# The flat leaves whose responsibility the command owner took over: the one
+# that held the parser, the logging, and the summary, and the import hub the
+# facade resolved every name through. A survivor would be a second place the
+# command could be spelled or a name bound from.
+_VACATED_LEAVES = (
+    "orchestrator/analytics/_sync_cli.py",
+    "orchestrator/analytics/_sync_dependencies.py",
+)
 
 # Every owner that has to obtain the row translation from a sibling: the ingest
 # loop that turns each line into a batched tuple, and the run that builds the
@@ -152,7 +173,7 @@ def _defined_here(owner: str) -> tuple[str, ...]:
 
 
 class OwnerInventoryTest(unittest.TestCase):
-    """The declared owners are the ones on disk."""
+    """The declared owners are the ones on disk, and nothing is left behind."""
 
     def test_declared_owners_are_the_ones_on_disk(self) -> None:
         directory = Path(_package.__file__).parent
@@ -162,6 +183,12 @@ class OwnerInventoryTest(unittest.TestCase):
             if module_path.stem != "__init__"
         ))
         self.assertEqual(found, tuple(sorted(_OWNERS)))
+
+    def test_no_vacated_leaf_survives(self) -> None:
+        repository_root = Path(import_module("orchestrator").__file__).parents[1]
+        for leaf in _VACATED_LEAVES:
+            with self.subTest(leaf=leaf):
+                self.assertFalse(repository_root.joinpath(leaf).exists())
 
 
 class PublicSurfaceTest(unittest.TestCase):
@@ -228,10 +255,19 @@ class LayeringTest(unittest.TestCase):
                 )
 
     def test_the_command_names_the_service_owner(self) -> None:
-        # The CLI keeps the parser, the logging, and the stdout summary; the
-        # replay under them is the owner's, so the command has to name it.
+        # The command owns the parser, the logging, and the stdout summary; the
+        # replay under them is the service owner's, so it has to name it.
         self.assertIn(
-            _qualified(_RUN_OWNER), _imported_orchestrator_modules(_CLI),
+            _qualified(_RUN_OWNER),
+            _imported_orchestrator_modules(_qualified(_CLI_OWNER)),
+        )
+
+    def test_the_forwarder_names_the_command(self) -> None:
+        # An operator whose scheduler still spells the historical `-m` target
+        # has to land on the same command a new entry names directly.
+        self.assertIn(
+            _qualified(_CLI_OWNER),
+            _imported_orchestrator_modules(_COMPATIBILITY_COMMAND),
         )
 
 

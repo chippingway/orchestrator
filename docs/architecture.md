@@ -469,11 +469,9 @@ orchestrator/
                         historical filter, request-model, keyword-binding,
                         result-model, raw-read, and rollup-read import sites
                         forwarding to the query owners
-    sync.py / _sync_cli.py
-                        the sync command: parser, UTC-pinned logging, and the
-                        stdout summary over the sync owners
-    _sync_*.py          the dependency hub the facade resolves through, plus
-                        the nine leaves forwarding to the sync owners
+    sync.py             historical `-m` target and import site for the sync
+                        command, forwarding to the sync owners
+    _sync_*.py          the nine leaves forwarding to the sync owners
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
   dashboard_*.py        stable component, read, chart, state, and widget hubs
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
@@ -495,7 +493,8 @@ orchestrator/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, what
                         a read is asked for, dials with, and answers with, and
-                        the replay that fills the database behind it
+                        the replay that fills the database behind it together
+                        with the command that starts one
       config.py         the six sink / database environment knobs, the parse
                         the flat package's bootstrap binds, the `Settings`
                         view every adapter reads one back through, and the
@@ -628,7 +627,7 @@ orchestrator/
                         and no-cache bands by, per scan target
         row_cells.py    the readings one rollup cell passes through before it
                         lands in a result field
-      sync/             the JSONL -> Postgres ingestion, less its command
+      sync/             the JSONL -> Postgres ingestion and its command
         __init__.py     package marker only; callers import an owner directly
         columns.py      what a record must carry, which fields the table
                         promotes, and the two columns that hold JSON
@@ -650,6 +649,9 @@ orchestrator/
         run.py          the service entry point: what one replay resolves to,
                         which configured states are a no-op, and the
                         transaction shape around the ingest
+        cli.py          the `-m` entry point an operator schedules: the
+                        arguments, the UTC-pinned logging, the stdout summary,
+                        and the exit code one run is read back as
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
         models.py       the head/tail and whole-record caps, the view they are
@@ -1235,8 +1237,8 @@ itself and defines nothing, and the hub above each group sits beside its leaves 
 hub ever published — they were reached on `_read_query_rows.py` then and are still reached there. Whichever module a
 historical caller imported hands back the owner's object rather than a copy of it.
 
-`analytics/sync/` is the other Postgres-facing family, and everything a replay does now lives there — only the command
-that starts one does not. `columns` owns the inventory both shapes meet on — the four fields a
+`analytics/sync/` is the other Postgres-facing family, and everything a replay does — down to the command that starts
+one — now lives there. `columns` owns the inventory both shapes meet on — the four fields a
 record must carry, the list the table promotes a column of its own for, and which columns hold JSON — kept in one
 place because the required-key guard, the promotion, and the INSERT's parameter order all read it and a row lands in
 the wrong column the moment two of them disagree. Anything outside the promoted list goes to the `extras` JSONB
@@ -1277,11 +1279,21 @@ into a failed sync by cleanup. `redaction` is what the dialled URL looks like in
 `***` in both places libpq accepts them while the host, database, and every other parameter survive, so the operator
 can still tell which endpoint answered.
 
-What is left flat is the command. `sync.py` keeps the parser, the UTC-pinned logging, and the stdout summary, and
-resolves the run through the owner; `_sync_cli.py` beside it is the only flat leaf that still implements anything. The
-nine that moved — `_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, the `_sync_rows.py` hub that
-grouped them, and `_sync_models.py`, `_sync_redaction.py`, `_sync_database.py`, `_sync_ingest.py`, and `_sync_run.py`
-— define nothing now and forward each historical name, private spelling included, to the owner's own object.
+`cli` sits on top of `run` as the entry point an operator schedules — the module `python -m` names. It parses the
+three arguments, installs the logging the run is watched through, and reports that run twice: as the exit code a cron
+or systemd unit branches on, and as the stdout summary that survives a filtered log stream. Both surfaces are pinned
+to UTC and say so, because a piped `2>&1` on a host whose local clock is offset would otherwise interleave two clocks
+hours apart; the converter is set on that one formatter instance rather than on `logging.Formatter`, whose attribute
+is process-wide and would take every other formatter in the process with it. The service is named on the command's own
+module rather than bound into the call that drives it, so a substitute installed there is what the command runs —
+which is how the operator-facing failure path is covered without a database.
+
+Nothing under `orchestrator/analytics/` implements the sync any more. `sync.py` stays the historical `-m` target and
+import site — an operator's scheduled `python -m orchestrator.analytics.sync` still starts a replay — and, like the
+nine leaves beside it (`_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, the `_sync_rows.py` hub
+that grouped them, and `_sync_models.py`, `_sync_redaction.py`, `_sync_database.py`, `_sync_ingest.py`, and
+`_sync_run.py`), defines nothing and forwards each historical name, private spelling included, to the owner's own
+object.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
