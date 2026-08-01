@@ -484,8 +484,10 @@ orchestrator/
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
   trajectory_reader.py  pure file-backed filter and summary read model
-  _trajectory_*.py      filtering leaves, plus the eight record/view/parse/read
-                        leaves forwarding to the trajectory-viewer owners
+  _trajectory_*.py      the record facade binding a caller's analytics world,
+                        the filtering and reload-bootstrap leaves beside it, and
+                        the eight record/view/parse/read leaves forwarding to
+                        the trajectory-viewer owners
   trajectory_dashboard.py
                         lazy compatibility facade and direct Streamlit entrypoint
   _trajectory_dashboard_*.py
@@ -1073,8 +1075,9 @@ sinks and the Postgres surfaces are configured by, the `off` / `disabled` / `non
 share, the whole set parsed under the names the flat package binds them to, the `Settings` view an adapter reads one
 back through, and the fallback a read's `db_url=None` resolves through. Every adapter obtains configuration there —
 the flat package's bootstrap, both sinks' appends and the prune beside them, the two skill readers that take their
-holder off an exit context, the two read-path owners under `analytics/query/`, and the sync request — so a knob's
-name appears in one place, and the flat package keeps no settings leaf of its own.
+holder off an exit context, the two read-path owners under `analytics/query/`, the sync request, and the trajectory
+viewer's `log_paths.py`, which is handed one by the record leaf that captured it — so a knob's name appears in one
+place, and the flat package keeps no settings leaf of its own.
 
 What the flat package still owns is *which* values are in force: it binds the parsed set at import and is where a
 caller patches one, so the view reads them back off it rather than re-parsing. Which *instance* it reads is the
