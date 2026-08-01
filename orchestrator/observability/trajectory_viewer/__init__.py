@@ -39,6 +39,17 @@ import even though none of them builds one: what they are annotated in is a
 published surface, and a name bound only for a type checker is a
 ``get_type_hints`` that raises for the caller reading it back.
 
+What that read is then drawn as begins to arrive after it, and none of it
+imports Streamlit either. ``css`` is the stylesheet this page adds on top of
+the chrome both pages share, written against the same geometry owner the
+analytics page is set in; ``summary_html`` the banner and the five tiles a
+whole read is summarized in, built off the summary rather than the runs; and
+``run_html`` the three renderings one run is identified by -- the metadata
+grid, the overview row, and the picker label. What a caller passes into any of
+them is escaped before it reaches the markup, because a page writes these with
+``unsafe_allow_html=True`` and every value in them is record text this viewer
+does not own.
+
 Callers import the owner they need, so this initializer binds nothing, and
 Streamlit stays behind a function-local import for the same reason it does
 in ``dashboard`` -- with one more: the read model here is pure, and its
