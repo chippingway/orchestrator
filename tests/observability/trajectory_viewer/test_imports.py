@@ -20,6 +20,12 @@ _COERCION_OWNER = "coercion"
 
 _CONSTANTS_OWNER = "constants"
 
+_FILTER_MODELS_OWNER = "filter_models"
+
+_FILTER_VALUES_OWNER = "filter_values"
+
+_FILTERING_OWNER = "filtering"
+
 _LOG_PATHS_OWNER = "log_paths"
 
 _MODELS_OWNER = "models"
@@ -29,6 +35,8 @@ _PARSING_OWNER = "parsing"
 _READING_OWNER = "reading"
 
 _RUNS_OWNER = "runs"
+
+_SUMMARIES_OWNER = "summaries"
 
 _TIMELINE_OWNER = "timeline_views"
 
@@ -40,11 +48,15 @@ _USAGE_OWNER = "usage_views"
 _OWNERS = (
     _COERCION_OWNER,
     _CONSTANTS_OWNER,
+    _FILTER_MODELS_OWNER,
+    _FILTER_VALUES_OWNER,
+    _FILTERING_OWNER,
     _LOG_PATHS_OWNER,
     _MODELS_OWNER,
     _PARSING_OWNER,
     _READING_OWNER,
     _RUNS_OWNER,
+    _SUMMARIES_OWNER,
     _TIMELINE_OWNER,
     _USAGE_OWNER,
 )
@@ -52,12 +64,13 @@ _OWNERS = (
 # What each owner answers for, declared rather than discovered so a new public
 # name is a deliberate edit: a second way to narrow a field, assemble a
 # timeline, or total a run's tokens is a second answer a page and a filter
-# could disagree over. Two owners report nothing because the check reads
-# `__module__`, which only a class or a function carries -- `constants` is
-# seven strings, and the record on `runs` is stamped with the historical import
-# site it is published from, as are the four frozen views on `models`. That
-# stamp is the identity `test_forwarding` pins; what is left visible here is
-# the pair of body accessors the `content` properties are installed from.
+# could disagree over. Some owners report less than they hold because the check
+# reads `__module__`, which only a class or a function carries -- `constants` is
+# seven strings -- and because a shape published under a historical import site
+# is stamped with it: the record on `runs`, the four frozen views on `models`,
+# the two request shapes a caller holds on `filter_models`, and the summary on
+# `summaries`. That stamp is the identity `test_forwarding` and the reader
+# surface check pin; what is left visible here is everything else.
 _SURFACES = MappingProxyType({
     _COERCION_OWNER: (
         "as_list",
@@ -67,6 +80,25 @@ _SURFACES = MappingProxyType({
         "coerce_str_tuple",
     ),
     _CONSTANTS_OWNER: (),
+    _FILTER_MODELS_OWNER: (
+        "RunFilterOptionFields",
+        "RunFilters",
+    ),
+    _FILTER_VALUES_OWNER: (
+        "distinct_sorted",
+        "filter_options",
+        "matches_query",
+        "normalize_filter_query",
+        "normalize_filter_values",
+    ),
+    _FILTERING_OWNER: (
+        "filter_runs",
+        "matches_dimension_filters",
+        "matches_run_filters",
+        "matches_scalar_filters",
+        "normalize_run_filters",
+        "resolve_run_filter_options",
+    ),
     _LOG_PATHS_OWNER: (
         "configured_path",
         "resolve_path",
@@ -89,6 +121,7 @@ _SURFACES = MappingProxyType({
         "run_sort_key",
     ),
     _RUNS_OWNER: (),
+    _SUMMARIES_OWNER: ("summarize",),
     _TIMELINE_OWNER: (
         "detail_label",
         "is_fixture",
@@ -118,10 +151,33 @@ _SURFACES = MappingProxyType({
 # package for that reason, and nothing here names it back; the read that drives
 # it sits above the parse for the same one. `log_paths` is off to the side of
 # both: naming the file a read opens costs the vocabulary its banner is spelled
-# in and nothing else here.
+# in and nothing else here. The three filter and summary owners that answer over
+# runs name the record at import rather than only at type-check time: their
+# annotations are a published surface, so `typing.get_type_hints` on the reads a
+# page calls has to resolve them, and a name bound only for a checker resolves
+# to nothing at runtime. `filter_models` is the one that names no run at all,
+# and it stays the shortest chain here.
 _PLANTED = MappingProxyType({
     _COERCION_OWNER: (),
     _CONSTANTS_OWNER: (),
+    _FILTER_MODELS_OWNER: (),
+    _FILTER_VALUES_OWNER: (
+        _CONSTANTS_OWNER,
+        _FILTER_MODELS_OWNER,
+        _MODELS_OWNER,
+        _RUNS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
+    _FILTERING_OWNER: (
+        _CONSTANTS_OWNER,
+        _FILTER_MODELS_OWNER,
+        _FILTER_VALUES_OWNER,
+        _MODELS_OWNER,
+        _RUNS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
     _LOG_PATHS_OWNER: (_CONSTANTS_OWNER,),
     _MODELS_OWNER: (_CONSTANTS_OWNER,),
     _PARSING_OWNER: (
@@ -144,6 +200,13 @@ _PLANTED = MappingProxyType({
     _RUNS_OWNER: (
         _CONSTANTS_OWNER,
         _MODELS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
+    _SUMMARIES_OWNER: (
+        _CONSTANTS_OWNER,
+        _MODELS_OWNER,
+        _RUNS_OWNER,
         _TIMELINE_OWNER,
         _USAGE_OWNER,
     ),
@@ -173,11 +236,11 @@ _EXTERNAL_CHAINS = MappingProxyType({
     ),
 })
 
-# The flat modules the viewer's remaining halves still live on. The record
-# facade among them plants the analytics package to resolve the log path, so an
-# owner reaching back would put the sink's configuration -- and the dotenv read
-# under it -- behind a caller that only wanted to build a step. It would also
-# close a loop: those modules import these owners.
+# The flat modules a historical caller still reaches this viewer through. The
+# record facade among them plants the analytics package to resolve the log
+# path, so an owner reaching back would put the sink's configuration -- and the
+# dotenv read under it -- behind a caller that only wanted to build a step. It
+# would also close a loop: those modules import these owners.
 _FLAT_PREFIX = "orchestrator._trajectory"
 
 _ANALYTICS_PACKAGE = "orchestrator.analytics"

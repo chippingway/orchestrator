@@ -483,11 +483,12 @@ orchestrator/
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
-  trajectory_reader.py  pure file-backed filter and summary read model
+  trajectory_reader.py  historical import site for the file-backed read model,
+                        forwarding to the trajectory-viewer owners
   _trajectory_*.py      the record facade binding a caller's analytics world,
-                        the filtering and reload-bootstrap leaves beside it, and
-                        the eight record/view/parse/read leaves forwarding to
-                        the trajectory-viewer owners
+                        the reload-bootstrap leaf beside it, and the eleven
+                        record/view/parse/read/filter leaves forwarding to the
+                        trajectory-viewer owners
   trajectory_dashboard.py
                         lazy compatibility facade and direct Streamlit entrypoint
   _trajectory_dashboard_*.py
@@ -746,6 +747,18 @@ orchestrator/
       log_paths.py      which file that is, read off the settings holder a
                         caller hands in, and the banner an unconfigured sink
                         answers with instead
+      filter_models.py  the two spellings one filter request arrives as, the
+                        normalized form a match reads, and the distinct values
+                        a page is offered
+      filter_values.py  one value: the distinct ones collected off a read, the
+                        empty selection that constrains nothing, and the text
+                        a free-text needle is compared against
+      filtering.py      which runs one request keeps, in the order the read
+                        handed them over, and the request it refuses to take
+                        twice
+      summaries.py      the headline counts the surviving runs are totalled
+                        into, the money among them counted only where a run
+                        recorded some
   skills/               the two skill-enumeration owners
     __init__.py         package marker only; callers name an owner
     catalog.py          per-tick repo skill-catalog collection: enumerate
@@ -1389,8 +1402,9 @@ leaves it used to hold — `_dashboard_windows.py`, `_dashboard_filter_state.py`
 define nothing and forward each historical name, the private `_TRUTHY` and `_extent_dates` spellings included, to the
 owner's own object.
 
-`trajectory_viewer/` is the fourth destination opening, and what has arrived is the whole read side of the file-backed
-page: which file it opens, how a line in it is read, what that line is read back as, and what a run then reports.
+`trajectory_viewer/` is the fourth destination opening, and what has arrived is the whole of the file-backed page's
+read model: which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
+and what a page narrows and totals those runs into.
 `constants` is the vocabulary — the one event this viewer reads, the two brackets a run's prompt and final output are
 rendered as (the sink writes neither as a step, so there is nothing on the write side for them to agree with), the three
 tells that mark a fixture, and the banner an operator gets when the sink was never switched on. `coercion` is the
@@ -1445,19 +1459,50 @@ interception every read it makes goes through. When the knob is unset — the si
 answer is the banner naming the knob and the relaunch that lands it, rather than an empty table an operator would
 read as "nothing ran".
 
+The four filter and summary owners sit off to the other side of that read, and none of them opens anything.
+`filter_models` holds the shapes: one request arrives either as an options object or as the keyword fields it is made
+of, both spellings historical, and whichever arrived is narrowed once — every multi-value selection to a set, the
+free-text needle stripped and folded — so a run is walked against values normalized for the whole read rather than per
+run. `filter_values` owns one value at a time: the distinct ones a dropdown is offered, collected off the runs already
+read and sorted, with an empty field dropped rather than offered as a blank choice; the empty *selection* that
+constrains nothing, because "nothing ticked" is how a page spells "everything" and reading it as a filter would answer
+an operator who narrowed nothing with an empty table; and the text a needle is compared against, which is every text
+field a run carries, its steps included, so a search for a path inside a tool command finds the run that ran it.
+`filtering` decides which runs one request keeps: it refuses a call that spells the request both ways at once rather
+than silently preferring one, it never reorders what the read handed it, and it asks the fixture toggle and the scalar
+and multi-value fields before the free-text search, which is the one predicate that walks a run's whole text.
+`summaries` totals the survivors into the page's KPI strip, counting an issue once however many runs it took, a
+repository only where a run named one, and the money only over runs that recorded some — an unpriced run contributes
+nothing rather than a zero that would read as free work. The three that answer over runs name the record at import
+even though none of them builds one, which is the one place the viewer's owners do not take the cheapest chain
+available: what a read is annotated in is part of its published surface, `get_type_hints` resolves those annotations
+in the defining module's own globals, and a name bound only for a type checker is a `NameError` for the caller asking
+what `filter_runs` takes. `filter_models` names no run at all, so it stays the leaf the other three are built on.
+
 Root-level `_trajectory_constants.py`, `_trajectory_record_values.py`, `_trajectory_view_models.py`,
 `_trajectory_run_model.py`, `_trajectory_run_views.py`, `_trajectory_run_timeline.py`,
-`_trajectory_record_parse.py`, and `_trajectory_file_read.py` define nothing now and forward each historical name to
-the owner's own object — which they have to, because the functions the record binds its properties to are those very
-objects. The four views and the record still report `orchestrator._trajectory_records` as their module: that is the
-import site their API is documented at, and what a repr, a pickle, or a reader following `__module__` lands on. That
-module is also the one place a caller's world is bound: the parse keeps its historical call shape there, binding an
-`obj` / `seq` pair against a declared signature and handing the owner its own `sequence` keyword, and the log path,
+`_trajectory_record_parse.py`, `_trajectory_file_read.py`, `_trajectory_filter_models.py`,
+`_trajectory_filter_values.py`, and `_trajectory_filter_match.py` define nothing now and forward each historical name
+to the owner's own object — which they have to, because the functions the record binds its properties to are those
+very objects. The four views and the record still report `orchestrator._trajectory_records` as their module: that is
+the import site their API is documented at, and what a repr, a pickle, or a reader following `__module__` lands on.
+That module is also the one place a caller's world is bound: the parse keeps its historical call shape there, binding
+an `obj` / `seq` pair against a declared signature and handing the owner its own `sequence` keyword, and the log path,
 the banner, and the read each hand the owner the analytics package that leaf captured at its own import.
 
+`trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
+reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*
+`_trajectory_records` — that leaf captures the analytics package it resolves the log path through at its own import,
+so rebuilding the reader against a patched environment has to rebuild that capture with it — and the filter and
+summary API straight off the owners, which need no world at all. The three shapes a caller holds — `FilterOptions`,
+`RunFilterOptions`, and `TrajectorySummary` — report `orchestrator.trajectory_reader` as their module for the reason
+the record views report the leaf: that is the site each was published from. Reporting it is also what makes that
+module the place their annotations are read back from, because `get_type_hints` resolves a class's annotations in the
+globals of the module it names — which is why the typing vocabulary the three are spelled in is imported there and
+used for nothing else.
+
 Every other responsibility of those four surfaces is still where it was: `orchestrator/analytics/`, the rest of
-`dashboard*.py`, `trajectory_dashboard.py`, and — for the filtering and the summary aggregation over these owners —
-`trajectory_reader.py` and the leaves under it stay the import site every historical caller names until the one it
+`dashboard*.py`, and `trajectory_dashboard.py` stay the import site every historical caller names until the one it
 needs has an owner here.
 
 Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own subjects

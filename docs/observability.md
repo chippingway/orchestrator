@@ -30,9 +30,10 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
 read-mode state one run of the analytics page carries (`dashboard/windows.py`, `dashboard/filters.py`,
-`dashboard/read_mode.py`), the trajectory viewer's file read, record parse, and run models (`trajectory_viewer/`), and
-the packages the rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a
-responsibility has an owner in that tree, the module named for it below stays the import site. See
+`dashboard/read_mode.py`), the trajectory viewer's whole read model — its file read, record parse, run models, and the
+filtering and summary aggregation over them (`trajectory_viewer/`) — and the packages the rest of the analytics sink,
+the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree,
+the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -727,13 +728,18 @@ analogue of `orchestrator/analytics/read.py`). `_trajectory_records.py` preserve
 analytics package that leaf captured at its own import, so a reload isolates a reader and a patch on that package
 intercepts every read made through it. The record vocabulary (`constants`), the field coercion under it (`coercion`),
 the immutable sub-views (`models`), the run model (`runs`), the usage and timeline/label views bound onto it
-(`usage_views`, `timeline_views`), the parse above them (`parsing`), the file read that drives it (`reading`), and the
-log-path resolution beside it (`log_paths`, over `analytics/config.py`) live under
-`orchestrator/observability/trajectory_viewer/`; the eight root-level leaves they moved off forward every historical
-name to those owners' own objects, and the views and the record still report `orchestrator._trajectory_records` as
-their module. `trajectory_reader` owns the typed filter request, free-text matching, filter-option projection,
-and summary aggregation while re-exporting the original record names. Together they read `TRAJECTORY_LOG_PATH`, parse
-each `agent_trajectory`
+(`usage_views`, `timeline_views`), the parse above them (`parsing`), the file read that drives it (`reading`), the
+log-path resolution beside it (`log_paths`, over `analytics/config.py`), the filter shapes, values, and run matching
+over the runs it returns (`filter_models`, `filter_values`, `filtering`), and the headline counts they are totalled
+into (`summaries`) live under `orchestrator/observability/trajectory_viewer/`; the eleven root-level leaves they
+moved off forward every historical name to those owners' own objects, and the views and the record still report
+`orchestrator._trajectory_records` as their module. `trajectory_reader` defines none of it: it is the one import site
+the page and every historical caller reach the whole read model through, binding the record API off a freshly loaded
+`_trajectory_records` (so a reload still isolates a reader) and the filter and summary API off the owners, with
+`FilterOptions`, `RunFilterOptions`, and `TrajectorySummary` still reporting `orchestrator.trajectory_reader` as their
+module — which is also why it imports the typing names those three are annotated in and uses them for nothing else:
+`get_type_hints` resolves a class's annotations in the globals of the module it names. Together they read
+`TRAJECTORY_LOG_PATH`, parse each `agent_trajectory`
 record into a frozen `TrajectoryRun` (with a normalised `TrajectoryStepView` per step), and expose `read_trajectories`
 (newest first by `ts`, file order as the tie-break), `filter_options`, `filter_runs` (repo / backend / agent-role /
 stage / issue / free-text-search, every filter conjunctive and an empty multi-value meaning "no constraint", plus an

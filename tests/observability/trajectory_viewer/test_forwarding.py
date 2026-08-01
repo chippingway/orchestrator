@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""What the flat trajectory modules still answer for on the record side."""
+"""What the flat trajectory modules still answer for, and with whose objects."""
 from __future__ import annotations
 
 import unittest
@@ -13,6 +13,12 @@ _PACKAGE = "orchestrator.observability.trajectory_viewer"
 _COERCION = f"{_PACKAGE}.coercion"
 
 _CONSTANTS = f"{_PACKAGE}.constants"
+
+_FILTER_MODELS = f"{_PACKAGE}.filter_models"
+
+_FILTER_VALUES = f"{_PACKAGE}.filter_values"
+
+_FILTERING = f"{_PACKAGE}.filtering"
 
 _MODELS = f"{_PACKAGE}.models"
 
@@ -101,11 +107,35 @@ _READ_NAMES = (
     "run_sort_key",
 )
 
-# The flat modules a historical caller reaches the record side through, and the
-# owner each one's names resolve to. A name reached through one of these is
-# still a name it reached, so it has to keep answering -- with the owner's own
-# object, not a copy the leaf kept, because the views the record binds its
-# properties to are these very functions.
+# The two shapes the filter leaf published are the internal pair: the keywords
+# a call may be driven by and the normalized form a match reads. The two a
+# caller holds were published from the reader facade instead, so they are
+# pinned there rather than here.
+_FILTER_MODEL_NAMES = (
+    "RunFilterOptionFields",
+    "RunFilters",
+)
+
+_FILTER_VALUE_NAMES = (
+    "distinct_sorted",
+    "matches_query",
+    "normalize_filter_query",
+    "normalize_filter_values",
+)
+
+_FILTER_MATCH_NAMES = (
+    "matches_dimension_filters",
+    "matches_run_filters",
+    "matches_scalar_filters",
+    "normalize_run_filters",
+    "resolve_run_filter_options",
+)
+
+# The flat modules a historical caller reaches the record and filter sides
+# through, and the owner each one's names resolve to. A name reached through one
+# of these is still a name it reached, so it has to keep answering -- with the
+# owner's own object, not a copy the leaf kept, because the views the record
+# binds its properties to are these very functions.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._trajectory_constants": (_CONSTANTS, _CONSTANT_NAMES),
     "orchestrator._trajectory_record_values": (_COERCION, _COERCION_NAMES),
@@ -115,6 +145,9 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._trajectory_run_timeline": (_TIMELINE, _TIMELINE_NAMES),
     "orchestrator._trajectory_record_parse": (_PARSING, _PARSE_NAMES),
     "orchestrator._trajectory_file_read": (_READING, _READ_NAMES),
+    "orchestrator._trajectory_filter_models": (_FILTER_MODELS, _FILTER_MODEL_NAMES),
+    "orchestrator._trajectory_filter_values": (_FILTER_VALUES, _FILTER_VALUE_NAMES),
+    "orchestrator._trajectory_filter_match": (_FILTERING, _FILTER_MATCH_NAMES),
 })
 
 # What the record facade publishes off these owners. It is the module the

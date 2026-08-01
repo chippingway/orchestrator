@@ -11,11 +11,11 @@ target (``dashboard``), and the file-backed trajectory viewer beside it
 here whole, under ``analytics`` are the configuration every analytics
 surface is knobbed by and the ``recording`` owners that append the sink, and
 under ``dashboard`` is the window, filter, and read-mode state one run of the
-page carries; the flat ``analytics`` package and the ``dashboard*``,
-``trajectory_reader``, and ``trajectory_dashboard`` modules beside it stay the
-import site every historical caller names for whatever responsibility does not
-have an owner here yet, as does the ``usage`` module this package's owners
-left behind.
+page carries; the flat ``analytics`` package and the ``dashboard*`` and
+``trajectory_dashboard`` modules beside it stay the import site every
+historical caller names for whatever responsibility does not have an owner
+here yet, as do the ``usage`` and ``trajectory_reader`` modules this package's
+owners left behind.
 
 Callers import the owner they need, so an initializer here binds nothing
 unless the surface it fronts is what a caller asks for by name -- ``usage``
