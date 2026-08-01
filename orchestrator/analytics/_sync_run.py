@@ -24,8 +24,8 @@ from orchestrator.analytics._sync_models import (
     _SyncCounters,
 )
 from orchestrator.analytics._sync_redaction import _redact_db_url
-from orchestrator.analytics._sync_rows import _build_insert_sql
 from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics.sync.rows import build_insert_sql
 
 log = logging.getLogger("orchestrator.analytics.sync")
 
@@ -99,7 +99,7 @@ class _SyncRun:
         log_path = Path(self.request.log_path)
         return _IngestContext(
             log_path=log_path,
-            insert_sql=_build_insert_sql(),
+            insert_sql=build_insert_sql(),
             source_path=str(log_path),
             json_adapter=self.request.json_adapter,
             counters=self.counters,

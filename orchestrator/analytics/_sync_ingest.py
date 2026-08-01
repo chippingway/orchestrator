@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator.analytics._sync_models import _IngestContext, _SyncCounters
-from orchestrator.analytics._sync_rows import (
-    _RowProvenance,
-    _prepare_record,
-    _row_values,
+from orchestrator.observability.analytics.sync.rows import (
+    RowProvenance,
+    prepare_record,
+    row_values,
 )
 
 _BATCH_SIZE = 500
@@ -109,7 +109,7 @@ class _RecordIngester:
 
     def add(self, line_number: int, raw_line: str) -> None:
         self.context.counters.total_lines += 1
-        prepared, reason = _prepare_record(raw_line)
+        prepared, reason = prepare_record(raw_line)
         if prepared is None:
             if reason is not None:
                 _note_malformed_line(
@@ -122,13 +122,13 @@ class _RecordIngester:
         if prepared.content_hash in self.existing_hashes:
             self.context.counters.skipped_duplicate += 1
             return
-        provenance = _RowProvenance(
+        provenance = RowProvenance(
             source_path=self.context.source_path,
             source_line=line_number,
             content_hash=prepared.content_hash,
         )
         self.batch.append(
-            _row_values(
+            row_values(
                 prepared.columns,
                 prepared.extras,
                 provenance,
