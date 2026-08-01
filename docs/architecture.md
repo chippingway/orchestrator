@@ -475,7 +475,11 @@ orchestrator/
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
   dashboard_theme.py    historical import site for the shared visual theme,
                         forwarding to the dashboard owners
-  dashboard_*.py        stable component, read, chart, state, and widget hubs
+  dashboard_state.py    stable state hub reading the window, filter, and
+                        read-mode owners under observability/dashboard/
+  dashboard_*.py        stable component, read, chart, and widget hubs
+  _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
+                        historical state import sites forwarding to those owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -491,9 +495,10 @@ orchestrator/
     __init__.py         package marker only; home of the usage parsers, the
                         analytics configuration, recording, retention,
                         read-path, and replay owners beside them, the visual
-                        theme both Streamlit pages are drawn in, and the
-                        destination the observation-only surfaces above
-                        migrate the rest of their responsibilities to
+                        theme both Streamlit pages are drawn in, the state a
+                        run of the analytics page carries, and the destination
+                        the observation-only surfaces above migrate the rest
+                        of their responsibilities to
     analytics/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, what
@@ -688,7 +693,8 @@ orchestrator/
                         the step / turn / trajectory records they return
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
     dashboard/          the Streamlit analytics page: the visual theme both
-                        pages are drawn in, and the destination for the rest
+                        pages are drawn in, the state one run of it carries,
+                        and the destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -704,6 +710,15 @@ orchestrator/
       formatting.py     the compact money, token, and count renderings a KPI
                         tile, an axis tick, and a bar label are narrow enough
                         to need
+      windows.py        the half-open UTC window a run reports over, the
+                        presets that name one, and the clamp that keeps a
+                        preset inside the data extent
+      filters.py        the offset a timestamp is displayed in, the issue and
+                        stage selections a read is narrowed by, and the key
+                        every cached read is stored under
+      read_mode.py      the parallel-read knob and its truthy spellings, the
+                        worker cap, and the message an unconfigured database
+                        is refused with
     trajectory_viewer/  the file-backed trajectory page's read model
       __init__.py       package marker only; callers import an owner directly
       constants.py      the event a line is read for, the brackets a run is
@@ -1348,6 +1363,23 @@ load to paint its banner without pulling the optional `dashboard` group into the
 Root-level `dashboard_theme.py` stays the historical import site — the analytics page, its chart leaves, and the
 trajectory viewer all still spell `from orchestrator import dashboard_theme as theme` — and, like the sync leaves,
 defines nothing and forwards each name to the owner's own object.
+
+The state one run of that page carries sits beside the theme. `windows.py` owns the half-open UTC window every read is
+bounded by, the presets that name one, and the clamp that keeps a preset inside the data extent — the label, the day
+count, and the arithmetic together, because a preset is only a name for a window the same owner builds. `filters.py`
+owns what a run narrows and displays that window by — the display offset, the issue number typed into a free text box,
+the stage multiselect's three states, and the key every cached read is stored under — because the key is built from
+the other three, and a selection normalized in one module and hashed in another is how two different filter sets end
+up sharing a cache entry. `read_mode.py` owns the parallel-read knob, its truthy spellings, the worker cap, and the
+text an unconfigured database is refused with; the helpers that read them are still flat beside the page, so what
+lands here is where the knob's name and the operator-facing message are decided rather than where the fan-out runs.
+The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, which is the only
+thing any of the three reaches outside the package.
+
+`dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, and the three
+leaves it used to hold — `_dashboard_windows.py`, `_dashboard_filter_state.py`, and `_dashboard_state_constants.py` —
+define nothing and forward each historical name, the private `_TRUTHY` and `_extent_dates` spellings included, to the
+owner's own object.
 
 `trajectory_viewer/` is the fourth destination opening, and what has arrived is the record side of the file-backed
 page: how a line is read, what it is read back as, and what a run then reports. `constants` is the vocabulary — the one

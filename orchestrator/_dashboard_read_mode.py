@@ -8,7 +8,7 @@ import os
 import sys
 from typing import Any, Callable, Sequence
 
-from orchestrator import _dashboard_state_constants as constants
+from orchestrator.observability.dashboard import read_mode as constants
 
 
 NamedReader = tuple[str, Callable[[], Any]]

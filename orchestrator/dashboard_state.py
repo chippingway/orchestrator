@@ -1,34 +1,33 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable dashboard state surface backed by focused state leaves."""
+"""Stable dashboard state surface backed by the observability owners."""
 from __future__ import annotations
 
 import sys
 
-from orchestrator import _dashboard_filter_state as filter_state
 from orchestrator import _dashboard_read_mode as read_mode
-from orchestrator import _dashboard_state_constants as constants
-from orchestrator import _dashboard_windows as windows
+from orchestrator.observability.dashboard import filters, windows
+from orchestrator.observability.dashboard import read_mode as read_constants
 
 
-DEFAULT_WINDOW_DAYS = constants.DEFAULT_WINDOW_DAYS
-PRESET_RECENT_THREE_DAYS = constants.PRESET_RECENT_THREE_DAYS
-PRESET_RECENT_WEEK = constants.PRESET_RECENT_WEEK
+DEFAULT_WINDOW_DAYS = windows.DEFAULT_WINDOW_DAYS
+PRESET_RECENT_THREE_DAYS = windows.PRESET_RECENT_THREE_DAYS
+PRESET_RECENT_WEEK = windows.PRESET_RECENT_WEEK
 setattr(sys.modules[__name__], "PRESET_3D", PRESET_RECENT_THREE_DAYS)
 setattr(sys.modules[__name__], "PRESET_7D", PRESET_RECENT_WEEK)
-PRESET_ALL = constants.PRESET_ALL
-PRESET_CUSTOM = constants.PRESET_CUSTOM
-PRESET_OPTIONS = constants.PRESET_OPTIONS
-PRESET_LABELS = constants.PRESET_LABELS
-PRESET_INLINE_LABELS = constants.PRESET_INLINE_LABELS
-PRESET_DAYS = constants.PRESET_DAYS
-DEFAULT_PRESET = constants.DEFAULT_PRESET
-TZ_OFFSET_OPTIONS = constants.TZ_OFFSET_OPTIONS
-DEFAULT_TZ_OFFSET_HOURS = constants.DEFAULT_TZ_OFFSET_HOURS
-PARALLEL_READS_ENV = constants.PARALLEL_READS_ENV
-PARALLEL_READS_MAX_WORKERS = constants.PARALLEL_READS_MAX_WORKERS
-_TRUTHY = constants.TRUTHY
-UNCONFIGURED_DB_MESSAGE = constants.UNCONFIGURED_DB_MESSAGE
+PRESET_ALL = windows.PRESET_ALL
+PRESET_CUSTOM = windows.PRESET_CUSTOM
+PRESET_OPTIONS = windows.PRESET_OPTIONS
+PRESET_LABELS = windows.PRESET_LABELS
+PRESET_INLINE_LABELS = windows.PRESET_INLINE_LABELS
+PRESET_DAYS = windows.PRESET_DAYS
+DEFAULT_PRESET = windows.DEFAULT_PRESET
+TZ_OFFSET_OPTIONS = filters.TZ_OFFSET_OPTIONS
+DEFAULT_TZ_OFFSET_HOURS = filters.DEFAULT_TZ_OFFSET_HOURS
+PARALLEL_READS_ENV = read_constants.PARALLEL_READS_ENV
+PARALLEL_READS_MAX_WORKERS = read_constants.PARALLEL_READS_MAX_WORKERS
+_TRUTHY = read_constants.TRUTHY
+UNCONFIGURED_DB_MESSAGE = read_constants.UNCONFIGURED_DB_MESSAGE
 _parse_parallel_reads_flag = read_mode.parse_parallel_reads_flag
 DASHBOARD_PARALLEL_READS = _parse_parallel_reads_flag()
 DateWindow = windows.DateWindow
@@ -37,12 +36,12 @@ to_window = windows.to_window
 _extent_dates = windows.extent_dates
 preset_window = windows.preset_window
 previous_window = windows.previous_window
-format_tz_offset = filter_state.format_tz_offset
-shift_ts = filter_state.shift_ts
-parse_issue_number = filter_state.parse_issue_number
-resolve_stage_filter = filter_state.resolve_stage_filter
-DashboardCacheKey = filter_state.DashboardCacheKey
-cache_key = filter_state.cache_key
+format_tz_offset = filters.format_tz_offset
+shift_ts = filters.shift_ts
+parse_issue_number = filters.parse_issue_number
+resolve_stage_filter = filters.resolve_stage_filter
+DashboardCacheKey = filters.DashboardCacheKey
+cache_key = filters.cache_key
 db_unconfigured_message = read_mode.db_unconfigured_message
 dashboard_parallel_reads_enabled = read_mode.dashboard_parallel_reads_enabled
 _fan_out_reads = read_mode.fan_out_reads
