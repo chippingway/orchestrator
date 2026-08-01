@@ -4,10 +4,11 @@
 
 The statement and the parameter tuple are built from the same column list in
 the same order, so the row is positional and no per-row dict-to-tuple mapping
-stands between the two. Every way a line can fail -- blank, not JSON, JSON that
-is not an object, a required field the table would reject -- resolves to a
-reason string instead of an exception: one bad line in a rotated JSONL file
-must not abort the replay of the thousands after it.
+stands between the two. Every way a line can fail -- not JSON, JSON that is not
+an object, a required field the table would reject -- resolves to a reason
+string instead of an exception: one bad line in a rotated JSONL file must not
+abort the replay of the thousands after it. A blank line comes back with
+neither a row nor a reason, which is what keeps it out of the malformed tally.
 """
 from __future__ import annotations
 
