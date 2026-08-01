@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Trajectory timeline-entry and run-picker label tests."""
+"""Trajectory timeline-entry HTML tests."""
 
 import unittest
 
@@ -20,27 +20,9 @@ _TOOL_BASH = "Bash"
 _T1 = "t1"
 
 
-_ISSUE = 42
-
-
 def _td():
     from orchestrator import trajectory_dashboard as td
     return td
-
-
-def _run(**overrides):
-    record = {
-        "ts": "2026-06-20T10:00:00+00:00",
-        "repo": "acme/widgets",
-        "issue": _ISSUE,
-        "event": "agent_trajectory",
-        "stage": "implementing",
-        "agent_role": "developer",
-        "backend": "claude",
-        "steps": [],
-    }
-    record.update(overrides)
-    return tr.parse_record(record, seq=0)
 
 
 class TimelineEntryKindHtmlTest(unittest.TestCase):
@@ -98,20 +80,3 @@ class TimelineEntryEscapingHtmlTest(unittest.TestCase):
         html = _td()._timeline_entry_html(entry, 0)
         self.assertIn("&lt;x&gt;", html)
         self.assertNotIn("<x></span>", html)
-
-
-class RunPickerLabelTest(unittest.TestCase):
-
-    def test_fixture_run_prefixed(self) -> None:
-        run = _run(session_id="sess-9")
-        self.assertTrue(run.is_fixture)
-        label = _td()._run_picker_label(run)
-        self.assertTrue(label.startswith("[fixture] "))
-        self.assertIn(run.detail_label(), label)
-
-    def test_real_run_plain_label(self) -> None:
-        # The per-run picker drops repo / issue (chosen in the cascading
-        # selectors above it) and shows only the `detail_label` cohort.
-        run = _run()
-        self.assertEqual(_td()._run_picker_label(run), run.detail_label())
-        self.assertNotIn(run.repo, _td()._run_picker_label(run))

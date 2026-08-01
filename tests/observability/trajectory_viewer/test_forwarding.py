@@ -3,6 +3,7 @@
 """What the flat trajectory modules still answer for, and with whose objects."""
 from __future__ import annotations
 
+import pickle
 import unittest
 from importlib import import_module
 from types import MappingProxyType
@@ -13,6 +14,8 @@ _PACKAGE = "orchestrator.observability.trajectory_viewer"
 _COERCION = f"{_PACKAGE}.coercion"
 
 _CONSTANTS = f"{_PACKAGE}.constants"
+
+_CSS = f"{_PACKAGE}.css"
 
 _FILTER_MODELS = f"{_PACKAGE}.filter_models"
 
@@ -26,7 +29,11 @@ _PARSING = f"{_PACKAGE}.parsing"
 
 _READING = f"{_PACKAGE}.reading"
 
+_RUN_HTML = f"{_PACKAGE}.run_html"
+
 _RUNS = f"{_PACKAGE}.runs"
+
+_SUMMARY_HTML = f"{_PACKAGE}.summary_html"
 
 _TIMELINE = f"{_PACKAGE}.timeline_views"
 
@@ -36,6 +43,10 @@ _USAGE = f"{_PACKAGE}.usage_views"
 # their module. It is the site their API is documented at, so a repr, a pickle,
 # and a reader following `__module__` all still land there.
 _ORIGIN_MODULE = "orchestrator._trajectory_records"
+
+# The same for the KPI tile: the page reaches every builder through this one
+# HTML surface, so that is where the shape is published from.
+_HTML_ORIGIN_MODULE = "orchestrator._trajectory_dashboard_html"
 
 _CONSTANT_NAMES = (
     "FIXTURE_PROMPT",
@@ -150,6 +161,35 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._trajectory_filter_match": (_FILTERING, _FILTER_MATCH_NAMES),
 })
 
+# The rendering leaves, declared as pairs because most of what they publish is
+# respelled: each builder is private to the leaf a caller reached it through,
+# while the owner defining it publishes it under this package's own naming.
+# What a caller holds is still the owner's one object -- the spelling is all
+# that differs, and the pair is what says so.
+_RESPELLED_MODULES = MappingProxyType({
+    "orchestrator._trajectory_dashboard_style": (
+        _CSS, (("EXTRA_CSS", "EXTRA_CSS"),),
+    ),
+    "orchestrator._trajectory_dashboard_summary_html": (_SUMMARY_HTML, (
+        ("_TrajectoryKpi", "_TrajectoryKpi"),
+        ("_card_header_html", "card_header_html"),
+        ("_fmt_cost_usd", "fmt_cost_usd"),
+        ("_kpi_strip_html", "kpi_strip_html"),
+        ("_topbar_html", "topbar_html"),
+        ("_trajectory_kpi_html", "trajectory_kpi_html"),
+        ("_trajectory_kpis", "trajectory_kpis"),
+    )),
+    "orchestrator._trajectory_dashboard_run_html": (_RUN_HTML, (
+        ("FIXTURE_LABEL_PREFIX", "FIXTURE_LABEL_PREFIX"),
+        ("REPO_LABEL", "REPO_LABEL"),
+        ("_labeled_chips_html", "labeled_chips_html"),
+        ("_meta_html", "meta_html"),
+        ("_run_picker_label", "run_picker_label"),
+        ("_run_table_row_html", "run_table_row_html"),
+        ("_runs_table_html", "runs_table_html"),
+    )),
+})
+
 # What the record facade publishes off these owners. It is the module the
 # reader re-exports from and the one the views name as their own, so this pins
 # the far end of the chain: whichever site a caller imported a record name
@@ -168,13 +208,18 @@ _FORWARDED_FACADE = (
     ("UNCONFIGURED_LOG_MESSAGE", _CONSTANTS),
 )
 
-# Each frozen view, and the record composed from them, reached on its owner.
+# Each frozen view, the record composed from them, and the KPI tile: reached on
+# the owner that defines it, and paired with the site it is published from.
+# Each is named here under the spelling that site answers to, which is the
+# spelling its owner defines it as -- the tile keeps the leading underscore the
+# HTML surface published it with for that reason.
 _STAMPED_TYPES = (
-    (_MODELS, "RunUsageView"),
-    (_MODELS, "TimelineEntry"),
-    (_MODELS, "TrajectoryStepView"),
-    (_MODELS, "TurnUsageView"),
-    (_RUNS, "TrajectoryRun"),
+    (_MODELS, "RunUsageView", _ORIGIN_MODULE),
+    (_MODELS, "TimelineEntry", _ORIGIN_MODULE),
+    (_MODELS, "TrajectoryStepView", _ORIGIN_MODULE),
+    (_MODELS, "TurnUsageView", _ORIGIN_MODULE),
+    (_RUNS, "TrajectoryRun", _ORIGIN_MODULE),
+    (_SUMMARY_HTML, "_TrajectoryKpi", _HTML_ORIGIN_MODULE),
 )
 
 
@@ -195,7 +240,7 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # What keeps the forwarding thin: a module that defined a name of its
         # own would be a second implementation the check above cannot see,
         # because it only compares the names the module was asked for.
-        for module_name in _FORWARDED_MODULES:
+        for module_name in (*_FORWARDED_MODULES, *_RESPELLED_MODULES):
             defined = tuple(
                 name
                 for name, member in import_module(module_name).__dict__.items()
@@ -203,6 +248,19 @@ class ForwardedFlatModuleTest(unittest.TestCase):
             )
             with self.subTest(module=module_name):
                 self.assertEqual(defined, ())
+
+
+class RespelledRenderingLeafTest(unittest.TestCase):
+    """Each rendering leaf still answers under its own historical spelling."""
+
+    def test_each_name_resolves_to_the_owner(self) -> None:
+        for module_name, (owner_name, pairs) in _RESPELLED_MODULES.items():
+            for published, owned in pairs:
+                with self.subTest(module=module_name, name=published):
+                    self.assertIs(
+                        getattr(import_module(module_name), published),
+                        getattr(import_module(owner_name), owned),
+                    )
 
 
 class ForwardedRecordFacadeTest(unittest.TestCase):
@@ -220,11 +278,30 @@ class ForwardedRecordFacadeTest(unittest.TestCase):
 class HistoricalIdentityTest(unittest.TestCase):
     """The moved types keep reporting the site they were published from."""
 
-    def test_each_type_reports_the_record_module(self) -> None:
-        for owner_name, name in _STAMPED_TYPES:
+    def test_each_type_reports_its_published_site(self) -> None:
+        for owner_name, name, origin in _STAMPED_TYPES:
             with self.subTest(name=name):
                 stamped = getattr(import_module(owner_name), name)
-                self.assertEqual(stamped.__module__, _ORIGIN_MODULE)
+                self.assertEqual(stamped.__module__, origin)
+
+    def test_each_stamp_resolves_the_way_pickle_does(self) -> None:
+        # `pickle` resolves a class through `__module__` and `__qualname__`
+        # together, so a stamp naming a site that publishes the shape under
+        # some other spelling is a `PicklingError` rather than a cosmetic
+        # difference. This is that lookup, done the way pickle does it.
+        for owner_name, name, _ in _STAMPED_TYPES:
+            stamped = getattr(import_module(owner_name), name)
+            with self.subTest(name=name):
+                self.assertIs(
+                    getattr(
+                        import_module(stamped.__module__), stamped.__qualname__,
+                    ),
+                    stamped,
+                )
+
+    def test_the_kpi_tile_round_trips_through_pickle(self) -> None:
+        tile = import_module(_SUMMARY_HTML)._TrajectoryKpi("Runs", "3")
+        self.assertEqual(pickle.loads(pickle.dumps(tile)), tile)
 
 
 if __name__ == "__main__":

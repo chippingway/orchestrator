@@ -20,6 +20,8 @@ _COERCION_OWNER = "coercion"
 
 _CONSTANTS_OWNER = "constants"
 
+_CSS_OWNER = "css"
+
 _FILTER_MODELS_OWNER = "filter_models"
 
 _FILTER_VALUES_OWNER = "filter_values"
@@ -34,9 +36,13 @@ _PARSING_OWNER = "parsing"
 
 _READING_OWNER = "reading"
 
+_RUN_HTML_OWNER = "run_html"
+
 _RUNS_OWNER = "runs"
 
 _SUMMARIES_OWNER = "summaries"
+
+_SUMMARY_HTML_OWNER = "summary_html"
 
 _TIMELINE_OWNER = "timeline_views"
 
@@ -48,6 +54,7 @@ _USAGE_OWNER = "usage_views"
 _OWNERS = (
     _COERCION_OWNER,
     _CONSTANTS_OWNER,
+    _CSS_OWNER,
     _FILTER_MODELS_OWNER,
     _FILTER_VALUES_OWNER,
     _FILTERING_OWNER,
@@ -55,8 +62,10 @@ _OWNERS = (
     _MODELS_OWNER,
     _PARSING_OWNER,
     _READING_OWNER,
+    _RUN_HTML_OWNER,
     _RUNS_OWNER,
     _SUMMARIES_OWNER,
+    _SUMMARY_HTML_OWNER,
     _TIMELINE_OWNER,
     _USAGE_OWNER,
 )
@@ -66,10 +75,11 @@ _OWNERS = (
 # timeline, or total a run's tokens is a second answer a page and a filter
 # could disagree over. Some owners report less than they hold because the check
 # reads `__module__`, which only a class or a function carries -- `constants` is
-# seven strings -- and because a shape published under a historical import site
-# is stamped with it: the record on `runs`, the four frozen views on `models`,
-# the two request shapes a caller holds on `filter_models`, and the summary on
-# `summaries`. That stamp is the identity `test_forwarding` and the reader
+# seven strings and `css` one -- and because a shape published under a
+# historical import site is stamped with it: the record on `runs`, the four
+# frozen views on `models`, the two request shapes a caller holds on
+# `filter_models`, the summary on `summaries`, and the KPI tile on
+# `summary_html`. That stamp is the identity `test_forwarding` and the reader
 # surface check pin; what is left visible here is everything else.
 _SURFACES = MappingProxyType({
     _COERCION_OWNER: (
@@ -80,6 +90,7 @@ _SURFACES = MappingProxyType({
         "coerce_str_tuple",
     ),
     _CONSTANTS_OWNER: (),
+    _CSS_OWNER: (),
     _FILTER_MODELS_OWNER: (
         "RunFilterOptionFields",
         "RunFilters",
@@ -120,8 +131,23 @@ _SURFACES = MappingProxyType({
         "read_trajectory_file",
         "run_sort_key",
     ),
+    _RUN_HTML_OWNER: (
+        "labeled_chips_html",
+        "meta_html",
+        "run_picker_label",
+        "run_table_row_html",
+        "runs_table_html",
+    ),
     _RUNS_OWNER: (),
     _SUMMARIES_OWNER: ("summarize",),
+    _SUMMARY_HTML_OWNER: (
+        "card_header_html",
+        "fmt_cost_usd",
+        "kpi_strip_html",
+        "topbar_html",
+        "trajectory_kpi_html",
+        "trajectory_kpis",
+    ),
     _TIMELINE_OWNER: (
         "detail_label",
         "is_fixture",
@@ -156,10 +182,14 @@ _SURFACES = MappingProxyType({
 # annotations are a published surface, so `typing.get_type_hints` on the reads a
 # page calls has to resolve them, and a name bound only for a checker resolves
 # to nothing at runtime. `filter_models` is the one that names no run at all,
-# and it stays the shortest chain here.
+# and it stays the shortest chain here. The rendering owners sit at the far end
+# of the same direction: each names what it draws -- the record for `run_html`,
+# the summary for `summary_html` -- and nothing names them back, while `css`
+# names nothing in the package at all.
 _PLANTED = MappingProxyType({
     _COERCION_OWNER: (),
     _CONSTANTS_OWNER: (),
+    _CSS_OWNER: (),
     _FILTER_MODELS_OWNER: (),
     _FILTER_VALUES_OWNER: (
         _CONSTANTS_OWNER,
@@ -197,6 +227,13 @@ _PLANTED = MappingProxyType({
         _TIMELINE_OWNER,
         _USAGE_OWNER,
     ),
+    _RUN_HTML_OWNER: (
+        _CONSTANTS_OWNER,
+        _MODELS_OWNER,
+        _RUNS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
     _RUNS_OWNER: (
         _CONSTANTS_OWNER,
         _MODELS_OWNER,
@@ -207,6 +244,14 @@ _PLANTED = MappingProxyType({
         _CONSTANTS_OWNER,
         _MODELS_OWNER,
         _RUNS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
+    _SUMMARY_HTML_OWNER: (
+        _CONSTANTS_OWNER,
+        _MODELS_OWNER,
+        _RUNS_OWNER,
+        _SUMMARIES_OWNER,
         _TIMELINE_OWNER,
         _USAGE_OWNER,
     ),
@@ -223,16 +268,28 @@ _ALWAYS_PLANTED = frozenset((
     _PACKAGE,
 ))
 
-# The one chain an owner here may reach for, declared per owner: the analytics
-# configuration owner, which is where the knob naming the file this page reads
-# is parsed. `log_paths` names it so the viewer answers with the sink's own
-# setting rather than a second parse of the same variable, and what it names is
-# the settings *view* -- not the analytics package the parsed values are bound
-# on, which is the distinction the check below turns on.
+# The chains an owner here may reach for, declared per owner. `log_paths` names
+# the analytics configuration owner, which is where the knob naming the file
+# this page reads is parsed, so the viewer answers with the sink's own setting
+# rather than a second parse of the same variable -- and what it names is the
+# settings *view*, not the analytics package the parsed values are bound on,
+# which is the distinction the check below turns on. The two rendering owners
+# name the theme both Streamlit pages are drawn in: the geometry owner for the
+# font stacks a stylesheet cannot read out of a CSS variable, and the
+# formatting owner for the thousands separators a count is rendered with. Both
+# are plain data, so neither costs the optional dashboard dependency group.
 _EXTERNAL_CHAINS = MappingProxyType({
+    _CSS_OWNER: (
+        "orchestrator.observability.dashboard",
+        "orchestrator.observability.dashboard.tokens",
+    ),
     _LOG_PATHS_OWNER: (
         "orchestrator.observability.analytics",
         "orchestrator.observability.analytics.config",
+    ),
+    _SUMMARY_HTML_OWNER: (
+        "orchestrator.observability.dashboard",
+        "orchestrator.observability.dashboard.formatting",
     ),
 })
 

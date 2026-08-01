@@ -759,6 +759,15 @@ orchestrator/
       summaries.py      the headline counts the surviving runs are totalled
                         into, the money among them counted only where a run
                         recorded some
+      css.py            the stylesheet this page adds on top of the chrome
+                        both pages share, with the two font stacks
+                        interpolated from the geometry owner
+      summary_html.py   the banner naming what the file holds and what the
+                        filters left, the five KPI tiles beside it, and the
+                        exact-cents money they are rendered with
+      run_html.py       one run's metadata grid, its overview-table row, and
+                        the label it is picked by, each marking a fixture
+                        where the record is one
   skills/               the two skill-enumeration owners
     __init__.py         package marker only; callers name an owner
     catalog.py          per-tick repo skill-catalog collection: enumerate
@@ -1077,7 +1086,7 @@ rather than state a handler consults.
 analytics sink and everything downstream of it (`analytics/` over `recording/`, `query/`, `sync/`, and `trajectories/`),
 the parser that meters one finished agent run (`usage/`), the Streamlit page over the operator's Postgres target
 (`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`, holding that page's read
-model). The parser is the first to
+model and the base HTML it is drawn as). The parser is the first to
 arrive: its owners live under `usage/`, whose initializer publishes the parser surface, while the callers that meter a
 run — `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers — name the
 owner they need. Root-level `usage.py` stays behind as a temporary compatibility site re-exporting those owners' own
@@ -1402,9 +1411,9 @@ leaves it used to hold — `_dashboard_windows.py`, `_dashboard_filter_state.py`
 define nothing and forward each historical name, the private `_TRUTHY` and `_extent_dates` spellings included, to the
 owner's own object.
 
-`trajectory_viewer/` is the fourth destination opening, and what has arrived is the whole of the file-backed page's
-read model: which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
-and what a page narrows and totals those runs into.
+`trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
+read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
+and what a page narrows and totals those runs into — and the base HTML that read is drawn as.
 `constants` is the vocabulary — the one event this viewer reads, the two brackets a run's prompt and final output are
 rendered as (the sink writes neither as a step, so there is nothing on the write side for them to agree with), the three
 tells that mark a fixture, and the banner an operator gets when the sink was never switched on. `coercion` is the
@@ -1479,6 +1488,31 @@ available: what a read is annotated in is part of its published surface, `get_ty
 in the defining module's own globals, and a name bound only for a type checker is a `NameError` for the caller asking
 what `filter_runs` takes. `filter_models` names no run at all, so it stays the leaf the other three are built on.
 
+The rendering owners sit at the far end of the same direction, and none of them imports Streamlit either. `css` is
+the stylesheet this page adds on top of the chrome both pages share: almost every rule is scoped to an `orch-traj-*`
+class only this page emits, and the text colors arrive as variables the shared stylesheet declared, so a palette edit
+moves both pages at once. What cannot be read that way is named for what it costs. The font stacks are interpolated
+from `dashboard/tokens.py`, because no variable was ever declared to hold one. The translucent washes behind the
+badges, the fixture tag, and the cache-hit pill are literal `rgba()`, because a variable holds an opaque hex a rule
+cannot add an alpha channel to — each one restates a declared color at low alpha, and is the one place a palette edit
+has to be mirrored by hand. And two rules re-declare the shared chrome's own `.orch-kpis` grid, because this page
+carries five tiles where the analytics one carries four; they win the cascade on injection order — the page writes the
+shared sheet first and this one after it — rather than on specificity, which is why the narrow-viewport reflow is
+restated beside the column count. `summary_html` draws the banner and those five
+tiles off the summary the read model already totalled rather than off the runs, so the figures an operator reads are
+the ones the filters produced, and it formats the money itself rather than through the shared compact formatters —
+those trade digits for a suffix, so the total-cost tile would read `$12` where the authoritative figure is `$12.50`.
+`run_html` is the three renderings one run is identified by: the metadata grid that omits a field the record never
+carried rather than drawing an empty tile, the overview row in the order the read handed it over, and the label a
+picker narrows to one cohort. It marks a fixture in the two places an operator chooses from — a tagged, dimmed row and
+a prefixed label — off the record's own tell. Everything a caller passes into either of them is escaped first, because
+a page writes these with `unsafe_allow_html=True` and every value in them is record text the viewer does not own. The
+one shape published from the page's HTML surface, the KPI tile, reports `orchestrator._trajectory_dashboard_html` and
+stamps itself — under that site's own `_TrajectoryKpi` spelling rather than this package's naming, because
+`__module__` and `__qualname__` together are the pair `pickle` resolves a class through, so a stamp naming a module
+that answers to some other name is a load error rather than a cosmetic difference. The builders beside it report their
+owner, because a function's module is the owner that defines it.
+
 Root-level `_trajectory_constants.py`, `_trajectory_record_values.py`, `_trajectory_view_models.py`,
 `_trajectory_run_model.py`, `_trajectory_run_views.py`, `_trajectory_run_timeline.py`,
 `_trajectory_record_parse.py`, `_trajectory_file_read.py`, `_trajectory_filter_models.py`,
@@ -1489,6 +1523,13 @@ the import site their API is documented at, and what a repr, a pickle, or a read
 That module is also the one place a caller's world is bound: the parse keeps its historical call shape there, binding
 an `obj` / `seq` pair against a declared signature and handing the owner its own `sequence` keyword, and the log path,
 the banner, and the read each hand the owner the analytics package that leaf captured at its own import.
+
+Root-level `_trajectory_dashboard_style.py`, `_trajectory_dashboard_summary_html.py`, and
+`_trajectory_dashboard_run_html.py` forward the same way, and respell as they do it: every builder they publish is
+private to the leaf a caller reached it through, while the owner defining it publishes it under this package's own
+naming, so each name is declared as a pair rather than derived. `_trajectory_dashboard_html.py` names those owners
+directly and is the one HTML surface the page reaches every builder through — including the timeline and usage
+builders still flat beside it, whose `__module__` it stamps.
 
 `trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
 reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*

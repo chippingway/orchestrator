@@ -31,7 +31,8 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
 read-mode state one run of the analytics page carries (`dashboard/windows.py`, `dashboard/filters.py`,
 `dashboard/read_mode.py`), the trajectory viewer's whole read model — its file read, record parse, run models, and the
-filtering and summary aggregation over them (`trajectory_viewer/`) — and the packages the rest of the analytics sink,
+filtering and summary aggregation over them — plus the base HTML and styling that read is drawn as
+(`trajectory_viewer/`), and the packages the rest of the analytics sink,
 the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree,
 the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
@@ -731,8 +732,9 @@ the immutable sub-views (`models`), the run model (`runs`), the usage and timeli
 (`usage_views`, `timeline_views`), the parse above them (`parsing`), the file read that drives it (`reading`), the
 log-path resolution beside it (`log_paths`, over `analytics/config.py`), the filter shapes, values, and run matching
 over the runs it returns (`filter_models`, `filter_values`, `filtering`), and the headline counts they are totalled
-into (`summaries`) live under `orchestrator/observability/trajectory_viewer/`; the eleven root-level leaves they
-moved off forward every historical name to those owners' own objects, and the views and the record still report
+into (`summaries`) live under `orchestrator/observability/trajectory_viewer/`, alongside the base HTML that read is
+drawn as (`css`, `summary_html`, `run_html`); the eleven root-level leaves the read model moved off and the three the
+HTML moved off forward every historical name to those owners' own objects, and the views and the record still report
 `orchestrator._trajectory_records` as their module. `trajectory_reader` defines none of it: it is the one import site
 the page and every historical caller reach the whole read model through, binding the record API off a freshly loaded
 `_trajectory_records` (so a reload still isolates a reader) and the filter and summary API off the owners, with
@@ -766,13 +768,15 @@ already redacted and truncated by the sink, so the viewer is a read-only window 
 adds no redaction of its own and must be scoped (filesystem permissions, who can reach the Streamlit port) with the same
 care as the trajectory file itself.
 
-**Page (`orchestrator/trajectory_dashboard.py`).** Reuses the analytics dashboard's theme through
-`orchestrator/dashboard_theme.py` (CSS variables, fonts, `fmt_*` formatters) so the two pages read as one family, and
-reuses `dashboard_state.parse_issue_number` for the issue filter. Streamlit is imported lazily inside `main()` and the
-repo-root `sys.path` shim comes from the shared `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`)
-that `orchestrator/dashboard.py` also calls, so importing the module (or the polling tick) never needs the
-`dashboard` group — `tests/test_trajectory_dashboard.py` guards both the lazy-import and the script-launch
-`sys.path` shape. The layout is intentionally minimal-but-useful: a sidebar of filters (plus a *Hide synthetic fixtures*
+**Page (`orchestrator/trajectory_dashboard.py`).** Reuses the analytics dashboard's theme (CSS variables, fonts,
+`fmt_*` formatters) so the two pages read as one family — the owners under `observability/trajectory_viewer/` name
+`dashboard/tokens.py` and `dashboard/formatting.py` directly, the leaves still flat reach the same objects through
+`orchestrator/dashboard_theme.py` — and reuses `dashboard_state.parse_issue_number` for the issue filter. Streamlit is
+imported lazily inside `main()` and the repo-root `sys.path` shim comes from the shared
+`orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`) that `orchestrator/dashboard.py` also calls, so
+importing the module (or the polling tick) never needs the `dashboard` group — `tests/test_trajectory_dashboard.py`
+guards both the lazy-import and the script-launch `sys.path` shape. The layout is intentionally minimal-but-useful: a
+sidebar of filters (plus a *Hide synthetic fixtures*
 toggle that drives the reader's `exclude_fixtures`, off by default), a topbar + five-tile KPI strip (runs / issues /
 repos / tool calls / total cost, the last summed from `summarize`'s `total_cost_usd`), a foldable *Recorded runs*
 overview table (capped at the 200 most recent; collapse the expander to focus on a single run), three cascading run
@@ -794,9 +798,10 @@ a notice) so the operator can tell the inherited test-suite records from real ru
 sink is off it renders the opt-in banner and stops; an empty file or an empty filter set renders an explanatory notice
 rather than a blank page. `trajectory_dashboard.py` is now a lazy compatibility facade and direct-launch entrypoint.
 Its bootstrap, page state, filters, picker, selected-run rendering, and runtime orchestration live in focused
-`_trajectory_dashboard_*` leaves. The historical `_trajectory_dashboard_html.py` surface composes Streamlit-free
-summary, run, timeline, usage, and CSS leaves, so every established HTML helper and patch point keeps its original
-identity without pulling Streamlit into imports.
+`_trajectory_dashboard_*` leaves. The historical `_trajectory_dashboard_html.py` surface composes the Streamlit-free
+summary, run, and CSS owners under `observability/trajectory_viewer/` with the timeline and usage leaves still flat
+beside it, so every established HTML helper and patch point keeps its original identity without pulling Streamlit into
+imports.
 
 ## Analytics database (`analytics-db/`)
 

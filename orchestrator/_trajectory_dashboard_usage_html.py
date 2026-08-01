@@ -7,7 +7,7 @@ import html
 
 from orchestrator import dashboard_theme as theme
 from orchestrator import trajectory_reader
-from orchestrator._trajectory_dashboard_summary_html import _fmt_cost_usd
+from orchestrator.observability.trajectory_viewer.summary_html import fmt_cost_usd
 
 
 USAGE_SEPARATOR = '<span class="orch-traj-usage-sep">·</span>'
@@ -40,7 +40,7 @@ def _run_usage_chips(run: trajectory_reader.TrajectoryRun) -> list[str]:
     cost_label = (
         source
         if run.cost_usd is None
-        else f"{source} {_fmt_cost_usd(run.cost_usd)}"
+        else f"{source} {fmt_cost_usd(run.cost_usd)}"
     )
     chips.append(_usage_chip(cost_label, "cost"))
     return chips
@@ -88,7 +88,7 @@ def _turn_usage_html(usage: trajectory_reader.TurnUsageView) -> str:
     estimated_cost = (
         "est. n/a"
         if usage.cost_usd is None
-        else f"est. {_fmt_cost_usd(usage.cost_usd, decimals=4)}"
+        else f"est. {fmt_cost_usd(usage.cost_usd, decimals=4)}"
     )
     usage_labels = (
         f"in {theme.fmt_num(usage.input_tokens)} tok",
