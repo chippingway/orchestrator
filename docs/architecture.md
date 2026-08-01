@@ -493,10 +493,15 @@ orchestrator/
                         lazy compatibility facade and direct Streamlit entrypoint
   _trajectory_dashboard_style.py / _trajectory_dashboard_summary_html.py / _trajectory_dashboard_run_html.py
   _trajectory_dashboard_usage_html.py / _trajectory_dashboard_timeline_html.py
-                        historical HTML import sites forwarding to the
-                        trajectory-viewer owners
+  _trajectory_dashboard_models.py / _trajectory_dashboard_filters.py
+  _trajectory_dashboard_picker.py / _trajectory_dashboard_run_render.py
+                        historical HTML, page-state, and control import sites
+                        forwarding to the trajectory-viewer owners
+  _trajectory_dashboard_page.py
+                        historical page-setup import site, binding a caller's
+                        analytics world onto the owner behind it
   _trajectory_dashboard_*.py
-                        viewer bootstrap, page controls, rendering, and the one
+                        viewer bootstrap, runtime orchestration, and the one
                         surface composing every builder the page draws with
   observability/
     __init__.py         package marker only; home of the usage parsers, the
@@ -726,8 +731,9 @@ orchestrator/
       read_mode.py      the parallel-read knob and its truthy spellings, the
                         worker cap, and the message an unconfigured database
                         is refused with
-    trajectory_viewer/  the file-backed trajectory page's read model and every
-                        inline-HTML builder it is drawn with
+    trajectory_viewer/  the file-backed trajectory page's read model, every
+                        inline-HTML builder it is drawn with, and the controls
+                        and rendering a run of it is driven by
       __init__.py       package marker only; callers import an owner directly
       constants.py      the event a line is read for, the brackets a run is
                         wrapped in, the tells that mark a fixture, and the
@@ -780,6 +786,17 @@ orchestrator/
       timeline_html.py  the badge, name, and position one timeline entry is
                         headed by, and which entry a usage strip is drawn
                         above
+      page_models.py    the two frozen shapes one run of the page carries --
+                        the file as it was read, and what the controls
+                        answered -- under the identity they are published with
+      page_setup.py     what a run settles first: the two stylesheets, the
+                        opt-in refusal, and the one pass over the file
+      controls.py       the sidebar an operator narrows a read with, and the
+                        narrowing those answers drive
+      picker.py         the capped overview table and the uncapped repo →
+                        issue → run cascade that reaches every match
+      run_render.py     the detail card one selected run is read in full
+                        through, notices before timeline
   skills/               the two skill-enumeration owners
     __init__.py         package marker only; callers name an owner
     catalog.py          per-tick repo skill-catalog collection: enumerate
@@ -1097,8 +1114,9 @@ rather than state a handler consults.
 `orchestrator/observability/` is the destination for the four surfaces that watch a run without steering it: the
 analytics sink and everything downstream of it (`analytics/` over `recording/`, `query/`, `sync/`, and `trajectories/`),
 the parser that meters one finished agent run (`usage/`), the Streamlit page over the operator's Postgres target
-(`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`, holding that page's read model
-and every inline-HTML builder it is drawn with). The parser is the first to
+(`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`, holding that page's read model,
+every inline-HTML builder it is drawn with, and the controls and rendering one run of it is driven by). The parser is
+the first to
 arrive: its owners live under `usage/`, whose initializer publishes the parser surface, while the callers that meter a
 run — `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers — name the
 owner they need. Root-level `usage.py` stays behind as a temporary compatibility site re-exporting those owners' own
@@ -1425,9 +1443,10 @@ owner's own object.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
-and what a page narrows and totals those runs into — and the inline HTML that read is drawn as: the stylesheet, the
+and what a page narrows and totals those runs into — the inline HTML that read is drawn as: the stylesheet, the
 banner and tiles a whole read is summarized in, the three renderings one run is identified by, what it cost, and the
-header each timeline entry is read by.
+header each timeline entry is read by — and what drives one run of the page over both: the state it carries, the setup
+it opens with, the controls it is narrowed by, the cascade one run is picked through, and the card that run is read in.
 `constants` is the vocabulary — the one event this viewer reads, the two brackets a run's prompt and final output are
 rendered as (the sink writes neither as a step, so there is nothing on the write side for them to agree with), the three
 tells that mark a fixture, and the banner an operator gets when the sink was never switched on. `coercion` is the
@@ -1541,6 +1560,28 @@ than this package's naming, because `__module__` and `__qualname__` together are
 through, so a stamp naming a module that answers to some other name is a load error rather than a cosmetic
 difference. The builders beside it report their owner, because a function's module is the owner that defines it.
 
+The five page owners sit above both halves, and none of them imports Streamlit either: it is handed in, the way the
+run and the settings holder are, so drawing a page costs nothing at import and every control is testable without it.
+`page_models` holds the two frozen shapes one run carries — the file as it was read and what the controls then
+answered — kept apart because different halves of the run answer them, with the total a property rather than a stored
+field so a page cannot claim a count its own runs disagree with. Both report `orchestrator._trajectory_dashboard_models`
+and keep that site's own underscore spelling, for the same `pickle` reason the KPI tile does. `page_setup` is what a
+run settles before anything is drawn: the shared stylesheet then this page's, in the order their cascade depends on;
+the opt-in banner an unconfigured sink is *stopped* with rather than fallen through from; and the one pass over the
+file the whole page is then built off, with the dropdown values collected from what was read rather than declared.
+Which file that is comes off the settings holder handed in, the same way `log_paths` takes one. `controls` draws the
+sidebar and reads it back as one request, folding every "no clause" spelling together — an unticked multiselect and the
+*All* repository both become `None`, because a selection matching nothing is not what an operator who narrowed nothing
+asked for — and it takes the issue box's `#123` through the same parse `dashboard/filters.py` gives the analytics page,
+so one spelling works on both. `picker` is the two surfaces over the survivors, and they answer different questions:
+the overview table is capped at the 200 most recent and says how many matched, because a silently truncated table reads
+as a complete one, while the repo → issue → run cascade is deliberately uncapped so every match stays reachable. It
+draws the fixture receipt only where the read held fixtures, worded for whichever way the toggle is set. `run_render`
+is the card the picked run is read in full through, ordered so that what qualifies a timeline — a synthetic fixture, a
+run the sink's budget truncated — is read before the timeline itself. The final output is the one entry handed to
+Streamlit as markdown; a prompt, a payload, and a tool result are code blocks, because they are text that must not be
+interpreted.
+
 Root-level `_trajectory_constants.py`, `_trajectory_record_values.py`, `_trajectory_view_models.py`,
 `_trajectory_run_model.py`, `_trajectory_run_views.py`, `_trajectory_run_timeline.py`,
 `_trajectory_record_parse.py`, `_trajectory_file_read.py`, `_trajectory_filter_models.py`,
@@ -1561,6 +1602,17 @@ spelling they were published under. That mix is why every name is declared as a 
 `_trajectory_dashboard_html.py` names those owners directly and defines nothing of its own: it is the one HTML surface
 the page reaches every builder through, and the only identity it still carries is the KPI tile's, stamped there by the
 owner the shape is defined in.
+
+Root-level `_trajectory_dashboard_filters.py`, `_trajectory_dashboard_picker.py`, and
+`_trajectory_dashboard_run_render.py` forward the same way and respell as they do it, each control and each row of the
+card private to the leaf a caller reached it through and public on the owner that defines it.
+`_trajectory_dashboard_models.py` defines neither of the two shapes it publishes and still reports both, because that
+is the site they are stamped with — which is why it imports the typing vocabulary and the two record shapes their
+annotations are spelled in and uses them for nothing else, exactly as `trajectory_reader.py` does for the three it
+publishes. `_trajectory_dashboard_page.py` is the one page leaf that is not a pure forwarder: the messages and the
+chrome are the owner's own objects, but the two entry points that read the trajectory knob are its own, because the
+owner answers on the settings holder it is handed and this is what hands it one — the analytics package this leaf
+captured at its own import, the same world binding `_trajectory_records.py` does for the read.
 
 `trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
 reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*

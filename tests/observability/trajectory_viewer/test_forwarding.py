@@ -7,6 +7,8 @@ import pickle
 import unittest
 from importlib import import_module
 from types import MappingProxyType
+from typing import Sequence, get_type_hints
+from unittest.mock import patch
 
 
 _PACKAGE = "orchestrator.observability.trajectory_viewer"
@@ -14,6 +16,8 @@ _PACKAGE = "orchestrator.observability.trajectory_viewer"
 _COERCION = f"{_PACKAGE}.coercion"
 
 _CONSTANTS = f"{_PACKAGE}.constants"
+
+_CONTROLS = f"{_PACKAGE}.controls"
 
 _CSS = f"{_PACKAGE}.css"
 
@@ -25,11 +29,19 @@ _FILTERING = f"{_PACKAGE}.filtering"
 
 _MODELS = f"{_PACKAGE}.models"
 
+_PAGE_MODELS = f"{_PACKAGE}.page_models"
+
+_PAGE_SETUP = f"{_PACKAGE}.page_setup"
+
 _PARSING = f"{_PACKAGE}.parsing"
+
+_PICKER = f"{_PACKAGE}.picker"
 
 _READING = f"{_PACKAGE}.reading"
 
 _RUN_HTML = f"{_PACKAGE}.run_html"
+
+_RUN_RENDER = f"{_PACKAGE}.run_render"
 
 _RUNS = f"{_PACKAGE}.runs"
 
@@ -52,7 +64,24 @@ _ORIGIN_MODULE = "orchestrator._trajectory_records"
 # HTML surface, so that is where the shape is published from.
 _HTML_ORIGIN_MODULE = "orchestrator._trajectory_dashboard_html"
 
+# And for the two page shapes, which the page reaches through this one leaf.
+_PAGE_ORIGIN_MODULE = "orchestrator._trajectory_dashboard_models"
+
+# The leaf that hands the page owner a world, rather than forwarding to it,
+# and the two entries on it that need one.
+_PAGE_LEAF = "orchestrator._trajectory_dashboard_page"
+
+_STOP_ENTRY = "_stop_if_unconfigured"
+
+_LOAD_ENTRY = "_load_trajectory_page"
+
+_ANALYTICS_MODULE = "orchestrator.analytics"
+
 _KPI_TILE = "_TrajectoryKpi"
+
+_PAGE_STATE = "_TrajectoryPage"
+
+_FILTER_STATE = "_TrajectoryFilters"
 
 _CONSTANT_NAMES = (
     "FIXTURE_PROMPT",
@@ -208,6 +237,31 @@ _RESPELLED_MODULES = MappingProxyType({
         ("_timeline_entry_html", "timeline_entry_html"),
         ("_timeline_with_usage", "timeline_with_usage"),
     )),
+    "orchestrator._trajectory_dashboard_filters": (_CONTROLS, (
+        ("_filter_page_runs", "filter_page_runs"),
+        ("_render_categorical_filters", "render_categorical_filters"),
+        ("_render_text_filters", "render_text_filters"),
+        ("_render_trajectory_sidebar", "render_trajectory_sidebar"),
+    )),
+    "orchestrator._trajectory_dashboard_run_render": (_RUN_RENDER, (
+        ("_render_run", "render_run"),
+        ("_render_run_card", "render_run_card"),
+        ("_render_run_notices", "render_run_notices"),
+        ("_render_run_usage_and_chips", "render_run_usage_and_chips"),
+        ("_render_system_prompt", "render_system_prompt"),
+        ("_render_timeline", "render_timeline"),
+        ("_render_timeline_entry", "render_timeline_entry"),
+    )),
+    "orchestrator._trajectory_dashboard_picker": (_PICKER, (
+        ("RUN_TABLE_LIMIT", "RUN_TABLE_LIMIT"),
+        ("_fixture_caption", "fixture_caption"),
+        ("_pick_issue", "pick_issue"),
+        ("_pick_repo", "pick_repo"),
+        ("_pick_run", "pick_run"),
+        ("_render_no_trajectories", "render_no_trajectories"),
+        ("_render_run_list", "render_run_list"),
+        ("_render_run_picker", "render_run_picker"),
+    )),
 })
 
 # The one surface the page composes those owners into. Which builder it binds
@@ -233,6 +287,15 @@ _FORWARDED_FACADE = (
     ("UNCONFIGURED_LOG_MESSAGE", _CONSTANTS),
 )
 
+# What the page-setup leaf forwards rather than binds a world for: the two
+# empty-state messages, which no read is behind, and the chrome, which reads
+# nothing but the two stylesheets.
+_PAGE_LEAF_NAMES = (
+    ("EMPTY_FILTER_MESSAGE", "EMPTY_FILTER_MESSAGE"),
+    ("NO_TRAJECTORIES_MESSAGE", "NO_TRAJECTORIES_MESSAGE"),
+    ("_configure_page", "configure_page"),
+)
+
 # Each frozen view, the record composed from them, and the KPI tile: reached on
 # the owner that defines it, and paired with the site it is published from.
 # Each is named here under the spelling that site answers to, which is the
@@ -243,6 +306,8 @@ _STAMPED_TYPES = (
     (_MODELS, "TimelineEntry", _ORIGIN_MODULE),
     (_MODELS, "TrajectoryStepView", _ORIGIN_MODULE),
     (_MODELS, "TurnUsageView", _ORIGIN_MODULE),
+    (_PAGE_MODELS, _FILTER_STATE, _PAGE_ORIGIN_MODULE),
+    (_PAGE_MODELS, _PAGE_STATE, _PAGE_ORIGIN_MODULE),
     (_RUNS, "TrajectoryRun", _ORIGIN_MODULE),
     (_SUMMARY_HTML, _KPI_TILE, _HTML_ORIGIN_MODULE),
 )
@@ -303,6 +368,75 @@ class ComposedSurfaceTest(unittest.TestCase):
             if getattr(member, "__module__", None) == _COMPOSED_SURFACE
         )
         self.assertEqual(reported, (_KPI_TILE,))
+
+
+class StampedPageStateLeafTest(unittest.TestCase):
+    """The page-state site answers for its two shapes and nothing besides."""
+
+    def test_only_the_stamped_shapes_report_it(self) -> None:
+        leaf = import_module(_PAGE_ORIGIN_MODULE)
+        reported = tuple(sorted(
+            name
+            for name, member in leaf.__dict__.items()
+            if getattr(member, "__module__", None) == _PAGE_ORIGIN_MODULE
+        ))
+        self.assertEqual(reported, (_FILTER_STATE, _PAGE_STATE))
+
+    def test_each_shape_resolves_its_hints_there(self) -> None:
+        # A stamped class resolves its annotations in the stamped module's own
+        # globals, which is why that site imports the typing vocabulary and the
+        # two record shapes they are spelled in and uses them for nothing else.
+        # Dropping one of those imports is a `NameError` here, not a tidy-up --
+        # and so is reading the hints back without that site loaded at all,
+        # which is why it is imported first rather than assumed present.
+        import_module(_PAGE_ORIGIN_MODULE)
+        owner = import_module(_PAGE_MODELS)
+        resolved = {
+            name: get_type_hints(getattr(owner, name))
+            for name in (_FILTER_STATE, _PAGE_STATE)
+        }
+        self.assertIs(resolved[_FILTER_STATE]["hide_fixtures"], bool)
+        self.assertEqual(
+            resolved[_PAGE_STATE]["runs"],
+            Sequence[import_module(_RUNS).TrajectoryRun],
+        )
+        self.assertIs(
+            resolved[_PAGE_STATE]["options"],
+            import_module(_FILTER_MODELS).FilterOptions,
+        )
+
+
+class PageWorldLeafTest(unittest.TestCase):
+    """The page setup's world is bound at its leaf, not inside the owner."""
+
+    def test_each_entry_hands_over_the_package(self) -> None:
+        # The owner answers on the settings holder it is handed, so the leaf is
+        # what decides *which* analytics instance a page resolves its file on:
+        # the one it captured at its own import, which is what a caller patches.
+        analytics = import_module(_ANALYTICS_MODULE)
+        streamlit = object()
+        for entry, owned, passed in (
+            (_STOP_ENTRY, "stop_if_unconfigured", (streamlit,)),
+            (_LOAD_ENTRY, "load_trajectory_page", ()),
+        ):
+            with self.subTest(entry=entry):
+                self.assertEqual(
+                    self._handed_over(entry, owned, passed),
+                    (*passed, analytics),
+                )
+
+    def test_the_worldless_names_are_the_owner_s(self) -> None:
+        leaf = import_module(_PAGE_LEAF)
+        owner = import_module(_PAGE_SETUP)
+        for published, owned in _PAGE_LEAF_NAMES:
+            with self.subTest(name=published):
+                self.assertIs(getattr(leaf, published), getattr(owner, owned))
+
+    def _handed_over(self, entry: str, owned: str, passed: tuple) -> tuple:
+        """The arguments the leaf's entry reached its owner with."""
+        with patch.object(import_module(_PAGE_SETUP), owned) as bound:
+            getattr(import_module(_PAGE_LEAF), entry)(*passed)
+            return bound.call_args.args
 
 
 class ForwardedRecordFacadeTest(unittest.TestCase):

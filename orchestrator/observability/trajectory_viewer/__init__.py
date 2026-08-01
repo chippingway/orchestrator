@@ -54,9 +54,27 @@ escaped before it reaches the markup, because a page writes these with
 ``unsafe_allow_html=True`` and every value in them is record text this viewer
 does not own.
 
-Callers import the owner they need, so this initializer binds nothing, and
-Streamlit stays behind a function-local import for the same reason it does
-in ``dashboard`` -- with one more: the read model here is pure, and its
-value is that it stays importable, and testable, in an install carrying no
-viewer dependencies at all.
+What draws that markup arrives last, and it does not import Streamlit either:
+each of these five takes the module in as an argument, the way a run and a
+settings holder are handed in, so drawing a page costs nothing at import.
+``page_models`` holds the two frozen shapes one run of the page is carried
+by -- the file as it was read, and what the controls then answered -- each
+published from the historical site the page state is documented at.
+``page_setup`` is what a run settles before anything is drawn: the two
+stylesheets in the order their cascade depends on, the opt-in refusal an
+unconfigured sink is stopped with, and the one pass over the file the whole
+page is built from. ``controls`` draws the sidebar and reads it back as one
+request, folding every "no clause" spelling together so an operator who
+narrowed nothing is not answered with an empty table. ``picker`` is the two
+surfaces that get from that request's survivors down to one run -- the capped
+overview table, which says what it capped, and the uncapped cascade that keeps
+every match reachable -- and ``run_render`` is the card the picked run is read
+in full through, ordered so the notices that qualify a timeline are read before
+it.
+
+Callers import the owner they need, so this initializer binds nothing, and no
+owner here imports Streamlit -- the page that does keeps that import inside
+``main()``, for the same reason ``dashboard`` does and one more: everything
+under this package is pure, and its value is that it stays importable, and
+testable, in an install carrying no viewer dependencies at all.
 """
