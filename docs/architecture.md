@@ -491,8 +491,13 @@ orchestrator/
                         trajectory-viewer owners
   trajectory_dashboard.py
                         lazy compatibility facade and direct Streamlit entrypoint
+  _trajectory_dashboard_style.py / _trajectory_dashboard_summary_html.py / _trajectory_dashboard_run_html.py
+                        historical HTML import sites forwarding to the
+                        trajectory-viewer owners
   _trajectory_dashboard_*.py
-                        viewer bootstrap, page controls, rendering, and HTML leaves
+                        viewer bootstrap, page controls, rendering, the
+                        timeline and usage HTML leaves, and the one surface
+                        composing every builder the page draws with
   observability/
     __init__.py         package marker only; home of the usage parsers, the
                         analytics configuration, recording, retention,
@@ -1525,11 +1530,12 @@ an `obj` / `seq` pair against a declared signature and handing the owner its own
 the banner, and the read each hand the owner the analytics package that leaf captured at its own import.
 
 Root-level `_trajectory_dashboard_style.py`, `_trajectory_dashboard_summary_html.py`, and
-`_trajectory_dashboard_run_html.py` forward the same way, and respell as they do it: every builder they publish is
-private to the leaf a caller reached it through, while the owner defining it publishes it under this package's own
-naming, so each name is declared as a pair rather than derived. `_trajectory_dashboard_html.py` names those owners
-directly and is the one HTML surface the page reaches every builder through — including the timeline and usage
-builders still flat beside it, whose `__module__` it stamps.
+`_trajectory_dashboard_run_html.py` forward the same way, and respell as they do it: each builder is private to the
+leaf a caller reached it through and public on the owner that defines it, while the two run labels, the stylesheet
+string, and the stamped tile keep the spelling they were published under. That mix is why every name is declared as a
+pair rather than derived from one. `_trajectory_dashboard_html.py` names those owners directly — as does the usage
+leaf, for the money format it shares with the KPI strip — and is the one HTML surface the page reaches every builder
+through, including the timeline and usage builders still flat beside it, whose `__module__` it stamps.
 
 `trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
 reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*
