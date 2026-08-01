@@ -193,9 +193,11 @@ in `retention.py`, and the skill readers pass `config.settings_on` the package i
 import (a package reloaded against a patched env is what its own callers drive) — `events.settings_holder` is where
 that capture is read out of `sys.modules`, and a producer that imported the recording owner with no analytics package
 behind it resolves the name inside the call instead — while the trajectory writers below the append take that instance
-off the exit context they are handed, and the read and sync paths have nothing captured and use `config.live_settings`,
-which resolves the package name. The audit event log (`config.EVENT_LOG_PATH`) stays in
-`config` because `GitHubClient.emit_event` is a general-purpose audit surface.
+off the exit context they are handed, the viewer's `trajectory_viewer/log_paths.py` takes one as an argument from the
+`_trajectory_records.py` leaf that captured it (which is what keeps two reloaded readers each on their own file), and
+the read and sync paths have nothing captured and use `config.live_settings`, which resolves the package name. The
+audit event log (`config.EVENT_LOG_PATH`) stays in `config` because `GitHubClient.emit_event` is a general-purpose
+audit surface.
 
 **Filesystem only.** No PostgreSQL, Streamlit, or external services — the sink is one JSONL file under the project log
 area. Default path is `<LOG_DIR>/analytics.jsonl`, already covered by the `logs/` `.gitignore` rule. Set
@@ -748,7 +750,12 @@ summary and a claude-only per-turn `turns` tuple (`TurnUsageView`), with conveni
 turn's usage while walking the timeline; `summarize` adds `total_cost_usd`, the summed run cost over runs that recorded
 one. A pre-usage record parses with `run_usage=None`, `turns=()`, and every `step.turn=None`, so it renders exactly as
 before. The same resilience contract the rest of the codebase honours holds: a missing / disabled path, a malformed
-line, a non-`agent_trajectory` record, or a renamed field yields a smaller result, never an exception. The records are
+line, a non-`agent_trajectory` record, or a renamed field yields a smaller result, never an exception. A file that is
+there but cannot be read — anything raising an `OSError` other than `FileNotFoundError`, an unreadable file or a
+directory in the knob's place — takes the same empty result with a warning first, through the
+`orchestrator.trajectory_reader` logger. That name is spelled out literally in
+`observability/trajectory_viewer/reading.py` rather than derived from the module path, so an operator's log filter
+selects on it regardless of which module the read lives in. The records are
 already redacted and truncated by the sink, so the viewer is a read-only window onto an already-sanitised file — it
 adds no redaction of its own and must be scoped (filesystem permissions, who can reach the Streamlit port) with the same
 care as the trajectory file itself.
