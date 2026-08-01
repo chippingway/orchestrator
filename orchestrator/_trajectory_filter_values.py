@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Sequence
 
-from orchestrator._trajectory_run_model import TrajectoryRun
+from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
 
 def distinct_sorted(

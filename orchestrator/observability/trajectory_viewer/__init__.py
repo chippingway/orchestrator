@@ -2,10 +2,21 @@
 # SPDX-License-Identifier: Apache-2.0
 """Trajectory viewer owners.
 
-Destination for the second Streamlit page -- the file-backed viewer that
-reads the trajectory JSONL directly, usage and cost included, and needs no
-Postgres: the pure filter and summary read model, the run views built from
-it, and the HTML a page is rendered from.
+Home of the second Streamlit page -- the file-backed viewer that reads the
+trajectory JSONL directly, usage and cost included, and needs no Postgres: the
+pure filter and summary read model, the run views built from it, and the HTML a
+page is rendered from.
+
+The record side arrives first. ``constants`` owns what one line is recognized,
+bracketed, and dismissed by; ``coercion`` owns the narrowing every untyped
+field passes through, so a hand-edited or older record costs a smaller row
+rather than a failed read. ``models`` owns the frozen pieces a record is read
+back as -- the step, the timeline entry, and the two usage summaries -- with
+the constructor signatures and the historical module identity they are
+published under. ``runs`` is the record itself, and it defines no view of its
+own: ``usage_views`` answers for a run's tallies and its money, and
+``timeline_views`` for the one ordered sequence it renders as, the labels it is
+picked by, and the tells that mark it a fixture.
 
 Callers import the owner they need, so this initializer binds nothing, and
 Streamlit stays behind a function-local import for the same reason it does
