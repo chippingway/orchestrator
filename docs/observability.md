@@ -17,7 +17,7 @@ time.
   by-age prune is the same `retention.py` owner, reading its own knobs. `record_agent_exit` is its
   producer: when the sink is on it parses each tracked run's trajectory from the same stdout, redacts and head/tail
   truncates every free-text field, and appends one `agent_trajectory` record — all behind its own fail-open guard. A
-  dedicated, file-backed **trajectory viewer** (`orchestrator/trajectory_dashboard.py`) renders it as a separate
+  dedicated, file-backed **trajectory viewer** (`orchestrator/apps/trajectory_dashboard.py`) renders it as a separate
   Streamlit page.
 - **Analytics database** (`analytics-db/`) — operator-deployed Postgres service that is the aggregation target for the
   analytics sink, with an operator-driven sync CLI and a Streamlit dashboard on top.
@@ -32,8 +32,9 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 read-mode state one run of the analytics page carries (`dashboard/windows.py`, `dashboard/filters.py`,
 `dashboard/read_mode.py`), the trajectory viewer's whole read model — its file read, record parse, run models, and the
 filtering and summary aggregation over them — plus the styling and every inline-HTML builder that read is drawn with,
-and the page state, setup, controls, picker, and run card one run of it is driven by
-(`trajectory_viewer/`), and the packages the rest of the analytics sink,
+and the page state, setup, controls, picker, run card, and whole-page composition one run of it is driven by
+(`trajectory_viewer/`), and the `streamlit run` target that composes them (`apps/trajectory_dashboard.py`; the
+analytics page's own target is still `orchestrator/dashboard.py`), plus the packages the rest of the analytics sink,
 the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree,
 the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
@@ -715,13 +716,13 @@ fixed-path mirror should receive records before they age out locally. The prune 
 through the same temp-file + `os.replace` path described above; it never touches GitHub workflow state,
 `ANALYTICS_LOG_PATH`, Postgres, or the analytics dashboard.
 
-### Trajectory viewer (`orchestrator/trajectory_dashboard.py`)
+### Trajectory viewer (`orchestrator/apps/trajectory_dashboard.py`)
 
 A deliberately **separate** Streamlit page from the analytics dashboard, launched the same way (`uv run streamlit run
-orchestrator/trajectory_dashboard.py`, opt-in `dashboard` group). The two pages stay apart on purpose: the analytics
-dashboard reads the numeric usage / cost rollup from Postgres, while the viewer reads the JSONL trajectory file
-**directly** — the trajectory bodies are never in Postgres — so an operator can browse trajectories with nothing but
-the file on disk (no database, no `analytics.sync`).
+orchestrator/apps/trajectory_dashboard.py`, opt-in `dashboard` group). The two pages stay apart on purpose: the
+analytics dashboard reads the numeric usage / cost rollup from Postgres, while the viewer reads the JSONL trajectory
+file **directly** — the trajectory bodies are never in Postgres — so an operator can browse trajectories with nothing
+but the file on disk (no database, no `analytics.sync`).
 
 **Read model (`orchestrator/trajectory_reader.py`).** A pure, import-light, Streamlit-free reader (the file-backed
 analogue of `orchestrator/analytics/read.py`). `_trajectory_records.py` preserves the historical record API — the
@@ -769,15 +770,16 @@ already redacted and truncated by the sink, so the viewer is a read-only window 
 adds no redaction of its own and must be scoped (filesystem permissions, who can reach the Streamlit port) with the same
 care as the trajectory file itself.
 
-**Page (`orchestrator/trajectory_dashboard.py`).** Reuses the analytics dashboard's theme (CSS variables, fonts,
+**Page (`orchestrator/apps/trajectory_dashboard.py`).** Reuses the analytics dashboard's theme (CSS variables, fonts,
 `fmt_*` formatters) so the two pages read as one family — the owners under `observability/trajectory_viewer/` name
 `dashboard/tokens.py`, `dashboard/css.py`, and `dashboard/formatting.py` directly, the leaves still flat reach the same
 objects through `orchestrator/dashboard_theme.py` — and reuses `dashboard/filters.py`'s `parse_issue_number` for the
 issue filter, so `#123` and `123` mean the same thing on both pages. Streamlit is
-imported lazily inside `main()` and the repo-root `sys.path` shim comes from the shared
-`orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`) that `orchestrator/dashboard.py` also calls, so
-importing the module (or the polling tick) never needs the `dashboard` group — `tests/test_trajectory_dashboard.py`
-guards both the lazy-import and the script-launch `sys.path` shape. The layout is intentionally minimal-but-useful: a
+imported lazily inside `main()`, alongside every owner the page composes, and the repo-root `sys.path` shim comes
+from `orchestrator/apps/bootstrap.py` (`ensure_repo_root_on_path`) — the historical launch path takes the same shim
+from `orchestrator/script_launch.py`, which `orchestrator/dashboard.py` also calls. Importing either module (or the
+polling tick) therefore never needs the `dashboard` group — `tests/apps/` guards the lazy-import and the
+script-launch `sys.path` shape on both of the viewer's launch paths. The layout is intentionally minimal-but-useful: a
 sidebar of filters (plus a *Hide synthetic fixtures*
 toggle that drives the reader's `exclude_fixtures`, off by default), a topbar + five-tile KPI strip (runs / issues /
 repos / tool calls / total cost, the last summed from `summarize`'s `total_cost_usd`), a foldable *Recorded runs*
@@ -798,12 +800,14 @@ no usage, so the row and strips are absent and it renders exactly as before. The
 in the overview table and the run-level picker (the `[fixture]` prefix rides the run option; and the detail card carries
 a notice) so the operator can tell the inherited test-suite records from real runs even with the toggle off. When the
 sink is off it renders the opt-in banner and stops; an empty file or an empty filter set renders an explanatory notice
-rather than a blank page. `trajectory_dashboard.py` is now a lazy compatibility facade and direct-launch entrypoint.
-Its page state, setup, filters, picker, and selected-run rendering are owned by `page_models`, `page_setup`,
-`controls`, `picker`, and `run_render` under `observability/trajectory_viewer/`; the four that draw take Streamlit in
+rather than a blank page. `orchestrator/trajectory_dashboard.py` stays the historical launch path and a lazy
+compatibility facade over it, resolving the two page renderings on `page_render` and `main` on the app.
+The page state, setup, filters, picker, selected-run rendering, and whole-page composition are owned by
+`page_models`, `page_setup`, `controls`, `picker`, `run_render`, and `page_render` under
+`observability/trajectory_viewer/`; the five that draw take Streamlit in
 as an argument rather than importing it, so none of them puts the `dashboard` group behind an import, and
-`page_models` is plain frozen state that never sees it. Its bootstrap and runtime orchestration are still flat
-`_trajectory_dashboard_*` leaves. The historical `_trajectory_dashboard_html.py` surface defines nothing and composes
+`page_models` is plain frozen state that never sees it. The facade's bootstrap is still a flat
+`_trajectory_dashboard_*` leaf. The historical `_trajectory_dashboard_html.py` surface defines nothing and composes
 the Streamlit-free summary, run, usage, timeline, and CSS owners under `observability/trajectory_viewer/`, so every
 established HTML helper and patch point keeps its original identity without pulling Streamlit into imports. The
 `_trajectory_dashboard_page.py` leaf keeps the historical zero-argument page setup and is where a caller's analytics

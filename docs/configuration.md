@@ -365,8 +365,8 @@ an unmergeable PR.
   orchestrator prompt lands as `user_input`); when off, no trajectory work runs and the `agent_exit` record is
   unchanged. Never touches `ANALYTICS_LOG_PATH`, the analytics Postgres sync, or the analytics dashboard. Local
   filesystem only and observation-only — the polling loop never reads it back, so the file is safe to delete without
-  affecting workflow state. A dedicated Streamlit viewer (`orchestrator/trajectory_dashboard.py`, launched with
-  `uv run streamlit run orchestrator/trajectory_dashboard.py`) reads this JSONL file directly — no Postgres or sync
+  affecting workflow state. A dedicated Streamlit viewer (`orchestrator/apps/trajectory_dashboard.py`, launched with
+  `uv run streamlit run orchestrator/apps/trajectory_dashboard.py`) reads this JSONL file directly — no Postgres or sync
   — when you want to browse the recorded trajectories. **Privacy:** redaction masks only secret-shaped env values (and
   the GitHub token), **not** issue/repo content, so an enabled trajectory file can carry issue titles/bodies, quoted
   source, and agent reasoning in cleartext; scope its permissions accordingly. See

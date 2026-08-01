@@ -33,16 +33,19 @@ _ROOT_PACKAGE_MODULES = frozenset((
 # reads one back. On the tick side that is the workflow engine, the stage
 # handlers, and the CLI and runtime loop under them, where the flat
 # `_workflow_*` inventory is the sharpest entry because resolving any name on
-# it imports the leaf that holds it. On the page side it is the two
-# `streamlit run` targets and the leaves they front: those are entry points in
-# the same sense `main` is, they are what a migrated owner will be composed
-# *by*, and reading one back would drag Streamlit and Plotly in behind it.
+# it imports the leaf that holds it. On the page side it is every `streamlit
+# run` target -- the trajectory viewer's canonical one under `apps`, the
+# analytics page's own `dashboard`, and the historical `trajectory_dashboard`
+# beside it -- and the leaves they front: those are entry points in the same
+# sense `main` is, they are what a migrated owner is composed *by*, and reading
+# one back would drag Streamlit and Plotly in behind it.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.__main__",
     "orchestrator._dashboard",
     "orchestrator._main",
     "orchestrator._trajectory_dashboard",
     "orchestrator._workflow",
+    "orchestrator.apps",
     "orchestrator.cli",
     "orchestrator.dashboard",
     "orchestrator.main",
