@@ -473,6 +473,8 @@ orchestrator/
                         command, forwarding to the sync owners
     _sync_*.py          the nine leaves forwarding to the sync owners
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
+  dashboard_theme.py    historical import site for the shared visual theme,
+                        forwarding to the dashboard owners
   dashboard_*.py        stable component, read, chart, state, and widget hubs
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
@@ -682,7 +684,23 @@ orchestrator/
       trajectory_models.py
                         the step / turn / trajectory records they return
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
-    dashboard/          destination for the Streamlit analytics page
+    dashboard/          the Streamlit analytics page: the visual theme both
+                        pages are drawn in, and the destination for the rest
+      __init__.py       package marker only; callers import an owner directly
+      palette.py        the page chrome and semantic colors, the seven maps
+                        pinning a dimension value to a hue, and the ordered
+                        fallback a value no map covers resolves through
+      tokens.py         the radii, card inset, grid gap, and content width the
+                        page is laid out on, and the two font stacks it is set
+                        in
+      layout.py         the Plotly layout every figure is merged with: the
+                        margins, font, gridlines, legend, and card-colored
+                        backgrounds they share
+      css.py            the stylesheet the page injects for its own chrome,
+                        with every token interpolated from the two owners above
+      formatting.py     the compact money, token, and count renderings a KPI
+                        tile, an axis tick, and a bar label are narrow enough
+                        to need
     trajectory_viewer/  destination for the file-backed trajectory page
   skills/               the two skill-enumeration owners
     __init__.py         package marker only; callers name an owner
@@ -1295,8 +1313,21 @@ that grouped them, and `_sync_models.py`, `_sync_redaction.py`, `_sync_database.
 `_sync_run.py`), defines nothing and forwards each historical name, private spelling included, to the owner's own
 object.
 
-Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
-`trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
+`dashboard/` is the destination for the Streamlit analytics page, and the theme both pages are drawn in is the first
+thing to arrive there. It divides by what a value is: `palette.py` holds the chrome and semantic colors plus the seven
+maps that pin a dimension value — an event kind, a stage, a cost source, a token type, a backend, an agent role, a
+review round — to a hue so it reads the same on every panel; `tokens.py` holds the measurements and the two font
+stacks; `layout.py` assembles the Plotly layout every figure is merged with; `css.py` interpolates the stylesheet the
+page injects out of both token owners rather than restating a hue or a radius, which is what keeps the chrome and the
+charts inside it from drifting apart; and `formatting.py` holds the compact renderings a KPI tile, an axis tick, and a
+bar label are too narrow to skip. None of the five imports Plotly or Streamlit, so the page can read a color at module
+load to paint its banner without pulling the optional `dashboard` group into the polling tick's import surface.
+Root-level `dashboard_theme.py` stays the historical import site — the analytics page, its chart leaves, and the
+trajectory viewer all still spell `from orchestrator import dashboard_theme as theme` — and, like the sync leaves,
+defines nothing and forwards each name to the owner's own object.
+
+Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, the rest of
+`dashboard*.py`, `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
 names until the one it needs has an owner here.
 
 Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own subjects
