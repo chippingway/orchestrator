@@ -5,6 +5,9 @@
 import io
 
 
+import logging
+
+
 import re
 
 
@@ -12,6 +15,9 @@ import tempfile
 
 
 import unittest
+
+
+from contextlib import contextmanager
 
 
 from dataclasses import dataclass
@@ -26,35 +32,34 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
-from tests.analytics_sync_execution import (
-    reset_root_logger as _reset_root_logger,
-)
+from orchestrator import analytics as analytics_package
 
 
-from tests.analytics_sync_reload import (
-    reload_sync as _reload,
-)
-
-
-from tests.analytics_sync_payloads import (
-    write_jsonl as _write_jsonl,
-    sample_record as _sample_record,
-)
+from orchestrator.analytics import sync as analytics_sync
 
 
 CLI_CLOCK_TOLERANCE_SECONDS = 5
 
 
-_LOG_PATH_ENV = "ANALYTICS_LOG_PATH"
+_LOG_PATH_SETTING = "ANALYTICS_LOG_PATH"
 
 
-_DB_URL_ENV = "ANALYTICS_DB_URL"
+_DB_URL_SETTING = "ANALYTICS_DB_URL"
 
 
-_SENTINEL_DISABLED = "off"
+_SYNC_ENTRY_POINT = "sync_jsonl_to_postgres"
 
 
 _STDOUT = "sys.stdout"
+
+
+_ENCODING = "utf-8"
+
+
+_OVERRIDE_DB_URL = "postgresql://override/db"
+
+
+_SAMPLE_LINE = '{"event": "stage_enter", "issue": 1, "repo": "owner/repo", "ts": "2026-05-25T12:00:00+00:00"}'
 
 
 @dataclass(frozen=True)
@@ -71,10 +76,17 @@ class _CliClock:
     stderr_label: str
 
 
-def _capture_cli_streams(test_case, analytics_sync) -> _CliStreams:
+@contextmanager
+def _disabled_sink():
+    """Turn both knobs off so an argument-free run is a configured no-op."""
+    with patch.object(analytics_package, _LOG_PATH_SETTING, None):
+        with patch.object(analytics_package, _DB_URL_SETTING, None):
+            yield
+
+
+def _capture_cli_streams(test_case) -> _CliStreams:
     error_buffer = io.StringIO()
     output_buffer = io.StringIO()
-    test_case.addCleanup(_reset_root_logger)
     with patch("sys.stderr", error_buffer), patch(_STDOUT, output_buffer):
         test_case.assertEqual(analytics_sync.main([]), 0)
     return _CliStreams(output_buffer.getvalue(), error_buffer.getvalue())
@@ -100,15 +112,14 @@ class AnalyticsSyncCliTest(unittest.TestCase):
     failure so a cron / systemd unit can surface the error.
     """
 
+    def setUp(self) -> None:
+        # `main` installs a root handler of its own, so each test drops the one
+        # it left rather than formatting a later test's records through it.
+        self.addCleanup(self._reset_root_logger)
+
     def test_cli_no_op_prints_zeros(self) -> None:
-        _, analytics_sync = _reload(
-            {
-                _LOG_PATH_ENV: _SENTINEL_DISABLED,
-                _DB_URL_ENV: "",
-            }
-        )
         buf = io.StringIO()
-        with patch(_STDOUT, buf):
+        with _disabled_sink(), patch(_STDOUT, buf):
             rc = analytics_sync.main([])
         self.assertEqual(rc, 0)
         self.assertIn("inserted=0", buf.getvalue())
@@ -117,60 +128,41 @@ class AnalyticsSyncCliTest(unittest.TestCase):
     def test_cli_overrides_take_effect(self) -> None:
         # `--log-path` / `--db-url` should override the configured
         # values for one-off replays of archived logs.
+        sync_mock = MagicMock(
+            return_value=analytics_sync.SyncResult(inserted=1, total_lines=1),
+        )
+        buf = io.StringIO()
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "rotated.jsonl"
-            _write_jsonl(path, [_sample_record()])
-            _, analytics_sync = _reload(
-                {
-                    _LOG_PATH_ENV: _SENTINEL_DISABLED,
-                    _DB_URL_ENV: "",
-                }
-            )
-
-            sync_mock = MagicMock(
-                return_value=analytics_sync.SyncResult(inserted=1, total_lines=1),
-            )
-            with patch.object(
-                analytics_sync,
-                "sync_jsonl_to_postgres",
-                sync_mock,
+            path.write_text(f"{_SAMPLE_LINE}\n", encoding=_ENCODING)
+            with (
+                _disabled_sink(),
+                patch.object(analytics_sync, _SYNC_ENTRY_POINT, sync_mock),
+                patch(_STDOUT, buf),
             ):
-                buf = io.StringIO()
-                with patch(_STDOUT, buf):
-                    self.assertEqual(
-                        analytics_sync.main(
-                            [
-                                "--log-path",
-                                str(path),
-                                "--db-url",
-                                "postgresql://override/db",
-                            ]
-                        ),
-                        0,
-                    )
+                self.assertEqual(
+                    analytics_sync.main(
+                        ["--log-path", str(path), "--db-url", _OVERRIDE_DB_URL],
+                    ),
+                    0,
+                )
             self.assertIn("inserted=1", buf.getvalue())
             sync_mock.assert_called_once()
             self.assertEqual(sync_mock.call_args.kwargs["log_path"], path)
-            self.assertEqual(
-                sync_mock.call_args.kwargs["db_url"],
-                "postgresql://override/db",
-            )
+            self.assertEqual(sync_mock.call_args.kwargs["db_url"], _OVERRIDE_DB_URL)
 
     def test_cli_surfaces_failure_as_nonzero(self) -> None:
-        _, analytics_sync = _reload(
-            {
-                _LOG_PATH_ENV: _SENTINEL_DISABLED,
-                _DB_URL_ENV: "",
-            }
-        )
-        with patch.object(
-            analytics_sync,
-            "sync_jsonl_to_postgres",
-            side_effect=RuntimeError("boom"),
+        buf = io.StringIO()
+        with (
+            _disabled_sink(),
+            patch.object(
+                analytics_sync,
+                _SYNC_ENTRY_POINT,
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(_STDOUT, buf),
         ):
-            buf = io.StringIO()
-            with patch(_STDOUT, buf):
-                rc = analytics_sync.main([])
+            rc = analytics_sync.main([])
         self.assertEqual(rc, 1)
 
     def test_cli_logs_and_stdout_share_utc_clock(self) -> None:
@@ -179,13 +171,8 @@ class AnalyticsSyncCliTest(unittest.TestCase):
         # so on a TZ+7 host the two surfaces were 7 hours apart for the
         # same event. With both pinned to UTC + an explicit "UTC"
         # marker, mixing stdout/stderr stays a coherent time stream.
-        _, analytics_sync = _reload(
-            {
-                _LOG_PATH_ENV: _SENTINEL_DISABLED,
-                _DB_URL_ENV: "",
-            }
-        )
-        streams = _capture_cli_streams(self, analytics_sync)
+        with _disabled_sink():
+            streams = _capture_cli_streams(self)
         # Both surfaces must carry the explicit "UTC" marker so a
         # mixed-stream consumer (a piped `2>&1`) can tell the
         # timestamps share a timezone.
@@ -220,14 +207,8 @@ class AnalyticsSyncCliTest(unittest.TestCase):
         # Operators run the sync from a terminal and expect a timestamped,
         # one-line summary with the elapsed wall-clock so a multi-thousand
         # record replay surfaces its cost without grepping the log lines.
-        _, analytics_sync = _reload(
-            {
-                _LOG_PATH_ENV: _SENTINEL_DISABLED,
-                _DB_URL_ENV: "",
-            }
-        )
         buf = io.StringIO()
-        with patch(_STDOUT, buf):
+        with _disabled_sink(), patch(_STDOUT, buf):
             rc = analytics_sync.main([])
         self.assertEqual(rc, 0)
         out = buf.getvalue()
@@ -242,3 +223,8 @@ class AnalyticsSyncCliTest(unittest.TestCase):
             r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC analytics_sync:",
         )
         self.assertIn("duration_s=", out)
+
+    def _reset_root_logger(self) -> None:
+        root_logger = logging.getLogger()
+        for stale_handler in list(root_logger.handlers):
+            root_logger.removeHandler(stale_handler)

@@ -103,7 +103,7 @@ _CONFIG_ADAPTERS = (
     "orchestrator.observability.analytics.trajectories.persistence",
     "orchestrator.observability.analytics.query.connection_cache",
     "orchestrator.observability.analytics.query.execution",
-    "orchestrator.analytics._sync_run",
+    "orchestrator.observability.analytics.sync.run",
 )
 
 # The compatibility package whose bootstrap rebuilds and republishes the prune.

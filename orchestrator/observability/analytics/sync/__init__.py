@@ -2,23 +2,30 @@
 # SPDX-License-Identifier: Apache-2.0
 """Analytics synchronization owners.
 
-Destination for the ingestion that fills the operator's Postgres target from
-the project-local JSONL: the command it is driven by, the row parsing and
-mapping between the two shapes, the deduplicating insert, and the database
-lifecycle around it.
+Home of the ingestion that fills the operator's Postgres target from the
+project-local JSONL: what one replay is asked for and counted by, the
+translation between a record and a row, the deduplicating insert, and the
+database lifecycle around it. Only the command it is driven by lives elsewhere.
 
-The translation between the two shapes is here already, split by what each
-half is answerable to. ``columns`` owns the inventory the record shape and the
-table shape meet on -- what a record must carry, what has a column of its own,
-and which of those columns hold JSON. ``records`` owns what one record hashes
-to, pinned to the encoding the sink wrote its line with because that hash is
-the key the insert deduplicates on, plus the coercion each required field is
-either narrowed by or refused for. ``rows`` owns the line itself: the
-statement a batch is sent under, the positional tuple built from the same
-column list in the same order so no per-row mapping stands between them, and
-the reason a line that cannot become a row is skipped for rather than raised
-on. None of the three names a driver, so a caller can build or hash a row
-without Postgres installed.
+The owners split by what each half is answerable to. ``columns`` owns the
+inventory the record shape and the table shape meet on -- what a record must
+carry, what has a column of its own, and which of those columns hold JSON.
+``records`` owns what one record hashes to, pinned to the encoding the sink
+wrote its line with because that hash is the key the insert deduplicates on,
+plus the coercion each required field is either narrowed by or refused for.
+``rows`` owns the line itself: the statement a batch is sent under, the
+positional tuple built from the same column list in the same order so no
+per-row mapping stands between them, and the reason a line that cannot become a
+row is skipped for rather than raised on. None of the three names a driver, so
+a caller can build or hash a row without Postgres installed.
+
+Above them, ``models`` owns what a replay is counted by and the state its loop
+carries, ``ingest`` owns the two dedup filters and the batching between a file
+and one open cursor, ``database`` owns the connection those batches ride and
+the rollup left refreshed behind them, ``redaction`` owns what the dialled URL
+looks like once it reaches a log line, and ``run`` owns the service itself --
+what one replay resolves to, the configured states that are a no-op rather than
+a failure, and the transaction shape around the ingest.
 
 Callers import the owner they need, so this initializer binds nothing: the
 sync is its own command run against its own schema, and nothing in the
