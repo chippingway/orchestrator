@@ -28,6 +28,17 @@ answered silently where any other read error is warned about first.
 caller hands in, so two reader worlds stay apart -- and what an operator gets
 instead when the opt-in sink was never switched on.
 
+What a page then narrows that read to arrives last, and none of it opens a
+file. ``filter_models`` holds the shapes one request is spelled, narrowed, and
+answered in; ``filter_values`` a single value -- the distinct ones a dropdown
+is offered, the empty selection that constrains nothing, and the text a needle
+is compared against; ``filtering`` which runs one request keeps, in the order
+the read already handed them over; and ``summaries`` the headline counts the
+survivors are totalled into. The three that answer over runs name the record at
+import even though none of them builds one: what they are annotated in is a
+published surface, and a name bound only for a type checker is a
+``get_type_hints`` that raises for the caller reading it back.
+
 Callers import the owner they need, so this initializer binds nothing, and
 Streamlit stays behind a function-local import for the same reason it does
 in ``dashboard`` -- with one more: the read model here is pure, and its
