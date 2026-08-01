@@ -32,8 +32,8 @@ class ParseCallShapeTest(unittest.TestCase):
 
     The owner under `observability/trajectory_viewer/` narrows a record
     through its own `sequence` keyword; this is the site the historical
-    spelling is bound at, and the JSONL read drives it by passing `seq` by
-    name, so both halves have to stay bindable rather than positional-only.
+    spelling is bound at, and every caller parsing a line of its own drives it
+    by name, so both halves have to stay bindable rather than positional-only.
     """
 
     def test_the_record_may_be_passed_by_name(self) -> None:
