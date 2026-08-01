@@ -10,8 +10,7 @@ from typing import Any, Optional
 
 from orchestrator import analytics
 from orchestrator import _trajectory_file_read as file_read
-from orchestrator import _trajectory_record_parse as record_parse
-from orchestrator.observability.trajectory_viewer import constants
+from orchestrator.observability.trajectory_viewer import constants, parsing
 from orchestrator.observability.trajectory_viewer import models as view_models
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun as TrajectoryRun
 
@@ -47,7 +46,7 @@ def log_unconfigured_message() -> Optional[str]:
 def parse_record(*args: Any, **kwargs: Any) -> Optional[TrajectoryRun]:
     """Parse one decoded JSONL object through the historical call shape."""
     bound = RECORD_SIGNATURE.bind(*args, **kwargs)
-    return record_parse.parse_record(
+    return parsing.parse_record(
         bound.arguments["obj"],
         sequence=bound.arguments["seq"],
     )

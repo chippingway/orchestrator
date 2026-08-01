@@ -16,7 +16,9 @@ the constructor signatures and the historical module identity they are
 published under. ``runs`` is the record itself, and it defines no view of its
 own: ``usage_views`` answers for a run's tallies and its money, and
 ``timeline_views`` for the one ordered sequence it renders as, the labels it is
-picked by, and the tells that mark it a fixture.
+picked by, and the tells that mark it a fixture. ``parsing`` is what turns a
+decoded line into one of those records -- the event it is accepted for, the
+position it is stamped with, and the narrowing every field goes through.
 
 Callers import the owner they need, so this initializer binds nothing, and
 Streamlit stays behind a function-local import for the same reason it does
