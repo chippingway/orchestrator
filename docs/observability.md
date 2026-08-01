@@ -735,14 +735,13 @@ over the runs it returns (`filter_models`, `filter_values`, `filtering`), and th
 into (`summaries`) live under `orchestrator/observability/trajectory_viewer/`, alongside the inline HTML that read is
 drawn with (`css`, `summary_html`, `run_html`, `usage_html`, `timeline_html`); the eleven root-level leaves the read
 model moved off and the five the HTML moved off forward every historical name to those owners' own objects, and the
-views and the record still report `orchestrator._trajectory_records` as their module.
-`trajectory_reader` defines none of it: it is the one import site
-the page and every historical caller reach the whole read model through, binding the record API off a freshly loaded
-`_trajectory_records` (so a reload still isolates a reader) and the filter and summary API off the owners, with
-`FilterOptions`, `RunFilterOptions`, and `TrajectorySummary` still reporting `orchestrator.trajectory_reader` as their
-module — which is also why it imports the typing names those three are annotated in and uses them for nothing else:
-`get_type_hints` resolves a class's annotations in the globals of the module it names. Together they read
-`TRAJECTORY_LOG_PATH`, parse each `agent_trajectory`
+views and the record still report `orchestrator._trajectory_records` as their module. `trajectory_reader` defines
+none of it: it is the one import site the page and every historical caller reach the whole read model through,
+binding the record API off a freshly loaded `_trajectory_records` (so a reload still isolates a reader) and the
+filter and summary API off the owners, with `FilterOptions`, `RunFilterOptions`, and `TrajectorySummary` still
+reporting `orchestrator.trajectory_reader` as their module — which is also why it imports the typing names those
+three are annotated in and uses them for nothing else: `get_type_hints` resolves a class's annotations in the globals
+of the module it names. Together they read `TRAJECTORY_LOG_PATH`, parse each `agent_trajectory`
 record into a frozen `TrajectoryRun` (with a normalised `TrajectoryStepView` per step), and expose `read_trajectories`
 (newest first by `ts`, file order as the tie-break), `filter_options`, `filter_runs` (repo / backend / agent-role /
 stage / issue / free-text-search, every filter conjunctive and an empty multi-value meaning "no constraint", plus an
