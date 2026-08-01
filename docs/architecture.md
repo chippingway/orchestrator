@@ -488,7 +488,8 @@ orchestrator/
   observability/
     __init__.py         package marker only; home of the usage parsers, the
                         analytics configuration, recording, retention,
-                        read-path, and replay owners beside them, and the
+                        read-path, and replay owners beside them, the visual
+                        theme both Streamlit pages are drawn in, and the
                         destination the observation-only surfaces above
                         migrate the rest of their responsibilities to
     analytics/
