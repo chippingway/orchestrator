@@ -908,7 +908,10 @@ the nine flat `_sync_*.py` leaves are forwarders answering the historical privat
 
 ### Operator feedback
 
-The sync surfaces feedback through the module logger and the stdout summary:
+The sync surfaces feedback through one logger and the stdout summary. Every owner under
+`observability/analytics/sync/` writes to `orchestrator.analytics.sync`, spelled out literally rather than derived
+from the module path, so an operator's log filter keeps selecting the whole replay regardless of which module a line
+comes from:
 
 - Every log line is timestamped (UTC, with an explicit `UTC` suffix) via `_configure_cli_logging`'s `%(asctime)s`
   formatter and `formatter.converter = time.gmtime`.

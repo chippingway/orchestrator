@@ -1256,9 +1256,11 @@ all: it comes back with neither a row nor a reason, which is what keeps it out o
 reads. None of the three names psycopg, so a caller
 can hash a record or lay a row out on a machine with no driver installed.
 
-Above them, `run` is the service: `sync_jsonl_to_postgres` resolves each of the four inputs to the caller's own value
-or the configured knob — read live rather than at import, so a replay follows whichever environment the settings were
-resolved against — and answers three configured states with empty counts and a log line rather than a failure, because
+Above them, `run` is the service: `sync_jsonl_to_postgres` resolves the source and the destination to the caller's own
+values or the two knobs — read live rather than at import, so a replay follows whichever environment the settings were
+resolved against — while the connection factory and the JSON adapter fall back to `database`'s defaults instead, which
+is what lets a whole run be driven over a connection of its own on a machine with no driver installed. It answers three
+configured states with empty counts and a log line rather than a failure, because
 the CLI is scheduled by an operator who may not have deployed Postgres yet. What a real run then guarantees is the
 transaction shape: a driver error rolls back and propagates so the command exits non-zero rather than reporting
 success over a half-inserted batch, the connection is closed either way, and a successful commit is always followed by
