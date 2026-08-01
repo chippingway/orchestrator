@@ -37,7 +37,11 @@ _SUMMARY_HTML = f"{_PACKAGE}.summary_html"
 
 _TIMELINE = f"{_PACKAGE}.timeline_views"
 
+_TIMELINE_HTML = f"{_PACKAGE}.timeline_html"
+
 _USAGE = f"{_PACKAGE}.usage_views"
+
+_USAGE_HTML = f"{_PACKAGE}.usage_html"
 
 # The historical import site the four frozen views and the record report as
 # their module. It is the site their API is documented at, so a repr, a pickle,
@@ -47,6 +51,8 @@ _ORIGIN_MODULE = "orchestrator._trajectory_records"
 # The same for the KPI tile: the page reaches every builder through this one
 # HTML surface, so that is where the shape is published from.
 _HTML_ORIGIN_MODULE = "orchestrator._trajectory_dashboard_html"
+
+_KPI_TILE = "_TrajectoryKpi"
 
 _CONSTANT_NAMES = (
     "FIXTURE_PROMPT",
@@ -171,7 +177,7 @@ _RESPELLED_MODULES = MappingProxyType({
         _CSS, (("EXTRA_CSS", "EXTRA_CSS"),),
     ),
     "orchestrator._trajectory_dashboard_summary_html": (_SUMMARY_HTML, (
-        ("_TrajectoryKpi", "_TrajectoryKpi"),
+        (_KPI_TILE, _KPI_TILE),
         ("_card_header_html", "card_header_html"),
         ("_fmt_cost_usd", "fmt_cost_usd"),
         ("_kpi_strip_html", "kpi_strip_html"),
@@ -188,7 +194,26 @@ _RESPELLED_MODULES = MappingProxyType({
         ("_run_table_row_html", "run_table_row_html"),
         ("_runs_table_html", "runs_table_html"),
     )),
+    "orchestrator._trajectory_dashboard_usage_html": (_USAGE_HTML, (
+        ("USAGE_SEPARATOR", "USAGE_SEPARATOR"),
+        ("_run_usage_chips", "run_usage_chips"),
+        ("_run_usage_html", "run_usage_html"),
+        ("_run_usage_note", "run_usage_note"),
+        ("_turn_usage_html", "turn_usage_html"),
+        ("_usage_chip", "usage_chip"),
+    )),
+    "orchestrator._trajectory_dashboard_timeline_html": (_TIMELINE_HTML, (
+        ("BADGE_BY_KIND", "BADGE_BY_KIND"),
+        ("TimelineUsagePair", "TimelineUsagePair"),
+        ("_timeline_entry_html", "timeline_entry_html"),
+        ("_timeline_with_usage", "timeline_with_usage"),
+    )),
 })
+
+# The one surface the page composes those owners into. Which builder it binds
+# where is pinned beside the page; what belongs here is only that it, too, is
+# down to the one shape it is the published site of.
+_COMPOSED_SURFACE = "orchestrator._trajectory_dashboard_html"
 
 # What the record facade publishes off these owners. It is the module the
 # reader re-exports from and the one the views name as their own, so this pins
@@ -219,7 +244,7 @@ _STAMPED_TYPES = (
     (_MODELS, "TrajectoryStepView", _ORIGIN_MODULE),
     (_MODELS, "TurnUsageView", _ORIGIN_MODULE),
     (_RUNS, "TrajectoryRun", _ORIGIN_MODULE),
-    (_SUMMARY_HTML, "_TrajectoryKpi", _HTML_ORIGIN_MODULE),
+    (_SUMMARY_HTML, _KPI_TILE, _HTML_ORIGIN_MODULE),
 )
 
 
@@ -261,6 +286,23 @@ class RespelledRenderingLeafTest(unittest.TestCase):
                         getattr(import_module(module_name), published),
                         getattr(import_module(owner_name), owned),
                     )
+
+
+class ComposedSurfaceTest(unittest.TestCase):
+    """The surface every builder is reached through defines none of them."""
+
+    def test_only_the_stamped_tile_reports_it(self) -> None:
+        # Anything else naming this module would be a builder the owners under
+        # this package do not answer for. The KPI tile names it by
+        # construction: the owner that defines the shape stamps it with the
+        # site it is published from, which is the lookup pinned below.
+        surface = import_module(_COMPOSED_SURFACE)
+        reported = tuple(
+            name
+            for name, member in surface.__dict__.items()
+            if getattr(member, "__module__", None) == _COMPOSED_SURFACE
+        )
+        self.assertEqual(reported, (_KPI_TILE,))
 
 
 class ForwardedRecordFacadeTest(unittest.TestCase):

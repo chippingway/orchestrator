@@ -492,12 +492,12 @@ orchestrator/
   trajectory_dashboard.py
                         lazy compatibility facade and direct Streamlit entrypoint
   _trajectory_dashboard_style.py / _trajectory_dashboard_summary_html.py / _trajectory_dashboard_run_html.py
+  _trajectory_dashboard_usage_html.py / _trajectory_dashboard_timeline_html.py
                         historical HTML import sites forwarding to the
                         trajectory-viewer owners
   _trajectory_dashboard_*.py
-                        viewer bootstrap, page controls, rendering, the
-                        timeline and usage HTML leaves, and the one surface
-                        composing every builder the page draws with
+                        viewer bootstrap, page controls, rendering, and the one
+                        surface composing every builder the page draws with
   observability/
     __init__.py         package marker only; home of the usage parsers, the
                         analytics configuration, recording, retention,
@@ -773,6 +773,12 @@ orchestrator/
       run_html.py       one run's metadata grid, its overview-table row, and
                         the label it is picked by, each marking a fixture
                         where the record is one
+      usage_html.py     what a run cost: the reported run-level row, the
+                        per-turn estimate strip, and the note saying why the
+                        two need not sum
+      timeline_html.py  the badge, name, and position one timeline entry is
+                        headed by, and which entry a usage strip is drawn
+                        above
   skills/               the two skill-enumeration owners
     __init__.py         package marker only; callers name an owner
     catalog.py          per-tick repo skill-catalog collection: enumerate
@@ -1418,7 +1424,9 @@ owner's own object.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
-and what a page narrows and totals those runs into — and the base HTML that read is drawn as.
+and what a page narrows and totals those runs into — and the inline HTML that read is drawn as: the stylesheet, the
+banner and tiles a whole read is summarized in, the three renderings one run is identified by, what it cost, and the
+header each timeline entry is read by.
 `constants` is the vocabulary — the one event this viewer reads, the two brackets a run's prompt and final output are
 rendered as (the sink writes neither as a step, so there is nothing on the write side for them to agree with), the three
 tells that mark a fixture, and the banner an operator gets when the sink was never switched on. `coercion` is the
@@ -1510,8 +1518,23 @@ those trade digits for a suffix, so the total-cost tile would read `$12` where t
 `run_html` is the three renderings one run is identified by: the metadata grid that omits a field the record never
 carried rather than drawing an empty tile, the overview row in the order the read handed it over, and the label a
 picker narrows to one cohort. It marks a fixture in the two places an operator chooses from — a tagged, dimmed row and
-a prefixed label — off the record's own tell. Everything a caller passes into either of them is escaped first, because
-a page writes these with `unsafe_allow_html=True` and every value in them is record text the viewer does not own. The
+a prefixed label — off the record's own tell. `usage_html` is that same run read for what it cost, twice: the
+run-level row is the figure the provider reported, while the strip at an assistant-turn boundary is a claude-only
+estimate this orchestrator priced itself, so the row carries the note saying the two need not sum — worded differently
+for a backend that recorded no turns at all, where the run summary is the page's only usage surface. A chip is drawn
+per fact the record actually carried, which is why the cached-token chip is dropped where a backend reports none
+rather than always reading zero; the cost chip is the exception, naming its source whether or not a figure resolved so
+an unpriced run does not read as free work. It takes the exact-cents format from `summary_html` rather than spelling a
+second one, asking it for four decimals on a turn because a per-turn estimate is routinely sub-cent and two would
+floor a real charge to `$0.00`. `timeline_html` heads each entry with its position, its kind, and whatever identifies
+it, looking that kind up in one vocabulary so a badge's wording and its color cannot disagree — and a kind this viewer
+has no wording for still renders, falling back to the tool-result styling with the kind printed verbatim, because a
+record from a newer sink is worth reading unlabelled rather than losing the step. It also decides which entry a usage
+strip belongs above: a turn spans several entries, so the strip is drawn once at the first one carrying a new turn
+index, and the later entries of that turn — along with the turn inputs carrying no index at all — are paired with
+nothing, which is exactly what the strip's own copy promises an operator. Everything a caller passes into any of them
+is escaped first, because a page writes these with `unsafe_allow_html=True` and every value in them is record text the
+viewer does not own. The
 one shape published from the page's HTML surface, the KPI tile, reports `orchestrator._trajectory_dashboard_html` and
 stamps itself — under that site's own `_TrajectoryKpi` spelling rather than this package's naming, because
 `__module__` and `__qualname__` together are the pair `pickle` resolves a class through, so a stamp naming a module
@@ -1529,13 +1552,15 @@ That module is also the one place a caller's world is bound: the parse keeps its
 an `obj` / `seq` pair against a declared signature and handing the owner its own `sequence` keyword, and the log path,
 the banner, and the read each hand the owner the analytics package that leaf captured at its own import.
 
-Root-level `_trajectory_dashboard_style.py`, `_trajectory_dashboard_summary_html.py`, and
-`_trajectory_dashboard_run_html.py` forward the same way, and respell as they do it: each builder is private to the
-leaf a caller reached it through and public on the owner that defines it, while the two run labels, the stylesheet
-string, and the stamped tile keep the spelling they were published under. That mix is why every name is declared as a
-pair rather than derived from one. `_trajectory_dashboard_html.py` names those owners directly — as does the usage
-leaf, for the money format it shares with the KPI strip — and is the one HTML surface the page reaches every builder
-through, including the timeline and usage builders still flat beside it, whose `__module__` it stamps.
+Root-level `_trajectory_dashboard_style.py`, `_trajectory_dashboard_summary_html.py`,
+`_trajectory_dashboard_run_html.py`, `_trajectory_dashboard_usage_html.py`, and
+`_trajectory_dashboard_timeline_html.py` forward the same way, and respell as they do it: each builder is private to
+the leaf a caller reached it through and public on the owner that defines it, while the two run labels, the stylesheet
+string, the usage separator, the badge vocabulary, the entry-and-strip pair alias, and the stamped tile keep the
+spelling they were published under. That mix is why every name is declared as a pair rather than derived from one.
+`_trajectory_dashboard_html.py` names those owners directly and defines nothing of its own: it is the one HTML surface
+the page reaches every builder through, and the only identity it still carries is the KPI tile's, stamped there by the
+owner the shape is defined in.
 
 `trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
 reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*

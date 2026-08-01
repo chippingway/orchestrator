@@ -7,13 +7,10 @@ import unittest
 
 _VIEWER = "orchestrator.observability.trajectory_viewer"
 
-_LEAF = "orchestrator._trajectory_dashboard_html"
-
-# Each builder the page renders with, and the module that defines it. Seven are
-# owners under `trajectory_viewer/` and report themselves, which is what makes
-# this the inventory of where the surface lives. The other four are the
-# timeline and usage leaves, whose split stays private behind the one module
-# the page reaches every builder through, so they report that module instead.
+# Each builder the page renders with, and the owner under `trajectory_viewer/`
+# that defines it. Every one of them reports its owner -- a function's module is
+# the module it is written in -- which is what makes this the inventory of where
+# the page's HTML surface lives.
 _HTML_MEMBERS = (
     ("_topbar_html", f"{_VIEWER}.summary_html"),
     ("_kpi_strip_html", f"{_VIEWER}.summary_html"),
@@ -22,10 +19,10 @@ _HTML_MEMBERS = (
     ("_labeled_chips_html", f"{_VIEWER}.run_html"),
     ("_runs_table_html", f"{_VIEWER}.run_html"),
     ("_run_picker_label", f"{_VIEWER}.run_html"),
-    ("_run_usage_html", _LEAF),
-    ("_timeline_entry_html", _LEAF),
-    ("_timeline_with_usage", _LEAF),
-    ("_turn_usage_html", _LEAF),
+    ("_run_usage_html", f"{_VIEWER}.usage_html"),
+    ("_turn_usage_html", f"{_VIEWER}.usage_html"),
+    ("_timeline_entry_html", f"{_VIEWER}.timeline_html"),
+    ("_timeline_with_usage", f"{_VIEWER}.timeline_html"),
 )
 
 
