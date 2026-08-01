@@ -176,7 +176,7 @@ Streamlit page that reads the JSONL file directly, so it needs no Postgres or sy
 
 ```sh
 uv sync --group dashboard
-uv run streamlit run orchestrator/trajectory_dashboard.py
+uv run streamlit run orchestrator/apps/trajectory_dashboard.py
 ```
 
 See [`docs/observability.md`](docs/observability.md) for the event schemas, retention behavior, database setup,

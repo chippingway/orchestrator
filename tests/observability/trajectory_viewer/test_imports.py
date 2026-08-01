@@ -36,6 +36,8 @@ _MODELS_OWNER = "models"
 
 _PAGE_MODELS_OWNER = "page_models"
 
+_PAGE_RENDER_OWNER = "page_render"
+
 _PAGE_SETUP_OWNER = "page_setup"
 
 _PARSING_OWNER = "parsing"
@@ -76,6 +78,7 @@ _OWNERS = (
     _LOG_PATHS_OWNER,
     _MODELS_OWNER,
     _PAGE_MODELS_OWNER,
+    _PAGE_RENDER_OWNER,
     _PAGE_SETUP_OWNER,
     _PARSING_OWNER,
     _PICKER_OWNER,
@@ -150,6 +153,10 @@ _SURFACES = MappingProxyType({
         "public_step_content",
     ),
     _PAGE_MODELS_OWNER: (),
+    _PAGE_RENDER_OWNER: (
+        "render_trajectory_footer",
+        "render_trajectory_page",
+    ),
     _PAGE_SETUP_OWNER: (
         "configure_page",
         "load_trajectory_page",
@@ -256,8 +263,10 @@ _SURFACES = MappingProxyType({
 # so it reaches `summary_html` for it rather than spelling a second one. The
 # page owners close the same direction off at the top: they name the read, the
 # filter, and the markup owners under them and nothing here names them back,
-# with `picker` the widest chain because it composes the other two -- the
-# empty-file message from `page_setup` and the card from `run_render`.
+# with `page_render` the widest chain because it is the composition the rest are
+# reached through -- the tiles from `summary_html`, the two empty states from
+# `page_setup` and `picker`, and everything `picker` in turn composes, which is
+# the second-widest for the same reason.
 _PLANTED = MappingProxyType({
     _COERCION_OWNER: (),
     _CONSTANTS_OWNER: (),
@@ -300,6 +309,29 @@ _PLANTED = MappingProxyType({
         _MODELS_OWNER,
         _RUNS_OWNER,
         _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
+    _PAGE_RENDER_OWNER: (
+        _COERCION_OWNER,
+        _CONSTANTS_OWNER,
+        _CSS_OWNER,
+        _FILTER_MODELS_OWNER,
+        _FILTER_VALUES_OWNER,
+        _LOG_PATHS_OWNER,
+        _MODELS_OWNER,
+        _PAGE_MODELS_OWNER,
+        _PAGE_SETUP_OWNER,
+        _PARSING_OWNER,
+        _PICKER_OWNER,
+        _READING_OWNER,
+        _RUN_HTML_OWNER,
+        _RUN_RENDER_OWNER,
+        _RUNS_OWNER,
+        _SUMMARIES_OWNER,
+        _SUMMARY_HTML_OWNER,
+        _TIMELINE_HTML_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_HTML_OWNER,
         _USAGE_OWNER,
     ),
     _PAGE_SETUP_OWNER: (
@@ -442,8 +474,9 @@ _FORMATTING_CHAIN = (_DASHBOARD_TREE, _DASHBOARD_FORMATTING)
 
 # What a page owner that names both the sink's knob and the shared stylesheet
 # reaches: the configuration owner behind `log_paths`, and the analytics page's
-# own sheet with the palette and geometry it is interpolated from. `picker`
-# pays the same list because it composes the owner that names them.
+# own sheet with the palette and geometry it is interpolated from. `picker` and
+# `page_render` pay the same list because they compose the owner that names
+# them.
 _PAGE_CHROME_CHAIN = (
     _ANALYTICS_TREE,
     _ANALYTICS_CONFIG,
@@ -480,6 +513,7 @@ _EXTERNAL_CHAINS = MappingProxyType({
     ),
     _CSS_OWNER: (_DASHBOARD_TREE, f"{_DASHBOARD_TREE}.tokens"),
     _LOG_PATHS_OWNER: (_ANALYTICS_TREE, _ANALYTICS_CONFIG),
+    _PAGE_RENDER_OWNER: _PAGE_CHROME_CHAIN,
     _PAGE_SETUP_OWNER: _PAGE_CHROME_CHAIN,
     _PICKER_OWNER: _PAGE_CHROME_CHAIN,
     _RUN_RENDER_OWNER: _FORMATTING_CHAIN,

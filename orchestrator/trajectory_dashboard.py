@@ -1,6 +1,12 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Lazy trajectory-viewer facade with a direct-launch entrypoint."""
+"""Historical trajectory-viewer launch path and lazy compatibility facade.
+
+The page is `orchestrator/apps/trajectory_dashboard.py`. This module keeps the
+`streamlit run` target an operator's shell history and bookmarks already carry,
+and the lazy inventory a historical caller reaches the viewer's page surface
+through -- every name on it resolving to the owner that defines it.
+"""
 from __future__ import annotations
 
 if __package__:

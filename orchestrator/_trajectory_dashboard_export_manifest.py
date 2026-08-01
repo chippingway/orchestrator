@@ -85,11 +85,14 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator._trajectory_dashboard_runtime",
-        _identity_exports(
-            "_render_trajectory_footer",
-            "_render_trajectory_page",
-            "main",
+        "orchestrator.observability.trajectory_viewer.page_render",
+        (
+            ("_render_trajectory_footer", "render_trajectory_footer"),
+            ("_render_trajectory_page", "render_trajectory_page"),
         ),
+    ),
+    *export_group(
+        "orchestrator.apps.trajectory_dashboard",
+        _identity_exports("main"),
     ),
 )

@@ -490,7 +490,8 @@ orchestrator/
                         record/view/parse/read/filter leaves forwarding to the
                         trajectory-viewer owners
   trajectory_dashboard.py
-                        lazy compatibility facade and direct Streamlit entrypoint
+                        historical Streamlit launch path and lazy compatibility
+                        facade over the canonical app under apps/
   _trajectory_dashboard_style.py / _trajectory_dashboard_summary_html.py / _trajectory_dashboard_run_html.py
   _trajectory_dashboard_usage_html.py / _trajectory_dashboard_timeline_html.py
   _trajectory_dashboard_models.py / _trajectory_dashboard_filters.py
@@ -501,8 +502,8 @@ orchestrator/
                         historical page-setup import site, binding a caller's
                         analytics world onto the owner behind it
   _trajectory_dashboard_*.py
-                        viewer bootstrap, runtime orchestration, and the one
-                        surface composing every builder the page draws with
+                        viewer bootstrap and the one surface composing every
+                        builder the page draws with
   observability/
     __init__.py         package marker only; home of the usage parsers, the
                         analytics configuration, recording, retention,
@@ -797,6 +798,17 @@ orchestrator/
                         issue → run cascade that reaches every match
       run_render.py     the detail card one selected run is read in full
                         through, notices before timeline
+      page_render.py    the order a whole page is drawn in, and the two empty
+                        reads it stops short on
+  apps/                 launch targets that have an owner here; so far the
+                        trajectory viewer's, the analytics page still being
+                        started at dashboard.py
+    __init__.py         package marker only; an app is named to be launched
+    bootstrap.py        the repo-root `sys.path` shim a script launch needs,
+                        standard library only so it resolves before it runs
+    trajectory_dashboard.py
+                        the trajectory viewer's `streamlit run` target,
+                        composing the viewer owners inside `main()`
   skills/               the two skill-enumeration owners
     __init__.py         package marker only; callers name an owner
     catalog.py          per-tick repo skill-catalog collection: enumerate
@@ -1560,7 +1572,7 @@ than this package's naming, because `__module__` and `__qualname__` together are
 through, so a stamp naming a module that answers to some other name is a load error rather than a cosmetic
 difference. The builders beside it report their owner, because a function's module is the owner that defines it.
 
-The five page owners sit above both halves, and none of them imports Streamlit either: the four that draw take it in
+The six page owners sit above both halves, and none of them imports Streamlit either: the five that draw take it in
 as an argument, the way a run and a settings holder are handed in, so drawing a page costs nothing at import and every
 control is testable without it.
 `page_models` holds the two frozen shapes one run carries — the file as it was read and what the controls then
@@ -1581,7 +1593,11 @@ draws the fixture receipt only where the read held fixtures, worded for whicheve
 is the card the picked run is read in full through, ordered so that what qualifies a timeline — a synthetic fixture, a
 run the sink's budget truncated — is read before the timeline itself. The final output is the one entry handed to
 Streamlit as markdown; a prompt, a payload, and a tool result are code blocks, because they are text that must not be
-interpreted.
+interpreted. `page_render` is where the rest are composed — the banner, then the tiles, then the two picker surfaces,
+then the receipt naming how much of the read is on screen and which file it came from — and two of those steps are
+returns rather than sections: a file that held no records at all stops at the empty-file notice, because a strip of
+zeroes over an empty table reads as "nothing ran" when the answer is "nothing was ever written here", while a read the
+filters then emptied stops after the tiles, because those counts are what say the narrowing is what dropped the runs.
 
 Root-level `_trajectory_constants.py`, `_trajectory_record_values.py`, `_trajectory_view_models.py`,
 `_trajectory_run_model.py`, `_trajectory_run_views.py`, `_trajectory_run_timeline.py`,
@@ -1615,6 +1631,15 @@ chrome are the owner's own objects, but the two entry points that read the traje
 owner answers on the settings holder it is handed and this is what hands it one — the analytics package this leaf
 captured at its own import, the same world binding `_trajectory_records.py` does for the read.
 
+`orchestrator/apps/trajectory_dashboard.py` is what composes those owners into one run of the page, and it is the
+canonical `streamlit run` target. Everything it composes is imported inside `main()`, Streamlit included: the repo root
+only reaches `sys.path` on the line above, in the shim `apps/bootstrap.py` owns, so under a script launch no
+`orchestrator.*` name resolves before then — which is why importing the app costs that shim and nothing else. Which
+analytics instance answers for the sink's knob is read at call time for the same reason. `trajectory_dashboard.py`
+stays the launch path an operator's shell history already carries, and its lazy inventory now resolves the page's own
+two renderings on `page_render` and `main` on the app, so a historical caller holds the same objects the canonical
+target runs.
+
 `trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
 reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*
 `_trajectory_records` — that leaf captures the analytics package it resolves the log path through at its own import,
@@ -1645,8 +1670,9 @@ Nothing under the tree carries an export manifest, a resolver hook, or a `.pyi` 
 object, bound once at import rather than resolved per lookup, so the module defining a name stays where a reader finds
 it and where a patch has to land, rather than a facade answering for it — the compatibility layer this destination
 exists to retire. Nothing observed is on the workflow's decision path, so no module may import the workflow engine, a
-stage, or an application entrypoint — the CLI and the runtime loop on one side, the two `streamlit run` targets
-(`dashboard.py`, `trajectory_dashboard.py`) and the leaves they front on the other; the dependency runs one way, and an
+stage, or an application entrypoint — the CLI and the runtime loop on one side, and on the other every `streamlit run`
+target: the trajectory viewer's canonical one under `apps/`, the analytics page's own `dashboard.py`, the historical
+`trajectory_dashboard.py` beside it, and the leaves they front; the dependency runs one way, and an
 entrypoint composes these owners rather than the reverse. And Streamlit and Plotly stay function-local: they live in the
 optional `dashboard` dependency group, so every module has to import cleanly with both blocked outright *and* with no
 attempt on either recorded — a module-scope import that swallows its own `ImportError` is still a load in the install
@@ -2016,7 +2042,7 @@ Four independent observability surfaces — an opt-in audit event log, a project
 trajectories — each carrying a denormalized run-level token-usage / cost summary (plus a claude-only per-turn
 breakdown) alongside the step timeline — and an operator-deployed Postgres aggregation target (with a Streamlit
 dashboard and the `orchestrator/observability/usage/` parser that feeds it). The trajectory sink has its own separate
-Streamlit page — the file-backed trajectory viewer (`orchestrator/trajectory_dashboard.py` over the pure
+Streamlit page — the file-backed trajectory viewer (`orchestrator/apps/trajectory_dashboard.py` over the pure
 read model under `orchestrator/observability/trajectory_viewer/`, reached at `orchestrator/trajectory_reader.py`),
 which reads the JSONL directly (usage and cost included) and needs no Postgres.
 None of them feed back into dispatch: workflow correctness keys off the pinned state JSON and the workflow label, so
