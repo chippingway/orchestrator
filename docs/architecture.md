@@ -1631,15 +1631,6 @@ chrome are the owner's own objects, but the two entry points that read the traje
 owner answers on the settings holder it is handed and this is what hands it one — the analytics package this leaf
 captured at its own import, the same world binding `_trajectory_records.py` does for the read.
 
-`orchestrator/apps/trajectory_dashboard.py` is what composes those owners into one run of the page, and it is the
-canonical `streamlit run` target. Everything it composes is imported inside `main()`, Streamlit included: the repo root
-only reaches `sys.path` on the line above, in the shim `apps/bootstrap.py` owns, so under a script launch no
-`orchestrator.*` name resolves before then — which is why importing the app costs that shim and nothing else. Which
-analytics instance answers for the sink's knob is read at call time for the same reason. `trajectory_dashboard.py`
-stays the launch path an operator's shell history already carries, and its lazy inventory now resolves the page's own
-two renderings on `page_render` and `main` on the app, so a historical caller holds the same objects the canonical
-target runs.
-
 `trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
 reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*
 `_trajectory_records` — that leaf captures the analytics package it resolves the log path through at its own import,
@@ -1650,6 +1641,15 @@ the record views report the leaf: that is the site each was published from. Repo
 module the place their annotations are read back from, because `get_type_hints` resolves a class's annotations in the
 globals of the module it names — which is why the typing vocabulary the three are spelled in is imported there and
 used for nothing else.
+
+`orchestrator/apps/trajectory_dashboard.py` sits above all of it, outside this tree: the canonical `streamlit run`
+target, and what composes the page owners under `observability/trajectory_viewer/` into one run of the page.
+Everything it composes is imported inside `main()`, Streamlit included: the repo root only reaches `sys.path` on the
+line above, in the shim `apps/bootstrap.py` owns, so under a script launch no `orchestrator.*` name resolves before
+then — which is why importing the app costs that shim and nothing else. Which analytics instance answers for the
+sink's knob is read at call time for the same reason. `trajectory_dashboard.py` stays the launch path an operator's
+shell history already carries, and its lazy inventory now resolves the page's own two renderings on `page_render` and
+`main` on the app, so a historical caller holds the same objects the canonical target runs.
 
 Every other responsibility of those four surfaces is still where it was: `orchestrator/analytics/`, the rest of
 `dashboard*.py`, and `trajectory_dashboard.py` stay the import site every historical caller names until the one it
