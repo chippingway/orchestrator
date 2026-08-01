@@ -726,7 +726,8 @@ orchestrator/
       read_mode.py      the parallel-read knob and its truthy spellings, the
                         worker cap, and the message an unconfigured database
                         is refused with
-    trajectory_viewer/  the file-backed trajectory page's read model
+    trajectory_viewer/  the file-backed trajectory page's read model and every
+                        inline-HTML builder it is drawn with
       __init__.py       package marker only; callers import an owner directly
       constants.py      the event a line is read for, the brackets a run is
                         wrapped in, the tells that mark a fixture, and the
@@ -1096,8 +1097,8 @@ rather than state a handler consults.
 `orchestrator/observability/` is the destination for the four surfaces that watch a run without steering it: the
 analytics sink and everything downstream of it (`analytics/` over `recording/`, `query/`, `sync/`, and `trajectories/`),
 the parser that meters one finished agent run (`usage/`), the Streamlit page over the operator's Postgres target
-(`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`, holding that page's read
-model and the base HTML it is drawn as). The parser is the first to
+(`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`, holding that page's read model
+and every inline-HTML builder it is drawn with). The parser is the first to
 arrive: its owners live under `usage/`, whose initializer publishes the parser surface, while the callers that meter a
 run — `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers — name the
 owner they need. Root-level `usage.py` stays behind as a temporary compatibility site re-exporting those owners' own
@@ -1534,12 +1535,11 @@ strip belongs above: a turn spans several entries, so the strip is drawn once at
 index, and the later entries of that turn — along with the turn inputs carrying no index at all — are paired with
 nothing, which is exactly what the strip's own copy promises an operator. Everything a caller passes into any of them
 is escaped first, because a page writes these with `unsafe_allow_html=True` and every value in them is record text the
-viewer does not own. The
-one shape published from the page's HTML surface, the KPI tile, reports `orchestrator._trajectory_dashboard_html` and
-stamps itself — under that site's own `_TrajectoryKpi` spelling rather than this package's naming, because
-`__module__` and `__qualname__` together are the pair `pickle` resolves a class through, so a stamp naming a module
-that answers to some other name is a load error rather than a cosmetic difference. The builders beside it report their
-owner, because a function's module is the owner that defines it.
+viewer does not own. The one shape published from the page's HTML surface, the KPI tile, reports
+`orchestrator._trajectory_dashboard_html` and stamps itself — under that site's own `_TrajectoryKpi` spelling rather
+than this package's naming, because `__module__` and `__qualname__` together are the pair `pickle` resolves a class
+through, so a stamp naming a module that answers to some other name is a load error rather than a cosmetic
+difference. The builders beside it report their owner, because a function's module is the owner that defines it.
 
 Root-level `_trajectory_constants.py`, `_trajectory_record_values.py`, `_trajectory_view_models.py`,
 `_trajectory_run_model.py`, `_trajectory_run_views.py`, `_trajectory_run_timeline.py`,
