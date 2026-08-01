@@ -31,7 +31,8 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
 read-mode state one run of the analytics page carries (`dashboard/windows.py`, `dashboard/filters.py`,
 `dashboard/read_mode.py`), the trajectory viewer's whole read model — its file read, record parse, run models, and the
-filtering and summary aggregation over them — plus the styling and every inline-HTML builder that read is drawn with
+filtering and summary aggregation over them — plus the styling and every inline-HTML builder that read is drawn with,
+and the page state, setup, controls, picker, and run card one run of it is driven by
 (`trajectory_viewer/`), and the packages the rest of the analytics sink,
 the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree,
 the module named for it below stays the import site. See
@@ -770,8 +771,9 @@ care as the trajectory file itself.
 
 **Page (`orchestrator/trajectory_dashboard.py`).** Reuses the analytics dashboard's theme (CSS variables, fonts,
 `fmt_*` formatters) so the two pages read as one family — the owners under `observability/trajectory_viewer/` name
-`dashboard/tokens.py` and `dashboard/formatting.py` directly, the leaves still flat reach the same objects through
-`orchestrator/dashboard_theme.py` — and reuses `dashboard_state.parse_issue_number` for the issue filter. Streamlit is
+`dashboard/tokens.py`, `dashboard/css.py`, and `dashboard/formatting.py` directly, the leaves still flat reach the same
+objects through `orchestrator/dashboard_theme.py` — and reuses `dashboard/filters.py`'s `parse_issue_number` for the
+issue filter, so `#123` and `123` mean the same thing on both pages. Streamlit is
 imported lazily inside `main()` and the repo-root `sys.path` shim comes from the shared
 `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`) that `orchestrator/dashboard.py` also calls, so
 importing the module (or the polling tick) never needs the `dashboard` group — `tests/test_trajectory_dashboard.py`
@@ -797,10 +799,14 @@ in the overview table and the run-level picker (the `[fixture]` prefix rides the
 a notice) so the operator can tell the inherited test-suite records from real runs even with the toggle off. When the
 sink is off it renders the opt-in banner and stops; an empty file or an empty filter set renders an explanatory notice
 rather than a blank page. `trajectory_dashboard.py` is now a lazy compatibility facade and direct-launch entrypoint.
-Its bootstrap, page state, filters, picker, selected-run rendering, and runtime orchestration live in focused
+Its page state, setup, filters, picker, and selected-run rendering are owned by `page_models`, `page_setup`,
+`controls`, `picker`, and `run_render` under `observability/trajectory_viewer/`, which take Streamlit in as an
+argument rather than importing it; its bootstrap and runtime orchestration are still flat
 `_trajectory_dashboard_*` leaves. The historical `_trajectory_dashboard_html.py` surface defines nothing and composes
 the Streamlit-free summary, run, usage, timeline, and CSS owners under `observability/trajectory_viewer/`, so every
-established HTML helper and patch point keeps its original identity without pulling Streamlit into imports.
+established HTML helper and patch point keeps its original identity without pulling Streamlit into imports. The
+`_trajectory_dashboard_page.py` leaf keeps the historical zero-argument page setup and is where a caller's analytics
+world is bound onto the owner's settings-holder argument, the same way `_trajectory_records.py` binds it for the read.
 
 ## Analytics database (`analytics-db/`)
 

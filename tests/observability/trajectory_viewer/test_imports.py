@@ -20,6 +20,8 @@ _COERCION_OWNER = "coercion"
 
 _CONSTANTS_OWNER = "constants"
 
+_CONTROLS_OWNER = "controls"
+
 _CSS_OWNER = "css"
 
 _FILTER_MODELS_OWNER = "filter_models"
@@ -32,11 +34,19 @@ _LOG_PATHS_OWNER = "log_paths"
 
 _MODELS_OWNER = "models"
 
+_PAGE_MODELS_OWNER = "page_models"
+
+_PAGE_SETUP_OWNER = "page_setup"
+
 _PARSING_OWNER = "parsing"
+
+_PICKER_OWNER = "picker"
 
 _READING_OWNER = "reading"
 
 _RUN_HTML_OWNER = "run_html"
+
+_RUN_RENDER_OWNER = "run_render"
 
 _RUNS_OWNER = "runs"
 
@@ -58,15 +68,20 @@ _USAGE_OWNER = "usage_views"
 _OWNERS = (
     _COERCION_OWNER,
     _CONSTANTS_OWNER,
+    _CONTROLS_OWNER,
     _CSS_OWNER,
     _FILTER_MODELS_OWNER,
     _FILTER_VALUES_OWNER,
     _FILTERING_OWNER,
     _LOG_PATHS_OWNER,
     _MODELS_OWNER,
+    _PAGE_MODELS_OWNER,
+    _PAGE_SETUP_OWNER,
     _PARSING_OWNER,
+    _PICKER_OWNER,
     _READING_OWNER,
     _RUN_HTML_OWNER,
+    _RUN_RENDER_OWNER,
     _RUNS_OWNER,
     _SUMMARIES_OWNER,
     _SUMMARY_HTML_OWNER,
@@ -85,9 +100,11 @@ _OWNERS = (
 # `timeline_html`'s badge vocabulary a mapping proxy beside a type alias -- and
 # because a shape published under a historical import site is stamped with it:
 # the record on `runs`, the four frozen views on `models`, the two request
-# shapes a caller holds on `filter_models`, the summary on `summaries`, and the
-# KPI tile on `summary_html`. That stamp is the identity `test_forwarding` and
-# the reader surface check pin; what is left visible here is everything else.
+# shapes a caller holds on `filter_models`, the summary on `summaries`, the KPI
+# tile on `summary_html`, and the two page shapes on `page_models` -- which are
+# private besides, so that owner reports nothing at all. That stamp is the
+# identity `test_forwarding` and the reader surface check pin; what is left
+# visible here is everything else.
 _SURFACES = MappingProxyType({
     _COERCION_OWNER: (
         "as_list",
@@ -97,6 +114,12 @@ _SURFACES = MappingProxyType({
         "coerce_str_tuple",
     ),
     _CONSTANTS_OWNER: (),
+    _CONTROLS_OWNER: (
+        "filter_page_runs",
+        "render_categorical_filters",
+        "render_text_filters",
+        "render_trajectory_sidebar",
+    ),
     _CSS_OWNER: (),
     _FILTER_MODELS_OWNER: (
         "RunFilterOptionFields",
@@ -126,11 +149,26 @@ _SURFACES = MappingProxyType({
         "public_entry_content",
         "public_step_content",
     ),
+    _PAGE_MODELS_OWNER: (),
+    _PAGE_SETUP_OWNER: (
+        "configure_page",
+        "load_trajectory_page",
+        "stop_if_unconfigured",
+    ),
     _PARSING_OWNER: (
         "parse_record",
         "parse_run_usage",
         "parse_step",
         "parse_turn",
+    ),
+    _PICKER_OWNER: (
+        "fixture_caption",
+        "pick_issue",
+        "pick_repo",
+        "pick_run",
+        "render_no_trajectories",
+        "render_run_list",
+        "render_run_picker",
     ),
     _READING_OWNER: (
         "parse_trajectory_line",
@@ -144,6 +182,15 @@ _SURFACES = MappingProxyType({
         "run_picker_label",
         "run_table_row_html",
         "runs_table_html",
+    ),
+    _RUN_RENDER_OWNER: (
+        "render_run",
+        "render_run_card",
+        "render_run_notices",
+        "render_run_usage_and_chips",
+        "render_system_prompt",
+        "render_timeline",
+        "render_timeline_entry",
     ),
     _RUNS_OWNER: (),
     _SUMMARIES_OWNER: ("summarize",),
@@ -206,10 +253,26 @@ _SURFACES = MappingProxyType({
 # nothing names them back, while `css` names nothing in the package at all.
 # `usage_html` is the one that also names a sibling renderer: the money on a run
 # row and on a turn strip is the exact-cents format the KPI tile is drawn with,
-# so it reaches `summary_html` for it rather than spelling a second one.
+# so it reaches `summary_html` for it rather than spelling a second one. The
+# page owners close the same direction off at the top: they name the read, the
+# filter, and the markup owners under them and nothing here names them back,
+# with `picker` the widest chain because it composes the other two -- the
+# empty-file message from `page_setup` and the card from `run_render`.
 _PLANTED = MappingProxyType({
     _COERCION_OWNER: (),
     _CONSTANTS_OWNER: (),
+    _CONTROLS_OWNER: (
+        _CONSTANTS_OWNER,
+        _FILTER_MODELS_OWNER,
+        _FILTER_VALUES_OWNER,
+        _FILTERING_OWNER,
+        _MODELS_OWNER,
+        _PAGE_MODELS_OWNER,
+        _RUN_HTML_OWNER,
+        _RUNS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
     _CSS_OWNER: (),
     _FILTER_MODELS_OWNER: (),
     _FILTER_VALUES_OWNER: (
@@ -231,12 +294,59 @@ _PLANTED = MappingProxyType({
     ),
     _LOG_PATHS_OWNER: (_CONSTANTS_OWNER,),
     _MODELS_OWNER: (_CONSTANTS_OWNER,),
+    _PAGE_MODELS_OWNER: (
+        _CONSTANTS_OWNER,
+        _FILTER_MODELS_OWNER,
+        _MODELS_OWNER,
+        _RUNS_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
+    _PAGE_SETUP_OWNER: (
+        _COERCION_OWNER,
+        _CONSTANTS_OWNER,
+        _CSS_OWNER,
+        _FILTER_MODELS_OWNER,
+        _FILTER_VALUES_OWNER,
+        _LOG_PATHS_OWNER,
+        _MODELS_OWNER,
+        _PAGE_MODELS_OWNER,
+        _PARSING_OWNER,
+        _READING_OWNER,
+        _RUNS_OWNER,
+        _SUMMARIES_OWNER,
+        _SUMMARY_HTML_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
     _PARSING_OWNER: (
         _COERCION_OWNER,
         _CONSTANTS_OWNER,
         _MODELS_OWNER,
         _RUNS_OWNER,
         _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
+    _PICKER_OWNER: (
+        _COERCION_OWNER,
+        _CONSTANTS_OWNER,
+        _CSS_OWNER,
+        _FILTER_MODELS_OWNER,
+        _FILTER_VALUES_OWNER,
+        _LOG_PATHS_OWNER,
+        _MODELS_OWNER,
+        _PAGE_MODELS_OWNER,
+        _PAGE_SETUP_OWNER,
+        _PARSING_OWNER,
+        _READING_OWNER,
+        _RUN_HTML_OWNER,
+        _RUN_RENDER_OWNER,
+        _RUNS_OWNER,
+        _SUMMARIES_OWNER,
+        _SUMMARY_HTML_OWNER,
+        _TIMELINE_HTML_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_HTML_OWNER,
         _USAGE_OWNER,
     ),
     _READING_OWNER: (
@@ -253,6 +363,18 @@ _PLANTED = MappingProxyType({
         _MODELS_OWNER,
         _RUNS_OWNER,
         _TIMELINE_OWNER,
+        _USAGE_OWNER,
+    ),
+    _RUN_RENDER_OWNER: (
+        _CONSTANTS_OWNER,
+        _MODELS_OWNER,
+        _RUN_HTML_OWNER,
+        _RUNS_OWNER,
+        _SUMMARIES_OWNER,
+        _SUMMARY_HTML_OWNER,
+        _TIMELINE_HTML_OWNER,
+        _TIMELINE_OWNER,
+        _USAGE_HTML_OWNER,
         _USAGE_OWNER,
     ),
     _RUNS_OWNER: (
@@ -305,6 +427,33 @@ _ALWAYS_PLANTED = frozenset((
     _PACKAGE,
 ))
 
+# The two sibling destinations an owner here may reach into, spelled once so a
+# chain below is read as which owner under them it names.
+_ANALYTICS_TREE = "orchestrator.observability.analytics"
+
+_DASHBOARD_TREE = "orchestrator.observability.dashboard"
+
+_ANALYTICS_CONFIG = f"{_ANALYTICS_TREE}.config"
+
+_DASHBOARD_FORMATTING = f"{_DASHBOARD_TREE}.formatting"
+
+# What a rendering owner that spells a count or a money figure reaches.
+_FORMATTING_CHAIN = (_DASHBOARD_TREE, _DASHBOARD_FORMATTING)
+
+# What a page owner that names both the sink's knob and the shared stylesheet
+# reaches: the configuration owner behind `log_paths`, and the analytics page's
+# own sheet with the palette and geometry it is interpolated from. `picker`
+# pays the same list because it composes the owner that names them.
+_PAGE_CHROME_CHAIN = (
+    _ANALYTICS_TREE,
+    _ANALYTICS_CONFIG,
+    _DASHBOARD_TREE,
+    f"{_DASHBOARD_TREE}.css",
+    _DASHBOARD_FORMATTING,
+    f"{_DASHBOARD_TREE}.palette",
+    f"{_DASHBOARD_TREE}.tokens",
+)
+
 # The chains an owner here may reach for, declared per owner. `log_paths` names
 # the analytics configuration owner, which is where the knob naming the file
 # this page reads is parsed, so the viewer answers with the sink's own setting
@@ -315,23 +464,27 @@ _ALWAYS_PLANTED = frozenset((
 # font stacks a stylesheet cannot read out of a CSS variable, and the
 # formatting owner for the thousands separators a count is rendered with. Both
 # are plain data, so neither costs the optional dashboard dependency group.
+# `controls` names that theme's filter-state owner for one thing: the parse
+# that reads `#123` and `123` as the same issue, so both pages accept the
+# spelling an operator types. That owner is typed by the window it also holds,
+# which is what puts one result model from the analytics read behind it -- a
+# dataclass module, so the chain is a shape and not a database driver.
 _EXTERNAL_CHAINS = MappingProxyType({
-    _CSS_OWNER: (
-        "orchestrator.observability.dashboard",
-        "orchestrator.observability.dashboard.tokens",
+    _CONTROLS_OWNER: (
+        _ANALYTICS_TREE,
+        f"{_ANALYTICS_TREE}.query",
+        f"{_ANALYTICS_TREE}.query.overview_models",
+        _DASHBOARD_TREE,
+        f"{_DASHBOARD_TREE}.filters",
+        f"{_DASHBOARD_TREE}.windows",
     ),
-    _LOG_PATHS_OWNER: (
-        "orchestrator.observability.analytics",
-        "orchestrator.observability.analytics.config",
-    ),
-    _SUMMARY_HTML_OWNER: (
-        "orchestrator.observability.dashboard",
-        "orchestrator.observability.dashboard.formatting",
-    ),
-    _USAGE_HTML_OWNER: (
-        "orchestrator.observability.dashboard",
-        "orchestrator.observability.dashboard.formatting",
-    ),
+    _CSS_OWNER: (_DASHBOARD_TREE, f"{_DASHBOARD_TREE}.tokens"),
+    _LOG_PATHS_OWNER: (_ANALYTICS_TREE, _ANALYTICS_CONFIG),
+    _PAGE_SETUP_OWNER: _PAGE_CHROME_CHAIN,
+    _PICKER_OWNER: _PAGE_CHROME_CHAIN,
+    _RUN_RENDER_OWNER: _FORMATTING_CHAIN,
+    _SUMMARY_HTML_OWNER: _FORMATTING_CHAIN,
+    _USAGE_HTML_OWNER: _FORMATTING_CHAIN,
 })
 
 # The flat modules a historical caller still reaches this viewer through. The
