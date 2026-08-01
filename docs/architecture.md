@@ -1350,8 +1350,7 @@ trajectory viewer all still spell `from orchestrator import dashboard_theme as t
 defines nothing and forwards each name to the owner's own object.
 
 `trajectory_viewer/` is the fourth destination opening, and what has arrived is the record side of the file-backed
-page: what a line means, how it is read back, what it is read back as, and what a run then reports. `constants` is the
-vocabulary — the one
+page: how a line is read, what it is read back as, and what a run then reports. `constants` is the vocabulary — the one
 event this viewer reads, the two brackets a run's prompt and final output are rendered as (the sink writes neither as a
 step, so there is nothing on the write side for them to agree with), the three tells that mark a fixture, and the
 banner an operator gets when the sink was never switched on. `coercion` is the narrowing under every field: the JSONL
