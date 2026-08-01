@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from orchestrator import _trajectory_filter_models as models
 from orchestrator import _trajectory_filter_values as filter_values
-from orchestrator._trajectory_run_model import TrajectoryRun
+from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
 
 def resolve_run_filter_options(

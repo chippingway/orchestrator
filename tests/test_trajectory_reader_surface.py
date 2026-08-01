@@ -121,13 +121,15 @@ class _ReaderWorld:
 class ModuleLayoutTest(unittest.TestCase):
     """Pin the facade / read-leaf split so callers keep one import site.
 
-    The record and view dataclasses, the log-path resolution, and the JSONL
-    parsing / reading pipeline live in the private
-    `orchestrator._trajectory_records` leaf; `orchestrator.trajectory_reader`
-    re-exports them under the same names and owns the filtering and
-    summary aggregation. The dashboard and the tests reach everything through
-    `trajectory_reader`, so the re-exported names must stay the same objects
-    the leaf defines and the filter surface must stay defined on the facade.
+    The private `orchestrator._trajectory_records` leaf is the record API: it
+    owns the log-path resolution and the JSONL parsing / reading pipeline, and
+    answers for the record and view dataclasses that live under
+    `orchestrator/observability/trajectory_viewer/`.
+    `orchestrator.trajectory_reader` re-exports that whole surface under the
+    same names and owns the filtering and summary aggregation. The dashboard
+    and the tests reach everything through `trajectory_reader`, so the
+    re-exported names must stay the same objects the leaf answers with and the
+    filter surface must stay defined on the facade.
     """
 
     def test_read_surface_reexported_from_leaf(self) -> None:
@@ -150,6 +152,10 @@ class ModuleLayoutTest(unittest.TestCase):
                 self.assertIs(getattr(tr, name), getattr(records, name))
 
     def test_read_symbols_have_leaf_module_of_record(self) -> None:
+        # One module name for the whole record API, whether the leaf defines
+        # the symbol itself or a viewer owner does and stamps it with the site
+        # it is published from -- which is where a repr or a reader following
+        # `__module__` has always landed.
         for symbol in (
             tr.TrajectoryRun,
             tr.TrajectoryStepView,

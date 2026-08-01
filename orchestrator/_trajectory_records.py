@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 from orchestrator import analytics
-from orchestrator import _trajectory_constants as constants
 from orchestrator import _trajectory_file_read as file_read
 from orchestrator import _trajectory_record_parse as record_parse
-from orchestrator._trajectory_run_model import TrajectoryRun as TrajectoryRun
-from orchestrator import _trajectory_view_models as view_models
+from orchestrator.observability.trajectory_viewer import constants
+from orchestrator.observability.trajectory_viewer import models as view_models
+from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun as TrajectoryRun
 
 
 TRAJECTORY_EVENT = constants.TRAJECTORY_EVENT

@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Callable, Optional
 
-from orchestrator._trajectory_run_model import TrajectoryRun
+from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
 
 log = logging.getLogger("orchestrator.trajectory_reader")

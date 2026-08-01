@@ -480,7 +480,9 @@ orchestrator/
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
   trajectory_reader.py  pure file-backed filter and summary read model
-  _trajectory_*.py      record/view models, parsing, filtering, and file-read leaves
+  _trajectory_*.py      parsing, filtering, and file-read leaves, plus the six
+                        record/view leaves forwarding to the trajectory-viewer
+                        owners
   trajectory_dashboard.py
                         lazy compatibility facade and direct Streamlit entrypoint
   _trajectory_dashboard_*.py
@@ -702,7 +704,23 @@ orchestrator/
       formatting.py     the compact money, token, and count renderings a KPI
                         tile, an axis tick, and a bar label are narrow enough
                         to need
-    trajectory_viewer/  destination for the file-backed trajectory page
+    trajectory_viewer/  the file-backed trajectory page's read model
+      __init__.py       package marker only; callers import an owner directly
+      constants.py      the event a line is read for, the brackets a run is
+                        wrapped in, the tells that mark a fixture, and the
+                        banner an unconfigured sink answers with
+      coercion.py       the narrowing every untyped record field passes
+                        through, so an older or hand-edited line costs a
+                        smaller row rather than a failed read
+      models.py         the four frozen views a record is read back as, their
+                        declared constructor signatures, and the historical
+                        module identity they are published under
+      runs.py           the run record itself, with the views below bound onto
+                        it as properties and its cached per-turn index
+      usage_views.py    a run's step and tool-call tallies, its model, cost,
+                        and token total, and the per-turn usage lookup
+      timeline_views.py the one ordered sequence a run renders as, the labels
+                        it is picked by, and the fixture tells applied to it
   skills/               the two skill-enumeration owners
     __init__.py         package marker only; callers name an owner
     catalog.py          per-tick repo skill-catalog collection: enumerate
@@ -1020,7 +1038,8 @@ rather than state a handler consults.
 `orchestrator/observability/` is the destination for the four surfaces that watch a run without steering it: the
 analytics sink and everything downstream of it (`analytics/` over `recording/`, `query/`, `sync/`, and `trajectories/`),
 the parser that meters one finished agent run (`usage/`), the Streamlit page over the operator's Postgres target
-(`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`). The parser is the first to
+(`dashboard/`), and the file-backed trajectory viewer beside it (`trajectory_viewer/`, holding that page's record
+side). The parser is the first to
 arrive: its owners live under `usage/`, whose initializer publishes the parser surface, while the callers that meter a
 run — `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers — name the
 owner they need. Root-level `usage.py` stays behind as a temporary compatibility site re-exporting those owners' own
@@ -1327,9 +1346,45 @@ Root-level `dashboard_theme.py` stays the historical import site — the analyti
 trajectory viewer all still spell `from orchestrator import dashboard_theme as theme` — and, like the sync leaves,
 defines nothing and forwards each name to the owner's own object.
 
-Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, the rest of
-`dashboard*.py`, `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
-names until the one it needs has an owner here.
+`trajectory_viewer/` is the fourth destination opening, and what has arrived is the record side of the file-backed
+page: what a line means, what it is read back as, and what a run then reports. `constants` is the vocabulary — the one
+event this viewer reads, the two brackets a run's prompt and final output are rendered as (the sink writes neither as a
+step, so there is nothing on the write side for them to agree with), the three tells that mark a fixture, and the
+banner an operator gets when the sink was never switched on. `coercion` is the narrowing under every field: the JSONL
+is append-only and was written by whichever version was running at the time, so a missing field, a number spelled as a
+string, or a scalar where an array belongs each yields the declared type's empty value rather than an exception — and a
+`bool` is refused ahead of `int`, because it is one in Python and a `true` where a token count belongs is a corrupt
+record. `models` holds the four frozen views a record is read back as, and their bodies are why two of them declare a
+constructor signature instead of taking the generated one: a dataclass cannot hold a field and a property of the same
+name, so the field is named apart while the keyword a caller passes and the attribute it reads back stay `content` —
+the spelling the sink writes — and binding the call against that declared signature is what keeps positional
+construction, keyword construction, and `inspect.signature` all reporting the one public shape.
+
+`runs` is the record those pieces compose into, and it deliberately defines no view of its own: `usage_views` and
+`timeline_views` do, bound on as properties so a caller reads `run.timeline` and `run.cost_usd` rather than calling a
+helper with the run in hand. `usage_views` answers off the summary the sink already wrote rather than re-adding the
+turns — that summary is the figure a provider reported, and the per-turn rows are a claude-only detail a codex record
+does not carry at all — so a record written before the usage feature degrades to zero tokens, no model, and an unpriced
+cost instead of raising; only the per-turn lookup reads the turns, and it goes through the record's cached index so a
+page walking a timeline does not rescan the tuple per entry. `timeline_views` owns the one ordered sequence two record
+vintages both render as, the cohort label a run is picked by and the issue-prefixed label above it, and the fixture
+tells — where a stepless record is judged on the prompt and session tells alone, because "every step is a `Skill` call"
+is vacuously true of no steps and would hide a real run from an operator who turned the toggle on. Both view owners
+name the record only under `TYPE_CHECKING`, which is what keeps the dependency one-way: the record imports them, and
+importing any owner here costs nothing outside the package — not the analytics settings, and not the flat leaves that
+forward to it.
+
+Root-level `_trajectory_constants.py`, `_trajectory_record_values.py`, `_trajectory_view_models.py`,
+`_trajectory_run_model.py`, `_trajectory_run_views.py`, and `_trajectory_run_timeline.py` define nothing now and
+forward each historical name to the owner's own object — which they have to, because the functions the record binds its
+properties to are those very objects. The four views and the record still report `orchestrator._trajectory_records` as
+their module: that is the import site their API is documented at, and what a repr, a pickle, or a reader following
+`__module__` lands on.
+
+Every other responsibility of those four surfaces is still where it was: `orchestrator/analytics/`, the rest of
+`dashboard*.py`, `trajectory_dashboard.py`, and — for the parse, the filtering, the file read, and the summary
+aggregation over these owners — `trajectory_reader.py` and the leaves under it stay the import site every historical
+caller names until the one it needs has an owner here.
 
 Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own subjects
 off disk so a new owner is covered the day it appears. An initializer binds nothing unless the surface it fronts is what
