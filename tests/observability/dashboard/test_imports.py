@@ -11,11 +11,14 @@ from types import MappingProxyType
 from orchestrator.observability import dashboard as _package
 from tests.observability.observability_test_support import (
     _imported_orchestrator_modules,
+    _run_import_probe,
 )
 
 _PACKAGE = "orchestrator.observability.dashboard"
 
 _CSS_OWNER = "css"
+
+_FILTERS_OWNER = "filters"
 
 _FORMATTING_OWNER = "formatting"
 
@@ -23,28 +26,47 @@ _LAYOUT_OWNER = "layout"
 
 _PALETTE_OWNER = "palette"
 
+_READ_MODE_OWNER = "read_mode"
+
 _TOKENS_OWNER = "tokens"
+
+_WINDOWS_OWNER = "windows"
 
 # The declared inventory. A new owner is a deliberate edit here and a paragraph
 # in the module map, which is what the inventory check compares the directory
 # against.
 _OWNERS = (
     _CSS_OWNER,
+    _FILTERS_OWNER,
     _FORMATTING_OWNER,
     _LAYOUT_OWNER,
     _PALETTE_OWNER,
+    _READ_MODE_OWNER,
     _TOKENS_OWNER,
+    _WINDOWS_OWNER,
 )
 
 # What each owner answers for, declared rather than discovered so a second way
-# to resolve a color, lay a chart out, or shorten a number is a deliberate edit
-# rather than a place two panels could disagree. Three owners report nothing
-# because the check reads `__module__`, which only a class or a function
-# carries: the palette's whole surface past its resolver is the chrome colors
-# and the seven dimension maps, the geometry owner's is its measurements and
-# the two font stacks, and the stylesheet owner's is one string.
+# to resolve a color, lay a chart out, shorten a number, spell a window,
+# normalize a selection, or key a cached read is a deliberate edit rather than
+# a place two panels -- or the reads' `ts < end` bound and the cache's
+# tri-state -- could disagree. Four owners report nothing because the check
+# reads `__module__`, which only a class or a function carries: the palette's
+# whole surface past its resolver is the chrome colors and the seven dimension
+# maps, the geometry owner's is its measurements and the two font stacks, the
+# stylesheet owner's is one string, and the read-mode owner's is the knob name,
+# the truthy spellings, the worker cap, and the refusal message. The preset
+# vocabulary the window owner decides is invisible here for the same reason.
 _SURFACES = MappingProxyType({
     _CSS_OWNER: (),
+    _FILTERS_OWNER: (
+        "DashboardCacheKey",
+        "cache_key",
+        "format_tz_offset",
+        "parse_issue_number",
+        "resolve_stage_filter",
+        "shift_ts",
+    ),
     _FORMATTING_OWNER: (
         "fmt_money",
         "fmt_money_exact",
@@ -53,7 +75,16 @@ _SURFACES = MappingProxyType({
     ),
     _LAYOUT_OWNER: ("base_layout",),
     _PALETTE_OWNER: ("color_for",),
+    _READ_MODE_OWNER: (),
     _TOKENS_OWNER: (),
+    _WINDOWS_OWNER: (
+        "DateWindow",
+        "default_date_range",
+        "extent_dates",
+        "preset_window",
+        "previous_window",
+        "to_window",
+    ),
 })
 
 # The two owners that render a surface out of the tokens rather than declaring
@@ -61,12 +92,34 @@ _SURFACES = MappingProxyType({
 # chrome around those figures is drawn by.
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
-# The historical import site the pages still reach the theme through. No owner
-# here may plant it -- that is what keeps the forwarding one-directional and
-# the flat module retirable rather than load-bearing.
-_COMPATIBILITY_SITE = "orchestrator.dashboard_theme"
+# The historical import sites the pages still reach these owners through: the
+# flat theme module, the state hub, and the three leaves beneath it. No owner
+# here may plant one -- that is what keeps the forwarding one-directional and
+# the flat modules retirable rather than load-bearing.
+_COMPATIBILITY_SITES = (
+    "orchestrator._dashboard_filter_state",
+    "orchestrator._dashboard_state_constants",
+    "orchestrator._dashboard_windows",
+    "orchestrator.dashboard_state",
+    "orchestrator.dashboard_theme",
+)
 
+# What an owner here may reach: its siblings, plus -- for the window owner --
+# the query result models a data extent is read back as. The extent a preset
+# anchors at is a read's answer, so the owner that clamps to it names the model
+# owner directly rather than the read facade in front of it.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
+
+# The driver the reads behind these windows are issued over. Nothing here
+# dials anything, so a caller that only resolves a preset, hashes a filter set,
+# or reads a color must not pay for it -- nor be unable to do any of the three
+# on a machine with no Postgres client installed.
+_DRIVER_PROBE = """
+import sys
+import {module}
+driver = [name for name in sys.modules if name.split('.')[0] == 'psycopg']
+sys.exit(', '.join(driver) if driver else 0)
+"""
 
 
 def _qualified(owner: str) -> str:
@@ -117,8 +170,8 @@ class PublicSurfaceTest(unittest.TestCase):
 
 
 class LayeringTest(unittest.TestCase):
-    """The owners reach only siblings, and each rendered surface is built from
-    the tokens rather than restating them.
+    """The owners reach only siblings, nothing dials, and each rendered
+    surface is built from the tokens rather than restating them.
     """
 
     def test_no_owner_reaches_outside_the_package(self) -> None:
@@ -132,15 +185,26 @@ class LayeringTest(unittest.TestCase):
                         f"{owner} reaches {imported}",
                     )
 
-    def test_no_owner_plants_the_historical_site(self) -> None:
+    def test_no_owner_plants_a_historical_site(self) -> None:
         # The sharpest case the check above rejects, named on its own: the
-        # flat module a page still imports forwards *to* these owners, so an
+        # flat modules a page still imports forward *to* these owners, so an
         # import back would close the loop and put the compatibility layer
-        # inside what rendering a chart costs.
+        # inside what rendering a chart or resolving a window costs.
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
+            for site in _COMPATIBILITY_SITES:
+                with self.subTest(owner=owner, site=site):
+                    self.assertNotIn(site, planted)
+
+    def test_no_owner_plants_the_driver(self) -> None:
+        for owner in _OWNERS:
+            completed = _run_import_probe(
+                _DRIVER_PROBE.format(module=_qualified(owner)),
+            )
             with self.subTest(owner=owner):
-                self.assertNotIn(_COMPATIBILITY_SITE, planted)
+                self.assertEqual(
+                    completed.returncode, 0, msg=completed.stderr,
+                )
 
     def test_a_rendered_surface_names_the_tokens(self) -> None:
         # A CSS variable and a figure's gridline are the same value seen twice,

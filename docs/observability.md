@@ -28,10 +28,11 @@ Every module path in this document is the current one. `orchestrator/observabili
 the analytics configuration, recording, retention, trajectory-sink, read-path, and sync owners
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
-`dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the trajectory viewer's
-record parse and run models (`trajectory_viewer/`), and the packages the
-rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility
-has an owner in that tree, the module named for it below stays the import site. See
+`dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
+read-mode state one run of the analytics page carries (`dashboard/windows.py`, `dashboard/filters.py`,
+`dashboard/read_mode.py`), the trajectory viewer's record parse and run models (`trajectory_viewer/`), and the
+packages the rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a
+responsibility has an owner in that tree, the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -1216,11 +1217,17 @@ Historical `dashboard.<name>` imports, wildcard exports, object identity, and te
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
-The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility:
-window/filter state; raw, rollup, skill, and dispatched reads; KPI series/values; cards, tables, sparklines, and skill
-matrices; widget state/usage/cost/skill/run sections; and cost/usage Plotly construction. Compatibility metadata keeps
-the established defining-module assertions intact. Streamlit is never imported in these helpers — `st` (with chart,
-theme, and pandas handles) is passed in as a parameter.
+The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: raw,
+rollup, skill, and dispatched reads; KPI series/values; cards, tables, sparklines, and skill matrices; widget
+state/usage/cost/skill/run sections; and cost/usage Plotly construction. The state a run carries lives under
+`orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
+that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by, and
+`read_mode.py` for the parallel-read knob and the unconfigured-database message. `dashboard_state.py` stays the hub
+the page reads them off, and `_dashboard_windows.py`, `_dashboard_filter_state.py`, and
+`_dashboard_state_constants.py` forward each historical name to the owner's own object. The parallel-read helpers
+themselves are still flat in `_dashboard_read_mode.py`. Compatibility metadata keeps the established defining-module
+assertions intact. Streamlit is never imported in these helpers — `st` (with chart, theme, and pandas handles) is
+passed in as a parameter.
 
 ```sh
 uv sync --group dashboard                                  # install streamlit + plotly alongside the runtime + dev deps

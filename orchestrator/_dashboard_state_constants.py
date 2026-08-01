@@ -1,48 +1,35 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard window, timezone, and read-mode constants."""
+"""Historical constants import site, answered by the dashboard owners.
+
+The eighteen names are read off the owners that decide them -- the preset
+vocabulary from the window owner, the offset range from the filter owner, and
+the read-mode knob and refusal message from theirs -- so a caller that names
+this module and a caller that names an owner compare against the same objects.
+`TRUTHY` keeps the bare spelling published here, which is the one the
+parallel-reads flag is parsed against.
+"""
+
 from __future__ import annotations
 
-from types import MappingProxyType
-from typing import Mapping
+from orchestrator.observability.dashboard import filters, read_mode, windows
 
 
-DEFAULT_WINDOW_DAYS = 7
-PRESET_RECENT_THREE_DAYS = "3d"
-PRESET_RECENT_WEEK = "7d"
-PRESET_ALL = "All"
-PRESET_CUSTOM = "Custom"
-PRESET_OPTIONS = (
-    PRESET_RECENT_THREE_DAYS,
-    PRESET_RECENT_WEEK,
-    PRESET_ALL,
-    PRESET_CUSTOM,
-)
-PRESET_LABELS: Mapping[str, str] = MappingProxyType({
-    PRESET_RECENT_THREE_DAYS: "Last 3 days",
-    PRESET_RECENT_WEEK: "Last 7 days",
-    PRESET_ALL: "All time",
-    PRESET_CUSTOM: "Custom range",
-})
-PRESET_INLINE_LABELS: Mapping[str, str] = MappingProxyType({
-    PRESET_RECENT_THREE_DAYS: "3D",
-    PRESET_RECENT_WEEK: "7D",
-    PRESET_ALL: "All",
-})
-PRESET_DAYS: Mapping[str, int] = MappingProxyType({
-    PRESET_RECENT_THREE_DAYS: 3,
-    PRESET_RECENT_WEEK: 7,
-})
-DEFAULT_PRESET = PRESET_RECENT_WEEK
-MIN_UTC_OFFSET = -12
-MAX_UTC_OFFSET = 14
-TZ_OFFSET_OPTIONS = tuple(range(MIN_UTC_OFFSET, MAX_UTC_OFFSET + 1))
-DEFAULT_TZ_OFFSET_HOURS = 7
-PARALLEL_READS_ENV = "DASHBOARD_PARALLEL_READS"
-PARALLEL_READS_MAX_WORKERS = 8
-TRUTHY = frozenset(("1", "true", "on", "yes"))
-UNCONFIGURED_DB_MESSAGE = (
-    "`ANALYTICS_DB_URL` is not configured. Set it in your environment "
-    "(see `.env.example.advanced` and `docs/configuration.md`) and "
-    "reload the dashboard to view analytics."
-)
+DEFAULT_WINDOW_DAYS = windows.DEFAULT_WINDOW_DAYS
+PRESET_RECENT_THREE_DAYS = windows.PRESET_RECENT_THREE_DAYS
+PRESET_RECENT_WEEK = windows.PRESET_RECENT_WEEK
+PRESET_ALL = windows.PRESET_ALL
+PRESET_CUSTOM = windows.PRESET_CUSTOM
+PRESET_OPTIONS = windows.PRESET_OPTIONS
+PRESET_LABELS = windows.PRESET_LABELS
+PRESET_INLINE_LABELS = windows.PRESET_INLINE_LABELS
+PRESET_DAYS = windows.PRESET_DAYS
+DEFAULT_PRESET = windows.DEFAULT_PRESET
+MIN_UTC_OFFSET = filters.MIN_UTC_OFFSET
+MAX_UTC_OFFSET = filters.MAX_UTC_OFFSET
+TZ_OFFSET_OPTIONS = filters.TZ_OFFSET_OPTIONS
+DEFAULT_TZ_OFFSET_HOURS = filters.DEFAULT_TZ_OFFSET_HOURS
+PARALLEL_READS_ENV = read_mode.PARALLEL_READS_ENV
+PARALLEL_READS_MAX_WORKERS = read_mode.PARALLEL_READS_MAX_WORKERS
+TRUTHY = read_mode.TRUTHY
+UNCONFIGURED_DB_MESSAGE = read_mode.UNCONFIGURED_DB_MESSAGE

@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard read-key, data-preparation, Plotly, and cache-key tests."""
+"""Dashboard read-key, data-preparation, and Plotly tests."""
 
 import unittest
 
@@ -100,9 +100,6 @@ EVENT_AGENT_EXIT = "agent_exit"
 EVENT_STAGE_ENTER = "stage_enter"
 
 
-STAGE_IMPLEMENTING = "implementing"
-
-
 BACKEND_CLAUDE = "claude"
 
 
@@ -122,9 +119,6 @@ CACHE_REPO = "acme/widgets"
 
 
 EVENT_NAMES = (EVENT_AGENT_EXIT, EVENT_STAGE_ENTER)
-
-
-STAGE_NAMES = (STAGE_IMPLEMENTING,)
 
 
 def _kpi_inputs(dashboard):
@@ -274,52 +268,3 @@ class PlotlyConfigTest(unittest.TestCase):
     def test_plotly_config_disables_modebar(self) -> None:
         _, dashboard = _reload()
         self.assertEqual(dashboard.PLOTLY_CONFIG.get("displayModeBar"), False)
-
-
-class CacheKeyTest(unittest.TestCase):
-    """`st.cache_data` hashes the cache key tuple; lists from
-    multiselects need to become tuples, and `None` must be preserved
-    so the tri-state filter contract (None / [] / [...]) does not
-    collapse at the cache layer.
-    """
-
-    def test_lists_become_tuples(self) -> None:
-        _, dashboard = _reload()
-        window = dashboard.to_window(MAY01, MAY07)
-        key = dashboard.cache_key(
-            window,
-            CACHE_REPO,
-            list(EVENT_NAMES),
-            list(STAGE_NAMES),
-            ISSUE_NUMBER,
-        )
-        self.assertEqual(
-            key,
-            (
-                window.start,
-                window.end,
-                CACHE_REPO,
-                EVENT_NAMES,
-                STAGE_NAMES,
-                ISSUE_NUMBER,
-            ),
-        )
-        hash(key)  # must be hashable
-
-    def test_none_is_preserved(self) -> None:
-        _, dashboard = _reload()
-        window = dashboard.to_window(MAY01, MAY07)
-        key = dashboard.cache_key(window, None, None, None, None)
-        self.assertEqual(key, (window.start, window.end, None, None, None, None))
-
-    def test_empty_list_distinct_from_none(self) -> None:
-        # Empty events / stages mean "cleared multiselect, show
-        # nothing"; the cache key must keep the empty tuple distinct
-        # from None so the two SQL shapes do not collide in cache.
-        _, dashboard = _reload()
-        window = dashboard.to_window(MAY01, MAY07)
-        empty = dashboard.cache_key(window, CACHE_REPO, [], [], None)
-        none = dashboard.cache_key(window, CACHE_REPO, None, None, None)
-        self.assertNotEqual(empty, none)
-        self.assertEqual(empty[3], ())
-        self.assertEqual(empty[4], ())
