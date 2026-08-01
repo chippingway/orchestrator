@@ -800,8 +800,9 @@ a notice) so the operator can tell the inherited test-suite records from real ru
 sink is off it renders the opt-in banner and stops; an empty file or an empty filter set renders an explanatory notice
 rather than a blank page. `trajectory_dashboard.py` is now a lazy compatibility facade and direct-launch entrypoint.
 Its page state, setup, filters, picker, and selected-run rendering are owned by `page_models`, `page_setup`,
-`controls`, `picker`, and `run_render` under `observability/trajectory_viewer/`, which take Streamlit in as an
-argument rather than importing it; its bootstrap and runtime orchestration are still flat
+`controls`, `picker`, and `run_render` under `observability/trajectory_viewer/`; the four that draw take Streamlit in
+as an argument rather than importing it, so none of them puts the `dashboard` group behind an import, and
+`page_models` is plain frozen state that never sees it. Its bootstrap and runtime orchestration are still flat
 `_trajectory_dashboard_*` leaves. The historical `_trajectory_dashboard_html.py` surface defines nothing and composes
 the Streamlit-free summary, run, usage, timeline, and CSS owners under `observability/trajectory_viewer/`, so every
 established HTML helper and patch point keeps its original identity without pulling Streamlit into imports. The
