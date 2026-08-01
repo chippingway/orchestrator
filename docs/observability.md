@@ -9,8 +9,9 @@ time.
   `GitHubClient.emit_event`.
 - **Analytics sink** (`ANALYTICS_LOG_PATH`) — project-local JSONL of raw metric records. The recorders that append it
   are owned by `orchestrator/observability/analytics/recording/` and the by-age prune that bounds it by
-  `orchestrator/observability/analytics/retention.py`; the read models and the sync are still in the
-  `orchestrator/analytics/` package.
+  `orchestrator/observability/analytics/retention.py`; the read models and the sync are still entered through the
+  `orchestrator/analytics/` package, though the reads and the sync's row translation are owned beside them under
+  `orchestrator/observability/analytics/`.
 - **Trajectory sink** (`TRAJECTORY_LOG_PATH`) — opt-in, default-off JSONL sink for per-run agent reasoning
   trajectories, a sibling sink whose writers live in `orchestrator/observability/analytics/trajectories/` and whose
   by-age prune is the same `retention.py` owner, reading its own knobs. `record_agent_exit` is its
@@ -24,8 +25,9 @@ time.
   token / cost detail the analytics `agent_exit` record carries.
 
 Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners,
-the analytics configuration, recording, retention, trajectory-sink, and read-path owners (`analytics/config.py`,
-`analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`, `analytics/query/`), and the packages the
+the analytics configuration, recording, retention, trajectory-sink, read-path, and sync row-translation owners
+(`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
+`analytics/query/`, `analytics/sync/`), and the packages the
 rest of the analytics sink, the dashboard, and the trajectory viewer are each migrating into; until a responsibility
 has an owner in that tree, the module named for it below stays the import site. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
@@ -155,15 +157,20 @@ and its prune must share — is minted on `recording/io.py`, which no reload reb
 before the facade existed still serializes against the prune rather than writing into a file being rewritten under it.
 The retention scan and rewrite leaves are deliberately *not* in that rebuilt set: they read every path, window, and
 lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
-separate Postgres-facing families, and only one of them still has an owner in this package: `sync.py` and its leaves
-hold the ingestion SQL and row mapping, while every read responsibility has moved out. The filters a read is asked
+separate Postgres-facing families, and what is left of either here is what has not moved yet: `sync.py` and its
+leaves hold the CLI, the batched ingestion, the redaction, and the database lifecycle, while the row translation
+beneath them and every read responsibility have moved out. The column inventory both shapes meet on, the canonical
+encoding a content hash is taken over, the coercion each required field is narrowed by, and the INSERT with the
+positional tuple that fills it belong to `observability/analytics/sync/`. The filters a read is asked
 for, the binding of its keyword call, the connection lifecycle, the query execution, the frozen models a read answers
 with, the six reads that stay on the events table, the seven that scan the daily rollup above it, the four whose
 grouping key that rollup threw away, and the three answered from a run's `extras` blob all belong to
 `observability/analytics/query/`. What is left here is forwarding: `analytics.read` is a manifest-backed lazy facade,
 and `predicates.py`, `_predicate_*.py`, `read_request*.py`, `read_models*.py`, `read_raw.py`, `read_rollup.py`,
 `read_dashboard.py`, and the seven raw, seven rollup, and nine breakdown-and-skill `_read_*.py` leaves define nothing
-of their own — each binds the owner's object under the name a historical caller imported.
+of their own — each binds the owner's object under the name a historical caller imported. The four sync leaves
+`_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, and the `_sync_rows.py` hub that grouped them
+forward the same way, under the private spellings each published while it owned them.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -882,11 +889,13 @@ JSONL file is absent. The CLI is safe to schedule before the operator deploys Po
 the import is lazy inside the connect helper so the module load path remains driver-free for callers that only need
 `SyncResult`.
 
-**Row mapping.** The driver-free `_sync_rows.py` compatibility hub preserves the historical mapping objects. Their
-implementations are split by boundary: `_sync_row_schema.py` owns promoted / JSONB / required columns,
-`_sync_row_parse.py` owns canonical JSON and `content_hash`, and `_sync_row_mapping.py` validates records, routes
-extras, and constructs INSERT rows. `sync.py` remains the stable CLI surface over focused ingestion, database,
-redaction, and run leaves; psycopg stays out of the pure row modules.
+**Row mapping.** The translation between a JSONL record and a table row is owned by
+`observability/analytics/sync/`, split by boundary: `columns.py` owns the promoted / JSONB / required column
+inventory, `records.py` owns canonical JSON, `content_hash`, and the coercion each required field is narrowed by, and
+`rows.py` validates records, routes extras, builds the INSERT, and lays out the positional tuple that fills it. All
+three are driver-free, so a caller can hash a record or build a row with no psycopg installed. `sync.py` remains the
+stable CLI surface over focused ingestion, database, redaction, and run leaves, and the four flat `_sync_row*.py`
+modules stay as forwarders answering the historical private names with those owners' own objects.
 
 ### Operator feedback
 

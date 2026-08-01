@@ -470,7 +470,8 @@ orchestrator/
                         result-model, raw-read, and rollup-read import sites
                         forwarding to the query owners
     sync.py / _sync_*.py
-                        CLI, ingestion, row parsing/mapping, and database lifecycle
+                        CLI, ingestion, and database lifecycle, plus the four
+                        row-translation leaves forwarding to the sync owners
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
   dashboard_*.py        stable component, read, chart, state, and widget hubs
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
@@ -625,6 +626,13 @@ orchestrator/
         row_cells.py    the readings one rollup cell passes through before it
                         lands in a result field
       sync/             destination for the JSONL -> Postgres ingestion
+        __init__.py     package marker only; callers import an owner directly
+        columns.py      what a record must carry, what the table has a column
+                        of its own for, and which of those hold JSON
+        records.py      the encoding a record's content hash is taken over,
+                        and the coercion each required field is narrowed by
+        rows.py         the INSERT a batch is sent under, the positional tuple
+                        that fills it, and the reason a line is skipped for
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
         models.py       the head/tail and whole-record caps, the view they are
@@ -1209,6 +1217,28 @@ itself and defines nothing, and the hub above each group sits beside its leaves 
 `read_dashboard.py` the subset it published while it owned the two families, and the query rows are the one group no
 hub ever published — they were reached on `_read_query_rows.py` then and are still reached there. Whichever module a
 historical caller imported hands back the owner's object rather than a copy of it.
+
+`analytics/sync/` is the destination for the other Postgres-facing family, and the translation between a JSONL record
+and a table row is the first of it to arrive. `columns` owns the inventory both shapes meet on — the four fields a
+record must carry, the list the table has a column of its own for, and the two of those that hold JSON — kept in one
+place because the required-key guard, the promotion, and the INSERT's parameter order all read it and a row lands in
+the wrong column the moment two of them disagree. Anything outside that list goes to the `extras` JSONB column, so a
+record written by a newer orchestrator version loses no fields to a database that has no column for them yet.
+`records` owns what one record hashes to, and that encoding is pinned rather than chosen: `sort_keys=True` with
+default separators, matching what `recording/io.py` wrote the line with, so a record round-trips through file → parse
+→ hash without drifting off the key the INSERT deduplicates on. Its parse beside that narrows each required field to
+the type its column is declared as — a naive `ts` reads as UTC, the same reading `retention_scan.py` gives it, so a
+line from an older writer still lands — and refuses the whole record when any of the four cannot be narrowed, because
+a row the table would reject costs more to send than to skip. `rows` owns the line itself: the statement is built
+from the same column list in the same order as the tuple that fills it, so the row stays positional with no per-row
+dict-to-tuple mapping between them, and every way a line can fail — blank, not JSON, JSON that is not an object, a
+required field the table would reject — resolves to a reason string rather than an exception, since one bad line in a
+rotated JSONL file must not abort the replay of the thousands after it. None of the three names psycopg, so a caller
+can hash a record or lay a row out on a machine with no driver installed. The CLI, the batched ingest, the redaction,
+and the database lifecycle are still `sync.py` and its remaining flat leaves; the four that moved —
+`_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, and the `_sync_rows.py` hub that grouped them —
+define nothing now and forward each historical private name to the owner's own object, while the live callers name
+the owner: `_sync_ingest.py` for the per-line translation, and `_sync_run.py` for the statement it builds once.
 
 Every other responsibility of those three surfaces is still where it was: `orchestrator/analytics/`, `dashboard*.py`,
 `trajectory_reader.py`, and `trajectory_dashboard.py` stay the import site every historical caller
