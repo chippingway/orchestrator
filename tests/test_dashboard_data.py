@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard read-key, data-preparation, and Plotly tests."""
+"""Dashboard data-preparation and Plotly tests."""
 
 import unittest
 
@@ -18,8 +18,6 @@ from orchestrator.analytics.read import (
     TimeSeriesPoint,
 )
 
-_MAY_DAY = 22
-_MAY_DAY_SECONDARY = 28
 _TOKENS_DAILY_SPARKS_TOTAL_CO = 12.0
 _TOKENS_DAILY_SPARKS_TOTAL_OU = 20
 _TOKENS_DAILY_SPARKS_SECONDARY = 6.0
@@ -85,19 +83,7 @@ MAY01 = date(_YEAR, 5, 1)
 MAY07 = date(_YEAR, 5, 7)
 
 
-MAY22 = date(_YEAR, 5, _MAY_DAY)
-
-
-MAY28 = date(_YEAR, 5, _MAY_DAY_SECONDARY)
-
-
-ISSUE_NUMBER = 42
-
-
 EVENT_AGENT_EXIT = "agent_exit"
-
-
-EVENT_STAGE_ENTER = "stage_enter"
 
 
 BACKEND_CLAUDE = "claude"
@@ -113,12 +99,6 @@ BUCKET_INITIAL = "0"
 
 
 BUCKET_FIRST_ROUND = "1"
-
-
-CACHE_REPO = "acme/widgets"
-
-
-EVENT_NAMES = (EVENT_AGENT_EXIT, EVENT_STAGE_ENTER)
 
 
 def _kpi_inputs(dashboard):
@@ -186,34 +166,6 @@ def _kpi_inputs(dashboard):
         ],
         days_in_window=2,
     )
-
-
-class BuildReadKeysTest(unittest.TestCase):
-    """`_build_read_keys` composes the current + previous-window cache
-    keys the staged fan-out binds to cached reader tasks, so the previous
-    key must carry the same filters over
-    the immediately-preceding equal-length window.
-    """
-
-    def test_current_and_previous_keys(self) -> None:
-        _, dashboard = _reload()
-        window = dashboard.to_window(MAY22, MAY28)
-        key, prev_key = dashboard._build_read_keys(
-            window=window,
-            repo_filter=CACHE_REPO,
-            event_filter=list(EVENT_NAMES),
-            stage_filter=None,
-            issue_filter=ISSUE_NUMBER,
-        )
-        self.assertEqual(
-            key,
-            (window.start, window.end, CACHE_REPO, EVENT_NAMES, None, ISSUE_NUMBER),
-        )
-        prev = dashboard.previous_window(window)
-        self.assertEqual(
-            prev_key,
-            (prev.start, prev.end, CACHE_REPO, EVENT_NAMES, None, ISSUE_NUMBER),
-        )
 
 
 class DashboardDataPrepTest(unittest.TestCase):

@@ -51,19 +51,14 @@ _log_dashboard_load = dispatch._log_dashboard_load
 _run_read_waves = dispatch._run_read_waves
 log = dispatch.log
 
-# The members still defined beside this hub. The seven headline and lifecycle
-# reads, the six comparison-panel ones, the three skill-panel ones, the
-# connection scope, the filter binding, and the static-metadata reads are the
-# dashboard owners' own objects and are left off deliberately: stamping one
-# would rewrite `__module__` on the owner's function, which is what the owners'
-# own surface check reads.
+# The members still defined beside this hub. The staged read plan and its two
+# wave registries, the seven headline and lifecycle reads, the six
+# comparison-panel ones, the three skill-panel ones, the connection scope, the
+# filter binding, and the static-metadata reads are the dashboard owners' own
+# objects and are left off deliberately: stamping one would rewrite
+# `__module__` on the owner's function, which is what the owners' own surface
+# check reads.
 _COMPATIBILITY_MEMBERS = (
-    _DashboardReadPlan,
-    _widget_task,
-    _first_wave_readers,
-    _second_wave_readers,
-    _widget_readers,
-    _build_read_keys,
     _dispatch_reads,
     _log_dashboard_load,
     _run_read_waves,

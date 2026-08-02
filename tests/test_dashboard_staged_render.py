@@ -76,37 +76,7 @@ CONFIGURED_DB_URL = "postgresql://h/db"
 CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
-FIRST_WAVE_READER_NAMES = (
-    "summary",
-    "prev_summary",
-    "ts_points",
-    "review_round_rows",
-    "throughput_rows",
-    "cost_coverage_rows",
-)
-
-
-SECOND_WAVE_READER_NAMES = (
-    "stage_rows",
-    "agent_exits",
-    "issues_rows",
-    "backend_rows",
-    "repo_rows",
-    "heatmap_rows",
-    "backend_daily_rows",
-    "skill_adoption_rows",
-    "skill_rows",
-    "skill_matrix_rows",
-)
-
-
 ENTRYPOINT_ATTR = "main"
-
-
-FIRST_WAVE_READERS_MEMBER = "_first_wave_readers"
-
-
-SECOND_WAVE_READERS_MEMBER = "_second_wave_readers"
 
 
 RUN_READ_WAVES_MEMBER = "_run_read_waves"
@@ -164,37 +134,17 @@ class _MainSourceTest(unittest.TestCase):
 
 
 class _StagedRenderSupport(_MainSourceTest):
-    """The two read waves preserve their inputs and progressive render order."""
+    """The staged load renders its chrome between the two read waves.
 
-    def _first_wave_source(self) -> str:
-        return self._source_of(FIRST_WAVE_READERS_MEMBER)
-
-    def _second_wave_source(self) -> str:
-        return self._source_of(SECOND_WAVE_READERS_MEMBER)
+    Which reads each wave is made of is the read-plan owner's, and pinned
+    beside it. What is left here is the order a page load drives them in.
+    """
 
     def _load_source(self) -> str:
         return self._source_of(RUN_READ_WAVES_MEMBER)
 
 
 class StagedRenderWaveTest(_StagedRenderSupport):
-    def test_first_wave_has_only_topbar_inputs(self) -> None:
-        wave = self._first_wave_source()
-        for name in FIRST_WAVE_READER_NAMES:
-            with self.subTest(name=name):
-                self.assertIn(f'"{name}"', wave)
-        for name in SECOND_WAVE_READER_NAMES:
-            with self.subTest(name=name):
-                self.assertNotIn(f'"{name}"', wave)
-
-    def test_second_wave_has_remaining_reads(self) -> None:
-        wave = self._second_wave_source()
-        for name in SECOND_WAVE_READER_NAMES:
-            with self.subTest(name=name):
-                self.assertIn(f'"{name}"', wave)
-        for name in FIRST_WAVE_READER_NAMES:
-            with self.subTest(name=name):
-                self.assertNotIn(f'"{name}"', wave)
-
     def test_topbar_and_meta_render_between_waves(self) -> None:
         self._assert_source_order(
             RUN_READ_WAVES_MEMBER,
@@ -219,18 +169,6 @@ class StagedRenderRuntimeTest(_StagedRenderSupport):
         second = source.index(DISPATCH_SECOND_WAVE)
         self.assertLess(spinner, first)
         self.assertLess(spinner, second)
-
-    def test_widgets_render_on_main_thread(self) -> None:
-        for helper in (FIRST_WAVE_READERS_MEMBER, SECOND_WAVE_READERS_MEMBER):
-            with self.subTest(helper=helper):
-                wave_source = self._source_of(helper)
-                self.assertIn("_widget_task(", wave_source)
-                self.assertNotIn(".markdown(", wave_source)
-                self.assertNotIn(".info(", wave_source)
-                self.assertNotIn(".plotly_chart(", wave_source)
-        task_source = self._source_of("_widget_task")
-        self.assertIn("partial(cached_reader, *args)", task_source)
-        self.assertNotIn(".markdown(", task_source)
 
     def test_empty_window_short_circuits_second_wave(self) -> None:
         load_source = self._load_source()

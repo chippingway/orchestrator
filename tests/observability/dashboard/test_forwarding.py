@@ -21,6 +21,8 @@ _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
 
 _BREAKDOWNS_LEAF = "orchestrator._dashboard_read_breakdowns"
 
+_READ_PLAN_LEAF = "orchestrator._dashboard_read_plan"
+
 _ROLLUPS_LEAF = "orchestrator._dashboard_read_rollups"
 
 _SKILLS_LEAF = "orchestrator._dashboard_read_skills"
@@ -54,6 +56,8 @@ _LAYOUT = f"{_PACKAGE}.layout"
 _PALETTE = f"{_PACKAGE}.palette"
 
 _READ_MODE = f"{_PACKAGE}.read_mode"
+
+_READ_PLAN = f"{_PACKAGE}.read_plan"
 
 _ROLLUPS = f"{_PACKAGE}.rollups"
 
@@ -204,6 +208,22 @@ _LEAF_FAN_OUT_NAMES = (
 
 _HUB_FAN_OUT_NAME = ("_fan_out_reads", _FANOUT, "fan_out_reads")
 
+# What one page load is staged by: the plan the caller carries between the two
+# waves, the task each entry of a wave is built as, the two registries, and the
+# key pair they are bound to. A page reaching a copy of the registries would
+# stage its load out of adapters -- and under a cache TTL -- nobody else can
+# change. The reader alias is the fan-out owner's, because the type a wave is
+# made of belongs where a wave is run.
+_READ_PLAN_NAMES = (
+    ("_DashboardReadPlan", _READ_PLAN, "DashboardReadPlan"),
+    ("_ReaderTask", _FANOUT, "NamedReader"),
+    ("_build_read_keys", _READ_PLAN, "build_read_keys"),
+    ("_first_wave_readers", _READ_PLAN, "first_wave_readers"),
+    ("_second_wave_readers", _READ_PLAN, "second_wave_readers"),
+    ("_widget_readers", _READ_PLAN, "widget_readers"),
+    ("_widget_task", _READ_PLAN, "widget_task"),
+)
+
 # What every read behind a page load goes through, published privately by both
 # flat sites and publicly by the owners. One socket per thread, one unpacking
 # of a cache key, and one TTL are the point of each: a second copy of the scope
@@ -263,13 +283,15 @@ _SKILL_LEAF_NAMES = (
 )
 
 # Everything the read hub publishes on an owner's behalf, in one list: the
-# scope, binding, and metadata reads a widget's wrapper goes through, and the
-# sixteen panel reads that are the wrappers themselves.
+# scope, binding, and metadata reads a widget's wrapper goes through, the
+# sixteen panel reads that are the wrappers themselves, and the plan that
+# stages them into the two waves a load is drawn in.
 _FORWARDED_READS_HUB = (
     *_READ_CORE_NAMES,
     *_ROLLUP_READ_NAMES,
     *_BREAKDOWN_READ_NAMES,
     *_SKILL_LEAF_NAMES,
+    *_READ_PLAN_NAMES,
     _SKILL_TRIGGER_RATES_NAME,
 )
 
@@ -330,8 +352,9 @@ _FILTER_NAMES = (
 # name they publish resolves to: a window built here has to be the one the
 # reads are bounded by, a key hashed here the one the cached reads are stored
 # under, a scope entered here the one they all share, a panel read issued here
-# the one a page draws that panel from, and a KPI computed here the one every
-# tile reports, or a fix under the owners would reach only half of the callers.
+# the one a page draws that panel from, a wave staged here the one the load
+# actually runs, and a KPI computed here the one every tile reports, or a fix
+# under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -344,6 +367,7 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_filter_state": _FILTER_NAMES,
     _READ_CORE_LEAF: _READ_CORE_NAMES,
     _READ_MODE_LEAF: (*_LEAF_READ_MODE_HELPERS, *_LEAF_FAN_OUT_NAMES),
+    _READ_PLAN_LEAF: _READ_PLAN_NAMES,
     _ROLLUPS_LEAF: _ROLLUP_READ_NAMES,
     _BREAKDOWNS_LEAF: (*_BREAKDOWN_READ_NAMES, _SKILL_TRIGGER_RATES_NAME),
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,

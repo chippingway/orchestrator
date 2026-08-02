@@ -481,9 +481,9 @@ orchestrator/
                         and the banners above it, forwarding to those owners
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
-  _dashboard_read_mode.py / _dashboard_read_core.py
-                        historical state and read import sites forwarding to
-                        those owners
+  _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
+                        historical state, read, and read-plan import sites
+                        forwarding to those owners
   _dashboard_read_rollups.py / _dashboard_read_breakdowns.py / _dashboard_read_skills.py
                         historical import sites for the seven headline and
                         lifecycle reads, the six comparison-panel ones, and the
@@ -717,7 +717,8 @@ orchestrator/
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
     dashboard/          the Streamlit analytics page: the visual theme both
                         pages are drawn in, the state one run of it carries,
-                        the fan-out its reads are issued through, the seven a
+                        the two waves its load is staged into and the fan-out
+                        each is issued through, the seven a
                         headline or lifecycle section is drawn from, the six a
                         comparison panel is and the three a skill panel is,
                         what one of those reads then runs on and is narrowed
@@ -750,6 +751,10 @@ orchestrator/
                         are issued under, the worker cap, and the refusal an
                         unconfigured database is answered with, message
                         and URL check together
+      read_plan.py      the two waves one page load is staged into, the cached
+                        task each entry is bound as and the TTL it is held
+                        for, and the current / previous key pair they are
+                        issued under
       fanout.py         one wave of named readers run the way that flag said:
                         on the calling thread, or across a pool capped at the
                         worker count beside the knob
@@ -1496,10 +1501,23 @@ text an unconfigured database is refused with, together with the three reads ove
 at import, and the refusal — so what a page's reads are issued under is settled in one place. The flag and the URL are
 read at opposite times on purpose: the flag is parsed once at that module's import, because an operator turns the
 fan-out on by restarting the Streamlit process, while the database URL is read inside the call off whichever analytics
-package the name resolves to. `fanout.py` then runs one wave of named readers the way that flag said — on the calling
-thread, or across a pool capped at the worker count beside the knob — keying each result by the name it was submitted
-under and letting the first read error reach the caller, because a failed load is answered with one banner rather than
-a partial page.
+package the name resolves to.
+
+`read_plan.py` is what that state is spent on: the two waves one page load is staged into, the cached task each entry
+of a wave is bound as, and the pair of keys those entries are issued under. The split is what lets the page paint
+before the load finishes — the first wave is exactly the six reads the chrome above the fold is reduced from, so the
+topbar, the KPI strip, and the window banner render while the ten panels beneath them are still being read — and both
+registries sit in one owner because moving a read between waves changes what renders early rather than what any one
+panel shows. Nothing is issued while a wave is built: an entry is a name and an adapter with its arguments already
+bound, since a parallel load runs those callables on worker threads and only the main thread rendering between the
+waves may write to the page. Every entry is cached for a minute, because Streamlit reruns the whole script on each
+widget interaction and an uncached wave would put all sixteen queries on Postgres per nudge of the filter bar. The
+keys are hashed as a pair off one filter set — this window, and the equal-length span before it, measured by the
+window owner's own arithmetic — so the two spans the delta pills and the cost-trend banner compare cannot end up
+narrowed differently. `fanout.py` then runs one of those waves the way the flag said — on the calling thread, or
+across a pool capped at the worker count beside the knob — keying each result by the name it was submitted under and
+letting the first read error reach the caller, because a failed load is answered with one banner rather than a
+partial page.
 
 What that wave is made of arrives with the panels each reader is drawn for. Each is a window a page already decided,
 so the whole of an adapter is the query owner's read it names beside the binding that issues it — and naming that

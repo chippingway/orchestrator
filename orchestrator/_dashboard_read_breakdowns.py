@@ -3,10 +3,10 @@
 """Historical import site for the panel reads.
 
 The six comparison reads and the skill-trigger rates beside them are the
-dashboard owners' own objects. A caller that names this module -- the read plan
-beside it, the hub in front of them, and every historical `dashboard.<name>`
-import through that hub -- reaches those rather than a copy of any of them, so
-a page and the owner cannot answer differently.
+dashboard owners' own objects. A caller that names this module -- the hub in
+front of it, and every historical `dashboard.<name>` import through that hub --
+reaches those rather than a copy of any of them, so a page and the owner cannot
+answer differently.
 """
 from __future__ import annotations
 

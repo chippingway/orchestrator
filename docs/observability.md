@@ -29,11 +29,13 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
-read-mode state one run of the analytics page carries plus the fan-out its reads are issued through, the seven a
+read-mode state one run of the analytics page carries plus the two waves its load is staged into and the fan-out each
+is issued through, the seven a
 headline or lifecycle section is drawn from, the six a comparison panel is, the three a skill panel is, the
 connection, filter binding, and unfiltered metadata each read goes through, and the banners a window is interrupted
 with above all of them plus the four numbers it is summarized by beneath those (`dashboard/windows.py`,
-`dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/fanout.py`, `dashboard/rollups.py`,
+`dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
+`dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
 `dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`), the
 trajectory viewer's whole read model — its file
@@ -1263,6 +1265,8 @@ state/usage/cost/skill/run sections; and cost/usage Plotly construction. The sta
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
 that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by,
 `read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database message,
+`read_plan.py` for the two waves a load is staged into, the minute each cached entry is held for, and the current /
+previous key pair they are issued under,
 `fanout.py` for running one wave of named readers the way that flag said, `rollups.py` for the seven of those readers a
 headline or lifecycle section is drawn from — with the hundred-row cap the run list among them is read under, and the
 ranking depth the spend table borrows from the KPI owner — `breakdowns.py` for the six a comparison panel is drawn
@@ -1277,7 +1281,7 @@ beneath those, `kpis.py` holds the four numbers the headline tiles report — th
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
 `dashboard_state.py` stays the hub the page reads the state off and `dashboard_reads.py` the hub the read inventory
 is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`,
-`_dashboard_read_mode.py`, `_dashboard_read_core.py`, `_dashboard_read_rollups.py`,
+`_dashboard_read_mode.py`, `_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_rollups.py`,
 `_dashboard_read_breakdowns.py`, `_dashboard_read_skills.py`, and `dashboard_kpis.py` forward each historical name to
 the owner's own object. Compatibility metadata keeps the
 established defining-module assertions intact for what those hubs still define. Streamlit is never imported in these
@@ -1300,7 +1304,8 @@ repo, events, stages, issue)`, so a filter change invalidates every cached query
 `STATIC_METADATA_TTL_SECONDS = 300` (5 min) TTL so the sidebar / topbar only re-hit Postgres when `analytics.sync`
 ingests new events.
 
-**Two-wave loading.** The 16 widget reads are staged into two waves:
+**Two-wave loading.** The 16 widget reads are staged into two waves by `dashboard/read_plan.py`, each cached for
+`WIDGET_CACHE_TTL_SECONDS = 60`:
 
 - **First wave (6 reads).** `summary`, `prev_summary`, `ts_points`, `review_round_rows`, `throughput_rows`,
   `cost_coverage_rows` — feeds the topbar, filter meta, insight banners, and KPI strip.
