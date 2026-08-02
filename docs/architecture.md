@@ -1706,25 +1706,28 @@ zeroed bucket so its stack lands on its own date rather than past the end of the
 measures a stack by — a per-backend stack as tall as that day's backends add up to, a token-type stack as tall as its
 three bands. Backends come back sorted because their order is the legend's order and the color each is drawn in is
 picked off its position among them. Like the grid beside it, `usage_bands.py` names one thing outside the package —
-`analytics/query/overview_models.py`, the row a series arrives as — and the dependency between the two usage owners
-runs one way, from the series owner down to the bands it counts.
+`analytics/query/overview_models.py`, the row a series arrives as — and the dependency between these two runs one
+way, from the series owner down to the bands it counts.
 
 `usage_axis.py` and `usage_traces.py` sit above that pair and finish the family. Tokens and dollars are orders of
 magnitude apart, so the stack keeps the left axis and the cost line rides a secondary one on the right; `usage_axis.py`
 cuts both into the same number of steps from zero, which is what lets a single horizontal rule mean something on
-either scale. Each maximum is raised to 1, 2, 2.5, 5, or 10 times the decade under the step it would otherwise take,
-so an axis is labelled in the numbers an operator reads off a ruler, and a window with nothing in it is still given a
-span — a range of `[0, 0]` draws no gridlines to read the empty state against. The mode travels this far down because
-the token axis is scaled to the stack that is actually drawn: measuring the bands under a per-backend stack would
-leave the tallest band drawn past the top of its own axis. Only the token axis draws the rules, because two grids over
-one plot would cross wherever the two roundings disagree. `usage_traces.py` is what is drawn against them: the shaping
-that answers a window holding nothing with no chart at all — the caller then draws the shared placeholder — the band a
-stack is added one of at a time, the two modes it is stacked in, and the cost line overlaid on the secondary axis as a
-line with markers rather than another layer of the stack. A backend's color is picked off its position among the
-sorted backends and a token band takes the fixed hue its name is spelled in, both from the palette owner; besides that
-and the two owners beneath it, `usage_traces.py` names `analytics/query/overview_models.py` for the row a series
-arrives as, and `usage_axis.py` names nothing outside the package but the layout and palette every figure is drawn
-with. Plotly is imported inside the two calls that add a trace, so both owners stay importable in the default install.
+either scale. The step an axis would otherwise take is raised to 1, 2, 2.5, 5, or 10 times the decade beneath it and
+the maximum is that step times the count, so an axis is labelled in the numbers an operator reads off a ruler, and a
+window with nothing in it is still given a span — a range of `[0, 0]` draws no gridlines to read the empty state
+against. The mode travels this far down because the token axis is scaled to the stack that is actually drawn:
+measuring the bands under a per-backend stack would leave the tallest band drawn past the top of its own axis. Only
+the token axis draws the rules, because two grids over one plot would cross wherever the two roundings disagree.
+`usage_traces.py` is what is drawn against them: the shaping that answers a window holding nothing with no chart at
+all — the caller then draws the shared placeholder — the band a stack is added one of at a time, the two modes it is
+stacked in, and the cost line overlaid on the secondary axis as a line with markers rather than another layer of the
+stack. A backend's color is picked off its position among the sorted backends and a token band takes the fixed hue its
+name is spelled in, both from the palette owner; besides that and the two owners beneath it, `usage_traces.py` names
+`analytics/query/overview_models.py` for the row a series arrives as, and `usage_axis.py` names nothing outside the
+package but the layout and palette every figure is drawn with.
+Only the traces owner names Plotly at all, and only inside the two calls that add a trace; the axis owner hands
+back a plain dict the way the layout owner it merges does — so both import in the default install, and an axis maximum
+and the two ranges over it are checked there rather than only where the optional group is present.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
@@ -1753,7 +1756,7 @@ cells, weekday labels, hour span, and layout beneath it under theirs — so `das
 resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
 `done_per_day_bars` under its own name, and the calendar, series, and pinned height beneath it under theirs.
 `_dashboard_usage_models.py` and `_dashboard_usage_data.py` are the same kind of site one family down, and the fifteen
-names they publish are split across the two usage owners: the per-day table's alias, the four band names, the mode
+names they publish are split across the two shaping owners: the per-day table's alias, the four band names, the mode
 beside them, and the three helpers that zero a bucket, roll the series up into one, and total a day's tokens are
 `usage_bands.py`'s objects, while the two frozen shapes and the four helpers that lay the day axis out, complete the
 days only the per-backend read saw, name the backends, and total a stack are `usage_series.py`'s.
