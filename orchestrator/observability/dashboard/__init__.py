@@ -30,14 +30,17 @@ the four numbers that window is summarized by beneath them. What those reads
 are then drawn as arrives under ``charts``, where ``primitives`` holds what
 every figure family is built out of -- the placeholder a window holding no
 rows is answered with, the labels a bar is annotated by, and the height and
-legend a horizontal-bar panel is laid out with -- ``heatmap`` and
-``throughput`` hold two families above it, the 7x24 weekday-by-hour grid
-and the per-day resolved-issue strip, and ``usage_bands``, ``usage_series``,
-``usage_axis``, and ``usage_traces`` hold the usage family: the four bands a
-day of usage is counted into and the roll-up that counts them, the days that
-roll-up spans and the height each stack over them reaches, the maxima those
-heights are rounded up to and the layout the token and cost scales are
-assembled in, and the bands and cost line a window is finally drawn as.
+legend a horizontal-bar panel is laid out with -- ``cost_layout`` the frame
+the horizontal cost families are drawn in and the request one series of bars
+is described by, ``cost_horizontal``, ``heatmap``, and ``throughput`` hold
+three families above the two, the generic spend ranking, the 7x24
+weekday-by-hour grid, and the per-day resolved-issue strip, and
+``usage_bands``, ``usage_series``, ``usage_axis``, and ``usage_traces`` hold
+the usage family: the four bands a day of usage is counted into and the
+roll-up that counts them, the days that roll-up spans and the height each
+stack over them reaches, the maxima those heights are rounded up to and the
+layout the token and cost scales are assembled in, and the bands and cost
+line a window is finally drawn as.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so

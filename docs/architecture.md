@@ -488,6 +488,10 @@ orchestrator/
   dashboard_charts_throughput.py
                         historical import site for the per-day resolved-issue
                         strip, forwarding to the charts owner that builds it
+  _dashboard_cost_layout.py / _dashboard_cost_horizontal.py
+                        historical import sites for the frame the horizontal
+                        cost families are drawn in and the generic spend
+                        ranking, forwarding to the charts owners
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
   _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
@@ -812,15 +816,24 @@ orchestrator/
                         is cut to, and the share of spend that was a second
                         pass
       charts/           the Plotly figures those reads are drawn as: what
-                        every family is built out of, the weekday-by-hour grid
-                        and per-day throughput strip above it, the usage
-                        family's own shaping, axes, and traces, and the
+                        every family is built out of, the frame the horizontal
+                        cost families share, the generic spend ranking,
+                        weekday-by-hour grid, and per-day throughput strip
+                        above the two, the usage family's own shaping, axes,
+                        and traces, and the
                         destination for the families still on flat leaves
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
                         with, the money, mono, and two-line-tick labels a bar
                         is annotated by, and the height and legend a
                         horizontal-bar panel is laid out with
+        cost_layout.py  the margin, `USD` axis, and height every horizontal
+                        cost panel is framed by, plus the request one series of
+                        bars is described by and built from
+        cost_horizontal.py
+                        the generic ranking a window's spend is drawn as: the
+                        order, tint, and flip behind its bars, and the pinned
+                        call shape the builder is bound through
         heatmap.py      the 7x24 weekday-by-hour token-volume grid: the cells a
                         window's points are bucketed into, the labels and hour
                         span shaping them, and the layout that squares them off
@@ -1667,7 +1680,23 @@ added. The owner names the theme owners it draws with and nothing else, so the d
 way and a direct import of any single chart module stays cycle-free. Plotly is reached inside the one call that builds
 a figure, which is what keeps importing anything under `dashboard/` free of the optional dependency group.
 
-`heatmap.py` is the first family to sit above those pieces: the 7x24 grid a window's activity rhythm is read off, a row
+`cost_layout.py` sits above it with the frame three families share — the generic ranking, the per-stage split, and the
+per-review-round split all draw dollars along a horizontal axis, and they read as one page only while the gutter their
+labels sit in, the `USD` axis under a `$` tick prefix, and the height they grow by are decided once. The bar itself
+arrives as a frozen request rather than a pile of keyword arguments, because what differs between those families is
+which halves are present: a side-by-side split names an offsetgroup so its bars share a y bucket, and only the outer
+trace of a stack carries the total, so an amount is labelled once per bar instead of once per segment.
+
+`cost_horizontal.py` is the first family on that frame and the one the per-repository adapter draws through. Rows of
+label, subtitle, cost, and color become one bar each, ranked by spend unless the caller has already ordered them, and
+the whole series is flipped on the way out because a Plotly bar axis draws the first row at the bottom — all four
+columns together, or a label would part company with the amount beside it. A row naming no color falls back to the
+caller's accent and then the page's, so a ranking is one hue rather than a striped chart. The builder takes
+`*args` / `**kwargs` and binds them through a pinned `Signature`, which is what keeps `items` the name the rows may be
+passed by and keeps `inspect.signature` reporting that call shape rather than the pair the body receives.
+
+`heatmap.py` is the next family here, drawn straight off the shared pieces rather than that frame: the 7x24 grid a
+window's activity rhythm is read off, a row
 per weekday and a column per hour. What fills a cell is token volume rather than event count, because counting events
 would weigh the cheap `stage_enter` and `stage_evaluation` rows the same as the agent exits that drive spend and the
 busiest-looking hours would be the ones that cost nothing — the per-cell count stays on the row for a caller that wants
@@ -1755,6 +1784,12 @@ charts owner's objects under the private spellings the usage and cost leaves imp
 cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
 resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
 `done_per_day_bars` under its own name, and the calendar, series, and pinned height beneath it under theirs.
+`_dashboard_cost_layout.py` and `_dashboard_cost_horizontal.py` are two more beside them, forwarding the panel margin,
+the layout and trace models with the two helpers that apply them, and the ranking's four columns, sort key, default
+height, pinned signature, and builder. None of the grid, the strip, or the ranking is stamped with a historical
+`__module__` on the way out — the heatmap and throughput sites make no such call at all, and `cost_horizontal_bars` is
+the one public builder `dashboard_charts_cost.py` leaves out of its `preserve_defining_module` list — because the
+stamp mutates the object, so claiming a builder a charts owner defines would rewrite the owner's own function.
 `_dashboard_usage_models.py` and `_dashboard_usage_data.py` are the same kind of site one family down, and the fifteen
 names they publish are split across the two shaping owners: the per-day table's alias, the four band names, the mode
 beside them, and the three helpers that zero a bucket, roll the series up into one, and total a day's tokens are

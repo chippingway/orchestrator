@@ -18,6 +18,10 @@ _DASHBOARD = "orchestrator.observability.dashboard"
 
 _PACKAGE = f"{_DASHBOARD}.charts"
 
+_COST_LAYOUT_OWNER = "cost_layout"
+
+_COST_RANKING_OWNER = "cost_horizontal"
+
 _HEATMAP_OWNER = "heatmap"
 
 _PRIMITIVES_OWNER = "primitives"
@@ -36,6 +40,8 @@ _USAGE_TRACES_OWNER = "usage_traces"
 # paragraph in the module map, which is what the inventory check compares the
 # directory against.
 _OWNERS = (
+    _COST_LAYOUT_OWNER,
+    _COST_RANKING_OWNER,
     _HEATMAP_OWNER,
     _PRIMITIVES_OWNER,
     _THROUGHPUT_OWNER,
@@ -46,15 +52,31 @@ _OWNERS = (
 )
 
 # What each owner answers for, declared rather than discovered so a second way
-# to say "nothing matches this window", label a bar, size the panel it sits in,
-# bucket a token volume into a weekday cell, lay a window's rows over its
-# calendar, count a day of usage, scale the axis it is drawn against, or stack
-# it is a deliberate edit rather than a place two chart families could
-# disagree. The two bar-sizing constants, the heatmap's weekday labels and hour
-# span, the strip's pinned height, the band names, the per-day table's alias,
-# and the usage grid-step and height constants are all invisible here because
-# the check reads `__module__`, which only a class or a function carries.
+# to say "nothing matches this window", label a bar, frame and size the panel
+# it sits in, rank a window's spend, bucket a token volume into a weekday cell,
+# lay a window's rows over its calendar, count a day of usage, scale the axis
+# it is drawn against, or stack it is a deliberate edit rather than a place two
+# chart families could disagree. The two bar-sizing constants, the panel
+# margin, the empty-ranking height, the pinned call signature, the heatmap's
+# weekday labels and hour span, the strip's pinned height, the band names, the
+# per-day table's alias, and the usage grid-step and height constants are all
+# invisible here because the check reads `__module__`, which only a class or a
+# function carries.
 _SURFACES = MappingProxyType({
+    _COST_LAYOUT_OWNER: (
+        "CostBarTrace",
+        "HorizontalCostLayout",
+        "apply_horizontal_cost_layout",
+        "cost_bar_trace",
+    ),
+    _COST_RANKING_OWNER: (
+        "HorizontalBarRequest",
+        "HorizontalBars",
+        "cost_horizontal_bars",
+        "cost_item_sort_key",
+        "horizontal_bars_data",
+        "reverse_horizontal_bars",
+    ),
     _HEATMAP_OWNER: (
         "heatmap_layout",
         "heatmap_matrix",
@@ -111,6 +133,8 @@ _COMPATIBILITY_SITES = (
     "orchestrator.dashboard_charts_base",
     "orchestrator.dashboard_charts_heatmap",
     "orchestrator.dashboard_charts_throughput",
+    "orchestrator._dashboard_cost_layout",
+    "orchestrator._dashboard_cost_horizontal",
     "orchestrator._dashboard_usage_axis",
     "orchestrator._dashboard_usage_data",
     "orchestrator._dashboard_usage_models",

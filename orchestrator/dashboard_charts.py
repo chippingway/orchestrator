@@ -10,19 +10,21 @@ matrix for the 7x24 heatmap) and returns a ``plotly.graph_objects.Figure``;
 the dashboard layer owns the query + sidebar filters and hands the resulting
 ``Figure`` to ``st.plotly_chart``.
 
-The chart families and their homes. A family still holding its own builders
+The chart families and their homes. A builder still defined on a flat leaf
 imports the shared low-level primitives it needs one-directionally through
 ``orchestrator.dashboard_charts_base``, the historical site in front of the
-owner holding them, so a direct import of any of them is cycle-free; a family
-that has moved names that owner directly:
+owner holding them, so a direct import of any of them is cycle-free; a builder
+that has moved names the primitives and theme owners it draws with directly:
 
 - ``orchestrator.dashboard_charts_usage`` -- ``usage_over_time`` (stacked-area
   daily token consumption with a cost-line overlay, in token-type or
   per-backend stack mode) and the ``backend_per_day`` stub that feeds its
   per-backend stack.
-- ``orchestrator.dashboard_charts_cost`` -- the horizontal cost-bar family
-  (``cost_horizontal_bars`` / ``cost_by_repo`` / ``cost_by_stage`` /
-  ``cost_by_review_round``).
+- ``orchestrator.dashboard_charts_cost`` -- the horizontal cost-bar family:
+  ``cost_by_repo`` / ``cost_by_stage`` / ``cost_by_review_round`` are built
+  on flat leaves beneath it, while ``cost_horizontal_bars``, the generic
+  ranking the per-repository one is drawn through, is forwarded from the
+  charts owner that builds it.
 - ``orchestrator.dashboard_charts_heatmap`` -- ``hour_weekday_heatmap``, the
   7x24 weekday-by-hour token-volume heatmap, forwarded from the charts owner
   that builds it.

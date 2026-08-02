@@ -9,6 +9,10 @@ from types import MappingProxyType, ModuleType
 
 _BASE_SITE = "orchestrator.dashboard_charts_base"
 
+_COST_LAYOUT_SITE = "orchestrator._dashboard_cost_layout"
+
+_COST_RANKING_SITE = "orchestrator._dashboard_cost_horizontal"
+
 _HEATMAP_SITE = "orchestrator.dashboard_charts_heatmap"
 
 _THROUGHPUT_SITE = "orchestrator.dashboard_charts_throughput"
@@ -22,6 +26,10 @@ _USAGE_AXIS_SITE = "orchestrator._dashboard_usage_axis"
 _USAGE_TRACES_SITE = "orchestrator._dashboard_usage_traces"
 
 _PACKAGE = "orchestrator.observability.dashboard.charts"
+
+_COST_LAYOUT = f"{_PACKAGE}.cost_layout"
+
+_COST_RANKING = f"{_PACKAGE}.cost_horizontal"
 
 _HEATMAP = f"{_PACKAGE}.heatmap"
 
@@ -59,6 +67,38 @@ _FORWARDED_PRIMITIVES = (
     ("_monospace_textfont", _PRIMITIVES, "monospace_textfont"),
     ("_reverse_lists", _PRIMITIVES, "reverse_lists"),
     ("_two_line_y_ticks", _PRIMITIVES, "two_line_y_ticks"),
+)
+
+# The frame the three horizontal cost families share. The generic ranking, the
+# per-stage split, and the per-review-round split each reach it through this
+# site, so a copy here is how one of them would end up gutter'd or sized unlike
+# the two beside it.
+_FORWARDED_COST_LAYOUT = (
+    ("HORIZONTAL_BAR_MARGIN", _COST_LAYOUT, "HORIZONTAL_BAR_MARGIN"),
+    ("_CostBarTrace", _COST_LAYOUT, "CostBarTrace"),
+    ("_HorizontalCostLayout", _COST_LAYOUT, "HorizontalCostLayout"),
+    (
+        "_apply_horizontal_cost_layout",
+        _COST_LAYOUT,
+        "apply_horizontal_cost_layout",
+    ),
+    ("_cost_bar_trace", _COST_LAYOUT, "cost_bar_trace"),
+)
+
+# The generic ranking, reached through its own site by the cost hub and by the
+# per-repository adapter that draws its rows through it. The pinned signature is
+# listed beside the builder because that is the call shape both of them are
+# written against: a second `Signature` here would let the two disagree about
+# what `items` is spelled.
+_FORWARDED_COST_RANKING = (
+    ("DEFAULT_CHART_HEIGHT", _COST_RANKING, "DEFAULT_CHART_HEIGHT"),
+    ("_HORIZONTAL_BAR_SIGNATURE", _COST_RANKING, "HORIZONTAL_BAR_SIGNATURE"),
+    ("_HorizontalBarRequest", _COST_RANKING, "HorizontalBarRequest"),
+    ("_HorizontalBars", _COST_RANKING, "HorizontalBars"),
+    ("_cost_item_sort_key", _COST_RANKING, "cost_item_sort_key"),
+    ("_horizontal_bars_data", _COST_RANKING, "horizontal_bars_data"),
+    ("_reverse_horizontal_bars", _COST_RANKING, "reverse_horizontal_bars"),
+    ("cost_horizontal_bars", _COST_RANKING, "cost_horizontal_bars"),
 )
 
 # The heatmap the hub re-exports through its own site, with the cells, labels,
@@ -150,6 +190,8 @@ _FORWARDED_USAGE_TRACES = (
 # name they publish resolves to.
 _FORWARDED_MODULES = MappingProxyType({
     _BASE_SITE: _FORWARDED_PRIMITIVES,
+    _COST_LAYOUT_SITE: _FORWARDED_COST_LAYOUT,
+    _COST_RANKING_SITE: _FORWARDED_COST_RANKING,
     _HEATMAP_SITE: _FORWARDED_HEATMAP,
     _THROUGHPUT_SITE: _FORWARDED_THROUGHPUT,
     _USAGE_AXIS_SITE: _FORWARDED_USAGE_AXIS,
@@ -198,10 +240,10 @@ class ForwardedChartModuleTest(unittest.TestCase):
                 )
 
     def test_no_site_defines_anything_of_its_own(self) -> None:
-        # What keeps the forwarding thin: an implementation here would be a
-        # second primitive, a second grid, a second strip, or a second band
-        # the check above cannot see, because it only compares the names the
-        # module was asked for.
+        # What keeps the forwarding thin: a second primitive, frame, ranking,
+        # grid, strip, or band here would be an implementation the check above
+        # cannot see, because it only compares the names the module was asked
+        # for.
         for site in _FORWARDED_MODULES:
             defined = tuple(
                 name
