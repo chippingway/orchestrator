@@ -6,9 +6,9 @@ The knob a fan-out is enabled by, the truthy spellings it accepts, the parse
 that reads it, the flag one page load is issued under, the worker cap it runs
 under, and the text an unconfigured database is refused with. Naming the knob
 beside the parse is what stops the environment variable a `.env` sets and the
-one a page reads from drifting apart; the fan-out itself still runs beside the
-page, so what is decided here is what the reads are issued under rather than
-how they are issued.
+one a page reads from drifting apart. Running a wave of readers either way is
+the `fanout` sibling's, which reads the cap back from here: what is decided
+here is what the reads are issued under rather than how they are issued.
 
 The two answers are read at opposite times on purpose. The flag is parsed once,
 at this module's import, because an operator turns the fan-out on by restarting

@@ -18,6 +18,8 @@ _PACKAGE = "orchestrator.observability.dashboard"
 
 _CSS_OWNER = "css"
 
+_FANOUT_OWNER = "fanout"
+
 _FILTERS_OWNER = "filters"
 
 _FORMATTING_OWNER = "formatting"
@@ -37,6 +39,7 @@ _WINDOWS_OWNER = "windows"
 # against.
 _OWNERS = (
     _CSS_OWNER,
+    _FANOUT_OWNER,
     _FILTERS_OWNER,
     _FORMATTING_OWNER,
     _LAYOUT_OWNER,
@@ -48,18 +51,20 @@ _OWNERS = (
 
 # What each owner answers for, declared rather than discovered so a second way
 # to resolve a color, lay a chart out, shorten a number, spell a window,
-# normalize a selection, key a cached read, or decide which way a load's reads
-# are issued is a deliberate edit rather than a place two panels -- or the
-# reads' `ts < end` bound and the cache's tri-state -- could disagree. Three
-# owners report nothing because the check reads `__module__`, which only a
-# class or a function carries: the palette's whole surface past its resolver is
-# the chrome colors and the seven dimension maps, the geometry owner's is its
-# measurements and the two font stacks, and the stylesheet owner's is one
-# string. The preset vocabulary the window owner decides is invisible here for
-# the same reason, as are the read-mode owner's knob name, truthy spellings,
-# worker cap, refusal message, and the flag its import binds.
+# normalize a selection, key a cached read, decide which way a load's reads are
+# issued, or run one wave of them that way is a deliberate edit rather than a
+# place two panels -- or the reads' `ts < end` bound and the cache's tri-state
+# -- could disagree. Three owners report nothing because the check reads
+# `__module__`, which only a class or a function carries: the palette's whole
+# surface past its resolver is the chrome colors and the seven dimension maps,
+# the geometry owner's is its measurements and the two font stacks, and the
+# stylesheet owner's is one string. The preset vocabulary the window owner
+# decides is invisible here for the same reason, as are the read-mode owner's
+# knob name, truthy spellings, worker cap, refusal message, and the flag its
+# import binds, and the alias the fan-out owner names a reader by.
 _SURFACES = MappingProxyType({
     _CSS_OWNER: (),
+    _FANOUT_OWNER: ("fan_out_reads",),
     _FILTERS_OWNER: (
         "DashboardCacheKey",
         "cache_key",
@@ -98,11 +103,12 @@ _SURFACES = MappingProxyType({
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
-# flat theme module, the state hub, and the three leaves beneath it. No owner
+# flat theme module, the state hub, and the four leaves beneath it. No owner
 # here may plant one -- that is what keeps the forwarding one-directional and
 # the flat modules retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_filter_state",
+    "orchestrator._dashboard_read_mode",
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_state",

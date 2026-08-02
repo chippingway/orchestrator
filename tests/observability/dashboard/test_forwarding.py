@@ -13,8 +13,6 @@ _STATE_HUB = "orchestrator.dashboard_state"
 
 _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
 
-_FAN_OUT = "fan_out_reads"
-
 # `from __future__ import annotations` opens every module in the repository and
 # binds the compiler directive under a public name. It is a compilation
 # instruction rather than something the theme answers for, so the surface check
@@ -24,6 +22,8 @@ _FUTURE_DIRECTIVE = "annotations"
 _PACKAGE = "orchestrator.observability.dashboard"
 
 _CSS = f"{_PACKAGE}.css"
+
+_FANOUT = f"{_PACKAGE}.fanout"
 
 _FILTERS = f"{_PACKAGE}.filters"
 
@@ -123,11 +123,10 @@ _OFFSET_BOUND_NAMES = (
     ("MIN_UTC_OFFSET", _FILTERS, "MIN_UTC_OFFSET"),
 )
 
-# The read-mode constants the fan-out beside the page still consults. These
-# are the names that have to keep pointing at one knob and one refusal message
-# rather than a copy each. The truthy set is listed apart because the two sites
-# spell it differently: bare on the leaf, and under a leading underscore on the
-# hub.
+# The read-mode constants the page still names directly. These are the names
+# that have to keep pointing at one knob and one refusal message rather than a
+# copy each. The truthy set is listed apart because the two sites spell it
+# differently: bare on the leaf, and under a leading underscore on the hub.
 _READ_MODE_NAMES = (
     ("PARALLEL_READS_ENV", _READ_MODE, "PARALLEL_READS_ENV"),
     ("PARALLEL_READS_MAX_WORKERS", _READ_MODE, "PARALLEL_READS_MAX_WORKERS"),
@@ -166,6 +165,17 @@ _LEAF_READ_MODE_HELPERS = (
     ("parse_parallel_reads_flag", _READ_MODE, "parse_parallel_reads_flag"),
 )
 
+# The dispatch a page's read waves are run through, and the alias one reader
+# in a wave is spelled by. Both sites have to reach the one fan-out: a wave
+# submitted through a copy would key its results the same way while running
+# them under whatever cap that copy was written with.
+_LEAF_FAN_OUT_NAMES = (
+    ("NamedReader", _FANOUT, "NamedReader"),
+    ("fan_out_reads", _FANOUT, "fan_out_reads"),
+)
+
+_HUB_FAN_OUT_NAME = ("_fan_out_reads", _FANOUT, "fan_out_reads")
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -202,10 +212,11 @@ _FORWARDED_MODULES = MappingProxyType({
     ),
     "orchestrator._dashboard_windows": (*_WINDOW_NAMES, _LEAF_EXTENT_NAME),
     "orchestrator._dashboard_filter_state": _FILTER_NAMES,
+    _READ_MODE_LEAF: (*_LEAF_READ_MODE_HELPERS, *_LEAF_FAN_OUT_NAMES),
 })
 
 # The hub the page and the compatibility facade in front of it read the state
-# off. It keeps the two historical aliases for the inline presets and the three
+# off. It keeps the two historical aliases for the inline presets and the four
 # private spellings a caller reached it for, so those are pinned beside the
 # public names.
 _FORWARDED_HUB = (
@@ -217,6 +228,7 @@ _FORWARDED_HUB = (
     *_FILTER_NAMES,
     _HUB_TRUTHY_NAME,
     _HUB_EXTENT_NAME,
+    _HUB_FAN_OUT_NAME,
     ("PRESET_3D", _WINDOWS, "PRESET_RECENT_THREE_DAYS"),
     ("PRESET_7D", _WINDOWS, "PRESET_RECENT_WEEK"),
 )
@@ -278,7 +290,7 @@ class ForwardedFlatModuleTest(unittest.TestCase):
                     )
 
     def test_no_flat_module_defines_one_itself(self) -> None:
-        # The same rule the theme site is held to, applied to the three leaves
+        # The same rule the theme site is held to, applied to the four leaves
         # beneath the state hub: a module that defined a name of its own would
         # be a second implementation the check above cannot see, because it
         # only compares the names the module was asked for.
@@ -290,33 +302,6 @@ class ForwardedFlatModuleTest(unittest.TestCase):
             )
             with self.subTest(module=module_name):
                 self.assertEqual(defined, ())
-
-
-class ForwardedReadModeLeafTest(unittest.TestCase):
-    """The leaf beside the page keeps the fan-out and nothing else."""
-
-    def test_each_helper_resolves_to_the_owner(self) -> None:
-        leaf = import_module(_READ_MODE_LEAF)
-        for name, owner_name, attribute in _LEAF_READ_MODE_HELPERS:
-            with self.subTest(name=name):
-                self.assertIs(
-                    getattr(leaf, name),
-                    getattr(import_module(owner_name), attribute),
-                )
-
-    def test_the_fan_out_is_the_only_thing_it_defines(self) -> None:
-        # The one flat module under these owners that legitimately defines
-        # something: how a load's reads are issued is the page's own
-        # arrangement, while what they are issued under is the owner's. A
-        # second name defined here would be one of the owner's answers given
-        # again, which is what the identity check above cannot see.
-        leaf = import_module(_READ_MODE_LEAF)
-        defined = tuple(
-            name
-            for name, member in leaf.__dict__.items()
-            if getattr(member, "__module__", None) == _READ_MODE_LEAF
-        )
-        self.assertEqual(defined, (_FAN_OUT,))
 
 
 class ForwardedStateHubTest(unittest.TestCase):

@@ -475,10 +475,11 @@ orchestrator/
   dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
   dashboard_theme.py    historical import site for the shared visual theme,
                         forwarding to the dashboard owners
-  dashboard_state.py    stable state hub reading the window, filter, and
-                        read-mode owners under observability/dashboard/
+  dashboard_state.py    stable state hub reading the window, filter, read-mode,
+                        and fan-out owners under observability/dashboard/
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
+  _dashboard_read_mode.py
                         historical state import sites forwarding to those owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
@@ -734,6 +735,9 @@ orchestrator/
                         are issued under, the worker cap, and the refusal an
                         unconfigured database is answered with, message
                         and URL check together
+      fanout.py         one wave of named readers run the way that flag said:
+                        on the calling thread, or across a pool capped at the
+                        worker count beside the knob
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1446,20 +1450,21 @@ the stage multiselect's three states, and the key every cached read is stored un
 the other three, and a selection normalized in one module and hashed in another is how two different filter sets end
 up sharing a cache entry. `read_mode.py` owns the parallel-read knob, its truthy spellings, the worker cap, and the
 text an unconfigured database is refused with, together with the three reads over them — the parse, the flag it binds
-at import, and the refusal — so what a page's reads are issued under is decided here rather than where the fan-out
-runs. The flag and the URL are read at opposite times on purpose: the flag is parsed once at that module's import,
-because an operator turns the fan-out on by restarting the Streamlit process, while the database URL is read inside
-the call off whichever analytics package the name resolves to. The window owner names
-`analytics/query/overview_models.py` for the extent a preset anchors at, and the read-mode owner names
-`analytics/config.py` for the URL it refuses without; those are the only things any of the three reaches outside the
-package.
+at import, and the refusal — so what a page's reads are issued under is settled in one place. The flag and the URL are
+read at opposite times on purpose: the flag is parsed once at that module's import, because an operator turns the
+fan-out on by restarting the Streamlit process, while the database URL is read inside the call off whichever analytics
+package the name resolves to. `fanout.py` then runs one wave of named readers the way that flag said — on the calling
+thread, or across a pool capped at the worker count beside the knob — keying each result by the name it was submitted
+under and letting the first read error reach the caller, because a failed load is answered with one banner rather than
+a partial page. The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, and
+the read-mode owner names `analytics/config.py` for the URL it refuses without; those are the only things any of the
+four reaches outside the package, and the fan-out reaches nothing past the sibling it takes its cap from.
 
-`dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, and the three
-leaves it used to hold — `_dashboard_windows.py`, `_dashboard_filter_state.py`, and `_dashboard_state_constants.py` —
-define nothing and forward each historical name, the private `_TRUTHY` and `_extent_dates` spellings included, to the
-owner's own object. `_dashboard_read_mode.py` forwards the three read-mode helpers the same way and keeps one
-definition of its own, the fan-out: how a load's reads are issued is the page's arrangement, while what they are
-issued under is the owner's.
+`dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, and the four flat
+leaves beneath it — `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, and
+`_dashboard_read_mode.py` — define nothing and forward each historical name to the owner's own object. The private
+`_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the hub publishes resolve to
+those same objects.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
