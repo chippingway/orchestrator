@@ -482,6 +482,9 @@ orchestrator/
   dashboard_charts_base.py
                         historical import site for the primitives every chart
                         family is drawn out of, forwarding to the charts owner
+  dashboard_charts_heatmap.py
+                        historical import site for the weekday-by-hour activity
+                        grid, forwarding to the charts owner that builds it
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
   _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
@@ -798,13 +801,17 @@ orchestrator/
                         is cut to, and the share of spend that was a second
                         pass
       charts/           the Plotly figures those reads are drawn as: what
-                        every family is built out of, and the destination for
-                        the families themselves
+                        every family is built out of, the weekday-by-hour grid
+                        that is the first family above it, and the destination
+                        for the families still on flat leaves
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
                         with, the money, mono, and two-line-tick labels a bar
                         is annotated by, and the height and legend a
                         horizontal-bar panel is laid out with
+        heatmap.py      the 7x24 weekday-by-hour token-volume grid: the cells a
+                        window's points are bucketed into, the labels and hour
+                        span shaping them, and the layout that squares them off
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1629,6 +1636,19 @@ added. The owner names the theme owners it draws with and nothing else, so the d
 way and a direct import of any single chart module stays cycle-free. Plotly is reached inside the one call that builds
 a figure, which is what keeps importing anything under `dashboard/` free of the optional dependency group.
 
+`heatmap.py` is the first family to sit above those pieces: the 7x24 grid a window's activity rhythm is read off, a row
+per weekday and a column per hour. What fills a cell is token volume rather than event count, because counting events
+would weigh the cheap `stage_enter` and `stage_evaluation` rows the same as the agent exits that drive spend and the
+busiest-looking hours would be the ones that cost nothing — the per-cell count stays on the row for a caller that wants
+it. The rows are drawn in the weekday numbering the read arrives under, Sunday first, so a point's weekday indexes its
+row directly rather than through a re-mapping that could shift every cell an operator reads off the axis. A point
+naming a cell the grid does not have is dropped rather than raised on, since one out-of-range weekday is not worth a
+page that fails to load. The empty window is the one place this family answers differently from the shared placeholder:
+the grid is still drawn and the "nothing matches" sentence is annotated over it, because an empty heatmap is a legible
+result where an empty bar series is not. Nothing here shifts a timestamp — the hour axis is annotated with the zone the
+caller says the cells were read under — so besides the theme owners it draws with, the only thing it names outside the
+package is `analytics/query/activity_models.py`, the row those cells arrive as.
+
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
 socket out of, the metadata owner and the dispatch owner both name the error a failed read arrives as — the first
@@ -1650,7 +1670,10 @@ the owner's own object. The read hub defines nothing of its own either, so nothi
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
 them to the two owners that hold each. `dashboard_charts_base.py` is one too: the placeholder, the three label
 helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height are the
-charts owner's objects under the private spellings the usage, cost, and throughput leaves import them by. The trigger
+charts owner's objects under the private spellings the usage, cost, and throughput leaves import them by.
+`dashboard_charts_heatmap.py` is the same site for the grid family — `hour_weekday_heatmap` under its own name, and the
+cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
+resolving to the figure the owner builds. The trigger
 rates are reached through the breakdown leaf and the other two skill reads through the leaf named for them, because
 that is where a caller has always spelled each. The private
 `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and

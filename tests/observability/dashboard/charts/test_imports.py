@@ -18,19 +18,28 @@ _DASHBOARD = "orchestrator.observability.dashboard"
 
 _PACKAGE = f"{_DASHBOARD}.charts"
 
+_HEATMAP_OWNER = "heatmap"
+
 _PRIMITIVES_OWNER = "primitives"
 
 # The declared inventory. A new chart family is a deliberate edit here and a
 # paragraph in the module map, which is what the inventory check compares the
 # directory against.
-_OWNERS = (_PRIMITIVES_OWNER,)
+_OWNERS = (_HEATMAP_OWNER, _PRIMITIVES_OWNER)
 
-# What the owner answers for, declared rather than discovered so a second way
-# to say "nothing matches this window", label a bar, or size the panel it sits
-# in is a deliberate edit rather than a place two chart families could disagree.
-# The two bar-sizing constants are invisible here because the check reads
-# `__module__`, which only a class or a function carries.
+# What each owner answers for, declared rather than discovered so a second way
+# to say "nothing matches this window", label a bar, size the panel it sits in,
+# or bucket a token volume into a weekday cell is a deliberate edit rather than
+# a place two chart families could disagree. The two bar-sizing constants and
+# the heatmap's weekday labels and hour span are invisible here because the
+# check reads `__module__`, which only a class or a function carries.
 _SURFACES = MappingProxyType({
+    _HEATMAP_OWNER: (
+        "heatmap_layout",
+        "heatmap_matrix",
+        "hour_weekday_heatmap",
+        "valid_heatmap_point",
+    ),
     _PRIMITIVES_OWNER: (
         "empty_figure",
         "horizontal_legend",
@@ -42,16 +51,20 @@ _SURFACES = MappingProxyType({
     ),
 })
 
-# The historical import site the chart leaves still reach this owner through.
-# No owner here may plant it -- that is what keeps the forwarding
-# one-directional and the flat module retirable rather than load-bearing.
-_COMPATIBILITY_SITE = "orchestrator.dashboard_charts_base"
+# The historical import sites the chart leaves still reach these owners
+# through. No owner here may plant one -- that is what keeps the forwarding
+# one-directional and the flat modules retirable rather than load-bearing.
+_COMPATIBILITY_SITES = (
+    "orchestrator.dashboard_charts_base",
+    "orchestrator.dashboard_charts_heatmap",
+)
 
 # What an owner here may reach: the theme owners a figure is drawn with, which
-# is one package up, and the root package every import plants on its way in. A
-# color, a font stack, and the layout every figure is merged with are answers
-# already decided there, so a builder names those owners rather than restating
-# a hue or a margin of its own.
+# is one package up, the read models whose rows it is drawn from, which are
+# under the analytics query owners, and the root package every import plants on
+# its way in. A color, a font stack, the layout every figure is merged with,
+# and the shape of a row are answers already decided there, so a builder names
+# those owners rather than restating a hue, a margin, or a field of its own.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # Plotly ships in the optional `dashboard` dependency group, so a figure is
@@ -132,15 +145,16 @@ class LayeringTest(unittest.TestCase):
                         f"{owner} reaches {imported}",
                     )
 
-    def test_no_owner_plants_the_historical_site(self) -> None:
+    def test_no_owner_plants_a_historical_site(self) -> None:
         # The sharpest case the check above rejects, named on its own: the
-        # flat module the chart leaves import forwards *to* this owner, so an
-        # import back would close the loop and leave a direct import of any
+        # flat modules the chart leaves import forward *to* these owners, so
+        # an import back would close the loop and leave a direct import of any
         # chart module resolving off a half-initialized one.
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
-            with self.subTest(owner=owner):
-                self.assertNotIn(_COMPATIBILITY_SITE, planted)
+            for site in _COMPATIBILITY_SITES:
+                with self.subTest(owner=owner, site=site):
+                    self.assertNotIn(site, planted)
 
     def test_no_import_here_loads_plotly(self) -> None:
         for module in (_DASHBOARD, _PACKAGE, *map(_qualified, _OWNERS)):

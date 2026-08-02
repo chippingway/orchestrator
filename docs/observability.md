@@ -38,7 +38,8 @@ with above all of them plus the four numbers it is summarized by beneath those (
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
 `dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`), the primitives every chart family on
-that page is drawn out of (`dashboard/charts/primitives.py`), the
+that page is drawn out of plus the weekday-by-hour grid that is the first family above them
+(`dashboard/charts/primitives.py`, `dashboard/charts/heatmap.py`), the
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
@@ -1419,18 +1420,23 @@ base color so the pair stays visibly tied to the role), `hour_weekday_heatmap` (
 per-cell token totals, Sunday-first, with a `tz_label` parameter that annotates the x-axis — the caller passes the
 matching offset to `get_hourly_heatmap` so cells already reflect that zone), and `done_per_day_bars` (resolved-per-day
 bars with explicit `window_start` / `window_end` for zero-day backfill). `orchestrator/dashboard_charts.py` is a pure
-re-export hub: each chart family lives in a focused leaf -- `usage_over_time` / `backend_per_day` in
+re-export hub: each chart family is reached through a focused leaf -- `usage_over_time` / `backend_per_day` in
 `orchestrator/dashboard_charts_usage.py`, the cost-bar family (`cost_horizontal_bars` / `cost_by_repo` / `cost_by_stage`
-/ `cost_by_review_round`) in `orchestrator/dashboard_charts_cost.py`, `hour_weekday_heatmap` in
+/ `cost_by_review_round`) in `orchestrator/dashboard_charts_cost.py`, `hour_weekday_heatmap` through
 `orchestrator/dashboard_charts_heatmap.py`, and `done_per_day_bars` in `orchestrator/dashboard_charts_throughput.py` --
 and the hub re-imports each public builder under its original name. The shared low-level chart primitives
 (`empty_figure`, the money / mono-textfont / two-line-tick and panel-height / legend helpers) live under
 `orchestrator/observability/dashboard/charts/primitives.py`, which the usage / cost / throughput leaves reach through
 `orchestrator/dashboard_charts_base.py` -- their historical import site, forwarding each private spelling to the
-owner's own object and implementing nothing (the heatmap leaf inlines its own empty-state and imports none) -- so the
-dependency runs one way and a direct import of any chart module is cycle-free. Plotly is imported inside the one
-primitive that builds a figure, so the owner beneath the leaves stays importable without the optional `dashboard`
-dependency group. The topbar, filter meta, KPI strip,
+owner's own object and implementing nothing -- so the dependency runs one way and a direct import of any chart module
+is cycle-free. The heatmap family has moved under the same package:
+`orchestrator/observability/dashboard/charts/heatmap.py` builds the figure -- and draws its own empty-state annotation
+over the grid rather than routing through the shared placeholder, because an empty heatmap is still legible -- while
+`orchestrator/dashboard_charts_heatmap.py` is the historical site in front of it, forwarding `hour_weekday_heatmap`
+plus the cell / label / layout spellings beneath it to the owner's own objects and implementing nothing. A test that
+has to intercept one of them patches the owner, because that is what the flat site resolves to. Plotly is imported
+inside the calls that build a figure, so both owners stay importable without the optional `dashboard` dependency
+group. The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are built by inline-HTML
 helpers in `orchestrator/dashboard_html.py`; the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip live in `orchestrator/dashboard_cards.py`; the primary per-session

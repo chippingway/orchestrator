@@ -57,6 +57,9 @@ _USAGE_LEAF = "orchestrator.dashboard_charts_usage"
 _HEATMAP_LEAF = "orchestrator.dashboard_charts_heatmap"
 
 
+_HEATMAP_OWNER = "orchestrator.observability.dashboard.charts.heatmap"
+
+
 _THROUGHPUT_LEAF = "orchestrator.dashboard_charts_throughput"
 
 
@@ -72,6 +75,9 @@ _CHART_LEAVES = (
 _REPO_ROOT = str(Path(__file__).resolve().parents[1])
 
 
+# Each public builder and the module that defines it. A family still on a flat
+# leaf is defined there; the heatmap is defined by its owner under
+# `observability`, and the flat leaf named for it forwards that same object.
 _BUILDER_HOMES = (
     ("cost_horizontal_bars", _COST_LEAF),
     ("cost_by_repo", _COST_LEAF),
@@ -79,7 +85,7 @@ _BUILDER_HOMES = (
     ("cost_by_review_round", _COST_LEAF),
     ("usage_over_time", _USAGE_LEAF),
     ("backend_per_day", _USAGE_LEAF),
-    ("hour_weekday_heatmap", _HEATMAP_LEAF),
+    ("hour_weekday_heatmap", _HEATMAP_OWNER),
     ("done_per_day_bars", _THROUGHPUT_LEAF),
 )
 
@@ -123,22 +129,22 @@ class DirectLeafImportTest(unittest.TestCase):
 
 @unittest.skipUnless(HAS_PLOTLY, _SKIP_REASON)
 class ChartHubExtractionTest(unittest.TestCase):
-    """Each chart family's public builders live in a focused leaf module, and
+    """Each chart family's public builders live in one focused module, and
     the `orchestrator.dashboard_charts` hub re-exports each under its original
     name so `dashboard_charts.<builder>` (the widget pipeline and these tests
     reach it) keeps resolving to the same object.
     """
 
-    def test_builders_defined_in_their_leaf(self) -> None:
+    def test_builders_defined_in_their_home(self) -> None:
         for name, module_name in _BUILDER_HOMES:
             with self.subTest(builder=name):
-                leaf = importlib.import_module(module_name)
-                self.assertEqual(getattr(leaf, name).__module__, module_name)
+                home = importlib.import_module(module_name)
+                self.assertEqual(getattr(home, name).__module__, module_name)
 
-    def test_hub_reexports_the_leaf_objects(self) -> None:
+    def test_hub_reexports_the_home_objects(self) -> None:
         from orchestrator import dashboard_charts
 
         for name, module_name in _BUILDER_HOMES:
             with self.subTest(builder=name):
-                leaf = importlib.import_module(module_name)
-                self.assertIs(getattr(dashboard_charts, name), getattr(leaf, name))
+                home = importlib.import_module(module_name)
+                self.assertIs(getattr(dashboard_charts, name), getattr(home, name))
