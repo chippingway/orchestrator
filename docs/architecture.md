@@ -488,6 +488,10 @@ orchestrator/
   dashboard_charts_throughput.py
                         historical import site for the per-day resolved-issue
                         strip, forwarding to the charts owner that builds it
+  dashboard_charts_usage.py
+                        stable usage-chart surface, forwarding the two public
+                        builders and the shaping beneath them to the charts
+                        owners
   _dashboard_cost_layout.py / _dashboard_cost_horizontal.py
                         historical import sites for the frame the horizontal
                         cost families are drawn in and the generic spend
@@ -510,6 +514,10 @@ orchestrator/
                         historical import sites for the usage chart's aligned
                         axes and the traces stacked under them, forwarding to
                         the charts owners
+  _dashboard_usage_chart.py
+                        historical import site for the hero usage figure and
+                        the backend-day stub beside it, forwarding to the
+                        charts owner that builds them
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -820,7 +828,7 @@ orchestrator/
                         cost families share, the generic spend ranking,
                         weekday-by-hour grid, and per-day throughput strip
                         above the two, the usage family's own shaping, axes,
-                        and traces, and the
+                        traces, and hero figure, and the
                         destination for the families still on flat leaves
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
@@ -856,6 +864,9 @@ orchestrator/
                         at all, the band a stack is added one of at a time, the
                         two modes it is stacked in, and the cost line overlaid
                         on the secondary axis
+        usage.py        the hero figure those pieces are assembled into --
+                        stack, cost overlay, and the layout merged over both --
+                        and the backend-day stub published beside it
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1738,7 +1749,7 @@ picked off its position among them. Like the grid beside it, `usage_bands.py` na
 `analytics/query/overview_models.py`, the row a series arrives as — and the dependency between these two runs one
 way, from the series owner down to the bands it counts.
 
-`usage_axis.py` and `usage_traces.py` sit above that pair and finish the family. Tokens and dollars are orders of
+`usage_axis.py` and `usage_traces.py` sit above that pair. Tokens and dollars are orders of
 magnitude apart, so the stack keeps the left axis and the cost line rides a secondary one on the right; `usage_axis.py`
 cuts both into the same number of steps from zero, which is what lets a single horizontal rule mean something on
 either scale. The step an axis would otherwise take is raised to 1, 2, 2.5, 5, or 10 times the decade beneath it and
@@ -1754,9 +1765,21 @@ stack. A backend's color is picked off its position among the sorted backends an
 name is spelled in, both from the palette owner; besides that and the two owners beneath it, `usage_traces.py` names
 `analytics/query/overview_models.py` for the row a series arrives as, and `usage_axis.py` names nothing outside the
 package but the layout and palette every figure is drawn with.
-Only the traces owner names Plotly at all, and only inside the two calls that add a trace; the axis owner hands
+Of the two, only the traces owner names Plotly, and only inside the two calls that add a trace; the axis owner hands
 back a plain dict the way the layout owner it merges does — so both import in the default install, and an axis maximum
 and the two ranges over it are checked there rather than only where the optional group is present.
+
+`usage.py` finishes the family: the hero figure those four are assembled into, and the only one of the five a panel
+draws with directly. The window is shaped first, the stack is added in the mode the page asked for, the cost line is
+overlaid on the secondary axis, and the layout is merged last — after the traces, because the token axis is scaled to
+the stack that was actually drawn. A window nothing came back for never becomes a figure at all: the shaping answers
+with nothing to draw, and the shared placeholder is returned in its place at the same pinned height, so an empty hero
+panel keeps the slot the drawn one would have taken. The `backend_per_day` stub is published beside it and answers
+with an empty mapping; no panel calls it, since the per-backend stack takes its rows through `usage_over_time`'s own
+parameter. Besides the four owners beneath it and the placeholder above them, this owner names the two read models its
+signatures are typed against — `analytics/query/overview_models.py` for the series a figure is built from and
+`analytics/query/cost_models.py` for the rows the stub is handed — and Plotly, inside the one call that builds the
+figure, so importing it still costs nothing in the default install.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
@@ -1779,26 +1802,31 @@ the owner's own object. The read hub defines nothing of its own either, so nothi
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
 them to the two owners that hold each. `dashboard_charts_base.py` is one too: the placeholder, the three label
 helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height are the
-charts owner's objects under the private spellings the usage and cost leaves import them by.
+charts owner's objects under the private spellings the cost leaves import them by.
 `dashboard_charts_heatmap.py` is the same site for the grid family — `hour_weekday_heatmap` under its own name, and the
 cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
 resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
 `done_per_day_bars` under its own name, and the calendar, series, and pinned height beneath it under theirs.
 `_dashboard_cost_layout.py` and `_dashboard_cost_horizontal.py` are two more beside them, forwarding the panel margin,
 the layout and trace models with the two helpers that apply them, and the ranking's four columns, sort key, default
-height, pinned signature, and builder. None of the grid, the strip, or the ranking is stamped with a historical
-`__module__` on the way out — the heatmap and throughput sites make no such call at all, and `cost_horizontal_bars` is
-the one public builder `dashboard_charts_cost.py` leaves out of its `preserve_defining_module` list — because the
-stamp mutates the object, so claiming a builder a charts owner defines would rewrite the owner's own function.
+height, pinned signature, and builder. None of the grid, the strip, the ranking, or the two usage builders is stamped
+with a historical `__module__` on the way out — the heatmap, throughput, and usage sites make no such call at all, and
+`cost_horizontal_bars` is the one public builder `dashboard_charts_cost.py` leaves out of its
+`preserve_defining_module` list — because the stamp mutates the object, so claiming a builder a charts owner defines
+would rewrite the owner's own function.
 `_dashboard_usage_models.py` and `_dashboard_usage_data.py` are the same kind of site one family down, and the fifteen
 names they publish are split across the two shaping owners: the per-day table's alias, the four band names, the mode
 beside them, and the three helpers that zero a bucket, roll the series up into one, and total a day's tokens are
 `usage_bands.py`'s objects, while the two frozen shapes and the four helpers that lay the day axis out, complete the
 days only the per-backend read saw, name the backends, and total a stack are `usage_series.py`'s.
-`_dashboard_usage_axis.py` and `_dashboard_usage_traces.py` are the last pair of that kind: the step count and pinned
-height, the rounding, and the layout are `usage_axis.py`'s objects, and the window shaping, the five trace builders,
-and the layout key a trace's color is set under are `usage_traces.py`'s — every one of them under the private spelling
-the usage figure leaf imports it by. The trigger
+`_dashboard_usage_axis.py` and `_dashboard_usage_traces.py` are the same kind of site above them: the step count and
+pinned height, the rounding, and the layout are `usage_axis.py`'s objects, and the window shaping, the five trace
+builders, and the layout key a trace's color is set under are `usage_traces.py`'s. `_dashboard_usage_chart.py` is the
+last of the five, holding the hero figure and the backend-day stub under the names `usage.py` defines them by, and
+`dashboard_charts_usage.py` is the stable surface in front of all of them — the two builders under their own names,
+the twenty-four spellings beneath them under the private ones a caller has always read off it, each reached through
+the leaf named for it, and nothing defined there, so `dashboard_charts.usage_over_time` resolves to the figure the
+owner builds. The trigger
 rates are reached through the breakdown leaf and the other two skill reads through the leaf named for them, because
 that is where a caller has always spelled each. The private
 `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and

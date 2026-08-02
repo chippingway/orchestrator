@@ -54,6 +54,9 @@ _COST_LEAF = "orchestrator.dashboard_charts_cost"
 _USAGE_LEAF = "orchestrator.dashboard_charts_usage"
 
 
+_USAGE_OWNER = "orchestrator.observability.dashboard.charts.usage"
+
+
 _HEATMAP_LEAF = "orchestrator.dashboard_charts_heatmap"
 
 
@@ -81,19 +84,20 @@ _CHART_LEAVES = (
 _REPO_ROOT = str(Path(__file__).resolve().parents[1])
 
 
-# Each public builder and the module that defines it. A family still on a flat
-# leaf is defined there; the generic cost ranking, the heatmap, and the
-# throughput strip are defined by their owners under `observability`, and the
-# flat leaf named for each forwards that same object. A builder an owner
-# defines is also one no leaf may stamp with `preserve_defining_module`, since
-# that stamp mutates the object and would rewrite the owner's own function.
+# Each public builder and the module that defines it. The three cost adapters
+# are still on a flat leaf and are defined there; the generic cost ranking, the
+# heatmap, the throughput strip, and the usage builders are defined by their
+# owners under `observability`, and the flat leaf named for each forwards that
+# same object. A builder an owner defines is also one no leaf may stamp with
+# `preserve_defining_module`, since that stamp mutates the object and would
+# rewrite the owner's own function.
 _BUILDER_HOMES = (
     ("cost_horizontal_bars", _COST_RANKING_OWNER),
     ("cost_by_repo", _COST_LEAF),
     ("cost_by_stage", _COST_LEAF),
     ("cost_by_review_round", _COST_LEAF),
-    ("usage_over_time", _USAGE_LEAF),
-    ("backend_per_day", _USAGE_LEAF),
+    ("usage_over_time", _USAGE_OWNER),
+    ("backend_per_day", _USAGE_OWNER),
     ("hour_weekday_heatmap", _HEATMAP_OWNER),
     ("done_per_day_bars", _THROUGHPUT_OWNER),
 )

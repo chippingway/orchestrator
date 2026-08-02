@@ -1,54 +1,17 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Public dashboard usage-chart builders."""
+"""Historical import site for the public usage-chart builders.
+
+The hero figure a window's spend and token usage is drawn as, and the
+backend-day stub beside it, are the charts owner's own objects. The public
+usage surface reaches them through here under the names it has always
+published, so the figure the widget pipeline draws and the figure the owner
+builds cannot be two that merely agree.
+"""
 from __future__ import annotations
 
-from typing import Optional, Sequence
-
-from plotly import graph_objects as go
-
-from orchestrator import _dashboard_usage_axis as usage_axis
-from orchestrator import _dashboard_usage_models as models
-from orchestrator import _dashboard_usage_traces as traces
-from orchestrator.analytics.read import BackendEfficiencyRow, TimeSeriesPoint
-from orchestrator.dashboard_charts_base import _empty_figure
+from orchestrator.observability.dashboard.charts import usage
 
 
-def usage_over_time(
-    points: Sequence[TimeSeriesPoint],
-    *,
-    backend_rows_by_day: Optional[models.DailyTokenValues] = None,
-    mode: str = "type",
-    title: Optional[str] = "Spend & token usage over time",
-) -> go.Figure:
-    """Build stacked daily token usage with a cost-line overlay."""
-    usage = traces._prepare_usage_data(points, backend_rows_by_day, mode)
-    if usage is None:
-        return _empty_figure(
-            "No events match the current filters.",
-            height=usage_axis.USAGE_CHART_HEIGHT,
-        )
-    figure = go.Figure()
-    traces._add_usage_stack_traces(
-        figure,
-        usage,
-        backend_rows_by_day,
-        mode,
-    )
-    traces._add_usage_cost_trace(figure, usage)
-    figure.update_layout(
-        **usage_axis._usage_layout(
-            usage,
-            backend_rows_by_day,
-            mode,
-            title,
-        )
-    )
-    return figure
-
-
-def backend_per_day(
-    rows: Sequence[BackendEfficiencyRow],
-) -> dict[str, dict[str, float]]:
-    """Keep the historical placeholder for a future backend-day aggregate."""
-    return {}
+usage_over_time = usage.usage_over_time
+backend_per_day = usage.backend_per_day

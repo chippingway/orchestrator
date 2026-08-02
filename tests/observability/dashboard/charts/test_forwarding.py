@@ -25,6 +25,10 @@ _USAGE_AXIS_SITE = "orchestrator._dashboard_usage_axis"
 
 _USAGE_TRACES_SITE = "orchestrator._dashboard_usage_traces"
 
+_USAGE_CHART_SITE = "orchestrator._dashboard_usage_chart"
+
+_USAGE_PUBLIC_SITE = "orchestrator.dashboard_charts_usage"
+
 _PACKAGE = "orchestrator.observability.dashboard.charts"
 
 _COST_LAYOUT = f"{_PACKAGE}.cost_layout"
@@ -36,6 +40,8 @@ _HEATMAP = f"{_PACKAGE}.heatmap"
 _PRIMITIVES = f"{_PACKAGE}.primitives"
 
 _THROUGHPUT = f"{_PACKAGE}.throughput"
+
+_USAGE = f"{_PACKAGE}.usage"
 
 _USAGE_AXIS = f"{_PACKAGE}.usage_axis"
 
@@ -186,6 +192,63 @@ _FORWARDED_USAGE_TRACES = (
     ("_prepare_usage_data", _USAGE_TRACES, "prepare_usage_data"),
 )
 
+# The two builders keep their own spelling at both usage sites, so the name a
+# caller reads them off and the name the owner defines them under are one.
+_BACKEND_PER_DAY = "backend_per_day"
+
+_USAGE_OVER_TIME = "usage_over_time"
+
+# The hero figure and the stub beside it, under the names the public usage
+# surface reaches them by. The widget pipeline draws the panel with the object
+# behind this site, so a copy here would be a chart an operator reads that no
+# fix under the owner reaches.
+_FORWARDED_USAGE_CHART = (
+    (_BACKEND_PER_DAY, _USAGE, _BACKEND_PER_DAY),
+    (_USAGE_OVER_TIME, _USAGE, _USAGE_OVER_TIME),
+)
+
+# The whole usage family under the spellings the stable surface publishes: the
+# two builders, and beneath them the bands, shapes, axes, and traces they are
+# assembled out of. This is the site `orchestrator.dashboard_charts`
+# re-exports the family through, so every name here has to be the owner's own
+# object rather than one this site defined.
+_FORWARDED_USAGE_PUBLIC = (
+    ("_CACHE", _USAGE_BANDS, "CACHE_BAND"),
+    ("_COST", _USAGE_BANDS, "COST_BAND"),
+    ("_DailyTokenValues", _USAGE_BANDS, "DailyTokenValues"),
+    ("_INPUT", _USAGE_BANDS, "INPUT_BAND"),
+    ("_OUTPUT", _USAGE_BANDS, "OUTPUT_BAND"),
+    ("_USAGE_GRID_STEPS", _USAGE_AXIS, "USAGE_GRID_STEPS"),
+    ("_UsageAxisRanges", _USAGE_SERIES, "UsageAxisRanges"),
+    ("_UsageChartData", _USAGE_SERIES, "UsageChartData"),
+    (
+        "_add_backend_usage_traces",
+        _USAGE_TRACES,
+        "add_backend_usage_traces",
+    ),
+    ("_add_token_stack_trace", _USAGE_TRACES, "add_token_stack_trace"),
+    (
+        "_add_token_type_usage_traces",
+        _USAGE_TRACES,
+        "add_token_type_usage_traces",
+    ),
+    ("_add_usage_cost_trace", _USAGE_TRACES, "add_usage_cost_trace"),
+    ("_add_usage_stack_traces", _USAGE_TRACES, "add_usage_stack_traces"),
+    ("_backend_names", _USAGE_SERIES, "backend_names"),
+    ("_daily_token_total", _USAGE_BANDS, "daily_token_total"),
+    ("_date_axis", _USAGE_SERIES, "date_axis"),
+    ("_empty_token_bucket", _USAGE_BANDS, "empty_token_bucket"),
+    ("_ensure_backend_days", _USAGE_SERIES, "ensure_backend_days"),
+    ("_nice_axis_max", _USAGE_AXIS, "nice_axis_max"),
+    ("_prepare_usage_data", _USAGE_TRACES, "prepare_usage_data"),
+    ("_roll_up_time_series", _USAGE_BANDS, "roll_up_time_series"),
+    ("_usage_axis_ranges", _USAGE_AXIS, "usage_axis_ranges"),
+    ("_usage_layout", _USAGE_AXIS, "usage_layout"),
+    ("_usage_stack_totals", _USAGE_SERIES, "usage_stack_totals"),
+    (_BACKEND_PER_DAY, _USAGE, _BACKEND_PER_DAY),
+    (_USAGE_OVER_TIME, _USAGE, _USAGE_OVER_TIME),
+)
+
 # The flat modules a caller reaches one of these owners through, and what each
 # name they publish resolves to.
 _FORWARDED_MODULES = MappingProxyType({
@@ -195,8 +258,10 @@ _FORWARDED_MODULES = MappingProxyType({
     _HEATMAP_SITE: _FORWARDED_HEATMAP,
     _THROUGHPUT_SITE: _FORWARDED_THROUGHPUT,
     _USAGE_AXIS_SITE: _FORWARDED_USAGE_AXIS,
+    _USAGE_CHART_SITE: _FORWARDED_USAGE_CHART,
     _USAGE_DATA_SITE: _FORWARDED_USAGE_DATA,
     _USAGE_MODELS_SITE: _FORWARDED_USAGE_MODELS,
+    _USAGE_PUBLIC_SITE: _FORWARDED_USAGE_PUBLIC,
     _USAGE_TRACES_SITE: _FORWARDED_USAGE_TRACES,
 })
 
