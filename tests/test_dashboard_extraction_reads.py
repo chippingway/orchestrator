@@ -49,13 +49,6 @@ WIDGET_READER_WRAPPER_NAMES = (
 
 
 _MOVED_READ_MEMBERS = (
-    "_filter_list",
-    "_read_filter_kwargs",
-    "_scoped_read",
-    "_read_filtered",
-    "_read_data_extent",
-    "_read_filter_options",
-    "_read_static_metadata",
     *WIDGET_READER_WRAPPER_NAMES,
     "_widget_task",
     "_first_wave_readers",
@@ -69,6 +62,24 @@ _MOVED_READ_MEMBERS = (
 )
 
 
+# The connection scope, the filter binding, and the static-metadata reads are
+# the dashboard owners' own objects, published here under the spellings a
+# caller reached them by. They report their owner rather than this hub, so the
+# guard on them is where each resolves to.
+_OWNED_READ_MEMBERS = MappingProxyType({
+    "_filter_list": "filter_binding",
+    "_read_filter_kwargs": "filter_binding",
+    "_read_filtered": "filter_binding",
+    "_scoped_read": "scoped_reads",
+    "_read_data_extent": "static_metadata",
+    "_read_filter_options": "static_metadata",
+    "_read_static_metadata": "static_metadata",
+})
+
+
+_DASHBOARD_OWNERS = "orchestrator.observability.dashboard"
+
+
 _READS_FACADE_CONSTANTS = (
     "DEFAULT_RECENT_AGENT_EXITS",
     "STATIC_METADATA_TTL_SECONDS",
@@ -77,13 +88,13 @@ _READS_FACADE_CONSTANTS = (
 
 
 class ReadOrchestrationExtractionTest(unittest.TestCase):
-    """The dashboard read orchestration -- filter-to-query adapters,
-    cached reader wrappers, reader registries, the staged parallel
-    dispatch + two-wave data load, the static-metadata load, and the
-    load-timing log -- lives in `orchestrator.dashboard_reads`, and
-    `orchestrator.dashboard` re-exports every member under the same
-    name so the `dashboard.<name>` surface and its test patch
-    points keep resolving to the same object.
+    """The dashboard read orchestration -- cached reader wrappers, reader
+    registries, the staged parallel dispatch + two-wave data load, and the
+    load-timing log -- lives in `orchestrator.dashboard_reads`, which also
+    republishes the connection, filter-binding, and static-metadata reads
+    the dashboard owners hold. `orchestrator.dashboard` re-exports every
+    member under the same name so the `dashboard.<name>` surface and its
+    test patch points keep resolving to the same object.
     """
 
     def test_read_members_defined_in_reads_module(self) -> None:
@@ -96,10 +107,25 @@ class ReadOrchestrationExtractionTest(unittest.TestCase):
                     DASHBOARD_READS_MODULE,
                 )
 
+    def test_owned_read_members_report_their_owner(self) -> None:
+        _reload(CONFIGURED_DB_ENV)
+        reads = sys.modules[DASHBOARD_READS_MODULE]
+        for name, owner in _OWNED_READ_MEMBERS.items():
+            with self.subTest(name=name):
+                self.assertEqual(
+                    getattr(reads, name).__module__,
+                    f"{_DASHBOARD_OWNERS}.{owner}",
+                )
+
     def test_facade_reexports_reads_objects(self) -> None:
         _, dashboard = _reload(CONFIGURED_DB_ENV)
         reads = sys.modules[DASHBOARD_READS_MODULE]
-        for name in (*_MOVED_READ_MEMBERS, *_READS_FACADE_CONSTANTS):
+        published = (
+            *_MOVED_READ_MEMBERS,
+            *_OWNED_READ_MEMBERS,
+            *_READS_FACADE_CONSTANTS,
+        )
+        for name in published:
             with self.subTest(name=name):
                 self.assertTrue(
                     hasattr(dashboard, name),

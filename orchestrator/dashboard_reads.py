@@ -51,15 +51,12 @@ _log_dashboard_load = dispatch._log_dashboard_load
 _run_read_waves = dispatch._run_read_waves
 log = dispatch.log
 
+# The members still defined beside this hub. The connection scope, the filter
+# binding, and the static-metadata reads are the dashboard owners' own objects
+# and are left off deliberately: stamping one would rewrite `__module__` on the
+# owner's function, which is what the owners' own surface check reads.
 _COMPATIBILITY_MEMBERS = (
     _DashboardReadPlan,
-    _filter_list,
-    _scoped_read,
-    _read_data_extent,
-    _read_filter_options,
-    _read_static_metadata,
-    _read_filter_kwargs,
-    _read_filtered,
     _read_summary,
     _read_prev_kpi,
     _read_time_series,

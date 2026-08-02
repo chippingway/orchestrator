@@ -29,8 +29,10 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
-read-mode state one run of the analytics page carries plus the fan-out its reads are issued through
-(`dashboard/windows.py`, `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/fanout.py`), the trajectory
+read-mode state one run of the analytics page carries plus the fan-out its reads are issued through and the connection,
+filter binding, and unfiltered metadata each of those reads goes through
+(`dashboard/windows.py`, `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/fanout.py`,
+`dashboard/scoped_reads.py`, `dashboard/filter_binding.py`, `dashboard/static_metadata.py`), the trajectory
 viewer's whole read model — its file read, record parse, run models, and the filtering and summary aggregation over
 them — plus the styling and every inline-HTML builder that read is drawn with,
 and the page state, setup, controls, picker, run card, and whole-page composition one run of it is driven by
@@ -1256,11 +1258,15 @@ state/usage/cost/skill/run sections; and cost/usage Plotly construction. The sta
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
 that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by,
 `read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database message, and
-`fanout.py` for running one wave of named readers the way that flag said. `dashboard_state.py` stays the hub the page
-reads them off, and `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, and
-`_dashboard_read_mode.py` forward each historical name to the owner's own object. Compatibility metadata
-keeps the established defining-module assertions intact. Streamlit is never imported in these helpers — `st` (with
-chart, theme, and pandas handles) is passed in as a parameter.
+`fanout.py` for running one wave of named readers the way that flag said. What one read of that wave then goes through
+lives beside them: `scoped_reads.py` for the thread's analytics connection it is issued inside, `filter_binding.py` for
+the filters its cache key is read back as, and `static_metadata.py` for the extent and filter vocabulary a page opens
+on, the TTL both are cached for, and the banner a failed one stops the run with. `dashboard_state.py` stays the hub the
+page reads the state off and `dashboard_reads.py` the hub the read inventory is resolved through, while
+`_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`, and
+`_dashboard_read_core.py` forward each historical name to the owner's own object. Compatibility metadata
+keeps the established defining-module assertions intact for what those hubs still define. Streamlit is never imported
+in these helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
 
 ```sh
 uv sync --group dashboard                                  # install streamlit + plotly alongside the runtime + dev deps
