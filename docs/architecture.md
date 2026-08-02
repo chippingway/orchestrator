@@ -1534,7 +1534,9 @@ what it spent is the six reads already issued. The first read error the fan-out 
 naming what to check and the stop that ends the script, rather than a trace from the window, the tiles, and every
 panel below them saying the same thing sixteen times. Every load that does come back emits one `dashboard.load:` INFO
 line carrying the wall clock, the read count off the plan, and which way they were issued, because the fan-out is an
-operator's switch rather than a setting and a single grep has to be able to A/B the two branches.
+operator's switch rather than a setting and a single grep has to be able to A/B the two branches. That line goes out
+on the `orchestrator._dashboard_read_dispatch` logger, spelled out literally rather than derived from the module path,
+so the name an operator's level and handler selection is keyed on holds still while the module emitting it moves.
 
 What that wave is made of arrives with the panels each reader is drawn for. Each is a window a page already decided,
 so the whole of an adapter is the query owner's read it names beside the binding that issues it — and naming that
@@ -1622,7 +1624,8 @@ the owner's own object. The read hub defines nothing of its own either, so nothi
 them to the two owners that hold each. The trigger rates are reached through the breakdown leaf and the other two
 skill reads through the leaf named for them, because that is where a caller has always spelled each. The private
 `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and
-the `DEFAULT_RECENT_AGENT_EXITS` cap, the `LOADING_INDICATOR_MESSAGE` a load's spinner is opened with, and the
+the `DEFAULT_RECENT_AGENT_EXITS` cap, the `LOADING_INDICATOR_MESSAGE` a load's spinner is opened with, the `log` its
+timing line is emitted on, and the
 `_scoped_read`, `_filter_list`, `_read_filter_kwargs`, `_read_filtered`,
 `_read_data_extent`, `_read_filter_options`, `_read_static_metadata`, `_read_summary`, `_read_prev_kpi`,
 `_read_time_series`, `_read_stage_breakdown`, `_read_recent_agent_exits`, `_read_top_cost_issues`,
