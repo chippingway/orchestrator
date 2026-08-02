@@ -38,8 +38,9 @@ with above all of them plus the four numbers it is summarized by beneath those (
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
 `dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`), the primitives every chart family on
-that page is drawn out of plus the weekday-by-hour grid that is the first family above them
-(`dashboard/charts/primitives.py`, `dashboard/charts/heatmap.py`), the
+that page is drawn out of plus the weekday-by-hour grid that is the first family above them and the usage family's own
+bands, day span, and stack heights (`dashboard/charts/primitives.py`, `dashboard/charts/heatmap.py`,
+`dashboard/charts/usage_bands.py`, `dashboard/charts/usage_series.py`), the
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
@@ -1291,14 +1292,15 @@ the parser could not price — the ratio each is raised at, and the banner line 
 beneath those, `kpis.py` holds the four numbers the headline tiles report — the move against the window before it,
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
 What those reads are drawn as sits one level down, under `charts/`, where `primitives.py` holds what every figure
-family is built out of and `heatmap.py` the weekday-by-hour grid that is the first family above it (see **Chart
-builders** below).
+family is built out of, `heatmap.py` the weekday-by-hour grid that is the first family above it, and
+`usage_bands.py` / `usage_series.py` the bands, day span, and stack heights the usage family shapes its reads into
+(see **Chart builders** below).
 `dashboard_state.py` stays the hub the page reads the state off and `dashboard_reads.py` the hub the read inventory
 is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`,
 `_dashboard_read_mode.py`, `_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_dispatch.py`,
 `_dashboard_read_rollups.py`,
-`_dashboard_read_breakdowns.py`, `_dashboard_read_skills.py`, `dashboard_kpis.py`, `dashboard_charts_base.py`, and
-`dashboard_charts_heatmap.py`
+`_dashboard_read_breakdowns.py`, `_dashboard_read_skills.py`, `dashboard_kpis.py`, `dashboard_charts_base.py`,
+`dashboard_charts_heatmap.py`, `_dashboard_usage_models.py`, and `_dashboard_usage_data.py`
 forward each historical name to the owner's own object. Neither hub defines a name of its own, so neither rewrites a
 defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the component and
@@ -1438,7 +1440,15 @@ over the grid rather than routing through the shared placeholder, because an emp
 plus the cell / label / layout spellings beneath it to the owner's own objects and implementing nothing. A test that
 has to intercept one of them patches the owner, because that is what the flat site resolves to. Plotly is imported
 inside the calls that build a figure, so both owners stay importable without the optional `dashboard` dependency
-group. The topbar, filter meta, KPI strip,
+group. The usage family's own shaping sits beside those primitives:
+`orchestrator/observability/dashboard/charts/usage_bands.py` holds the four bands a day is counted into, the mode its
+stack is switched with, the `DailyTokenValues` table they are accumulated in, and the roll-up of a `TimeSeriesPoint`
+series into one bucket per day, while `orchestrator/observability/dashboard/charts/usage_series.py` holds the day span
+that roll-up produced, the `UsageChartData` / `UsageAxisRanges` shapes it travels in, the completion that gives a day
+only the per-backend read saw a bucket of its own, and the height each mode measures a stack by. The usage leaves
+reach both owners through `orchestrator/_dashboard_usage_models.py` and `orchestrator/_dashboard_usage_data.py` --
+their historical import sites, forwarding each name to the owner's own object and implementing nothing.
+The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are built by inline-HTML
 helpers in `orchestrator/dashboard_html.py`; the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip live in `orchestrator/dashboard_cards.py`; the primary per-session

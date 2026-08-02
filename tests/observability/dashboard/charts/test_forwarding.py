@@ -11,11 +11,19 @@ _BASE_SITE = "orchestrator.dashboard_charts_base"
 
 _HEATMAP_SITE = "orchestrator.dashboard_charts_heatmap"
 
+_USAGE_DATA_SITE = "orchestrator._dashboard_usage_data"
+
+_USAGE_MODELS_SITE = "orchestrator._dashboard_usage_models"
+
 _PACKAGE = "orchestrator.observability.dashboard.charts"
 
 _HEATMAP = f"{_PACKAGE}.heatmap"
 
 _PRIMITIVES = f"{_PACKAGE}.primitives"
+
+_USAGE_BANDS = f"{_PACKAGE}.usage_bands"
+
+_USAGE_SERIES = f"{_PACKAGE}.usage_series"
 
 # `from __future__ import annotations` opens every module in the repository and
 # binds the compiler directive under a public name. It is a compilation
@@ -54,11 +62,41 @@ _FORWARDED_HEATMAP = (
     ("hour_weekday_heatmap", _HEATMAP, "hour_weekday_heatmap"),
 )
 
+# The bands a day of usage is counted into, the mode its stack is switched
+# with, and the roll-up and stack helpers the usage leaves reach across the two
+# owners that hold them. A band accumulated under one spelling here and read
+# under another beneath the owner is a trace drawn off a total nothing filled.
+_FORWARDED_USAGE_DATA = (
+    ("BACKEND_MODE", _USAGE_BANDS, "BACKEND_MODE"),
+    ("CACHE_BAND", _USAGE_BANDS, "CACHE_BAND"),
+    ("COST_BAND", _USAGE_BANDS, "COST_BAND"),
+    ("INPUT_BAND", _USAGE_BANDS, "INPUT_BAND"),
+    ("OUTPUT_BAND", _USAGE_BANDS, "OUTPUT_BAND"),
+    ("_backend_names", _USAGE_SERIES, "backend_names"),
+    ("_daily_token_total", _USAGE_BANDS, "daily_token_total"),
+    ("_date_axis", _USAGE_SERIES, "date_axis"),
+    ("_empty_token_bucket", _USAGE_BANDS, "empty_token_bucket"),
+    ("_ensure_backend_days", _USAGE_SERIES, "ensure_backend_days"),
+    ("_roll_up_time_series", _USAGE_BANDS, "roll_up_time_series"),
+    ("_usage_stack_totals", _USAGE_SERIES, "usage_stack_totals"),
+)
+
+# The per-day table's alias and the two frozen shapes a usage figure's days and
+# axis maxima travel in. The trace, axis, and figure leaves each name this site,
+# so a shape built off a copy is a table one leaf fills and the next cannot read.
+_FORWARDED_USAGE_MODELS = (
+    ("DailyTokenValues", _USAGE_BANDS, "DailyTokenValues"),
+    ("_UsageAxisRanges", _USAGE_SERIES, "UsageAxisRanges"),
+    ("_UsageChartData", _USAGE_SERIES, "UsageChartData"),
+)
+
 # The flat modules a caller reaches one of these owners through, and what each
 # name they publish resolves to.
 _FORWARDED_MODULES = MappingProxyType({
     _BASE_SITE: _FORWARDED_PRIMITIVES,
     _HEATMAP_SITE: _FORWARDED_HEATMAP,
+    _USAGE_DATA_SITE: _FORWARDED_USAGE_DATA,
+    _USAGE_MODELS_SITE: _FORWARDED_USAGE_MODELS,
 })
 
 
@@ -100,10 +138,11 @@ class ForwardedChartModuleTest(unittest.TestCase):
                     frozenset(name for name, _, _ in forwarded),
                 )
 
-    def test_neither_defines_anything_of_its_own(self) -> None:
+    def test_no_site_defines_anything_of_its_own(self) -> None:
         # What keeps the forwarding thin: an implementation here would be a
-        # second primitive or a second grid the check above cannot see,
-        # because it only compares the names the module was asked for.
+        # second primitive, a second grid, or a second band the check above
+        # cannot see, because it only compares the names the module was asked
+        # for.
         for site in _FORWARDED_MODULES:
             defined = tuple(
                 name

@@ -495,6 +495,10 @@ orchestrator/
                         historical import sites for the seven headline and
                         lifecycle reads, the six comparison-panel ones, and the
                         three skill-panel ones, forwarding to those owners
+  _dashboard_usage_models.py / _dashboard_usage_data.py
+                        historical import sites for the shapes a usage chart is
+                        drawn from and the per-day rollups behind them,
+                        forwarding to the charts owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -802,8 +806,9 @@ orchestrator/
                         pass
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the weekday-by-hour grid
-                        that is the first family above it, and the destination
-                        for the families still on flat leaves
+                        that is the first family above it, the usage family's
+                        own shaping, and the destination for the families still
+                        on flat leaves
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
                         with, the money, mono, and two-line-tick labels a bar
@@ -812,6 +817,14 @@ orchestrator/
         heatmap.py      the 7x24 weekday-by-hour token-volume grid: the cells a
                         window's points are bucketed into, the labels and hour
                         span shaping them, and the layout that squares them off
+        usage_bands.py  the four bands a day of usage is counted into, the mode
+                        its stack is switched with, the per-day table they are
+                        accumulated in, and the roll-up of the series into one
+                        bucket per day
+        usage_series.py the days that roll-up spans, the shapes they and the
+                        axis maxima travel in, the completion of the days only
+                        the per-backend read saw, and the height each stack
+                        reaches
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1649,6 +1662,23 @@ result where an empty bar series is not. Nothing here shifts a timestamp — the
 caller says the cells were read under — so besides the theme owners it draws with, the only thing it names outside the
 package is `analytics/query/activity_models.py`, the row those cells arrive as.
 
+`usage_bands.py` and `usage_series.py` are the next to arrive, holding the shaping the usage family does before any
+figure is built. The series arrives one row per `(day, event)`, so several rows land on the same date and the two
+cache counters are two columns of one band; the roll-up in `usage_bands.py` is the single place those rows become a
+day, summing
+cache read and cache write into the one Cache band the legend names and counting an aggregate the query left NULL as
+zero rather than failing the page's load. The band names live with it because the same four keys are the
+accumulator's slots, the stack's trace order, and the input to the axis maximum — a second spelling of "cache" would
+accumulate into a band no trace reads — and its daily total is tokens only, because cost rides the secondary axis
+under a range of its own. `usage_series.py` is the layer above: the day span a figure is drawn along, the two frozen
+shapes that span and the axis maxima travel in, the completion that gives a day only the per-backend read saw a
+zeroed bucket so its stack lands on its own date rather than past the end of the axis, and the height each mode
+measures a stack by — a per-backend stack as tall as that day's backends add up to, a token-type stack as tall as its
+three bands. Backends come back sorted because their order is the legend's order and the color each is drawn in is
+picked off its position among them. Like the grid beside it, `usage_bands.py` names one thing outside the package —
+`analytics/query/overview_models.py`, the row a series arrives as — and the dependency between the two usage owners
+runs one way, from the series owner down to the bands it counts.
+
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
 socket out of, the metadata owner and the dispatch owner both name the error a failed read arrives as — the first
@@ -1673,7 +1703,12 @@ helpers, the list reversal, the panel height and legend, and the two bar-sizing 
 charts owner's objects under the private spellings the usage, cost, and throughput leaves import them by.
 `dashboard_charts_heatmap.py` is the same site for the grid family — `hour_weekday_heatmap` under its own name, and the
 cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
-resolving to the figure the owner builds. The trigger
+resolving to the figure the owner builds.
+`_dashboard_usage_models.py` and `_dashboard_usage_data.py` are the same kind of site one family down, and the fifteen
+names they publish are split across the two usage owners: the per-day table's alias, the four band names, the mode
+beside them, and the three helpers that zero a bucket, roll the series up into one, and total a day's tokens are
+`usage_bands.py`'s objects, while the two frozen shapes and the four helpers that lay the day axis out, complete the
+days only the per-backend read saw, name the backends, and total a stack are `usage_series.py`'s. The trigger
 rates are reached through the breakdown leaf and the other two skill reads through the leaf named for them, because
 that is where a caller has always spelled each. The private
 `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and
