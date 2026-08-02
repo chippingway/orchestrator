@@ -1770,7 +1770,8 @@ back a plain dict the way the layout owner it merges does — so both import in 
 and the two ranges over it are checked there rather than only where the optional group is present.
 
 `usage.py` finishes the family: the hero figure those four are assembled into, and the only one of the five a panel
-draws with directly. The window is shaped first, the stack is added in the mode the page asked for, the cost line is
+ever calls — the four beneath it are reached through it. The window is shaped first, the stack is added in the mode
+the page asked for, the cost line is
 overlaid on the secondary axis, and the layout is merged last — after the traces, because the token axis is scaled to
 the stack that was actually drawn. A window nothing came back for never becomes a figure at all: the shaping answers
 with nothing to draw, and the shared placeholder is returned in its place at the same pinned height, so an empty hero
@@ -1779,7 +1780,10 @@ with an empty mapping; no panel calls it, since the per-backend stack takes its 
 parameter. Besides the four owners beneath it and the placeholder above them, this owner names the two read models its
 signatures are typed against — `analytics/query/overview_models.py` for the series a figure is built from and
 `analytics/query/cost_models.py` for the rows the stub is handed — and Plotly, inside the one call that builds the
-figure, so importing it still costs nothing in the default install.
+figure. That is what leaves the whole usage path clear of the optional group: no module from
+`dashboard_charts_usage.py` down through the flat sites to these five owners names Plotly at module scope, so the
+surface a page reaches the hero figure through imports in the default install. The cost adapters' leaves are the flat
+modules that still name it at load.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
