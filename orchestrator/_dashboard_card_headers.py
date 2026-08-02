@@ -6,7 +6,7 @@ from __future__ import annotations
 import html
 from typing import Sequence
 
-from orchestrator.dashboard_kpis import InsightBanner
+from orchestrator.observability.dashboard.insights import InsightBanner
 
 
 def card_header_html(title: str, subtitle: str = "") -> str:

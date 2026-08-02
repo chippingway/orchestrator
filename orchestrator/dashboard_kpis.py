@@ -1,33 +1,36 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""KPI and insight calculations for the analytics dashboard.
+"""KPI calculations for the analytics dashboard.
 
-The pure numeric core behind the redesigned page: the computed
-insight banners (`compute_insights`), the KPI delta math
+The pure numeric core behind the redesigned page: the KPI delta math
 (`kpi_delta`), the reliability-tile triples (`reliability_tile_data`),
 the top-cost issue ordering (`top_expensive_issues`), and the rework-
 share aggregation (`rework_totals`). These take read-model rows /
 `Summary` aggregates and return plain numbers, strings, and small
 dataclasses so they stay testable without a live Streamlit run and
 free of any rendering or Streamlit dependency.
+
+The banners a page opens above those numbers are the insight owner's
+under `observability/dashboard/`. The names they were historically
+reached here under stay bound to that owner's own objects, so a caller
+spelling one on this module and one spelling it on the owner cannot be
+answered by two thresholds.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Optional, Sequence
 
-from orchestrator.analytics.read import (
-    CostCoverageRow,
-    IssueSummaryRow,
-    Summary,
-)
+from orchestrator.analytics.read import IssueSummaryRow, Summary
+from orchestrator.observability.dashboard import insights
 
 DEFAULT_EXPENSIVE_LIMIT = 8
 
-# Insight thresholds.
-FAILURE_RATE_BANNER_THRESHOLD = 0.1
-UNPRICED_COVERAGE_THRESHOLD = 0.1
-UNPRICED_COST_SOURCES: frozenset[str] = frozenset(("unknown-price", "unknown"))
+FAILURE_RATE_BANNER_THRESHOLD = insights.FAILURE_RATE_BANNER_THRESHOLD
+UNPRICED_COVERAGE_THRESHOLD = insights.UNPRICED_COVERAGE_THRESHOLD
+UNPRICED_COST_SOURCES = insights.UNPRICED_COST_SOURCES
+InsightBanner = insights.InsightBanner
+compute_insights = insights.compute_insights
+
 # Bucket strings the review-round breakdown emits whose runs are
 # "rework" (i.e. happened after the initial pass). Used to compute the
 # rework share KPI. `get_review_round_breakdown` keeps rounds 3, 4 and
@@ -36,21 +39,6 @@ UNPRICED_COST_SOURCES: frozenset[str] = frozenset(("unknown-price", "unknown"))
 REWORK_BUCKETS: frozenset[str] = frozenset(
     ("1", "2", "3", "4", "5", "6+")
 )
-
-
-@dataclass(frozen=True)
-class InsightBanner:
-    """A single banner line displayed at the top of the page.
-
-    `severity` is one of `success` / `info` / `warning` / `error`;
-    the dashboard renders each through the matching coloured insight
-    block. Keeping severity a plain string (rather than an Enum)
-    means the helpers stay importable without Streamlit and the
-    tests can compare against string literals.
-    """
-
-    severity: str
-    message: str
 
 
 def kpi_delta(
@@ -68,66 +56,6 @@ def kpi_delta(
     if previous <= 0:
         return None
     return (current - previous) / previous
-
-
-def compute_insights(
-    summary: Summary,
-    *,
-    cost_coverage_rows: Sequence[CostCoverageRow] = (),
-) -> list[InsightBanner]:
-    """Banner lines surfaced at the top of the redesigned page.
-
-    Each banner is a single observation the operator should act on:
-
-    - Failure rate exceeds `FAILURE_RATE_BANNER_THRESHOLD`: agent
-      runs are exiting non-zero more than 10 % of the time.
-    - Unpriced cost coverage exceeds `UNPRICED_COVERAGE_THRESHOLD`:
-      the price tables in `observability/usage/prices.py` are
-      missing SKUs the parser is seeing in the wild.
-
-    The helper returns an empty list when nothing crosses a
-    threshold, so the caller can branch on `if banners:` for the
-    section header.
-    """
-    banners: list[InsightBanner] = []
-    if summary.total_agent_runs > 0:
-        rate = summary.failed_agent_runs / summary.total_agent_runs
-        if rate >= FAILURE_RATE_BANNER_THRESHOLD:
-            rate *= 100
-            banners.append(
-                InsightBanner(
-                    severity="error",
-                    message=(
-                        f"{summary.failed_agent_runs} of "
-                        f"{summary.total_agent_runs} agent runs failed "
-                        f"({rate:.0f}%)."
-                    ),
-                )
-            )
-    if cost_coverage_rows:
-        total_runs = sum(row.runs for row in cost_coverage_rows)
-        unpriced = sum(
-            row.runs
-            for row in cost_coverage_rows
-            if row.cost_source in UNPRICED_COST_SOURCES
-        )
-        if total_runs > 0:
-            ratio = unpriced / total_runs
-            if ratio >= UNPRICED_COVERAGE_THRESHOLD:
-                ratio *= 100
-                banners.append(
-                    InsightBanner(
-                        severity="warning",
-                        message=(
-                            f"{unpriced} of {total_runs} agent runs lack "
-                            f"a priced cost ({ratio:.0f}%) -- check "
-                            "the price tables in "
-                            "`observability/usage/prices.py` "
-                            "for missing SKUs."
-                        ),
-                    )
-                )
-    return banners
 
 
 def reliability_tile_data(

@@ -13,6 +13,8 @@ _STATE_HUB = "orchestrator.dashboard_state"
 
 _READS_HUB = "orchestrator.dashboard_reads"
 
+_KPI_HUB = "orchestrator.dashboard_kpis"
+
 _READ_CORE_LEAF = "orchestrator._dashboard_read_core"
 
 _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
@@ -40,6 +42,8 @@ _FILTER_BINDING = f"{_PACKAGE}.filter_binding"
 _FILTERS = f"{_PACKAGE}.filters"
 
 _FORMATTING = f"{_PACKAGE}.formatting"
+
+_INSIGHTS = f"{_PACKAGE}.insights"
 
 _LAYOUT = f"{_PACKAGE}.layout"
 
@@ -246,6 +250,34 @@ _FORWARDED_READS_HUB = (
     _SKILL_TRIGGER_RATES_NAME,
 )
 
+# The banner surface the KPI hub publishes on the insight owner's behalf: the
+# two bands a window is interrupted at, the spellings an unpriced run reaches
+# the second one under, the line a crossing is rendered as, and the reading
+# that raises it. A copy of any of them would be a page opening on thresholds
+# nobody else can tune.
+_FORWARDED_INSIGHTS = (
+    (
+        "FAILURE_RATE_BANNER_THRESHOLD",
+        _INSIGHTS,
+        "FAILURE_RATE_BANNER_THRESHOLD",
+    ),
+    ("InsightBanner", _INSIGHTS, "InsightBanner"),
+    ("UNPRICED_COST_SOURCES", _INSIGHTS, "UNPRICED_COST_SOURCES"),
+    ("UNPRICED_COVERAGE_THRESHOLD", _INSIGHTS, "UNPRICED_COVERAGE_THRESHOLD"),
+    ("compute_insights", _INSIGHTS, "compute_insights"),
+)
+
+# What the KPI hub still implements itself: the delta a tile is annotated with,
+# the reliability triples, the top-cost ordering, and the rework share. Naming
+# them is what gives the banner surface's absence below a meaning -- a banner
+# calculated here again would arrive as a name this tuple does not carry.
+_KPI_HUB_SURFACE = (
+    "kpi_delta",
+    "reliability_tile_data",
+    "rework_totals",
+    "top_expensive_issues",
+)
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -408,6 +440,35 @@ class ForwardedReadsHubTest(unittest.TestCase):
                     getattr(hub, name),
                     getattr(import_module(owner_name), attribute),
                 )
+
+
+class ForwardedKpiHubTest(unittest.TestCase):
+    """The KPI hub republishes the insight owner's objects beside its own.
+
+    It is the site the lazy `dashboard.<name>` surface resolves the banner
+    inventory through, and it keeps implementing the KPI arithmetic next to it
+    -- so the pair is read together: the banners are the owner's own objects,
+    and what is left stamped here is the arithmetic and nothing else.
+    """
+
+    def test_each_name_resolves_to_the_owner(self) -> None:
+        hub = import_module(_KPI_HUB)
+        for name, owner_name, attribute in _FORWARDED_INSIGHTS:
+            with self.subTest(name=name):
+                self.assertIs(
+                    getattr(hub, name),
+                    getattr(import_module(owner_name), attribute),
+                )
+
+    def test_it_defines_only_the_kpi_arithmetic(self) -> None:
+        hub = import_module(_KPI_HUB)
+        defined = tuple(sorted(
+            name
+            for name, member in hub.__dict__.items()
+            if not name.startswith("_")
+            and getattr(member, "__module__", None) == _KPI_HUB
+        ))
+        self.assertEqual(defined, _KPI_HUB_SURFACE)
 
 
 if __name__ == "__main__":

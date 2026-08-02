@@ -30,10 +30,12 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
 read-mode state one run of the analytics page carries plus the fan-out its reads are issued through, the six a
-comparison panel is drawn from, the three a skill panel is, and the connection, filter binding, and unfiltered
-metadata each read goes through (`dashboard/windows.py`, `dashboard/filters.py`, `dashboard/read_mode.py`,
+comparison panel is drawn from, the three a skill panel is, the connection, filter binding, and unfiltered
+metadata each read goes through, and the banners a window is interrupted with above all of them
+(`dashboard/windows.py`, `dashboard/filters.py`, `dashboard/read_mode.py`,
 `dashboard/fanout.py`, `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`,
-`dashboard/filter_binding.py`, `dashboard/static_metadata.py`), the trajectory viewer's whole read model — its file
+`dashboard/filter_binding.py`, `dashboard/static_metadata.py`, `dashboard/insights.py`), the trajectory viewer's
+whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
 composition one run of it is driven by (`trajectory_viewer/`), and the packages the rest of the analytics sink,
@@ -1263,7 +1265,11 @@ a comparison panel is drawn from, each naming the rollup or breakdown query owne
 the three a skill panel is drawn from, each naming the skill query owner. What one read of that wave then goes through
 lives beside them: `scoped_reads.py` for the thread's analytics connection it is issued inside, `filter_binding.py`
 for the filters its cache key is read back as, and `static_metadata.py` for the extent and filter vocabulary a page
-opens on, the TTL both are cached for, and the banner a failed one stops the run with. `dashboard_state.py` stays the
+opens on, the TTL both are cached for, and the banner a failed one stops the run with. Above every panel that wave
+feeds, `insights.py` holds the two observations a window is worth interrupting for — runs exiting non-zero, and runs
+the parser could not price — the ratio each is raised at, and the banner line a crossing is rendered as;
+`dashboard_kpis.py` forwards those names to it and keeps the delta, tile, ordering, and rework arithmetic beside them.
+`dashboard_state.py` stays the
 hub the page reads the state off and `dashboard_reads.py` the hub the read inventory is resolved through, while
 `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`,
 `_dashboard_read_core.py`, `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` forward each historical
