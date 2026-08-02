@@ -71,36 +71,10 @@ CONFIGURED_DB_URL = "postgresql://h/db"
 CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
-FILTERED_READ_CALL_FRAGMENT = "_read_filtered("
-
-
 ENTRYPOINT_ATTR = "main"
 
 
 SECOND_WAVE_READERS_MEMBER = "_second_wave_readers"
-
-
-SKILL_MATRIX_READER_MEMBER = "_read_skill_trigger_matrix"
-
-
-SKILL_ADOPTION_READER_MEMBER = "_read_skill_adoption"
-
-
-SKILL_TRIGGER_RATES_READER_MEMBER = "_read_skill_trigger_rates"
-
-
-FACADE_REFERENCE = "analytics_read."
-
-
-# Each dashboard skill reader and the query owner's read it names. The
-# `analytics.read` facade forwards the same three objects, so a reader reaching
-# through it would pass every behavioral check while keeping a compatibility
-# surface load-bearing.
-SKILL_READER_OWNER_CALLS = (
-    (SKILL_MATRIX_READER_MEMBER, "skill_reads.get_skill_trigger_matrix"),
-    (SKILL_ADOPTION_READER_MEMBER, "skill_reads.get_skill_adoption"),
-    (SKILL_TRIGGER_RATES_READER_MEMBER, "skill_reads.get_skill_trigger_rates"),
-)
 
 
 class _MainSourceTest(unittest.TestCase):
@@ -122,17 +96,6 @@ class _MainSourceTest(unittest.TestCase):
         return inspect.getsource(getattr(dashboard, name))
 
 
-class SkillReadOwnerTest(_MainSourceTest):
-    """Every skill reader names the query owner, not the read facade."""
-
-    def test_each_reader_calls_the_query_owner(self) -> None:
-        for reader, owner_call in SKILL_READER_OWNER_CALLS:
-            with self.subTest(reader=reader):
-                src = self._source_of(reader)
-                self.assertIn(owner_call, src)
-                self.assertNotIn(FACADE_REFERENCE, src)
-
-
 class SkillMatrixWiringTest(_MainSourceTest):
     """The invocation-level per-skill trigger matrix rides the same cached
     / fan-out read pattern as every other widget (its wrapper lives in
@@ -142,24 +105,6 @@ class SkillMatrixWiringTest(_MainSourceTest):
     inspect the rendered sources rather than driving the page under
     Streamlit.
     """
-
-    def test_matrix_read_forwards_scoped_connection(self) -> None:
-        # Reuse the cached-read pattern: the matrix wrapper delegates to
-        # `_read_filtered`, which binds the cache key and checks out the
-        # thread-local connection, so the matrix read shares the open socket
-        # rather than opening its own.
-        src = self._source_of(SKILL_MATRIX_READER_MEMBER)
-        self.assertIn(FILTERED_READ_CALL_FRAGMENT, src)
-
-    def test_read_cache_key_omits_connection(self) -> None:
-        # `conn` must not appear in the wrapper's parameter list -- it
-        # would land in the `st.cache_data` key and crash on the
-        # unhashable psycopg connection.
-        src = self._source_of(SKILL_MATRIX_READER_MEMBER)
-        marker = "def _read_skill_trigger_matrix("
-        head = src.index(marker)
-        tail = src.index("):", head)
-        self.assertNotIn(" conn", src[head:tail])
 
     def test_matrix_dispatched_in_second_wave(self) -> None:
         src = self._source_of(SECOND_WAVE_READERS_MEMBER)
@@ -202,24 +147,6 @@ class SkillAdoptionWiringTest(_MainSourceTest):
     installed for the default sync, so these inspect the rendered sources
     rather than driving the page under Streamlit.
     """
-
-    def test_adoption_read_forwards_scoped_connection(self) -> None:
-        # Reuse the cached-read pattern: the adoption wrapper delegates to
-        # `_read_filtered`, which binds the cache key and checks out the
-        # thread-local connection, so the adoption read shares the open socket
-        # rather than opening its own.
-        src = self._source_of(SKILL_ADOPTION_READER_MEMBER)
-        self.assertIn(FILTERED_READ_CALL_FRAGMENT, src)
-
-    def test_adoption_read_cache_key_omits_connection(self) -> None:
-        # `conn` must not appear in the wrapper's parameter list -- it
-        # would land in the `st.cache_data` key and crash on the
-        # unhashable psycopg connection.
-        src = self._source_of(SKILL_ADOPTION_READER_MEMBER)
-        marker = "def _read_skill_adoption("
-        head = src.index(marker)
-        tail = src.index("):", head)
-        self.assertNotIn(" conn", src[head:tail])
 
     def test_adoption_dispatched_in_second_wave(self) -> None:
         src = self._source_of(SECOND_WAVE_READERS_MEMBER)

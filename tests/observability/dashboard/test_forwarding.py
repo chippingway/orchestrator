@@ -19,10 +19,7 @@ _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
 
 _BREAKDOWNS_LEAF = "orchestrator._dashboard_read_breakdowns"
 
-# The one read that leaf still spells itself: the third of the skill trio whose
-# other two sit under `_dashboard_read_skills`, waiting there for the owner
-# that will take all three.
-_SKILL_TRIGGER_RATES = "_read_skill_trigger_rates"
+_SKILLS_LEAF = "orchestrator._dashboard_read_skills"
 
 # `from __future__ import annotations` opens every module in the repository and
 # binds the compiler directive under a public name. It is a compilation
@@ -51,6 +48,8 @@ _PALETTE = f"{_PACKAGE}.palette"
 _READ_MODE = f"{_PACKAGE}.read_mode"
 
 _SCOPED_READS = f"{_PACKAGE}.scoped_reads"
+
+_SKILLS = f"{_PACKAGE}.skills"
 
 _STATIC_METADATA = f"{_PACKAGE}.static_metadata"
 
@@ -223,10 +222,29 @@ _BREAKDOWN_READ_NAMES = (
     ("_read_throughput", _BREAKDOWNS, "read_throughput"),
 )
 
+# The three skill-panel reads, listed by the leaf each is spelled on: the
+# trigger rates have always been reached through the panel leaf beside the six,
+# and the matrix and adoption cells through the leaf named for them. A page that
+# reached a copy of any of the three would draw its adoption table and the two
+# diagnostics beneath it from adapters nobody else can fix.
+_SKILL_TRIGGER_RATES_NAME = (
+    "_read_skill_trigger_rates", _SKILLS, "read_skill_trigger_rates",
+)
+
+_SKILL_LEAF_NAMES = (
+    ("_read_skill_adoption", _SKILLS, "read_skill_adoption"),
+    ("_read_skill_trigger_matrix", _SKILLS, "read_skill_trigger_matrix"),
+)
+
 # Everything the read hub publishes on an owner's behalf, in one list: the
 # scope, binding, and metadata reads a widget's wrapper goes through, and the
-# six panel reads that are the wrappers themselves.
-_FORWARDED_READS_HUB = (*_READ_CORE_NAMES, *_BREAKDOWN_READ_NAMES)
+# nine panel reads that are the wrappers themselves.
+_FORWARDED_READS_HUB = (
+    *_READ_CORE_NAMES,
+    *_BREAKDOWN_READ_NAMES,
+    *_SKILL_LEAF_NAMES,
+    _SKILL_TRIGGER_RATES_NAME,
+)
 
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
@@ -253,8 +271,9 @@ _FILTER_NAMES = (
 # The flat modules a caller reaches one of these owners through, and what each
 # name they publish resolves to: a window built here has to be the one the
 # reads are bounded by, a key hashed here the one the cached reads are stored
-# under, and a scope entered here the one they all share, or a fix under the
-# owners would reach only half of the callers.
+# under, a scope entered here the one they all share, and a panel read issued
+# here the one a page draws that panel from, or a fix under the owners would
+# reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -267,6 +286,8 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_filter_state": _FILTER_NAMES,
     _READ_CORE_LEAF: _READ_CORE_NAMES,
     _READ_MODE_LEAF: (*_LEAF_READ_MODE_HELPERS, *_LEAF_FAN_OUT_NAMES),
+    _BREAKDOWNS_LEAF: (*_BREAKDOWN_READ_NAMES, _SKILL_TRIGGER_RATES_NAME),
+    _SKILLS_LEAF: _SKILL_LEAF_NAMES,
 })
 
 # The hub the page and the compatibility facade in front of it read the state
@@ -344,8 +365,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
                     )
 
     def test_no_flat_module_defines_one_itself(self) -> None:
-        # The same rule the theme site is held to, applied to the four leaves
-        # beneath the state hub: a module that defined a name of its own would
+        # The same rule the theme site is held to, applied to the leaves
+        # beneath the two hubs: a module that defined a name of its own would
         # be a second implementation the check above cannot see, because it
         # only compares the names the module was asked for.
         for module_name in _FORWARDED_MODULES:
@@ -387,38 +408,6 @@ class ForwardedReadsHubTest(unittest.TestCase):
                     getattr(hub, name),
                     getattr(import_module(owner_name), attribute),
                 )
-
-
-class ForwardedBreakdownLeafTest(unittest.TestCase):
-    """The panel-read leaf forwards the six and still spells the skill one.
-
-    It cannot join the leaves above, whose rule is that they define nothing:
-    the skill trigger rates are written here until the trio they belong to has
-    an owner, so what this leaf is held to is that the six beside them are the
-    owner's own objects rather than adapters that came back.
-    """
-
-    def test_each_name_resolves_to_the_owner(self) -> None:
-        leaf = import_module(_BREAKDOWNS_LEAF)
-        for name, owner_name, attribute in _BREAKDOWN_READ_NAMES:
-            with self.subTest(name=name):
-                self.assertIs(
-                    getattr(leaf, name),
-                    getattr(import_module(owner_name), attribute),
-                )
-
-    def test_it_spells_nothing_but_the_skill_read(self) -> None:
-        # The skill read is one of the members the compatibility stamp
-        # rewrites `__module__` on, so which of the two names it reports
-        # depends on whether the read hub has been imported yet. A seventh
-        # adapter written back in here shows under either spelling, which is
-        # what this is watching for.
-        defined = tuple(
-            name
-            for name, member in import_module(_BREAKDOWNS_LEAF).__dict__.items()
-            if getattr(member, "__module__", None) == _BREAKDOWNS_LEAF
-        )
-        self.assertEqual(set(defined) - {_SKILL_TRIGGER_RATES}, set())
 
 
 if __name__ == "__main__":

@@ -1,20 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard per-skill read wrappers.
+"""Historical import site for two of the skill panel reads.
 
-Both reads name the query owner rather than the `analytics.read` facade that
-forwards the same two objects. Reaching through it would run identical SQL
-while making the page depend on a hop kept for callers that predate the owner.
+Both are the dashboard owner's own objects. A caller that names this module --
+the read plan beside it, the hub in front of it, and every historical
+`dashboard.<name>` import through that hub -- reaches those rather than a copy
+of either, so a page and the owner cannot answer differently. The third of the
+trio is reached through `_dashboard_read_breakdowns`, which is where a caller
+has always spelled it.
 """
 from __future__ import annotations
 
-from orchestrator._dashboard_read_core import _read_filtered
-from orchestrator.observability.analytics.query import skill_reads
+from orchestrator.observability.dashboard import skills
 
 
-def _read_skill_trigger_matrix(key: tuple):
-    return _read_filtered(skill_reads.get_skill_trigger_matrix, key)
-
-
-def _read_skill_adoption(key: tuple):
-    return _read_filtered(skill_reads.get_skill_adoption, key)
+_read_skill_trigger_matrix = skills.read_skill_trigger_matrix
+_read_skill_adoption = skills.read_skill_adoption
