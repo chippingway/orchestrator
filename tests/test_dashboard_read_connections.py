@@ -15,7 +15,7 @@ from tests.dashboard_reload_helpers import (
     reload_dashboard as _reload,
 )
 
-_FORWARD_SCOPED_CONNECTION_CO = 16
+_FORWARD_SCOPED_CONNECTION_CO = 10
 
 
 ANALYTICS_DB_URL_ENV = "ANALYTICS_DB_URL"
@@ -27,6 +27,9 @@ CONFIGURED_DB_URL = "postgresql://h/db"
 CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
+# The read wrappers still spelled beside the flat hub. The comparison-panel
+# six are the dashboard breakdown owner's, so what they route through is
+# pinned there instead.
 WIDGET_READER_WRAPPER_NAMES = (
     "_read_summary",
     "_read_prev_kpi",
@@ -35,12 +38,6 @@ WIDGET_READER_WRAPPER_NAMES = (
     "_read_recent_agent_exits",
     "_read_top_cost_issues",
     "_read_review_round",
-    "_read_backend_efficiency",
-    "_read_repo_breakdown",
-    "_read_cost_coverage",
-    "_read_hourly_heatmap",
-    "_read_throughput",
-    "_read_backend_daily_tokens",
     "_read_skill_adoption",
     "_read_skill_trigger_rates",
     "_read_skill_trigger_matrix",

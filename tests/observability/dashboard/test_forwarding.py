@@ -17,6 +17,13 @@ _READ_CORE_LEAF = "orchestrator._dashboard_read_core"
 
 _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
 
+_BREAKDOWNS_LEAF = "orchestrator._dashboard_read_breakdowns"
+
+# The one read that leaf still spells itself: the third of the skill trio whose
+# other two sit under `_dashboard_read_skills`, waiting there for the owner
+# that will take all three.
+_SKILL_TRIGGER_RATES = "_read_skill_trigger_rates"
+
 # `from __future__ import annotations` opens every module in the repository and
 # binds the compiler directive under a public name. It is a compilation
 # instruction rather than something the theme answers for, so the surface check
@@ -24,6 +31,8 @@ _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
 _FUTURE_DIRECTIVE = "annotations"
 
 _PACKAGE = "orchestrator.observability.dashboard"
+
+_BREAKDOWNS = f"{_PACKAGE}.breakdowns"
 
 _CSS = f"{_PACKAGE}.css"
 
@@ -202,6 +211,23 @@ _READ_CORE_NAMES = (
     ("_scoped_read", _SCOPED_READS, "scoped_read"),
 )
 
+# The six comparison-panel reads, and the owner each resolves to. A page that
+# reached a copy would draw its backend, repository, coverage, heatmap,
+# throughput, and daily-token sections from adapters nobody else can fix.
+_BREAKDOWN_READ_NAMES = (
+    ("_read_backend_daily_tokens", _BREAKDOWNS, "read_backend_daily_tokens"),
+    ("_read_backend_efficiency", _BREAKDOWNS, "read_backend_efficiency"),
+    ("_read_cost_coverage", _BREAKDOWNS, "read_cost_coverage"),
+    ("_read_hourly_heatmap", _BREAKDOWNS, "read_hourly_heatmap"),
+    ("_read_repo_breakdown", _BREAKDOWNS, "read_repo_breakdown"),
+    ("_read_throughput", _BREAKDOWNS, "read_throughput"),
+)
+
+# Everything the read hub publishes on an owner's behalf, in one list: the
+# scope, binding, and metadata reads a widget's wrapper goes through, and the
+# six panel reads that are the wrappers themselves.
+_FORWARDED_READS_HUB = (*_READ_CORE_NAMES, *_BREAKDOWN_READ_NAMES)
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -355,12 +381,44 @@ class ForwardedReadsHubTest(unittest.TestCase):
 
     def test_each_name_resolves_to_the_owner(self) -> None:
         hub = import_module(_READS_HUB)
-        for name, owner_name, attribute in _READ_CORE_NAMES:
+        for name, owner_name, attribute in _FORWARDED_READS_HUB:
             with self.subTest(name=name):
                 self.assertIs(
                     getattr(hub, name),
                     getattr(import_module(owner_name), attribute),
                 )
+
+
+class ForwardedBreakdownLeafTest(unittest.TestCase):
+    """The panel-read leaf forwards the six and still spells the skill one.
+
+    It cannot join the leaves above, whose rule is that they define nothing:
+    the skill trigger rates are written here until the trio they belong to has
+    an owner, so what this leaf is held to is that the six beside them are the
+    owner's own objects rather than adapters that came back.
+    """
+
+    def test_each_name_resolves_to_the_owner(self) -> None:
+        leaf = import_module(_BREAKDOWNS_LEAF)
+        for name, owner_name, attribute in _BREAKDOWN_READ_NAMES:
+            with self.subTest(name=name):
+                self.assertIs(
+                    getattr(leaf, name),
+                    getattr(import_module(owner_name), attribute),
+                )
+
+    def test_it_spells_nothing_but_the_skill_read(self) -> None:
+        # The skill read is one of the members the compatibility stamp
+        # rewrites `__module__` on, so which of the two names it reports
+        # depends on whether the read hub has been imported yet. A seventh
+        # adapter written back in here shows under either spelling, which is
+        # what this is watching for.
+        defined = tuple(
+            name
+            for name, member in import_module(_BREAKDOWNS_LEAF).__dict__.items()
+            if getattr(member, "__module__", None) == _BREAKDOWNS_LEAF
+        )
+        self.assertEqual(set(defined) - {_SKILL_TRIGGER_RATES}, set())
 
 
 if __name__ == "__main__":

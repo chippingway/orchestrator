@@ -28,7 +28,7 @@ CONFIGURED_DB_URL = "postgresql://h/db"
 CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
-WIDGET_READER_WRAPPER_NAMES = (
+STAMPED_READER_WRAPPER_NAMES = (
     "_read_summary",
     "_read_prev_kpi",
     "_read_time_series",
@@ -36,12 +36,6 @@ WIDGET_READER_WRAPPER_NAMES = (
     "_read_recent_agent_exits",
     "_read_top_cost_issues",
     "_read_review_round",
-    "_read_backend_efficiency",
-    "_read_repo_breakdown",
-    "_read_cost_coverage",
-    "_read_hourly_heatmap",
-    "_read_throughput",
-    "_read_backend_daily_tokens",
     "_read_skill_adoption",
     "_read_skill_trigger_rates",
     "_read_skill_trigger_matrix",
@@ -49,7 +43,7 @@ WIDGET_READER_WRAPPER_NAMES = (
 
 
 _MOVED_READ_MEMBERS = (
-    *WIDGET_READER_WRAPPER_NAMES,
+    *STAMPED_READER_WRAPPER_NAMES,
     "_widget_task",
     "_first_wave_readers",
     "_second_wave_readers",
@@ -62,11 +56,21 @@ _MOVED_READ_MEMBERS = (
 )
 
 
-# The connection scope, the filter binding, and the static-metadata reads are
-# the dashboard owners' own objects, published here under the spellings a
-# caller reached them by. They report their owner rather than this hub, so the
-# guard on them is where each resolves to.
+_BREAKDOWNS_OWNER = "breakdowns"
+
+
+# The six comparison-panel reads, the connection scope, the filter binding,
+# and the static-metadata reads are the dashboard owners' own objects,
+# published here under the spellings a caller reached them by. They report
+# their owner rather than this hub, so the guard on them is where each
+# resolves to.
 _OWNED_READ_MEMBERS = MappingProxyType({
+    "_read_backend_efficiency": _BREAKDOWNS_OWNER,
+    "_read_repo_breakdown": _BREAKDOWNS_OWNER,
+    "_read_cost_coverage": _BREAKDOWNS_OWNER,
+    "_read_hourly_heatmap": _BREAKDOWNS_OWNER,
+    "_read_throughput": _BREAKDOWNS_OWNER,
+    "_read_backend_daily_tokens": _BREAKDOWNS_OWNER,
     "_filter_list": "filter_binding",
     "_read_filter_kwargs": "filter_binding",
     "_read_filtered": "filter_binding",
@@ -91,10 +95,10 @@ class ReadOrchestrationExtractionTest(unittest.TestCase):
     """The dashboard read orchestration -- cached reader wrappers, reader
     registries, the staged parallel dispatch + two-wave data load, and the
     load-timing log -- lives in `orchestrator.dashboard_reads`, which also
-    republishes the connection, filter-binding, and static-metadata reads
-    the dashboard owners hold. `orchestrator.dashboard` re-exports every
-    member under the same name so the `dashboard.<name>` surface and its
-    test patch points keep resolving to the same object.
+    republishes the comparison-panel, connection, filter-binding, and
+    static-metadata reads the dashboard owners hold. `orchestrator.dashboard`
+    re-exports every member under the same name so the `dashboard.<name>`
+    surface and its test patch points keep resolving to the same object.
     """
 
     def test_read_members_defined_in_reads_module(self) -> None:

@@ -1,39 +1,31 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard backend, repository, and activity read wrappers."""
+"""Historical import site for the panel reads, and home of the skill one.
+
+The six comparison reads are the dashboard owner's own objects. A caller that
+names this module -- the read plan beside it, the hub in front of them, and
+every historical `dashboard.<name>` import through that hub -- reaches those
+rather than a copy of any of them, so a page and the owner cannot answer
+differently.
+
+`_read_skill_trigger_rates` is spelled here rather than forwarded, because the
+skill reads belong together: it is the third of the trio `_dashboard_read_skills`
+holds the other two of, and it waits here for the owner that will take all
+three.
+"""
 from __future__ import annotations
 
-from orchestrator.analytics import read as analytics_read
 from orchestrator._dashboard_read_core import _read_filtered
 from orchestrator.observability.analytics.query import skill_reads
+from orchestrator.observability.dashboard import breakdowns
 
 
-def _read_backend_efficiency(key: tuple):
-    return _read_filtered(analytics_read.get_backend_efficiency, key)
-
-
-def _read_repo_breakdown(key: tuple):
-    return _read_filtered(analytics_read.get_repo_breakdown, key)
-
-
-def _read_cost_coverage(key: tuple):
-    return _read_filtered(analytics_read.get_cost_coverage, key)
-
-
-def _read_hourly_heatmap(key: tuple, tz_offset_hours: int):
-    return _read_filtered(
-        analytics_read.get_hourly_heatmap,
-        key,
-        tz_offset_hours=tz_offset_hours,
-    )
-
-
-def _read_throughput(key: tuple):
-    return _read_filtered(analytics_read.get_throughput_breakdown, key)
-
-
-def _read_backend_daily_tokens(key: tuple):
-    return _read_filtered(analytics_read.get_backend_daily_tokens, key)
+_read_backend_efficiency = breakdowns.read_backend_efficiency
+_read_repo_breakdown = breakdowns.read_repo_breakdown
+_read_cost_coverage = breakdowns.read_cost_coverage
+_read_hourly_heatmap = breakdowns.read_hourly_heatmap
+_read_throughput = breakdowns.read_throughput
+_read_backend_daily_tokens = breakdowns.read_backend_daily_tokens
 
 
 def _read_skill_trigger_rates(key: tuple):
