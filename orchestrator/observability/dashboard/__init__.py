@@ -32,8 +32,9 @@ every figure family is built out of -- the placeholder a window holding no
 rows is answered with, the labels a bar is annotated by, and the height and
 legend a horizontal-bar panel is laid out with -- ``cost_layout`` the frame
 the horizontal cost families are drawn in and the request one series of bars
-is described by, ``cost_horizontal``, ``heatmap``, and ``throughput`` hold
-three families above the two, the generic spend ranking, the 7x24
+is described by, ``cost_horizontal``, ``cost_stage``, ``heatmap``, and
+``throughput`` hold four families above the two, the generic spend ranking,
+the per-stage split of that spend into what the cache paid for, the 7x24
 weekday-by-hour grid, and the per-day resolved-issue strip, and
 ``usage_bands``, ``usage_series``, ``usage_axis``, ``usage_traces``, and
 ``usage`` hold the usage family: the four bands a day of usage is counted into

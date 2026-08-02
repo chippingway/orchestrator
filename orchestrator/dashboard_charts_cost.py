@@ -45,12 +45,11 @@ cost_by_repo = repository.cost_by_repo
 _repo_short_name = repository._repo_short_name
 
 # The builders still defined in a flat leaf, which is where a caller has always
-# read their `__module__`. `cost_horizontal_bars` is deliberately absent: the
-# stamp mutates the object itself, so listing a builder the charts owner defines
-# would rewrite the owner's own function and leave the owner reporting a surface
-# it does not answer for.
+# read their `__module__`. `cost_horizontal_bars` and `cost_by_stage` are
+# deliberately absent: the stamp mutates the object itself, so listing a builder
+# a charts owner defines would rewrite the owner's own function and leave the
+# owner reporting a surface it does not answer for.
 _PUBLIC_BUILDERS = (
-    cost_by_stage,
     cost_by_review_round,
     cost_by_repo,
 )
