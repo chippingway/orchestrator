@@ -14,7 +14,9 @@ on the calling thread or across a pool capped at the count beside it, and each
 of those readers goes through ``scoped_reads`` for the connection it runs on,
 ``filter_binding`` for the filters its cache key is read back as, and --
 before any of them, because it is what a window can be picked at all from --
-``static_metadata`` for the extent and filter vocabulary a page opens on.
+``static_metadata`` for the extent and filter vocabulary a page opens on. The
+readers themselves arrive with the panels they are drawn for, starting with
+``breakdowns`` for the six a comparison section is built from.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so

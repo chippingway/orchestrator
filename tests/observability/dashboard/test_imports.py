@@ -16,6 +16,8 @@ from tests.observability.observability_test_support import (
 
 _PACKAGE = "orchestrator.observability.dashboard"
 
+_BREAKDOWNS_OWNER = "breakdowns"
+
 _CSS_OWNER = "css"
 
 _FANOUT_OWNER = "fanout"
@@ -44,6 +46,7 @@ _WINDOWS_OWNER = "windows"
 # in the module map, which is what the inventory check compares the directory
 # against.
 _OWNERS = (
+    _BREAKDOWNS_OWNER,
     _CSS_OWNER,
     _FANOUT_OWNER,
     _FILTER_BINDING_OWNER,
@@ -62,9 +65,10 @@ _OWNERS = (
 # to resolve a color, lay a chart out, shorten a number, spell a window,
 # normalize a selection, key a cached read, read that key back as a read's
 # filters, decide which way a load's reads are issued, run one wave of them
-# that way, check out the connection one of them runs on, or open a page on the
-# extent behind its filter bar is a deliberate edit rather than a place two
-# panels -- or the reads' `ts < end` bound and the cache's tri-state -- could
+# that way, check out the connection one of them runs on, draw a comparison
+# panel from one of the six reads behind it, or open a page on the extent
+# behind its filter bar is a deliberate edit rather than a place two panels --
+# or the reads' `ts < end` bound and the cache's tri-state -- could
 # disagree. Two owners report nothing because the check reads `__module__`,
 # which only a class or a function carries: the geometry owner's whole surface
 # is its measurements and the two font stacks, and the stylesheet owner's is
@@ -74,6 +78,14 @@ _OWNERS = (
 # alias the fan-out owner names a reader by, and the TTL the metadata owner
 # caches under are all invisible here for the same reason.
 _SURFACES = MappingProxyType({
+    _BREAKDOWNS_OWNER: (
+        "read_backend_daily_tokens",
+        "read_backend_efficiency",
+        "read_cost_coverage",
+        "read_hourly_heatmap",
+        "read_repo_breakdown",
+        "read_throughput",
+    ),
     _CSS_OWNER: (),
     _FANOUT_OWNER: ("fan_out_reads",),
     _FILTER_BINDING_OWNER: (
@@ -139,14 +151,15 @@ _COMPATIBILITY_SITES = (
     "orchestrator.dashboard_theme",
 )
 
-# What an owner here may reach: its siblings, plus the analytics owners the
-# three that touch a database name. Each of those is one answer already
+# What an owner here may reach: its siblings, plus the analytics owners named
+# by the ones that touch a database. Each of those is one answer already
 # decided elsewhere, so the owner that needs it names the owner that gives it
 # rather than a facade in front of one: the extent a preset anchors at is a
 # read's answer, whether there is a database to read at all is one knob's, the
 # socket a read runs on is the connection cache's, the exception a failed read
-# arrives as is the connection owner's, and the two unfiltered reads a page
-# opens with are the raw read family's.
+# arrives as is the connection owner's, the two unfiltered reads a page opens
+# with are the raw read family's, and the six a comparison panel is drawn from
+# are the rollup and breakdown families'.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here
