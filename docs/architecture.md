@@ -479,6 +479,9 @@ orchestrator/
                         and fan-out owners under observability/dashboard/
   dashboard_kpis.py     historical import site for the headline KPI arithmetic
                         and the banners above it, forwarding to those owners
+  dashboard_charts_base.py
+                        historical import site for the primitives every chart
+                        family is drawn out of, forwarding to the charts owner
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
   _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
@@ -519,8 +522,9 @@ orchestrator/
                         read-path, and replay owners beside them, the visual
                         theme both Streamlit pages are drawn in, the state a
                         run of the analytics page carries, the reads it issues
-                        under that state and the banners and headline numbers
-                        it reports above them, and the destination the
+                        under that state, the banners and headline numbers it
+                        reports above them and the figures it draws them as,
+                        and the destination the
                         observation-only surfaces above migrate the rest of
                         their responsibilities to
     analytics/
@@ -726,7 +730,8 @@ orchestrator/
                         what one of those reads then runs on and is narrowed
                         by, the banners a window is interrupted with above all
                         of them and the numbers it is summarized by beneath
-                        them, and the destination for the rest
+                        them, the figures those reads are drawn as, and the
+                        destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -792,6 +797,14 @@ orchestrator/
                         the run-health tiles, the order and depth a spend table
                         is cut to, and the share of spend that was a second
                         pass
+      charts/           the Plotly figures those reads are drawn as: what
+                        every family is built out of, and the destination for
+                        the families themselves
+        __init__.py     package marker only; callers import an owner directly
+        primitives.py   the placeholder a window holding no rows is answered
+                        with, the money, mono, and two-line-tick labels a bar
+                        is annotated by, and the height and legend a
+                        horizontal-bar panel is laid out with
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1602,6 +1615,20 @@ row -- issues tying on cost fall back to run count and then to the repository an
 unpriced issue sorts below every priced one rather than beside the cheapest -- so a table redrawn on the same window
 is the same table.
 
+`charts/` is where what those reads answer becomes a figure, and `primitives.py` is the first owner in it: the pieces
+every family is drawn out of rather than a family of its own. The no-data placeholder is the sharpest of them. Plotly
+answers an empty series with a blank canvas rather than an error, so a card that read nothing and a card that failed
+to load would look alike; every builder routes that branch through the one placeholder instead, carrying the height
+the non-empty panel was pinned to so an empty card cannot stand half again as tall as the ones beside it. The labels
+are the same argument at a smaller scale: a bar's amount comes off the formatter a KPI tile is rendered by, its text
+is set in the mono stack so a column of amounts lines up on the decimal point, and a tick is the label with its
+subtitle beneath it in the muted tint. The horizontal-bar helpers settle the shape those families share — one row
+height per bar over the fixed margin and axis base underneath unless the caller pinned a height, and the legend above
+the plot at the left edge — because a family sizing itself drifts from the ones beside it the first time a row is
+added. The owner names the theme owners it draws with and nothing else, so the dependency under the families runs one
+way and a direct import of any single chart module stays cycle-free. Plotly is reached inside the one call that builds
+a figure, which is what keeps importing anything under `dashboard/` free of the optional dependency group.
+
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
 socket out of, the metadata owner and the dispatch owner both name the error a failed read arrives as — the first
@@ -1621,8 +1648,11 @@ the hub the whole read inventory is resolved through, and the ten flat leaves be
 `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and forward each historical name to
 the owner's own object. The read hub defines nothing of its own either, so nothing there rewrites a defining module.
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
-them to the two owners that hold each. The trigger rates are reached through the breakdown leaf and the other two
-skill reads through the leaf named for them, because that is where a caller has always spelled each. The private
+them to the two owners that hold each. `dashboard_charts_base.py` is one too: the placeholder, the three label
+helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height are the
+charts owner's objects under the private spellings the usage, cost, and throughput leaves import them by. The trigger
+rates are reached through the breakdown leaf and the other two skill reads through the leaf named for them, because
+that is where a caller has always spelled each. The private
 `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and
 the `DEFAULT_RECENT_AGENT_EXITS` cap, the `LOADING_INDICATOR_MESSAGE` a load's spinner is opened with, the `log` its
 timing line is emitted on, and the

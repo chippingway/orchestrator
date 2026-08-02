@@ -11,8 +11,9 @@ the dashboard layer owns the query + sidebar filters and hands the resulting
 ``Figure`` to ``st.plotly_chart``.
 
 The chart families and their homes -- each imports the shared low-level
-primitives it needs from ``orchestrator.dashboard_charts_base``
-one-directionally (the heatmap leaf inlines its own empty-state and imports
+primitives it needs one-directionally through
+``orchestrator.dashboard_charts_base``, the historical site in front of the
+owner holding them (the heatmap leaf inlines its own empty-state and imports
 none), so a direct import of any of them is cycle-free:
 
 - ``orchestrator.dashboard_charts_usage`` -- ``usage_over_time`` (stacked-area
