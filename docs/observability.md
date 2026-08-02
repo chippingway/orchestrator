@@ -1299,13 +1299,14 @@ surfaces a `Custom` preset fallback, a repo selector, event / stage multi-select
 input.
 
 **Caching.** Every per-filter read is wrapped in `st.cache_data` keyed by the immutable `DashboardCacheKey(start, end,
-repo, events, stages, issue)`, so a filter change invalidates every cached query in lockstep. `get_data_extent` and
+repo, events, stages, issue)`, so a filter change invalidates every cached query in lockstep. `dashboard/read_plan.py`
+builds those wrappers under `WIDGET_CACHE_TTL_SECONDS = 60` (1 min), so a window nobody changes goes back to Postgres
+on the first rerun after that minute rather than on every widget interaction. `get_data_extent` and
 `get_filter_options` carry no filter inputs and live in argument-less wrappers under the longer
 `STATIC_METADATA_TTL_SECONDS = 300` (5 min) TTL so the sidebar / topbar only re-hit Postgres when `analytics.sync`
 ingests new events.
 
-**Two-wave loading.** The 16 widget reads are staged into two waves by `dashboard/read_plan.py`, each cached for
-`WIDGET_CACHE_TTL_SECONDS = 60`:
+**Two-wave loading.** The 16 widget reads are staged into two waves by `dashboard/read_plan.py`:
 
 - **First wave (6 reads).** `summary`, `prev_summary`, `ts_points`, `review_round_rows`, `throughput_rows`,
   `cost_coverage_rows` — feeds the topbar, filter meta, insight banners, and KPI strip.
