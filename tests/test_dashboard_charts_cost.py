@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard horizontal and per-stage cost chart tests."""
+"""Dashboard per-stage cost chart tests."""
 
 import importlib
 
@@ -62,69 +62,7 @@ RGBA_PREFIX = "rgba("
 EXPECTED_RGBA_MESSAGE = "expected rgba() cache shade, got "
 
 
-TWO_RUNS_LABEL = "2 runs"
-
-
 _PLACEHOLDER_HEIGHT = 120
-
-
-_ROW_HEIGHT = 40
-
-
-_PANEL_EXTRA_HEIGHT = 80
-
-
-@unittest.skipUnless(HAS_PLOTLY, _SKIP_REASON)
-class CostHorizontalBarsTest(unittest.TestCase):
-    def test_sorts_by_cost_descending(self) -> None:
-        cost_rows = [
-            ("alpha", "1 run", 5.0, "#111"),
-            ("beta", TWO_RUNS_LABEL, 15.0, "#222"),
-            ("gamma", "3 runs", 10.0, "#333"),
-        ]
-        fig = dashboard_charts.cost_horizontal_bars(cost_rows)
-        # The builder reverses the input so the LARGEST cost sits at
-        # the top of the chart (Plotly draws the first y at the
-        # bottom). Pull the y labels back out and check the order.
-        y_labels = list(fig.data[0].y)
-        # Highest cost (beta) should be the last entry returned by
-        # Plotly's bottom-up draw, i.e. the top of the chart.
-        self.assertIn("beta", y_labels[-1])
-        self.assertIn("gamma", y_labels[-2])
-
-    def test_accepts_items_keyword(self) -> None:
-        # `items` is the public keyword; callers may pass the rows by name.
-        fig = dashboard_charts.cost_horizontal_bars(
-            items=[("alpha", "1 run", 5.0, "#111")],
-        )
-        self.assertIsNotNone(fig)
-
-    def test_value_labels_render_with_money_shorthand(self) -> None:
-        cost_rows = [("repo", "10 events", 12_345.0, "#abc")]
-        fig = dashboard_charts.cost_horizontal_bars(cost_rows)
-        # `fmt_money` collapses 12_345 to `$12.3K`.
-        self.assertEqual(tuple(fig.data[0].text), ("$12.3K",))
-
-    def test_empty_renders_placeholder(self) -> None:
-        fig = dashboard_charts.cost_horizontal_bars([])
-        self.assertGreaterEqual(len(fig.layout.annotations), 1)
-        # Empty horizontal-bar cards still pin a height matching the
-        # single-row non-empty case (40 * 1 + 80) so they do not
-        # collapse to Plotly's 450px default.
-        self.assertEqual(fig.layout.height, _PLACEHOLDER_HEIGHT)
-
-    def test_height_scales_with_the_rows(self) -> None:
-        # The panel takes the shared per-row sizing rather than a height of
-        # its own, so three bars stand one row taller than two.
-        cost_rows = [
-            ("alpha", "1 run", 1.0, "#111"),
-            ("beta", TWO_RUNS_LABEL, 2.0, "#222"),
-            ("gamma", "3 runs", 3.0, "#333"),
-        ]
-        fig = dashboard_charts.cost_horizontal_bars(cost_rows)
-        self.assertEqual(
-            fig.layout.height, _ROW_HEIGHT * 3 + _PANEL_EXTRA_HEIGHT,
-        )
 
 
 @unittest.skipUnless(HAS_PLOTLY, _SKIP_REASON)

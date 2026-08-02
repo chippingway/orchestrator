@@ -1,94 +1,20 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Shared layout and trace models for horizontal cost charts."""
+"""Historical import site for the horizontal cost panel and its bars.
+
+The margin a ranking is gutter'd by, the frame it is laid out in, and the
+request one series of bars is described by are the charts owner's own objects.
+The generic, per-stage, and per-review-round leaves that name this module reach
+those rather than a copy, so the three families cannot be framed one way here
+and another under the owner.
+"""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from types import MappingProxyType
-from typing import Optional, Sequence
-
-from plotly import graph_objects as go
-
-from orchestrator import dashboard_theme as theme
-from orchestrator.dashboard_charts_base import (
-    _HORIZONTAL_BAR_EXTRA_HEIGHT,
-    _HORIZONTAL_BAR_ROW_HEIGHT,
-    _horizontal_panel_height,
-    _money_text,
-    _monospace_textfont,
-)
+from orchestrator.observability.dashboard.charts import cost_layout
 
 
-HORIZONTAL_BAR_MARGIN = MappingProxyType({"l": 160, "r": 64, "b": 32})
-
-
-@dataclass(frozen=True)
-class _HorizontalCostLayout:
-    row_count: int
-    height: Optional[int] = None
-    title: Optional[str] = None
-    barmode: Optional[str] = None
-    legend: Optional[dict[str, object]] = None
-    row_height: int = _HORIZONTAL_BAR_ROW_HEIGHT
-    extra_height: int = _HORIZONTAL_BAR_EXTRA_HEIGHT
-
-
-def _apply_horizontal_cost_layout(
-    figure: go.Figure,
-    options: _HorizontalCostLayout,
-) -> None:
-    layout = theme.base_layout(title=options.title)
-    if options.barmode is not None:
-        layout["barmode"] = options.barmode
-    if options.legend is not None:
-        layout["legend"] = options.legend
-    layout["margin"] = {
-        **HORIZONTAL_BAR_MARGIN,
-        "t": layout["margin"]["t"],
-    }
-    layout["height"] = _horizontal_panel_height(
-        options.row_count,
-        height=options.height,
-        row_height=options.row_height,
-        extra_height=options.extra_height,
-    )
-    figure.update_layout(**layout)
-    figure.update_xaxes(
-        title_text="USD",
-        tickprefix="$",
-        showline=False,
-        zeroline=False,
-    )
-    figure.update_yaxes(automargin=True, showline=False, ticks="")
-
-
-@dataclass(frozen=True)
-class _CostBarTrace:
-    name: str
-    amounts: Sequence[float]
-    y_ticks: Sequence[str]
-    color: object
-    hover_label: str
-    offsetgroup: Optional[str] = None
-    totals: Optional[Sequence[float]] = None
-
-
-def _cost_bar_trace(options: _CostBarTrace) -> go.Bar:
-    trace_kwargs = {
-        "x": list(options.amounts),
-        "y": list(options.y_ticks),
-        "name": options.name,
-        "orientation": "h",
-        "marker_color": options.color,
-        "cliponaxis": False,
-        "hovertemplate": (
-            f"%{{y}}<br>{options.hover_label}: $%{{x:,.2f}}<extra></extra>"
-        ),
-    }
-    if options.offsetgroup is not None:
-        trace_kwargs["offsetgroup"] = options.offsetgroup
-    if options.totals is not None:
-        trace_kwargs["text"] = _money_text(options.totals)
-        trace_kwargs["textposition"] = "outside"
-        trace_kwargs["textfont"] = _monospace_textfont()
-    return go.Bar(**trace_kwargs)
+HORIZONTAL_BAR_MARGIN = cost_layout.HORIZONTAL_BAR_MARGIN
+_HorizontalCostLayout = cost_layout.HorizontalCostLayout
+_apply_horizontal_cost_layout = cost_layout.apply_horizontal_cost_layout
+_CostBarTrace = cost_layout.CostBarTrace
+_cost_bar_trace = cost_layout.cost_bar_trace
