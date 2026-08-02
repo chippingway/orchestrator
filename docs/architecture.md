@@ -477,6 +477,8 @@ orchestrator/
                         forwarding to the dashboard owners
   dashboard_state.py    stable state hub reading the window, filter, read-mode,
                         and fan-out owners under observability/dashboard/
+  dashboard_kpis.py     historical import site for the headline KPI arithmetic
+                        and the banners above it, forwarding to those owners
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
   _dashboard_read_mode.py / _dashboard_read_core.py
