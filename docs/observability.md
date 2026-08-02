@@ -1291,12 +1291,14 @@ the parser could not price — the ratio each is raised at, and the banner line 
 beneath those, `kpis.py` holds the four numbers the headline tiles report — the move against the window before it,
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
 What those reads are drawn as sits one level down, under `charts/`, where `primitives.py` holds what every figure
-family is built out of (see **Chart builders** below).
+family is built out of and `heatmap.py` the weekday-by-hour grid that is the first family above it (see **Chart
+builders** below).
 `dashboard_state.py` stays the hub the page reads the state off and `dashboard_reads.py` the hub the read inventory
 is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`,
 `_dashboard_read_mode.py`, `_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_dispatch.py`,
 `_dashboard_read_rollups.py`,
-`_dashboard_read_breakdowns.py`, `_dashboard_read_skills.py`, `dashboard_kpis.py`, and `dashboard_charts_base.py`
+`_dashboard_read_breakdowns.py`, `_dashboard_read_skills.py`, `dashboard_kpis.py`, `dashboard_charts_base.py`, and
+`dashboard_charts_heatmap.py`
 forward each historical name to the owner's own object. Neither hub defines a name of its own, so neither rewrites a
 defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the component and
