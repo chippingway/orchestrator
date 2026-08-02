@@ -708,7 +708,8 @@ orchestrator/
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
     dashboard/          the Streamlit analytics page: the visual theme both
                         pages are drawn in, the state one run of it carries,
-                        and the destination for the rest
+                        the fan-out its reads are issued through, and the
+                        destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
