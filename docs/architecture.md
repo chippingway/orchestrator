@@ -1723,7 +1723,10 @@ stacking. A row carrying neither half but a total is a window read before the sp
 would draw an empty bar for spend that happened, so the whole total becomes the full-price half. The sub-line counts
 `runs` — the agent-exit subset of `StageBreakdown.count` — because those exits are what reported the spend the bar
 is drawn from. The one value this family takes from the one beside it is the height an empty cost panel comes to, so
-a split with nothing to draw is the same size card as a ranking with nothing to rank.
+a split with nothing to draw is the same size card as a ranking with nothing to rank. It is also the first of the
+horizontal cost families to be handed rows rather than tuples, so besides the theme owners it draws with and that one
+height, the only thing it names outside the package is `analytics/query/run_models.py`, the row a stage's halves
+arrive on.
 
 `heatmap.py` is the next family here, drawn straight off the shared pieces rather than that frame: the 7x24 grid a
 window's activity rhythm is read off, a row
