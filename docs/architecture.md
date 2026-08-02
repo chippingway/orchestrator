@@ -730,8 +730,9 @@ orchestrator/
                         stage selections a read is narrowed by, and the key
                         every cached read is stored under
       read_mode.py      the parallel-read knob and its truthy spellings, the
-                        worker cap, and the message an unconfigured database
-                        is refused with
+                        parse that reads it and the flag one process's loads
+                        are issued under, the worker cap, and the message an
+                        unconfigured database is refused with
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1443,15 +1444,21 @@ owns what a run narrows and displays that window by — the display offset, the 
 the stage multiselect's three states, and the key every cached read is stored under — because the key is built from
 the other three, and a selection normalized in one module and hashed in another is how two different filter sets end
 up sharing a cache entry. `read_mode.py` owns the parallel-read knob, its truthy spellings, the worker cap, and the
-text an unconfigured database is refused with; the helpers that read them are still flat beside the page, so what
-lands here is where the knob's name and the operator-facing message are decided rather than where the fan-out runs.
-The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, which is the only
-thing any of the three reaches outside the package.
+text an unconfigured database is refused with, together with the three reads over them — the parse, the flag it binds
+at import, and the refusal — so what a page's reads are issued under is decided here rather than where the fan-out
+runs. Those two answers are read at opposite times on purpose: the flag is parsed once at that module's import,
+because an operator turns the fan-out on by restarting the Streamlit process, while the database URL is read inside
+the call off whichever analytics package the name resolves to. The window owner names
+`analytics/query/overview_models.py` for the extent a preset anchors at, and the read-mode owner names
+`analytics/config.py` for the URL it refuses without; those are the only things any of the three reaches outside the
+package.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, and the three
 leaves it used to hold — `_dashboard_windows.py`, `_dashboard_filter_state.py`, and `_dashboard_state_constants.py` —
 define nothing and forward each historical name, the private `_TRUTHY` and `_extent_dates` spellings included, to the
-owner's own object.
+owner's own object. `_dashboard_read_mode.py` forwards the three read-mode helpers the same way and keeps one
+definition of its own, the fan-out: how a load's reads are issued is the page's arrangement, while what they are
+issued under is the owner's.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
