@@ -1447,10 +1447,11 @@ and the hub re-imports each public builder under its original name. Of the four 
 `cost_by_stage` are forwarded from the charts owners that define them. The shared low-level chart
 primitives
 (`empty_figure`, the money / mono-textfont / two-line-tick and panel-height / legend helpers) live under
-`orchestrator/observability/dashboard/charts/primitives.py`, which the cost leaves reach through
-`orchestrator/dashboard_charts_base.py` -- their historical import site, forwarding each private spelling to the
-owner's own object and implementing nothing -- so the dependency runs one way and a direct import of any chart module
-is cycle-free. The frame the three horizontal cost families are drawn in (the panel margin, the `USD` axis, the
+`orchestrator/observability/dashboard/charts/primitives.py`, which the per-review-round leaf -- the one flat module
+still importing them -- reaches through `orchestrator/dashboard_charts_base.py`, their historical import site, which
+forwards each private spelling to the owner's own object and implements nothing, so the dependency runs one way and a
+direct import of any chart module is cycle-free. The frame the three horizontal cost families are drawn in (the panel
+margin, the `USD` axis, the
 height, and the `CostBarTrace` request one series of bars is built from) lives beside it in
 `orchestrator/observability/dashboard/charts/cost_layout.py`, and `cost_horizontal_bars` itself -- with the ordering,
 tinting, and flip behind its bars, and the pinned `Signature` that keeps `items` its first parameter -- in
@@ -1462,8 +1463,9 @@ full-price fallback that lets a row carrying only a total still draw at its true
 lightening that shades a cache half from the stage's own hue, which is also where the per-review-round split gets the
 shading for its own cache halves. `orchestrator/_dashboard_cost_layout.py`,
 `orchestrator/_dashboard_cost_horizontal.py`, `orchestrator/_dashboard_cost_repo.py`, and
-`orchestrator/_dashboard_cost_stage.py` are the historical import sites the cost leaves reach the four through, again
-forwarding and implementing nothing. The heatmap and throughput families have moved under the same package:
+`orchestrator/_dashboard_cost_stage.py` are the historical import sites the cost hub and the per-review-round leaf
+reach those four owners through, again forwarding and implementing nothing. The heatmap and throughput families have
+moved under the same package:
 `orchestrator/observability/dashboard/charts/heatmap.py` builds the grid -- and draws its own empty-state annotation
 over it rather than routing through the shared placeholder, because an empty heatmap is still legible -- and
 `orchestrator/observability/dashboard/charts/throughput.py` the per-day strip, naming the shared placeholder for the
