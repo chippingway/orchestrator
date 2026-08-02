@@ -10,36 +10,31 @@ matrix for the 7x24 heatmap) and returns a ``plotly.graph_objects.Figure``;
 the dashboard layer owns the query + sidebar filters and hands the resulting
 ``Figure`` to ``st.plotly_chart``.
 
-The chart families and their homes. A builder still defined on a flat leaf
-imports the shared low-level primitives it needs one-directionally through
-``orchestrator.dashboard_charts_base``, the historical site in front of the
-owner holding them, so a direct import of any of them is cycle-free; a builder
-that has moved names the primitives and theme owners it draws with directly:
+The chart families and their homes. Every builder is defined by an owner under
+``observability``, which names the primitives and theme owners it draws with
+directly; each family surface below forwards that owner's object rather than
+holding one of its own:
 
 - ``orchestrator.dashboard_charts_usage`` -- ``usage_over_time`` (stacked-area
   daily token consumption with a cost-line overlay, in token-type or
-  per-backend stack mode) and the ``backend_per_day`` stub beside it, both
-  forwarded from the charts owner that builds them.
+  per-backend stack mode) and the ``backend_per_day`` stub beside it.
 - ``orchestrator.dashboard_charts_cost`` -- the horizontal cost-bar family:
-  ``cost_by_review_round`` is the one still built on a flat leaf beneath it,
-  while ``cost_horizontal_bars``, the generic ranking, ``cost_by_repo``, the
-  per-repository adapter drawn through it, and ``cost_by_stage``, the per-stage
-  cache split, are forwarded from the charts owners that build them.
+  ``cost_horizontal_bars``, the generic ranking; ``cost_by_repo``, the
+  per-repository adapter drawn through it; ``cost_by_stage``, the per-stage
+  cache split; and ``cost_by_review_round``, the same split across the two
+  roles of a review round.
 - ``orchestrator.dashboard_charts_heatmap`` -- ``hour_weekday_heatmap``, the
-  7x24 weekday-by-hour token-volume heatmap, forwarded from the charts owner
-  that builds it.
+  7x24 weekday-by-hour token-volume heatmap.
 - ``orchestrator.dashboard_charts_throughput`` -- ``done_per_day_bars``, the
-  issues-resolved-per-day reliability strip, forwarded from the charts owner
-  that builds it.
+  issues-resolved-per-day reliability strip.
 
-Plotly is imported at module load by the per-review-round leaf, the one family
-module still holding its own builder, because it is only reachable from the
-lazy ``import`` inside ``orchestrator.dashboard.main`` (see the lazy-import
-guard in ``tests/test_dashboard.py``): the orchestrator polling tick must not
-import this module, and ``orchestrator/dashboard.py`` must not import it at
-module load -- both invariants are enforced by tests. A family that has moved under
-``observability`` reaches Plotly inside the call that builds its figure
-instead, so importing the owner costs nothing in the default install.
+No module on any of those paths imports Plotly at module load: an owner
+reaches it inside the call that builds its figure, so importing one costs
+nothing in the default install. The lazy ``import`` inside
+``orchestrator.dashboard.main`` is still the only route to this hub (see the
+lazy-import guard in ``tests/test_dashboard.py``): the orchestrator polling
+tick must not import this module, and ``orchestrator/dashboard.py`` must not
+import it at module load -- both invariants are enforced by tests.
 """
 from __future__ import annotations
 

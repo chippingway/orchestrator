@@ -15,7 +15,11 @@ _COST_RANKING_SITE = "orchestrator._dashboard_cost_horizontal"
 
 _COST_REPO_SITE = "orchestrator._dashboard_cost_repo"
 
+_COST_REVIEW_SITE = "orchestrator._dashboard_cost_review"
+
 _COST_STAGE_SITE = "orchestrator._dashboard_cost_stage"
+
+_COST_PUBLIC_SITE = "orchestrator.dashboard_charts_cost"
 
 _HEATMAP_SITE = "orchestrator.dashboard_charts_heatmap"
 
@@ -41,6 +45,8 @@ _COST_RANKING = f"{_PACKAGE}.cost_horizontal"
 
 _COST_REPO = f"{_PACKAGE}.cost_repo"
 
+_COST_REVIEW = f"{_PACKAGE}.cost_review"
+
 _COST_STAGE = f"{_PACKAGE}.cost_stage"
 
 _HEATMAP = f"{_PACKAGE}.heatmap"
@@ -65,6 +71,16 @@ _USAGE_TRACES = f"{_PACKAGE}.usage_traces"
 # check looks past it.
 _FUTURE_DIRECTIVE = "annotations"
 
+# The four public builders keep their own spelling at every cost site, so the
+# name a caller reads one off and the name the owner defines it under are one.
+_COST_BY_REPO = "cost_by_repo"
+
+_COST_BY_REVIEW_ROUND = "cost_by_review_round"
+
+_COST_BY_STAGE = "cost_by_stage"
+
+_COST_HORIZONTAL_BARS = "cost_horizontal_bars"
+
 # The primitives a caller reaches through the base site, and the owner
 # attribute each private spelling resolves to. A placeholder built here and one
 # built off the owner have to be the same callable rather than two that agree
@@ -83,10 +99,9 @@ _FORWARDED_PRIMITIVES = (
     ("_two_line_y_ticks", _PRIMITIVES, "two_line_y_ticks"),
 )
 
-# The frame the three horizontal cost families share. The generic ranking, the
-# per-stage split, and the per-review-round split each reach it through this
-# site, so a copy here is how one of them would end up gutter'd or sized unlike
-# the two beside it.
+# The frame the three horizontal cost families share, reached through this site
+# by the surface that publishes all three. A copy here is how one of them would
+# end up gutter'd or sized unlike the two beside it.
 _FORWARDED_COST_LAYOUT = (
     ("HORIZONTAL_BAR_MARGIN", _COST_LAYOUT, "HORIZONTAL_BAR_MARGIN"),
     ("_CostBarTrace", _COST_LAYOUT, "CostBarTrace"),
@@ -99,11 +114,11 @@ _FORWARDED_COST_LAYOUT = (
     ("_cost_bar_trace", _COST_LAYOUT, "cost_bar_trace"),
 )
 
-# The generic ranking, reached through its own site by the cost hub and by the
-# per-review-round leaf that sizes its own empty panel by the height listed
-# here. The pinned signature is listed beside the builder because that is the
-# call shape the hub publishes the ranking under: a second `Signature` here
-# would let the site and the owner disagree about what `items` is spelled.
+# The generic ranking, reached through its own site by the surface that
+# publishes it. The pinned signature is listed beside the builder because that
+# is the call shape the surface publishes the ranking under: a second
+# `Signature` here would let the site and the owner disagree about what `items`
+# is spelled.
 _FORWARDED_COST_RANKING = (
     ("DEFAULT_CHART_HEIGHT", _COST_RANKING, "DEFAULT_CHART_HEIGHT"),
     ("_HORIZONTAL_BAR_SIGNATURE", _COST_RANKING, "HORIZONTAL_BAR_SIGNATURE"),
@@ -112,7 +127,7 @@ _FORWARDED_COST_RANKING = (
     ("_cost_item_sort_key", _COST_RANKING, "cost_item_sort_key"),
     ("_horizontal_bars_data", _COST_RANKING, "horizontal_bars_data"),
     ("_reverse_horizontal_bars", _COST_RANKING, "reverse_horizontal_bars"),
-    ("cost_horizontal_bars", _COST_RANKING, "cost_horizontal_bars"),
+    (_COST_HORIZONTAL_BARS, _COST_RANKING, _COST_HORIZONTAL_BARS),
 )
 
 # The per-repository adapter the hub re-exports through its own site, with the
@@ -121,13 +136,33 @@ _FORWARDED_COST_RANKING = (
 # reads that no fix under the owner reaches.
 _FORWARDED_COST_REPO = (
     ("_repo_short_name", _COST_REPO, "repo_short_name"),
-    ("cost_by_repo", _COST_REPO, "cost_by_repo"),
+    (_COST_BY_REPO, _COST_REPO, _COST_BY_REPO),
 )
 
-# The per-stage split, reached through its own site by the cost hub and by the
-# per-review-round leaf that tints its own cache halves with the shading listed
-# here. A second lightening factor or hex base here is how a cache segment on
-# one cost panel would end up a different shade from the one beside it.
+# The per-review-round split the surface re-exports through its own site, with
+# the eight columns, the ordering, the role totals, and the traces beneath it.
+# The public builder is the one the widget pipeline draws the review panel
+# with, so a copy here would be a split an operator reads that no fix under the
+# owner reaches.
+_FORWARDED_COST_REVIEW = (
+    ("REVIEW_BAR_EXTRA_HEIGHT", _COST_REVIEW, "REVIEW_BAR_EXTRA_HEIGHT"),
+    ("REVIEW_BAR_ROW_HEIGHT", _COST_REVIEW, "REVIEW_BAR_ROW_HEIGHT"),
+    ("REVIEW_ROUND_LABELS", _COST_REVIEW, "REVIEW_ROUND_LABELS"),
+    ("REVIEW_ROUND_ORDER", _COST_REVIEW, "REVIEW_ROUND_ORDER"),
+    ("_ReviewCostBars", _COST_REVIEW, "ReviewCostBars"),
+    ("_developer_cost_total", _COST_REVIEW, "developer_cost_total"),
+    ("_reverse_review_cost_bars", _COST_REVIEW, "reverse_review_cost_bars"),
+    ("_review_cost_bars", _COST_REVIEW, "review_cost_bars"),
+    ("_review_cost_traces", _COST_REVIEW, "review_cost_traces"),
+    ("_reviewer_cost_total", _COST_REVIEW, "reviewer_cost_total"),
+    (_COST_BY_REVIEW_ROUND, _COST_REVIEW, _COST_BY_REVIEW_ROUND),
+)
+
+# The per-stage split, reached through its own site by the surface that
+# publishes it and by the per-review-round owner that tints its own cache
+# halves with the shading listed here. A second lightening factor or hex base
+# here is how a cache segment on one cost panel would end up a different shade
+# from the one beside it.
 _FORWARDED_COST_STAGE = (
     ("CACHE_LIGHTEN", _COST_STAGE, "CACHE_LIGHTEN"),
     ("HEX_BASE", _COST_STAGE, "HEX_BASE"),
@@ -137,7 +172,7 @@ _FORWARDED_COST_STAGE = (
     ("_stage_cost_bars", _COST_STAGE, "stage_cost_bars"),
     ("_stage_cost_sort_key", _COST_STAGE, "stage_cost_sort_key"),
     ("_stage_no_cache_cost", _COST_STAGE, "stage_no_cache_cost"),
-    ("cost_by_stage", _COST_STAGE, "cost_by_stage"),
+    (_COST_BY_STAGE, _COST_STAGE, _COST_BY_STAGE),
 )
 
 # The heatmap the hub re-exports through its own site, with the cells, labels,
@@ -282,13 +317,59 @@ _FORWARDED_USAGE_PUBLIC = (
     (_USAGE_OVER_TIME, _USAGE, _USAGE_OVER_TIME),
 )
 
+# The whole cost family under the spellings the stable surface publishes: the
+# four builders, and beneath them the frame, columns, orderings, and shading
+# they are assembled out of. This is the site `orchestrator.dashboard_charts`
+# re-exports the family through, so every name here has to be the owner's own
+# object rather than one this site defined.
+_FORWARDED_COST_PUBLIC = (
+    ("_CACHE_LIGHTEN", _COST_STAGE, "CACHE_LIGHTEN"),
+    ("_CostBarTrace", _COST_LAYOUT, "CostBarTrace"),
+    ("_DEFAULT_CHART_HEIGHT", _COST_RANKING, "DEFAULT_CHART_HEIGHT"),
+    ("_HEX_BASE", _COST_STAGE, "HEX_BASE"),
+    ("_HORIZONTAL_BAR_MARGIN", _COST_LAYOUT, "HORIZONTAL_BAR_MARGIN"),
+    ("_HorizontalBars", _COST_RANKING, "HorizontalBars"),
+    ("_HorizontalCostLayout", _COST_LAYOUT, "HorizontalCostLayout"),
+    ("_REVIEW_BAR_EXTRA_HEIGHT", _COST_REVIEW, "REVIEW_BAR_EXTRA_HEIGHT"),
+    ("_REVIEW_BAR_ROW_HEIGHT", _COST_REVIEW, "REVIEW_BAR_ROW_HEIGHT"),
+    ("_REVIEW_ROUND_LABELS", _COST_REVIEW, "REVIEW_ROUND_LABELS"),
+    ("_REVIEW_ROUND_ORDER", _COST_REVIEW, "REVIEW_ROUND_ORDER"),
+    ("_ReviewCostBars", _COST_REVIEW, "ReviewCostBars"),
+    ("_StageCostBars", _COST_STAGE, "StageCostBars"),
+    (
+        "_apply_horizontal_cost_layout",
+        _COST_LAYOUT,
+        "apply_horizontal_cost_layout",
+    ),
+    ("_cost_bar_trace", _COST_LAYOUT, "cost_bar_trace"),
+    ("_cost_item_sort_key", _COST_RANKING, "cost_item_sort_key"),
+    ("_developer_cost_total", _COST_REVIEW, "developer_cost_total"),
+    ("_horizontal_bars_data", _COST_RANKING, "horizontal_bars_data"),
+    ("_lighten_hex", _COST_STAGE, "lighten_hex"),
+    ("_repo_short_name", _COST_REPO, "repo_short_name"),
+    ("_reverse_horizontal_bars", _COST_RANKING, "reverse_horizontal_bars"),
+    ("_reverse_review_cost_bars", _COST_REVIEW, "reverse_review_cost_bars"),
+    ("_reverse_stage_cost_bars", _COST_STAGE, "reverse_stage_cost_bars"),
+    ("_review_cost_bars", _COST_REVIEW, "review_cost_bars"),
+    ("_review_cost_traces", _COST_REVIEW, "review_cost_traces"),
+    ("_reviewer_cost_total", _COST_REVIEW, "reviewer_cost_total"),
+    ("_stage_cost_bars", _COST_STAGE, "stage_cost_bars"),
+    ("_stage_no_cache_cost", _COST_STAGE, "stage_no_cache_cost"),
+    (_COST_BY_REPO, _COST_REPO, _COST_BY_REPO),
+    (_COST_BY_REVIEW_ROUND, _COST_REVIEW, _COST_BY_REVIEW_ROUND),
+    (_COST_BY_STAGE, _COST_STAGE, _COST_BY_STAGE),
+    (_COST_HORIZONTAL_BARS, _COST_RANKING, _COST_HORIZONTAL_BARS),
+)
+
 # The flat modules a caller reaches one of these owners through, and what each
 # name they publish resolves to.
 _FORWARDED_MODULES = MappingProxyType({
     _BASE_SITE: _FORWARDED_PRIMITIVES,
     _COST_LAYOUT_SITE: _FORWARDED_COST_LAYOUT,
+    _COST_PUBLIC_SITE: _FORWARDED_COST_PUBLIC,
     _COST_RANKING_SITE: _FORWARDED_COST_RANKING,
     _COST_REPO_SITE: _FORWARDED_COST_REPO,
+    _COST_REVIEW_SITE: _FORWARDED_COST_REVIEW,
     _COST_STAGE_SITE: _FORWARDED_COST_STAGE,
     _HEATMAP_SITE: _FORWARDED_HEATMAP,
     _THROUGHPUT_SITE: _FORWARDED_THROUGHPUT,

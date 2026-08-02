@@ -4,9 +4,9 @@
 
 The seven columns a stage bar is drawn from, the full-price fallback and
 ordering behind them, the shading a cache half is tinted with, and the builder
-itself are the charts owner's own objects. The cost hub and the per-review-round
-leaf that reaches the shading through this module get those rather than a copy,
-so a cache segment cannot be tinted one way here and another under the owner.
+itself are the charts owner's own objects. The cost surface that names this
+module reaches those rather than a copy, so a cache segment cannot be tinted
+one way here and another under the owner.
 """
 from __future__ import annotations
 

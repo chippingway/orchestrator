@@ -14,16 +14,20 @@ by. The families that have arrived above the two sit beside each other:
 which labels a window's repositories and hands them over as rows to be ranked;
 ``cost_stage``, the per-stage split of that spend into what the cache paid for
 and what it did not, which is also where the shading a cache half is tinted
-with lives; ``heatmap``, the 7x24 weekday-by-hour grid a window's token volume
-is read off, with the cells, labels, and squared-off layout it is built from;
-and ``throughput``, the per-day strip a window's resolved issues are counted
-on, with the calendar its quiet days are filled in from.
+with lives; ``cost_review``, the same split drawn per review round and across
+the two roles a round is worked by; ``heatmap``, the 7x24 weekday-by-hour grid
+a window's token volume is read off, with the cells, labels, and squared-off
+layout it is built from; and ``throughput``, the per-day strip a window's
+resolved issues are counted on, with the calendar its quiet days are filled in
+from.
 
-Two edges run between families here, both into ``cost_horizontal``:
-``cost_repo`` draws its bars through the ranking itself, and ``cost_stage``
-takes one value from it -- the height a cost panel with nothing to draw comes
-to -- so an empty split, an empty ranking, and an empty repository list are the
-same size card.
+Four edges run between families here. Three go into ``cost_horizontal``:
+``cost_repo`` draws its bars through the ranking itself, and ``cost_stage`` and
+``cost_review`` take one value from it -- the height a cost panel with nothing
+to draw comes to -- so an empty split, an empty ranking, and an empty
+repository list are the same size card. The fourth runs from ``cost_review``
+into ``cost_stage`` for the shading a cache half is tinted by, so a cache
+segment reads the same on both splits.
 
 The usage family arrives as five owners rather than one, split by what a value
 answers for: ``usage_bands`` for the four bands a day is counted into and the
