@@ -1,9 +1,17 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable cost-chart surface backed by focused chart leaves."""
+"""Stable cost-chart surface, forwarding to the charts owners.
+
+Every name here is one of those owners' objects, reached through the chart
+leaves that front them: the four public builders, and beneath them the frame
+the family is drawn in, the columns each ranking and split is assembled from,
+the orderings behind them, and the shading a cache half is tinted with.
+Nothing is defined here, so a caller reaching a builder through
+``orchestrator.dashboard_charts`` and a caller reaching it through the owner
+get the same object rather than two that agree today.
+"""
 from __future__ import annotations
 
-from orchestrator import _dashboard_compatibility as compatibility
 from orchestrator import _dashboard_cost_horizontal as horizontal
 from orchestrator import _dashboard_cost_layout as layout
 from orchestrator import _dashboard_cost_repo as repository
@@ -43,14 +51,3 @@ _review_cost_traces = review._review_cost_traces
 cost_by_review_round = review.cost_by_review_round
 cost_by_repo = repository.cost_by_repo
 _repo_short_name = repository._repo_short_name
-
-# The builders still defined in a flat leaf, which is where a caller has always
-# read their `__module__`. `cost_horizontal_bars`, `cost_by_repo`, and
-# `cost_by_stage` are deliberately absent: the stamp mutates the object itself,
-# so listing a builder a charts owner defines would rewrite the owner's own
-# function and leave the
-# owner reporting a surface it does not answer for.
-_PUBLIC_BUILDERS = (
-    cost_by_review_round,
-)
-compatibility.preserve_defining_module(__name__, _PUBLIC_BUILDERS)

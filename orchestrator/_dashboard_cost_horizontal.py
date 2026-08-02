@@ -4,9 +4,9 @@
 
 The four columns a ranking is drawn from, the ordering behind them, the pinned
 call shape the builder is bound through, and the builder itself are the charts
-owner's own objects. The cost hub and the per-review-round leaf that name this
-module reach those rather than a copy, so a ranking cannot be ordered one way
-here and another under the owner.
+owner's own objects. The cost surface that names this module reaches those
+rather than a copy, so a ranking cannot be ordered one way here and another
+under the owner.
 """
 from __future__ import annotations
 
