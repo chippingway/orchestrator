@@ -13,7 +13,7 @@ from orchestrator._dashboard_kpi_series import (
     _summary_total_tokens,
     _throughput_totals,
 )
-from orchestrator.dashboard_kpis import kpi_delta, rework_totals
+from orchestrator.observability.dashboard.kpis import kpi_delta, rework_totals
 
 
 _LABEL_KEY = "label"

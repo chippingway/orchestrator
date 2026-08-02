@@ -13,7 +13,7 @@ _STATE_HUB = "orchestrator.dashboard_state"
 
 _READS_HUB = "orchestrator.dashboard_reads"
 
-_KPI_HUB = "orchestrator.dashboard_kpis"
+_KPI_SITE = "orchestrator.dashboard_kpis"
 
 _READ_CORE_LEAF = "orchestrator._dashboard_read_core"
 
@@ -44,6 +44,8 @@ _FILTERS = f"{_PACKAGE}.filters"
 _FORMATTING = f"{_PACKAGE}.formatting"
 
 _INSIGHTS = f"{_PACKAGE}.insights"
+
+_KPIS = f"{_PACKAGE}.kpis"
 
 _LAYOUT = f"{_PACKAGE}.layout"
 
@@ -250,7 +252,7 @@ _FORWARDED_READS_HUB = (
     _SKILL_TRIGGER_RATES_NAME,
 )
 
-# The banner surface the KPI hub publishes on the insight owner's behalf: the
+# The banner surface the KPI site publishes on the insight owner's behalf: the
 # two bands a window is interrupted at, the spellings an unpriced run reaches
 # the second one under, the line a crossing is rendered as, and the reading
 # that raises it. A copy of any of them would be a page opening on thresholds
@@ -267,15 +269,18 @@ _FORWARDED_INSIGHTS = (
     ("compute_insights", _INSIGHTS, "compute_insights"),
 )
 
-# What the KPI hub still implements itself: the delta a tile is annotated with,
-# the reliability triples, the top-cost ordering, and the rework share. Naming
-# them is what gives the banner surface's absence below a meaning -- a banner
-# calculated here again would arrive as a name this tuple does not carry.
-_KPI_HUB_SURFACE = (
-    "kpi_delta",
-    "reliability_tile_data",
-    "rework_totals",
-    "top_expensive_issues",
+# The arithmetic published beside those banners: the delta a tile is annotated
+# with, the reliability triples, the ranking a spend table is drawn in and the
+# rows it is cut to, and the rework share with the buckets it counts. A page
+# reaching a copy of the cap or the bucket set would rank and measure against
+# numbers nobody else can change.
+_FORWARDED_KPIS = (
+    ("DEFAULT_EXPENSIVE_LIMIT", _KPIS, "DEFAULT_EXPENSIVE_LIMIT"),
+    ("REWORK_BUCKETS", _KPIS, "REWORK_BUCKETS"),
+    ("kpi_delta", _KPIS, "kpi_delta"),
+    ("reliability_tile_data", _KPIS, "reliability_tile_data"),
+    ("rework_totals", _KPIS, "rework_totals"),
+    ("top_expensive_issues", _KPIS, "top_expensive_issues"),
 )
 
 _WINDOW_NAMES = (
@@ -303,9 +308,9 @@ _FILTER_NAMES = (
 # The flat modules a caller reaches one of these owners through, and what each
 # name they publish resolves to: a window built here has to be the one the
 # reads are bounded by, a key hashed here the one the cached reads are stored
-# under, a scope entered here the one they all share, and a panel read issued
-# here the one a page draws that panel from, or a fix under the owners would
-# reach only half of the callers.
+# under, a scope entered here the one they all share, a panel read issued here
+# the one a page draws that panel from, and a KPI computed here the one every
+# tile reports, or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -320,6 +325,7 @@ _FORWARDED_MODULES = MappingProxyType({
     _READ_MODE_LEAF: (*_LEAF_READ_MODE_HELPERS, *_LEAF_FAN_OUT_NAMES),
     _BREAKDOWNS_LEAF: (*_BREAKDOWN_READ_NAMES, _SKILL_TRIGGER_RATES_NAME),
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,
+    _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),
 })
 
 # The hub the page and the compatibility facade in front of it read the state
@@ -385,7 +391,7 @@ class ForwardedThemeTest(unittest.TestCase):
 
 
 class ForwardedFlatModuleTest(unittest.TestCase):
-    """Every name the flat state modules publish is the owner's own object."""
+    """Every name a defines-nothing flat module publishes is the owner's."""
 
     def test_each_name_resolves_to_the_owner(self) -> None:
         for module_name, forwarded in _FORWARDED_MODULES.items():
@@ -398,9 +404,10 @@ class ForwardedFlatModuleTest(unittest.TestCase):
 
     def test_no_flat_module_defines_one_itself(self) -> None:
         # The same rule the theme site is held to, applied to the leaves
-        # beneath the two hubs: a module that defined a name of its own would
-        # be a second implementation the check above cannot see, because it
-        # only compares the names the module was asked for.
+        # beneath the two state and read hubs and to the KPI site beside them:
+        # a module that defined a name of its own would be a second
+        # implementation the check above cannot see, because it only compares
+        # the names the module was asked for.
         for module_name in _FORWARDED_MODULES:
             defined = tuple(
                 name
@@ -440,35 +447,6 @@ class ForwardedReadsHubTest(unittest.TestCase):
                     getattr(hub, name),
                     getattr(import_module(owner_name), attribute),
                 )
-
-
-class ForwardedKpiHubTest(unittest.TestCase):
-    """The KPI hub republishes the insight owner's objects beside its own.
-
-    It is the site the lazy `dashboard.<name>` surface resolves the banner
-    inventory through, and it keeps implementing the KPI arithmetic next to it
-    -- so the pair is read together: the banners are the owner's own objects,
-    and what is left stamped here is the arithmetic and nothing else.
-    """
-
-    def test_each_name_resolves_to_the_owner(self) -> None:
-        hub = import_module(_KPI_HUB)
-        for name, owner_name, attribute in _FORWARDED_INSIGHTS:
-            with self.subTest(name=name):
-                self.assertIs(
-                    getattr(hub, name),
-                    getattr(import_module(owner_name), attribute),
-                )
-
-    def test_it_defines_only_the_kpi_arithmetic(self) -> None:
-        hub = import_module(_KPI_HUB)
-        defined = tuple(sorted(
-            name
-            for name, member in hub.__dict__.items()
-            if not name.startswith("_")
-            and getattr(member, "__module__", None) == _KPI_HUB
-        ))
-        self.assertEqual(defined, _KPI_HUB_SURFACE)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,10 @@ from orchestrator.dashboard_cards import (
     _reliability_tiles_html,
 )
 from orchestrator.dashboard_html import _issues_table_html
-from orchestrator.dashboard_kpis import reliability_tile_data, top_expensive_issues
+from orchestrator.observability.dashboard.kpis import (
+    reliability_tile_data,
+    top_expensive_issues,
+)
 from orchestrator.dashboard_state import (
     TZ_OFFSET_OPTIONS,
     format_tz_offset,

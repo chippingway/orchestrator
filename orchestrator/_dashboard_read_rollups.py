@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from orchestrator.analytics import read as analytics_read
 from orchestrator._dashboard_read_core import _read_filtered
-from orchestrator.dashboard_kpis import DEFAULT_EXPENSIVE_LIMIT
+from orchestrator.observability.dashboard.kpis import DEFAULT_EXPENSIVE_LIMIT
 
 
 DEFAULT_RECENT_AGENT_EXITS = 100

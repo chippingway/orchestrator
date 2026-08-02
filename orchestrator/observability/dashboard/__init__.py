@@ -18,7 +18,8 @@ before any of them, because it is what a window can be picked at all from --
 readers themselves arrive with the panels they are drawn for: ``breakdowns``
 for the six a comparison section is built from, and ``skills`` for the three a
 skill section is. Above all of them, ``insights`` holds the two observations a
-window is worth interrupting a page for and the ratio each is raised at.
+window is worth interrupting a page for and the ratio each is raised at, and
+``kpis`` the four numbers that window is summarized by beneath them.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so
