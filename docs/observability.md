@@ -37,7 +37,8 @@ with above all of them plus the four numbers it is summarized by beneath those (
 `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
-`dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`), the
+`dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`), the primitives every chart family on
+that page is drawn out of (`dashboard/charts/primitives.py`), the
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
@@ -1420,10 +1421,13 @@ re-export hub: each chart family lives in a focused leaf -- `usage_over_time` / 
 / `cost_by_review_round`) in `orchestrator/dashboard_charts_cost.py`, `hour_weekday_heatmap` in
 `orchestrator/dashboard_charts_heatmap.py`, and `done_per_day_bars` in `orchestrator/dashboard_charts_throughput.py` --
 and the hub re-imports each public builder under its original name. The shared low-level chart primitives
-(`_empty_figure`, the money / mono-textfont / two-line-tick and panel-height / legend helpers) live in
-`orchestrator/dashboard_charts_base.py`, which the usage / cost / throughput leaves import from (the heatmap leaf
-inlines its own empty-state and imports none) -- so the dependency runs one way and a direct import of any chart module
-is cycle-free. The topbar, filter meta, KPI strip,
+(`empty_figure`, the money / mono-textfont / two-line-tick and panel-height / legend helpers) live under
+`orchestrator/observability/dashboard/charts/primitives.py`, which the usage / cost / throughput leaves reach through
+`orchestrator/dashboard_charts_base.py` -- their historical import site, forwarding each private spelling to the
+owner's own object and implementing nothing (the heatmap leaf inlines its own empty-state and imports none) -- so the
+dependency runs one way and a direct import of any chart module is cycle-free. Plotly is imported inside the one
+primitive that builds a figure, so the owner beneath the leaves stays importable without the optional `dashboard`
+dependency group. The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are built by inline-HTML
 helpers in `orchestrator/dashboard_html.py`; the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip live in `orchestrator/dashboard_cards.py`; the primary per-session

@@ -25,6 +25,7 @@ _PACKAGES = (
     f"{_ANALYTICS}.sync",
     f"{_ANALYTICS}.trajectories",
     f"{_ROOT}.dashboard",
+    f"{_ROOT}.dashboard.charts",
     f"{_ROOT}.trajectory_viewer",
     f"{_ROOT}.usage",
 )

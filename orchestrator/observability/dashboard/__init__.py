@@ -26,7 +26,11 @@ the seven a headline or lifecycle section is built from, ``breakdowns`` for
 the six a comparison section is, and ``skills`` for the three a skill section
 is. Above all of them, ``insights`` holds the two observations a window is
 worth interrupting a page for and the ratio each is raised at, and ``kpis``
-the four numbers that window is summarized by beneath them.
+the four numbers that window is summarized by beneath them. What those reads
+are then drawn as arrives under ``charts``, where ``primitives`` holds what
+every figure family is built out of: the placeholder a window holding no rows
+is answered with, the labels a bar is annotated by, and the height and legend
+a horizontal-bar panel is laid out with.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so
