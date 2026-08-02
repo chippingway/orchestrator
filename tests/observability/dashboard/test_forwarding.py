@@ -21,6 +21,8 @@ _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
 
 _BREAKDOWNS_LEAF = "orchestrator._dashboard_read_breakdowns"
 
+_ROLLUPS_LEAF = "orchestrator._dashboard_read_rollups"
+
 _SKILLS_LEAF = "orchestrator._dashboard_read_skills"
 
 # `from __future__ import annotations` opens every module in the repository and
@@ -52,6 +54,8 @@ _LAYOUT = f"{_PACKAGE}.layout"
 _PALETTE = f"{_PACKAGE}.palette"
 
 _READ_MODE = f"{_PACKAGE}.read_mode"
+
+_ROLLUPS = f"{_PACKAGE}.rollups"
 
 _SCOPED_READS = f"{_PACKAGE}.scoped_reads"
 
@@ -216,6 +220,22 @@ _READ_CORE_NAMES = (
     ("_scoped_read", _SCOPED_READS, "scoped_read"),
 )
 
+# The seven headline and lifecycle reads, the cap the run list among them is
+# read under, and the owner each resolves to. A page that reached a copy would
+# draw its summary tiles, activity chart, stage table, run list, spend ranking,
+# and review-round split from adapters nobody else can fix -- and could read a
+# hundred-row cap the reliability tiles above that list were never sized for.
+_ROLLUP_READ_NAMES = (
+    ("DEFAULT_RECENT_AGENT_EXITS", _ROLLUPS, "DEFAULT_RECENT_AGENT_EXITS"),
+    ("_read_prev_kpi", _ROLLUPS, "read_prev_kpi"),
+    ("_read_recent_agent_exits", _ROLLUPS, "read_recent_agent_exits"),
+    ("_read_review_round", _ROLLUPS, "read_review_round"),
+    ("_read_stage_breakdown", _ROLLUPS, "read_stage_breakdown"),
+    ("_read_summary", _ROLLUPS, "read_summary"),
+    ("_read_time_series", _ROLLUPS, "read_time_series"),
+    ("_read_top_cost_issues", _ROLLUPS, "read_top_cost_issues"),
+)
+
 # The six comparison-panel reads, and the owner each resolves to. A page that
 # reached a copy would draw its backend, repository, coverage, heatmap,
 # throughput, and daily-token sections from adapters nobody else can fix.
@@ -244,9 +264,10 @@ _SKILL_LEAF_NAMES = (
 
 # Everything the read hub publishes on an owner's behalf, in one list: the
 # scope, binding, and metadata reads a widget's wrapper goes through, and the
-# nine panel reads that are the wrappers themselves.
+# sixteen panel reads that are the wrappers themselves.
 _FORWARDED_READS_HUB = (
     *_READ_CORE_NAMES,
+    *_ROLLUP_READ_NAMES,
     *_BREAKDOWN_READ_NAMES,
     *_SKILL_LEAF_NAMES,
     _SKILL_TRIGGER_RATES_NAME,
@@ -323,6 +344,7 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_filter_state": _FILTER_NAMES,
     _READ_CORE_LEAF: _READ_CORE_NAMES,
     _READ_MODE_LEAF: (*_LEAF_READ_MODE_HELPERS, *_LEAF_FAN_OUT_NAMES),
+    _ROLLUPS_LEAF: _ROLLUP_READ_NAMES,
     _BREAKDOWNS_LEAF: (*_BREAKDOWN_READ_NAMES, _SKILL_TRIGGER_RATES_NAME),
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,
     _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),

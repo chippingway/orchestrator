@@ -484,10 +484,10 @@ orchestrator/
   _dashboard_read_mode.py / _dashboard_read_core.py
                         historical state and read import sites forwarding to
                         those owners
-  _dashboard_read_breakdowns.py / _dashboard_read_skills.py
-                        historical import sites for the six comparison-panel
-                        reads and the three skill-panel ones, forwarding to
-                        those owners
+  _dashboard_read_rollups.py / _dashboard_read_breakdowns.py / _dashboard_read_skills.py
+                        historical import sites for the seven headline and
+                        lifecycle reads, the six comparison-panel ones, and the
+                        three skill-panel ones, forwarding to those owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -752,6 +752,10 @@ orchestrator/
       fanout.py         one wave of named readers run the way that flag said:
                         on the calling thread, or across a pool capped at the
                         worker count beside the knob
+      rollups.py        the seven reads a headline or lifecycle section is
+                        drawn from, the cap the run list among them is read
+                        under, and the ranking depth the spend table borrows
+                        from the KPI owner
       breakdowns.py     the six reads a comparison panel is drawn from, each
                         naming the rollup or breakdown query owner that
                         answers it
@@ -1496,22 +1500,35 @@ thread, or across a pool capped at the worker count beside the knob — keying e
 under and letting the first read error reach the caller, because a failed load is answered with one banner rather than
 a partial page.
 
-What that wave is made of is arriving with the panels each reader is drawn for, and `breakdowns.py` is the first of
-them: the six a comparison section is built from — the backend and repository tallies, the cost-source coverage, the
-weekday-by-hour heatmap, the daily throughput, and the daily token split by backend. Each is a window a page already
-decided, so the whole of an adapter is the query owner's read it names beside the binding that issues it. Which owner
-that is follows the column the read groups by: three are day-bucketed and answered off `rollup_reads.py`, and three
-need what the day bucket threw away and are answered off `breakdown_reads.py`. Naming those owners rather than the
-`analytics.read` facade in front of them is what keeps the page off a hop kept for callers that predate them. The
-heatmap is the one adapter with a second argument: a display offset changes which cell a row is counted into and not
-which rows the window holds, so it travels beside the key rather than inside it.
+What that wave is made of arrives with the panels each reader is drawn for. Each is a window a page already decided,
+so the whole of an adapter is the query owner's read it names beside the binding that issues it — and naming that
+owner rather than the `analytics.read` facade in front of it is what keeps the page off a hop kept for callers that
+predate them.
 
-`skills.py` is the second: the three a skill section is drawn from — the aggregate trigger rates, the per-repository
-trigger cells beneath them, and the per-session adoption cells above both. These sit under one owner because one
-family answers all three: a skill name, the set a repository offered, and the count one run loaded are recorded in an
-`agent_exit` row's `extras`, which the day-bucketed rollup does not carry, so each names `skill_reads.py` — again the
-owner rather than the facade in front of it. None of the three carries a filter of its own, so the key is the whole of
-each signature.
+`rollups.py` holds the seven a headline or lifecycle section is built from: the window totals every tile is reduced
+from, the previous window they are compared against, the daily activity cells, the per-stage table, the newest agent
+runs, the cost-ranked issue rows, and the review-round split. Which family answers one follows what it is read off:
+four are day-bucketed and `rollup_reads.py`'s, the review-round split is what that bucket threw a column away for and
+`breakdown_reads.py`'s, and the run list and the issue rows are scanned off the raw events table under no bucket at
+all, so they are `raw_reads.py`'s. Three of the seven carry a decision beyond which read answers them. The run list
+stops at the newest hundred, which is what keeps it readable on a long window — and why the reliability tiles above it
+are reduced from the window's own totals instead. The spend table is cut to the ranking depth `kpis.py` holds, read at
+call time so the rows fetched and the rows drawn cannot become two different numbers. And the previous window is
+answered by the KPI-only rollup rather than the full summary, because the delta pills and the cost-trend banner want a
+handful of scalars: reusing the heavy shape would put a second whole-window scan on every cold load.
+
+`breakdowns.py` holds the six a comparison section is built from — the backend and repository tallies, the cost-source
+coverage, the weekday-by-hour heatmap, the daily throughput, and the daily token split by backend. Which owner answers
+one follows the column the read groups by: three are day-bucketed and answered off `rollup_reads.py`, and three need
+what the day bucket threw away and are answered off `breakdown_reads.py`. The heatmap is the one adapter with a second
+argument: a display offset changes which cell a row is counted into and not which rows the window holds, so it travels
+beside the key rather than inside it.
+
+`skills.py` holds the three a skill section is drawn from — the aggregate trigger rates, the per-repository trigger
+cells beneath them, and the per-session adoption cells above both. These sit under one owner because one family
+answers all three: a skill name, the set a repository offered, and the count one run loaded are recorded in an
+`agent_exit` row's `extras`, which the day-bucketed rollup does not carry, so each names `skill_reads.py`. None of the
+three carries a filter of its own, so the key is the whole of each signature.
 
 Under that wave, and before it, sit the three owners a page's reads go through. `scoped_reads.py` owns the checkout of
 this thread's analytics connection a read is issued inside — the one place a socket is added to a read, which is why
@@ -1550,24 +1567,30 @@ is the same table.
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
 socket out of, the metadata owner names both the error a failed read arrives as and the two unfiltered reads it
-issues, the breakdown owner names the two read families its six adapters are answered by, the skill owner names the
-one family its three are, and the insight and KPI owners name the result families the window totals, cost-source
-split, and issue rows they read arrive as; those are the only things any of the eleven reaches outside the package.
-The fan-out and the filter binding reach nothing past the siblings they take their worker cap and their scope from.
+issues, the rollup owner names the three read families its seven adapters are answered by plus the issue-summary owner
+that spells the cost-first ordering one of them asks for, the breakdown owner names the two families its six adapters
+are answered by, the skill owner names the one family its three are, and the insight and KPI owners name the result
+families the window totals, cost-source split, and issue rows they read arrive as; those are the only things any of
+the twelve reaches outside the package. The fan-out and the filter binding reach nothing past the siblings they take
+their worker cap and their scope from, and the rollup owner names one sibling of its own beside those query families:
+the KPI owner whose ranking depth its spend table is cut to.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
-the hub the whole read inventory is resolved through, and the seven flat leaves beneath them —
+the hub the whole read inventory is resolved through, and the eight flat leaves beneath them —
 `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`,
-`_dashboard_read_core.py`, `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and
-forward each historical name to the owner's own object. `dashboard_kpis.py` is the same kind of site beside them,
-forwarding the four KPI names and the banner names above them to the two owners that hold each. The trigger rates are
-reached through the breakdown leaf and the other two skill reads through the leaf named for them, because that is
-where a caller has always spelled each. The private `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and
-`_fan_out_reads` spellings the state hub publishes, and the `_scoped_read`, `_filter_list`, `_read_filter_kwargs`,
-`_read_filtered`, `_read_data_extent`, `_read_filter_options`, `_read_static_metadata`, `_read_backend_efficiency`,
-`_read_repo_breakdown`, `_read_cost_coverage`, `_read_hourly_heatmap`, `_read_throughput`,
-`_read_backend_daily_tokens`, `_read_skill_trigger_rates`, `_read_skill_trigger_matrix`, and `_read_skill_adoption`
-ones the read hub publishes, resolve to those same objects.
+`_dashboard_read_core.py`, `_dashboard_read_rollups.py`, `_dashboard_read_breakdowns.py`, and
+`_dashboard_read_skills.py` — define nothing and forward each historical name to the owner's own object.
+`dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
+them to the two owners that hold each. The trigger rates are reached through the breakdown leaf and the other two
+skill reads through the leaf named for them, because that is where a caller has always spelled each. The private
+`_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and
+the `DEFAULT_RECENT_AGENT_EXITS` cap and the `_scoped_read`, `_filter_list`, `_read_filter_kwargs`, `_read_filtered`,
+`_read_data_extent`, `_read_filter_options`, `_read_static_metadata`, `_read_summary`, `_read_prev_kpi`,
+`_read_time_series`, `_read_stage_breakdown`, `_read_recent_agent_exits`, `_read_top_cost_issues`,
+`_read_review_round`, `_read_backend_efficiency`, `_read_repo_breakdown`, `_read_cost_coverage`,
+`_read_hourly_heatmap`, `_read_throughput`, `_read_backend_daily_tokens`, `_read_skill_trigger_rates`,
+`_read_skill_trigger_matrix`, and `_read_skill_adoption` spellings the read hub publishes, resolve to those same
+objects.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,

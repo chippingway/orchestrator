@@ -15,11 +15,12 @@ of those readers goes through ``scoped_reads`` for the connection it runs on,
 ``filter_binding`` for the filters its cache key is read back as, and --
 before any of them, because it is what a window can be picked at all from --
 ``static_metadata`` for the extent and filter vocabulary a page opens on. The
-readers themselves arrive with the panels they are drawn for: ``breakdowns``
-for the six a comparison section is built from, and ``skills`` for the three a
-skill section is. Above all of them, ``insights`` holds the two observations a
-window is worth interrupting a page for and the ratio each is raised at, and
-``kpis`` the four numbers that window is summarized by beneath them.
+readers themselves arrive with the panels they are drawn for: ``rollups`` for
+the seven a headline or lifecycle section is built from, ``breakdowns`` for
+the six a comparison section is, and ``skills`` for the three a skill section
+is. Above all of them, ``insights`` holds the two observations a window is
+worth interrupting a page for and the ratio each is raised at, and ``kpis``
+the four numbers that window is summarized by beneath them.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so
