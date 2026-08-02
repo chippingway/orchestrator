@@ -13,6 +13,12 @@ single chart module cycle-free. ``heatmap`` is the first family to arrive
 above it: the 7x24 weekday-by-hour grid a window's token volume is read off,
 and the cells, labels, and squared-off layout it is built from.
 
+The usage family arrives as two owners rather than one, split by what a value
+answers for: ``usage_bands`` for the four bands a day is counted into and the
+roll-up of the series into one bucket per day, and ``usage_series`` above it
+for the day span a figure is drawn along, the shapes that span travels in, and
+the height each stack over it reaches.
+
 Callers import the owner they need, so this initializer binds nothing. Plotly
 lives in the optional ``dashboard`` dependency group, so an owner here imports
 it inside the function that builds a figure rather than at module scope:

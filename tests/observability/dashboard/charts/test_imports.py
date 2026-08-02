@@ -22,16 +22,26 @@ _HEATMAP_OWNER = "heatmap"
 
 _PRIMITIVES_OWNER = "primitives"
 
+_USAGE_BANDS_OWNER = "usage_bands"
+
+_USAGE_SERIES_OWNER = "usage_series"
+
 # The declared inventory. A new chart family is a deliberate edit here and a
 # paragraph in the module map, which is what the inventory check compares the
 # directory against.
-_OWNERS = (_HEATMAP_OWNER, _PRIMITIVES_OWNER)
+_OWNERS = (
+    _HEATMAP_OWNER,
+    _PRIMITIVES_OWNER,
+    _USAGE_BANDS_OWNER,
+    _USAGE_SERIES_OWNER,
+)
 
 # What each owner answers for, declared rather than discovered so a second way
 # to say "nothing matches this window", label a bar, size the panel it sits in,
-# or bucket a token volume into a weekday cell is a deliberate edit rather than
-# a place two chart families could disagree. The two bar-sizing constants and
-# the heatmap's weekday labels and hour span are invisible here because the
+# bucket a token volume into a weekday cell, or count a day of usage is a
+# deliberate edit rather than a place two chart families could disagree. The
+# two bar-sizing constants, the heatmap's weekday labels and hour span, the
+# band names, and the per-day table's alias are all invisible here because the
 # check reads `__module__`, which only a class or a function carries.
 _SURFACES = MappingProxyType({
     _HEATMAP_OWNER: (
@@ -49,6 +59,19 @@ _SURFACES = MappingProxyType({
         "reverse_lists",
         "two_line_y_ticks",
     ),
+    _USAGE_BANDS_OWNER: (
+        "daily_token_total",
+        "empty_token_bucket",
+        "roll_up_time_series",
+    ),
+    _USAGE_SERIES_OWNER: (
+        "UsageAxisRanges",
+        "UsageChartData",
+        "backend_names",
+        "date_axis",
+        "ensure_backend_days",
+        "usage_stack_totals",
+    ),
 })
 
 # The historical import sites the chart leaves still reach these owners
@@ -57,6 +80,8 @@ _SURFACES = MappingProxyType({
 _COMPATIBILITY_SITES = (
     "orchestrator.dashboard_charts_base",
     "orchestrator.dashboard_charts_heatmap",
+    "orchestrator._dashboard_usage_data",
+    "orchestrator._dashboard_usage_models",
 )
 
 # What an owner here may reach: the theme owners a figure is drawn with, which
@@ -130,8 +155,9 @@ class PublicSurfaceTest(unittest.TestCase):
 
 
 class LayeringTest(unittest.TestCase):
-    """The owners reach only the theme they draw with, and nothing here --
-    nor the package a page opens them through -- loads Plotly to be imported.
+    """The owners reach only the theme they draw with and the read models
+    they are drawn from, and nothing here -- nor the package a page opens
+    them through -- loads Plotly to be imported.
     """
 
     def test_no_owner_reaches_outside_observability(self) -> None:

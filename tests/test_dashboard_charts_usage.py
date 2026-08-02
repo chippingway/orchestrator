@@ -106,9 +106,10 @@ class UsageOverTimeTest(unittest.TestCase):
             ),
         ]
         fig = dashboard_charts.usage_over_time(points)
-        # Three stacked area bands (Input, Output, Cache) plus the
-        # cost line; the Cache band totals cache_read + cache_write
-        # per day (the standalone mock's `r.cr + r.cw` accounting).
+        # Three stacked area bands (Input, Output, Cache) plus the cost
+        # line, each drawn from the band it is named for: the Cache
+        # trace follows the rolled-up cache band day by day rather than
+        # one of the two counters that band is summed from.
         names = [trace.name for trace in fig.data]
         self.assertIn("Input", names)
         self.assertIn("Output", names)
