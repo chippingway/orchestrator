@@ -75,9 +75,6 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 ENTRYPOINT_ATTR = "main"
 
 
-RUN_READ_WAVES_MEMBER = "_run_read_waves"
-
-
 RENDER_FIRST_WAVE_MEMBER = "_render_first_wave"
 
 
@@ -146,9 +143,7 @@ class MainRenderDispatchTest(_MainSourceTest):
             ("_run_dashboard", "read_static_metadata("),
             ("_render_dashboard", "_render_no_data("),
             ("_prepare_dashboard_page", "read_plan.widget_readers("),
-            ("_load_dashboard_data", "_run_read_waves("),
-            (RUN_READ_WAVES_MEMBER, "_dispatch_reads("),
-            (RUN_READ_WAVES_MEMBER, "_log_dashboard_load("),
+            ("_load_dashboard_data", "dispatch.run_read_waves("),
             (RENDER_FIRST_WAVE_MEMBER, "_render_empty_window("),
         ):
             with self.subTest(helper=helper, marker=marker):
@@ -163,32 +158,12 @@ class MainRenderDispatchTest(_MainSourceTest):
 
 
 class MainParallelFanOutWiringTest(_MainSourceTest):
-    """`main()` dispatches the widget reads through `_dispatch_reads`
-    (which wraps `_fan_out_reads`), drives the parallel switch off the
-    env-backed helper, and logs a single `dashboard.load:` INFO line
-    via `_log_dashboard_load` so the A/B rollout has a measurement
-    surface. Streamlit is not installed for the default `uv sync
-    --locked`, so these inspect the rendered sources rather than
-    driving the page under Streamlit.
+    """The page decides which way its reads are issued and starts the clock
+    they are measured against, both while it prepares the load. What that
+    decision then costs is the dispatch owner's, and pinned beside it.
+    Streamlit is not installed for the default `uv sync --locked`, so these
+    inspect the rendered sources rather than driving the page under Streamlit.
     """
-
-    def test_dispatch_wraps_fan_out_helper(self) -> None:
-        # `_fan_out_reads` is the single dispatch surface; the data load
-        # reaches it through `_run_read_waves` -> `_dispatch_reads`, and
-        # `_load_dashboard_data` delegates the whole two-wave run to
-        # `_run_read_waves`.
-        self.assertIn(
-            "_run_read_waves(",
-            self._source_of("_load_dashboard_data"),
-        )
-        self.assertIn(
-            "_dispatch_reads(",
-            self._source_of(RUN_READ_WAVES_MEMBER),
-        )
-        self.assertIn(
-            "_fan_out_reads(",
-            self._source_of("_dispatch_reads"),
-        )
 
     def test_main_drives_parallel_off_env_helper(self) -> None:
         src = self._source_of("_prepare_dashboard_page")
@@ -197,28 +172,11 @@ class MainParallelFanOutWiringTest(_MainSourceTest):
         # rewriting `main()`.
         self.assertIn("dashboard_parallel_reads_enabled()", src)
 
-    def test_main_emits_load_timing_log(self) -> None:
-        # The instrumentation line carries total wall-clock, reader
-        # count, and the parallel flag so the operator can A/B with a
-        # single grep; it is emitted by `_log_dashboard_load`, which the
-        # `_run_read_waves` data load calls (clocked from the
-        # `perf_counter` stamped in `_prepare_dashboard_page`).
-        load_src = self._source_of(RUN_READ_WAVES_MEMBER)
-        prepare_src = self._source_of("_prepare_dashboard_page")
-        self.assertIn("_log_dashboard_load(", load_src)
-        self.assertIn("perf_counter()", prepare_src)
+    def test_main_stamps_the_load_clock(self) -> None:
+        # The `dashboard.load:` line reports the whole wait an operator sat
+        # through, so the timer starts where the page starts preparing the
+        # load rather than where the first wave is dispatched.
         self.assertIn(
-            "dashboard.load:",
-            self._source_of("_log_dashboard_load"),
+            "perf_counter()",
+            self._source_of("_prepare_dashboard_page"),
         )
-
-    def test_dispatch_catches_analytics_read_error(self) -> None:
-        # The `_dispatch_reads` wave helper wraps the fan-out in a
-        # `try/except AnalyticsReadError` -> one `st.error` + stop, so
-        # a worker exception surfaces as one banner rather than a
-        # trace. (Both waves route through this single helper; the
-        # routing is pinned by `StagedRenderErrorTest`.)
-        dispatch_src = self._source_of("_dispatch_reads")
-        self.assertIn("analytics_read.AnalyticsReadError", dispatch_src)
-        self.assertIn("st.error(", dispatch_src)
-        self.assertIn("st.stop()", dispatch_src)

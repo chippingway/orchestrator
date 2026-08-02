@@ -28,14 +28,10 @@ CONFIGURED_DB_URL = "postgresql://h/db"
 CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
-_MOVED_READ_MEMBERS = (
-    "_dispatch_reads",
-    "_log_dashboard_load",
-    "_run_read_waves",
-)
-
-
 _BREAKDOWNS_OWNER = "breakdowns"
+
+
+_DISPATCH_OWNER = "dispatch"
 
 
 _READ_PLAN_OWNER = "read_plan"
@@ -47,13 +43,16 @@ _ROLLUPS_OWNER = "rollups"
 _SKILLS_OWNER = "skills"
 
 
-# The staged read plan and its two wave registries, the seven headline and
-# lifecycle reads, the six comparison-panel ones, the three skill-panel ones,
-# the connection scope, the filter binding, and the static-metadata reads are
-# the dashboard owners' own objects, published here under the spellings a
-# caller reached them by. They report their owner rather than this hub, so the
-# guard on them is where each resolves to.
+# The staged read plan and its two wave registries, the dispatch that drives
+# them, the seven headline and lifecycle reads, the six comparison-panel ones,
+# the three skill-panel ones, the connection scope, the filter binding, and the
+# static-metadata reads are the dashboard owners' own objects, published here
+# under the spellings a caller reached them by. They report their owner rather
+# than this hub, so the guard on them is where each resolves to.
 _OWNED_READ_MEMBERS = MappingProxyType({
+    "_dispatch_reads": _DISPATCH_OWNER,
+    "_log_dashboard_load": _DISPATCH_OWNER,
+    "_run_read_waves": _DISPATCH_OWNER,
     "_DashboardReadPlan": _READ_PLAN_OWNER,
     "_widget_task": _READ_PLAN_OWNER,
     "_first_wave_readers": _READ_PLAN_OWNER,
@@ -108,24 +107,16 @@ def _reloaded_reads():
 
 
 class ReadOrchestrationExtractionTest(unittest.TestCase):
-    """The staged parallel dispatch, the two-wave data load, and the
-    load-timing log live in `orchestrator.dashboard_reads`, which also
-    republishes the read plan and reader registries staging that load plus the
-    headline, lifecycle, comparison-panel, skill-panel, connection,
-    filter-binding, and static-metadata reads the dashboard owners hold.
-    `orchestrator.dashboard` re-exports every member under the same name so the
-    `dashboard.<name>` surface and its test patch points keep resolving to the
-    same object.
+    """`orchestrator.dashboard_reads` republishes the staged parallel dispatch,
+    the two-wave data load, and the load-timing log, together with the read plan
+    and reader registries staging that load and the headline, lifecycle,
+    comparison-panel, skill-panel, connection, filter-binding, and
+    static-metadata reads the dashboard owners hold. `orchestrator.dashboard`
+    re-exports every member under the same name, so the `dashboard.<name>`
+    surface keeps resolving to the one object its owner defines. That is a
+    resolution contract rather than a call path: what a page reaches, and what
+    a test therefore patches, is the owner itself.
     """
-
-    def test_read_members_defined_in_reads_module(self) -> None:
-        reads = _reloaded_reads()
-        for name in _MOVED_READ_MEMBERS:
-            with self.subTest(name=name):
-                self.assertEqual(
-                    getattr(reads, name).__module__,
-                    DASHBOARD_READS_MODULE,
-                )
 
     def test_owned_read_members_report_their_owner(self) -> None:
         reads = _reloaded_reads()
@@ -139,11 +130,7 @@ class ReadOrchestrationExtractionTest(unittest.TestCase):
     def test_facade_reexports_reads_objects(self) -> None:
         _, dashboard = _reload(CONFIGURED_DB_ENV)
         reads = import_module(DASHBOARD_READS_MODULE)
-        published = (
-            *_MOVED_READ_MEMBERS,
-            *_OWNED_READ_MEMBERS,
-            *_READS_FACADE_CONSTANTS,
-        )
+        published = (*_OWNED_READ_MEMBERS, *_READS_FACADE_CONSTANTS)
         for name in published:
             with self.subTest(name=name):
                 self.assertTrue(

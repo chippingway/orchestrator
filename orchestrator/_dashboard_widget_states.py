@@ -9,6 +9,7 @@ from typing import Any
 from orchestrator.analytics.read import DataExtent, Summary
 from orchestrator import _dashboard_widget_models as models
 from orchestrator.dashboard_html import _topbar_html
+from orchestrator.observability.dashboard import dispatch
 
 
 NO_DATA_MESSAGE = (
@@ -62,7 +63,7 @@ def _render_empty_window(
     """Render an empty filtered window and skip the second read wave."""
     from orchestrator import dashboard as _dashboard
 
-    _dashboard._log_dashboard_load(
+    dispatch.log_dashboard_load(
         load_start=page.reads.started_at,
         reads=len(page.reads.first_wave),
         parallel=page.reads.parallel,

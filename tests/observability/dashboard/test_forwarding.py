@@ -17,6 +17,8 @@ _KPI_SITE = "orchestrator.dashboard_kpis"
 
 _READ_CORE_LEAF = "orchestrator._dashboard_read_core"
 
+_DISPATCH_LEAF = "orchestrator._dashboard_read_dispatch"
+
 _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
 
 _BREAKDOWNS_LEAF = "orchestrator._dashboard_read_breakdowns"
@@ -38,6 +40,8 @@ _PACKAGE = "orchestrator.observability.dashboard"
 _BREAKDOWNS = f"{_PACKAGE}.breakdowns"
 
 _CSS = f"{_PACKAGE}.css"
+
+_DISPATCH = f"{_PACKAGE}.dispatch"
 
 _FANOUT = f"{_PACKAGE}.fanout"
 
@@ -224,6 +228,21 @@ _READ_PLAN_NAMES = (
     ("_widget_task", _READ_PLAN, "widget_task"),
 )
 
+# What drives that plan: the two-wave run, the wave dispatch and load line it
+# is built from, the spinner it is opened under, the mapping a wave hands back,
+# and the logger the line goes out on. Both flat sites spell these the same
+# way. A page reaching a copy would answer a failed load with a banner nobody
+# else can reword, and measure a completed one onto a logger no operator's
+# `grep dashboard.load` is pointed at.
+_DISPATCH_NAMES = (
+    ("LOADING_INDICATOR_MESSAGE", _DISPATCH, "LOADING_INDICATOR_MESSAGE"),
+    ("_ReadResults", _DISPATCH, "ReadResults"),
+    ("_dispatch_reads", _DISPATCH, "dispatch_reads"),
+    ("_log_dashboard_load", _DISPATCH, "log_dashboard_load"),
+    ("_run_read_waves", _DISPATCH, "run_read_waves"),
+    ("log", _DISPATCH, "log"),
+)
+
 # What every read behind a page load goes through, published privately by both
 # flat sites and publicly by the owners. One socket per thread, one unpacking
 # of a cache key, and one TTL are the point of each: a second copy of the scope
@@ -284,14 +303,20 @@ _SKILL_LEAF_NAMES = (
 
 # Everything the read hub publishes on an owner's behalf, in one list: the
 # scope, binding, and metadata reads a widget's wrapper goes through, the
-# sixteen panel reads that are the wrappers themselves, and the plan that
-# stages them into the two waves a load is drawn in.
+# sixteen panel reads that are the wrappers themselves, the plan that stages
+# them into the two waves a load is drawn in, and the dispatch that drives
+# both. It is the site the lazy `dashboard.<name>` surface resolves the whole
+# read inventory through, so these names are what a historical caller still
+# lands on. They are a resolution contract rather than a call path: a test that
+# has to intercept one patches the owner it resolves to, because that is what
+# the page itself reaches.
 _FORWARDED_READS_HUB = (
     *_READ_CORE_NAMES,
     *_ROLLUP_READ_NAMES,
     *_BREAKDOWN_READ_NAMES,
     *_SKILL_LEAF_NAMES,
     *_READ_PLAN_NAMES,
+    *_DISPATCH_NAMES,
     _SKILL_TRIGGER_RATES_NAME,
 )
 
@@ -353,8 +378,9 @@ _FILTER_NAMES = (
 # reads are bounded by, a key hashed here the one the cached reads are stored
 # under, a scope entered here the one they all share, a panel read issued here
 # the one a page draws that panel from, a wave staged here the one the load
-# actually runs, and a KPI computed here the one every tile reports, or a fix
-# under the owners would reach only half of the callers.
+# actually runs, a load driven here the one the operator's log line comes off,
+# and a KPI computed here the one every tile reports, or a fix under the owners
+# would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -366,12 +392,14 @@ _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_windows": (*_WINDOW_NAMES, _LEAF_EXTENT_NAME),
     "orchestrator._dashboard_filter_state": _FILTER_NAMES,
     _READ_CORE_LEAF: _READ_CORE_NAMES,
+    _DISPATCH_LEAF: _DISPATCH_NAMES,
     _READ_MODE_LEAF: (*_LEAF_READ_MODE_HELPERS, *_LEAF_FAN_OUT_NAMES),
     _READ_PLAN_LEAF: _READ_PLAN_NAMES,
     _ROLLUPS_LEAF: _ROLLUP_READ_NAMES,
     _BREAKDOWNS_LEAF: (*_BREAKDOWN_READ_NAMES, _SKILL_TRIGGER_RATES_NAME),
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,
     _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),
+    _READS_HUB: _FORWARDED_READS_HUB,
 })
 
 # The hub the page and the compatibility facade in front of it read the state
@@ -449,9 +477,9 @@ class ForwardedFlatModuleTest(unittest.TestCase):
                     )
 
     def test_no_flat_module_defines_one_itself(self) -> None:
-        # The same rule the theme site is held to, applied to the leaves
-        # beneath the two state and read hubs and to the KPI site beside them:
-        # a module that defined a name of its own would be a second
+        # The same rule the theme site is held to, applied to the read hub, the
+        # leaves beneath it and the state hub, and the KPI site beside them: a
+        # module that defined a name of its own would be a second
         # implementation the check above cannot see, because it only compares
         # the names the module was asked for.
         for module_name in _FORWARDED_MODULES:
@@ -470,24 +498,6 @@ class ForwardedStateHubTest(unittest.TestCase):
     def test_each_name_resolves_to_the_owner(self) -> None:
         hub = import_module(_STATE_HUB)
         for name, owner_name, attribute in _FORWARDED_HUB:
-            with self.subTest(name=name):
-                self.assertIs(
-                    getattr(hub, name),
-                    getattr(import_module(owner_name), attribute),
-                )
-
-
-class ForwardedReadsHubTest(unittest.TestCase):
-    """The read hub republishes the owners' objects under the old spellings.
-
-    It is the site the lazy `dashboard.<name>` surface resolves the whole read
-    inventory through, so these names are what a historical caller and every
-    test patch point aimed at one still land on.
-    """
-
-    def test_each_name_resolves_to_the_owner(self) -> None:
-        hub = import_module(_READS_HUB)
-        for name, owner_name, attribute in _FORWARDED_READS_HUB:
             with self.subTest(name=name):
                 self.assertIs(
                     getattr(hub, name),

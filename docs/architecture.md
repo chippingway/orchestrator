@@ -482,8 +482,9 @@ orchestrator/
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
   _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
-                        historical state, read, and read-plan import sites
-                        forwarding to those owners
+  _dashboard_read_dispatch.py
+                        historical state, read, read-plan, and load-dispatch
+                        import sites forwarding to those owners
   _dashboard_read_rollups.py / _dashboard_read_breakdowns.py / _dashboard_read_skills.py
                         historical import sites for the seven headline and
                         lifecycle reads, the six comparison-panel ones, and the
@@ -717,8 +718,9 @@ orchestrator/
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
     dashboard/          the Streamlit analytics page: the visual theme both
                         pages are drawn in, the state one run of it carries,
-                        the two waves its load is staged into and the fan-out
-                        each is issued through, the seven a
+                        the two waves its load is staged into, the fan-out
+                        each is issued through and the dispatch that drives
+                        both, the seven a
                         headline or lifecycle section is drawn from, the six a
                         comparison panel is and the three a skill panel is,
                         what one of those reads then runs on and is narrowed
@@ -758,6 +760,10 @@ orchestrator/
       fanout.py         one wave of named readers run the way that flag said:
                         on the calling thread, or across a pool capped at the
                         worker count beside the knob
+      dispatch.py       both waves driven around the render between them: one
+                        spinner over the pair, the banner and stop a failed
+                        read is answered with, and the line a completed load
+                        is measured by
       rollups.py        the seven reads a headline or lifecycle section is
                         drawn from, the cap the run list among them is read
                         under, and the ranking depth the spend table borrows
@@ -1519,6 +1525,17 @@ across a pool capped at the worker count beside the knob — keying each result 
 letting the first read error reach the caller, because a failed load is answered with one banner rather than a
 partial page.
 
+`dispatch.py` is what drives both of those waves, and the order a page paints in is the whole of what it decides. The
+pair runs inside a single spinner with the first-wave render between them, so an operator watches one indicator over
+the load while the chrome that render draws is already on screen. That render is also where a load can end early: a
+window holding no rows has nothing for the ten panels to draw, so a render reporting nothing back short-circuits the
+second wave and leaves the load unlogged here — the caller that drew the empty-window banner measures it, because
+what it spent is the six reads already issued. The first read error the fan-out lets through becomes one banner
+naming what to check and the stop that ends the script, rather than a trace from the window, the tiles, and every
+panel below them saying the same thing sixteen times. Every load that does come back emits one `dashboard.load:` INFO
+line carrying the wall clock, the read count off the plan, and which way they were issued, because the fan-out is an
+operator's switch rather than a setting and a single grep has to be able to A/B the two branches.
+
 What that wave is made of arrives with the panels each reader is drawn for. Each is a window a page already decided,
 so the whole of an adapter is the query owner's read it names beside the binding that issues it — and naming that
 owner rather than the `analytics.read` facade in front of it is what keeps the page off a hop kept for callers that
@@ -1585,31 +1602,36 @@ is the same table.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
-socket out of, the metadata owner names both the error a failed read arrives as and the two unfiltered reads it
-issues, the rollup owner names the three read families its seven adapters are answered by plus the issue-summary owner
+socket out of, the metadata owner and the dispatch owner both name the error a failed read arrives as — the first
+alongside the two unfiltered reads it issues — the rollup owner names the three read families its seven adapters are
+answered by plus the issue-summary owner
 that spells the cost-first ordering one of them asks for, the breakdown owner names the two families its six adapters
 are answered by, the skill owner names the one family its three are, and the insight and KPI owners name the result
 families the window totals, cost-source split, and issue rows they read arrive as; those are the only things any of
-the twelve reaches outside the package. The fan-out and the filter binding reach nothing past the siblings they take
-their worker cap and their scope from, and the rollup owner names one sibling of its own beside those query families:
-the KPI owner whose ranking depth its spend table is cut to.
+the fourteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing past the
+siblings they take their worker cap, their adapters, and their scope from, and the rollup owner names one sibling of
+its own beside those query families: the KPI owner whose ranking depth its spend table is cut to.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
-the hub the whole read inventory is resolved through, and the eight flat leaves beneath them —
+the hub the whole read inventory is resolved through, and the ten flat leaves beneath them —
 `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`,
-`_dashboard_read_core.py`, `_dashboard_read_rollups.py`, `_dashboard_read_breakdowns.py`, and
-`_dashboard_read_skills.py` — define nothing and forward each historical name to the owner's own object.
+`_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_dispatch.py`, `_dashboard_read_rollups.py`,
+`_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and forward each historical name to
+the owner's own object. The read hub defines nothing of its own either, so nothing there rewrites a defining module.
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
 them to the two owners that hold each. The trigger rates are reached through the breakdown leaf and the other two
 skill reads through the leaf named for them, because that is where a caller has always spelled each. The private
 `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and
-the `DEFAULT_RECENT_AGENT_EXITS` cap and the `_scoped_read`, `_filter_list`, `_read_filter_kwargs`, `_read_filtered`,
+the `DEFAULT_RECENT_AGENT_EXITS` cap, the `LOADING_INDICATOR_MESSAGE` a load's spinner is opened with, and the
+`_scoped_read`, `_filter_list`, `_read_filter_kwargs`, `_read_filtered`,
 `_read_data_extent`, `_read_filter_options`, `_read_static_metadata`, `_read_summary`, `_read_prev_kpi`,
 `_read_time_series`, `_read_stage_breakdown`, `_read_recent_agent_exits`, `_read_top_cost_issues`,
 `_read_review_round`, `_read_backend_efficiency`, `_read_repo_breakdown`, `_read_cost_coverage`,
 `_read_hourly_heatmap`, `_read_throughput`, `_read_backend_daily_tokens`, `_read_skill_trigger_rates`,
-`_read_skill_trigger_matrix`, and `_read_skill_adoption` spellings the read hub publishes, resolve to those same
-objects.
+`_read_skill_trigger_matrix`, `_read_skill_adoption`, `_DashboardReadPlan`, `_ReaderTask`, `_widget_task`,
+`_first_wave_readers`, `_second_wave_readers`, `_widget_readers`, `_build_read_keys`, `_ReadResults`,
+`_dispatch_reads`, `_log_dashboard_load`, and `_run_read_waves` spellings the read hub publishes, resolve to those
+same objects.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,

@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard staged-render ordering and error propagation tests."""
+"""Dashboard first-wave render and fan-out error propagation tests."""
 
 import inspect
 
@@ -79,16 +79,7 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 ENTRYPOINT_ATTR = "main"
 
 
-RUN_READ_WAVES_MEMBER = "_run_read_waves"
-
-
 RENDER_FIRST_WAVE_MEMBER = "_render_first_wave"
-
-
-DISPATCH_FIRST_WAVE = "reads.first_wave"
-
-
-DISPATCH_SECOND_WAVE = "reads.second_wave"
 
 
 def _raise_read_error(
@@ -126,31 +117,19 @@ class _MainSourceTest(unittest.TestCase):
         indexes = [source.index(marker) for marker in markers]
         self.assertEqual(indexes, sorted(indexes))
 
-    def _source_between(self, source: str, start: str, end: str) -> str:
-        return source[source.index(start):source.index(end)]
-
     def _source_tail(self, source: str, start: str) -> str:
         return source[source.index(start):]
 
 
-class _StagedRenderSupport(_MainSourceTest):
-    """The staged load renders its chrome between the two read waves.
+class FirstWaveRenderTest(_MainSourceTest):
+    """What the page draws off the first wave, while the second is still out.
 
-    Which reads each wave is made of is the read-plan owner's, and pinned
-    beside it. What is left here is the order a page load drives them in.
+    Which reads each wave is made of is the read-plan owner's and how the two
+    are driven around this render is the dispatch owner's; both are pinned
+    beside them. What is left here is what the page puts on screen in between.
     """
 
-    def _load_source(self) -> str:
-        return self._source_of(RUN_READ_WAVES_MEMBER)
-
-
-class StagedRenderWaveTest(_StagedRenderSupport):
-    def test_topbar_and_meta_render_between_waves(self) -> None:
-        self._assert_source_order(
-            RUN_READ_WAVES_MEMBER,
-            (DISPATCH_FIRST_WAVE, "render_first_wave(", DISPATCH_SECOND_WAVE),
-        )
-
+    def test_the_chrome_and_kpi_strip_render(self) -> None:
         first_render_source = self._source_of(RENDER_FIRST_WAVE_MEMBER)
         self.assertIn("_render_topbar_and_meta(", first_render_source)
         self.assertIn("_kpi_strip_html(", first_render_source)
@@ -158,28 +137,10 @@ class StagedRenderWaveTest(_StagedRenderSupport):
         self.assertIn("topbar_slot.markdown(", topbar_source)
         self.assertIn("meta_slot.markdown(", topbar_source)
 
-
-class StagedRenderRuntimeTest(_StagedRenderSupport):
-    def test_inline_loading_spinner_wraps_fan_out(self) -> None:
-        _, dashboard = _reload({ANALYTICS_DB_URL_ENV: ""})
-        self.assertEqual(dashboard.LOADING_INDICATOR_MESSAGE, "Loading analytics…")
-        source = self._load_source()
-        spinner = source.index("with st.spinner(LOADING_INDICATOR_MESSAGE):")
-        first = source.index(DISPATCH_FIRST_WAVE)
-        second = source.index(DISPATCH_SECOND_WAVE)
-        self.assertLess(spinner, first)
-        self.assertLess(spinner, second)
-
-    def test_empty_window_short_circuits_second_wave(self) -> None:
-        load_source = self._load_source()
-        short_circuit = self._source_between(
-            load_source,
-            "render_first_wave(",
-            DISPATCH_SECOND_WAVE,
-        )
-        self.assertIn("if first_wave is None:", short_circuit)
-        self.assertIn("return None", short_circuit)
-
+    def test_an_empty_window_draws_no_kpis(self) -> None:
+        # Reporting nothing back is what the dispatch short-circuits the second
+        # wave on, so a window with no events has to leave through the banner
+        # rather than fall on through to the KPI strip.
         first_wave_source = self._source_of(RENDER_FIRST_WAVE_MEMBER)
         self._assert_source_order(
             RENDER_FIRST_WAVE_MEMBER,
@@ -191,32 +152,12 @@ class StagedRenderRuntimeTest(_StagedRenderSupport):
         )
 
 
-class StagedRenderErrorTest(_MainSourceTest):
-    """Both read waves share error handling and retain their render order."""
-
-    def test_both_waves_route_through_dispatch_helper(self) -> None:
-        source = self._source_of(RUN_READ_WAVES_MEMBER)
-        self.assertIn(DISPATCH_FIRST_WAVE, source)
-        self.assertIn(DISPATCH_SECOND_WAVE, source)
-        self.assertEqual(source.count("_dispatch_reads("), 2)
-
-    def test_second_wave_error_after_topbar_paints(self) -> None:
-        source = self._source_of(RUN_READ_WAVES_MEMBER)
-        first_wave_render = source.index("render_first_wave(")
-        second_dispatch = source.index(DISPATCH_SECOND_WAVE)
-        self.assertLess(first_wave_render, second_dispatch)
-        self.assertIn(
-            "_render_topbar_and_meta(",
-            self._source_of(RENDER_FIRST_WAVE_MEMBER),
-        )
-
-
 class FanOutReadsErrorPropagationTest(unittest.TestCase):
-    """The first-wave error path must NOT swallow the worker's
-    `AnalyticsReadError` -- the existing fan-out helper already
-    propagates the exception, but the staged-render refactor adds a
-    second call site, so re-pin the propagation shape for both
-    branches of `_fan_out_reads`.
+    """A failed read reaches the caller off the fan-out the facade publishes.
+
+    Both waves of a load are dispatched through it, and the caller answers a
+    failure with one banner, so neither branch may collect an
+    `AnalyticsReadError` as a result among the results.
     """
 
     def test_sequential_propagates_in_staged_call(self) -> None:
