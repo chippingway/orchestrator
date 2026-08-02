@@ -516,9 +516,10 @@ orchestrator/
                         read-path, and replay owners beside them, the visual
                         theme both Streamlit pages are drawn in, the state a
                         run of the analytics page carries, the reads it issues
-                        under that state and the banners it opens above them,
-                        and the destination the observation-only surfaces
-                        above migrate the rest of their responsibilities to
+                        under that state and the banners and headline numbers
+                        it reports above them, and the destination the
+                        observation-only surfaces above migrate the rest of
+                        their responsibilities to
     analytics/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, what
@@ -718,7 +719,8 @@ orchestrator/
                         comparison panel is drawn from and the three a skill
                         panel is, what one of those reads then runs on and is
                         narrowed by, the banners a window is interrupted with
-                        above all of them, and the destination for the rest
+                        above all of them and the numbers it is summarized by
+                        beneath them, and the destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -767,6 +769,11 @@ orchestrator/
                         page for -- runs exiting non-zero, and runs the parser
                         could not price -- the ratio each is raised at, and the
                         banner line a crossing is rendered as
+      kpis.py           the four numbers a window is summarized by beneath
+                        those banners: the move against the window before it,
+                        the run-health tiles, the order and depth a spend table
+                        is cut to, and the share of spend that was a second
+                        pass
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1525,30 +1532,40 @@ are missing SKUs the parser is seeing. Each threshold sits beside the arithmetic
 open on a band nobody else can tune; both spellings an unpriced run reaches the second one under — what the parser
 writes when no table covered the SKU, and what a NULL column is bucketed as — are counted together there even though
 the coverage bar keeps them apart. Crossing nothing is an empty list rather than a banner saying so, which is what the
-caller branches on for a section header that would otherwise sit above nothing. Root-level `dashboard_kpis.py` keeps
-the delta, tile, ordering, and rework arithmetic it always had, and forwards the banner names beside them to this
-owner's own objects.
+caller branches on for a section header that would otherwise sit above nothing.
+
+`kpis.py` sits directly beneath it, holding the four reductions the headline tiles report: how a total moved against
+the window before it, how that window's agent runs came out, where its spend went, and how much of that spend was a
+second pass. Two of them settle something a caller could otherwise get wrong on its own. The tiles read every count
+off the window's own totals rather than the recent-runs read, because a window holding more rows than that read's cap
+would report a failure and timeout count stopping at the newest hundred. The rework share names the review-round
+buckets that count as a second pass rather than comparing a round number, because the breakdown producing them keeps
+rounds 3, 4, and 5 apart and groups only 6 and above. The third is the top-cost ordering, which is total down to the
+row -- issues tying on cost fall back to run count and then to the repository and issue number naming them, and an
+unpriced issue sorts below every priced one rather than beside the cheapest -- so a table redrawn on the same window
+is the same table.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
 socket out of, the metadata owner names both the error a failed read arrives as and the two unfiltered reads it
 issues, the breakdown owner names the two read families its six adapters are answered by, the skill owner names the
-one family its three are, and the insight owner names the two result families the totals and cost-source split it
-reads arrive as; those are the only things any of the ten reaches outside the package. The fan-out and the filter
-binding reach nothing past the siblings they take their worker cap and their scope from.
+one family its three are, and the insight and KPI owners name the result families the window totals, cost-source
+split, and issue rows they read arrive as; those are the only things any of the eleven reaches outside the package.
+The fan-out and the filter binding reach nothing past the siblings they take their worker cap and their scope from.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
 the hub the whole read inventory is resolved through, and the seven flat leaves beneath them —
 `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`,
 `_dashboard_read_core.py`, `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and
-forward each historical name to the owner's own object. The trigger rates are reached through the breakdown leaf and
-the other two skill reads through the leaf named for them, because that is where a caller has always spelled each. The
-private `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub
-publishes, and the `_scoped_read`, `_filter_list`, `_read_filter_kwargs`, `_read_filtered`, `_read_data_extent`,
-`_read_filter_options`, `_read_static_metadata`, `_read_backend_efficiency`, `_read_repo_breakdown`,
-`_read_cost_coverage`, `_read_hourly_heatmap`, `_read_throughput`, `_read_backend_daily_tokens`,
-`_read_skill_trigger_rates`, `_read_skill_trigger_matrix`, and `_read_skill_adoption` ones the read hub publishes,
-resolve to those same objects.
+forward each historical name to the owner's own object. `dashboard_kpis.py` is the same kind of site beside them,
+forwarding the four KPI names and the banner names above them to the two owners that hold each. The trigger rates are
+reached through the breakdown leaf and the other two skill reads through the leaf named for them, because that is
+where a caller has always spelled each. The private `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and
+`_fan_out_reads` spellings the state hub publishes, and the `_scoped_read`, `_filter_list`, `_read_filter_kwargs`,
+`_read_filtered`, `_read_data_extent`, `_read_filter_options`, `_read_static_metadata`, `_read_backend_efficiency`,
+`_read_repo_breakdown`, `_read_cost_coverage`, `_read_hourly_heatmap`, `_read_throughput`,
+`_read_backend_daily_tokens`, `_read_skill_trigger_rates`, `_read_skill_trigger_matrix`, and `_read_skill_adoption`
+ones the read hub publishes, resolve to those same objects.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,

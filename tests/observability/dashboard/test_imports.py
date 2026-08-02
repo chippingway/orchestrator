@@ -30,6 +30,8 @@ _FORMATTING_OWNER = "formatting"
 
 _INSIGHTS_OWNER = "insights"
 
+_KPIS_OWNER = "kpis"
+
 _LAYOUT_OWNER = "layout"
 
 _PALETTE_OWNER = "palette"
@@ -57,6 +59,7 @@ _OWNERS = (
     _FILTERS_OWNER,
     _FORMATTING_OWNER,
     _INSIGHTS_OWNER,
+    _KPIS_OWNER,
     _LAYOUT_OWNER,
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
@@ -73,8 +76,9 @@ _OWNERS = (
 # filters, decide which way a load's reads are issued, run one wave of them
 # that way, check out the connection one of them runs on, draw a comparison
 # panel from one of the six reads behind it or a skill panel from one of the
-# three, open a page on the extent behind its filter bar, or interrupt one with
-# a banner is a deliberate
+# three, open a page on the extent behind its filter bar, interrupt one with a
+# banner, or reduce its window to the four numbers a headline tile reports is a
+# deliberate
 # edit rather than a place two panels -- or the reads' `ts < end` bound and the
 # cache's tri-state -- could
 # disagree. Two owners report nothing because the check reads `__module__`,
@@ -84,9 +88,9 @@ _OWNERS = (
 # vocabulary the window owner decides, the read-mode owner's knob name, truthy
 # spellings, worker cap, refusal message, and the flag its import binds, the
 # alias the fan-out owner names a reader by, the two bands the insight owner
-# raises a banner at and the spellings an unpriced run reaches it under, and
-# the TTL the metadata owner caches under are all invisible here for the same
-# reason.
+# raises a banner at and the spellings an unpriced run reaches it under, the
+# KPI owner's ranking cap and rework buckets, and the TTL the metadata owner
+# caches under are all invisible here for the same reason.
 _SURFACES = MappingProxyType({
     _BREAKDOWNS_OWNER: (
         "read_backend_daily_tokens",
@@ -118,6 +122,12 @@ _SURFACES = MappingProxyType({
         "fmt_tokens",
     ),
     _INSIGHTS_OWNER: ("InsightBanner", "compute_insights"),
+    _KPIS_OWNER: (
+        "kpi_delta",
+        "reliability_tile_data",
+        "rework_totals",
+        "top_expensive_issues",
+    ),
     _LAYOUT_OWNER: ("base_layout",),
     _PALETTE_OWNER: ("color_for",),
     _READ_MODE_OWNER: (
@@ -181,7 +191,8 @@ _COMPATIBILITY_SITES = (
 # with are the raw read family's, the six a comparison panel is drawn from are
 # the rollup and breakdown families', the three a skill panel is drawn from are
 # the skill family's, and the totals and cost-source split a banner is raised
-# over are the rows those reads hand back.
+# over -- and the window totals a tile reports and the issue rows a table is
+# ranked from -- are the rows those reads hand back.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here
