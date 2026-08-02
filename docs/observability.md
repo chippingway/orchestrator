@@ -1431,8 +1431,9 @@ per-cell token totals, Sunday-first, with a `tz_label` parameter that annotates 
 matching offset to `get_hourly_heatmap` so cells already reflect that zone), and `done_per_day_bars` (resolved-per-day
 bars with explicit `window_start` / `window_end` for zero-day backfill). `orchestrator/dashboard_charts.py` is a pure
 re-export hub: each chart family is reached through a focused leaf -- `usage_over_time` / `backend_per_day` in
-`orchestrator/dashboard_charts_usage.py`, the cost-bar family (`cost_horizontal_bars` / `cost_by_repo` / `cost_by_stage`
-/ `cost_by_review_round`) in `orchestrator/dashboard_charts_cost.py`, `hour_weekday_heatmap` through
+`orchestrator/dashboard_charts_usage.py`, the three cost adapters (`cost_by_repo` / `cost_by_stage` /
+`cost_by_review_round`) in `orchestrator/dashboard_charts_cost.py` and `cost_horizontal_bars` through that same
+leaf, `hour_weekday_heatmap` through
 `orchestrator/dashboard_charts_heatmap.py`, and `done_per_day_bars` through
 `orchestrator/dashboard_charts_throughput.py` --
 and the hub re-imports each public builder under its original name. The shared low-level chart primitives
