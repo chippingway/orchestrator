@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard review-round and repository cost chart tests."""
+"""Dashboard review-round cost chart tests."""
 
 import importlib
 
@@ -32,8 +32,6 @@ _LIGHTER_ROLE_COLOR_D_SECONDARY = 6.0
 _LIGHTER_ROLE_COLOR_DE_TERTIARY = 4.0
 _LIGHTER_ROLE_COLOR_R_SECONDARY = 7.0
 _LIGHTER_ROLE_COLOR_RE_TERTIARY = 3.0
-_OWNER_PREFIX_LEGIBILITY_TOTA = 8.0
-_OWNER_PREFIX_LEGIBIL_SECONDARY = 3.0
 
 
 def _load_chart_dependencies():
@@ -71,9 +69,6 @@ RGBA_PREFIX = "rgba("
 
 
 EXPECTED_RGBA_MESSAGE = "expected rgba() cache shade, got "
-
-
-TWO_RUNS_LABEL = "2 runs"
 
 
 _PLACEHOLDER_HEIGHT = 120
@@ -263,42 +258,3 @@ class CostByReviewRoundTest(unittest.TestCase):
         developer_totals = ["$5.00", "$6.00", "$9.00", "$28"]
         self.assertEqual(list(traces[1].text), review_totals)
         self.assertEqual(list(traces[3].text), developer_totals)
-
-
-@unittest.skipUnless(HAS_PLOTLY, _SKIP_REASON)
-class CostByRepoTest(unittest.TestCase):
-    def test_strips_owner_prefix_for_legibility(self) -> None:
-        rows = [
-            RepoBreakdownRow(
-                repo="acme/widgets",
-                issues=2,
-                events=10,
-                agent_exits=4,
-                total_cost_usd=_OWNER_PREFIX_LEGIBILITY_TOTA,
-            ),
-            RepoBreakdownRow(
-                repo="acme/gadgets",
-                issues=1,
-                events=4,
-                agent_exits=2,
-                total_cost_usd=_OWNER_PREFIX_LEGIBIL_SECONDARY,
-            ),
-        ]
-        fig = dashboard_charts.cost_by_repo(rows)
-        joined = " ".join(fig.data[0].y)
-        # The short name is what the operator reads; the full
-        # `owner/name` slug stays in the read model but not the chart
-        # label.
-        self.assertIn("widgets", joined)
-        self.assertIn("gadgets", joined)
-        # Sub-line carries the per-repo agent-run count, matching the
-        # standalone mock's per-run aggregation; counting every event
-        # would overstate per-repo activity against the per-run cost.
-        self.assertIn("4 runs", joined)
-        self.assertIn(TWO_RUNS_LABEL, joined)
-        self.assertNotIn("events", joined)
-
-    def test_empty_renders_placeholder(self) -> None:
-        fig = dashboard_charts.cost_by_repo([])
-        self.assertGreaterEqual(len(fig.layout.annotations), 1)
-        self.assertEqual(fig.layout.height, _PLACEHOLDER_HEIGHT)

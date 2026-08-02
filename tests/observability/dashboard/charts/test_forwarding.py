@@ -13,6 +13,8 @@ _COST_LAYOUT_SITE = "orchestrator._dashboard_cost_layout"
 
 _COST_RANKING_SITE = "orchestrator._dashboard_cost_horizontal"
 
+_COST_REPO_SITE = "orchestrator._dashboard_cost_repo"
+
 _COST_STAGE_SITE = "orchestrator._dashboard_cost_stage"
 
 _HEATMAP_SITE = "orchestrator.dashboard_charts_heatmap"
@@ -36,6 +38,8 @@ _PACKAGE = "orchestrator.observability.dashboard.charts"
 _COST_LAYOUT = f"{_PACKAGE}.cost_layout"
 
 _COST_RANKING = f"{_PACKAGE}.cost_horizontal"
+
+_COST_REPO = f"{_PACKAGE}.cost_repo"
 
 _COST_STAGE = f"{_PACKAGE}.cost_stage"
 
@@ -96,10 +100,10 @@ _FORWARDED_COST_LAYOUT = (
 )
 
 # The generic ranking, reached through its own site by the cost hub and by the
-# per-repository adapter that draws its rows through it. The pinned signature is
-# listed beside the builder because that is the call shape both of them are
-# written against: a second `Signature` here would let the two disagree about
-# what `items` is spelled.
+# per-review-round leaf that sizes its own empty panel by the height listed
+# here. The pinned signature is listed beside the builder because that is the
+# call shape the hub publishes the ranking under: a second `Signature` here
+# would let the site and the owner disagree about what `items` is spelled.
 _FORWARDED_COST_RANKING = (
     ("DEFAULT_CHART_HEIGHT", _COST_RANKING, "DEFAULT_CHART_HEIGHT"),
     ("_HORIZONTAL_BAR_SIGNATURE", _COST_RANKING, "HORIZONTAL_BAR_SIGNATURE"),
@@ -109,6 +113,15 @@ _FORWARDED_COST_RANKING = (
     ("_horizontal_bars_data", _COST_RANKING, "horizontal_bars_data"),
     ("_reverse_horizontal_bars", _COST_RANKING, "reverse_horizontal_bars"),
     ("cost_horizontal_bars", _COST_RANKING, "cost_horizontal_bars"),
+)
+
+# The per-repository adapter the hub re-exports through its own site, with the
+# label helper beneath it. The public builder is the one the widget pipeline
+# draws the repo panel with, so a copy here would be a ranking an operator
+# reads that no fix under the owner reaches.
+_FORWARDED_COST_REPO = (
+    ("_repo_short_name", _COST_REPO, "repo_short_name"),
+    ("cost_by_repo", _COST_REPO, "cost_by_repo"),
 )
 
 # The per-stage split, reached through its own site by the cost hub and by the
@@ -275,6 +288,7 @@ _FORWARDED_MODULES = MappingProxyType({
     _BASE_SITE: _FORWARDED_PRIMITIVES,
     _COST_LAYOUT_SITE: _FORWARDED_COST_LAYOUT,
     _COST_RANKING_SITE: _FORWARDED_COST_RANKING,
+    _COST_REPO_SITE: _FORWARDED_COST_REPO,
     _COST_STAGE_SITE: _FORWARDED_COST_STAGE,
     _HEATMAP_SITE: _FORWARDED_HEATMAP,
     _THROUGHPUT_SITE: _FORWARDED_THROUGHPUT,
