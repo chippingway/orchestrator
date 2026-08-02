@@ -1,9 +1,17 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable usage-chart surface backed by focused chart leaves."""
+"""Stable usage-chart surface, forwarding to the charts owners.
+
+Every name here is one of those owners' objects, reached through the chart
+leaves that front them: the two public builders, and beneath them the bands a
+day is counted into, the shapes a figure's days and axis maxima travel in, the
+rounding and layout its two scales are assembled from, and the traces stacked
+over it. Nothing is defined here, so a caller reaching a builder through
+``orchestrator.dashboard_charts`` and a caller reaching it through the owner
+get the same object rather than two that agree today.
+"""
 from __future__ import annotations
 
-from orchestrator import _dashboard_compatibility as compatibility
 from orchestrator import _dashboard_usage_axis as axis
 from orchestrator import _dashboard_usage_chart as chart
 from orchestrator import _dashboard_usage_data as usage_data
@@ -37,6 +45,3 @@ _usage_axis_ranges = axis._usage_axis_ranges
 _usage_layout = axis._usage_layout
 usage_over_time = chart.usage_over_time
 backend_per_day = chart.backend_per_day
-
-_PUBLIC_BUILDERS = (usage_over_time, backend_per_day)
-compatibility.preserve_defining_module(__name__, _PUBLIC_BUILDERS)

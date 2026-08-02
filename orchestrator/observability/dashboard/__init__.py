@@ -35,12 +35,12 @@ the horizontal cost families are drawn in and the request one series of bars
 is described by, ``cost_horizontal``, ``heatmap``, and ``throughput`` hold
 three families above the two, the generic spend ranking, the 7x24
 weekday-by-hour grid, and the per-day resolved-issue strip, and
-``usage_bands``, ``usage_series``, ``usage_axis``, and ``usage_traces`` hold
-the usage family: the four bands a day of usage is counted into and the
-roll-up that counts them, the days that roll-up spans and the height each
-stack over them reaches, the maxima those heights are rounded up to and the
-layout the token and cost scales are assembled in, and the bands and cost
-line a window is finally drawn as.
+``usage_bands``, ``usage_series``, ``usage_axis``, ``usage_traces``, and
+``usage`` hold the usage family: the four bands a day of usage is counted into
+and the roll-up that counts them, the days that roll-up spans and the height
+each stack over them reaches, the maxima those heights are rounded up to and
+the layout the token and cost scales are assembled in, the bands and cost line
+a window is drawn as, and the hero figure they are assembled into.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so

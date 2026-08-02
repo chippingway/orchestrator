@@ -18,8 +18,8 @@ that has moved names the primitives and theme owners it draws with directly:
 
 - ``orchestrator.dashboard_charts_usage`` -- ``usage_over_time`` (stacked-area
   daily token consumption with a cost-line overlay, in token-type or
-  per-backend stack mode) and the ``backend_per_day`` stub that feeds its
-  per-backend stack.
+  per-backend stack mode) and the ``backend_per_day`` stub beside it, both
+  forwarded from the charts owner that builds them.
 - ``orchestrator.dashboard_charts_cost`` -- the horizontal cost-bar family:
   ``cost_by_repo`` / ``cost_by_stage`` / ``cost_by_review_round`` are built
   on flat leaves beneath it, while ``cost_horizontal_bars``, the generic
