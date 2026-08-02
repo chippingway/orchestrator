@@ -1274,9 +1274,10 @@ The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `or
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
 The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: KPI
-series/values; cards, tables, sparklines, and skill matrices; widget state/usage/cost/skill/run sections; and
-cost/usage Plotly construction. The read leaves beside them — raw, rollup, skill, read-mode, read-plan, and
-dispatch — hold no implementation of their own; each forwards to the owners named below. The state a run carries
+series/values; cards, tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read
+and chart leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the cost and usage
+ones on the other — hold no implementation of their own; each forwards to the owners named below.
+The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
 that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by,

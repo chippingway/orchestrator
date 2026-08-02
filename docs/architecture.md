@@ -1588,9 +1588,11 @@ page injects out of both token owners rather than restating a hue or a radius, w
 charts inside it from drifting apart; and `formatting.py` holds the compact renderings a KPI tile, an axis tick, and a
 bar label are too narrow to skip. None of the five imports Plotly or Streamlit, so the page can read a color at module
 load to paint its banner without pulling the optional `dashboard` group into the polling tick's import surface.
-Root-level `dashboard_theme.py` stays the historical import site — the analytics page, its chart leaves, and the
-trajectory viewer all still spell `from orchestrator import dashboard_theme as theme` — and, like the sync leaves,
-defines nothing and forwards each name to the owner's own object.
+Root-level `dashboard_theme.py` stays the historical import site — the analytics page's runtime, which hands the
+module itself to the widget renderers, and the trajectory viewer's export manifest both still spell
+`from orchestrator import dashboard_theme as theme` — and, like the sync leaves, defines nothing and forwards each
+name to the owner's own object. No chart module is among them any more: every family reads its hues off the palette
+owner directly, so a color reaches a figure without a root-level hop.
 
 The state one run of that page carries sits beside the theme. `windows.py` owns the half-open UTC window every read is
 bounded by, the presets that name one, and the clamp that keeps a preset inside the data extent — the label, the day
