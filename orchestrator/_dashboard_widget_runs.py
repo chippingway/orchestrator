@@ -8,8 +8,8 @@ from typing import Any
 
 from orchestrator.analytics import read as analytics_read
 from orchestrator import _dashboard_widget_models as models
-from orchestrator.dashboard_reads import _filter_list, _scoped_read
 from orchestrator.dashboard_state import shift_ts
+from orchestrator.observability.dashboard import filter_binding, scoped_reads
 
 
 NO_AGENT_EXITS_MESSAGE = "No `agent_exit` rows match the current filters."
@@ -68,14 +68,14 @@ def _render_drilldown_view(
         )
         return
     try:
-        trace = _scoped_read(
+        trace = scoped_reads.scoped_read(
             analytics_read.get_issue_events,
             repo=filters.repo,
             issue=filters.issue_input,
             start=filters.window.start,
             end=filters.window.end,
-            events=_filter_list(filters.events),
-            stages=_filter_list(filters.stages),
+            events=filter_binding.filter_list(filters.events),
+            stages=filter_binding.filter_list(filters.stages),
         )
     except analytics_read.AnalyticsReadError as error:
         modules.st.error(f"Issue drill-down failed: {error}")

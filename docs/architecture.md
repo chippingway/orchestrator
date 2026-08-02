@@ -479,8 +479,9 @@ orchestrator/
                         and fan-out owners under observability/dashboard/
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
-  _dashboard_read_mode.py
-                        historical state import sites forwarding to those owners
+  _dashboard_read_mode.py / _dashboard_read_core.py
+                        historical state and read import sites forwarding to
+                        those owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -739,6 +740,15 @@ orchestrator/
       fanout.py         one wave of named readers run the way that flag said:
                         on the calling thread, or across a pool capped at the
                         worker count beside the knob
+      scoped_reads.py   the checkout of this thread's analytics connection one
+                        read is issued inside, which is what keeps that read's
+                        cache key connection-free
+      filter_binding.py the filters a cache key is read back as, and the
+                        windowed read issued under them
+      static_metadata.py
+                        the extent and filter vocabulary a page opens on, the
+                        TTL both are cached for, and the banner a failed one
+                        stops the run with
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1457,15 +1467,34 @@ fan-out on by restarting the Streamlit process, while the database URL is read i
 package the name resolves to. `fanout.py` then runs one wave of named readers the way that flag said — on the calling
 thread, or across a pool capped at the worker count beside the knob — keying each result by the name it was submitted
 under and letting the first read error reach the caller, because a failed load is answered with one banner rather than
-a partial page. The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, and
-the read-mode owner names `analytics/config.py` for the URL it refuses without; those are the only things any of the
-four reaches outside the package, and the fan-out reaches nothing past the sibling it takes its cap from.
+a partial page.
 
-`dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, and the four flat
-leaves beneath it — `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, and
-`_dashboard_read_mode.py` — define nothing and forward each historical name to the owner's own object. The private
-`_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the hub publishes resolve to
-those same objects.
+Under that wave, and before it, sit the three owners a page's reads go through. `scoped_reads.py` owns the checkout of
+this thread's analytics connection a read is issued inside — the one place a socket is added to a read, which is why
+the cached wrappers above it can key on the filter set alone: a `psycopg.Connection` is unhashable, and a stringified
+one would make every refreshed socket look like a cache miss. `filter_binding.py` owns the other half of that key —
+the positions the filter owner hashed, read back as the keyword vocabulary the query owners are bound by, plus the
+windowed read then issued through the scope — so a key packed in one module and unpacked in another cannot leave a
+widget reporting a window nobody asked for. `static_metadata.py` owns the two reads no filter narrows: the recorded
+extent a preset is anchored and clamped to, and the repo, event, and stage values the filter bar offers. Both take no
+argument, which is what makes their cache key empty, and both are cached for five minutes — measured against the
+sync's ingest cadence rather than Streamlit's rerun cadence, which fires on every widget interaction. That pair is
+also the page's first read, so a failure there is answered rather than reported: the run names the knob to check and
+stops, instead of leaving every widget below it to fail on its own.
+
+The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
+names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
+socket out of, and the metadata owner names both the error a failed read arrives as and the two unfiltered reads it
+issues; those are the only things any of the seven reaches outside the package. The fan-out and the filter binding
+reach nothing past the siblings they take their worker cap and their scope from.
+
+`dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
+the hub the whole read inventory is resolved through, and the five flat leaves beneath them —
+`_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`, and
+`_dashboard_read_core.py` — define nothing and forward each historical name to the owner's own object. The private
+`_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and
+the `_scoped_read`, `_filter_list`, `_read_filter_kwargs`, `_read_filtered`, `_read_data_extent`,
+`_read_filter_options`, and `_read_static_metadata` ones the read hub publishes, resolve to those same objects.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,

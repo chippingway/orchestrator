@@ -10,7 +10,11 @@ span and the presets that name one, ``filters`` for the offset, issue, stage,
 and cache key it is narrowed and displayed by, and ``read_mode`` for the knob
 its reads are issued under and the message an unconfigured database is refused
 with. ``fanout`` runs one wave of that page's readers the way the knob said,
-on the calling thread or across a pool capped at the count beside it.
+on the calling thread or across a pool capped at the count beside it, and each
+of those readers goes through ``scoped_reads`` for the connection it runs on,
+``filter_binding`` for the filters its cache key is read back as, and --
+before any of them, because it is what a window can be picked at all from --
+``static_metadata`` for the extent and filter vocabulary a page opens on.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so

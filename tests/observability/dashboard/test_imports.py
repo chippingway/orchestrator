@@ -20,6 +20,8 @@ _CSS_OWNER = "css"
 
 _FANOUT_OWNER = "fanout"
 
+_FILTER_BINDING_OWNER = "filter_binding"
+
 _FILTERS_OWNER = "filters"
 
 _FORMATTING_OWNER = "formatting"
@@ -29,6 +31,10 @@ _LAYOUT_OWNER = "layout"
 _PALETTE_OWNER = "palette"
 
 _READ_MODE_OWNER = "read_mode"
+
+_SCOPED_READS_OWNER = "scoped_reads"
+
+_STATIC_METADATA_OWNER = "static_metadata"
 
 _TOKENS_OWNER = "tokens"
 
@@ -40,31 +46,41 @@ _WINDOWS_OWNER = "windows"
 _OWNERS = (
     _CSS_OWNER,
     _FANOUT_OWNER,
+    _FILTER_BINDING_OWNER,
     _FILTERS_OWNER,
     _FORMATTING_OWNER,
     _LAYOUT_OWNER,
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
+    _SCOPED_READS_OWNER,
+    _STATIC_METADATA_OWNER,
     _TOKENS_OWNER,
     _WINDOWS_OWNER,
 )
 
 # What each owner answers for, declared rather than discovered so a second way
 # to resolve a color, lay a chart out, shorten a number, spell a window,
-# normalize a selection, key a cached read, decide which way a load's reads are
-# issued, or run one wave of them that way is a deliberate edit rather than a
-# place two panels -- or the reads' `ts < end` bound and the cache's tri-state
-# -- could disagree. Three owners report nothing because the check reads
-# `__module__`, which only a class or a function carries: the palette's whole
-# surface past its resolver is the chrome colors and the seven dimension maps,
-# the geometry owner's is its measurements and the two font stacks, and the
-# stylesheet owner's is one string. The preset vocabulary the window owner
-# decides is invisible here for the same reason, as are the read-mode owner's
-# knob name, truthy spellings, worker cap, refusal message, and the flag its
-# import binds, and the alias the fan-out owner names a reader by.
+# normalize a selection, key a cached read, read that key back as a read's
+# filters, decide which way a load's reads are issued, run one wave of them
+# that way, check out the connection one of them runs on, or open a page on the
+# extent behind its filter bar is a deliberate edit rather than a place two
+# panels -- or the reads' `ts < end` bound and the cache's tri-state -- could
+# disagree. Two owners report nothing because the check reads `__module__`,
+# which only a class or a function carries: the geometry owner's whole surface
+# is its measurements and the two font stacks, and the stylesheet owner's is
+# one string. The palette's chrome colors and seven dimension maps, the preset
+# vocabulary the window owner decides, the read-mode owner's knob name, truthy
+# spellings, worker cap, refusal message, and the flag its import binds, the
+# alias the fan-out owner names a reader by, and the TTL the metadata owner
+# caches under are all invisible here for the same reason.
 _SURFACES = MappingProxyType({
     _CSS_OWNER: (),
     _FANOUT_OWNER: ("fan_out_reads",),
+    _FILTER_BINDING_OWNER: (
+        "filter_list",
+        "read_filter_kwargs",
+        "read_filtered",
+    ),
     _FILTERS_OWNER: (
         "DashboardCacheKey",
         "cache_key",
@@ -86,6 +102,12 @@ _SURFACES = MappingProxyType({
         "db_unconfigured_message",
         "parse_parallel_reads_flag",
     ),
+    _SCOPED_READS_OWNER: ("scoped_read",),
+    _STATIC_METADATA_OWNER: (
+        "read_data_extent",
+        "read_filter_options",
+        "read_static_metadata",
+    ),
     _TOKENS_OWNER: (),
     _WINDOWS_OWNER: (
         "DateWindow",
@@ -103,26 +125,28 @@ _SURFACES = MappingProxyType({
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
-# flat theme module, the state hub, and the four leaves beneath it. No owner
+# flat theme module, the two hubs, and the five leaves beneath them. No owner
 # here may plant one -- that is what keeps the forwarding one-directional and
 # the flat modules retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_filter_state",
+    "orchestrator._dashboard_read_core",
     "orchestrator._dashboard_read_mode",
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_windows",
+    "orchestrator.dashboard_reads",
     "orchestrator.dashboard_state",
     "orchestrator.dashboard_theme",
 )
 
-# What an owner here may reach: its siblings, plus -- for the window owner --
-# the query result models a data extent is read back as, and -- for the
-# read-mode owner -- the analytics configuration the database URL is resolved
-# by. The extent a preset anchors at is a read's answer, so the owner that
-# clamps to it names the model owner directly rather than the read facade in
-# front of it; whether there is a database to read at all is one knob's answer,
-# so the owner that refuses without one names the knob's owner for the same
-# reason.
+# What an owner here may reach: its siblings, plus the analytics owners the
+# three that touch a database name. Each of those is one answer already
+# decided elsewhere, so the owner that needs it names the owner that gives it
+# rather than a facade in front of one: the extent a preset anchors at is a
+# read's answer, whether there is a database to read at all is one knob's, the
+# socket a read runs on is the connection cache's, the exception a failed read
+# arrives as is the connection owner's, and the two unfiltered reads a page
+# opens with are the raw read family's.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

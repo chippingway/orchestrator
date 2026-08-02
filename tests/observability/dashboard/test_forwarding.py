@@ -11,6 +11,10 @@ _THEME_FACADE = "orchestrator.dashboard_theme"
 
 _STATE_HUB = "orchestrator.dashboard_state"
 
+_READS_HUB = "orchestrator.dashboard_reads"
+
+_READ_CORE_LEAF = "orchestrator._dashboard_read_core"
+
 _READ_MODE_LEAF = "orchestrator._dashboard_read_mode"
 
 # `from __future__ import annotations` opens every module in the repository and
@@ -25,6 +29,8 @@ _CSS = f"{_PACKAGE}.css"
 
 _FANOUT = f"{_PACKAGE}.fanout"
 
+_FILTER_BINDING = f"{_PACKAGE}.filter_binding"
+
 _FILTERS = f"{_PACKAGE}.filters"
 
 _FORMATTING = f"{_PACKAGE}.formatting"
@@ -34,6 +40,10 @@ _LAYOUT = f"{_PACKAGE}.layout"
 _PALETTE = f"{_PACKAGE}.palette"
 
 _READ_MODE = f"{_PACKAGE}.read_mode"
+
+_SCOPED_READS = f"{_PACKAGE}.scoped_reads"
+
+_STATIC_METADATA = f"{_PACKAGE}.static_metadata"
 
 _TOKENS = f"{_PACKAGE}.tokens"
 
@@ -176,6 +186,22 @@ _LEAF_FAN_OUT_NAMES = (
 
 _HUB_FAN_OUT_NAME = ("_fan_out_reads", _FANOUT, "fan_out_reads")
 
+# What every read behind a page load goes through, published privately by both
+# flat sites and publicly by the owners. One socket per thread, one unpacking
+# of a cache key, and one TTL are the point of each: a second copy of the scope
+# would open a second connection per wave, and a second unpacking is how a
+# widget ends up reading a window its key was not hashed from.
+_READ_CORE_NAMES = (
+    ("STATIC_METADATA_TTL_SECONDS", _STATIC_METADATA, "STATIC_METADATA_TTL_SECONDS"),
+    ("_filter_list", _FILTER_BINDING, "filter_list"),
+    ("_read_data_extent", _STATIC_METADATA, "read_data_extent"),
+    ("_read_filter_kwargs", _FILTER_BINDING, "read_filter_kwargs"),
+    ("_read_filter_options", _STATIC_METADATA, "read_filter_options"),
+    ("_read_filtered", _FILTER_BINDING, "read_filtered"),
+    ("_read_static_metadata", _STATIC_METADATA, "read_static_metadata"),
+    ("_scoped_read", _SCOPED_READS, "scoped_read"),
+)
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -198,10 +224,11 @@ _FILTER_NAMES = (
     ("shift_ts", _FILTERS, "shift_ts"),
 )
 
-# The flat modules a caller reaches a state owner through, and what each name
-# they publish resolves to: a window built here has to be the one the reads are
-# bounded by, and a key hashed here the one the cached reads are stored under,
-# or a fix under the owners would reach only half of the callers.
+# The flat modules a caller reaches one of these owners through, and what each
+# name they publish resolves to: a window built here has to be the one the
+# reads are bounded by, a key hashed here the one the cached reads are stored
+# under, and a scope entered here the one they all share, or a fix under the
+# owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -212,6 +239,7 @@ _FORWARDED_MODULES = MappingProxyType({
     ),
     "orchestrator._dashboard_windows": (*_WINDOW_NAMES, _LEAF_EXTENT_NAME),
     "orchestrator._dashboard_filter_state": _FILTER_NAMES,
+    _READ_CORE_LEAF: _READ_CORE_NAMES,
     _READ_MODE_LEAF: (*_LEAF_READ_MODE_HELPERS, *_LEAF_FAN_OUT_NAMES),
 })
 
@@ -310,6 +338,24 @@ class ForwardedStateHubTest(unittest.TestCase):
     def test_each_name_resolves_to_the_owner(self) -> None:
         hub = import_module(_STATE_HUB)
         for name, owner_name, attribute in _FORWARDED_HUB:
+            with self.subTest(name=name):
+                self.assertIs(
+                    getattr(hub, name),
+                    getattr(import_module(owner_name), attribute),
+                )
+
+
+class ForwardedReadsHubTest(unittest.TestCase):
+    """The read hub republishes the owners' objects under the old spellings.
+
+    It is the site the lazy `dashboard.<name>` surface resolves the whole read
+    inventory through, so these names are what a historical caller and every
+    test patch point aimed at one still land on.
+    """
+
+    def test_each_name_resolves_to_the_owner(self) -> None:
+        hub = import_module(_READS_HUB)
+        for name, owner_name, attribute in _READ_CORE_NAMES:
             with self.subTest(name=name):
                 self.assertIs(
                     getattr(hub, name),

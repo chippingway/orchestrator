@@ -143,7 +143,7 @@ class MainRenderDispatchTest(_MainSourceTest):
         # inlining the cached wrappers, the fan-out, the load log, and
         # the metadata / no-data / empty-window banners.
         for helper, marker in (
-            ("_run_dashboard", "_read_static_metadata("),
+            ("_run_dashboard", "read_static_metadata("),
             ("_render_dashboard", "_render_no_data("),
             ("_prepare_dashboard_page", "_widget_readers("),
             ("_load_dashboard_data", "_run_read_waves("),

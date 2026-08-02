@@ -6,7 +6,8 @@ from __future__ import annotations
 from typing import Any
 
 from orchestrator import _dashboard_page_controls as page_controls
-from orchestrator import dashboard_reads, dashboard_widgets
+from orchestrator import dashboard_widgets
+from orchestrator.observability.dashboard import static_metadata
 
 
 def main() -> None:
@@ -55,7 +56,7 @@ def _run_dashboard(st: Any) -> None:
     _stop_if_dashboard_unconfigured(modules)
     _render_dashboard(
         modules,
-        *dashboard_reads._read_static_metadata(st=modules.st),
+        *static_metadata.read_static_metadata(st=modules.st),
     )
 
 
