@@ -12,7 +12,7 @@ from orchestrator import _dashboard_widget_models as models
 from orchestrator import dashboard_html
 from orchestrator.dashboard_cards import _insights_html
 from orchestrator.dashboard_kpi_strip import _KpiInputs
-from orchestrator.dashboard_kpis import compute_insights
+from orchestrator.observability.dashboard.insights import compute_insights
 
 
 DASHBOARD_MODULE = "orchestrator.dashboard"

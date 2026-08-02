@@ -28,6 +28,8 @@ _FILTERS_OWNER = "filters"
 
 _FORMATTING_OWNER = "formatting"
 
+_INSIGHTS_OWNER = "insights"
+
 _LAYOUT_OWNER = "layout"
 
 _PALETTE_OWNER = "palette"
@@ -54,6 +56,7 @@ _OWNERS = (
     _FILTER_BINDING_OWNER,
     _FILTERS_OWNER,
     _FORMATTING_OWNER,
+    _INSIGHTS_OWNER,
     _LAYOUT_OWNER,
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
@@ -70,7 +73,8 @@ _OWNERS = (
 # filters, decide which way a load's reads are issued, run one wave of them
 # that way, check out the connection one of them runs on, draw a comparison
 # panel from one of the six reads behind it or a skill panel from one of the
-# three, or open a page on the extent behind its filter bar is a deliberate
+# three, open a page on the extent behind its filter bar, or interrupt one with
+# a banner is a deliberate
 # edit rather than a place two panels -- or the reads' `ts < end` bound and the
 # cache's tri-state -- could
 # disagree. Two owners report nothing because the check reads `__module__`,
@@ -79,8 +83,10 @@ _OWNERS = (
 # one string. The palette's chrome colors and seven dimension maps, the preset
 # vocabulary the window owner decides, the read-mode owner's knob name, truthy
 # spellings, worker cap, refusal message, and the flag its import binds, the
-# alias the fan-out owner names a reader by, and the TTL the metadata owner
-# caches under are all invisible here for the same reason.
+# alias the fan-out owner names a reader by, the two bands the insight owner
+# raises a banner at and the spellings an unpriced run reaches it under, and
+# the TTL the metadata owner caches under are all invisible here for the same
+# reason.
 _SURFACES = MappingProxyType({
     _BREAKDOWNS_OWNER: (
         "read_backend_daily_tokens",
@@ -111,6 +117,7 @@ _SURFACES = MappingProxyType({
         "fmt_num",
         "fmt_tokens",
     ),
+    _INSIGHTS_OWNER: ("InsightBanner", "compute_insights"),
     _LAYOUT_OWNER: ("base_layout",),
     _PALETTE_OWNER: ("color_for",),
     _READ_MODE_OWNER: (
@@ -146,9 +153,10 @@ _SURFACES = MappingProxyType({
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
-# flat theme module, the two hubs, and the seven leaves beneath them. No owner
-# here may plant one -- that is what keeps the forwarding one-directional and
-# the flat modules retirable rather than load-bearing.
+# flat theme module, the state, read, and KPI hubs, and the seven leaves
+# beneath the first two. No owner here may plant one -- that is what keeps the
+# forwarding one-directional and the flat modules retirable rather than
+# load-bearing.
 _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_filter_state",
     "orchestrator._dashboard_read_breakdowns",
@@ -157,6 +165,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_read_skills",
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_windows",
+    "orchestrator.dashboard_kpis",
     "orchestrator.dashboard_reads",
     "orchestrator.dashboard_state",
     "orchestrator.dashboard_theme",
@@ -170,8 +179,9 @@ _COMPATIBILITY_SITES = (
 # socket a read runs on is the connection cache's, the exception a failed read
 # arrives as is the connection owner's, the two unfiltered reads a page opens
 # with are the raw read family's, the six a comparison panel is drawn from are
-# the rollup and breakdown families', and the three a skill panel is drawn from
-# are the skill family's.
+# the rollup and breakdown families', the three a skill panel is drawn from are
+# the skill family's, and the totals and cost-source split a banner is raised
+# over are the rows those reads hand back.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

@@ -717,7 +717,8 @@ orchestrator/
                         the fan-out its reads are issued through, the six a
                         comparison panel is drawn from and the three a skill
                         panel is, what one of those reads then runs on and is
-                        narrowed by, and the destination for the rest
+                        narrowed by, the banners a window is interrupted with
+                        above all of them, and the destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -762,6 +763,10 @@ orchestrator/
                         the extent and filter vocabulary a page opens on, the
                         TTL both are cached for, and the banner a failed one
                         stops the run with
+      insights.py       the two observations a window is worth interrupting a
+                        page for -- runs exiting non-zero, and runs the parser
+                        could not price -- the ratio each is raised at, and the
+                        banner line a crossing is rendered as
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1512,12 +1517,25 @@ sync's ingest cadence rather than Streamlit's rerun cadence, which fires on ever
 also the page's first read, so a failure there is answered rather than reported: the run names the knob to check and
 stops, instead of leaving every widget below it to fail on its own.
 
+`insights.py` is what the page opens with, above every panel that wave feeds. It holds the two questions worth
+interrupting an operator for and the ratio each is asked at: a window whose agent runs exit non-zero more than a tenth
+of the time is describing a broken workload rather than the one the panels plot, and a window whose runs arrive
+unpriced that often is one whose spend is an undercount, because the rate tables in `observability/usage/prices.py`
+are missing SKUs the parser is seeing. Each threshold sits beside the arithmetic that crosses it, so a page cannot
+open on a band nobody else can tune; both spellings an unpriced run reaches the second one under — what the parser
+writes when no table covered the SKU, and what a NULL column is bucketed as — are counted together there even though
+the coverage bar keeps them apart. Crossing nothing is an empty list rather than a banner saying so, which is what the
+caller branches on for a section header that would otherwise sit above nothing. Root-level `dashboard_kpis.py` keeps
+the delta, tile, ordering, and rework arithmetic it always had, and forwards the banner names beside them to this
+owner's own objects.
+
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
 socket out of, the metadata owner names both the error a failed read arrives as and the two unfiltered reads it
-issues, the breakdown owner names the two read families its six adapters are answered by, and the skill owner names
-the one family its three are; those are the only things any of the nine reaches outside the package. The fan-out and
-the filter binding reach nothing past the siblings they take their worker cap and their scope from.
+issues, the breakdown owner names the two read families its six adapters are answered by, the skill owner names the
+one family its three are, and the insight owner names the two result families the totals and cost-source split it
+reads arrive as; those are the only things any of the ten reaches outside the package. The fan-out and the filter
+binding reach nothing past the siblings they take their worker cap and their scope from.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
 the hub the whole read inventory is resolved through, and the seven flat leaves beneath them —
