@@ -731,8 +731,9 @@ orchestrator/
                         every cached read is stored under
       read_mode.py      the parallel-read knob and its truthy spellings, the
                         parse that reads it and the flag one process's loads
-                        are issued under, the worker cap, and the message an
-                        unconfigured database is refused with
+                        are issued under, the worker cap, and the refusal an
+                        unconfigured database is answered with, message
+                        and URL check together
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1446,7 +1447,7 @@ the other three, and a selection normalized in one module and hashed in another 
 up sharing a cache entry. `read_mode.py` owns the parallel-read knob, its truthy spellings, the worker cap, and the
 text an unconfigured database is refused with, together with the three reads over them — the parse, the flag it binds
 at import, and the refusal — so what a page's reads are issued under is decided here rather than where the fan-out
-runs. Those two answers are read at opposite times on purpose: the flag is parsed once at that module's import,
+runs. The flag and the URL are read at opposite times on purpose: the flag is parsed once at that module's import,
 because an operator turns the fan-out on by restarting the Streamlit process, while the database URL is read inside
 the call off whichever analytics package the name resolves to. The window owner names
 `analytics/query/overview_models.py` for the extent a preset anchors at, and the read-mode owner names
