@@ -30,9 +30,6 @@ SCOPED_READ_CALL_FRAGMENT = "scoped_reads.scoped_read("
 ENTRYPOINT_ATTR = "main"
 
 
-FIRST_WAVE_READERS_MEMBER = "_first_wave_readers"
-
-
 class _MainSourceTest(unittest.TestCase):
     """Base for source checks over the lazy entrypoint and page helpers.
 
@@ -60,8 +57,9 @@ class CachedReadConnectionScopeTest(_MainSourceTest):
     cache key and every reload would otherwise look like a cache miss.
 
     The windowed wrappers a page issues are the dashboard owners', and
-    what each of them routes through is pinned beside those owners. What
-    is left here is the one page read issued outside them.
+    what each of them routes through -- and which wave it is staged into
+    -- is pinned beside those owners. What is left here is the one page
+    read issued outside them.
     """
 
     def test_the_drilldown_uses_the_shared_scope(self) -> None:
@@ -71,19 +69,6 @@ class CachedReadConnectionScopeTest(_MainSourceTest):
         self.assertIn(
             SCOPED_READ_CALL_FRAGMENT,
             self._source_of("_render_drilldown_view"),
-        )
-
-
-class PreviousWindowReadTest(_MainSourceTest):
-    def test_the_first_wave_dispatches_the_prev_read(self) -> None:
-        # The previous window is answered by the lightweight KPI rollup rather
-        # than a second whole-window summary scan, which the rollup owner's
-        # cases pin. What has to hold here is that the `prev_summary` entry in
-        # the reader fan-out dispatches through that wrapper, so the light path
-        # is the one that actually fires when the dashboard renders.
-        self.assertIn(
-            '_widget_task(st, "prev_summary", _read_prev_kpi, prev_key)',
-            self._source_of(FIRST_WAVE_READERS_MEMBER),
         )
 
 

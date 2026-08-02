@@ -145,7 +145,7 @@ class MainRenderDispatchTest(_MainSourceTest):
         for helper, marker in (
             ("_run_dashboard", "read_static_metadata("),
             ("_render_dashboard", "_render_no_data("),
-            ("_prepare_dashboard_page", "_widget_readers("),
+            ("_prepare_dashboard_page", "read_plan.widget_readers("),
             ("_load_dashboard_data", "_run_read_waves("),
             (RUN_READ_WAVES_MEMBER, "_dispatch_reads("),
             (RUN_READ_WAVES_MEMBER, "_log_dashboard_load("),

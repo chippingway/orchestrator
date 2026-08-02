@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Dashboard read-orchestration extraction tests."""
 
-import sys
-
-
 import unittest
+
+
+from importlib import import_module
 
 
 from types import MappingProxyType
@@ -29,19 +29,16 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
 _MOVED_READ_MEMBERS = (
-    "_widget_task",
-    "_first_wave_readers",
-    "_second_wave_readers",
-    "_widget_readers",
-    "_build_read_keys",
     "_dispatch_reads",
     "_log_dashboard_load",
     "_run_read_waves",
-    "_DashboardReadPlan",
 )
 
 
 _BREAKDOWNS_OWNER = "breakdowns"
+
+
+_READ_PLAN_OWNER = "read_plan"
 
 
 _ROLLUPS_OWNER = "rollups"
@@ -50,12 +47,19 @@ _ROLLUPS_OWNER = "rollups"
 _SKILLS_OWNER = "skills"
 
 
-# The seven headline and lifecycle reads, the six comparison-panel ones, the
-# three skill-panel ones, the connection scope, the filter binding, and the
-# static-metadata reads are the dashboard owners' own objects, published here
-# under the spellings a caller reached them by. They report their owner rather
-# than this hub, so the guard on them is where each resolves to.
+# The staged read plan and its two wave registries, the seven headline and
+# lifecycle reads, the six comparison-panel ones, the three skill-panel ones,
+# the connection scope, the filter binding, and the static-metadata reads are
+# the dashboard owners' own objects, published here under the spellings a
+# caller reached them by. They report their owner rather than this hub, so the
+# guard on them is where each resolves to.
 _OWNED_READ_MEMBERS = MappingProxyType({
+    "_DashboardReadPlan": _READ_PLAN_OWNER,
+    "_widget_task": _READ_PLAN_OWNER,
+    "_first_wave_readers": _READ_PLAN_OWNER,
+    "_second_wave_readers": _READ_PLAN_OWNER,
+    "_widget_readers": _READ_PLAN_OWNER,
+    "_build_read_keys": _READ_PLAN_OWNER,
     "_read_summary": _ROLLUPS_OWNER,
     "_read_prev_kpi": _ROLLUPS_OWNER,
     "_read_time_series": _ROLLUPS_OWNER,
@@ -92,19 +96,30 @@ _READS_FACADE_CONSTANTS = (
 )
 
 
+def _reloaded_reads():
+    """Reload the page world and name the hub the lazy facade resolves to.
+
+    The hub is a compatibility site rather than something a page load imports,
+    so a reload leaves it unbound and it is named here on demand -- which is
+    exactly when a `dashboard.<name>` access resolves it.
+    """
+    _reload(CONFIGURED_DB_ENV)
+    return import_module(DASHBOARD_READS_MODULE)
+
+
 class ReadOrchestrationExtractionTest(unittest.TestCase):
-    """The dashboard read orchestration -- the reader registries, the staged
-    parallel dispatch + two-wave data load, and the load-timing log -- lives in
-    `orchestrator.dashboard_reads`, which also republishes the headline,
-    lifecycle, comparison-panel, skill-panel, connection, filter-binding, and
-    static-metadata reads the dashboard owners hold. `orchestrator.dashboard`
-    re-exports every member under the same name so the `dashboard.<name>`
-    surface and its test patch points keep resolving to the same object.
+    """The staged parallel dispatch, the two-wave data load, and the
+    load-timing log live in `orchestrator.dashboard_reads`, which also
+    republishes the read plan and reader registries staging that load plus the
+    headline, lifecycle, comparison-panel, skill-panel, connection,
+    filter-binding, and static-metadata reads the dashboard owners hold.
+    `orchestrator.dashboard` re-exports every member under the same name so the
+    `dashboard.<name>` surface and its test patch points keep resolving to the
+    same object.
     """
 
     def test_read_members_defined_in_reads_module(self) -> None:
-        _reload(CONFIGURED_DB_ENV)
-        reads = sys.modules[DASHBOARD_READS_MODULE]
+        reads = _reloaded_reads()
         for name in _MOVED_READ_MEMBERS:
             with self.subTest(name=name):
                 self.assertEqual(
@@ -113,8 +128,7 @@ class ReadOrchestrationExtractionTest(unittest.TestCase):
                 )
 
     def test_owned_read_members_report_their_owner(self) -> None:
-        _reload(CONFIGURED_DB_ENV)
-        reads = sys.modules[DASHBOARD_READS_MODULE]
+        reads = _reloaded_reads()
         for name, owner in _OWNED_READ_MEMBERS.items():
             with self.subTest(name=name):
                 self.assertEqual(
@@ -124,7 +138,7 @@ class ReadOrchestrationExtractionTest(unittest.TestCase):
 
     def test_facade_reexports_reads_objects(self) -> None:
         _, dashboard = _reload(CONFIGURED_DB_ENV)
-        reads = sys.modules[DASHBOARD_READS_MODULE]
+        reads = import_module(DASHBOARD_READS_MODULE)
         published = (
             *_MOVED_READ_MEMBERS,
             *_OWNED_READ_MEMBERS,

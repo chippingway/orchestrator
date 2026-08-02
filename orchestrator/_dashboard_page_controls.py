@@ -8,7 +8,8 @@ from time import perf_counter
 from typing import Any, Sequence
 
 from orchestrator import _dashboard_date_range as date_range
-from orchestrator import dashboard_reads, dashboard_state, dashboard_widgets
+from orchestrator import dashboard_state, dashboard_widgets
+from orchestrator.observability.dashboard import read_plan
 
 
 @dataclass(frozen=True)
@@ -73,14 +74,14 @@ def _prepare_dashboard_page(
     options: Any,
 ) -> dashboard_widgets._DashboardPage:
     controls = _render_dashboard_controls(modules, extent, options)
-    keys = dashboard_reads._build_read_keys(
+    keys = read_plan.build_read_keys(
         window=controls.filters.window,
         repo_filter=controls.filters.repo,
         event_filter=controls.filters.events,
         stage_filter=controls.filters.stages,
         issue_filter=controls.filters.issue,
     )
-    readers = dashboard_reads._widget_readers(
+    readers = read_plan.widget_readers(
         st=modules.st,
         key=keys[0],
         prev_key=keys[1],
@@ -89,7 +90,7 @@ def _prepare_dashboard_page(
     return dashboard_widgets._DashboardPage(
         extent=extent,
         controls=controls,
-        reads=dashboard_reads._DashboardReadPlan(
+        reads=read_plan.DashboardReadPlan(
             first_wave=readers[0],
             second_wave=readers[1],
             parallel=dashboard_state.dashboard_parallel_reads_enabled(),

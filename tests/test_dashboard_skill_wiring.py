@@ -74,9 +74,6 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 ENTRYPOINT_ATTR = "main"
 
 
-SECOND_WAVE_READERS_MEMBER = "_second_wave_readers"
-
-
 class _MainSourceTest(unittest.TestCase):
     """Base for source checks over the lazy entrypoint and page helpers.
 
@@ -97,21 +94,13 @@ class _MainSourceTest(unittest.TestCase):
 
 
 class SkillMatrixWiringTest(_MainSourceTest):
-    """The invocation-level per-skill trigger matrix rides the same cached
-    / fan-out read pattern as every other widget (its wrapper lives in
-    `_widget_readers`) and renders as the second table inside the
-    invocation-level diagnostics expander, beneath the session-adoption
-    matrix. Streamlit is not installed for the default sync, so these
-    inspect the rendered sources rather than driving the page under
-    Streamlit.
+    """The invocation-level per-skill trigger matrix renders as the second
+    table inside the invocation-level diagnostics expander, beneath the
+    session-adoption matrix. The wave its read is staged into is the
+    read-plan owner's and pinned beside it. Streamlit is not installed for
+    the default sync, so these inspect the rendered sources rather than
+    driving the page under Streamlit.
     """
-
-    def test_matrix_dispatched_in_second_wave(self) -> None:
-        src = self._source_of(SECOND_WAVE_READERS_MEMBER)
-        self.assertIn(
-            '_widget_task(st, "skill_matrix_rows", _read_skill_trigger_matrix, key)',
-            src,
-        )
 
     def test_matrix_is_second_diagnostic_table(self) -> None:
         # Inside the diagnostics expander the matrix is the SECOND table:
@@ -140,20 +129,12 @@ class SkillMatrixWiringTest(_MainSourceTest):
 
 
 class SkillAdoptionWiringTest(_MainSourceTest):
-    """The primary per-session skill-adoption matrix rides the same cached
-    / fan-out read pattern as every other widget (its wrapper lives in
-    `_widget_readers`) and renders as the headline table of the skill
-    panel, above the invocation-level diagnostics. Streamlit is not
-    installed for the default sync, so these inspect the rendered sources
-    rather than driving the page under Streamlit.
+    """The primary per-session skill-adoption matrix renders as the headline
+    table of the skill panel, above the invocation-level diagnostics. The
+    wave its read is staged into is the read-plan owner's and pinned beside
+    it. Streamlit is not installed for the default sync, so these inspect
+    the rendered sources rather than driving the page under Streamlit.
     """
-
-    def test_adoption_dispatched_in_second_wave(self) -> None:
-        src = self._source_of(SECOND_WAVE_READERS_MEMBER)
-        self.assertIn(
-            '_widget_task(st, "skill_adoption_rows", _read_skill_adoption, key)',
-            src,
-        )
 
     def test_adoption_is_primary_render(self) -> None:
         # The session-adoption matrix is the headline table: it renders

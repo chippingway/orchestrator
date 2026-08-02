@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from typing import Any, Optional, Sequence
 
 from orchestrator.analytics.read import DataExtent, Summary
-from orchestrator.dashboard_reads import _DashboardReadPlan
 from orchestrator.dashboard_state import DateWindow
+from orchestrator.observability.dashboard.read_plan import DashboardReadPlan
 
 
 @dataclass(frozen=True)
@@ -50,7 +50,7 @@ class _DashboardControls:
 class _DashboardPage:
     extent: DataExtent
     controls: _DashboardControls
-    reads: _DashboardReadPlan
+    reads: DashboardReadPlan
 
 
 @dataclass(frozen=True)

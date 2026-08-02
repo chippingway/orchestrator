@@ -1,131 +1,25 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard staged read plan and reader registries."""
+"""Historical import site for the staged read plan.
+
+The plan a page load is described by, the task each of its entries is built
+as, the two wave registries, and the key pair they are bound to are the
+dashboard owner's own objects. A caller that names this module -- the dispatch
+leaf beside it, the hub in front of them, and every historical
+`dashboard.<name>` import through that hub -- reaches those rather than a copy
+of any of them, so a page and the owner cannot stage a load differently. The
+reader alias is the fan-out owner's, which is where the type a wave is made of
+has always been decided.
+"""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from functools import partial
-from typing import Any, Callable, Optional, Sequence
-
-from orchestrator._dashboard_read_breakdowns import (
-    _read_backend_daily_tokens,
-    _read_backend_efficiency,
-    _read_cost_coverage,
-    _read_hourly_heatmap,
-    _read_repo_breakdown,
-    _read_skill_trigger_rates,
-    _read_throughput,
-)
-from orchestrator._dashboard_read_rollups import (
-    _read_prev_kpi,
-    _read_recent_agent_exits,
-    _read_review_round,
-    _read_stage_breakdown,
-    _read_summary,
-    _read_time_series,
-    _read_top_cost_issues,
-)
-from orchestrator._dashboard_read_skills import (
-    _read_skill_adoption,
-    _read_skill_trigger_matrix,
-)
-from orchestrator.dashboard_state import DateWindow, cache_key, previous_window
+from orchestrator.observability.dashboard import fanout, read_plan
 
 
-_ReaderTask = tuple[str, Callable[[], Any]]
-
-
-@dataclass(frozen=True)
-class _DashboardReadPlan:
-    first_wave: Sequence[_ReaderTask]
-    second_wave: Sequence[_ReaderTask]
-    parallel: bool
-    started_at: float
-
-    @property
-    def total_reads(self) -> int:
-        return len(self.first_wave) + len(self.second_wave)
-
-
-def _widget_task(
-    st: Any,
-    name: str,
-    reader: Callable[..., Any],
-    *args: Any,
-) -> _ReaderTask:
-    cached_reader = st.cache_data(show_spinner=False, ttl=60)(reader)
-    return name, partial(cached_reader, *args)
-
-
-def _first_wave_readers(
-    st: Any,
-    key: tuple,
-    prev_key: tuple,
-) -> list[_ReaderTask]:
-    return [
-        _widget_task(st, "summary", _read_summary, key),
-        _widget_task(st, "prev_summary", _read_prev_kpi, prev_key),
-        _widget_task(st, "ts_points", _read_time_series, key),
-        _widget_task(st, "review_round_rows", _read_review_round, key),
-        _widget_task(st, "throughput_rows", _read_throughput, key),
-        _widget_task(st, "cost_coverage_rows", _read_cost_coverage, key),
-    ]
-
-
-def _second_wave_readers(
-    st: Any,
-    key: tuple,
-    tz_offset_choice: int,
-) -> list[_ReaderTask]:
-    return [
-        _widget_task(st, "stage_rows", _read_stage_breakdown, key),
-        _widget_task(st, "agent_exits", _read_recent_agent_exits, key),
-        _widget_task(st, "issues_rows", _read_top_cost_issues, key),
-        _widget_task(st, "backend_rows", _read_backend_efficiency, key),
-        _widget_task(st, "repo_rows", _read_repo_breakdown, key),
-        _widget_task(
-            st,
-            "heatmap_rows",
-            _read_hourly_heatmap,
-            key,
-            int(tz_offset_choice),
-        ),
-        _widget_task(st, "backend_daily_rows", _read_backend_daily_tokens, key),
-        _widget_task(st, "skill_adoption_rows", _read_skill_adoption, key),
-        _widget_task(st, "skill_rows", _read_skill_trigger_rates, key),
-        _widget_task(st, "skill_matrix_rows", _read_skill_trigger_matrix, key),
-    ]
-
-
-def _widget_readers(*, st: Any, key, prev_key, tz_offset_choice: int):
-    """Return the first and second cached read waves."""
-    return (
-        _first_wave_readers(st, key, prev_key),
-        _second_wave_readers(st, key, tz_offset_choice),
-    )
-
-
-def _build_read_keys(
-    *,
-    window: DateWindow,
-    repo_filter: Optional[str],
-    event_filter: Optional[Sequence[str]],
-    stage_filter: Optional[Sequence[str]],
-    issue_filter: Optional[int],
-):
-    """Build current and previous-window cache keys."""
-    key = cache_key(
-        window,
-        repo_filter,
-        event_filter,
-        stage_filter,
-        issue_filter,
-    )
-    prev_key = cache_key(
-        previous_window(window),
-        repo_filter,
-        event_filter,
-        stage_filter,
-        issue_filter,
-    )
-    return key, prev_key
+_ReaderTask = fanout.NamedReader
+_DashboardReadPlan = read_plan.DashboardReadPlan
+_widget_task = read_plan.widget_task
+_first_wave_readers = read_plan.first_wave_readers
+_second_wave_readers = read_plan.second_wave_readers
+_widget_readers = read_plan.widget_readers
+_build_read_keys = read_plan.build_read_keys
