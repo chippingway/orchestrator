@@ -28,9 +28,10 @@ is. Above all of them, ``insights`` holds the two observations a window is
 worth interrupting a page for and the ratio each is raised at, and ``kpis``
 the four numbers that window is summarized by beneath them. What those reads
 are then drawn as arrives under ``charts``, where ``primitives`` holds what
-every figure family is built out of: the placeholder a window holding no rows
-is answered with, the labels a bar is annotated by, and the height and legend
-a horizontal-bar panel is laid out with.
+every figure family is built out of -- the placeholder a window holding no
+rows is answered with, the labels a bar is annotated by, and the height and
+legend a horizontal-bar panel is laid out with -- and ``heatmap`` holds the
+first family above it, the 7x24 weekday-by-hour grid.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so
