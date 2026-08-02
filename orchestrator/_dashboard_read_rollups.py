@@ -1,48 +1,24 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard summary, cost, and lifecycle read wrappers."""
+"""Historical import site for the headline and lifecycle reads.
+
+The seven a page's summary, activity, stage, run, spend, and review-round
+sections are drawn from -- and the cap the run list is read under -- are the
+dashboard owner's own objects. A caller that names this module -- the read plan
+beside it, the hub in front of them, and every historical `dashboard.<name>`
+import through that hub -- reaches those rather than a copy of any of them, so
+a page and the owner cannot answer differently.
+"""
 from __future__ import annotations
 
-from orchestrator.analytics import read as analytics_read
-from orchestrator._dashboard_read_core import _read_filtered
-from orchestrator.observability.dashboard.kpis import DEFAULT_EXPENSIVE_LIMIT
+from orchestrator.observability.dashboard import rollups
 
 
-DEFAULT_RECENT_AGENT_EXITS = 100
-
-
-def _read_summary(key: tuple):
-    return _read_filtered(analytics_read.get_summary, key)
-
-
-def _read_prev_kpi(key: tuple):
-    return _read_filtered(analytics_read.get_kpi_prev, key)
-
-
-def _read_time_series(key: tuple):
-    return _read_filtered(analytics_read.get_time_series, key)
-
-
-def _read_stage_breakdown(key: tuple):
-    return _read_filtered(analytics_read.get_stage_breakdown, key)
-
-
-def _read_recent_agent_exits(key: tuple):
-    return _read_filtered(
-        analytics_read.get_recent_agent_exits,
-        key,
-        limit=DEFAULT_RECENT_AGENT_EXITS,
-    )
-
-
-def _read_top_cost_issues(key: tuple):
-    return _read_filtered(
-        analytics_read.get_issues,
-        key,
-        limit=DEFAULT_EXPENSIVE_LIMIT,
-        sort_by=analytics_read.SORT_BY_COST,
-    )
-
-
-def _read_review_round(key: tuple):
-    return _read_filtered(analytics_read.get_review_round_breakdown, key)
+DEFAULT_RECENT_AGENT_EXITS = rollups.DEFAULT_RECENT_AGENT_EXITS
+_read_summary = rollups.read_summary
+_read_prev_kpi = rollups.read_prev_kpi
+_read_time_series = rollups.read_time_series
+_read_stage_breakdown = rollups.read_stage_breakdown
+_read_recent_agent_exits = rollups.read_recent_agent_exits
+_read_top_cost_issues = rollups.read_top_cost_issues
+_read_review_round = rollups.read_review_round

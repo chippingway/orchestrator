@@ -28,19 +28,7 @@ CONFIGURED_DB_URL = "postgresql://h/db"
 CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
-STAMPED_READER_WRAPPER_NAMES = (
-    "_read_summary",
-    "_read_prev_kpi",
-    "_read_time_series",
-    "_read_stage_breakdown",
-    "_read_recent_agent_exits",
-    "_read_top_cost_issues",
-    "_read_review_round",
-)
-
-
 _MOVED_READ_MEMBERS = (
-    *STAMPED_READER_WRAPPER_NAMES,
     "_widget_task",
     "_first_wave_readers",
     "_second_wave_readers",
@@ -56,15 +44,25 @@ _MOVED_READ_MEMBERS = (
 _BREAKDOWNS_OWNER = "breakdowns"
 
 
+_ROLLUPS_OWNER = "rollups"
+
+
 _SKILLS_OWNER = "skills"
 
 
-# The six comparison-panel reads, the three skill-panel ones, the connection
-# scope, the filter binding, and the static-metadata reads are the dashboard
-# owners' own objects, published here under the spellings a caller reached them
-# by. They report their owner rather than this hub, so the guard on them is
-# where each resolves to.
+# The seven headline and lifecycle reads, the six comparison-panel ones, the
+# three skill-panel ones, the connection scope, the filter binding, and the
+# static-metadata reads are the dashboard owners' own objects, published here
+# under the spellings a caller reached them by. They report their owner rather
+# than this hub, so the guard on them is where each resolves to.
 _OWNED_READ_MEMBERS = MappingProxyType({
+    "_read_summary": _ROLLUPS_OWNER,
+    "_read_prev_kpi": _ROLLUPS_OWNER,
+    "_read_time_series": _ROLLUPS_OWNER,
+    "_read_stage_breakdown": _ROLLUPS_OWNER,
+    "_read_recent_agent_exits": _ROLLUPS_OWNER,
+    "_read_top_cost_issues": _ROLLUPS_OWNER,
+    "_read_review_round": _ROLLUPS_OWNER,
     "_read_backend_efficiency": _BREAKDOWNS_OWNER,
     "_read_repo_breakdown": _BREAKDOWNS_OWNER,
     "_read_cost_coverage": _BREAKDOWNS_OWNER,
@@ -95,11 +93,11 @@ _READS_FACADE_CONSTANTS = (
 
 
 class ReadOrchestrationExtractionTest(unittest.TestCase):
-    """The dashboard read orchestration -- cached reader wrappers, reader
-    registries, the staged parallel dispatch + two-wave data load, and the
-    load-timing log -- lives in `orchestrator.dashboard_reads`, which also
-    republishes the comparison-panel, skill-panel, connection, filter-binding,
-    and static-metadata reads the dashboard owners hold. `orchestrator.dashboard`
+    """The dashboard read orchestration -- the reader registries, the staged
+    parallel dispatch + two-wave data load, and the load-timing log -- lives in
+    `orchestrator.dashboard_reads`, which also republishes the headline,
+    lifecycle, comparison-panel, skill-panel, connection, filter-binding, and
+    static-metadata reads the dashboard owners hold. `orchestrator.dashboard`
     re-exports every member under the same name so the `dashboard.<name>`
     surface and its test patch points keep resolving to the same object.
     """
