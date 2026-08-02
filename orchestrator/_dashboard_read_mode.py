@@ -1,11 +1,16 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard database availability and parallel read fan-out."""
+"""Historical read-mode import site, and the fan-out still decided here.
+
+The knob parse, the flag one page load is issued under, and the refusal an
+unconfigured database is answered with are the read-mode owner's own objects,
+so a caller that names this module compares against what the owner decided.
+The fan-out itself stays beside the page: it is how a load's reads are issued
+once the flag has said which way, which is the page's own arrangement rather
+than something the state owners settle.
+"""
 from __future__ import annotations
 
-import importlib
-import os
-import sys
 from typing import Any, Callable, Sequence
 
 from orchestrator.observability.dashboard import read_mode as constants
@@ -13,22 +18,9 @@ from orchestrator.observability.dashboard import read_mode as constants
 
 NamedReader = tuple[str, Callable[[], Any]]
 
-
-def parse_parallel_reads_flag() -> bool:
-    raw_flag = os.environ.get(constants.PARALLEL_READS_ENV, "").strip().lower()
-    return raw_flag in constants.TRUTHY
-
-
-def db_unconfigured_message() -> str | None:
-    analytics = importlib.import_module("orchestrator.analytics")
-    if not analytics.ANALYTICS_DB_URL:
-        return constants.UNCONFIGURED_DB_MESSAGE
-    return None
-
-
-def dashboard_parallel_reads_enabled() -> bool:
-    state_module = sys.modules["orchestrator.dashboard_state"]
-    return state_module.DASHBOARD_PARALLEL_READS
+parse_parallel_reads_flag = constants.parse_parallel_reads_flag
+db_unconfigured_message = constants.db_unconfigured_message
+dashboard_parallel_reads_enabled = constants.dashboard_parallel_reads_enabled
 
 
 def fan_out_reads(

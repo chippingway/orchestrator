@@ -48,15 +48,16 @@ _OWNERS = (
 
 # What each owner answers for, declared rather than discovered so a second way
 # to resolve a color, lay a chart out, shorten a number, spell a window,
-# normalize a selection, or key a cached read is a deliberate edit rather than
-# a place two panels -- or the reads' `ts < end` bound and the cache's
-# tri-state -- could disagree. Four owners report nothing because the check
-# reads `__module__`, which only a class or a function carries: the palette's
-# whole surface past its resolver is the chrome colors and the seven dimension
-# maps, the geometry owner's is its measurements and the two font stacks, the
-# stylesheet owner's is one string, and the read-mode owner's is the knob name,
-# the truthy spellings, the worker cap, and the refusal message. The preset
-# vocabulary the window owner decides is invisible here for the same reason.
+# normalize a selection, key a cached read, or decide which way a load's reads
+# are issued is a deliberate edit rather than a place two panels -- or the
+# reads' `ts < end` bound and the cache's tri-state -- could disagree. Three
+# owners report nothing because the check reads `__module__`, which only a
+# class or a function carries: the palette's whole surface past its resolver is
+# the chrome colors and the seven dimension maps, the geometry owner's is its
+# measurements and the two font stacks, and the stylesheet owner's is one
+# string. The preset vocabulary the window owner decides is invisible here for
+# the same reason, as are the read-mode owner's knob name, truthy spellings,
+# worker cap, refusal message, and the flag its import binds.
 _SURFACES = MappingProxyType({
     _CSS_OWNER: (),
     _FILTERS_OWNER: (
@@ -75,7 +76,11 @@ _SURFACES = MappingProxyType({
     ),
     _LAYOUT_OWNER: ("base_layout",),
     _PALETTE_OWNER: ("color_for",),
-    _READ_MODE_OWNER: (),
+    _READ_MODE_OWNER: (
+        "dashboard_parallel_reads_enabled",
+        "db_unconfigured_message",
+        "parse_parallel_reads_flag",
+    ),
     _TOKENS_OWNER: (),
     _WINDOWS_OWNER: (
         "DateWindow",
@@ -105,9 +110,13 @@ _COMPATIBILITY_SITES = (
 )
 
 # What an owner here may reach: its siblings, plus -- for the window owner --
-# the query result models a data extent is read back as. The extent a preset
-# anchors at is a read's answer, so the owner that clamps to it names the model
-# owner directly rather than the read facade in front of it.
+# the query result models a data extent is read back as, and -- for the
+# read-mode owner -- the analytics configuration the database URL is resolved
+# by. The extent a preset anchors at is a read's answer, so the owner that
+# clamps to it names the model owner directly rather than the read facade in
+# front of it; whether there is a database to read at all is one knob's answer,
+# so the owner that refuses without one names the knob's owner for the same
+# reason.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

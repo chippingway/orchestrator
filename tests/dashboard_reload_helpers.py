@@ -19,6 +19,9 @@ MISSING_TOKEN_FILE = "/tmp/agent-orchestrator-token-missing"
 ANALYTICS_READ_MODULE = "orchestrator.analytics.read"
 DASHBOARD_MODULE = "orchestrator.dashboard"
 THEME_MODULE = "orchestrator.dashboard_theme"
+DASHBOARD_OWNERS = "orchestrator.observability.dashboard"
+READ_MODE_ATTRIBUTE = "read_mode"
+READ_MODE_OWNER = f"{DASHBOARD_OWNERS}.{READ_MODE_ATTRIBUTE}"
 _RELOAD_POP_MODULES = (
     CONFIG_MODULE,
     ANALYTICS_READ_MODULE,
@@ -32,6 +35,7 @@ _RELOAD_POP_MODULES = (
     "orchestrator.dashboard_skill_matrix",
     "orchestrator.dashboard_reads",
     "orchestrator.dashboard_widgets",
+    READ_MODE_OWNER,
     DASHBOARD_MODULE,
 )
 
@@ -47,6 +51,21 @@ def hermetic_environment(extra: dict[str, str] | None = None) -> dict[str, str]:
     return environment
 
 
+def _unbind_read_mode_owner() -> None:
+    """Drop the parent binding the read-mode owner is also resolved by.
+
+    The parallel-read flag is parsed while that owner imports, so it is one of
+    the modules a reload has to rebuild. Clearing `sys.modules` alone would not
+    do it: the import system also binds a submodule as an attribute of its
+    package, and `from <package> import read_mode` answers off that attribute
+    without consulting `sys.modules` at all -- so the page would read whatever
+    flag some earlier import happened to decide.
+    """
+    package = sys.modules.get(DASHBOARD_OWNERS)
+    if package is not None:
+        package.__dict__.pop(READ_MODE_ATTRIBUTE, None)
+
+
 def reload_dashboard(
     environment: dict[str, str] | None = None,
 ) -> tuple[ModuleType, ModuleType]:
@@ -60,6 +79,7 @@ def reload_dashboard(
         with patch.dict(os.environ, hermetic_environment(environment), clear=True):
             for module_name in _RELOAD_POP_MODULES:
                 sys.modules.pop(module_name, None)
+            _unbind_read_mode_owner()
             analytics = importlib.import_module("orchestrator.analytics")
             dashboard = importlib.import_module(DASHBOARD_MODULE)
     return analytics, dashboard
