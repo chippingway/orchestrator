@@ -17,6 +17,10 @@ _USAGE_DATA_SITE = "orchestrator._dashboard_usage_data"
 
 _USAGE_MODELS_SITE = "orchestrator._dashboard_usage_models"
 
+_USAGE_AXIS_SITE = "orchestrator._dashboard_usage_axis"
+
+_USAGE_TRACES_SITE = "orchestrator._dashboard_usage_traces"
+
 _PACKAGE = "orchestrator.observability.dashboard.charts"
 
 _HEATMAP = f"{_PACKAGE}.heatmap"
@@ -25,9 +29,13 @@ _PRIMITIVES = f"{_PACKAGE}.primitives"
 
 _THROUGHPUT = f"{_PACKAGE}.throughput"
 
+_USAGE_AXIS = f"{_PACKAGE}.usage_axis"
+
 _USAGE_BANDS = f"{_PACKAGE}.usage_bands"
 
 _USAGE_SERIES = f"{_PACKAGE}.usage_series"
+
+_USAGE_TRACES = f"{_PACKAGE}.usage_traces"
 
 # `from __future__ import annotations` opens every module in the repository and
 # binds the compiler directive under a public name. It is a compilation
@@ -106,14 +114,48 @@ _FORWARDED_USAGE_MODELS = (
     ("_UsageChartData", _USAGE_SERIES, "UsageChartData"),
 )
 
+# The step count and pinned height the hero panel is drawn at, the rounding
+# each axis maximum comes off, and the layout the two scales are assembled in.
+# A layout built here and one built off the owner have to be the same callable:
+# the range a stack is drawn against and the range its axis is labelled from
+# are one decision, and a copy is where the ticks and the bands would part.
+_FORWARDED_USAGE_AXIS = (
+    ("USAGE_CHART_HEIGHT", _USAGE_AXIS, "USAGE_CHART_HEIGHT"),
+    ("USAGE_GRID_STEPS", _USAGE_AXIS, "USAGE_GRID_STEPS"),
+    ("_nice_axis_max", _USAGE_AXIS, "nice_axis_max"),
+    ("_usage_axis_ranges", _USAGE_AXIS, "usage_axis_ranges"),
+    ("_usage_layout", _USAGE_AXIS, "usage_layout"),
+)
+
+# The shaping that decides whether a window has a chart at all, the band a
+# stack is added one of at a time, the two modes it is stacked in, and the cost
+# line overlaid on it -- down to the layout key a trace's color is set under, so
+# the site publishes what it always did rather than the part of it that reads
+# like a behavior.
+_FORWARDED_USAGE_TRACES = (
+    ("_COLOR_KEY", _USAGE_TRACES, "_COLOR_KEY"),
+    ("_add_backend_usage_traces", _USAGE_TRACES, "add_backend_usage_traces"),
+    ("_add_token_stack_trace", _USAGE_TRACES, "add_token_stack_trace"),
+    (
+        "_add_token_type_usage_traces",
+        _USAGE_TRACES,
+        "add_token_type_usage_traces",
+    ),
+    ("_add_usage_cost_trace", _USAGE_TRACES, "add_usage_cost_trace"),
+    ("_add_usage_stack_traces", _USAGE_TRACES, "add_usage_stack_traces"),
+    ("_prepare_usage_data", _USAGE_TRACES, "prepare_usage_data"),
+)
+
 # The flat modules a caller reaches one of these owners through, and what each
 # name they publish resolves to.
 _FORWARDED_MODULES = MappingProxyType({
     _BASE_SITE: _FORWARDED_PRIMITIVES,
     _HEATMAP_SITE: _FORWARDED_HEATMAP,
     _THROUGHPUT_SITE: _FORWARDED_THROUGHPUT,
+    _USAGE_AXIS_SITE: _FORWARDED_USAGE_AXIS,
     _USAGE_DATA_SITE: _FORWARDED_USAGE_DATA,
     _USAGE_MODELS_SITE: _FORWARDED_USAGE_MODELS,
+    _USAGE_TRACES_SITE: _FORWARDED_USAGE_TRACES,
 })
 
 

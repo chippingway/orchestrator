@@ -502,6 +502,10 @@ orchestrator/
                         historical import sites for the shapes a usage chart is
                         drawn from and the per-day rollups behind them,
                         forwarding to the charts owners
+  _dashboard_usage_axis.py / _dashboard_usage_traces.py
+                        historical import sites for the usage chart's aligned
+                        axes and the traces stacked under them, forwarding to
+                        the charts owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -810,8 +814,8 @@ orchestrator/
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the weekday-by-hour grid
                         and per-day throughput strip above it, the usage
-                        family's own shaping, and the destination for the
-                        families still on flat leaves
+                        family's own shaping, axes, and traces, and the
+                        destination for the families still on flat leaves
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
                         with, the money, mono, and two-line-tick labels a bar
@@ -831,6 +835,14 @@ orchestrator/
                         axis maxima travel in, the completion of the days only
                         the per-backend read saw, and the height each stack
                         reaches
+        usage_axis.py   the step count and pinned height a usage figure is
+                        drawn at, the rounding that gives each axis a maximum
+                        it divides into equal steps, and the layout the token
+                        and cost scales are assembled in
+        usage_traces.py the shaping that decides whether a window has a chart
+                        at all, the band a stack is added one of at a time, the
+                        two modes it is stacked in, and the cost line overlaid
+                        on the secondary axis
     trajectory_viewer/  the file-backed trajectory page's read model, every
                         inline-HTML builder it is drawn with, and the controls
                         and rendering a run of it is driven by
@@ -1697,6 +1709,23 @@ picked off its position among them. Like the grid beside it, `usage_bands.py` na
 `analytics/query/overview_models.py`, the row a series arrives as — and the dependency between the two usage owners
 runs one way, from the series owner down to the bands it counts.
 
+`usage_axis.py` and `usage_traces.py` sit above that pair and finish the family. Tokens and dollars are orders of
+magnitude apart, so the stack keeps the left axis and the cost line rides a secondary one on the right; `usage_axis.py`
+cuts both into the same number of steps from zero, which is what lets a single horizontal rule mean something on
+either scale. Each maximum is raised to 1, 2, 2.5, 5, or 10 times the decade under the step it would otherwise take,
+so an axis is labelled in the numbers an operator reads off a ruler, and a window with nothing in it is still given a
+span — a range of `[0, 0]` draws no gridlines to read the empty state against. The mode travels this far down because
+the token axis is scaled to the stack that is actually drawn: measuring the bands under a per-backend stack would
+leave the tallest band drawn past the top of its own axis. Only the token axis draws the rules, because two grids over
+one plot would cross wherever the two roundings disagree. `usage_traces.py` is what is drawn against them: the shaping
+that answers a window holding nothing with no chart at all — the caller then draws the shared placeholder — the band a
+stack is added one of at a time, the two modes it is stacked in, and the cost line overlaid on the secondary axis as a
+line with markers rather than another layer of the stack. A backend's color is picked off its position among the
+sorted backends and a token band takes the fixed hue its name is spelled in, both from the palette owner; besides that
+and the two owners beneath it, `usage_traces.py` names `analytics/query/overview_models.py` for the row a series
+arrives as, and `usage_axis.py` names nothing outside the package but the layout and palette every figure is drawn
+with. Plotly is imported inside the two calls that add a trace, so both owners stay importable in the default install.
+
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
 socket out of, the metadata owner and the dispatch owner both name the error a failed read arrives as — the first
@@ -1727,7 +1756,11 @@ resolving to the figure the owner builds. `dashboard_charts_throughput.py` is th
 names they publish are split across the two usage owners: the per-day table's alias, the four band names, the mode
 beside them, and the three helpers that zero a bucket, roll the series up into one, and total a day's tokens are
 `usage_bands.py`'s objects, while the two frozen shapes and the four helpers that lay the day axis out, complete the
-days only the per-backend read saw, name the backends, and total a stack are `usage_series.py`'s. The trigger
+days only the per-backend read saw, name the backends, and total a stack are `usage_series.py`'s.
+`_dashboard_usage_axis.py` and `_dashboard_usage_traces.py` are the last pair of that kind: the step count and pinned
+height, the rounding, and the layout are `usage_axis.py`'s objects, and the window shaping, the five trace builders,
+and the layout key a trace's color is set under are `usage_traces.py`'s — every one of them under the private spelling
+the usage figure leaf imports it by. The trigger
 rates are reached through the breakdown leaf and the other two skill reads through the leaf named for them, because
 that is where a caller has always spelled each. The private
 `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and
