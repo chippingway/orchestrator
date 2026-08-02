@@ -29,9 +29,10 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
-read-mode state one run of the analytics page carries (`dashboard/windows.py`, `dashboard/filters.py`,
-`dashboard/read_mode.py`), the trajectory viewer's whole read model — its file read, record parse, run models, and the
-filtering and summary aggregation over them — plus the styling and every inline-HTML builder that read is drawn with,
+read-mode state one run of the analytics page carries plus the fan-out its reads are issued through
+(`dashboard/windows.py`, `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/fanout.py`), the trajectory
+viewer's whole read model — its file read, record parse, run models, and the filtering and summary aggregation over
+them — plus the styling and every inline-HTML builder that read is drawn with,
 and the page state, setup, controls, picker, run card, and whole-page composition one run of it is driven by
 (`trajectory_viewer/`), and the packages the rest of the analytics sink,
 the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree,
@@ -1253,11 +1254,11 @@ The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` le
 rollup, skill, and dispatched reads; KPI series/values; cards, tables, sparklines, and skill matrices; widget
 state/usage/cost/skill/run sections; and cost/usage Plotly construction. The state a run carries lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
-that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by, and
-`read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database message.
-`dashboard_state.py` stays the hub the page reads them off, and `_dashboard_windows.py`,
-`_dashboard_filter_state.py`, and `_dashboard_state_constants.py` forward each historical name to the owner's own
-object. `_dashboard_read_mode.py` forwards the read-mode helpers and keeps the fan-out itself. Compatibility metadata
+that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by,
+`read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database message, and
+`fanout.py` for running one wave of named readers the way that flag said. `dashboard_state.py` stays the hub the page
+reads them off, and `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, and
+`_dashboard_read_mode.py` forward each historical name to the owner's own object. Compatibility metadata
 keeps the established defining-module assertions intact. Streamlit is never imported in these helpers — `st` (with
 chart, theme, and pandas handles) is passed in as a parameter.
 

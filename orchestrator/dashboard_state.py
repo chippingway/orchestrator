@@ -5,8 +5,7 @@ from __future__ import annotations
 
 import sys
 
-from orchestrator import _dashboard_read_mode as read_mode
-from orchestrator.observability.dashboard import filters, windows
+from orchestrator.observability.dashboard import fanout, filters, windows
 from orchestrator.observability.dashboard import read_mode as read_constants
 
 
@@ -44,4 +43,4 @@ DashboardCacheKey = filters.DashboardCacheKey
 cache_key = filters.cache_key
 db_unconfigured_message = read_constants.db_unconfigured_message
 dashboard_parallel_reads_enabled = read_constants.dashboard_parallel_reads_enabled
-_fan_out_reads = read_mode.fan_out_reads
+_fan_out_reads = fanout.fan_out_reads
