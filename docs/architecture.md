@@ -715,9 +715,9 @@ orchestrator/
     dashboard/          the Streamlit analytics page: the visual theme both
                         pages are drawn in, the state one run of it carries,
                         the fan-out its reads are issued through, the six a
-                        comparison panel is drawn from, what one of those
-                        reads then runs on and is narrowed by, and the
-                        destination for the rest
+                        comparison panel is drawn from and the three a skill
+                        panel is, what one of those reads then runs on and is
+                        narrowed by, and the destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -1381,7 +1381,7 @@ evicts it before re-raising. Reuse is the point, so a normal exit leaves the con
 caller-owned `conn=` is used as-is and never closed, because its lifetime belongs to the `analytics_connection` scope
 that opened it, while a query without one opens and closes its own descriptor in a `finally`. Both connection paths
 resolve an omitted `db_url=` through `config.resolve_db_url`, and every caller that has an owner names it: the
-dashboard's three skill read wrappers reach `skill_reads` rather than the facade in front of it. Nothing under
+nine dashboard panel-read adapters name the query owners that answer them rather than the facade. Nothing under
 `orchestrator/analytics/` implements a read any more, so what is left there forwards — the `analytics.read` facade
 answers the historical connection names, including the underscored ones, with their own objects, and the result classes
 too, so a row unpacked off the facade is the class the read family constructed, and all four families of reads
