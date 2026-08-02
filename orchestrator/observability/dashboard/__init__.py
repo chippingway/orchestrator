@@ -30,11 +30,12 @@ the four numbers that window is summarized by beneath them. What those reads
 are then drawn as arrives under ``charts``, where ``primitives`` holds what
 every figure family is built out of -- the placeholder a window holding no
 rows is answered with, the labels a bar is annotated by, and the height and
-legend a horizontal-bar panel is laid out with -- ``heatmap`` holds the first
-family above it, the 7x24 weekday-by-hour grid, and ``usage_bands`` and
-``usage_series`` hold the usage family's own shaping: the four bands a day of
-usage is counted into and the roll-up that counts them, then the days that
-roll-up spans and the height each stack over them reaches.
+legend a horizontal-bar panel is laid out with -- ``heatmap`` and
+``throughput`` hold two families above it, the 7x24 weekday-by-hour grid
+and the per-day resolved-issue strip, and ``usage_bands`` and
+``usage_series`` hold the usage family's own shaping: the four bands a day
+of usage is counted into and the roll-up that counts them, then the days
+that roll-up spans and the height each stack over them reaches.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so

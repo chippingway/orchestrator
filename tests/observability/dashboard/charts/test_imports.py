@@ -22,6 +22,8 @@ _HEATMAP_OWNER = "heatmap"
 
 _PRIMITIVES_OWNER = "primitives"
 
+_THROUGHPUT_OWNER = "throughput"
+
 _USAGE_BANDS_OWNER = "usage_bands"
 
 _USAGE_SERIES_OWNER = "usage_series"
@@ -32,16 +34,18 @@ _USAGE_SERIES_OWNER = "usage_series"
 _OWNERS = (
     _HEATMAP_OWNER,
     _PRIMITIVES_OWNER,
+    _THROUGHPUT_OWNER,
     _USAGE_BANDS_OWNER,
     _USAGE_SERIES_OWNER,
 )
 
 # What each owner answers for, declared rather than discovered so a second way
 # to say "nothing matches this window", label a bar, size the panel it sits in,
-# bucket a token volume into a weekday cell, or count a day of usage is a
-# deliberate edit rather than a place two chart families could disagree. The
-# two bar-sizing constants, the heatmap's weekday labels and hour span, the
-# band names, and the per-day table's alias are all invisible here because the
+# bucket a token volume into a weekday cell, lay a window's rows over its
+# calendar, or count a day of usage is a deliberate edit rather than a place
+# two chart families could disagree. The two bar-sizing constants, the
+# heatmap's weekday labels and hour span, the strip's pinned height, the band
+# names, and the per-day table's alias are all invisible here because the
 # check reads `__module__`, which only a class or a function carries.
 _SURFACES = MappingProxyType({
     _HEATMAP_OWNER: (
@@ -58,6 +62,12 @@ _SURFACES = MappingProxyType({
         "monospace_textfont",
         "reverse_lists",
         "two_line_y_ticks",
+    ),
+    _THROUGHPUT_OWNER: (
+        "ThroughputSeries",
+        "calendar_days",
+        "done_per_day_bars",
+        "throughput_series",
     ),
     _USAGE_BANDS_OWNER: (
         "daily_token_total",
@@ -80,6 +90,7 @@ _SURFACES = MappingProxyType({
 _COMPATIBILITY_SITES = (
     "orchestrator.dashboard_charts_base",
     "orchestrator.dashboard_charts_heatmap",
+    "orchestrator.dashboard_charts_throughput",
     "orchestrator._dashboard_usage_data",
     "orchestrator._dashboard_usage_models",
 )

@@ -10,12 +10,11 @@ matrix for the 7x24 heatmap) and returns a ``plotly.graph_objects.Figure``;
 the dashboard layer owns the query + sidebar filters and hands the resulting
 ``Figure`` to ``st.plotly_chart``.
 
-The chart families and their homes -- each imports the shared low-level
-primitives it needs one-directionally through
+The chart families and their homes. A family still holding its own builders
+imports the shared low-level primitives it needs one-directionally through
 ``orchestrator.dashboard_charts_base``, the historical site in front of the
-owner holding them (the heatmap site draws its own empty-state annotation on
-the grid and imports none of them), so a direct import of any of them is
-cycle-free:
+owner holding them, so a direct import of any of them is cycle-free; a family
+that has moved names that owner directly:
 
 - ``orchestrator.dashboard_charts_usage`` -- ``usage_over_time`` (stacked-area
   daily token consumption with a cost-line overlay, in token-type or
@@ -28,7 +27,8 @@ cycle-free:
   7x24 weekday-by-hour token-volume heatmap, forwarded from the charts owner
   that builds it.
 - ``orchestrator.dashboard_charts_throughput`` -- ``done_per_day_bars``, the
-  issues-resolved-per-day reliability strip.
+  issues-resolved-per-day reliability strip, forwarded from the charts owner
+  that builds it.
 
 Plotly is imported at module load in the family modules that still hold their
 own builders, because they are only reachable from the lazy ``import`` inside
