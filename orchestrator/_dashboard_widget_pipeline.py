@@ -12,6 +12,7 @@ from orchestrator import _dashboard_widget_models as models
 from orchestrator import dashboard_html
 from orchestrator.dashboard_cards import _insights_html
 from orchestrator.dashboard_kpi_strip import _KpiInputs
+from orchestrator.observability.dashboard import dispatch
 from orchestrator.observability.dashboard.insights import compute_insights
 
 
@@ -98,7 +99,7 @@ def _load_dashboard_data(
 ) -> typing.Optional[models._LoadedDashboard]:
     dashboard_module = importlib.import_module(DASHBOARD_MODULE)
 
-    loaded = dashboard_module._run_read_waves(
+    loaded = dispatch.run_read_waves(
         page.reads,
         st=modules.st,
         render_first_wave=lambda read_results: dashboard_module._render_first_wave(

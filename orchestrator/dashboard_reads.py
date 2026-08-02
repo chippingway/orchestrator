@@ -1,10 +1,9 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable dashboard read surface backed by focused read leaves."""
+"""Stable dashboard read surface forwarding to the focused read leaves."""
 from __future__ import annotations
 
 from orchestrator import _dashboard_read_breakdowns as breakdowns
-from orchestrator import _dashboard_compatibility as compatibility
 from orchestrator import _dashboard_read_core as core
 from orchestrator import _dashboard_read_dispatch as dispatch
 from orchestrator import _dashboard_read_plan as plans
@@ -50,17 +49,3 @@ _dispatch_reads = dispatch._dispatch_reads
 _log_dashboard_load = dispatch._log_dashboard_load
 _run_read_waves = dispatch._run_read_waves
 log = dispatch.log
-
-# The members still defined beside this hub. The staged read plan and its two
-# wave registries, the seven headline and lifecycle reads, the six
-# comparison-panel ones, the three skill-panel ones, the connection scope, the
-# filter binding, and the static-metadata reads are the dashboard owners' own
-# objects and are left off deliberately: stamping one would rewrite
-# `__module__` on the owner's function, which is what the owners' own surface
-# check reads.
-_COMPATIBILITY_MEMBERS = (
-    _dispatch_reads,
-    _log_dashboard_load,
-    _run_read_waves,
-)
-compatibility.preserve_defining_module(__name__, _COMPATIBILITY_MEMBERS)

@@ -13,7 +13,10 @@ with. ``read_plan`` is what that state is spent on: the two waves a load is
 staged into, the cached task each entry is bound as, and the pair of keys --
 this window and the one before it -- they are issued under. ``fanout`` runs
 one of those waves the way the knob said, on the calling thread or across a
-pool capped at the count beside it, and each
+pool capped at the count beside it, and ``dispatch`` drives both of them in
+turn: one spinner over the pair, the chrome rendered between them, a banner and
+a stop when a read cannot reach the database, and one timing line when the load
+comes back. Each
 of those readers goes through ``scoped_reads`` for the connection it runs on,
 ``filter_binding`` for the filters its cache key is read back as, and --
 before any of them, because it is what a window can be picked at all from --

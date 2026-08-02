@@ -20,6 +20,8 @@ _BREAKDOWNS_OWNER = "breakdowns"
 
 _CSS_OWNER = "css"
 
+_DISPATCH_OWNER = "dispatch"
+
 _FANOUT_OWNER = "fanout"
 
 _FILTER_BINDING_OWNER = "filter_binding"
@@ -58,6 +60,7 @@ _WINDOWS_OWNER = "windows"
 _OWNERS = (
     _BREAKDOWNS_OWNER,
     _CSS_OWNER,
+    _DISPATCH_OWNER,
     _FANOUT_OWNER,
     _FILTER_BINDING_OWNER,
     _FILTERS_OWNER,
@@ -80,25 +83,27 @@ _OWNERS = (
 # to resolve a color, lay a chart out, shorten a number, spell a window,
 # normalize a selection, key a cached read, read that key back as a read's
 # filters, decide which way a load's reads are issued, stage that load into the
-# two waves it is drawn in, run one wave of them that way, check out the
-# connection one of them runs on, draw a headline or lifecycle section from one
-# of the seven reads behind it, a comparison panel from one of the six, or a
-# skill panel from one of the three, open a page on the extent behind its
-# filter bar, interrupt one with a banner, or reduce its window to the four
-# numbers a headline tile reports is a deliberate edit rather than a place two
-# panels -- or the reads' `ts < end` bound and the cache's tri-state -- could
-# disagree. Two owners report nothing because the check reads `__module__`,
-# which only a class or a function carries: the geometry owner's whole surface
-# is its measurements and the two font stacks, and the stylesheet owner's is
-# one string. The palette's chrome colors and seven dimension maps, the preset
-# vocabulary the window owner decides, the read-mode owner's knob name, truthy
-# spellings, worker cap, refusal message, and the flag its import binds, the
-# alias the fan-out owner names a reader by, the TTL the read plan caches a
-# wave's entries under, the cap the rollup owner reads a run list under, the
-# two bands the insight owner raises a banner at and the spellings an unpriced
-# run reaches it under, the KPI owner's ranking cap and rework buckets, and the
-# TTL the metadata owner caches under are all invisible here for the same
-# reason.
+# two waves it is drawn in, run one wave of them that way, drive both waves
+# around the render between them, check out the connection one of them runs on,
+# draw a headline or lifecycle section from one of the seven reads behind it, a
+# comparison panel from one of the six, or a skill panel from one of the three,
+# open a page on the extent behind its filter bar, interrupt one with a banner,
+# or reduce its window to the four numbers a headline tile reports is a
+# deliberate edit rather than a place two panels -- or the reads' `ts < end`
+# bound and the cache's tri-state -- could disagree. Two owners report nothing
+# because the check reads `__module__`, which only a class or a function
+# carries: the geometry owner's whole surface is its measurements and the two
+# font stacks, and the stylesheet owner's is one string. The palette's chrome
+# colors and seven dimension maps, the preset vocabulary the window owner
+# decides, the read-mode owner's knob name, truthy spellings, worker cap,
+# refusal message, and the flag its import binds, the alias the fan-out owner
+# names a reader by, the TTL the read plan caches a wave's entries under, the
+# spinner message the dispatch owner opens a load under together with the
+# mapping a wave hands back and the logger its load line is emitted on, the cap
+# the rollup owner reads a run list under, the two bands the insight owner
+# raises a banner at and the spellings an unpriced run reaches it under, the
+# KPI owner's ranking cap and rework buckets, and the TTL the metadata owner
+# caches under are all invisible here for the same reason.
 _SURFACES = MappingProxyType({
     _BREAKDOWNS_OWNER: (
         "read_backend_daily_tokens",
@@ -109,6 +114,11 @@ _SURFACES = MappingProxyType({
         "read_throughput",
     ),
     _CSS_OWNER: (),
+    _DISPATCH_OWNER: (
+        "dispatch_reads",
+        "log_dashboard_load",
+        "run_read_waves",
+    ),
     _FANOUT_OWNER: ("fan_out_reads",),
     _FILTER_BINDING_OWNER: (
         "filter_list",
@@ -188,7 +198,7 @@ _SURFACES = MappingProxyType({
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
-# flat theme module, the state, read, and KPI hubs, and the nine leaves
+# flat theme module, the state, read, and KPI hubs, and the ten leaves
 # beneath the first two. No owner here may plant one -- that is what keeps the
 # forwarding one-directional and the flat modules retirable rather than
 # load-bearing.
@@ -196,6 +206,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_filter_state",
     "orchestrator._dashboard_read_breakdowns",
     "orchestrator._dashboard_read_core",
+    "orchestrator._dashboard_read_dispatch",
     "orchestrator._dashboard_read_mode",
     "orchestrator._dashboard_read_plan",
     "orchestrator._dashboard_read_rollups",

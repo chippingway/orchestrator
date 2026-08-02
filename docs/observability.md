@@ -29,13 +29,13 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
-read-mode state one run of the analytics page carries plus the two waves its load is staged into and the fan-out each
-is issued through, the seven a
+read-mode state one run of the analytics page carries plus the two waves its load is staged into, the fan-out each
+is issued through, and the dispatch that drives both, the seven a
 headline or lifecycle section is drawn from, the six a comparison panel is, the three a skill panel is, the
 connection, filter binding, and unfiltered metadata each read goes through, and the banners a window is interrupted
 with above all of them plus the four numbers it is summarized by beneath those (`dashboard/windows.py`,
 `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
-`dashboard/rollups.py`,
+`dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
 `dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`), the
 trajectory viewer's whole read model — its file
@@ -1255,7 +1255,12 @@ a test or non-dashboard caller does not require the group to be installed. A reg
 **Module layout.** `orchestrator/dashboard.py` is a manifest-backed lazy compatibility facade with a complete
 `dashboard.pyi`. `_dashboard_facade_bootstrap.py` owns both package import and direct-script setup, while
 `_dashboard_runtime.py`, `_dashboard_page_controls.py`, and the date/drill-down leaves own page orchestration.
-Historical `dashboard.<name>` imports, wildcard exports, object identity, and test patch points are unchanged.
+Historical `dashboard.<name>` imports, wildcard exports, and object identity are unchanged — every alias still
+resolves to the one object its owner defines. Where a patch has to land is a separate question, and it follows the
+call path rather than the alias: the page pipeline reaches the staged plan and the wave dispatch on
+`observability/dashboard/`, so a test intercepts those with `patch.object(read_plan | dispatch, ...)`, while
+`patch.object(dashboard, ...)` still intercepts the page renderers and `PLOTLY_CONFIG` the pipeline resolves through
+the facade at call time.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
@@ -1267,7 +1272,9 @@ that name one, `filters.py` for the offset, issue, stage, and cache key it is na
 `read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database message,
 `read_plan.py` for the two waves a load is staged into, the minute each cached entry is held for, and the current /
 previous key pair they are issued under,
-`fanout.py` for running one wave of named readers the way that flag said, `rollups.py` for the seven of those readers a
+`fanout.py` for running one wave of named readers the way that flag said, `dispatch.py` for driving both waves around
+the render between them — one spinner over the pair, one banner and a stop when a read cannot reach the database, and
+one `dashboard.load:` line when the load comes back — `rollups.py` for the seven of those readers a
 headline or lifecycle section is drawn from — with the hundred-row cap the run list among them is read under, and the
 ranking depth the spend table borrows from the KPI owner — `breakdowns.py` for the six a comparison panel is drawn
 from, each naming the rollup or breakdown query owner that answers it, and `skills.py` for the three a skill panel is
@@ -1281,10 +1288,12 @@ beneath those, `kpis.py` holds the four numbers the headline tiles report — th
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
 `dashboard_state.py` stays the hub the page reads the state off and `dashboard_reads.py` the hub the read inventory
 is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`,
-`_dashboard_read_mode.py`, `_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_rollups.py`,
+`_dashboard_read_mode.py`, `_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_dispatch.py`,
+`_dashboard_read_rollups.py`,
 `_dashboard_read_breakdowns.py`, `_dashboard_read_skills.py`, and `dashboard_kpis.py` forward each historical name to
-the owner's own object. Compatibility metadata keeps the
-established defining-module assertions intact for what those hubs still define. Streamlit is never imported in these
+the owner's own object. Neither hub defines a name of its own, so neither rewrites a defining module; the
+compatibility metadata that keeps the established defining-module assertions intact belongs to the component and
+chart hubs beside them. Streamlit is never imported in these
 helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
 
 ```sh
@@ -1313,10 +1322,10 @@ ingests new events.
 - **Second wave (10 reads).** `stage_rows`, `agent_exits`, `issues_rows`, `backend_rows`, `repo_rows`, `heatmap_rows`,
   `backend_daily_rows`, `skill_adoption_rows`, `skill_rows`, `skill_matrix_rows` — feeds the rest of the body.
 
-`main()` renders the above-the-fold chrome between waves on the main thread (worker threads only return data through
-futures, so every `st.*` write runs on the main thread). The second wave is skipped on an empty window. A single inline
-`st.spinner("Loading analytics…")` brackets both waves; a read error from either wave surfaces as one `st.error` +
-`st.stop`.
+`dashboard/dispatch.py` drives both waves and renders the above-the-fold chrome between them on the main thread
+(worker threads only return data through futures, so every `st.*` write runs on the main thread). The second wave is
+skipped on an empty window. A single inline `st.spinner("Loading analytics…")` brackets both waves; a read error from
+either wave surfaces as one `st.error` + `st.stop`.
 
 **Body layout, top to bottom:**
 
@@ -1386,10 +1395,12 @@ stays inert (GitHub issue numbers are not unique across repos).
 **Parallel read fan-out.** Setting `DASHBOARD_PARALLEL_READS=on` (or `1` / `true` / `yes`, case-insensitive) flips the
 16 widget reads from sequential to a `ThreadPoolExecutor` capped at eight workers. Each worker opens its own
 thread-local psycopg connection via `analytics.read.analytics_connection()` — `psycopg.Connection` is not thread-safe,
-so sharing one socket across workers would corrupt the wire protocol. The fan-out emits a single INFO log line on every
-dashboard load — `dashboard.load: total=X.Xs reads=16 parallel=true|false` on a full render, or `reads=6` when the
-empty-window short-circuit skips the second wave — so the two paths can be A/B'd with `grep dashboard.load
-streamlit.log`. An `AnalyticsReadError` raised by any worker propagates verbatim from the first failing future.
+so sharing one socket across workers would corrupt the wire protocol. `dashboard/dispatch.py` emits a single INFO log
+line on every dashboard load — `dashboard.load: total=X.Xs reads=16 parallel=true|false` on a full render, or
+`reads=6` when the empty-window short-circuit skips the second wave — so the two paths can be A/B'd with `grep
+dashboard.load streamlit.log`. That line's logger is named `orchestrator._dashboard_read_dispatch` as a pinned
+literal rather than after the module holding the emit, so a handler or level selection aimed at it keeps working
+across a move. An `AnalyticsReadError` raised by any worker propagates verbatim from the first failing future.
 
 **Chart builders.** `orchestrator/dashboard_charts.py` exposes pure Plotly figure builders: `usage_over_time`
 (stacked-area + cost-line overlay with `mode="type"` / `mode="backend"` switch), `cost_horizontal_bars` (shared
