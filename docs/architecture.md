@@ -511,9 +511,10 @@ orchestrator/
                         analytics configuration, recording, retention,
                         read-path, and replay owners beside them, the visual
                         theme both Streamlit pages are drawn in, the state a
-                        run of the analytics page carries, and the destination
-                        the observation-only surfaces above migrate the rest
-                        of their responsibilities to
+                        run of the analytics page carries and the reads it
+                        issues under that state, and the destination the
+                        observation-only surfaces above migrate the rest of
+                        their responsibilities to
     analytics/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, what
@@ -709,7 +710,8 @@ orchestrator/
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
     dashboard/          the Streamlit analytics page: the visual theme both
                         pages are drawn in, the state one run of it carries,
-                        the fan-out its reads are issued through, and the
+                        the fan-out its reads are issued through, what one of
+                        those reads then runs on and is narrowed by, and the
                         destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
