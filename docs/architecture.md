@@ -832,7 +832,8 @@ orchestrator/
                         cache split, the weekday-by-hour grid, and the per-day
                         throughput strip above the two, the usage family's own
                         shaping, axes, traces, and hero figure, and the
-                        destination for the families still on flat leaves
+                        destination for the per-review-round split, the one
+                        family still on a flat leaf
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
                         with, the money, mono, and two-line-tick labels a bar
@@ -1843,7 +1844,8 @@ the owner's own object. The read hub defines nothing of its own either, so nothi
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
 them to the two owners that hold each. `dashboard_charts_base.py` is one too: the placeholder, the three label
 helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height are the
-charts owner's objects under the private spellings the cost leaves import them by.
+charts owner's objects under the private spellings the per-review-round leaf, the last flat module reaching them,
+imports them by.
 `dashboard_charts_heatmap.py` is the same site for the grid family — `hour_weekday_heatmap` under its own name, and the
 cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
 resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
