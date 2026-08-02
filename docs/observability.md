@@ -1486,7 +1486,9 @@ came back with nothing to draw -- with the `backend_per_day` stub published besi
 `orchestrator/_dashboard_usage_axis.py`, `orchestrator/_dashboard_usage_traces.py`, and
 `orchestrator/_dashboard_usage_chart.py` -- their historical import sites, forwarding each name to the owner's own
 object and implementing nothing, as the surface in front of them does too. A test that has to intercept a usage
-builder patches the owner, because that is what every one of those sites resolves to.
+builder patches the owner, because that is what every one of those sites resolves to. No module on that path names
+Plotly at module scope, so the flat usage surface imports in the default install the same way its owners do; the cost
+adapter leaves beneath `orchestrator/dashboard_charts_cost.py` are the flat modules that still pull it in at load.
 The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are built by inline-HTML
 helpers in `orchestrator/dashboard_html.py`; the insight banners, per-card header, backend-efficiency cards,
