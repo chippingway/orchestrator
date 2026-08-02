@@ -36,6 +36,8 @@ _READ_MODE_OWNER = "read_mode"
 
 _SCOPED_READS_OWNER = "scoped_reads"
 
+_SKILLS_OWNER = "skills"
+
 _STATIC_METADATA_OWNER = "static_metadata"
 
 _TOKENS_OWNER = "tokens"
@@ -56,6 +58,7 @@ _OWNERS = (
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
     _SCOPED_READS_OWNER,
+    _SKILLS_OWNER,
     _STATIC_METADATA_OWNER,
     _TOKENS_OWNER,
     _WINDOWS_OWNER,
@@ -66,9 +69,10 @@ _OWNERS = (
 # normalize a selection, key a cached read, read that key back as a read's
 # filters, decide which way a load's reads are issued, run one wave of them
 # that way, check out the connection one of them runs on, draw a comparison
-# panel from one of the six reads behind it, or open a page on the extent
-# behind its filter bar is a deliberate edit rather than a place two panels --
-# or the reads' `ts < end` bound and the cache's tri-state -- could
+# panel from one of the six reads behind it or a skill panel from one of the
+# three, or open a page on the extent behind its filter bar is a deliberate
+# edit rather than a place two panels -- or the reads' `ts < end` bound and the
+# cache's tri-state -- could
 # disagree. Two owners report nothing because the check reads `__module__`,
 # which only a class or a function carries: the geometry owner's whole surface
 # is its measurements and the two font stacks, and the stylesheet owner's is
@@ -115,6 +119,11 @@ _SURFACES = MappingProxyType({
         "parse_parallel_reads_flag",
     ),
     _SCOPED_READS_OWNER: ("scoped_read",),
+    _SKILLS_OWNER: (
+        "read_skill_adoption",
+        "read_skill_trigger_matrix",
+        "read_skill_trigger_rates",
+    ),
     _STATIC_METADATA_OWNER: (
         "read_data_extent",
         "read_filter_options",
@@ -137,13 +146,15 @@ _SURFACES = MappingProxyType({
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
-# flat theme module, the two hubs, and the five leaves beneath them. No owner
+# flat theme module, the two hubs, and the seven leaves beneath them. No owner
 # here may plant one -- that is what keeps the forwarding one-directional and
 # the flat modules retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_filter_state",
+    "orchestrator._dashboard_read_breakdowns",
     "orchestrator._dashboard_read_core",
     "orchestrator._dashboard_read_mode",
+    "orchestrator._dashboard_read_skills",
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_reads",
@@ -158,8 +169,9 @@ _COMPATIBILITY_SITES = (
 # read's answer, whether there is a database to read at all is one knob's, the
 # socket a read runs on is the connection cache's, the exception a failed read
 # arrives as is the connection owner's, the two unfiltered reads a page opens
-# with are the raw read family's, and the six a comparison panel is drawn from
-# are the rollup and breakdown families'.
+# with are the raw read family's, the six a comparison panel is drawn from are
+# the rollup and breakdown families', and the three a skill panel is drawn from
+# are the skill family's.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

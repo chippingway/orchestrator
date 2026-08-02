@@ -30,13 +30,13 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
 read-mode state one run of the analytics page carries plus the fan-out its reads are issued through, the six a
-comparison panel is drawn from, and the connection, filter binding, and unfiltered metadata each read goes through
-(`dashboard/windows.py`, `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/fanout.py`,
-`dashboard/breakdowns.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
-`dashboard/static_metadata.py`), the trajectory viewer's whole read model — its file read, record parse, run models,
-and the filtering and summary aggregation over them — plus the styling and every inline-HTML builder that read is
-drawn with, and the page state, setup, controls, picker, run card, and whole-page composition one run of it is driven by
-(`trajectory_viewer/`), and the packages the rest of the analytics sink,
+comparison panel is drawn from, the three a skill panel is, and the connection, filter binding, and unfiltered
+metadata each read goes through (`dashboard/windows.py`, `dashboard/filters.py`, `dashboard/read_mode.py`,
+`dashboard/fanout.py`, `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`,
+`dashboard/filter_binding.py`, `dashboard/static_metadata.py`), the trajectory viewer's whole read model — its file
+read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
+inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
+composition one run of it is driven by (`trajectory_viewer/`), and the packages the rest of the analytics sink,
 the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree,
 the module named for it below stays the import site. The page that composes those viewer owners is not one of them:
 it sits beside the tree, at `orchestrator/apps/trajectory_dashboard.py`, and the analytics page is still started at
@@ -1011,11 +1011,10 @@ beside them under `observability/analytics/query/`, and the frozen result models
 result-family owners there; `read_raw.py` with the seven raw `_read_*` leaves beneath it, `read_rollup.py` with the
 seven rollup `_read_*` leaves beneath it, `read_dashboard.py` with the nine breakdown and skill `_read_*` leaves
 beneath it, and `read_models.py` with the `read_models_*` modules beside it, forward the historical names to those
-owners' own functions and classes. In-repository callers name an owner rather than that forwarding: the dashboard's
-three skill read wrappers — the two in `_dashboard_read_skills.py` and `_read_skill_trigger_rates` in
-`_dashboard_read_breakdowns.py` — reach `skill_reads.py` directly, and the six comparison-panel adapters in
-`observability/dashboard/breakdowns.py` reach `rollup_reads.py` and `breakdown_reads.py` the same way, so
-`analytics.read` stays a compatibility surface for those nine rather than a hop the page depends on.
+owners' own functions and classes. In-repository callers name an owner rather than that forwarding: the three
+skill-panel adapters in `observability/dashboard/skills.py` reach `skill_reads.py` directly, and the six
+comparison-panel adapters in `observability/dashboard/breakdowns.py` reach `rollup_reads.py` and `breakdown_reads.py`
+the same way, so `analytics.read` stays a compatibility surface for those nine rather than a hop the page depends on.
 
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
 `observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature
@@ -1258,18 +1257,19 @@ rollup, skill, and dispatched reads; KPI series/values; cards, tables, sparkline
 state/usage/cost/skill/run sections; and cost/usage Plotly construction. The state a run carries lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
 that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by,
-`read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database message, and
-`fanout.py` for running one wave of named readers the way that flag said, and `breakdowns.py` for the six of those
-readers a comparison panel is drawn from, each naming the rollup or breakdown query owner that answers it. What one
-read of that wave then goes through lives beside them: `scoped_reads.py` for the thread's analytics connection it is
-issued inside, `filter_binding.py` for the filters its cache key is read back as, and `static_metadata.py` for the
-extent and filter vocabulary a page opens on, the TTL both are cached for, and the banner a failed one stops the run
-with. `dashboard_state.py` stays the hub the page reads the state off and `dashboard_reads.py` the hub the read
-inventory is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`,
-`_dashboard_state_constants.py`, `_dashboard_read_mode.py`, `_dashboard_read_core.py`, and — for its six panel
-reads — `_dashboard_read_breakdowns.py` forward each historical name to the owner's own object. Compatibility
-metadata keeps the established defining-module assertions intact for what those hubs still define. Streamlit is never
-imported in these helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
+`read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database message,
+`fanout.py` for running one wave of named readers the way that flag said, `breakdowns.py` for the six of those readers
+a comparison panel is drawn from, each naming the rollup or breakdown query owner that answers it, and `skills.py` for
+the three a skill panel is drawn from, each naming the skill query owner. What one read of that wave then goes through
+lives beside them: `scoped_reads.py` for the thread's analytics connection it is issued inside, `filter_binding.py`
+for the filters its cache key is read back as, and `static_metadata.py` for the extent and filter vocabulary a page
+opens on, the TTL both are cached for, and the banner a failed one stops the run with. `dashboard_state.py` stays the
+hub the page reads the state off and `dashboard_reads.py` the hub the read inventory is resolved through, while
+`_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`,
+`_dashboard_read_core.py`, `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` forward each historical
+name to the owner's own object. Compatibility metadata keeps the established defining-module assertions intact for
+what those hubs still define. Streamlit is never imported in these helpers — `st` (with chart, theme, and pandas
+handles) is passed in as a parameter.
 
 ```sh
 uv sync --group dashboard                                  # install streamlit + plotly alongside the runtime + dev deps

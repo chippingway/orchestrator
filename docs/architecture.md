@@ -482,10 +482,10 @@ orchestrator/
   _dashboard_read_mode.py / _dashboard_read_core.py
                         historical state and read import sites forwarding to
                         those owners
-  _dashboard_read_breakdowns.py
-                        historical import site for the six comparison-panel
-                        reads, and home of the skill-trigger read waiting for
-                        the owner its two siblings will move with
+  _dashboard_read_breakdowns.py / _dashboard_read_skills.py
+                        historical import sites for the six comparison-panel
+                        reads and the three skill-panel ones, forwarding to
+                        those owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -750,6 +750,9 @@ orchestrator/
       breakdowns.py     the six reads a comparison panel is drawn from, each
                         naming the rollup or breakdown query owner that
                         answers it
+      skills.py         the three reads a skill panel is drawn from, each
+                        naming the skill query owner that answers it off an
+                        `agent_exit` row's `extras`
       scoped_reads.py   the checkout of this thread's analytics connection one
                         read is issued inside, which is what keeps that read's
                         cache key connection-free
@@ -1489,6 +1492,13 @@ need what the day bucket threw away and are answered off `breakdown_reads.py`. N
 heatmap is the one adapter with a second argument: a display offset changes which cell a row is counted into and not
 which rows the window holds, so it travels beside the key rather than inside it.
 
+`skills.py` is the second: the three a skill section is drawn from — the aggregate trigger rates, the per-repository
+trigger cells beneath them, and the per-session adoption cells above both. These sit under one owner because one
+family answers all three: a skill name, the set a repository offered, and the count one run loaded are recorded in an
+`agent_exit` row's `extras`, which the day-bucketed rollup does not carry, so each names `skill_reads.py` — again the
+owner rather than the facade in front of it. None of the three carries a filter of its own, so the key is the whole of
+each signature.
+
 Under that wave, and before it, sit the three owners a page's reads go through. `scoped_reads.py` owns the checkout of
 this thread's analytics connection a read is issued inside — the one place a socket is added to a read, which is why
 the cached wrappers above it can key on the filter set alone: a `psycopg.Connection` is unhashable, and a stringified
@@ -1505,21 +1515,22 @@ stops, instead of leaving every widget below it to fail on its own.
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
 socket out of, the metadata owner names both the error a failed read arrives as and the two unfiltered reads it
-issues, and the breakdown owner names the two read families its six adapters are answered by; those are the only
-things any of the eight reaches outside the package. The fan-out and the filter binding reach nothing past the
-siblings they take their worker cap and their scope from.
+issues, the breakdown owner names the two read families its six adapters are answered by, and the skill owner names
+the one family its three are; those are the only things any of the nine reaches outside the package. The fan-out and
+the filter binding reach nothing past the siblings they take their worker cap and their scope from.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
-the hub the whole read inventory is resolved through, and the five flat leaves beneath them —
-`_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`, and
-`_dashboard_read_core.py` — define nothing and forward each historical name to the owner's own object.
-`_dashboard_read_breakdowns.py` forwards the same way for the six panel reads, and is the one leaf under those hubs
-that still spells something itself: `_read_skill_trigger_rates` waits there for the owner its two siblings under
-`_dashboard_read_skills.py` will move with. The private `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and
-`_fan_out_reads` spellings the state hub publishes, and the `_scoped_read`, `_filter_list`, `_read_filter_kwargs`,
-`_read_filtered`, `_read_data_extent`, `_read_filter_options`, `_read_static_metadata`, `_read_backend_efficiency`,
-`_read_repo_breakdown`, `_read_cost_coverage`, `_read_hourly_heatmap`, `_read_throughput`, and
-`_read_backend_daily_tokens` ones the read hub publishes, resolve to those same objects.
+the hub the whole read inventory is resolved through, and the seven flat leaves beneath them —
+`_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`,
+`_dashboard_read_core.py`, `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and
+forward each historical name to the owner's own object. The trigger rates are reached through the breakdown leaf and
+the other two skill reads through the leaf named for them, because that is where a caller has always spelled each. The
+private `_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub
+publishes, and the `_scoped_read`, `_filter_list`, `_read_filter_kwargs`, `_read_filtered`, `_read_data_extent`,
+`_read_filter_options`, `_read_static_metadata`, `_read_backend_efficiency`, `_read_repo_breakdown`,
+`_read_cost_coverage`, `_read_hourly_heatmap`, `_read_throughput`, `_read_backend_daily_tokens`,
+`_read_skill_trigger_rates`, `_read_skill_trigger_matrix`, and `_read_skill_adoption` ones the read hub publishes,
+resolve to those same objects.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,

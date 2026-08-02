@@ -52,10 +52,10 @@ _run_read_waves = dispatch._run_read_waves
 log = dispatch.log
 
 # The members still defined beside this hub. The six comparison-panel reads,
-# the connection scope, the filter binding, and the static-metadata reads are
-# the dashboard owners' own objects and are left off deliberately: stamping one
-# would rewrite `__module__` on the owner's function, which is what the owners'
-# own surface check reads.
+# the three skill-panel ones, the connection scope, the filter binding, and the
+# static-metadata reads are the dashboard owners' own objects and are left off
+# deliberately: stamping one would rewrite `__module__` on the owner's
+# function, which is what the owners' own surface check reads.
 _COMPATIBILITY_MEMBERS = (
     _DashboardReadPlan,
     _read_summary,
@@ -65,9 +65,6 @@ _COMPATIBILITY_MEMBERS = (
     _read_recent_agent_exits,
     _read_top_cost_issues,
     _read_review_round,
-    _read_skill_trigger_rates,
-    _read_skill_trigger_matrix,
-    _read_skill_adoption,
     _widget_task,
     _first_wave_readers,
     _second_wave_readers,

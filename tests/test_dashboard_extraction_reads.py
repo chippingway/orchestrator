@@ -36,9 +36,6 @@ STAMPED_READER_WRAPPER_NAMES = (
     "_read_recent_agent_exits",
     "_read_top_cost_issues",
     "_read_review_round",
-    "_read_skill_adoption",
-    "_read_skill_trigger_rates",
-    "_read_skill_trigger_matrix",
 )
 
 
@@ -59,11 +56,14 @@ _MOVED_READ_MEMBERS = (
 _BREAKDOWNS_OWNER = "breakdowns"
 
 
-# The six comparison-panel reads, the connection scope, the filter binding,
-# and the static-metadata reads are the dashboard owners' own objects,
-# published here under the spellings a caller reached them by. They report
-# their owner rather than this hub, so the guard on them is where each
-# resolves to.
+_SKILLS_OWNER = "skills"
+
+
+# The six comparison-panel reads, the three skill-panel ones, the connection
+# scope, the filter binding, and the static-metadata reads are the dashboard
+# owners' own objects, published here under the spellings a caller reached them
+# by. They report their owner rather than this hub, so the guard on them is
+# where each resolves to.
 _OWNED_READ_MEMBERS = MappingProxyType({
     "_read_backend_efficiency": _BREAKDOWNS_OWNER,
     "_read_repo_breakdown": _BREAKDOWNS_OWNER,
@@ -71,6 +71,9 @@ _OWNED_READ_MEMBERS = MappingProxyType({
     "_read_hourly_heatmap": _BREAKDOWNS_OWNER,
     "_read_throughput": _BREAKDOWNS_OWNER,
     "_read_backend_daily_tokens": _BREAKDOWNS_OWNER,
+    "_read_skill_adoption": _SKILLS_OWNER,
+    "_read_skill_trigger_matrix": _SKILLS_OWNER,
+    "_read_skill_trigger_rates": _SKILLS_OWNER,
     "_filter_list": "filter_binding",
     "_read_filter_kwargs": "filter_binding",
     "_read_filtered": "filter_binding",
@@ -95,8 +98,8 @@ class ReadOrchestrationExtractionTest(unittest.TestCase):
     """The dashboard read orchestration -- cached reader wrappers, reader
     registries, the staged parallel dispatch + two-wave data load, and the
     load-timing log -- lives in `orchestrator.dashboard_reads`, which also
-    republishes the comparison-panel, connection, filter-binding, and
-    static-metadata reads the dashboard owners hold. `orchestrator.dashboard`
+    republishes the comparison-panel, skill-panel, connection, filter-binding,
+    and static-metadata reads the dashboard owners hold. `orchestrator.dashboard`
     re-exports every member under the same name so the `dashboard.<name>`
     surface and its test patch points keep resolving to the same object.
     """
