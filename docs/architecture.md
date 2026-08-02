@@ -493,9 +493,11 @@ orchestrator/
                         builders and the shaping beneath them to the charts
                         owners
   _dashboard_cost_layout.py / _dashboard_cost_horizontal.py
+  _dashboard_cost_stage.py
                         historical import sites for the frame the horizontal
-                        cost families are drawn in and the generic spend
-                        ranking, forwarding to the charts owners
+                        cost families are drawn in, the generic spend ranking,
+                        and the per-stage cache split, forwarding to the charts
+                        owners
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
   _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
@@ -826,9 +828,10 @@ orchestrator/
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the frame the horizontal
                         cost families share, the generic spend ranking,
-                        weekday-by-hour grid, and per-day throughput strip
-                        above the two, the usage family's own shaping, axes,
-                        traces, and hero figure, and the
+                        per-stage cache split, weekday-by-hour grid, and
+                        per-day throughput strip above the two, the usage
+                        family's own shaping, axes, traces, and hero figure,
+                        and the
                         destination for the families still on flat leaves
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
@@ -842,6 +845,10 @@ orchestrator/
                         the generic ranking a window's spend is drawn as: the
                         order, tint, and flip behind its bars, and the pinned
                         call shape the builder is bound through
+        cost_stage.py   the per-stage split of that spend into what the cache
+                        paid for and what it did not: the ranking and full-price
+                        fallback behind the halves, the shading a cache half is
+                        tinted with, and the stack they are drawn as
         heatmap.py      the 7x24 weekday-by-hour token-volume grid: the cells a
                         window's points are bucketed into, the labels and hour
                         span shaping them, and the layout that squares them off
@@ -1706,6 +1713,18 @@ caller's accent and then the page's, so a ranking is one hue rather than a strip
 `*args` / `**kwargs` and binds them through a pinned `Signature`, which is what keeps `items` the name the rows may be
 passed by and keeps `inspect.signature` reporting that call shape rather than the pair the body receives.
 
+`cost_stage.py` is the family beside it on that same frame, cutting each stage's bar in two: what the model was billed
+at full price, and what it was billed at the cache rate. The halves are stacked rather than drawn side by side, so a
+bar's length is still the stage's whole spend and the split inside it reads as the share the cache paid for, and only
+the outer half carries the dollar text. Both halves are tinted from the stage's one hue — the cache half a translucent
+shade of it — because a palette of its own for the cache segments would read as twice as many stages; that shading is
+where the per-review-round split gets its own cache tint too, which is why it lives here rather than inside the
+stacking. A row carrying neither half but a total is a window read before the split existed, and plotting it straight
+would draw an empty bar for spend that happened, so the whole total becomes the full-price half. The sub-line counts
+`runs` — the agent-exit subset of `StageBreakdown.count` — because those exits are what reported the spend the bar
+is drawn from. The one value this family takes from the one beside it is the height an empty cost panel comes to, so
+a split with nothing to draw is the same size card as a ranking with nothing to rank.
+
 `heatmap.py` is the next family here, drawn straight off the shared pieces rather than that frame: the 7x24 grid a
 window's activity rhythm is read off, a row
 per weekday and a column per hour. What fills a cell is token volume rather than event count, because counting events
@@ -1811,11 +1830,14 @@ charts owner's objects under the private spellings the cost leaves import them b
 cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
 resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
 `done_per_day_bars` under its own name, and the calendar, series, and pinned height beneath it under theirs.
-`_dashboard_cost_layout.py` and `_dashboard_cost_horizontal.py` are two more beside them, forwarding the panel margin,
-the layout and trace models with the two helpers that apply them, and the ranking's four columns, sort key, default
-height, pinned signature, and builder. None of the grid, the strip, the ranking, or the two usage builders is stamped
-with a historical `__module__` on the way out — the heatmap, throughput, and usage sites make no such call at all, and
-`cost_horizontal_bars` is the one public builder `dashboard_charts_cost.py` leaves out of its
+`_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, and `_dashboard_cost_stage.py` are three more beside
+them, forwarding the panel margin, the layout and trace models with the two helpers that apply them, the ranking's
+four columns, sort key, default height, pinned signature, and builder, and the split's seven columns, sort key,
+full-price fallback, lightening factor and hex base, and builder — the last of which is how the per-review-round leaf
+reaches the shading its own cache halves are tinted with. None of the grid, the strip, the ranking, the split, or the
+two usage builders is stamped with a historical `__module__` on the way out — the heatmap, throughput, and usage sites
+make no such call at all, and `cost_horizontal_bars` and `cost_by_stage` are the two public builders
+`dashboard_charts_cost.py` leaves out of its
 `preserve_defining_module` list — because the stamp mutates the object, so claiming a builder a charts owner defines
 would rewrite the owner's own function.
 `_dashboard_usage_models.py` and `_dashboard_usage_data.py` are the same kind of site one family down, and the fifteen

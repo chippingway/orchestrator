@@ -11,11 +11,17 @@ by a narrower set: the frame the three horizontal cost families are drawn in --
 the gutter, the ``USD`` axis, and the request one series of bars is described
 by. The families that have arrived above the two sit beside each other:
 ``cost_horizontal``, the generic spend ranking, which is what the
-per-repository adapter draws; ``heatmap``, the 7x24 weekday-by-hour grid a
-window's token volume is read off, with the cells, labels, and squared-off
-layout it is built from; and ``throughput``, the per-day strip a window's
-resolved issues are counted on, with the calendar its quiet days are filled in
-from.
+per-repository adapter draws; ``cost_stage``, the per-stage split of that spend
+into what the cache paid for and what it did not, which is also where the
+shading a cache half is tinted with lives; ``heatmap``, the 7x24
+weekday-by-hour grid a window's token volume is read off, with the cells,
+labels, and squared-off layout it is built from; and ``throughput``, the
+per-day strip a window's resolved issues are counted on, with the calendar its
+quiet days are filled in from.
+
+``cost_stage`` names ``cost_horizontal`` for one value, the height a cost panel
+with nothing to draw comes to, so an empty split and an empty ranking are the
+same size card. That is the only edge between two families here.
 
 The usage family arrives as five owners rather than one, split by what a value
 answers for: ``usage_bands`` for the four bands a day is counted into and the

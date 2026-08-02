@@ -13,6 +13,8 @@ _COST_LAYOUT_SITE = "orchestrator._dashboard_cost_layout"
 
 _COST_RANKING_SITE = "orchestrator._dashboard_cost_horizontal"
 
+_COST_STAGE_SITE = "orchestrator._dashboard_cost_stage"
+
 _HEATMAP_SITE = "orchestrator.dashboard_charts_heatmap"
 
 _THROUGHPUT_SITE = "orchestrator.dashboard_charts_throughput"
@@ -34,6 +36,8 @@ _PACKAGE = "orchestrator.observability.dashboard.charts"
 _COST_LAYOUT = f"{_PACKAGE}.cost_layout"
 
 _COST_RANKING = f"{_PACKAGE}.cost_horizontal"
+
+_COST_STAGE = f"{_PACKAGE}.cost_stage"
 
 _HEATMAP = f"{_PACKAGE}.heatmap"
 
@@ -105,6 +109,22 @@ _FORWARDED_COST_RANKING = (
     ("_horizontal_bars_data", _COST_RANKING, "horizontal_bars_data"),
     ("_reverse_horizontal_bars", _COST_RANKING, "reverse_horizontal_bars"),
     ("cost_horizontal_bars", _COST_RANKING, "cost_horizontal_bars"),
+)
+
+# The per-stage split, reached through its own site by the cost hub and by the
+# per-review-round leaf that tints its own cache halves with the shading listed
+# here. A second lightening factor or hex base here is how a cache segment on
+# one cost panel would end up a different shade from the one beside it.
+_FORWARDED_COST_STAGE = (
+    ("CACHE_LIGHTEN", _COST_STAGE, "CACHE_LIGHTEN"),
+    ("HEX_BASE", _COST_STAGE, "HEX_BASE"),
+    ("_StageCostBars", _COST_STAGE, "StageCostBars"),
+    ("_lighten_hex", _COST_STAGE, "lighten_hex"),
+    ("_reverse_stage_cost_bars", _COST_STAGE, "reverse_stage_cost_bars"),
+    ("_stage_cost_bars", _COST_STAGE, "stage_cost_bars"),
+    ("_stage_cost_sort_key", _COST_STAGE, "stage_cost_sort_key"),
+    ("_stage_no_cache_cost", _COST_STAGE, "stage_no_cache_cost"),
+    ("cost_by_stage", _COST_STAGE, "cost_by_stage"),
 )
 
 # The heatmap the hub re-exports through its own site, with the cells, labels,
@@ -255,6 +275,7 @@ _FORWARDED_MODULES = MappingProxyType({
     _BASE_SITE: _FORWARDED_PRIMITIVES,
     _COST_LAYOUT_SITE: _FORWARDED_COST_LAYOUT,
     _COST_RANKING_SITE: _FORWARDED_COST_RANKING,
+    _COST_STAGE_SITE: _FORWARDED_COST_STAGE,
     _HEATMAP_SITE: _FORWARDED_HEATMAP,
     _THROUGHPUT_SITE: _FORWARDED_THROUGHPUT,
     _USAGE_AXIS_SITE: _FORWARDED_USAGE_AXIS,
