@@ -11,6 +11,8 @@ _BASE_SITE = "orchestrator.dashboard_charts_base"
 
 _HEATMAP_SITE = "orchestrator.dashboard_charts_heatmap"
 
+_THROUGHPUT_SITE = "orchestrator.dashboard_charts_throughput"
+
 _USAGE_DATA_SITE = "orchestrator._dashboard_usage_data"
 
 _USAGE_MODELS_SITE = "orchestrator._dashboard_usage_models"
@@ -20,6 +22,8 @@ _PACKAGE = "orchestrator.observability.dashboard.charts"
 _HEATMAP = f"{_PACKAGE}.heatmap"
 
 _PRIMITIVES = f"{_PACKAGE}.primitives"
+
+_THROUGHPUT = f"{_PACKAGE}.throughput"
 
 _USAGE_BANDS = f"{_PACKAGE}.usage_bands"
 
@@ -62,6 +66,18 @@ _FORWARDED_HEATMAP = (
     ("hour_weekday_heatmap", _HEATMAP, "hour_weekday_heatmap"),
 )
 
+# The strip the hub re-exports through its own site, with the calendar, series,
+# and pinned height it is drawn from beneath it. The public builder is the one
+# the widget pipeline draws the reliability panel with, so a copy here would be
+# a strip an operator reads that no fix under the owner reaches.
+_FORWARDED_THROUGHPUT = (
+    ("_THROUGHPUT_CHART_HEIGHT", _THROUGHPUT, "THROUGHPUT_CHART_HEIGHT"),
+    ("_ThroughputSeries", _THROUGHPUT, "ThroughputSeries"),
+    ("_calendar_days", _THROUGHPUT, "calendar_days"),
+    ("_throughput_series", _THROUGHPUT, "throughput_series"),
+    ("done_per_day_bars", _THROUGHPUT, "done_per_day_bars"),
+)
+
 # The bands a day of usage is counted into, the mode its stack is switched
 # with, and the roll-up and stack helpers the usage leaves reach across the two
 # owners that hold them. A band accumulated under one spelling here and read
@@ -95,6 +111,7 @@ _FORWARDED_USAGE_MODELS = (
 _FORWARDED_MODULES = MappingProxyType({
     _BASE_SITE: _FORWARDED_PRIMITIVES,
     _HEATMAP_SITE: _FORWARDED_HEATMAP,
+    _THROUGHPUT_SITE: _FORWARDED_THROUGHPUT,
     _USAGE_DATA_SITE: _FORWARDED_USAGE_DATA,
     _USAGE_MODELS_SITE: _FORWARDED_USAGE_MODELS,
 })
@@ -140,9 +157,9 @@ class ForwardedChartModuleTest(unittest.TestCase):
 
     def test_no_site_defines_anything_of_its_own(self) -> None:
         # What keeps the forwarding thin: an implementation here would be a
-        # second primitive, a second grid, or a second band the check above
-        # cannot see, because it only compares the names the module was asked
-        # for.
+        # second primitive, a second grid, a second strip, or a second band
+        # the check above cannot see, because it only compares the names the
+        # module was asked for.
         for site in _FORWARDED_MODULES:
             defined = tuple(
                 name

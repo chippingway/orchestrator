@@ -154,3 +154,19 @@ class UsageOverTimeTest(unittest.TestCase):
         # a "no events" state collapses back to Plotly's 450px default
         # and dwarfs the surrounding KPI strip.
         self.assertEqual(fig.layout.height, _HERO_HEIGHT)
+
+    def test_drawn_chart_pins_the_hero_height(self) -> None:
+        # The height the panel above the KPI strip is laid out around, on the
+        # path that draws bands rather than the placeholder.
+        points = [
+            TimeSeriesPoint(
+                day=_DAY1,
+                event=EVENT_AGENT_EXIT,
+                count=1,
+                cost_usd=1.0,
+                input_tokens=10,
+                output_tokens=10,
+            ),
+        ]
+        fig = dashboard_charts.usage_over_time(points)
+        self.assertEqual(fig.layout.height, _HERO_HEIGHT)

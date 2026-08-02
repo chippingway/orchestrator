@@ -68,6 +68,12 @@ TWO_RUNS_LABEL = "2 runs"
 _PLACEHOLDER_HEIGHT = 120
 
 
+_ROW_HEIGHT = 40
+
+
+_PANEL_EXTRA_HEIGHT = 80
+
+
 @unittest.skipUnless(HAS_PLOTLY, _SKIP_REASON)
 class CostHorizontalBarsTest(unittest.TestCase):
     def test_sorts_by_cost_descending(self) -> None:
@@ -106,6 +112,19 @@ class CostHorizontalBarsTest(unittest.TestCase):
         # single-row non-empty case (40 * 1 + 80) so they do not
         # collapse to Plotly's 450px default.
         self.assertEqual(fig.layout.height, _PLACEHOLDER_HEIGHT)
+
+    def test_height_scales_with_the_rows(self) -> None:
+        # The panel takes the shared per-row sizing rather than a height of
+        # its own, so three bars stand one row taller than two.
+        cost_rows = [
+            ("alpha", "1 run", 1.0, "#111"),
+            ("beta", TWO_RUNS_LABEL, 2.0, "#222"),
+            ("gamma", "3 runs", 3.0, "#333"),
+        ]
+        fig = dashboard_charts.cost_horizontal_bars(cost_rows)
+        self.assertEqual(
+            fig.layout.height, _ROW_HEIGHT * 3 + _PANEL_EXTRA_HEIGHT,
+        )
 
 
 @unittest.skipUnless(HAS_PLOTLY, _SKIP_REASON)

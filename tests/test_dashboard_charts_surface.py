@@ -63,6 +63,9 @@ _HEATMAP_OWNER = "orchestrator.observability.dashboard.charts.heatmap"
 _THROUGHPUT_LEAF = "orchestrator.dashboard_charts_throughput"
 
 
+_THROUGHPUT_OWNER = "orchestrator.observability.dashboard.charts.throughput"
+
+
 _CHART_LEAVES = (
     _BASE_LEAF,
     _COST_LEAF,
@@ -76,8 +79,9 @@ _REPO_ROOT = str(Path(__file__).resolve().parents[1])
 
 
 # Each public builder and the module that defines it. A family still on a flat
-# leaf is defined there; the heatmap is defined by its owner under
-# `observability`, and the flat leaf named for it forwards that same object.
+# leaf is defined there; the heatmap and the throughput strip are defined by
+# their owners under `observability`, and the flat leaf named for each forwards
+# that same object.
 _BUILDER_HOMES = (
     ("cost_horizontal_bars", _COST_LEAF),
     ("cost_by_repo", _COST_LEAF),
@@ -86,7 +90,7 @@ _BUILDER_HOMES = (
     ("usage_over_time", _USAGE_LEAF),
     ("backend_per_day", _USAGE_LEAF),
     ("hour_weekday_heatmap", _HEATMAP_OWNER),
-    ("done_per_day_bars", _THROUGHPUT_LEAF),
+    ("done_per_day_bars", _THROUGHPUT_OWNER),
 )
 
 

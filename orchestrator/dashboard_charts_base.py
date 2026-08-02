@@ -5,9 +5,9 @@
 The no-data placeholder, the money / monospace / two-line-tick labels, the
 list reversal, and the horizontal-bar height and legend -- with the row and
 extra heights that sizing is measured in -- are the charts owner's own
-objects. The usage, cost, and throughput leaves that name this module reach
-those rather than a copy, so a panel's empty state, its bar labels, and its
-height cannot be answered one way here and another under the owner.
+objects. The usage and cost leaves that name this module reach those rather
+than a copy, so a panel's empty state, its bar labels, and its height cannot
+be answered one way here and another under the owner.
 """
 from __future__ import annotations
 

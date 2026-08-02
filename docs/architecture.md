@@ -485,6 +485,9 @@ orchestrator/
   dashboard_charts_heatmap.py
                         historical import site for the weekday-by-hour activity
                         grid, forwarding to the charts owner that builds it
+  dashboard_charts_throughput.py
+                        historical import site for the per-day resolved-issue
+                        strip, forwarding to the charts owner that builds it
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
   _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
@@ -806,9 +809,9 @@ orchestrator/
                         pass
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the weekday-by-hour grid
-                        that is the first family above it, the usage family's
-                        own shaping, and the destination for the families still
-                        on flat leaves
+                        and per-day throughput strip above it, the usage
+                        family's own shaping, and the destination for the
+                        families still on flat leaves
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
                         with, the money, mono, and two-line-tick labels a bar
@@ -817,6 +820,9 @@ orchestrator/
         heatmap.py      the 7x24 weekday-by-hour token-volume grid: the cells a
                         window's points are bucketed into, the labels and hour
                         span shaping them, and the layout that squares them off
+        throughput.py   the per-day resolved-issue strip: the calendar a
+                        window's days are filled in from, the series those days
+                        and counts arrive as, and the height it is pinned to
         usage_bands.py  the four bands a day of usage is counted into, the mode
                         its stack is switched with, the per-day table they are
                         accumulated in, and the roll-up of the series into one
@@ -1662,6 +1668,18 @@ result where an empty bar series is not. Nothing here shifts a timestamp — the
 caller says the cells were read under — so besides the theme owners it draws with, the only thing it names outside the
 package is `analytics/query/activity_models.py`, the row those cells arrive as.
 
+`throughput.py` sits beside it: the per-day strip a window's resolved-issue rhythm is read off, one bar as tall as the
+issues that reached a resolved stage that day. The read only returns days that carried such a row at all, so a strip
+drawn straight off the rows would run three busy days together and read as a week of steady output. Given the window's
+inclusive bounds the days between them are the days drawn, and the ones no row named are drawn at zero, because a
+continuous baseline is what makes a quiet day legible as a quiet day instead of as an interval the axis skipped —
+without both bounds the rows are the calendar, so a caller with no window to hand still gets a strip. That makes the
+shared placeholder reachable only in the second case: a bounded window always has days, and a range nothing resolved
+in is an all-zero baseline rather than a sentence. Either way the pinned height travels with the figure, since the
+panel shares the narrow reliability column with the tiles above it. Unlike the grid beside it this family does route
+its empty state through `primitives.py`, and like it the only thing it names outside the package besides the theme
+owners is `analytics/query/activity_models.py`, the row those counts arrive as.
+
 `usage_bands.py` and `usage_series.py` are the next to arrive, holding the shaping the usage family does before any
 figure is built. The series arrives one row per `(day, event)`, so several rows land on the same date and the two
 cache counters are two columns of one band; the roll-up in `usage_bands.py` is the single place those rows become a
@@ -1700,10 +1718,11 @@ the owner's own object. The read hub defines nothing of its own either, so nothi
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
 them to the two owners that hold each. `dashboard_charts_base.py` is one too: the placeholder, the three label
 helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height are the
-charts owner's objects under the private spellings the usage, cost, and throughput leaves import them by.
+charts owner's objects under the private spellings the usage and cost leaves import them by.
 `dashboard_charts_heatmap.py` is the same site for the grid family — `hour_weekday_heatmap` under its own name, and the
 cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
-resolving to the figure the owner builds.
+resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
+`done_per_day_bars` under its own name, and the calendar, series, and pinned height beneath it under theirs.
 `_dashboard_usage_models.py` and `_dashboard_usage_data.py` are the same kind of site one family down, and the fifteen
 names they publish are split across the two usage owners: the per-day table's alias, the four band names, the mode
 beside them, and the three helpers that zero a bucket, roll the series up into one, and total a day's tokens are
