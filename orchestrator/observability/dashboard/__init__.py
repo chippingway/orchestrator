@@ -9,7 +9,8 @@ The state a run carries is the first to arrive -- ``windows`` for the date
 span and the presets that name one, ``filters`` for the offset, issue, stage,
 and cache key it is narrowed and displayed by, and ``read_mode`` for the knob
 its reads are issued under and the message an unconfigured database is refused
-with.
+with. ``fanout`` runs one wave of that page's readers the way the knob said,
+on the calling thread or across a pool capped at the count beside it.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so
