@@ -38,13 +38,13 @@ with above all of them plus the four numbers it is summarized by beneath those (
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
 `dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`), the primitives every chart family on
-that page is drawn out of plus the frame the horizontal cost families share, the generic spend ranking, per-stage
-cache split, weekday-by-hour grid, and per-day throughput strip above them, and the usage family's own bands, day
-span, stack heights, aligned axes, traces, and hero figure (`dashboard/charts/primitives.py`,
-`dashboard/charts/cost_layout.py`, `dashboard/charts/cost_horizontal.py`, `dashboard/charts/cost_stage.py`,
-`dashboard/charts/heatmap.py`, `dashboard/charts/throughput.py`, `dashboard/charts/usage_bands.py`,
-`dashboard/charts/usage_series.py`, `dashboard/charts/usage_axis.py`, `dashboard/charts/usage_traces.py`,
-`dashboard/charts/usage.py`), the
+that page is drawn out of plus the frame the horizontal cost families share, the generic spend ranking, the
+per-repository one drawn through it, the per-stage cache split, the weekday-by-hour grid, and the per-day throughput
+strip above them, and the usage family's own bands, day span, stack heights, aligned axes, traces, and hero figure
+(`dashboard/charts/primitives.py`, `dashboard/charts/cost_layout.py`, `dashboard/charts/cost_horizontal.py`,
+`dashboard/charts/cost_repo.py`, `dashboard/charts/cost_stage.py`, `dashboard/charts/heatmap.py`,
+`dashboard/charts/throughput.py`, `dashboard/charts/usage_bands.py`, `dashboard/charts/usage_series.py`,
+`dashboard/charts/usage_axis.py`, `dashboard/charts/usage_traces.py`, `dashboard/charts/usage.py`), the
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
@@ -1297,7 +1297,8 @@ beneath those, `kpis.py` holds the four numbers the headline tiles report — th
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
 What those reads are drawn as sits one level down, under `charts/`, where `primitives.py` holds what every figure
 family is built out of, `cost_layout.py` the frame the horizontal cost families share, `cost_horizontal.py` the
-generic spend ranking, `cost_stage.py` the per-stage cache split, `heatmap.py` the weekday-by-hour grid,
+generic spend ranking, `cost_repo.py` the per-repository one drawn through it, `cost_stage.py` the per-stage cache
+split, `heatmap.py` the weekday-by-hour grid,
 `throughput.py` the per-day resolved-issue strip, and
 `usage_bands.py` / `usage_series.py` / `usage_axis.py` / `usage_traces.py` / `usage.py` the bands, day span, stack
 heights, aligned axes, traces, and assembled hero figure the usage family draws its reads as (see **Chart builders**
@@ -1308,7 +1309,8 @@ is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`
 `_dashboard_read_rollups.py`,
 `_dashboard_read_breakdowns.py`, `_dashboard_read_skills.py`, `dashboard_kpis.py`, `dashboard_charts_base.py`,
 `dashboard_charts_heatmap.py`, `dashboard_charts_throughput.py`, `dashboard_charts_usage.py`,
-`_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, `_dashboard_cost_stage.py`,
+`_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, `_dashboard_cost_repo.py`,
+`_dashboard_cost_stage.py`,
 `_dashboard_usage_models.py`, `_dashboard_usage_data.py`, `_dashboard_usage_axis.py`,
 `_dashboard_usage_traces.py`, and `_dashboard_usage_chart.py`
 forward each historical name to the owner's own object. Neither hub defines a name of its own, so neither rewrites a
@@ -1435,12 +1437,15 @@ per-cell token totals, Sunday-first, with a `tz_label` parameter that annotates 
 matching offset to `get_hourly_heatmap` so cells already reflect that zone), and `done_per_day_bars` (resolved-per-day
 bars with explicit `window_start` / `window_end` for zero-day backfill). `orchestrator/dashboard_charts.py` is a pure
 re-export hub: each chart family is reached through a focused leaf -- `usage_over_time` / `backend_per_day` through
-`orchestrator/dashboard_charts_usage.py`, the two cost adapters (`cost_by_repo` / `cost_by_review_round`) in
-`orchestrator/dashboard_charts_cost.py` and `cost_horizontal_bars` / `cost_by_stage` through that same
-leaf, `hour_weekday_heatmap` through
+`orchestrator/dashboard_charts_usage.py`, the three cost adapters (`cost_by_repo` / `cost_by_stage` /
+`cost_by_review_round`) plus `cost_horizontal_bars` through `orchestrator/dashboard_charts_cost.py`,
+`hour_weekday_heatmap` through
 `orchestrator/dashboard_charts_heatmap.py`, and `done_per_day_bars` through
 `orchestrator/dashboard_charts_throughput.py` --
-and the hub re-imports each public builder under its original name. The shared low-level chart primitives
+and the hub re-imports each public builder under its original name. Of the four the cost leaf publishes, only
+`cost_by_review_round` is still built on a flat leaf beneath it; `cost_horizontal_bars`, `cost_by_repo`, and
+`cost_by_stage` are forwarded from the charts owners that define them. The shared low-level chart
+primitives
 (`empty_figure`, the money / mono-textfont / two-line-tick and panel-height / legend helpers) live under
 `orchestrator/observability/dashboard/charts/primitives.py`, which the cost leaves reach through
 `orchestrator/dashboard_charts_base.py` -- their historical import site, forwarding each private spelling to the
@@ -1449,11 +1454,15 @@ is cycle-free. The frame the three horizontal cost families are drawn in (the pa
 height, and the `CostBarTrace` request one series of bars is built from) lives beside it in
 `orchestrator/observability/dashboard/charts/cost_layout.py`, and `cost_horizontal_bars` itself -- with the ordering,
 tinting, and flip behind its bars, and the pinned `Signature` that keeps `items` its first parameter -- in
-`charts/cost_horizontal.py`. `cost_by_stage` sits beside it in `charts/cost_stage.py` -- the ranking, the full-price
-fallback that lets a row carrying only a total still draw at its true length, the `runs` sub-line, and the lightening
-that shades a cache half from the stage's own hue, which is also where the per-review-round split gets the shading for
-its own cache halves. `orchestrator/_dashboard_cost_layout.py`, `orchestrator/_dashboard_cost_horizontal.py`, and
-`orchestrator/_dashboard_cost_stage.py` are the historical import sites the cost leaves reach the three through, again
+`charts/cost_horizontal.py`. `cost_by_repo` sits on top of that ranking in `charts/cost_repo.py`, deciding only how a
+repository reads: the short name its bar is labelled by with the `owner/` prefix dropped, the agent-run count on the
+sub-line rather than an event count, the page accent on every bar, and the shared placeholder in its own words for a
+window matching no repository. `cost_by_stage` sits beside the ranking in `charts/cost_stage.py` -- the ranking, the
+full-price fallback that lets a row carrying only a total still draw at its true length, the `runs` sub-line, and the
+lightening that shades a cache half from the stage's own hue, which is also where the per-review-round split gets the
+shading for its own cache halves. `orchestrator/_dashboard_cost_layout.py`,
+`orchestrator/_dashboard_cost_horizontal.py`, `orchestrator/_dashboard_cost_repo.py`, and
+`orchestrator/_dashboard_cost_stage.py` are the historical import sites the cost leaves reach the four through, again
 forwarding and implementing nothing. The heatmap and throughput families have moved under the same package:
 `orchestrator/observability/dashboard/charts/heatmap.py` builds the grid -- and draws its own empty-state annotation
 over it rather than routing through the shared placeholder, because an empty heatmap is still legible -- and
@@ -1464,13 +1473,16 @@ window into a calendar to draw zero bars across. In front of each,
 forwarding the public builder plus the spellings beneath it -- the cell / label / layout ones for the grid, the
 calendar / series / pinned-height ones for the strip -- to the owner's own objects and implementing nothing. A test
 that has to intercept one of them patches the owner, because that is what the flat site resolves to. None of
-`hour_weekday_heatmap`, `done_per_day_bars`, `cost_horizontal_bars`, `cost_by_stage`, `usage_over_time`, or
-`backend_per_day` carries a historical `__module__` stamp -- the heatmap, throughput, and usage sites make no
-`preserve_defining_module` call at all, and `cost_horizontal_bars` and `cost_by_stage` are the two public builders
-`orchestrator/dashboard_charts_cost.py` leaves out of its list -- so each reports the charts owner that defines it.
-Plotly is
-imported inside the calls that build a figure, so every owner under `charts/` stays importable without the optional
-`dashboard` dependency group. The usage family's own shaping sits beside those primitives:
+`hour_weekday_heatmap`, `done_per_day_bars`, `cost_horizontal_bars`, `cost_by_repo`, `cost_by_stage`,
+`usage_over_time`, or `backend_per_day` carries a historical `__module__` stamp -- the heatmap, throughput, and usage
+sites make no `preserve_defining_module` call at all, and `cost_horizontal_bars`, `cost_by_repo`, and `cost_by_stage`
+are the three public builders `orchestrator/dashboard_charts_cost.py` leaves out of its list -- so each reports the
+charts owner that defines it.
+No owner under `charts/` names Plotly at module scope: the ones that assemble a figure import it inside that call,
+and an adapter like `charts/cost_repo.py`, which only shapes rows and hands them to another builder, never imports it
+at all -- `from __future__ import annotations` leaves its `go.Figure` return annotation unevaluated. Either way every
+owner there stays importable without the optional `dashboard` dependency group. The usage family's own shaping sits
+beside those primitives:
 `orchestrator/observability/dashboard/charts/usage_bands.py` holds the four bands a day is counted into, the mode its
 stack is switched with, the `DailyTokenValues` table they are accumulated in, and the roll-up of a `TimeSeriesPoint`
 series into one bucket per day, while `orchestrator/observability/dashboard/charts/usage_series.py` holds the day span
@@ -1494,8 +1506,8 @@ came back with nothing to draw -- with the `backend_per_day` stub published besi
 object and implementing nothing, as the surface in front of them does too. A test that has to intercept a usage
 builder patches the owner, because that is what every one of those sites resolves to. No module on that path names
 Plotly at module scope, so the flat usage surface imports in the default install the same way its owners do; the
-per-repository and per-review-round leaves beneath `orchestrator/dashboard_charts_cost.py` are the flat modules that
-still pull it in at load.
+per-review-round leaf beneath `orchestrator/dashboard_charts_cost.py` is the last flat module that still pulls it in
+at load.
 The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are built by inline-HTML
 helpers in `orchestrator/dashboard_html.py`; the insight banners, per-card header, backend-efficiency cards,

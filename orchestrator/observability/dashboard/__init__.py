@@ -32,10 +32,11 @@ every figure family is built out of -- the placeholder a window holding no
 rows is answered with, the labels a bar is annotated by, and the height and
 legend a horizontal-bar panel is laid out with -- ``cost_layout`` the frame
 the horizontal cost families are drawn in and the request one series of bars
-is described by, ``cost_horizontal``, ``cost_stage``, ``heatmap``, and
-``throughput`` hold four families above the two, the generic spend ranking,
-the per-stage split of that spend into what the cache paid for, the 7x24
-weekday-by-hour grid, and the per-day resolved-issue strip, and
+is described by, ``cost_horizontal``, ``cost_repo``, ``cost_stage``,
+``heatmap``, and ``throughput`` hold five families above the two, the generic
+spend ranking, the per-repository one drawn through it, the per-stage split of
+that spend into what the cache paid for, the 7x24 weekday-by-hour grid, and the
+per-day resolved-issue strip, and
 ``usage_bands``, ``usage_series``, ``usage_axis``, ``usage_traces``, and
 ``usage`` hold the usage family: the four bands a day of usage is counted into
 and the roll-up that counts them, the days that roll-up spans and the height
@@ -45,8 +46,9 @@ a window is drawn as, and the hero figure they are assembled into.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so
-an owner here imports them inside the function that renders with them rather
-than at module scope: an ordinary import must keep working in the default
-install, which has neither, and the data an owner shapes stays testable
-without them.
+no owner here names them at module scope: one that renders or assembles a
+figure imports them inside that call, and one that only shapes data for
+another owner never imports them at all. An ordinary import must keep working
+in the default install, which has neither, and the data an owner shapes stays
+testable without them.
 """

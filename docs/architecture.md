@@ -493,11 +493,11 @@ orchestrator/
                         builders and the shaping beneath them to the charts
                         owners
   _dashboard_cost_layout.py / _dashboard_cost_horizontal.py
-  _dashboard_cost_stage.py
+  _dashboard_cost_repo.py / _dashboard_cost_stage.py
                         historical import sites for the frame the horizontal
                         cost families are drawn in, the generic spend ranking,
-                        and the per-stage cache split, forwarding to the charts
-                        owners
+                        the per-repository adapter drawn through it, and the
+                        per-stage cache split, forwarding to the charts owners
   dashboard_*.py        stable component, read, chart, and widget hubs
   _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
   _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
@@ -827,11 +827,11 @@ orchestrator/
                         pass
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the frame the horizontal
-                        cost families share, the generic spend ranking,
-                        per-stage cache split, weekday-by-hour grid, and
-                        per-day throughput strip above the two, the usage
-                        family's own shaping, axes, traces, and hero figure,
-                        and the
+                        cost families share, the generic spend ranking, the
+                        per-repository one drawn through it, the per-stage
+                        cache split, the weekday-by-hour grid, and the per-day
+                        throughput strip above the two, the usage family's own
+                        shaping, axes, traces, and hero figure, and the
                         destination for the families still on flat leaves
         __init__.py     package marker only; callers import an owner directly
         primitives.py   the placeholder a window holding no rows is answered
@@ -845,6 +845,9 @@ orchestrator/
                         the generic ranking a window's spend is drawn as: the
                         order, tint, and flip behind its bars, and the pinned
                         call shape the builder is bound through
+        cost_repo.py    the per-repository ranking drawn through it: the short
+                        name a bar is labelled by, the agent runs its sub-line
+                        counts, and the accent every bar takes
         cost_stage.py   the per-stage split of that spend into what the cache
                         paid for and what it did not: the ranking and full-price
                         fallback behind the halves, the shading a cache half is
@@ -1723,10 +1726,22 @@ stacking. A row carrying neither half but a total is a window read before the sp
 would draw an empty bar for spend that happened, so the whole total becomes the full-price half. The sub-line counts
 `runs` — the agent-exit subset of `StageBreakdown.count` — because those exits are what reported the spend the bar
 is drawn from. The one value this family takes from the one beside it is the height an empty cost panel comes to, so
-a split with nothing to draw is the same size card as a ranking with nothing to rank. It is also the first of the
-horizontal cost families to be handed rows rather than tuples, so besides the theme owners it draws with and that one
+a split with nothing to draw is the same size card as a ranking with nothing to rank. Like the per-repository adapter
+below, it is handed rows rather than the ranking's tuples, so besides the theme owners it draws with and that one
 height, the only thing it names outside the package is `analytics/query/run_models.py`, the row a stage's halves
 arrive on.
+
+`cost_repo.py` sits directly on top of the ranking, an adapter rather than a figure of its own: a per-repository row
+becomes a label, a subtitle, an amount, and a tint, and the order, flip, and frame are the ranking's. What it decides
+is how a repository reads. The label drops the `owner/` prefix, which is the same across every bar an operator is
+comparing and would spend the gutter the amounts have to fit beside — the full slug stays on the row. The subtitle
+counts agent runs rather than events, because the amount beside it is what those runs came to and the cheap stage rows
+would overstate a quiet repository. Every bar takes the page's accent, since a repository is not a category the page
+tints by and a striped ranking would suggest a distinction the rows do not carry. A window matching no repository
+routes through the shared placeholder at the ranking's own empty height and says so in its own words, so an operator
+who filtered the repositories away is told that rather than that no data exists. Besides the ranking and the theme
+owners beneath it, the only thing it names outside the package is `analytics/query/cost_models.py`, the row those bars
+arrive as.
 
 `heatmap.py` is the next family here, drawn straight off the shared pieces rather than that frame: the 7x24 grid a
 window's activity rhythm is read off, a row
@@ -1804,8 +1819,8 @@ signatures are typed against — `analytics/query/overview_models.py` for the se
 `analytics/query/cost_models.py` for the rows the stub is handed — and Plotly, inside the one call that builds the
 figure. That is what leaves the whole usage path clear of the optional group: no module from
 `dashboard_charts_usage.py` down through the flat sites to these five owners names Plotly at module scope, so the
-surface a page reaches the hero figure through imports in the default install. The cost adapters' leaves are the flat
-modules that still name it at load.
+surface a page reaches the hero figure through imports in the default install. The per-review-round cost leaf is the
+one module left that still names it at load.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
@@ -1833,13 +1848,15 @@ charts owner's objects under the private spellings the cost leaves import them b
 cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
 resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
 `done_per_day_bars` under its own name, and the calendar, series, and pinned height beneath it under theirs.
-`_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, and `_dashboard_cost_stage.py` are three more beside
-them, forwarding the panel margin, the layout and trace models with the two helpers that apply them, the ranking's
-four columns, sort key, default height, pinned signature, and builder, and the split's seven columns, sort key,
+`_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, `_dashboard_cost_repo.py`, and
+`_dashboard_cost_stage.py` are four more beside them, forwarding the panel margin, the layout and trace models with
+the two helpers that apply them, the ranking's four columns, sort key, default height, pinned signature, and builder,
+the per-repository adapter with the short name its bars are labelled by, and the split's seven columns, sort key,
 full-price fallback, lightening factor and hex base, and builder — the last of which is how the per-review-round leaf
-reaches the shading its own cache halves are tinted with. None of the grid, the strip, the ranking, the split, or the
-two usage builders is stamped with a historical `__module__` on the way out — the heatmap, throughput, and usage sites
-make no such call at all, and `cost_horizontal_bars` and `cost_by_stage` are the two public builders
+reaches the shading its own cache halves are tinted with. None of the grid, the strip, the ranking, the per-repository
+adapter, the split, or the two usage builders is stamped with a historical `__module__` on the way out — the heatmap,
+throughput, and usage sites make no such call at all, and `cost_horizontal_bars`, `cost_by_repo`, and `cost_by_stage`
+are the three public builders
 `dashboard_charts_cost.py` leaves out of its
 `preserve_defining_module` list — because the stamp mutates the object, so claiming a builder a charts owner defines
 would rewrite the owner's own function.
