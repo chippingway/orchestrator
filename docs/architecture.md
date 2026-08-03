@@ -1937,11 +1937,11 @@ socket out of, the metadata owner and the dispatch owner both name the error a f
 alongside the two unfiltered reads it issues — the rollup owner names the three read families its seven adapters are
 answered by plus the issue-summary owner
 that spells the cost-first ordering one of them asks for, the breakdown owner names the two families its six adapters
-are answered by, the skill owner names the one family its three are, and the insight, KPI, and KPI-strip owners name
-the result families the window totals, cost-source split, and issue rows they read arrive as -- the last two of them
-for the pair of windows a strip is reduced from; those are the only things any of
-the eighteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing past the
-siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not even one of
+are answered by, the skill owner names the one family its three are, and the insight, the KPI, and the two KPI-strip
+owners name the result families the window totals, cost-source split, and issue rows they read arrive as -- the last
+two of those for the pair of windows a strip reduces rather than the one a tile reports; those are the only things
+any of the eighteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
 those — every value a cell reports is handed to it — the card markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
 its own beside those query families -- the KPI owner whose ranking depth its spend table is cut to -- and the strip
