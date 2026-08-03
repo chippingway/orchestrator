@@ -1299,10 +1299,11 @@ rather than whatever `card_html.py`, `backend_card.py`, `coverage_card.py`, `iss
 `skill_trigger_table.py` holds at call time: a
 test intercepting
 one patches the widget module that draws it — `patch.object(_dashboard_widget_costs, "_cost_coverage_bar_html", ...)`
-— and reaches the owner only to assert what an unpatched page renders. The two skill cards are no longer on that path
-at all: the page reaches `skill_panel.render_skill_adoption` through the widget hub, and the tables and sort parses it
-draws with are the panel owners' own imports, so a case that has to intercept one drives the owner rather than the
-page.
+— and reaches the owner only to assert what an unpatched page renders. The two skill cards sit differently. Each is a
+page renderer `patch.object(dashboard, ...)` still intercepts, because the pipeline resolves it through the facade at
+call time, but the tables and sort parses one draws with are the panel owner's own module-scope imports rather than a
+widget module's — so a case that has to intercept the adoption table, the trigger-rate one, the matrix, or either sort
+parse patches `skill_panel` or `skill_trigger_panel`.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
@@ -1310,12 +1311,13 @@ The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` le
 tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read, KPI-strip, and chart
 leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the KPI series and values
 pair in the middle, the cost and usage ones on the other — hold no implementation of their own; each forwards to the
-owners named below, and so do all three card leaves, both sparkline leaves, the chrome leaf beside them, the
+owners named below, and so do all three card leaves, both sparkline leaves, the chrome leaf beside them, and the
 shared-table, issue-table,
 skill-trigger, five adoption,
-and five trigger-matrix leaves among the table ones, and the widget-skill section beside those, which is what lets the
-card hub above them and both skill hubs claim nothing either, leaving none of the four panels that shared table is
-assembled into building its own — nor either of the two cards three of them are reported on.
+and five trigger-matrix leaves among the table ones, which is what lets the card hub above them and both skill hubs
+claim nothing either, leaving none of the four panels that shared table is assembled into building its own. The
+widget-skill section is the same kind of leaf one level up: the two cards three of those panels are reported on are
+owners as well, so it forwards both and the widget hub above it claims neither.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1433,8 +1435,8 @@ its own, so none of them rewrites a
 defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
 and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
-publishes are the card, backend, and coverage owners' own objects, and the widget hub drops the six the two skill
-cards are reached by for the same reason: a `__module__` stamp there would move one of
+publishes are the card, backend, and coverage owners' own objects, and the widget hub leaves the six the two skill
+cards are reached by out of its own list for the same reason: a `__module__` stamp there would move one of
 them off the owner that defines it. Streamlit is never imported in these
 helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
 
@@ -1675,8 +1677,9 @@ which forward every historical name to the owner's own object and implement noth
 `observability/dashboard/skill_panel.py` — the adoption card, the caption qualifying a window nobody adopted anything
 in, and the invocation views folded collapsed under it — and `observability/dashboard/skill_trigger_panel.py` — the
 trigger-rate card the section led with before adoption did, and its own fold-out matrix — reached through
-`orchestrator/_dashboard_widget_skills.py` and the `orchestrator/dashboard_widgets.py` hub above it, which forward the
-six historical spellings without claiming any of them.
+`orchestrator/_dashboard_widget_skills.py`, which forwards all seven historical spellings (the six renders plus the
+notice the second card answers an empty window with), and the `orchestrator/dashboard_widgets.py` hub above it, which
+republishes the six without claiming any of them.
 
 **Theme.** The plotly-free theme lives under `orchestrator/observability/dashboard/`, split by what a value is.
 `palette.py` holds the chrome colors (cool gray `#f4f5f8` page, white cards, indigo accent, muted ink tints), the

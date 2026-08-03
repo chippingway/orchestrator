@@ -586,9 +586,9 @@ orchestrator/
                         stable surface in front of those five, publishing
                         every historical spelling and defining none of them
   _dashboard_widget_skills.py
-                        historical import site for the card three of those
-                        tables are reported on and the trigger-rate one beside
-                        it, forwarding to the two skill-panel owners
+                        historical import site for the two skill cards -- the
+                        adoption one and the trigger-rate one beside it --
+                        forwarding to the two skill-panel owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -2031,9 +2031,9 @@ no-trigger once tracking is confirmed on, and a prompt to turn it on otherwise.
 pipeline reaches it now; it stays whole — header, notice, aggregate rates, and the matrix folded under them — for a
 caller that names it, and its enable-tracking prompt is unconditional where the adoption card's is not, since a window
 of trigger rates carries no per-session evidence to tell a genuine no-trigger apart from tracking nobody turned on.
-Both owners are handed their `st` rather than reaching for one, so neither names Streamlit, and besides the row models
-each is typed against they reach only the card header, the three tables they draw, and the two sort parses those
-tables are ordered by.
+Both owners are handed their `st` rather than reaching for one, so neither names Streamlit. Besides the row models
+each is typed against, the first reaches the card header, all three of those tables, and both sort parses; the second
+reaches the header, the two tables it draws, and the matrix parse alone.
 
 `backend_card.py` and `coverage_card.py` hold two more panels drawn as markup rather than as a figure, each with the
 arithmetic behind its own. The first answers what work on one backend is worth, in three readings an
@@ -2219,8 +2219,8 @@ cells the third and the matrix cells the fourth are read across arrive as — fo
 name
 `analytics/query/skill_models.py` for that cell, since the column vocabulary is typed by what it orders, the parse and
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
-column set alone and so names nothing outside — and the two card owners three of those panels are reported on name
-that same module, for the window's worth of adoption cells, cohort rows, and matrix cells they are handed; those
+column set alone and so names nothing outside — and the two cards those panels are reported on name it as well, for
+the cohort rows and matrix cells both are handed and the adoption cells only the first is; those
 are the only things
 any of the thirty-seven reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
@@ -2291,8 +2291,8 @@ run cannot come apart. `_dashboard_widget_skills.py` is the widget-side site bes
 card, the caption under it, the invocation fold, the trigger-rate card, and its own fold to the two panel owners under
 the private spellings the page always imported them by, plus the notice the second of them answers an empty window
 with, under its own public one. The
-widget hub above it publishes the same six and no longer claims any of them, since the `__module__` stamp mutates the
-function and a claim there would move an owner's own render off the owner that defines it.
+widget hub above it republishes those six and claims none of them, since the `__module__` stamp mutates the function
+and a claim there would move an owner's own render off the owner that defines it.
 `dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
 are the charts owner's objects under the private spellings they were always imported by. Every chart family now names
