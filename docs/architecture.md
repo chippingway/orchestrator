@@ -585,6 +585,10 @@ orchestrator/
   dashboard_skill_matrix.py
                         stable surface in front of those five, publishing
                         every historical spelling and defining none of them
+  _dashboard_widget_skills.py
+                        historical import site for the card three of those
+                        tables are reported on and the trigger-rate one beside
+                        it, forwarding to the two skill-panel owners
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -829,7 +833,8 @@ orchestrator/
                         card, a banner, a tile, and a compact table are drawn
                         as, the four panels listed in that table — the last two
                         each split across the five owners a sortable one
-                        needs — and the two
+                        needs — the two cards three of those panels are
+                        reported on, and the two
                         that are markup rather than a figure, the figures the
                         rest are drawn as, and the
                         destination for what is left
@@ -897,6 +902,15 @@ orchestrator/
                         the tone a cohort that triggered nothing is drawn in
       skill_matrix.py   the panel those cells are sorted into, and the notice
                         a window with no catalog-backed cell renders instead
+      skill_panel.py    the card the adoption table leads and the two
+                        invocation views fold collapsed under, the single
+                        notice a window with no run at all is answered with,
+                        and the caption a window nobody adopted anything in is
+                        qualified by rather than nagged over
+      skill_trigger_panel.py
+                        the trigger-rate card a caller reaching past that one
+                        still gets, its own notice and enable-tracking prompt,
+                        and the matrix folded collapsed beneath it
       windows.py        the half-open UTC window a run reports over, the
                         presets that name one, and the clamp that keeps a
                         preset inside the data extent
@@ -2000,6 +2014,27 @@ cohort's own run total stays plain — that total is the denominator the zero is
 all it renders a notice naming the opt-in switch, since a quiet panel on a page opened to find out what ran would
 otherwise read as a bug rather than as tracking nobody turned on.
 
+`skill_panel.py` and `skill_trigger_panel.py` are what three of those four tables are reported on. The first holds the
+card the page draws: the adoption table leads it, because that is the primary metric, and the aggregate rates and the
+trigger matrix fold into a collapsed expander beneath, so a per-run diagnostic cannot be read as the headline. One
+notice covers the whole card — a window with no `agent_exit` row has nothing for any of the three to report, so it is
+answered once rather than three times. The caption under the adoption table is the reading decided here, and it exists
+to keep the page from recommending a switch that is already on: a present row is itself evidence that something was
+recorded, so a window whose cells are all zero is captioned as the genuine 0% it is, naming whichever of availability,
+loads, or incidental references the window actually carried so an operator can match it against the columns above. A
+window with no cells at all is captioned nothing, since the table already renders the notice naming the switch and
+saying it twice would read as two separate problems. Whether the window carried adoption evidence is also what the
+fold beneath is handed, because the same question is asked one level down: no run triggering a skill is a genuine
+no-trigger once tracking is confirmed on, and a prompt to turn it on otherwise.
+
+`skill_trigger_panel.py` is the card that led the skill section before the adoption one did. Nothing in the render
+pipeline reaches it now; it stays whole — header, notice, aggregate rates, and the matrix folded under them — for a
+caller that names it, and its enable-tracking prompt is unconditional where the adoption card's is not, since a window
+of trigger rates carries no per-session evidence to tell a genuine no-trigger apart from tracking nobody turned on.
+Both owners are handed their `st` rather than reaching for one, so neither names Streamlit, and besides the row models
+each is typed against they reach only the card header, the three tables they draw, and the two sort parses those
+tables are ordered by.
+
 `backend_card.py` and `coverage_card.py` hold two more panels drawn as markup rather than as a figure, each with the
 arithmetic behind its own. The first answers what work on one backend is worth, in three readings an
 operator compares agents by: what a million tokens cost, what a run cost, and how much of the billable input the cache
@@ -2184,9 +2219,10 @@ cells the third and the matrix cells the fourth are read across arrive as — fo
 name
 `analytics/query/skill_models.py` for that cell, since the column vocabulary is typed by what it orders, the parse and
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
-column set alone and so names nothing outside; those
+column set alone and so names nothing outside — and the two card owners three of those panels are reported on name
+that same module, for the window's worth of adoption cells, cohort rows, and matrix cells they are handed; those
 are the only things
-any of the thirty-five reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the thirty-seven reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
 those — every value a cell reports is handed to it — the sparkline projection reaches nothing at all and the markup
 over it only that projection, the chrome around the strip only that markup — for the line a tile carries — the card
@@ -2251,7 +2287,13 @@ its panel and empty notice to the five owners that hold each. `dashboard_skill_m
 those five, publishing all twenty-one names under the spellings a page always imported them by — the column model,
 the column set, the numeric keys, the sort keys, the header state, the row view, and the panel rules under a leading
 underscore the leaves spell bare — and defining none of them, so a click an operator makes and the order the owners
-run cannot come apart. `dashboard_charts_base.py` is one too: the placeholder, the three
+run cannot come apart. `_dashboard_widget_skills.py` is the widget-side site beside those two, forwarding the adoption
+card, the caption under it, the invocation fold, the trigger-rate card, and its own fold to the two panel owners under
+the private spellings the page always imported them by, plus the notice the second of them answers an empty window
+with, under its own public one. The
+widget hub above it publishes the same six and no longer claims any of them, since the `__module__` stamp mutates the
+function and a claim there would move an owner's own render off the owner that defines it.
+`dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
 are the charts owner's objects under the private spellings they were always imported by. Every chart family now names
 that owner directly, so nothing in the tree reads them off this site; it stays for the callers outside it that do.

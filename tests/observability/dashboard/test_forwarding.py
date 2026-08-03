@@ -81,6 +81,8 @@ _SUMMARY_HTML_LEAF = "orchestrator._dashboard_summary_html"
 
 _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
+_WIDGET_SKILLS_LEAF = "orchestrator._dashboard_widget_skills"
+
 # `from __future__ import annotations` opens every module in the repository and
 # binds the compiler directive under a public name. It is a compilation
 # instruction rather than something the theme answers for, so the surface check
@@ -150,6 +152,10 @@ _SKILL_MATRIX_HEADERS = f"{_PACKAGE}.skill_matrix_headers"
 _SKILL_MATRIX_ROWS = f"{_PACKAGE}.skill_matrix_rows"
 
 _SKILL_MATRIX_SORT = f"{_PACKAGE}.skill_matrix_sort"
+
+_SKILL_PANEL = f"{_PACKAGE}.skill_panel"
+
+_SKILL_TRIGGER_PANEL = f"{_PACKAGE}.skill_trigger_panel"
 
 _SKILL_TRIGGER_TABLE = f"{_PACKAGE}.skill_trigger_table"
 
@@ -782,6 +788,38 @@ _HUB_SKILL_MATRIX_NAMES = (
     ),
 )
 
+# The two cards those three skill tables are reported on, and the caption the
+# first of them qualifies a quiet window with. The page draws only the adoption
+# card, so the trigger-rate pair beside it is what a caller reaching past the
+# page still lands on -- and both have to be the owners' own objects, or the
+# panel an operator reads and the one a fix under the owner reaches would be
+# two different renders of the same window.
+_SKILL_PANEL_NAMES = (
+    ("NO_AGENT_EXITS_MESSAGE", _SKILL_TRIGGER_PANEL, "NO_AGENT_EXITS_MESSAGE"),
+    ("_render_skill_adoption", _SKILL_PANEL, "render_skill_adoption"),
+    (
+        "_render_skill_invocation_diagnostics",
+        _SKILL_PANEL,
+        "render_skill_invocation_diagnostics",
+    ),
+    (
+        "_render_skill_matrix_expander",
+        _SKILL_TRIGGER_PANEL,
+        "render_skill_matrix_expander",
+    ),
+    ("_render_skill_triggers", _SKILL_TRIGGER_PANEL, "render_skill_triggers"),
+    (
+        "_skill_adoption_evidence_caption",
+        _SKILL_PANEL,
+        "skill_adoption_evidence_caption",
+    ),
+    (
+        "_skill_adoption_zero_caption",
+        _SKILL_PANEL,
+        "skill_adoption_zero_caption",
+    ),
+)
+
 # The per-day lines drawn under three of those tiles, and the two reductions
 # the tiles themselves are totalled by. A second token total is the sharpest
 # copy here: a window counts all four token columns, so a line reduced anywhere
@@ -925,8 +963,9 @@ _FILTER_NAMES = (
 # use reported here the rate the panel beneath them shows, an adoption
 # table or a matrix headed, ordered, projected, or assembled here the one an
 # operator's click reorders, a window's days placed or written here the
-# line a tile above them carries, and a window bannered, restated, or annotated
-# here the chrome that strip of tiles sits in,
+# line a tile above them carries, a window bannered, restated, or annotated
+# here the chrome that strip of tiles sits in, and a skill card rendered here
+# the one an operator reads three of those tables on,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -981,6 +1020,7 @@ _FORWARDED_MODULES = MappingProxyType({
     _BACKEND_CARD_LEAF: _BACKEND_CARD_NAMES,
     _COVERAGE_CARD_LEAF: _COVERAGE_CARD_NAMES,
     _CARD_HUB: _HUB_CARD_NAMES,
+    _WIDGET_SKILLS_LEAF: _SKILL_PANEL_NAMES,
 })
 
 # The hub the page and the compatibility facade in front of it read the state
@@ -1063,7 +1103,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # leaves beneath them including the card-markup one, the two sparkline
         # ones, the chrome one beside them, and the
         # shared-table, issue-table, skill-trigger, five adoption, and five
-        # matrix ones, and the KPI
+        # matrix ones, the widget leaf the two skill cards are drawn
+        # through, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only
         # compares the names the module was asked for. The card hub is held to
