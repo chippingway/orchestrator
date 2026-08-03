@@ -1,56 +1,27 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Recent-run table and per-issue drill-down widgets."""
-from __future__ import annotations
+"""The per-issue drill-down, and the historical site for the list above it.
 
-from datetime import timedelta
-from typing import Any
+The recent-run table this module is named for is the dashboard owner's own
+object: the expander a window's `agent_exit` rows are listed inside, and the
+notice a window with none renders instead. A caller that names this module
+gets those rather than a copy, so the listing a page draws and the columns the
+owner projects cannot come apart. The per-issue trace beneath the listing is
+still built here.
+"""
+from __future__ import annotations
 
 from orchestrator.analytics import read as analytics_read
 from orchestrator import _dashboard_widget_models as models
-from orchestrator.dashboard_state import shift_ts
-from orchestrator.observability.dashboard import filter_binding, scoped_reads
+from orchestrator.observability.dashboard import (
+    filter_binding,
+    recent_runs,
+    scoped_reads,
+)
 
 
-NO_AGENT_EXITS_MESSAGE = "No `agent_exit` rows match the current filters."
-
-
-def _render_recent_runs(
-    *,
-    st: Any,
-    pd: Any,
-    agent_exits: Any,
-    tz_offset_choice: int,
-) -> None:
-    """Render recent agent runs in the selected timezone."""
-    with st.expander("Recent agent runs", expanded=False):
-        if agent_exits:
-            timestamp_offset = timedelta(hours=int(tz_offset_choice))
-            exit_frame = pd.DataFrame(
-                [
-                    {
-                        "ts": shift_ts(exit_row.ts, timestamp_offset),
-                        "repo": exit_row.repo,
-                        "issue": exit_row.issue,
-                        "stage": exit_row.stage,
-                        "agent": exit_row.agent_role,
-                        "backend": exit_row.backend,
-                        "duration (s)": exit_row.duration_s,
-                        "exit": exit_row.exit_code,
-                        "timed out": exit_row.timed_out,
-                        "round": exit_row.review_round,
-                        "retry": exit_row.retry_count,
-                        "input tokens": exit_row.input_tokens,
-                        "output tokens": exit_row.output_tokens,
-                        "cost (USD)": exit_row.cost_usd,
-                        "cost source": exit_row.cost_source,
-                    }
-                    for exit_row in agent_exits
-                ]
-            )
-            st.dataframe(exit_frame, use_container_width=True)
-        else:
-            st.info(NO_AGENT_EXITS_MESSAGE)
+NO_AGENT_EXITS_MESSAGE = recent_runs.NO_AGENT_EXITS_MESSAGE
+_render_recent_runs = recent_runs.render_recent_runs
 
 
 def _render_drilldown_view(

@@ -81,6 +81,8 @@ _SUMMARY_HTML_LEAF = "orchestrator._dashboard_summary_html"
 
 _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
+_WIDGET_RUNS_LEAF = "orchestrator._dashboard_widget_runs"
+
 _WIDGET_SKILLS_LEAF = "orchestrator._dashboard_widget_skills"
 
 # `from __future__ import annotations` opens every module in the repository and
@@ -128,6 +130,8 @@ _PALETTE = f"{_PACKAGE}.palette"
 _READ_MODE = f"{_PACKAGE}.read_mode"
 
 _READ_PLAN = f"{_PACKAGE}.read_plan"
+
+_RECENT_RUNS = f"{_PACKAGE}.recent_runs"
 
 _ROLLUPS = f"{_PACKAGE}.rollups"
 
@@ -788,6 +792,10 @@ _HUB_SKILL_MATRIX_NAMES = (
     ),
 )
 
+# The notice a window with no `agent_exit` row is answered with, spelled once
+# because two owners under the package publish it under this one public name.
+_NO_AGENT_EXITS = "NO_AGENT_EXITS_MESSAGE"
+
 # The two cards those three skill tables are reported on, and the caption the
 # first of them qualifies a quiet window with. The page draws only the adoption
 # card, so the trigger-rate pair beside it is what a caller reaching past the
@@ -795,7 +803,7 @@ _HUB_SKILL_MATRIX_NAMES = (
 # panel an operator reads and the one a fix under the owner reaches would be
 # two different renders of the same window.
 _SKILL_PANEL_NAMES = (
-    ("NO_AGENT_EXITS_MESSAGE", _SKILL_TRIGGER_PANEL, "NO_AGENT_EXITS_MESSAGE"),
+    (_NO_AGENT_EXITS, _SKILL_TRIGGER_PANEL, _NO_AGENT_EXITS),
     ("_render_skill_adoption", _SKILL_PANEL, "render_skill_adoption"),
     (
         "_render_skill_invocation_diagnostics",
@@ -1023,6 +1031,18 @@ _FORWARDED_MODULES = MappingProxyType({
     _WIDGET_SKILLS_LEAF: _SKILL_PANEL_NAMES,
 })
 
+# The run listing under those panels, as the widget leaf still publishes it:
+# the render a page draws the expander with, and the notice a window with no
+# `agent_exit` row renders instead. The leaf is listed apart from the ones
+# above because it still builds the per-issue drill-down beneath that listing,
+# so it is held to resolving what it forwards rather than to defining nothing.
+_PARTLY_FORWARDED_MODULES = MappingProxyType({
+    _WIDGET_RUNS_LEAF: (
+        (_NO_AGENT_EXITS, _RECENT_RUNS, _NO_AGENT_EXITS),
+        ("_render_recent_runs", _RECENT_RUNS, "render_recent_runs"),
+    ),
+})
+
 # The hub the page and the compatibility facade in front of it read the state
 # off. It keeps the two historical aliases for the inline presets and the four
 # private spellings a caller reached it for, so those are pinned beside the
@@ -1120,6 +1140,19 @@ class ForwardedFlatModuleTest(unittest.TestCase):
             )
             with self.subTest(module=module_name):
                 self.assertEqual(defined, ())
+
+
+class PartlyForwardedLeafTest(unittest.TestCase):
+    """A leaf that kept a renderer of its own forwards the moved one."""
+
+    def test_each_name_resolves_to_the_owner(self) -> None:
+        for module_name, forwarded in _PARTLY_FORWARDED_MODULES.items():
+            for name, owner_name, attribute in forwarded:
+                with self.subTest(module=module_name, name=name):
+                    self.assertIs(
+                        getattr(import_module(module_name), name),
+                        getattr(import_module(owner_name), attribute),
+                    )
 
 
 class ForwardedStateHubTest(unittest.TestCase):

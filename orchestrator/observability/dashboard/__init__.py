@@ -78,6 +78,11 @@ is also what the fold beneath is handed, to tell a genuine no-trigger from
 tracking nobody turned on. The second is the card the section led with before
 that one and is kept for a caller that names it: its own notice, its
 unconditional prompt to enable tracking, and its own fold-out matrix.
+``recent_runs`` is the listing under those four panels rather than a fifth in
+that table: the rows behind the readings above it, projected into the columns
+one run is scanned by and the offset the sidebar picked, drawn in the collapsed
+expander the page ends on, and the notice a window with no `agent_exit` row
+renders in place of an empty frame.
 Two panels are markup of their own rather than a figure: ``backend_card``
 for what a run on one backend is worth and the card the three readings behind
 it are laid out on, and ``coverage_card`` for the share of a window's spend the
