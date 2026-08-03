@@ -4,25 +4,25 @@
 
 A sparkline is written as markup rather than asked of Plotly: it is one
 polyline and one filled path in a box a KPI tile has room for, so a page that
-drew four of them as figures would pay for four charts to render a shape with
-no axis, legend, or hover in it. Both strings are built from a single
-projection, because they trace the same days and differ only in how they end
--- computing them apart is where a tint could start shading a line the tile
-above it does not show.
+drew its three as figures would pay for three charts to render a shape with no
+axis, legend, or hover in it. Both strings are built from a single projection,
+because they trace the same days and differ only in the two points that close
+the second one -- computing them apart is where a tint could start shading a
+line the tile above it does not show.
 
-The filled path closes on the baseline the points were laid out above rather
-than on the window's own lowest day, so the tint under every tile reaches the
-bottom of its box and four tiles read as one strip. A window that projects to
-no points is answered with an empty box of the requested size: the tile keeps
-the room the drawn line would have taken, so a strip whose windows are not all
-alike still lines up.
+Those two points sit on the bottom edge of the box, which is the line the
+window's own lowest day is drawn on, so the tint sits under the stroke rather
+than beside it however the window moved. A window that projects to no points
+is answered with an empty box of the requested size: the tile keeps the room a
+drawn line would have taken, so a strip whose windows are not all alike still
+lines up.
 
 The keyword surface a caller reaches this through -- `values`, `color`, `w`,
 and `h` -- is bound as an explicit signature rather than spelled out as
-parameters, because two of those names are shorter than a readable parameter
-may be here while the calls that pass them predate that rule. The renderer
-underneath takes one request object, so what a caller passes is bound, applied,
-and rendered without either spelling constraining the other.
+parameters, because two of those names are shorter than a parameter may be
+spelled here and the historical site still answers a call that names them. The
+renderer underneath takes one request object, so what a caller passes is
+bound, applied, and rendered without either spelling constraining the other.
 """
 from __future__ import annotations
 
