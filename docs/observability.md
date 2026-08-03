@@ -1422,8 +1422,9 @@ divided through one guard so a window a backend barely ran in reads zero rather 
 for how much of a window's spend the parser could price, sized by token share whenever the window carries any and by
 run share only when it does not, drawn as one bar and the legend beneath it.
 `page_models.py` holds the seven frozen shapes a render carries between all of that: the caller's Streamlit, pandas,
-chart, and theme handles, the selections every read is narrowed by, the controls and page they open on, and what one
-load answers with. Streamlit reruns the whole script on every interaction, so a render is one pass and freezing those
+chart, and theme handles, the selections every read is narrowed by, the controls and page they open on, what one load
+answers with, and the rows, totals, and counts the paired repository-spend and run-health section is drawn from.
+Streamlit reruns the whole script on every interaction, so a render is one pass and freezing those
 shapes is what keeps a section from narrowing the window the sections beside it were handed. Two readings are derived
 rather than stored: the issue scope answers nothing until a repository is picked, since GitHub issue numbers repeat
 across repositories, and the window span is measured in whole days and floored at one, since it is the divisor of
@@ -1458,7 +1459,7 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_skill_trigger_table.py`, `_dashboard_adoption_columns.py`, `_dashboard_adoption_sort.py`,
 `_dashboard_adoption_headers.py`, `_dashboard_adoption_rows.py`, `_dashboard_adoption_render.py`,
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
-`_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`, and
+`_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`,
 `_dashboard_widget_skills.py`, and `_dashboard_widget_models.py`
 forward each historical name to the owner's own object. `_dashboard_widget_runs.py` forwards the run listing and its
 empty-window notice the same way while still building the per-issue drill-down beneath them, and

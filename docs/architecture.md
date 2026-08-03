@@ -961,11 +961,13 @@ orchestrator/
                         spinner over the pair, the banner and stop a failed
                         read is answered with, and the line a completed load
                         is measured by
-      page_models.py    the seven frozen shapes that render is threaded
+      page_models.py    the seven frozen shapes one render is threaded
                         through: the caller's module handles, the selections
                         every read is narrowed by together with the issue
                         scope and window span read off them, the controls and
-                        page they open on, and what one load answers with
+                        page they open on, what one load answers with, and the
+                        rows, totals, and counts the paired repository-spend
+                        and run-health section is drawn from
       rollups.py        the seven reads a headline or lifecycle section is
                         drawn from, the cap the run list among them is read
                         under, and the ranking depth the spend table borrows
@@ -1867,7 +1869,10 @@ keeps that true through a pipeline several calls deep. The filter shape is the o
 stored, and both are decisions rather than conveniences: the issue scope answers nothing until a repository is picked,
 because GitHub issue numbers repeat across repositories and a number typed while every repo is selected would open a
 drill-down over unrelated runs, and the window span is measured in whole days and floored at one, since it is what
-per-day rates are divided by and a window opened and closed on the same date would otherwise divide by zero. The
+per-day rates are divided by and a window opened and closed on the same date would otherwise divide by zero. The last
+of the seven is the odd one out: the paired repository-spend and run-health section is the only one drawn from four
+reads at once, so it is handed a shape of its own rather than the positional arguments a repo list and a throughput
+series could be swapped between. The
 vocabulary those fields are annotated in is imported at runtime rather than for a type checker alone: postponed
 evaluation leaves an annotation as text, and `get_type_hints` resolves that text in the globals of the module the
 class names.
