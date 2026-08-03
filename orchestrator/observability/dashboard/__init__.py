@@ -43,6 +43,15 @@ are painted by, and the row each issue is reduced to and rendered as.
 ``skill_trigger_table`` is the second: the six columns a cohort's skill use is
 reported in, the busiest rate in the table its bar is drawn as a share of, and
 the label a cohort the sink named no role or backend for is read under.
+``skill_matrix`` is the fourth, and the only one an operator can reorder, so it
+arrives split by what a click moves: ``skill_matrix_columns`` for the seven
+columns it is read across and the two query parameters a heading writes,
+``skill_matrix_sort`` for the parse those parameters are read back through and
+the orders they select, ``skill_matrix_headers`` for the header row each
+heading is drawn as a sort control in, ``skill_matrix_rows`` for what one
+`(repo, role, backend, skill)` cell says, and ``skill_matrix`` itself for the
+sorted panel and the notice a window with no catalog-backed cell renders
+instead.
 Two panels are markup of their own rather than a figure: ``backend_card``
 for what a run on one backend is worth and the card the three readings behind
 it are laid out on, and ``coverage_card`` for the share of a window's spend the
