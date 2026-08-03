@@ -553,6 +553,10 @@ orchestrator/
                         historical import site for the most-expensive-issues
                         panel drawn in that table, forwarding to the
                         issue-table owner
+  _dashboard_skill_trigger_table.py
+                        historical import site for the aggregate
+                        skill-trigger panel beside it, forwarding to the
+                        skill-trigger-table owner
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -820,6 +824,11 @@ orchestrator/
                         costliest issues are ranked into, the rules their
                         in-row bars and status pills are painted by, and the
                         readings one issue is reduced to and rendered as
+      skill_trigger_table.py
+                        the second: the six columns a cohort's skill use is
+                        reported in, the busiest rate in the table its bar is
+                        drawn as a share of, and the label a category the sink
+                        left empty is read under
       windows.py        the half-open UTC window a run reports over, the
                         presets that name one, and the clamp that keeps a
                         preset inside the data extent
@@ -1816,6 +1825,17 @@ since the column answers whether the issue needs looking at rather than how many
 repository naming a row arrives off the sink, so it is escaped into the markup like every other value a panel here
 is handed.
 
+`skill_trigger_table.py` is the second of the four, holding the six columns each `(role, backend)` cohort's skill use
+is reported in. A rate is drawn twice there as well — as the percentage and as a bar beside it — and that bar is a
+share of the busiest cohort in this table rather than of every run in the window, so a window where every cohort is
+quiet still reads as a comparison rather than as a row of stubs; a window where none of them triggered anything has no
+busiest cohort to be a share of, so the ranking divides by one and every bar renders empty rather than the panel
+raising on a page opened to find out that nothing was tracked. A cohort the sink recorded no role or backend for is
+labelled `unknown` rather than left blank, matching the bucket the read groups a NULL under, because a category this
+panel drops is one an operator would read as never having run — and the row projections behind the two skill matrices
+reach that label through the HTML surface above this owner, so all three tables bucket a missing category the same
+way. Both categories arrive off the sink, so both are escaped into the markup.
+
 `backend_card.py` and `coverage_card.py` hold two more panels drawn as markup rather than as a figure, each with the
 arithmetic behind its own. The first answers what work on one backend is worth, in three readings an
 operator compares agents by: what a million tokens cost, what a run cost, and how much of the billable input the cache
@@ -2027,10 +2047,14 @@ assembly the hand-rolled panels are drawn by, and the bar width, short repositor
 amount a cell reports, under the private spellings they were always imported by. `_dashboard_issue_table.py` is the
 one beside it, forwarding the column set and panel rules under the public spellings they were always imported by and
 the row view, the reduction into it, the two cell readings, the row, and the ranking under their private ones.
+`_dashboard_skill_trigger_table.py` is the third, forwarding its own column set, panel rules, and unknown-category
+label under the public spellings they were always imported by and the cohort row and the panel under their private
+ones.
 `dashboard_html.py` is the
-surface in front of both, publishing those seven table names and these eight beside the topbar, filter meta, KPI
-strip, sparkline, delta pill, and skill-trigger table it reaches through the leaves named for each — the columns and
-rules under a leading underscore the leaf spells bare — and defining nothing of its own, so a panel and
+surface in front of all three, publishing those seven table names, the issues panel's eight, and the skill panel's
+five beside the topbar, filter meta, KPI strip, sparkline, and delta pill it reaches through the leaves named for
+each — the columns, rules, and label under a leading underscore the leaves spell bare — and defining nothing of its
+own, so a panel and
 the owner cannot be drawn by two different tables. `dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
 are the charts owner's objects under the private spellings they were always imported by. Every chart family now names

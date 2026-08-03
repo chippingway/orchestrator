@@ -40,6 +40,9 @@ short repository name, missing count, and unpriced amount a cell reports.
 ``issue_table`` is the first of those four panels: the six columns a window's
 costliest issues are ranked into, the rules their in-row bars and status pills
 are painted by, and the row each issue is reduced to and rendered as.
+``skill_trigger_table`` is the second: the six columns a cohort's skill use is
+reported in, the busiest rate in the table its bar is drawn as a share of, and
+the label a cohort the sink named no role or backend for is read under.
 Two panels are markup of their own rather than a figure: ``backend_card``
 for what a run on one backend is worth and the card the three readings behind
 it are laid out on, and ``coverage_card`` for the share of a window's spend the
