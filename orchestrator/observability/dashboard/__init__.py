@@ -92,6 +92,14 @@ Two panels are markup of their own rather than a figure: ``backend_card``
 for what a run on one backend is worth and the card the three readings behind
 it are laid out on, and ``coverage_card`` for the share of a window's spend the
 parser could price, drawn as one bar and the legend under it.
+``page_models`` is what a render carries between all of those: the seven frozen
+shapes threaded from the controls at the top of the page to the last panel on
+it -- the caller's own Streamlit, pandas, chart, and theme handles, the
+selections every read is narrowed by together with the issue scope and window
+span read off them, the controls and page they open on, and what one load
+answers with. ``render_config`` is the one thing every figure below is handed
+beside itself: the hover toolbar switched off once for the whole page rather
+than at each call site.
 What those reads
 are then drawn as arrives under ``charts``, where ``primitives`` holds what
 every figure family is built out of -- the placeholder a window holding no

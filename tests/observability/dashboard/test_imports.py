@@ -52,6 +52,8 @@ _KPI_STRIP_OWNER = "kpi_strip"
 
 _LAYOUT_OWNER = "layout"
 
+_PAGE_MODELS_OWNER = "page_models"
+
 _PALETTE_OWNER = "palette"
 
 _READ_MODE_OWNER = "read_mode"
@@ -59,6 +61,8 @@ _READ_MODE_OWNER = "read_mode"
 _READ_PLAN_OWNER = "read_plan"
 
 _RECENT_RUNS_OWNER = "recent_runs"
+
+_RENDER_CONFIG_OWNER = "render_config"
 
 _ROLLUPS_OWNER = "rollups"
 
@@ -128,10 +132,12 @@ _OWNERS = (
     _KPI_SERIES_OWNER,
     _KPI_STRIP_OWNER,
     _LAYOUT_OWNER,
+    _PAGE_MODELS_OWNER,
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
     _READ_PLAN_OWNER,
     _RECENT_RUNS_OWNER,
+    _RENDER_CONFIG_OWNER,
     _ROLLUPS_OWNER,
     _SCOPED_READS_OWNER,
     _SKILL_ADOPTION_OWNER,
@@ -186,13 +192,17 @@ _OWNERS = (
 # that one still gets, weigh
 # one backend's spend against the
 # tokens and runs behind it, size a window's
-# priced share into one bar, or read one of the runs under all of them back as
-# the columns it is scanned by is a
+# priced share into one bar, read one of the runs under all of them back as
+# the columns it is scanned by, or carry what a render was narrowed to from
+# the controls at the top of the page down to those panels is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
-# bound and the cache's tri-state -- could disagree. Two owners report nothing
+# bound and the cache's tri-state -- could disagree. Three owners report
+# nothing
 # because the check reads `__module__`, which only a class or a function
 # carries: the geometry owner's whole surface is its measurements and the two
-# font stacks, and the stylesheet owner's is one string. The palette's chrome
+# font stacks, the stylesheet owner's is one string, and the render-config
+# owner's is the single mapping every figure is drawn under. The palette's
+# chrome
 # colors and seven dimension maps, the preset vocabulary the window owner
 # decides together with the three of those the control owner beside it offers
 # inline, the read-mode owner's knob name, truthy spellings, worker cap,
@@ -319,6 +329,15 @@ _SURFACES = MappingProxyType({
         "kpi_totals",
     ),
     _LAYOUT_OWNER: ("base_layout",),
+    _PAGE_MODELS_OWNER: (
+        "DashboardControls",
+        "DashboardFilters",
+        "DashboardKpis",
+        "DashboardModules",
+        "DashboardPage",
+        "LoadedDashboard",
+        "ReliabilityPanelData",
+    ),
     _PALETTE_OWNER: ("color_for",),
     _READ_MODE_OWNER: (
         "dashboard_parallel_reads_enabled",
@@ -334,6 +353,7 @@ _SURFACES = MappingProxyType({
         "widget_task",
     ),
     _RECENT_RUNS_OWNER: ("recent_run_row", "render_recent_runs"),
+    _RENDER_CONFIG_OWNER: (),
     _ROLLUPS_OWNER: (
         "read_prev_kpi",
         "read_recent_agent_exits",
@@ -464,8 +484,9 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
-# all but the KPI one, the two widget leaves the skill panels and the run
-# listing are reached through, which sit under the widget hub instead, and the
+# all but the KPI one, the three widget leaves the skill panels, the run
+# listing, and the page state are reached through, which sit under the widget
+# hub instead, and the
 # two the filter bar is reached through, which sit under no hub at all.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
@@ -503,6 +524,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_summary_html",
     "orchestrator._dashboard_table_html",
+    "orchestrator._dashboard_widget_models",
     "orchestrator._dashboard_widget_runs",
     "orchestrator._dashboard_widget_skills",
     "orchestrator._dashboard_windows",
@@ -537,7 +559,10 @@ _COMPATIBILITY_SITES = (
 # above all three of those tables are handed a window's worth of each -- the
 # per-backend and per-cost-source rows the two card owners weigh and size, and
 # the run rows the listing under all of them is projected from -- are the rows
-# those reads hand back.
+# those reads hand back. The page-state owner names two of those result
+# families for the same reason without issuing a read of its own: the extent a
+# page opened on and the window totals a comparison panel reports are what the
+# shapes it threads are typed against.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

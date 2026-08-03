@@ -597,6 +597,10 @@ orchestrator/
                         the per-issue drill-down, plus the historical import
                         site for the run listing above it, forwarding to the
                         recent-runs owner
+  _dashboard_widget_models.py
+                        historical import site for the seven shapes one page
+                        render is threaded through, forwarding to the
+                        page-state owner
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -846,7 +850,9 @@ orchestrator/
                         reported on, the listing of the
                         runs beneath them, and the two
                         that are markup rather than a figure, the figures the
-                        rest are drawn as, and the
+                        rest are drawn as and the defaults every one of them
+                        is handed, the shapes a whole render is threaded
+                        through, and the
                         destination for what is left
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
@@ -955,6 +961,11 @@ orchestrator/
                         spinner over the pair, the banner and stop a failed
                         read is answered with, and the line a completed load
                         is measured by
+      page_models.py    the seven frozen shapes that render is threaded
+                        through: the caller's module handles, the selections
+                        every read is narrowed by together with the issue
+                        scope and window span read off them, the controls and
+                        page they open on, and what one load answers with
       rollups.py        the seven reads a headline or lifecycle section is
                         drawn from, the cap the run list among them is read
                         under, and the ranking depth the spend table borrows
@@ -1020,6 +1031,9 @@ orchestrator/
                         sized by token volume wherever there is any and by run
                         count where there is none, drawn as one bar and the
                         legend beneath it
+      render_config.py  the Plotly configuration every one of those figures is
+                        handed: the hover toolbar switched off once for the
+                        whole page rather than per call site
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the frame the horizontal
                         cost families share, the generic spend ranking, the
@@ -1842,6 +1856,22 @@ operator's switch rather than a setting and a single grep has to be able to A/B 
 on the `orchestrator._dashboard_read_dispatch` logger, spelled out literally rather than derived from the module path,
 so the name an operator's level and handler selection is keyed on holds still while the module emitting it moves.
 
+`page_models.py` holds what a render carries between all of that and the panels below it. Streamlit reruns the whole
+script on every widget interaction, so a render is one pass with nothing kept between passes, and these seven frozen
+shapes are what that pass threads from the controls at the top of the page down to the last table on it. Frozen is the
+point: a section is handed the window, the filters, and the reads the sections beside it were handed, so a panel that
+could narrow its own copy is a page whose chart and whose table report different windows under one filter line. The
+module handles travel as one of those shapes rather than four parameters because nothing under `dashboard/` imports
+Streamlit, pandas, Plotly, or the theme — a render is handed the caller's own, and carrying them together is what
+keeps that true through a pipeline several calls deep. The filter shape is the one with readings derived rather than
+stored, and both are decisions rather than conveniences: the issue scope answers nothing until a repository is picked,
+because GitHub issue numbers repeat across repositories and a number typed while every repo is selected would open a
+drill-down over unrelated runs, and the window span is measured in whole days and floored at one, since it is what
+per-day rates are divided by and a window opened and closed on the same date would otherwise divide by zero. The
+vocabulary those fields are annotated in is imported at runtime rather than for a type checker alone: postponed
+evaluation leaves an annotation as text, and `get_type_hints` resolves that text in the globals of the module the
+class names.
+
 What that wave is made of arrives with the panels each reader is drawn for. Each is a window a page already decided,
 so the whole of an adapter is the query owner's read it names beside the binding that issues it — and naming that
 owner rather than the `analytics.read` facade in front of it is what keeps the page off a hop kept for callers that
@@ -2108,6 +2138,16 @@ naming a width the bar above it does not have. Both owners take the theme as a p
 here is handed one: a page resolves a single theme object and passes it down, so a card is tinted and set from what
 the chrome and charts around it were.
 
+`render_config.py` holds the one thing every figure below is handed alongside itself: the Plotly configuration the
+page draws each of them under. It is one mapping rather than a keyword spelled at each `st.plotly_chart`, because a
+hover toolbar switched off in every panel but one is chrome over exactly the card nobody remembered. What it switches
+off is that toolbar — camera, zoom, pan, autoscale — since this page is read rather than driven: every figure is
+already scoped to the window the filter bar picked, and a stray drag inside one leaves a card zoomed into a range no
+filter names and no control undoes short of a rerun. It is published as a read-only proxy because every call site
+shares it, and each hands Plotly a plain-dict copy — the proxy is not JSON-serializable, and copying is what keeps one
+panel's configuration from becoming the next panel's. Configuration is data, so the owner names neither Plotly nor
+Streamlit and a caller that needs only the switch pays for nothing else under the package.
+
 `charts/` is where what those reads answer becomes a figure, and `primitives.py` is the first owner in it: the pieces
 every family is drawn out of rather than a family of its own. The no-data placeholder is the sharpest of them. Plotly
 answers an empty series with a blank canvas rather than an error, so a card that read nothing and a card that failed
@@ -2276,14 +2316,18 @@ name
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
 column set alone and so names nothing outside — and the two cards those panels are reported on name it as well, for
 the cohort rows and matrix cells both are handed and the adoption cells only the first is, while the run listing
-beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects; those
+beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects, and the page-state
+owner names `analytics/query/overview_models.py` without issuing a read of its own, for the extent a page opened on
+and the window totals a comparison panel reports; those
 are the only things
-any of the forty reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the forty-two reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from — as do the two the filter bar is
 drawn out of, which take the presets they offer and the window they resolve from that window owner and each other, and
 are handed Streamlit rather than importing it — the table markup reaches not one of
-those — every value a cell reports is handed to it — the sparkline projection reaches nothing at all and the markup
-over it only that projection, the chrome around the strip only that markup — for the line a tile carries — the card
+those — every value a cell reports is handed to it — the sparkline projection and the Plotly configuration reach
+nothing at all, the markup
+over the projection only that projection, the chrome around the strip only that markup — for the line a tile carries
+— the card
 markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
 its own beside those query families -- the KPI owner whose ranking depth its spend table is cut to -- and the strip
@@ -2356,9 +2400,12 @@ the private spellings the page always imported them by, plus the notice the seco
 with, under its own public one. `_dashboard_widget_runs.py` forwards the same way without being one of these sites
 outright: the run listing and the notice a window with no `agent_exit` row renders are the recent-runs owner's own
 objects under the private spelling the page always imported them by, while the per-issue drill-down beneath that
-listing is still built there. The
-widget hub above both republishes those seven and claims none of them, since the `__module__` stamp mutates the
-function and a claim there would move an owner's own render off the owner that defines it.
+listing is still built there. `_dashboard_widget_models.py` is the third, defining nothing and forwarding the seven
+shapes a render is threaded through to the page-state owner under the private spellings the pipeline always imported
+them by. The
+widget hub above all three republishes those fourteen and the Plotly configuration it reads straight off the
+render-config owner, and claims none of them, since the `__module__` stamp mutates the object and a claim there would
+move an owner's own render or shape off the owner that defines it.
 `dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
 are the charts owner's objects under the private spellings they were always imported by. Every chart family now names

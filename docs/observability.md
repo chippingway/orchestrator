@@ -68,7 +68,9 @@ it and one kept for a caller reaching past that, and the listing of the runs und
 `dashboard/skill_adoption_headers.py`, `dashboard/skill_adoption_rows.py`, `dashboard/skill_adoption.py`,
 `dashboard/skill_matrix_columns.py`, `dashboard/skill_matrix_sort.py`, `dashboard/skill_matrix_headers.py`,
 `dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`, `dashboard/skill_panel.py`,
-`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`), the
+`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`), the seven frozen shapes one render of that page is
+threaded through and the Plotly configuration each of its figures is handed (`dashboard/page_models.py`,
+`dashboard/render_config.py`), the
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
@@ -1293,7 +1295,8 @@ resolves to the one object its owner defines. Where a patch has to land is a sep
 call path rather than the alias: the page pipeline reaches the staged plan and the wave dispatch on
 `observability/dashboard/`, so a test intercepts those with `patch.object(read_plan | dispatch, ...)`, while
 `patch.object(dashboard, ...)` still intercepts the page renderers and `PLOTLY_CONFIG` the pipeline resolves through
-the facade at call time. A card builder is the one kind of name on that path a patch must not follow to the owner,
+the facade at call time — the mapping that alias lands on is `render_config`'s own, and the shapes the pipeline
+threads are `page_models`'. A card builder is the one kind of name on that path a patch must not follow to the owner,
 and the most-expensive-issues and skill-trigger panels are bound the same way. Every
 widget section binds the header, banner stack, reliability strip, efficiency card, and coverage bar by name at import
 (`from orchestrator.dashboard_cards import _card_header_html`), and the cost section binds the issues table and the
@@ -1418,6 +1421,16 @@ is worth — the cost of a million tokens, the cost of a run, and the share of b
 divided through one guard so a window a backend barely ran in reads zero rather than raising — and `coverage_card.py`
 for how much of a window's spend the parser could price, sized by token share whenever the window carries any and by
 run share only when it does not, drawn as one bar and the legend beneath it.
+`page_models.py` holds the seven frozen shapes a render carries between all of that: the caller's Streamlit, pandas,
+chart, and theme handles, the selections every read is narrowed by, the controls and page they open on, and what one
+load answers with. Streamlit reruns the whole script on every interaction, so a render is one pass and freezing those
+shapes is what keeps a section from narrowing the window the sections beside it were handed. Two readings are derived
+rather than stored: the issue scope answers nothing until a repository is picked, since GitHub issue numbers repeat
+across repositories, and the window span is measured in whole days and floored at one, since it is the divisor of
+every per-day rate.
+`render_config.py` holds the Plotly configuration each figure below is handed — the hover toolbar switched off once
+for the whole page rather than per call site, published as a read-only proxy every call site copies before handing it
+to Plotly.
 What those reads are drawn as sits one level down, under `charts/`, where `primitives.py` holds what every figure
 family is built out of, `cost_layout.py` the frame the horizontal cost families share, `cost_horizontal.py` the
 generic spend ranking, `cost_repo.py` the per-repository one drawn through it, `cost_stage.py` the per-stage cache
@@ -1446,9 +1459,11 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_adoption_headers.py`, `_dashboard_adoption_rows.py`, `_dashboard_adoption_render.py`,
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
 `_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`, and
-`_dashboard_widget_skills.py`
+`_dashboard_widget_skills.py`, and `_dashboard_widget_models.py`
 forward each historical name to the owner's own object. `_dashboard_widget_runs.py` forwards the run listing and its
-empty-window notice the same way while still building the per-issue drill-down beneath them. None of the state, read,
+empty-window notice the same way while still building the per-issue drill-down beneath them, and
+`dashboard_widgets.py` forwards the Plotly configuration off the render-config owner and the seven page shapes through
+the leaf named for them while still claiming the render passes it stamps. None of the state, read,
 KPI-strip, skill-adoption, and
 skill-matrix hubs defines a name of
 its own, so none of them rewrites a
@@ -1456,7 +1471,8 @@ defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
 and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
 publishes are the card, backend, and coverage owners' own objects, and the widget hub leaves the six the two skill
-cards are reached by, plus the run listing beneath them, out of its own list for the same reason: a `__module__` stamp
+cards are reached by, the run listing beneath them, and the seven shapes a render is threaded through out of its own
+list for the same reason: a `__module__` stamp
 there would move one of
 them off the owner that defines it. Streamlit is never imported in these
 helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
@@ -1709,7 +1725,11 @@ republishes the six without claiming any of them. The listing under all four pan
 `observability/dashboard/recent_runs.py` — the columns one run
 is scanned by, the offset its timestamp is read on, the collapsed expander it is drawn inside, and the notice a window
 with no `agent_exit` row renders instead — reached through `orchestrator/_dashboard_widget_runs.py`, which forwards
-those two names and builds the per-issue drill-down beneath them itself.
+those two names and builds the per-issue drill-down beneath them itself. What a whole render of that page is threaded
+through is `observability/dashboard/page_models.py` — the seven frozen shapes, with the issue scope and window span
+read off the filters among them — reached through `orchestrator/_dashboard_widget_models.py`, which defines nothing
+and forwards all seven under the private spellings the pipeline imported them by, and the Plotly configuration every
+figure it draws is handed is `observability/dashboard/render_config.py`, reached on the widget hub itself.
 
 **Theme.** The plotly-free theme lives under `orchestrator/observability/dashboard/`, split by what a value is.
 `palette.py` holds the chrome colors (cool gray `#f4f5f8` page, white cards, indigo accent, muted ink tints), the
