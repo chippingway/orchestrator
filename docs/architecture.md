@@ -557,6 +557,10 @@ orchestrator/
                         historical import site for the aggregate
                         skill-trigger panel beside it, forwarding to the
                         skill-trigger-table owner
+  _dashboard_sparkline_data.py / _dashboard_sparkline_html.py
+                        historical import sites for the line under a KPI tile
+                        and the SVG it is written as, forwarding to the two
+                        sparkline owners
   _dashboard_adoption_columns.py / _dashboard_adoption_sort.py
   _dashboard_adoption_headers.py / _dashboard_adoption_rows.py
   _dashboard_adoption_render.py
@@ -814,8 +818,9 @@ orchestrator/
                         comparison panel is and the three a skill panel is,
                         what one of those reads then runs on and is narrowed
                         by, the banners a window is interrupted with above all
-                        of them, the numbers it is summarized by beneath them
-                        and the strip those numbers are shown in, the markup a
+                        of them, the numbers it is summarized by beneath them,
+                        the strip those numbers are shown in and the line
+                        drawn under three of them, the markup a
                         card, a banner, a tile, and a compact table are drawn
                         as, the four panels listed in that table — the last two
                         each split across the five owners a sortable one
@@ -944,6 +949,16 @@ orchestrator/
       kpi_strip.py      the strip itself: what one is built from, the scalars a
                         window and the one before it are reduced to, and the
                         four display entries a page opens with
+      sparkline_points.py
+                        where each day of one of those lines sits in a box too
+                        narrow for an axis: the window's own range it is
+                        scaled to, the floor a window without one is clamped
+                        at, and the window that is left undrawn instead
+      sparkline_html.py the SVG that projection is written as: the polyline
+                        the line is stroked along, the fill closed on the
+                        baseline beneath it, the box a window with nothing to
+                        draw still holds, and the keyword surface a caller
+                        asks for one through
       card_html.py      the markup the banners and the run-health tiles are
                         drawn as, and the header every panel beneath them is
                         titled by: the hidden mark the stylesheet selects a
@@ -1843,6 +1858,25 @@ an operator could act on; the rework share falls back to zero the same way when 
 an unpriced window reports no rework rather than failing to draw the tile. The theme is handed in rather than
 imported, because the module a page renders through is the one whose formatters and hues a tile has to match.
 
+`sparkline_points.py` and `sparkline_html.py` are how one of those per-day lines reaches the tile above it. The box a
+tile has room for is too narrow for an axis, a tick, or a label, so the shape of the line is the whole reading — and
+what decides that shape is scaling the window to its own lowest and highest day rather than to zero, since a
+fortnight of spend that drifted by a percent would otherwise draw as a flat rule and read as a window nothing
+happened in. Two windows have no range to scale against, and they are answered differently. One whose days are all
+equal floors its span at an epsilon and settles along the baseline, rather than the projection dividing by zero.
+One with no days at all, or one whose days are every zero, is left undrawn: it would sit on that same baseline, so
+drawing it would let a window that never rose and a window that reported nothing say the same thing in one stroke.
+A day a read answered with a null is counted as a zero first, so a quiet day narrows the window it is scaled inside
+instead of dropping out of it. The rendering owner beside it writes that projection as markup rather than asking
+Plotly for it — four figures per page for a shape with no axis, legend, or hover would be the alternative — and
+writes both strings from the one projection, since the polyline the line is stroked along and the path the tint under
+it is filled from trace the same days and differ only in how they end. That fill closes on the baseline of the box
+rather than on the window's lowest day, so four tiles read as one strip; a window with nothing to draw still renders
+the empty box at the requested size, so the strip keeps its tiles lined up. The keyword surface a caller asks for one
+through — `values`, `color`, `w`, and `h` — is bound as an explicit signature rather than spelled as parameters,
+because two of those names are shorter than a readable parameter may be here while every call that passes them
+predates the rule.
+
 `card_html.py` is how the banners and the run-health tiles among those numbers reach the browser, and the header every
 panel below them is titled by. Each of the
 three is a string handed to `st.markdown(unsafe_allow_html=True)` whose class names are the ones `css.py` writes rules
@@ -2121,9 +2155,10 @@ name
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
 column set alone and so names nothing outside; those
 are the only things
-any of the thirty-two reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the thirty-four reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
-those — every value a cell reports is handed to it — the card markup names only the insight
+those — every value a cell reports is handed to it — the sparkline projection reaches nothing at all and the markup
+over it only that projection, the card markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
 its own beside those query families -- the KPI owner whose ranking depth its spend table is cut to -- and the strip
 owner names two: the series owner whose lines it draws under three of its tiles, and that same KPI owner, for the
@@ -2155,13 +2190,18 @@ one beside it, forwarding the column set and panel rules under the public spelli
 the row view, the reduction into it, the two cell readings, the row, and the ranking under their private ones.
 `_dashboard_skill_trigger_table.py` is the third, forwarding its own column set, panel rules, and unknown-category
 label under the public spellings they were always imported by and the cohort row and the panel under their private
-ones.
+ones. `_dashboard_sparkline_data.py` and `_dashboard_sparkline_html.py` are two more beside them, the first
+forwarding the span floor, the anchoring a window is projected through, the height and step one day is placed by, and
+the projection itself under the private spellings they were always imported by — with the path pair among them
+reaching the rendering owner that builds it — and the second the default box under its public spellings and the
+request, the two paths, the point rounding, the renderer, and the bound keyword surface under their private ones.
 `dashboard_html.py` is the
-surface in front of all three, publishing those seven table names, the issues panel's eight, and the skill panel's
-five beside the topbar, filter meta, KPI strip, sparkline, and delta pill it reaches through the leaves named for
+surface in front of all five, publishing those seven table names, the issues panel's eight, the skill panel's
+five, and the sparkline's twelve beside the topbar, filter meta, KPI strip, and delta pill it reaches through the
+leaves named for
 each — the columns, rules, and label under a leading underscore the leaves spell bare — and defining nothing of its
 own, so a panel and
-the owner cannot be drawn by two different tables.
+the owner cannot be drawn by two different tables, or one window's line scaled two ways.
 `_dashboard_adoption_columns.py`, `_dashboard_adoption_sort.py`, `_dashboard_adoption_headers.py`,
 `_dashboard_adoption_rows.py`, and `_dashboard_adoption_render.py` are five more beside them, forwarding the adoption
 table's column vocabulary and query parameters, its parse and two orders, its header row, its row projection, and its

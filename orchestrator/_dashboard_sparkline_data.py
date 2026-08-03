@@ -1,94 +1,25 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Sparkline scaling, point projection, and path models."""
+"""Historical import site for a sparkline's scaling and projection.
+
+The floor a flat window's span is clamped at, the anchoring one window is
+projected through, the height and step each of its days is placed by, and the
+projection itself are the dashboard owner's own objects. The pair of path
+strings beside them belongs to the rendering owner, since that is where both
+are written. A caller that names this module -- or the HTML surface above it
+-- gets those rather than a copy, so a line a page draws and one the owner
+projects cannot disagree about where a day sits.
+"""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Sequence
+from orchestrator.observability.dashboard import sparkline_html, sparkline_points
 
 
-_EPSILON = 1e-9
-
-
-def _sparkline_y(
-    sample: float,
-    *,
-    low: float,
-    span: float,
-    padding: int,
-    height: int,
-) -> float:
-    normalized = (sample - low) / span
-    drawable_height = height - padding * 2
-    return padding + (1 - normalized) * drawable_height
-
-
-@dataclass(frozen=True)
-class _SparklineLayout:
-    low: float
-    span: float
-    padding: int
-    height: int
-    step: float
-
-
-@dataclass(frozen=True)
-class _SparklinePaths:
-    polyline: str
-    area: str
-
-
-def _sparkline_step(width: int, padding: int, sample_count: int) -> float:
-    drawable_width = width - padding * 2
-    intervals = max(sample_count - 1, 1)
-    return drawable_width / intervals
-
-
-def _sparkline_layout(
-    series: Sequence[float],
-    *,
-    width: int,
-    height: int,
-) -> _SparklineLayout:
-    low = min(series)
-    padding = 2
-    return _SparklineLayout(
-        low=low,
-        span=max(max(series) - low, _EPSILON),
-        padding=padding,
-        height=height,
-        step=_sparkline_step(width, padding, len(series)),
-    )
-
-
-def _sparkline_point(
-    index: int,
-    sample: float,
-    layout: _SparklineLayout,
-) -> tuple[float, float]:
-    return (
-        layout.padding + index * layout.step,
-        _sparkline_y(
-            sample,
-            low=layout.low,
-            span=layout.span,
-            padding=layout.padding,
-            height=layout.height,
-        ),
-    )
-
-
-def _sparkline_points(
-    series: Sequence[float],
-    *,
-    width: int,
-    height: int,
-) -> list[tuple[float, float]]:
-    numbers = [float(sample or 0) for sample in series]
-    if not numbers or max(numbers) == min(numbers) == 0:
-        return []
-    layout = _sparkline_layout(numbers, width=width, height=height)
-    return [
-        _sparkline_point(index, sample, layout)
-        for index, sample in enumerate(numbers)
-    ]
+_EPSILON = sparkline_points.EPSILON
+_SparklineLayout = sparkline_points.SparklineLayout
+_SparklinePaths = sparkline_html.SparklinePaths
+_sparkline_y = sparkline_points.sparkline_y
+_sparkline_step = sparkline_points.sparkline_step
+_sparkline_layout = sparkline_points.sparkline_layout
+_sparkline_point = sparkline_points.sparkline_point
+_sparkline_points = sparkline_points.sparkline_points

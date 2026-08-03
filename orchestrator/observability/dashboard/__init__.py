@@ -30,7 +30,12 @@ the four numbers that window is summarized by beneath them. ``kpi_series`` and
 ``kpi_strip`` are how those numbers reach the page: the per-day spend, token,
 and resolved lines a sparkline is drawn from, and the four display entries a
 window's own aggregate, the one before it, and three of its first-wave reads
-are assembled into. ``card_html`` is the markup the banners and the run-health
+are assembled into. ``sparkline_points`` and ``sparkline_html`` are how one of
+those lines reaches a tile: where each day sits in a box too narrow for an axis
+-- scaled to the window's own range, floored where a window has none, and left
+undrawn where it reported nothing at all -- and the polyline and closed fill
+that projection is written as. ``card_html`` is the markup the banners and the
+run-health
 tiles among those numbers reach the browser as, together with the header every
 panel below them is titled by and the hidden mark ``css`` selects a card's
 container by, and ``tables`` is the markup beside it: the compact table the
