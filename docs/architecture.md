@@ -557,6 +557,16 @@ orchestrator/
                         historical import site for the aggregate
                         skill-trigger panel beside it, forwarding to the
                         skill-trigger-table owner
+  _dashboard_adoption_columns.py / _dashboard_adoption_sort.py
+  _dashboard_adoption_headers.py / _dashboard_adoption_rows.py
+  _dashboard_adoption_render.py
+                        historical import sites for the per-session adoption
+                        table, forwarding to the five skill-adoption owners
+                        that hold its columns, ordering, header row, row
+                        projection, and panel
+  dashboard_skill_adoption.py
+                        stable surface in front of those five, publishing
+                        every historical spelling and defining none of them
   _dashboard_matrix_columns.py / _dashboard_matrix_sort.py
   _dashboard_matrix_headers.py / _dashboard_matrix_rows.py
   _dashboard_matrix_render.py
@@ -842,11 +852,29 @@ orchestrator/
                         reported in, the busiest rate in the table its bar is
                         drawn as a share of, and the label a category the sink
                         left empty is read under
-      skill_matrix_columns.py
-                        the fourth arrives split by what a click moves: the
-                        seven columns it is read across, the key each is
+      skill_adoption_columns.py
+                        the third arrives split by what a click moves: the
+                        nine columns it is read across, the key each is
                         ordered by, and the two query parameters a heading
                         writes
+      skill_adoption_sort.py
+                        the parse those parameters are read back through and
+                        the two orders they select, including the
+                        repository-then-rate default
+      skill_adoption_headers.py
+                        the header row each heading is drawn as a sort control
+                        in, and what a click on one offers
+      skill_adoption_rows.py
+                        what one `(repo, role, backend, skill)` cell says: the
+                        undefined rate a skill nobody was offered reports, the
+                        real zero one nobody loaded does, and the two
+                        diagnostics counted apart from both
+      skill_adoption.py the panel those cells are sorted into, and the notice
+                        a window with no session evidence renders instead
+      skill_matrix_columns.py
+                        the fourth arrives split the same five ways: the
+                        seven columns it is read across, the key each is
+                        ordered by, and its own two query parameters
       skill_matrix_sort.py
                         the parse those parameters are read back through and
                         the two orders they select, including the
@@ -1862,16 +1890,35 @@ quiet still reads as a comparison rather than as a row of stubs; a window where 
 busiest cohort to be a share of, so the ranking divides by one and every bar renders empty rather than the panel
 raising on a page opened to find out that nothing was tracked. A cohort the sink recorded no role or backend for is
 labelled `unknown` rather than left blank, matching the bucket the read groups a NULL under, because a category this
-panel drops is one an operator would read as never having run — and the row projections behind the two skill matrices
-read that label off this owner, the trigger matrix's directly and the adoption one's through the HTML surface above
-it, so all three tables bucket a missing category the same way. Both categories arrive off the sink, so both are
+panel drops is one an operator would read as never having run — and the row projections behind the adoption table and
+the trigger matrix both read that label off this owner directly, so all three tables bucket a missing category the
+same way. Both categories arrive off the sink, so both are
 escaped into the markup.
 
-The invocation-level trigger matrix is the fourth of the four, and the only one an operator can reorder, so it arrives
-split by what a click moves rather than as one owner. `skill_matrix_columns.py` holds the vocabulary a click is
+The last two of the four are the ones an operator can reorder, so each arrives split by what a click moves rather than
+as one owner. The per-session adoption table is the third, and the page's primary skill metric: it counts by logical
+agent session rather than by run, so a session that reached for one skill a dozen times still counts once and a
+talkative run cannot outweigh a quiet one. `skill_adoption_columns.py` holds the vocabulary a click is expressed in:
+the nine columns, the key each is ordered by — the four naming ones compared case-insensitively — and the `adopt_sort`
+/ `adopt_dir` pair a heading writes, prefixed so the trigger matrix below it can carry its own selection in the same
+URL without either table reordering the other. Two of its five counts are diagnostics rather than the metric: a skill
+some session loaded without reporting it available, and a `SKILL.md` a run only mentioned in passing. They are columns
+of their own precisely so neither can be read into the rate beside them, and they are orderable like the rest because
+a window's incidental references are a finding an operator sorts to the top. `skill_adoption_sort.py` reads the pair
+back with the same tolerance for a stale link the matrix has, and defaults to repository ascending then adoption rate
+descending. `skill_adoption_headers.py` draws the row those clicks come from. `skill_adoption_rows.py` says what one
+cell is worth, and its job is keeping the two quiet cells apart: a skill no session was offered has no denominator, so
+its rate is undefined and reads as an em-dash, while one that was offered and loaded by nobody has a real `0%` — the
+offered-but-ignored finding the panel exists to surface. Both are toned down rather than dropped, as is every zero
+count beside them. `skill_adoption.py` assembles them, and renders a notice naming the opt-in switch for the one
+window with no session evidence at all, since a quiet panel would otherwise read as a bug rather than as tracking
+nobody turned on.
+
+The invocation-level trigger matrix is the fourth, split the same five ways. `skill_matrix_columns.py` holds the
+vocabulary a click is
 expressed in: the seven columns, the key each is ordered by — the four naming ones compared case-insensitively, so a
 repository an operator reads as one name does not split into two runs of rows over how the sink capitalized it — and
-the `mtx_sort` / `mtx_dir` pair a heading writes, prefixed so the adoption matrix above it can carry its own selection
+the `mtx_sort` / `mtx_dir` pair a heading writes, prefixed so the adoption table above it can carry its own selection
 in the same URL without either table reordering the other. `skill_matrix_sort.py` reads that pair back and answers
 with an order. The parameters are untrusted input, since a sort lives in the URL precisely so it can be shared: a
 column the vocabulary no longer offers, or a direction with no column beside it, degrades to the default rather than
@@ -2114,6 +2161,13 @@ five beside the topbar, filter meta, KPI strip, sparkline, and delta pill it rea
 each — the columns, rules, and label under a leading underscore the leaves spell bare — and defining nothing of its
 own, so a panel and
 the owner cannot be drawn by two different tables.
+`_dashboard_adoption_columns.py`, `_dashboard_adoption_sort.py`, `_dashboard_adoption_headers.py`,
+`_dashboard_adoption_rows.py`, and `_dashboard_adoption_render.py` are five more beside them, forwarding the adoption
+table's column vocabulary and query parameters, its parse and two orders, its header row, its row projection, and its
+panel and empty notice to the five owners that hold each. `dashboard_skill_adoption.py` is the surface in front of
+those five, publishing all twenty-three names under the spellings a page always imported them by — the column model, the
+column set, the numeric keys, the sort keys, the header state, the row view, and the panel rules under a leading
+underscore the leaves spell bare — and defining none of them.
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`, `_dashboard_matrix_headers.py`,
 `_dashboard_matrix_rows.py`, and `_dashboard_matrix_render.py` are five more beside them, forwarding the trigger
 matrix's column vocabulary and query parameters, its parse and two orders, its header row, its row projection, and

@@ -53,10 +53,12 @@ heights, aligned axes, traces, and hero figure
 `dashboard/charts/throughput.py`, `dashboard/charts/usage_bands.py`, `dashboard/charts/usage_series.py`,
 `dashboard/charts/usage_axis.py`, `dashboard/charts/usage_traces.py`, `dashboard/charts/usage.py`), the compact
 table the panels beside those figures are drawn as, the ranking of a window's costliest issues that is the first
-of them, the aggregate skill-trigger rates that are the second, and the invocation-level trigger matrix that is the
-fourth — split into the columns a click is expressed in, the parse and orders behind one, the header row it is
-clicked from, what one cell says, and the panel they assemble into
+of them, the aggregate skill-trigger rates that are the second, and the per-session adoption table and the
+invocation-level trigger matrix that are the last two — each split into the columns a click is expressed in, the parse
+and orders behind one, the header row it is clicked from, what one cell says, and the panel they assemble into
 (`dashboard/tables.py`, `dashboard/issue_table.py`, `dashboard/skill_trigger_table.py`,
+`dashboard/skill_adoption_columns.py`, `dashboard/skill_adoption_sort.py`,
+`dashboard/skill_adoption_headers.py`, `dashboard/skill_adoption_rows.py`, `dashboard/skill_adoption.py`,
 `dashboard/skill_matrix_columns.py`, `dashboard/skill_matrix_sort.py`, `dashboard/skill_matrix_headers.py`,
 `dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`), the
 trajectory viewer's whole read model — its file
@@ -1282,13 +1284,14 @@ call path rather than the alias: the page pipeline reaches the staged plan and t
 `observability/dashboard/`, so a test intercepts those with `patch.object(read_plan | dispatch, ...)`, while
 `patch.object(dashboard, ...)` still intercepts the page renderers and `PLOTLY_CONFIG` the pipeline resolves through
 the facade at call time. A card builder is the one kind of name on that path a patch must not follow to the owner,
-and the most-expensive-issues, skill-trigger, and trigger-matrix panels are bound the same way. Every
+and the most-expensive-issues, skill-trigger, adoption, and trigger-matrix panels are bound the same way. Every
 widget section binds the header, banner stack, reliability strip, efficiency card, and coverage bar by name at import
 (`from orchestrator.dashboard_cards import _card_header_html`), the cost and skill sections bind the issues table
-and the trigger-rate one the same way off the HTML hub, and the skill section binds the matrix and its sort parse off
-the skill-matrix hub, so what the page calls is the reference captured then
+and the trigger-rate one the same way off the HTML hub, and the skill section binds the adoption table and the matrix
+with their sort parses off the two skill hubs, so what the page calls is the reference captured then
 rather than whatever `card_html.py`, `backend_card.py`, `coverage_card.py`, `issue_table.py`,
-`skill_trigger_table.py`, `skill_matrix.py`, or `skill_matrix_sort.py` holds at call time: a
+`skill_trigger_table.py`, `skill_adoption.py`, `skill_adoption_sort.py`, `skill_matrix.py`, or
+`skill_matrix_sort.py` holds at call time: a
 test intercepting
 one patches the widget module that draws it — `patch.object(_dashboard_widget_costs, "_cost_coverage_bar_html", ...)`
 — and reaches the owner only to assert what an unpatched page renders.
@@ -1299,10 +1302,9 @@ The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` le
 tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read, KPI-strip, and chart
 leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the KPI series and values
 pair in the middle, the cost and usage ones on the other — hold no implementation of their own; each forwards to the
-owners named below, and so do all three card leaves and the shared-table, issue-table, skill-trigger, and five
-trigger-matrix leaves among the table ones, which is what lets the card hub above them and the skill-matrix hub claim
-nothing either, leaving one of the four panels that shared table is assembled into — the per-session adoption matrix
-on its own hub — as the leaves that still build their own.
+owners named below, and so do all three card leaves and the shared-table, issue-table, skill-trigger, five adoption,
+and five trigger-matrix leaves among the table ones, which is what lets the card hub above them and both skill hubs
+claim nothing either, leaving none of the four panels that shared table is assembled into building its own.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1340,8 +1342,17 @@ the rules their in-row bars and status pills are painted by, and the readings on
 as — its bar a share of the widest row in that table, its review round toned from the third one on, and its run
 health a `clean` pill wherever nothing failed. `skill_trigger_table.py` is the second: the six columns a
 `(role, backend)` cohort's skill use is reported in, its rate bar a share of the busiest cohort in that table, and
-`unknown` the label a category the sink left empty is read under. The fourth is the only panel an operator can
-reorder, so it arrives across five owners: `skill_matrix_columns.py` for the seven columns it is read across, the key
+`unknown` the label a category the sink left empty is read under. The last two are the panels an operator can reorder,
+so each arrives across five owners. The third is the per-session adoption table, the page's primary skill metric:
+`skill_adoption_columns.py` for the nine columns it is read across, the key each is ordered by, and the `adopt_sort` /
+`adopt_dir` pair a heading writes — with the two invocation diagnostics among those columns counted apart from the
+session pair so neither can be read into the rate between them; `skill_adoption_sort.py` for the parse that reads the
+pair back and the repository-then-rate order a table nobody sorted opens in; `skill_adoption_headers.py` for the
+header row each column is an in-tab sort link in; `skill_adoption_rows.py` for what one
+`(repo, role, backend, skill)` cell says, keeping the undefined rate of a skill nobody was offered apart from the real
+zero of one nobody loaded; and `skill_adoption.py` for the panel those cells are sorted into and the
+`TRACK_SKILL_TRIGGERS`-naming notice a window with no session evidence renders instead. The fourth is the trigger
+matrix, split the same way: `skill_matrix_columns.py` for the seven columns it is read across, the key
 each is ordered by, and the `mtx_sort` / `mtx_dir` pair a heading writes; `skill_matrix_sort.py` for the parse that
 reads that pair back — a stale column or a lone direction degrading to the default rather than raising — and the
 repository-then-rate order a matrix nobody sorted opens in; `skill_matrix_headers.py` for the header row each column
@@ -1377,10 +1388,12 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_usage_traces.py`, `_dashboard_usage_chart.py`, `_dashboard_card_headers.py`,
 `_dashboard_backend_card.py`, `_dashboard_coverage_card.py`,
 `_dashboard_table_html.py`, `_dashboard_issue_table.py`,
-`_dashboard_skill_trigger_table.py`, `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
+`_dashboard_skill_trigger_table.py`, `_dashboard_adoption_columns.py`, `_dashboard_adoption_sort.py`,
+`_dashboard_adoption_headers.py`, `_dashboard_adoption_rows.py`, `_dashboard_adoption_render.py`,
+`_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
 `_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, and `_dashboard_matrix_render.py`
-forward each historical name to the owner's own object. None of the state, read, KPI-strip, and skill-matrix hubs
-defines a name of
+forward each historical name to the owner's own object. None of the state, read, KPI-strip, skill-adoption, and
+skill-matrix hubs defines a name of
 its own, so none of them rewrites a
 defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
@@ -1591,17 +1604,21 @@ above it does. The most-expensive-issues panel drawn in that table is
 by, and the readings one issue is reduced to and rendered as — reached through
 `orchestrator/_dashboard_issue_table.py`, which forwards the same way. The skill-trigger-rates panel beside it is
 `observability/dashboard/skill_trigger_table.py` — its own six columns, the busiest cohort its rate bars are sized
-against, and the `unknown` a category the sink left empty reads as, which the trigger matrix's row projection reads
-off that owner directly and the adoption matrix's still reaches through the HTML surface — reached through
+against, and the `unknown` a category the sink left empty reads as, which the adoption table's and the trigger
+matrix's row projections both read off that owner directly — reached through
 `orchestrator/_dashboard_skill_trigger_table.py`, which forwards the same way too.
 Beside them, the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip are reached through `orchestrator/dashboard_cards.py` — the first,
 second, and last of those built by `observability/dashboard/card_html.py` and forwarded through the flat
 `orchestrator/_dashboard_card_headers.py`, the third and fourth by `observability/dashboard/backend_card.py` and
 `observability/dashboard/coverage_card.py` through `orchestrator/_dashboard_backend_card.py` and
-`orchestrator/_dashboard_coverage_card.py`; the primary per-session
-skill-adoption matrix (its `adopt_sort` / `adopt_dir` sort-param parser and the sortable table) lives in
-`orchestrator/dashboard_skill_adoption.py`. The invocation-level per-skill trigger matrix is
+`orchestrator/_dashboard_coverage_card.py`; the primary per-session skill-adoption table is
+`observability/dashboard/skill_adoption_columns.py`, `skill_adoption_sort.py`, `skill_adoption_headers.py`,
+`skill_adoption_rows.py`, and `skill_adoption.py` — its nine columns and the `adopt_sort` / `adopt_dir` pair its
+headings write, the parse and the two orders behind a click, the header row those clicks come from, what one cell
+says, and the sorted panel with the notice a window carrying no session evidence renders instead — reached through the
+five `orchestrator/_dashboard_adoption_*.py` leaves and the `orchestrator/dashboard_skill_adoption.py` surface above
+them. The invocation-level per-skill trigger matrix is
 `observability/dashboard/skill_matrix_columns.py`, `skill_matrix_sort.py`, `skill_matrix_headers.py`,
 `skill_matrix_rows.py`, and `skill_matrix.py` — its seven columns and the `mtx_sort` / `mtx_dir` pair its headings
 write, the parse and the two orders behind a click, the header row those clicks come from, what one cell says, and
