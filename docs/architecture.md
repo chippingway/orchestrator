@@ -549,6 +549,10 @@ orchestrator/
                         historical import site for the compact table the
                         hand-rolled panels are drawn as, forwarding to the
                         table-markup owner
+  _dashboard_issue_table.py
+                        historical import site for the most-expensive-issues
+                        panel drawn in that table, forwarding to the
+                        issue-table owner
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -812,6 +816,10 @@ orchestrator/
                         body they are assembled from, and the bar width, short
                         repository name, missing count, and unpriced amount a
                         cell reports
+      issue_table.py    the first of those panels: the six columns a window's
+                        costliest issues are ranked into, the rules their
+                        in-row bars and status pills are painted by, and the
+                        readings one issue is reduced to and rendered as
       windows.py        the half-open UTC window a run reports over, the
                         presets that name one, and the clamp that keeps a
                         preset inside the data extent
@@ -1795,6 +1803,19 @@ one in its own table, a repository is labelled without the owner hosting it, a m
 amount nobody priced reports as a dash, because a run that cost nothing and a run the parser could not price are
 different answers, and a table spelling both `$0.00` would hide the gap the coverage banner is raised for.
 
+`issue_table.py` is the first of those four panels, holding the six columns a window's costliest issues are ranked
+into and what one row of them says. Spend is drawn twice — as the amount and as a bar under the repository and issue
+number naming the row — and that bar is a share of the widest row in this table rather than of any window-wide figure,
+so a window whose issues were all cheap still reads as a ranking rather than as a column of stubs; a window with no
+priced run has no widest row to be a share of, so the ranking divides by one and every bar renders empty rather than
+the panel raising on a page opened to find out that nothing was priced. Two of its columns are judgements rather than
+counts. A review round is drawn in the warn tone from the third one on, because that is where an issue has been
+round-tripped past what the flow expects and is worth an operator's eye, and below it the number is plain — which is
+what keeps the tone meaning something when it does appear. A row with no failed run reads `clean` rather than a zero,
+since the column answers whether the issue needs looking at rather than how many runs it took to get there. The
+repository naming a row arrives off the sink, so it is escaped into the markup like every other value a panel here
+is handed.
+
 `backend_card.py` and `coverage_card.py` hold two more panels drawn as markup rather than as a figure, each with the
 arithmetic behind its own. The first answers what work on one backend is worth, in three readings an
 operator compares agents by: what a million tokens cost, what a run cost, and how much of the billable input the cache
@@ -2003,9 +2024,13 @@ claims none of them: the `__module__` stamp mutates the function, so a name clai
 object off the owner that defines it.
 `_dashboard_table_html.py` is another, forwarding the stylesheet, header, and
 assembly the hand-rolled panels are drawn by, and the bar width, short repository name, missing count, and unpriced
-amount a cell reports, under the private spellings they were always imported by. `dashboard_html.py` is the surface
-in front of it, publishing those same seven names beside the topbar, filter meta, KPI strip, sparkline, delta pill,
-and two table builders it reaches through the leaves named for each, and defining nothing of its own — so a panel and
+amount a cell reports, under the private spellings they were always imported by. `_dashboard_issue_table.py` is the
+one beside it, forwarding the column set and panel rules under the public spellings they were always imported by and
+the row view, the reduction into it, the two cell readings, the row, and the ranking under their private ones.
+`dashboard_html.py` is the
+surface in front of both, publishing those seven table names and these eight beside the topbar, filter meta, KPI
+strip, sparkline, delta pill, and skill-trigger table it reaches through the leaves named for each — the columns and
+rules under a leading underscore the leaf spells bare — and defining nothing of its own, so a panel and
 the owner cannot be drawn by two different tables. `dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
 are the charts owner's objects under the private spellings they were always imported by. Every chart family now names
