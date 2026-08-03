@@ -31,6 +31,9 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 DASHBOARD_OWNERS = "orchestrator.observability.dashboard"
 
 
+PAGE_MODELS_OWNER = f"{DASHBOARD_OWNERS}.page_models"
+
+
 RECENT_RUNS_OWNER = f"{DASHBOARD_OWNERS}.recent_runs"
 
 
@@ -41,15 +44,15 @@ SKILL_TRIGGER_PANEL_OWNER = f"{DASHBOARD_OWNERS}.skill_trigger_panel"
 
 
 # Each member the hub publishes and the module that defines it. The widget
-# sections still living on the hub report it; the two skill cards and the
-# recent-run listing report the owners under `observability/` that hold them,
-# since a claim here would move an owner's own function off the owner that
-# defines it.
+# sections still living on the hub report it; the page-state shapes, the two
+# skill cards, and the recent-run listing report the owners under
+# `observability/` that hold them, since a claim here would move an owner's own
+# object off the owner that defines it.
 _WIDGET_MEMBER_HOMES = MappingProxyType({
-    "_DashboardModules": DASHBOARD_WIDGETS_MODULE,
-    "_DashboardFilters": DASHBOARD_WIDGETS_MODULE,
-    "_DashboardControls": DASHBOARD_WIDGETS_MODULE,
-    "_DashboardPage": DASHBOARD_WIDGETS_MODULE,
+    "_DashboardModules": PAGE_MODELS_OWNER,
+    "_DashboardFilters": PAGE_MODELS_OWNER,
+    "_DashboardControls": PAGE_MODELS_OWNER,
+    "_DashboardPage": PAGE_MODELS_OWNER,
     "_backend_tokens_by_day": DASHBOARD_WIDGETS_MODULE,
     "_load_dashboard_data": DASHBOARD_WIDGETS_MODULE,
     "_render_topbar_and_meta": DASHBOARD_WIDGETS_MODULE,
@@ -83,8 +86,8 @@ _WIDGETS_FACADE_CONSTANTS = (
 
 class WidgetRenderingExtractionTest(unittest.TestCase):
     """The widget-rendering pipeline -- the two-wave render passes, the
-    empty / no-data states, the per-issue drill-down renderer, the page
-    footer, and the page-state dataclasses the pipeline threads -- lives in
+    empty / no-data states, the per-issue drill-down renderer, and the page
+    footer -- lives in
     `orchestrator.dashboard_widgets`, and `orchestrator.dashboard`
     re-exports the members the page pipeline and these tests reach under
     the same names so the `dashboard.<name>` surface keeps resolving to the
@@ -94,8 +97,10 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     `orchestrator.dashboard_kpi_strip` (`KpiStripExtractionTest`); the two
     skill cards live there too -- `skill_panel` for the adoption card and the
     diagnostics folded under it, `skill_trigger_panel` for the trigger-rate one
-    beside them -- as does the recent-run listing above that drill-down, under
-    `recent_runs`, and all three are reached through this hub.
+    beside them -- as do the recent-run listing above that drill-down, under
+    `recent_runs`, the shapes the pipeline threads, under `page_models`, and
+    the Plotly defaults its figures are drawn under, in `render_config`, and
+    all of them are reached through this hub.
     """
 
     def test_widget_members_report_their_home(self) -> None:

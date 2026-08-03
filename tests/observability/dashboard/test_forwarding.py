@@ -85,6 +85,10 @@ _DATE_FILTER_LEAF = "orchestrator._dashboard_date_range"
 
 _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
+_WIDGET_HUB = "orchestrator.dashboard_widgets"
+
+_WIDGET_MODELS_LEAF = "orchestrator._dashboard_widget_models"
+
 _WIDGET_RUNS_LEAF = "orchestrator._dashboard_widget_runs"
 
 _WIDGET_SKILLS_LEAF = "orchestrator._dashboard_widget_skills"
@@ -133,6 +137,8 @@ _KPI_STRIP = f"{_PACKAGE}.kpi_strip"
 
 _LAYOUT = f"{_PACKAGE}.layout"
 
+_PAGE_MODELS = f"{_PACKAGE}.page_models"
+
 _PALETTE = f"{_PACKAGE}.palette"
 
 _READ_MODE = f"{_PACKAGE}.read_mode"
@@ -140,6 +146,8 @@ _READ_MODE = f"{_PACKAGE}.read_mode"
 _READ_PLAN = f"{_PACKAGE}.read_plan"
 
 _RECENT_RUNS = f"{_PACKAGE}.recent_runs"
+
+_RENDER_CONFIG = f"{_PACKAGE}.render_config"
 
 _ROLLUPS = f"{_PACKAGE}.rollups"
 
@@ -836,6 +844,33 @@ _SKILL_PANEL_NAMES = (
     ),
 )
 
+# The seven shapes one render is threaded through, as the widget leaf still
+# publishes them: the caller's module handles, the selections every read is
+# narrowed by, the controls and the page they open on, the headline numbers a
+# load answers with, that load itself, and the four reads one comparison panel
+# is drawn from. Each has to be the owner's own class rather than a copy --
+# the pipeline builds a page in one module and is handed it in another, so two
+# classes with the same fields are two windows a section could be drawn under.
+_PAGE_STATE_NAMES = (
+    ("_DashboardControls", _PAGE_MODELS, "DashboardControls"),
+    ("_DashboardFilters", _PAGE_MODELS, "DashboardFilters"),
+    ("_DashboardKpis", _PAGE_MODELS, "DashboardKpis"),
+    ("_DashboardModules", _PAGE_MODELS, "DashboardModules"),
+    ("_DashboardPage", _PAGE_MODELS, "DashboardPage"),
+    ("_LoadedDashboard", _PAGE_MODELS, "LoadedDashboard"),
+    ("_ReliabilityPanelData", _PAGE_MODELS, "ReliabilityPanelData"),
+)
+
+# What the widget hub above that leaf publishes on an owner's behalf: those
+# seven, and the Plotly defaults every figure the page draws is handed. A copy
+# of the defaults is a panel whose hover toolbar nobody switched off, and this
+# is the alias the page renderers resolve them through at call time, so what a
+# test patches here and what the owner holds have to be one object.
+_WIDGET_HUB_NAMES = (
+    *_PAGE_STATE_NAMES,
+    ("PLOTLY_CONFIG", _RENDER_CONFIG, "PLOTLY_CONFIG"),
+)
+
 # The per-day lines drawn under three of those tiles, and the two reductions
 # the tiles themselves are totalled by. A second token total is the sharpest
 # copy here: a window counts all four token columns, so a line reduced anywhere
@@ -1000,8 +1035,9 @@ _FILTER_NAMES = (
 # operator's click reorders, a window's days placed or written here the
 # line a tile above them carries, a window bannered, restated, or annotated
 # here the chrome that strip of tiles sits in, a bar laid out or a window
-# picked here the one every read is bounded by, and a skill card rendered here
-# the one an operator reads three of those tables on,
+# picked here the one every read is bounded by, a skill card rendered here
+# the one an operator reads three of those tables on, and a page threaded here
+# the one every section is handed,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -1058,19 +1094,23 @@ _FORWARDED_MODULES = MappingProxyType({
     _BACKEND_CARD_LEAF: _BACKEND_CARD_NAMES,
     _COVERAGE_CARD_LEAF: _COVERAGE_CARD_NAMES,
     _CARD_HUB: _HUB_CARD_NAMES,
+    _WIDGET_MODELS_LEAF: _PAGE_STATE_NAMES,
     _WIDGET_SKILLS_LEAF: _SKILL_PANEL_NAMES,
 })
 
-# The run listing under those panels, as the widget leaf still publishes it:
-# the render a page draws the expander with, and the notice a window with no
-# `agent_exit` row renders instead. The leaf is listed apart from the ones
-# above because it still builds the per-issue drill-down beneath that listing,
-# so it is held to resolving what it forwards rather than to defining nothing.
+# The two sites that forward and still answer for something of their own. The
+# widget leaf named for the run listing publishes the render a page draws the
+# expander with and the notice a window with no `agent_exit` row renders
+# instead, while still building the per-issue drill-down beneath that listing.
+# The widget hub above it publishes the page state and the Plotly defaults,
+# while still claiming the render passes it stamps. Both are held to resolving
+# what they forward rather than to defining nothing.
 _PARTLY_FORWARDED_MODULES = MappingProxyType({
     _WIDGET_RUNS_LEAF: (
         (_NO_AGENT_EXITS, _RECENT_RUNS, _NO_AGENT_EXITS),
         ("_render_recent_runs", _RECENT_RUNS, "render_recent_runs"),
     ),
+    _WIDGET_HUB: _WIDGET_HUB_NAMES,
 })
 
 # The hub the page and the compatibility facade in front of it read the state
@@ -1154,8 +1194,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # ones, the chrome one beside them, the two the filter bar is reached
         # through, the
         # shared-table, issue-table, skill-trigger, five adoption, and five
-        # matrix ones, the widget leaf the two skill cards are drawn
-        # through, and the KPI
+        # matrix ones, the two widget leaves the skill cards are drawn through
+        # and the page state is threaded through, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only
         # compares the names the module was asked for. The card hub is held to
@@ -1173,8 +1213,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
                 self.assertEqual(defined, ())
 
 
-class PartlyForwardedLeafTest(unittest.TestCase):
-    """A leaf that kept a renderer of its own forwards the moved one."""
+class PartlyForwardedSiteTest(unittest.TestCase):
+    """A site that kept members of its own forwards the moved ones."""
 
     def test_each_name_resolves_to_the_owner(self) -> None:
         for module_name, forwarded in _PARTLY_FORWARDED_MODULES.items():

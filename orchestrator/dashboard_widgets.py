@@ -3,9 +3,6 @@
 """Stable dashboard widget surface backed by focused component leaves."""
 from __future__ import annotations
 
-from types import MappingProxyType
-from typing import Any, Mapping
-
 from orchestrator import _dashboard_compatibility as compatibility
 from orchestrator import _dashboard_widget_costs as costs
 from orchestrator import _dashboard_widget_models as models
@@ -15,9 +12,10 @@ from orchestrator import _dashboard_widget_skills as skills
 from orchestrator import _dashboard_widget_states as states
 from orchestrator import _dashboard_widget_usage as usage
 from orchestrator import dashboard_kpi_strip as kpi_strip
+from orchestrator.observability.dashboard import render_config
 
 
-PLOTLY_CONFIG: Mapping[str, Any] = MappingProxyType({"displayModeBar": False})
+PLOTLY_CONFIG = render_config.PLOTLY_CONFIG
 NO_DATA_MESSAGE = states.NO_DATA_MESSAGE
 EMPTY_WINDOW_MESSAGE = states.EMPTY_WINDOW_MESSAGE
 NO_AGENT_EXITS_MESSAGE = costs.NO_AGENT_EXITS_MESSAGE
@@ -59,18 +57,11 @@ _render_skill_matrix_expander = skills._render_skill_matrix_expander
 _render_recent_runs = runs._render_recent_runs
 _render_drilldown_view = runs._render_drilldown_view
 
-# The members a flat leaf defines itself. The stamp mutates the function, so
+# The members a flat leaf defines itself. The stamp mutates the object, so
 # naming one an owner under `observability/dashboard/` holds -- either skill
-# card, or the recent-run listing -- would move that function off the owner
-# that defines it.
+# card, the recent-run listing, or any of the seven page-state shapes -- would
+# move that object off the owner that defines it.
 _COMPATIBILITY_MEMBERS = (
-    _DashboardModules,
-    _DashboardFilters,
-    _DashboardControls,
-    _DashboardPage,
-    _DashboardKpis,
-    _LoadedDashboard,
-    _ReliabilityPanelData,
     _render_topbar_and_meta,
     _render_dashboard_insights,
     _render_first_wave,

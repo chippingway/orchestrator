@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard data-preparation and Plotly tests."""
+"""Dashboard data-preparation tests."""
 
 import unittest
 
@@ -96,14 +96,3 @@ class DashboardDataPrepTest(unittest.TestCase):
                 MAY07: {BACKEND_CLAUDE: 8.0},
             },
         )
-
-
-class PlotlyConfigTest(unittest.TestCase):
-    """`PLOTLY_CONFIG` is passed to every `st.plotly_chart` so the
-    hover modebar (camera / zoom / pan) stays off every card --
-    the standalone mock has no chart chrome.
-    """
-
-    def test_plotly_config_disables_modebar(self) -> None:
-        _, dashboard = _reload()
-        self.assertEqual(dashboard.PLOTLY_CONFIG.get("displayModeBar"), False)
