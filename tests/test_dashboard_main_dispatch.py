@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Dashboard main-render dispatch and parallel fan-out wiring tests."""
+"""Dashboard main-render dispatch, fan-out, and metadata wiring tests."""
 
 import inspect
 
@@ -180,3 +180,18 @@ class MainParallelFanOutWiringTest(_MainSourceTest):
             "perf_counter()",
             self._source_of("_prepare_dashboard_page"),
         )
+
+
+class StaticMetadataDispatchTest(_MainSourceTest):
+    """The page opens on the metadata owner's cached pair, not the raw reads.
+
+    `get_data_extent` and `get_filter_options` are the two reads no filter
+    narrows, so they belong behind the wrappers that cache them for the whole
+    ingest cycle rather than inline where a rerun would re-issue them.
+    """
+
+    def test_the_page_opens_through_the_metadata_load(self) -> None:
+        run_src = self._source_of("_run_dashboard")
+        self.assertIn("read_static_metadata(", run_src)
+        self.assertNotIn("get_data_extent(", run_src)
+        self.assertNotIn("get_filter_options(", run_src)

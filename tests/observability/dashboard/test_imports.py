@@ -78,6 +78,10 @@ _SKILL_MATRIX_ROWS_OWNER = "skill_matrix_rows"
 
 _SKILL_MATRIX_SORT_OWNER = "skill_matrix_sort"
 
+_SKILL_PANEL_OWNER = "skill_panel"
+
+_SKILL_TRIGGER_PANEL_OWNER = "skill_trigger_panel"
+
 _SKILL_TRIGGER_TABLE_OWNER = "skill_trigger_table"
 
 _SKILLS_OWNER = "skills"
@@ -131,6 +135,8 @@ _OWNERS = (
     _SKILL_MATRIX_HEADERS_OWNER,
     _SKILL_MATRIX_ROWS_OWNER,
     _SKILL_MATRIX_SORT_OWNER,
+    _SKILL_PANEL_OWNER,
+    _SKILL_TRIGGER_PANEL_OWNER,
     _SKILL_TRIGGER_TABLE_OWNER,
     _SKILLS_OWNER,
     _SPARKLINE_HTML_OWNER,
@@ -163,7 +169,10 @@ _OWNERS = (
 # in the second, read a page URL back as the order the third or the fourth is
 # drawn in, head one of their columns as the control that writes that URL, say
 # what one of their cells was offered, loaded, or triggered, assemble either
-# panel those cells are sorted into, weigh
+# panel those cells are sorted into, draw the card the adoption one leads and
+# the two invocation views fold under together with the caption that names what
+# a quiet window did record, draw the trigger-rate card a caller reaching past
+# that one still gets, weigh
 # one backend's spend against the
 # tokens and runs behind it, or size a window's
 # priced share into one bar is a
@@ -186,7 +195,8 @@ _OWNERS = (
 # under, the nine columns the adoption table is read across and the seven the
 # trigger matrix is, each with the two query parameters its headings write and
 # the counts among them a first click sorts down, the rules either scopes to
-# its own class and the notice each renders in place of a table, the KPI
+# its own class and the notice each renders in place of a table, the notice the
+# trigger-rate card answers a window with no run at all with, the KPI
 # owner's ranking cap and rework buckets, the floor the projection owner
 # clamps a flat window's span at, the default box the rendering owner beside it
 # draws a line in together with the keyword surface it binds one through, the
@@ -348,6 +358,16 @@ _SURFACES = MappingProxyType({
         "skill_matrix_default_sort_key",
         "sort_skill_matrix_rows",
     ),
+    _SKILL_PANEL_OWNER: (
+        "render_skill_adoption",
+        "render_skill_invocation_diagnostics",
+        "skill_adoption_evidence_caption",
+        "skill_adoption_zero_caption",
+    ),
+    _SKILL_TRIGGER_PANEL_OWNER: (
+        "render_skill_matrix_expander",
+        "render_skill_triggers",
+    ),
     _SKILL_TRIGGER_TABLE_OWNER: (
         "skill_trigger_row_html",
         "skill_triggers_html",
@@ -415,8 +435,9 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
-# skill-adoption, and skill-matrix hubs, and the thirty-one leaves beneath
-# all but the KPI one.
+# skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
+# all but the KPI one, and the widget leaf the two skill panels are reached
+# through, which sits under the widget hub instead.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
@@ -451,6 +472,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_summary_html",
     "orchestrator._dashboard_table_html",
+    "orchestrator._dashboard_widget_skills",
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_cards",
     "orchestrator.dashboard_html",
@@ -479,7 +501,9 @@ _COMPATIBILITY_SITES = (
 # reports, the pair of windows the strip beneath it is reduced from, the issue
 # rows a table is ranked from, the cohort rows the trigger-rate panel beneath it
 # reports, the adoption cells and the matrix cells four of each panel's five
-# owners order, parse for, reduce, and assemble, and the per-backend and
+# owners order, parse for, reduce, and assemble -- and the two panel owners
+# above all three of those tables are handed a window's worth of each -- and
+# the per-backend and
 # per-cost-source rows the two card owners weigh and size -- are the rows those
 # reads hand back.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")

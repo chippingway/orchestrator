@@ -68,6 +68,16 @@ pair of query parameters, ``skill_matrix_sort`` for the parse and orders,
 ``skill_matrix_headers`` for the header row, ``skill_matrix_rows`` for what one
 cell triggered, and ``skill_matrix`` itself for the sorted panel and the notice
 a window with no catalog-backed cell renders instead.
+``skill_panel`` and ``skill_trigger_panel`` are the two cards three of those
+four are reported on. The first is the one the page draws: adoption leads it,
+the aggregate rates and the matrix fold into a collapsed expander beneath, one
+notice answers a window with no `agent_exit` row for the whole card, and the
+caption under the adoption table qualifies a window nobody adopted anything in
+rather than recommending a switch a present row already proves is on -- which
+is also what the fold beneath is handed, to tell a genuine no-trigger from
+tracking nobody turned on. The second is the card the section led with before
+that one and is kept for a caller that names it: its own notice, its
+unconditional prompt to enable tracking, and its own fold-out matrix.
 Two panels are markup of their own rather than a figure: ``backend_card``
 for what a run on one backend is worth and the card the three readings behind
 it are laid out on, and ``coverage_card`` for the share of a window's spend the
@@ -93,9 +103,10 @@ a window is drawn as, and the hero figure they are assembled into.
 
 Callers import the owner they need, so this initializer binds nothing.
 Streamlit and Plotly live in the optional ``dashboard`` dependency group, so
-no owner here names them at module scope: one that renders or assembles a
-figure imports them inside that call, and one that only shapes data for
-another owner never imports them at all. An ordinary import must keep working
+no owner here names them at module scope: one that assembles a figure imports
+Plotly inside that call, one that draws a panel is handed the page it draws
+onto as a parameter, and one that only shapes data or markup for another owner
+names neither. An ordinary import must keep working
 in the default install, which has neither, and the data an owner shapes stays
 testable without them.
 """

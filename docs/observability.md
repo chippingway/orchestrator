@@ -58,12 +58,15 @@ heights, aligned axes, traces, and hero figure
 table the panels beside those figures are drawn as, the ranking of a window's costliest issues that is the first
 of them, the aggregate skill-trigger rates that are the second, and the per-session adoption table and the
 invocation-level trigger matrix that are the last two — each split into the columns a click is expressed in, the parse
-and orders behind one, the header row it is clicked from, what one cell says, and the panel they assemble into
+and orders behind one, the header row it is clicked from, what one cell says, and the panel they assemble into — plus
+the two cards three of those panels are reported on, one leading with adoption and folding the invocation views under
+it and one kept for a caller reaching past that
 (`dashboard/tables.py`, `dashboard/issue_table.py`, `dashboard/skill_trigger_table.py`,
 `dashboard/skill_adoption_columns.py`, `dashboard/skill_adoption_sort.py`,
 `dashboard/skill_adoption_headers.py`, `dashboard/skill_adoption_rows.py`, `dashboard/skill_adoption.py`,
 `dashboard/skill_matrix_columns.py`, `dashboard/skill_matrix_sort.py`, `dashboard/skill_matrix_headers.py`,
-`dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`), the
+`dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`, `dashboard/skill_panel.py`,
+`dashboard/skill_trigger_panel.py`), the
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
@@ -364,7 +367,8 @@ semantics that sit on top of these fields.
 
 The dashboard's **primary** skill metric is per-session *adoption* — for each `(repo, agent_role, backend, skill)`
 cell, what share of the logical agent sessions that had the skill available actually loaded it. It is computed by
-`observability/analytics/query/skill_reads.py`'s `get_skill_adoption` and rendered by the "Skill adoption" panel; the
+`observability/analytics/query/skill_reads.py`'s `get_skill_adoption` and rendered by
+`observability/dashboard/skill_panel.py`'s "Skill adoption" card; the
 older per-run trigger views
 (`get_skill_trigger_rates` / `get_skill_trigger_matrix`) sit beneath it as a clearly named invocation-level diagnostic.
 The per-session adoption metric reads the opt-in `agent_exit` skill fields above, so it only carries signal once
@@ -1287,17 +1291,18 @@ call path rather than the alias: the page pipeline reaches the staged plan and t
 `observability/dashboard/`, so a test intercepts those with `patch.object(read_plan | dispatch, ...)`, while
 `patch.object(dashboard, ...)` still intercepts the page renderers and `PLOTLY_CONFIG` the pipeline resolves through
 the facade at call time. A card builder is the one kind of name on that path a patch must not follow to the owner,
-and the most-expensive-issues, skill-trigger, adoption, and trigger-matrix panels are bound the same way. Every
+and the most-expensive-issues and skill-trigger panels are bound the same way. Every
 widget section binds the header, banner stack, reliability strip, efficiency card, and coverage bar by name at import
-(`from orchestrator.dashboard_cards import _card_header_html`), the cost and skill sections bind the issues table
-and the trigger-rate one the same way off the HTML hub, and the skill section binds the adoption table and the matrix
-with their sort parses off the two skill hubs, so what the page calls is the reference captured then
-rather than whatever `card_html.py`, `backend_card.py`, `coverage_card.py`, `issue_table.py`,
-`skill_trigger_table.py`, `skill_adoption.py`, `skill_adoption_sort.py`, `skill_matrix.py`, or
-`skill_matrix_sort.py` holds at call time: a
+(`from orchestrator.dashboard_cards import _card_header_html`), and the cost section binds the issues table and the
+trigger-rate one the same way off the HTML hub, so what the page calls is the reference captured then
+rather than whatever `card_html.py`, `backend_card.py`, `coverage_card.py`, `issue_table.py`, or
+`skill_trigger_table.py` holds at call time: a
 test intercepting
 one patches the widget module that draws it — `patch.object(_dashboard_widget_costs, "_cost_coverage_bar_html", ...)`
-— and reaches the owner only to assert what an unpatched page renders.
+— and reaches the owner only to assert what an unpatched page renders. The two skill cards are no longer on that path
+at all: the page reaches `skill_panel.render_skill_adoption` through the widget hub, and the tables and sort parses it
+draws with are the panel owners' own imports, so a case that has to intercept one drives the owner rather than the
+page.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
@@ -1305,11 +1310,12 @@ The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` le
 tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read, KPI-strip, and chart
 leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the KPI series and values
 pair in the middle, the cost and usage ones on the other — hold no implementation of their own; each forwards to the
-owners named below, and so do all three card leaves, both sparkline leaves, the chrome leaf beside them, and the
+owners named below, and so do all three card leaves, both sparkline leaves, the chrome leaf beside them, the
 shared-table, issue-table,
 skill-trigger, five adoption,
-and five trigger-matrix leaves among the table ones, which is what lets the card hub above them and both skill hubs
-claim nothing either, leaving none of the four panels that shared table is assembled into building its own.
+and five trigger-matrix leaves among the table ones, and the widget-skill section beside those, which is what lets the
+card hub above them and both skill hubs claim nothing either, leaving none of the four panels that shared table is
+assembled into building its own — nor either of the two cards three of them are reported on.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1378,6 +1384,15 @@ is an in-tab sort link in, with the arrow only the active one carries; `skill_ma
 `(repo, role, backend, skill)` cell says, its zero and derived rate toned down together while the cohort's run total
 stays plain; and `skill_matrix.py` for the panel those cells are sorted into and the `TRACK_SKILL_TRIGGERS`-naming
 notice a window with no catalog-backed cell renders instead.
+`skill_panel.py` and `skill_trigger_panel.py` are the two cards three of those four panels are reported on. The first
+is the one the page draws: adoption leads it and the aggregate rates and the trigger matrix fold into a collapsed
+expander beneath, one notice answers a window with no `agent_exit` row for the whole card rather than for each table
+in it, and the caption under the adoption table qualifies a window nobody adopted anything in — naming whichever of
+availability, loads, or incidental references it did carry — instead of recommending a `TRACK_SKILL_TRIGGERS` the
+presence of a row already proves is on. Whether that evidence was there is what the fold beneath is handed, so a
+window where no run triggered reads as a genuine no-trigger or as a prompt to switch tracking on accordingly. The
+second is the card the section led with before adoption did; nothing in the render pipeline draws it now, and its
+prompt is unconditional, since trigger rates alone carry no per-session evidence to tell those two windows apart.
 Two more panels are drawn as markup rather than as a figure: `backend_card.py` for what a run on one backend
 is worth — the cost of a million tokens, the cost of a run, and the share of billable input the cache answered, each
 divided through one guard so a window a backend barely ran in reads zero rather than raising — and `coverage_card.py`
@@ -1410,14 +1425,16 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_skill_trigger_table.py`, `_dashboard_adoption_columns.py`, `_dashboard_adoption_sort.py`,
 `_dashboard_adoption_headers.py`, `_dashboard_adoption_rows.py`, `_dashboard_adoption_render.py`,
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
-`_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, and `_dashboard_matrix_render.py`
+`_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`, and
+`_dashboard_widget_skills.py`
 forward each historical name to the owner's own object. None of the state, read, KPI-strip, skill-adoption, and
 skill-matrix hubs defines a name of
 its own, so none of them rewrites a
 defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
 and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
-publishes are the card, backend, and coverage owners' own objects, and a `__module__` stamp there would move one of
+publishes are the card, backend, and coverage owners' own objects, and the widget hub drops the six the two skill
+cards are reached by for the same reason: a `__module__` stamp there would move one of
 them off the owner that defines it. Streamlit is never imported in these
 helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
 
@@ -1654,7 +1671,12 @@ write, the parse and the two orders behind a click, the header row those clicks 
 the sorted panel with the notice a window carrying no catalog-backed cell renders instead — reached through the five
 `orchestrator/_dashboard_matrix_*.py` leaves and the `orchestrator/dashboard_skill_matrix.py` surface above them,
 which forward every historical name to the owner's own object and implement nothing (all re-exported through
-`dashboard.py`).
+`dashboard.py`). The two cards those tables are reported on are
+`observability/dashboard/skill_panel.py` — the adoption card, the caption qualifying a window nobody adopted anything
+in, and the invocation views folded collapsed under it — and `observability/dashboard/skill_trigger_panel.py` — the
+trigger-rate card the section led with before adoption did, and its own fold-out matrix — reached through
+`orchestrator/_dashboard_widget_skills.py` and the `orchestrator/dashboard_widgets.py` hub above it, which forward the
+six historical spellings without claiming any of them.
 
 **Theme.** The plotly-free theme lives under `orchestrator/observability/dashboard/`, split by what a value is.
 `palette.py` holds the chrome colors (cool gray `#f4f5f8` page, white cards, indigo accent, muted ink tints), the

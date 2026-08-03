@@ -59,6 +59,9 @@ _render_skill_matrix_expander = skills._render_skill_matrix_expander
 _render_recent_runs = runs._render_recent_runs
 _render_drilldown_view = runs._render_drilldown_view
 
+# The members a flat leaf defines itself. The stamp mutates the function, so
+# naming one an owner under `observability/dashboard/` holds -- either skill
+# card -- would move that function off the owner that defines it.
 _COMPATIBILITY_MEMBERS = (
     _DashboardModules,
     _DashboardFilters,
@@ -86,12 +89,6 @@ _COMPATIBILITY_MEMBERS = (
     _render_issues_and_backends,
     _render_repo_and_reliability,
     _render_activity_heatmap,
-    _render_skill_adoption,
-    _skill_adoption_zero_caption,
-    _skill_adoption_evidence_caption,
-    _render_skill_invocation_diagnostics,
-    _render_skill_triggers,
-    _render_skill_matrix_expander,
     _render_recent_runs,
     _render_drilldown_view,
 )
