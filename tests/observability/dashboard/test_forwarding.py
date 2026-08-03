@@ -77,6 +77,8 @@ _SPARKLINE_DATA_LEAF = "orchestrator._dashboard_sparkline_data"
 
 _SPARKLINE_HTML_LEAF = "orchestrator._dashboard_sparkline_html"
 
+_SUMMARY_HTML_LEAF = "orchestrator._dashboard_summary_html"
+
 _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
 # `from __future__ import annotations` opens every module in the repository and
@@ -158,6 +160,8 @@ _SPARKLINE_HTML = f"{_PACKAGE}.sparkline_html"
 _SPARKLINE_POINTS = f"{_PACKAGE}.sparkline_points"
 
 _STATIC_METADATA = f"{_PACKAGE}.static_metadata"
+
+_SUMMARY_HTML = f"{_PACKAGE}.summary_html"
 
 _TABLES = f"{_PACKAGE}.tables"
 
@@ -861,6 +865,31 @@ _LEAF_SPARKLINE_NAMES = (
     *_SPARKLINE_MARKUP_NAMES,
 )
 
+# The band those tiles sit in: the banner above the strip, the line under the
+# filter bar, the pill one tile's move is annotated with, the strip itself, and
+# the suffix all three of the first count their nouns by. The chrome leaf and
+# the HTML surface above it spell all five the same way. A copy of the pill is
+# a strip whose tiles could paint a rise two ways.
+_SUMMARY_MARKUP_NAMES = (
+    ("_delta_pill", _SUMMARY_HTML, "delta_pill"),
+    ("_filter_meta_html", _SUMMARY_HTML, "filter_meta_html"),
+    ("_kpi_strip_html", _SUMMARY_HTML, "kpi_strip_html"),
+    ("_plural_s", _SUMMARY_HTML, "plural_s"),
+    ("_topbar_html", _SUMMARY_HTML, "topbar_html"),
+)
+
+# What only the chrome leaf published: the tone and arrow a move is painted
+# from, the request the banner is described by, and the two bound keyword
+# surfaces. A copy of either signature is a call spelled the way every caller
+# spells it that binds to nothing.
+_LEAF_SUMMARY_NAMES = (
+    ("_DELTA_SIGNATURE", _SUMMARY_HTML, "DELTA_SIGNATURE"),
+    ("_TOPBAR_SIGNATURE", _SUMMARY_HTML, "TOPBAR_SIGNATURE"),
+    ("_TopbarRequest", _SUMMARY_HTML, "TopbarRequest"),
+    ("_delta_style", _SUMMARY_HTML, "delta_style"),
+    *_SUMMARY_MARKUP_NAMES,
+)
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -895,8 +924,9 @@ _FILTER_NAMES = (
 # a window's issues ranked here the ones the page lists, a cohort's skill
 # use reported here the rate the panel beneath them shows, an adoption
 # table or a matrix headed, ordered, projected, or assembled here the one an
-# operator's click reorders, and a window's days placed or written here the
-# line a tile above them carries,
+# operator's click reorders, a window's days placed or written here the
+# line a tile above them carries, and a window bannered, restated, or annotated
+# here the chrome that strip of tiles sits in,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -938,12 +968,14 @@ _FORWARDED_MODULES = MappingProxyType({
     _CARD_HEADERS_LEAF: _CARD_MARKUP_NAMES,
     _SPARKLINE_DATA_LEAF: (*_SPARKLINE_POINT_NAMES, _SPARKLINE_PATHS_NAME),
     _SPARKLINE_HTML_LEAF: _LEAF_SPARKLINE_NAMES,
+    _SUMMARY_HTML_LEAF: _LEAF_SUMMARY_NAMES,
     _HTML_SURFACE: (
         *_TABLE_NAMES,
         *_HTML_ISSUE_TABLE_NAMES,
         *_HTML_SKILL_TRIGGER_NAMES,
         *_SPARKLINE_POINT_NAMES,
         *_SPARKLINE_MARKUP_NAMES,
+        *_SUMMARY_MARKUP_NAMES,
         _SPARKLINE_PATHS_NAME,
     ),
     _BACKEND_CARD_LEAF: _BACKEND_CARD_NAMES,
@@ -1029,7 +1061,7 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # The same rule the theme site is held to, applied to the read, state,
         # KPI-strip, card, HTML, skill-adoption, and skill-matrix hubs, the
         # leaves beneath them including the card-markup one, the two sparkline
-        # ones, and the
+        # ones, the chrome one beside them, and the
         # shared-table, issue-table, skill-trigger, five adoption, and five
         # matrix ones, and the KPI
         # site beside those: a module that defined a name of its own would be a

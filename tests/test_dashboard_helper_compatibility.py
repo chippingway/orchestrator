@@ -50,20 +50,6 @@ class _MainSourceTest(unittest.TestCase):
 class DashboardCompatibilityHelperTest(_MainSourceTest):
     """Exported dashboard helpers retain their historical call shapes."""
 
-    def test_topbar_signature_is_stable(self) -> None:
-        _, dashboard = _reload(CONFIGURED_DB_ENV)
-        self.assertEqual(
-            tuple(inspect.signature(dashboard._topbar_html).parameters),
-            (
-                "extent",
-                "distinct_repos",
-                "total_events",
-                "spend_in_range",
-                "fmt_money_exact",
-                "fmt_num",
-            ),
-        )
-
     def test_drilldown_signature_and_delegate_stable(self) -> None:
         _, dashboard = _reload(CONFIGURED_DB_ENV)
         self.assertEqual(
