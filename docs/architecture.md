@@ -2275,9 +2275,10 @@ name
 `analytics/query/skill_models.py` for that cell, since the column vocabulary is typed by what it orders, the parse and
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
 column set alone and so names nothing outside — and the two cards those panels are reported on name it as well, for
-the cohort rows and matrix cells both are handed and the adoption cells only the first is; those
+the cohort rows and matrix cells both are handed and the adoption cells only the first is, while the run listing
+beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects; those
 are the only things
-any of the thirty-nine reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the forty reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from — as do the two the filter bar is
 drawn out of, which take the presets they offer and the window they resolve from that window owner and each other, and
 are handed Streamlit rather than importing it — the table markup reaches not one of
