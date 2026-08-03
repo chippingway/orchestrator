@@ -22,8 +22,10 @@ _coverage_segments = coverage.coverage_segments
 _cost_coverage_bar_html = coverage.cost_coverage_bar_html
 _reliability_tiles_html = headers.reliability_tiles_html
 
-_card_header_html.__module__ = __name__
-_insights_html.__module__ = __name__
+# The two builders still defined by a flat leaf keep reporting this module,
+# which is the identity a repr or a reader following `__module__` has always
+# landed on. The three the card markup owner defines carry no stamp: it mutates
+# the function, so claiming one here would rewrite the owner's own object and
+# leave that owner reporting none of its surface as its own.
 _backend_efficiency_card_html.__module__ = __name__
 _cost_coverage_bar_html.__module__ = __name__
-_reliability_tiles_html.__module__ = __name__
