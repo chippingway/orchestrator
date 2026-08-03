@@ -47,6 +47,18 @@ _ROLLUPS_LEAF = "orchestrator._dashboard_read_rollups"
 
 _SKILLS_LEAF = "orchestrator._dashboard_read_skills"
 
+_SKILL_ADOPTION_HUB = "orchestrator.dashboard_skill_adoption"
+
+_ADOPTION_COLUMNS_LEAF = "orchestrator._dashboard_adoption_columns"
+
+_ADOPTION_HEADERS_LEAF = "orchestrator._dashboard_adoption_headers"
+
+_ADOPTION_RENDER_LEAF = "orchestrator._dashboard_adoption_render"
+
+_ADOPTION_ROWS_LEAF = "orchestrator._dashboard_adoption_rows"
+
+_ADOPTION_SORT_LEAF = "orchestrator._dashboard_adoption_sort"
+
 _SKILL_MATRIX_HUB = "orchestrator.dashboard_skill_matrix"
 
 _MATRIX_COLUMNS_LEAF = "orchestrator._dashboard_matrix_columns"
@@ -112,6 +124,16 @@ _READ_PLAN = f"{_PACKAGE}.read_plan"
 _ROLLUPS = f"{_PACKAGE}.rollups"
 
 _SCOPED_READS = f"{_PACKAGE}.scoped_reads"
+
+_SKILL_ADOPTION = f"{_PACKAGE}.skill_adoption"
+
+_SKILL_ADOPTION_COLUMNS = f"{_PACKAGE}.skill_adoption_columns"
+
+_SKILL_ADOPTION_HEADERS = f"{_PACKAGE}.skill_adoption_headers"
+
+_SKILL_ADOPTION_ROWS = f"{_PACKAGE}.skill_adoption_rows"
+
+_SKILL_ADOPTION_SORT = f"{_PACKAGE}.skill_adoption_sort"
 
 _SKILL_MATRIX = f"{_PACKAGE}.skill_matrix"
 
@@ -545,11 +567,121 @@ _HTML_SKILL_TRIGGER_NAMES = (
     *_SKILL_TRIGGER_TABLE_NAMES,
 )
 
-# The fourth of the four panels is the only one an operator can reorder, so it
-# arrives across five owners with a leaf apiece and one hub above them. The two
-# query parameters are the sharpest copy in the set: a heading linking under
-# one spelling while the parse reads another is a click that silently reopens
-# the table in its default order.
+# The last two of the four panels are the ones an operator can reorder, so each
+# arrives across five owners with a leaf apiece and one hub above them. The
+# third is the per-session adoption table. Its two query parameters are the
+# sharpest copy in the set: a heading linking under one spelling while the
+# parse reads another is a click that silently reopens the table in its default
+# order.
+_ADOPTION_PARAM_NAMES = (
+    ("SKILL_ADOPTION_SORT_PARAM", _SKILL_ADOPTION_COLUMNS, "SKILL_ADOPTION_SORT_PARAM"),
+    ("SKILL_ADOPTION_DIR_PARAM", _SKILL_ADOPTION_COLUMNS, "SKILL_ADOPTION_DIR_PARAM"),
+)
+
+# The vocabulary a parameter names a column out of: the column model, the nine
+# columns, the counts among them a first click sorts down, and the key each is
+# ordered by. A copy of the keys would be a header offering a sort the ordering
+# does not run.
+_ADOPTION_VOCABULARY_NAMES = (
+    ("SkillAdoptionColumn", _SKILL_ADOPTION_COLUMNS, "SkillAdoptionColumn"),
+    ("SKILL_ADOPTION_COLUMNS", _SKILL_ADOPTION_COLUMNS, "SKILL_ADOPTION_COLUMNS"),
+    (
+        "SKILL_ADOPTION_NUMERIC_KEYS",
+        _SKILL_ADOPTION_COLUMNS,
+        "SKILL_ADOPTION_NUMERIC_KEYS",
+    ),
+    ("SKILL_ADOPTION_SORT_KEYS", _SKILL_ADOPTION_COLUMNS, "SKILL_ADOPTION_SORT_KEYS"),
+)
+
+# The parse a clicked heading is read back through, the per-column ordering it
+# selects, and the two-key default a table nobody sorted opens in.
+_ADOPTION_SORT_NAMES = (
+    ("parse_skill_adoption_sort", _SKILL_ADOPTION_SORT, "parse_skill_adoption_sort"),
+    ("_sort_skill_adoption_rows", _SKILL_ADOPTION_SORT, "sort_skill_adoption_rows"),
+    (
+        "_default_sort_skill_adoption_rows",
+        _SKILL_ADOPTION_SORT,
+        "default_sort_skill_adoption_rows",
+    ),
+    (
+        "_skill_adoption_default_sort_key",
+        _SKILL_ADOPTION_SORT,
+        "skill_adoption_default_sort_key",
+    ),
+)
+
+# What one heading offers on a click, the link it is drawn as, and the header
+# row they are assembled into.
+_ADOPTION_HEADER_NAMES = (
+    (
+        "_skill_adoption_header_state",
+        _SKILL_ADOPTION_HEADERS,
+        "skill_adoption_header_state",
+    ),
+    (
+        "_skill_adoption_header_cell",
+        _SKILL_ADOPTION_HEADERS,
+        "skill_adoption_header_cell",
+    ),
+    (
+        "_skill_adoption_header_html",
+        _SKILL_ADOPTION_HEADERS,
+        "skill_adoption_header_html",
+    ),
+)
+
+_ADOPTION_HEADER_STATE_NAME = (
+    "SkillAdoptionHeaderState", _SKILL_ADOPTION_HEADERS, "SkillAdoptionHeaderState",
+)
+
+# The tone a quiet cell is drawn in, the count and rate readings drawn in it,
+# the readings one cell is reduced to, and the row they are rendered as.
+_ADOPTION_ROW_NAMES = (
+    ("_muted_zero_html", _SKILL_ADOPTION_ROWS, "muted_zero_html"),
+    ("_adoption_count_html", _SKILL_ADOPTION_ROWS, "adoption_count_html"),
+    ("_adoption_rate_html", _SKILL_ADOPTION_ROWS, "adoption_rate_html"),
+    ("_skill_adoption_row_view", _SKILL_ADOPTION_ROWS, "skill_adoption_row_view"),
+    ("_skill_adoption_row_html", _SKILL_ADOPTION_ROWS, "skill_adoption_row_html"),
+)
+
+_ADOPTION_ROW_VIEW_NAME = (
+    "SkillAdoptionRowView", _SKILL_ADOPTION_ROWS, "SkillAdoptionRowView",
+)
+
+# The notice a window with no session evidence renders instead, and the sorted
+# panel every other window is drawn as.
+_ADOPTION_PANEL_NAMES = (
+    ("SKILL_ADOPTION_EMPTY_MESSAGE", _SKILL_ADOPTION, "SKILL_ADOPTION_EMPTY_MESSAGE"),
+    ("_skill_adoption_html", _SKILL_ADOPTION, "skill_adoption_html"),
+)
+
+_ADOPTION_CSS_NAME = (
+    "SKILL_ADOPTION_EXTRA_CSS", _SKILL_ADOPTION, "SKILL_ADOPTION_EXTRA_CSS",
+)
+
+# The whole adoption surface as the hub publishes it: the seven names the
+# leaves spell bare take a leading underscore there, which is how the page
+# always imported them.
+_HUB_SKILL_ADOPTION_NAMES = (
+    *_ADOPTION_PARAM_NAMES,
+    *_ADOPTION_SORT_NAMES,
+    *_ADOPTION_HEADER_NAMES,
+    *_ADOPTION_ROW_NAMES,
+    *_ADOPTION_PANEL_NAMES,
+    *(
+        (f"_{name}", owner, attribute)
+        for name, owner, attribute in (
+            *_ADOPTION_VOCABULARY_NAMES,
+            _ADOPTION_HEADER_STATE_NAME,
+            _ADOPTION_ROW_VIEW_NAME,
+            _ADOPTION_CSS_NAME,
+        )
+    ),
+)
+
+# The fourth is the invocation-level trigger matrix, split the same way and
+# carrying its own pair of parameters so a click on either table leaves the
+# other's order alone.
 _MATRIX_PARAM_NAMES = (
     ("SKILL_MATRIX_SORT_PARAM", _SKILL_MATRIX_COLUMNS, "SKILL_MATRIX_SORT_PARAM"),
     ("SKILL_MATRIX_DIR_PARAM", _SKILL_MATRIX_COLUMNS, "SKILL_MATRIX_DIR_PARAM"),
@@ -708,8 +840,9 @@ _FILTER_NAMES = (
 # the page opens with, a card headed, weighed, or sized here the one the
 # stylesheet paints, a table drawn here the one every hand-rolled panel is,
 # a window's issues ranked here the ones the page lists, a cohort's skill
-# use reported here the rate the panel beneath them shows, and a matrix headed,
-# ordered, projected, or assembled here the one an operator's click reorders,
+# use reported here the rate the panel beneath them shows, and an adoption
+# table or a matrix headed, ordered, projected, or assembled here the one an
+# operator's click reorders,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -731,6 +864,12 @@ _FORWARDED_MODULES = MappingProxyType({
     _TABLE_LEAF: _TABLE_NAMES,
     _ISSUE_TABLE_LEAF: _LEAF_ISSUE_TABLE_NAMES,
     _SKILL_TRIGGER_TABLE_LEAF: _LEAF_SKILL_TRIGGER_NAMES,
+    _ADOPTION_COLUMNS_LEAF: (*_ADOPTION_VOCABULARY_NAMES, *_ADOPTION_PARAM_NAMES),
+    _ADOPTION_SORT_LEAF: _ADOPTION_SORT_NAMES,
+    _ADOPTION_HEADERS_LEAF: (_ADOPTION_HEADER_STATE_NAME, *_ADOPTION_HEADER_NAMES),
+    _ADOPTION_ROWS_LEAF: (_ADOPTION_ROW_VIEW_NAME, *_ADOPTION_ROW_NAMES),
+    _ADOPTION_RENDER_LEAF: (_ADOPTION_CSS_NAME, *_ADOPTION_PANEL_NAMES),
+    _SKILL_ADOPTION_HUB: _HUB_SKILL_ADOPTION_NAMES,
     _MATRIX_COLUMNS_LEAF: (*_MATRIX_VOCABULARY_NAMES, *_MATRIX_PARAM_NAMES),
     _MATRIX_SORT_LEAF: _MATRIX_SORT_NAMES,
     _MATRIX_HEADERS_LEAF: (_MATRIX_HEADER_STATE_NAME, *_MATRIX_HEADER_NAMES),
@@ -829,10 +968,10 @@ class ForwardedFlatModuleTest(unittest.TestCase):
 
     def test_no_flat_module_defines_one_itself(self) -> None:
         # The same rule the theme site is held to, applied to the read, state,
-        # KPI-strip, card, HTML, and skill-matrix hubs, the leaves beneath them
-        # including the card-markup one and the shared-table, issue-table,
-        # skill-trigger, and five matrix
-        # ones, and the KPI
+        # KPI-strip, card, HTML, skill-adoption, and skill-matrix hubs, the
+        # leaves beneath them including the card-markup one and the
+        # shared-table, issue-table, skill-trigger, five adoption, and five
+        # matrix ones, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only
         # compares the names the module was asked for. The card hub is held to

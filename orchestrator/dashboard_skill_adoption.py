@@ -1,6 +1,16 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable skill-adoption surface backed by focused table leaves."""
+"""Stable skill-adoption surface backed by the dashboard owners.
+
+`from orchestrator.dashboard_skill_adoption import _skill_adoption_html` is how
+the widget sections and every historical `dashboard.<name>` import reach the
+per-session adoption table, and `parse_skill_adoption_sort` how a page reads a
+clicked header back out of its URL. The columns, the ordering, the header row,
+the row projection, and the panel they are assembled into are the owners' own
+objects under `observability/dashboard/`, published here under the spellings a
+caller always imported them by, so a page and the owners cannot draw one table
+two ways.
+"""
 from __future__ import annotations
 
 from orchestrator import _dashboard_adoption_columns as columns
