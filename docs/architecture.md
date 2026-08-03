@@ -487,7 +487,8 @@ orchestrator/
                         forwarding to the same owners
   dashboard_cards.py    stable card surface, forwarding the header, banner
                         stack, and reliability strip to the card-markup owner
-                        and reaching the two card leaves still flat
+                        and the efficiency card and coverage bar to the two
+                        card owners beside it
   dashboard_charts_base.py
                         historical import site for the primitives every chart
                         family is drawn out of, forwarding to the charts owner;
@@ -540,6 +541,10 @@ orchestrator/
                         historical import site for the card header, insight
                         banners, and reliability tiles, forwarding to the
                         card-markup owner
+  _dashboard_backend_card.py / _dashboard_coverage_card.py
+                        historical import sites for the per-backend efficiency
+                        card and the cost-attribution coverage bar, forwarding
+                        to the two card owners that build them
   _dashboard_table_html.py
                         historical import site for the compact table the
                         hand-rolled panels are drawn as, forwarding to the
@@ -784,8 +789,9 @@ orchestrator/
                         of them, the numbers it is summarized by beneath them
                         and the strip those numbers are shown in, the markup a
                         card, a banner, a tile, and a compact table are drawn
-                        as, the figures those reads are drawn as, and the
-                        destination for the rest
+                        as, the two panels that are markup rather than a
+                        figure, the figures the rest are drawn as, and the
+                        destination for what is left
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -869,6 +875,15 @@ orchestrator/
                         card's container by, the banner stack, and the
                         reliability strip whose numbers the caller's own
                         formatter renders
+      backend_card.py   what a run on one backend is worth -- the cost of a
+                        million tokens, the cost of a run, and the share of
+                        billable input the cache answered -- the guard each of
+                        those ratios divides through, and the card they are
+                        laid out on
+      coverage_card.py  the share of a window's spend the parser could price,
+                        sized by token volume wherever there is any and by run
+                        count where there is none, drawn as one bar and the
+                        legend beneath it
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the frame the horizontal
                         cost families share, the generic spend ranking, the
@@ -1780,6 +1795,24 @@ one in its own table, a repository is labelled without the owner hosting it, a m
 amount nobody priced reports as a dash, because a run that cost nothing and a run the parser could not price are
 different answers, and a table spelling both `$0.00` would hide the gap the coverage banner is raised for.
 
+`backend_card.py` and `coverage_card.py` hold two more panels drawn as markup rather than as a figure, each with the
+arithmetic behind its own. The first answers what work on one backend is worth, in three readings an
+operator compares agents by: what a million tokens cost, what a run cost, and how much of the billable input the cache
+answered. All three are ratios a thin window can leave dividing by zero, so all three go through one guard that
+answers nothing rather than raising — a backend with no runs yet is a card reading zero, not a page that stopped.
+What counts as a token there is the whole billed band, input through cache write, because that is what the spend
+printed beside it was charged for; cache leverage is deliberately the narrower reading of the same row, cache reads
+over the input they stood in for, since the question is what share of *billable* input the cache answered rather than
+what share of every token it touched. The second answers whether the money everywhere else on the page can be trusted:
+one segment per `cost_source`, sized by token share whenever the window carries any and by run share only when it does
+not, because a handful of high-token runs can dominate spend while looking like a thin slice of the run count. A
+window with neither divides by one, so an empty bar renders flat rather than raising on a page opened to find out that
+the window is empty. Each segment is built as both strings it appears in at once — the slice and its legend line —
+because the two carry the same hue and the same percentage, and computing them apart is where a legend could start
+naming a width the bar above it does not have. Both owners take the theme as a parameter, the way every card builder
+here is handed one: a page resolves a single theme object and passes it down, so a card is tinted and set from what
+the chrome and charts around it were.
+
 `charts/` is where what those reads answer becomes a figure, and `primitives.py` is the first owner in it: the pieces
 every family is drawn out of rather than a family of its own. The no-data placeholder is the sharpest of them. Plotly
 answers an empty series with a blank canvas rather than an error, so a card that read nothing and a card that failed
@@ -1939,8 +1972,9 @@ answered by plus the issue-summary owner
 that spells the cost-first ordering one of them asks for, the breakdown owner names the two families its six adapters
 are answered by, the skill owner names the one family its three are, and the insight, the KPI, and the two KPI-strip
 owners name the result families the window totals, cost-source split, and issue rows they read arrive as -- the last
-two of those for the pair of windows a strip reduces rather than the one a tile reports; those are the only things
-any of the eighteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+two of those for the pair of windows a strip reduces rather than the one a tile reports -- while the two card owners
+name the family the per-backend and per-cost-source rows they weigh and size arrive as; those are the only things
+any of the twenty reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
 those — every value a cell reports is handed to it — the card markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
@@ -1960,12 +1994,13 @@ build the strip through, and `_dashboard_kpi_series.py` and `_dashboard_kpi_valu
 two token totals, the throughput pair, and the three per-day lines are the series owner's objects, and the inputs, the
 window scalars, the entry keys, the four tiles, and the build itself the strip owner's, all under the private
 spellings a caller reached them by. That hub stamps no defining module of its own, so a name reached through it
-reports the owner that holds it. `_dashboard_card_headers.py` is one more, forwarding the header, the banner
-stack, and the reliability strip to the markup owner under its own public spellings. `dashboard_cards.py` stays the
-surface in front of it, publishing those three under the private names the page always imported them by — but it is
-the one site here that still claims something, because the backend-efficiency card and the cost-source coverage bar
-are defined by flat leaves and stamped with this module. Neither stamp may name a builder the markup owner defines:
-the stamp mutates the function, so claiming one would move its reported home off its owner.
+reports the owner that holds it. `_dashboard_card_headers.py`, `_dashboard_backend_card.py`, and
+`_dashboard_coverage_card.py` are three more, forwarding the header, the banner stack, and the reliability strip to
+the markup owner, the efficiency card and the readings behind it to the backend-card owner, and the coverage bar and
+its segments to the coverage-card owner, each under its own public spellings. `dashboard_cards.py` stays the surface
+in front of the three, publishing all thirteen names under the private spellings the page always imported them by, and
+claims none of them: the `__module__` stamp mutates the function, so a name claimed here would move an owner's own
+object off the owner that defines it.
 `_dashboard_table_html.py` is another, forwarding the stylesheet, header, and
 assembly the hand-rolled panels are drawn by, and the bar width, short repository name, missing count, and unpriced
 amount a cell reports, under the private spellings they were always imported by. `dashboard_html.py` is the surface

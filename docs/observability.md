@@ -34,13 +34,15 @@ is issued through, and the dispatch that drives both, the seven a
 headline or lifecycle section is drawn from, the six a comparison panel is, the three a skill panel is, the
 connection, filter binding, and unfiltered metadata each read goes through, and the banners a window is interrupted
 with above all of them plus the four numbers it is summarized by beneath those, the per-day lines drawn under three
-of them, the strip all four are assembled into, and the markup the banners, the run-health tiles, and every card
-header are drawn as (`dashboard/windows.py`,
+of them, the strip all four are assembled into, the markup the banners, the run-health tiles, and every card
+header are drawn as, and the two panels drawn as markup rather than as a figure — one backend's efficiency, and
+the share of a window's spend that could be priced (`dashboard/windows.py`,
 `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
 `dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`, `dashboard/kpi_series.py`,
-`dashboard/kpi_strip.py`, `dashboard/card_html.py`), the primitives every chart family on
+`dashboard/kpi_strip.py`, `dashboard/card_html.py`, `dashboard/backend_card.py`,
+`dashboard/coverage_card.py`), the primitives every chart family on
 that page is drawn out of plus the frame the horizontal cost families share, the generic spend ranking, the
 per-repository one drawn through it, the per-stage cache split, the per-review-round one beside it, the
 weekday-by-hour grid, and the per-day throughput strip above them, and the usage family's own bands, day span, stack
@@ -1273,7 +1275,12 @@ resolves to the one object its owner defines. Where a patch has to land is a sep
 call path rather than the alias: the page pipeline reaches the staged plan and the wave dispatch on
 `observability/dashboard/`, so a test intercepts those with `patch.object(read_plan | dispatch, ...)`, while
 `patch.object(dashboard, ...)` still intercepts the page renderers and `PLOTLY_CONFIG` the pipeline resolves through
-the facade at call time.
+the facade at call time. A card builder is the one name on that path a patch must not follow to the owner. Every
+widget section binds the header, banner stack, reliability strip, efficiency card, and coverage bar by name at import
+(`from orchestrator.dashboard_cards import _card_header_html`), so what the page calls is the reference captured then
+rather than whatever `card_html.py`, `backend_card.py`, or `coverage_card.py` holds at call time: a test intercepting
+one patches the widget module that draws it — `patch.object(_dashboard_widget_costs, "_cost_coverage_bar_html", ...)`
+— and reaches the owner only to assert what an unpatched page renders.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
@@ -1281,10 +1288,9 @@ The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` le
 tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read, KPI-strip, and chart
 leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the KPI series and values
 pair in the middle, the cost and usage ones on the other — hold no implementation of their own; each forwards to the
-owners named below, and so do the card-markup leaf among the card ones and the shared-table leaf among the table
-ones, leaving the backend-efficiency card and the coverage bar as the two that still implement what the card hub
-publishes, and the four panels that shared table is assembled into — two on the HTML hub, one on each skill hub — as
-leaves that still build their own.
+owners named below, and so do all three card leaves and the shared-table leaf among the table ones, which is what
+lets the card hub above them claim nothing either, leaving the four panels that shared table is assembled into — two
+on the HTML hub, one on each skill hub — as the leaves that still build their own.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1317,7 +1323,11 @@ picks a class and a glyph, and the reliability strip whose numbers the calling p
 `tables.py` is the markup beside it —
 the compact table the four hand-rolled panels are listed in: the stylesheet each scopes to its own class, the header
 and body they are assembled from, and the bar width, short repository name, missing count, and unpriced amount a cell
-reports.
+reports. Two more panels are drawn as markup rather than as a figure: `backend_card.py` for what a run on one backend
+is worth — the cost of a million tokens, the cost of a run, and the share of billable input the cache answered, each
+divided through one guard so a window a backend barely ran in reads zero rather than raising — and `coverage_card.py`
+for how much of a window's spend the parser could price, sized by token share whenever the window carries any and by
+run share only when it does not, drawn as one bar and the legend beneath it.
 What those reads are drawn as sits one level down, under `charts/`, where `primitives.py` holds what every figure
 family is built out of, `cost_layout.py` the frame the horizontal cost families share, `cost_horizontal.py` the
 generic spend ranking, `cost_repo.py` the per-repository one drawn through it, `cost_stage.py` the per-stage cache
@@ -1338,15 +1348,16 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, `_dashboard_cost_repo.py`,
 `_dashboard_cost_stage.py`, `_dashboard_cost_review.py`,
 `_dashboard_usage_models.py`, `_dashboard_usage_data.py`, `_dashboard_usage_axis.py`,
-`_dashboard_usage_traces.py`, `_dashboard_usage_chart.py`, `_dashboard_card_headers.py`, and
+`_dashboard_usage_traces.py`, `_dashboard_usage_chart.py`, `_dashboard_card_headers.py`,
+`_dashboard_backend_card.py`, `_dashboard_coverage_card.py`, and
 `_dashboard_table_html.py`
 forward each historical name to the owner's own object. None of the state, read, and KPI-strip hubs defines a name of
 its own, so none of them rewrites a
 defining module; the
-compatibility metadata that keeps the established defining-module assertions intact belongs to the widget and card
-hubs alone, and names only members a flat leaf still defines — `dashboard_cards.py` stamps the backend-efficiency card
-and the coverage bar, whose leaves are still flat, and leaves the header, banner stack, and reliability strip to the
-markup owner that defines them. Streamlit is never imported in these
+compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
+and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
+publishes are the card, backend, and coverage owners' own objects, and a `__module__` stamp there would move one of
+them off the owner that defines it. Streamlit is never imported in these
 helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
 
 ```sh
@@ -1548,7 +1559,9 @@ import site for those seven, forwarding each to the owner's own object and imple
 above it does. Beside them, the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip are reached through `orchestrator/dashboard_cards.py` — the first,
 second, and last of those built by `observability/dashboard/card_html.py` and forwarded through the flat
-`orchestrator/_dashboard_card_headers.py`; the primary per-session
+`orchestrator/_dashboard_card_headers.py`, the third and fourth by `observability/dashboard/backend_card.py` and
+`observability/dashboard/coverage_card.py` through `orchestrator/_dashboard_backend_card.py` and
+`orchestrator/_dashboard_coverage_card.py`; the primary per-session
 skill-adoption matrix (its `adopt_sort` / `adopt_dir` sort-param parser and the sortable table) lives in
 `orchestrator/dashboard_skill_adoption.py`, and the invocation-level per-skill trigger matrix (its `mtx_sort` /
 `mtx_dir` sort-param parser and the sortable table) in `orchestrator/dashboard_skill_matrix.py` (all re-exported through

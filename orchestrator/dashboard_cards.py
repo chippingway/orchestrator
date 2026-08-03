@@ -1,6 +1,15 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable dashboard card surface backed by focused card leaves."""
+"""Stable dashboard card surface backed by focused card leaves.
+
+`from orchestrator.dashboard_cards import _card_header_html` is how the widget
+sections and every historical `dashboard.<name>` import reach the header a
+panel is titled by, the banner stack a page opens with, the reliability strip
+beneath its headline tiles, the per-backend efficiency card, and the
+cost-attribution coverage bar. Each of those is the owner's own object under
+`observability/dashboard/`, published here under the private spellings a caller
+always imported it by, so a page and the owners cannot draw a card differently.
+"""
 from __future__ import annotations
 
 from orchestrator import _dashboard_backend_card as backend
@@ -21,11 +30,3 @@ _coverage_segment = coverage.coverage_segment
 _coverage_segments = coverage.coverage_segments
 _cost_coverage_bar_html = coverage.cost_coverage_bar_html
 _reliability_tiles_html = headers.reliability_tiles_html
-
-# The two builders still defined by a flat leaf keep reporting this module,
-# which is the identity a repr or a reader following `__module__` has always
-# landed on. The three the card markup owner defines carry no stamp: it mutates
-# the function, so claiming one here would rewrite the owner's own object and
-# leave that owner reporting none of its surface as its own.
-_backend_efficiency_card_html.__module__ = __name__
-_cost_coverage_bar_html.__module__ = __name__

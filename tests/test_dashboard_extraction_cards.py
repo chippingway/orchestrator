@@ -28,19 +28,27 @@ CONFIGURED_DB_URL = "postgresql://h/db"
 CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
-CARD_MARKUP_OWNER = "orchestrator.observability.dashboard.card_html"
+DASHBOARD_OWNERS = "orchestrator.observability.dashboard"
 
 
-# Each builder the hub publishes and the module that defines it. The header,
-# banner stack, and reliability strip report the markup owner under
-# `observability/`; the backend-efficiency card and the coverage bar report the
-# hub, which is the import site those two flat leaves stamp them with.
+CARD_MARKUP_OWNER = f"{DASHBOARD_OWNERS}.card_html"
+
+
+BACKEND_CARD_OWNER = f"{DASHBOARD_OWNERS}.backend_card"
+
+
+COVERAGE_CARD_OWNER = f"{DASHBOARD_OWNERS}.coverage_card"
+
+
+# Each builder the hub publishes and the owner under `observability/` that
+# defines it. The hub itself is an import site, so a builder reporting the hub
+# would be an implementation that came back to it.
 _CARD_MEMBER_HOMES = MappingProxyType({
     "_card_header_html": CARD_MARKUP_OWNER,
     "_insights_html": CARD_MARKUP_OWNER,
     "_reliability_tiles_html": CARD_MARKUP_OWNER,
-    "_backend_efficiency_card_html": DASHBOARD_CARDS_MODULE,
-    "_cost_coverage_bar_html": DASHBOARD_CARDS_MODULE,
+    "_backend_efficiency_card_html": BACKEND_CARD_OWNER,
+    "_cost_coverage_bar_html": COVERAGE_CARD_OWNER,
 })
 
 

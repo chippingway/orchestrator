@@ -37,6 +37,10 @@ container by, and ``tables`` is the markup beside it: the compact table the
 four hand-rolled panels are listed in, with the stylesheet each scopes to its
 own class, the header and body they are assembled from, and the bar width,
 short repository name, missing count, and unpriced amount a cell reports.
+Two panels are markup of their own rather than a figure: ``backend_card``
+for what a run on one backend is worth and the card the three readings behind
+it are laid out on, and ``coverage_card`` for the share of a window's spend the
+parser could price, drawn as one bar and the legend under it.
 What those reads
 are then drawn as arrives under ``charts``, where ``primitives`` holds what
 every figure family is built out of -- the placeholder a window holding no
