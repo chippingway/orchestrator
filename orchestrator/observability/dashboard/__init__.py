@@ -96,8 +96,10 @@ parser could price, drawn as one bar and the legend under it.
 shapes threaded from the controls at the top of the page to the last panel on
 it -- the caller's own Streamlit, pandas, chart, and theme handles, the
 selections every read is narrowed by together with the issue scope and window
-span read off them, the controls and page they open on, and what one load
-answers with. ``render_config`` is the one thing every figure below is handed
+span read off them, the controls and page they open on, what one load answers
+with, and the rows, totals, and counts the paired repository-spend and
+run-health section is drawn from.
+``render_config`` is the one thing every figure below is handed
 beside itself: the hover toolbar switched off once for the whole page rather
 than at each call site.
 What those reads
