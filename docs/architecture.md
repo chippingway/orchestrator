@@ -557,6 +557,16 @@ orchestrator/
                         historical import site for the aggregate
                         skill-trigger panel beside it, forwarding to the
                         skill-trigger-table owner
+  _dashboard_matrix_columns.py / _dashboard_matrix_sort.py
+  _dashboard_matrix_headers.py / _dashboard_matrix_rows.py
+  _dashboard_matrix_render.py
+                        historical import sites for the invocation-level
+                        trigger matrix, forwarding to the five skill-matrix
+                        owners that hold its columns, ordering, header row,
+                        row projection, and panel
+  dashboard_skill_matrix.py
+                        stable surface in front of those five, publishing
+                        every historical spelling and defining none of them
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -797,7 +807,9 @@ orchestrator/
                         of them, the numbers it is summarized by beneath them
                         and the strip those numbers are shown in, the markup a
                         card, a banner, a tile, and a compact table are drawn
-                        as, the two panels listed in that table and the two
+                        as, the three panels listed in that table — one of them
+                        split across the five owners a sortable one needs —
+                        and the two
                         that are markup rather than a figure, the figures the
                         rest are drawn as, and the
                         destination for what is left
@@ -830,6 +842,23 @@ orchestrator/
                         reported in, the busiest rate in the table its bar is
                         drawn as a share of, and the label a category the sink
                         left empty is read under
+      skill_matrix_columns.py
+                        the fourth arrives split by what a click moves: the
+                        seven columns it is read across, the key each is
+                        ordered by, and the two query parameters a heading
+                        writes
+      skill_matrix_sort.py
+                        the parse those parameters are read back through and
+                        the two orders they select, including the
+                        repository-then-rate default
+      skill_matrix_headers.py
+                        the header row each heading is drawn as a sort control
+                        in, and what a click on one offers
+      skill_matrix_rows.py
+                        what one `(repo, role, backend, skill)` cell says, and
+                        the tone a cohort that triggered nothing is drawn in
+      skill_matrix.py   the panel those cells are sorted into, and the notice
+                        a window with no catalog-backed cell renders instead
       windows.py        the half-open UTC window a run reports over, the
                         presets that name one, and the clamp that keeps a
                         preset inside the data extent
@@ -1834,8 +1863,30 @@ busiest cohort to be a share of, so the ranking divides by one and every bar ren
 raising on a page opened to find out that nothing was tracked. A cohort the sink recorded no role or backend for is
 labelled `unknown` rather than left blank, matching the bucket the read groups a NULL under, because a category this
 panel drops is one an operator would read as never having run — and the row projections behind the two skill matrices
-reach that label through the HTML surface above this owner, so all three tables bucket a missing category the same
-way. Both categories arrive off the sink, so both are escaped into the markup.
+read that label off this owner, the trigger matrix's directly and the adoption one's through the HTML surface above
+it, so all three tables bucket a missing category the same way. Both categories arrive off the sink, so both are
+escaped into the markup.
+
+The invocation-level trigger matrix is the fourth of the four, and the only one an operator can reorder, so it arrives
+split by what a click moves rather than as one owner. `skill_matrix_columns.py` holds the vocabulary a click is
+expressed in: the seven columns, the key each is ordered by — the four naming ones compared case-insensitively, so a
+repository an operator reads as one name does not split into two runs of rows over how the sink capitalized it — and
+the `mtx_sort` / `mtx_dir` pair a heading writes, prefixed so the adoption matrix above it can carry its own selection
+in the same URL without either table reordering the other. `skill_matrix_sort.py` reads that pair back and answers
+with an order. The parameters are untrusted input, since a sort lives in the URL precisely so it can be shared: a
+column the vocabulary no longer offers, or a direction with no column beside it, degrades to the default rather than
+raising on a page opened to read a table. That default orders on two keys at once — repository ascending, then trigger
+rate descending — so each repository leads with the skills its runs actually reached for, which is why it is a reading
+of its own rather than one of the clicked columns. `skill_matrix_headers.py` draws the row those clicks come from,
+where each heading is an anchor targeting the current tab, because a sort that opened a second copy of the page would
+lose the filters the matrix was narrowed by; the active column offers the reverse of what it is showing and is the
+only one drawn with an arrow, while an inactive one offers descending if it counts and ascending if it names.
+`skill_matrix_rows.py` says what one cell is worth: an offered-but-never-triggered cohort is the finding the panel
+pairs a catalog with triggers for, so its count and derived rate are both toned down rather than dropped while the
+cohort's own run total stays plain — that total is the denominator the zero is read against, not part of the finding.
+`skill_matrix.py` assembles them, and answers the one window that has no table to draw: with no catalog-backed cell at
+all it renders a notice naming the opt-in switch, since a quiet panel on a page opened to find out what ran would
+otherwise read as a bug rather than as tracking nobody turned on.
 
 `backend_card.py` and `coverage_card.py` hold two more panels drawn as markup rather than as a figure, each with the
 arithmetic behind its own. The first answers what work on one backend is worth, in three readings an
@@ -2015,10 +2066,14 @@ that spells the cost-first ordering one of them asks for, the breakdown owner na
 are answered by, the skill owner names the one family its three are, and the insight, the KPI, and the two KPI-strip
 owners name the result families the window totals, cost-source split, and issue rows they read arrive as -- the last
 two of those for the pair of windows a strip reduces rather than the one a tile reports -- while the two card owners
-name the family the per-backend and per-cost-source rows they weigh and size arrive as, and the two panels listed in
-the compact table name the families the issue rows one ranks and the cohort rows the other reports arrive as; those
+name the family the per-backend and per-cost-source rows they weigh and size arrive as, and the three panels listed in
+the compact table name the families the issue rows one ranks, the cohort rows the second reports, and the matrix cells
+the third is read across arrive as — four of the third's five owners name
+`analytics/query/skill_models.py` for that cell, since the column vocabulary is typed by what it orders, the parse and
+the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
+column set alone and so names nothing outside; those
 are the only things
-any of the twenty-two reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the twenty-seven reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
 those — every value a cell reports is handed to it — the card markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
@@ -2058,7 +2113,15 @@ surface in front of all three, publishing those seven table names, the issues pa
 five beside the topbar, filter meta, KPI strip, sparkline, and delta pill it reaches through the leaves named for
 each — the columns, rules, and label under a leading underscore the leaves spell bare — and defining nothing of its
 own, so a panel and
-the owner cannot be drawn by two different tables. `dashboard_charts_base.py` is one too: the placeholder, the three
+the owner cannot be drawn by two different tables.
+`_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`, `_dashboard_matrix_headers.py`,
+`_dashboard_matrix_rows.py`, and `_dashboard_matrix_render.py` are five more beside them, forwarding the trigger
+matrix's column vocabulary and query parameters, its parse and two orders, its header row, its row projection, and
+its panel and empty notice to the five owners that hold each. `dashboard_skill_matrix.py` is the surface in front of
+those five, publishing all twenty-one names under the spellings a page always imported them by — the column model,
+the column set, the numeric keys, the sort keys, the header state, the row view, and the panel rules under a leading
+underscore the leaves spell bare — and defining none of them, so a click an operator makes and the order the owners
+run cannot come apart. `dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
 are the charts owner's objects under the private spellings they were always imported by. Every chart family now names
 that owner directly, so nothing in the tree reads them off this site; it stays for the callers outside it that do.

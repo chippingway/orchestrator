@@ -47,6 +47,18 @@ _ROLLUPS_LEAF = "orchestrator._dashboard_read_rollups"
 
 _SKILLS_LEAF = "orchestrator._dashboard_read_skills"
 
+_SKILL_MATRIX_HUB = "orchestrator.dashboard_skill_matrix"
+
+_MATRIX_COLUMNS_LEAF = "orchestrator._dashboard_matrix_columns"
+
+_MATRIX_HEADERS_LEAF = "orchestrator._dashboard_matrix_headers"
+
+_MATRIX_RENDER_LEAF = "orchestrator._dashboard_matrix_render"
+
+_MATRIX_ROWS_LEAF = "orchestrator._dashboard_matrix_rows"
+
+_MATRIX_SORT_LEAF = "orchestrator._dashboard_matrix_sort"
+
 _SKILL_TRIGGER_TABLE_LEAF = "orchestrator._dashboard_skill_trigger_table"
 
 _TABLE_LEAF = "orchestrator._dashboard_table_html"
@@ -100,6 +112,16 @@ _READ_PLAN = f"{_PACKAGE}.read_plan"
 _ROLLUPS = f"{_PACKAGE}.rollups"
 
 _SCOPED_READS = f"{_PACKAGE}.scoped_reads"
+
+_SKILL_MATRIX = f"{_PACKAGE}.skill_matrix"
+
+_SKILL_MATRIX_COLUMNS = f"{_PACKAGE}.skill_matrix_columns"
+
+_SKILL_MATRIX_HEADERS = f"{_PACKAGE}.skill_matrix_headers"
+
+_SKILL_MATRIX_ROWS = f"{_PACKAGE}.skill_matrix_rows"
+
+_SKILL_MATRIX_SORT = f"{_PACKAGE}.skill_matrix_sort"
 
 _SKILL_TRIGGER_TABLE = f"{_PACKAGE}.skill_trigger_table"
 
@@ -523,6 +545,99 @@ _HTML_SKILL_TRIGGER_NAMES = (
     *_SKILL_TRIGGER_TABLE_NAMES,
 )
 
+# The fourth of the four panels is the only one an operator can reorder, so it
+# arrives across five owners with a leaf apiece and one hub above them. The two
+# query parameters are the sharpest copy in the set: a heading linking under
+# one spelling while the parse reads another is a click that silently reopens
+# the table in its default order.
+_MATRIX_PARAM_NAMES = (
+    ("SKILL_MATRIX_SORT_PARAM", _SKILL_MATRIX_COLUMNS, "SKILL_MATRIX_SORT_PARAM"),
+    ("SKILL_MATRIX_DIR_PARAM", _SKILL_MATRIX_COLUMNS, "SKILL_MATRIX_DIR_PARAM"),
+)
+
+# The vocabulary a parameter names a column out of: the column model, the seven
+# columns, the counts among them a first click sorts down, and the key each is
+# ordered by. A copy of the keys would be a header offering a sort the ordering
+# does not run.
+_MATRIX_VOCABULARY_NAMES = (
+    ("SkillMatrixColumn", _SKILL_MATRIX_COLUMNS, "SkillMatrixColumn"),
+    ("SKILL_MATRIX_COLUMNS", _SKILL_MATRIX_COLUMNS, "SKILL_MATRIX_COLUMNS"),
+    ("SKILL_MATRIX_NUMERIC_KEYS", _SKILL_MATRIX_COLUMNS, "SKILL_MATRIX_NUMERIC_KEYS"),
+    ("SKILL_MATRIX_SORT_KEYS", _SKILL_MATRIX_COLUMNS, "SKILL_MATRIX_SORT_KEYS"),
+)
+
+# The parse a clicked heading is read back through, the per-column ordering it
+# selects, and the two-key default a matrix nobody sorted opens in.
+_MATRIX_SORT_NAMES = (
+    ("parse_skill_matrix_sort", _SKILL_MATRIX_SORT, "parse_skill_matrix_sort"),
+    ("_sort_skill_matrix_rows", _SKILL_MATRIX_SORT, "sort_skill_matrix_rows"),
+    (
+        "_default_sort_skill_matrix_rows",
+        _SKILL_MATRIX_SORT,
+        "default_sort_skill_matrix_rows",
+    ),
+    (
+        "_skill_matrix_default_sort_key",
+        _SKILL_MATRIX_SORT,
+        "skill_matrix_default_sort_key",
+    ),
+)
+
+# What one heading offers on a click, the link it is drawn as, and the header
+# row they are assembled into.
+_MATRIX_HEADER_NAMES = (
+    ("_skill_matrix_header_state", _SKILL_MATRIX_HEADERS, "skill_matrix_header_state"),
+    ("_skill_matrix_header_cell", _SKILL_MATRIX_HEADERS, "skill_matrix_header_cell"),
+    ("_skill_matrix_header_html", _SKILL_MATRIX_HEADERS, "skill_matrix_header_html"),
+)
+
+_MATRIX_HEADER_STATE_NAME = (
+    "SkillMatrixHeaderState", _SKILL_MATRIX_HEADERS, "SkillMatrixHeaderState",
+)
+
+# The tone a quiet cell is drawn in, the readings one cell is reduced to, and
+# the row they are rendered as.
+_MATRIX_ROW_NAMES = (
+    ("_muted_zero_html", _SKILL_MATRIX_ROWS, "muted_zero_html"),
+    ("_skill_matrix_row_view", _SKILL_MATRIX_ROWS, "skill_matrix_row_view"),
+    ("_skill_matrix_row_html", _SKILL_MATRIX_ROWS, "skill_matrix_row_html"),
+)
+
+_MATRIX_ROW_VIEW_NAME = (
+    "SkillMatrixRowView", _SKILL_MATRIX_ROWS, "SkillMatrixRowView",
+)
+
+# The notice a window with no catalog-backed cell renders instead, and the
+# sorted panel every other window is drawn as.
+_MATRIX_PANEL_NAMES = (
+    ("SKILL_MATRIX_EMPTY_MESSAGE", _SKILL_MATRIX, "SKILL_MATRIX_EMPTY_MESSAGE"),
+    ("_skill_matrix_html", _SKILL_MATRIX, "skill_matrix_html"),
+)
+
+_MATRIX_CSS_NAME = (
+    "SKILL_MATRIX_EXTRA_CSS", _SKILL_MATRIX, "SKILL_MATRIX_EXTRA_CSS",
+)
+
+# The whole matrix surface as the hub publishes it: the seven names the leaves
+# spell bare take a leading underscore there, which is how the page always
+# imported them.
+_HUB_SKILL_MATRIX_NAMES = (
+    *_MATRIX_PARAM_NAMES,
+    *_MATRIX_SORT_NAMES,
+    *_MATRIX_HEADER_NAMES,
+    *_MATRIX_ROW_NAMES,
+    *_MATRIX_PANEL_NAMES,
+    *(
+        (f"_{name}", owner, attribute)
+        for name, owner, attribute in (
+            *_MATRIX_VOCABULARY_NAMES,
+            _MATRIX_HEADER_STATE_NAME,
+            _MATRIX_ROW_VIEW_NAME,
+            _MATRIX_CSS_NAME,
+        )
+    ),
+)
+
 # The per-day lines drawn under three of those tiles, and the two reductions
 # the tiles themselves are totalled by. A second token total is the sharpest
 # copy here: a window counts all four token columns, so a line reduced anywhere
@@ -592,8 +707,9 @@ _FILTER_NAMES = (
 # a KPI computed here the one every tile reports, a strip assembled here the one
 # the page opens with, a card headed, weighed, or sized here the one the
 # stylesheet paints, a table drawn here the one every hand-rolled panel is,
-# a window's issues ranked here the ones the page lists, and a cohort's skill
-# use reported here the rate the panel beneath them shows,
+# a window's issues ranked here the ones the page lists, a cohort's skill
+# use reported here the rate the panel beneath them shows, and a matrix headed,
+# ordered, projected, or assembled here the one an operator's click reorders,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -615,6 +731,12 @@ _FORWARDED_MODULES = MappingProxyType({
     _TABLE_LEAF: _TABLE_NAMES,
     _ISSUE_TABLE_LEAF: _LEAF_ISSUE_TABLE_NAMES,
     _SKILL_TRIGGER_TABLE_LEAF: _LEAF_SKILL_TRIGGER_NAMES,
+    _MATRIX_COLUMNS_LEAF: (*_MATRIX_VOCABULARY_NAMES, *_MATRIX_PARAM_NAMES),
+    _MATRIX_SORT_LEAF: _MATRIX_SORT_NAMES,
+    _MATRIX_HEADERS_LEAF: (_MATRIX_HEADER_STATE_NAME, *_MATRIX_HEADER_NAMES),
+    _MATRIX_ROWS_LEAF: (_MATRIX_ROW_VIEW_NAME, *_MATRIX_ROW_NAMES),
+    _MATRIX_RENDER_LEAF: (_MATRIX_CSS_NAME, *_MATRIX_PANEL_NAMES),
+    _SKILL_MATRIX_HUB: _HUB_SKILL_MATRIX_NAMES,
     _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),
     _KPI_SERIES_LEAF: _FORWARDED_KPI_SERIES,
     _KPI_VALUES_LEAF: (*_KPI_ENTRY_KEYS, *_FORWARDED_KPI_TILES),
@@ -707,8 +829,9 @@ class ForwardedFlatModuleTest(unittest.TestCase):
 
     def test_no_flat_module_defines_one_itself(self) -> None:
         # The same rule the theme site is held to, applied to the read, state,
-        # KPI-strip, card, and HTML hubs, the leaves beneath them including the
-        # card-markup one and the shared-table, issue-table, and skill-trigger
+        # KPI-strip, card, HTML, and skill-matrix hubs, the leaves beneath them
+        # including the card-markup one and the shared-table, issue-table,
+        # skill-trigger, and five matrix
         # ones, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only

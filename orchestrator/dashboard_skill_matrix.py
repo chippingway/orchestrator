@@ -1,6 +1,16 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable skill-matrix surface backed by focused table leaves."""
+"""Stable skill-matrix surface backed by the dashboard owners.
+
+`from orchestrator.dashboard_skill_matrix import _skill_matrix_html` is how the
+widget sections and every historical `dashboard.<name>` import reach the
+invocation-level trigger matrix, and `parse_skill_matrix_sort` how a page reads
+a clicked header back out of its URL. The columns, the ordering, the header
+row, the row projection, and the panel they are assembled into are the owners'
+own objects under `observability/dashboard/`, published here under the
+spellings a caller always imported them by, so a page and the owners cannot
+draw one matrix two ways.
+"""
 from __future__ import annotations
 
 from orchestrator import _dashboard_matrix_columns as columns

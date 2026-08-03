@@ -1,35 +1,22 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Column model and query vocabulary for the skill matrix."""
+"""Historical import site for the skill matrix's column vocabulary.
+
+The seven columns the invocation-level trigger matrix is read across, the key
+each is ordered by, the subset a first click sorts descending, and the pair of
+query parameters its headers write are the dashboard owner's own objects. A
+caller that names this module gets those rather than a copy, so the header a
+page links from and the parse that reads it back cannot start spelling one sort
+two ways.
+"""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from types import MappingProxyType
-from typing import Callable
-
-from orchestrator.analytics.read import SkillTriggerMatrixRow
+from orchestrator.observability.dashboard import skill_matrix_columns
 
 
-@dataclass(frozen=True)
-class SkillMatrixColumn:
-    key: str
-    label: str
-    right_aligned: bool
-    sort_value: Callable[[SkillTriggerMatrixRow], object]
-
-
-SKILL_MATRIX_COLUMNS = (
-    SkillMatrixColumn("repo", "Repo", False, lambda row: (row.repo or "").lower()),
-    SkillMatrixColumn("role", "Role", False, lambda row: (row.agent_role or "").lower()),
-    SkillMatrixColumn("backend", "Backend", False, lambda row: (row.backend or "").lower()),
-    SkillMatrixColumn("skill", "Skill", False, lambda row: (row.skill or "").lower()),
-    SkillMatrixColumn("runs", "Runs", True, lambda row: int(row.runs)),
-    SkillMatrixColumn("skill_runs", "Runs with skill", True, lambda row: int(row.skill_runs)),
-    SkillMatrixColumn("rate", "Trigger rate", True, lambda row: row.rate),
-)
-SKILL_MATRIX_NUMERIC_KEYS = frozenset(("runs", "skill_runs", "rate"))
-SKILL_MATRIX_SORT_KEYS = MappingProxyType(
-    {column.key: column.sort_value for column in SKILL_MATRIX_COLUMNS},
-)
-SKILL_MATRIX_SORT_PARAM = "mtx_sort"
-SKILL_MATRIX_DIR_PARAM = "mtx_dir"
+SkillMatrixColumn = skill_matrix_columns.SkillMatrixColumn
+SKILL_MATRIX_COLUMNS = skill_matrix_columns.SKILL_MATRIX_COLUMNS
+SKILL_MATRIX_NUMERIC_KEYS = skill_matrix_columns.SKILL_MATRIX_NUMERIC_KEYS
+SKILL_MATRIX_SORT_KEYS = skill_matrix_columns.SKILL_MATRIX_SORT_KEYS
+SKILL_MATRIX_SORT_PARAM = skill_matrix_columns.SKILL_MATRIX_SORT_PARAM
+SKILL_MATRIX_DIR_PARAM = skill_matrix_columns.SKILL_MATRIX_DIR_PARAM

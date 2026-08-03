@@ -58,6 +58,16 @@ _ROLLUPS_OWNER = "rollups"
 
 _SCOPED_READS_OWNER = "scoped_reads"
 
+_SKILL_MATRIX_OWNER = "skill_matrix"
+
+_SKILL_MATRIX_COLUMNS_OWNER = "skill_matrix_columns"
+
+_SKILL_MATRIX_HEADERS_OWNER = "skill_matrix_headers"
+
+_SKILL_MATRIX_ROWS_OWNER = "skill_matrix_rows"
+
+_SKILL_MATRIX_SORT_OWNER = "skill_matrix_sort"
+
 _SKILL_TRIGGER_TABLE_OWNER = "skill_trigger_table"
 
 _SKILLS_OWNER = "skills"
@@ -95,6 +105,11 @@ _OWNERS = (
     _READ_PLAN_OWNER,
     _ROLLUPS_OWNER,
     _SCOPED_READS_OWNER,
+    _SKILL_MATRIX_OWNER,
+    _SKILL_MATRIX_COLUMNS_OWNER,
+    _SKILL_MATRIX_HEADERS_OWNER,
+    _SKILL_MATRIX_ROWS_OWNER,
+    _SKILL_MATRIX_SORT_OWNER,
     _SKILL_TRIGGER_TABLE_OWNER,
     _SKILLS_OWNER,
     _STATIC_METADATA_OWNER,
@@ -117,7 +132,10 @@ _OWNERS = (
 # head a card and draw that banner and those numbers as the markup a browser
 # reads, list a panel's rows in the compact table beside them, rank a window's
 # issues into the first of those panels, report a cohort's skill-trigger rate
-# in the second, weigh one backend's spend against the
+# in the second, read a page URL back as the order the fourth is drawn in,
+# head one of its columns as the control that writes that URL, say what one of
+# its cells triggered, assemble the panel those cells are sorted into, weigh
+# one backend's spend against the
 # tokens and runs behind it, or size a window's
 # priced share into one bar is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
@@ -136,7 +154,11 @@ _OWNERS = (
 # columns the issue table is headed by and the rules its bars and pills are
 # painted from, the columns and rate-bar rules the skill-trigger table beside it
 # is drawn with together with the label it reads a category the sink left empty
-# under, the KPI owner's ranking cap and rework buckets, the triple the
+# under, the seven columns the trigger matrix is read across with the two query
+# parameters its headings write and the counts among them a first click sorts
+# down, the rules that matrix scopes to its own class and the notice it renders
+# in place of a table, the KPI owner's ranking cap and rework buckets, the
+# triple the
 # strip owner hands its four entries back as, and the TTL the metadata owner
 # caches under are all
 # invisible here for the same reason.
@@ -250,6 +272,26 @@ _SURFACES = MappingProxyType({
         "read_top_cost_issues",
     ),
     _SCOPED_READS_OWNER: ("scoped_read",),
+    _SKILL_MATRIX_OWNER: ("skill_matrix_html",),
+    _SKILL_MATRIX_COLUMNS_OWNER: ("SkillMatrixColumn",),
+    _SKILL_MATRIX_HEADERS_OWNER: (
+        "SkillMatrixHeaderState",
+        "skill_matrix_header_cell",
+        "skill_matrix_header_html",
+        "skill_matrix_header_state",
+    ),
+    _SKILL_MATRIX_ROWS_OWNER: (
+        "SkillMatrixRowView",
+        "muted_zero_html",
+        "skill_matrix_row_html",
+        "skill_matrix_row_view",
+    ),
+    _SKILL_MATRIX_SORT_OWNER: (
+        "default_sort_skill_matrix_rows",
+        "parse_skill_matrix_sort",
+        "skill_matrix_default_sort_key",
+        "sort_skill_matrix_rows",
+    ),
     _SKILL_TRIGGER_TABLE_OWNER: (
         "skill_trigger_row_html",
         "skill_triggers_html",
@@ -290,8 +332,9 @@ _SURFACES = MappingProxyType({
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
-# flat theme module, the state, read, KPI, KPI-strip, card, and HTML hubs, and
-# the eighteen leaves beneath all but the KPI one. No owner here may plant one
+# flat theme module, the state, read, KPI, KPI-strip, card, HTML, and
+# skill-matrix hubs, and the twenty-three leaves beneath all but the KPI one.
+# No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
@@ -302,6 +345,11 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_issue_table",
     "orchestrator._dashboard_kpi_series",
     "orchestrator._dashboard_kpi_values",
+    "orchestrator._dashboard_matrix_columns",
+    "orchestrator._dashboard_matrix_headers",
+    "orchestrator._dashboard_matrix_render",
+    "orchestrator._dashboard_matrix_rows",
+    "orchestrator._dashboard_matrix_sort",
     "orchestrator._dashboard_read_breakdowns",
     "orchestrator._dashboard_read_core",
     "orchestrator._dashboard_read_dispatch",
@@ -318,6 +366,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator.dashboard_kpi_strip",
     "orchestrator.dashboard_kpis",
     "orchestrator.dashboard_reads",
+    "orchestrator.dashboard_skill_matrix",
     "orchestrator.dashboard_state",
     "orchestrator.dashboard_theme",
 )
@@ -336,7 +385,9 @@ _COMPATIBILITY_SITES = (
 # the three a skill panel is drawn from are the skill family's, and the totals
 # and cost-source split a banner is raised over -- and the window totals a tile
 # reports, the pair of windows the strip beneath it is reduced from, the issue
-# rows a table is ranked from, and the per-backend and per-cost-source rows the
+# rows a table is ranked from, the cohort rows the trigger-rate panel beneath it
+# reports, the matrix cells four of the five trigger-matrix owners order, parse
+# for, reduce, and assemble, and the per-backend and per-cost-source rows the
 # two card owners weigh and size -- are the rows those reads hand back.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
