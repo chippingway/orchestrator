@@ -521,6 +521,10 @@ orchestrator/
   _dashboard_read_dispatch.py
                         historical state, read, read-plan, and load-dispatch
                         import sites forwarding to those owners
+  _dashboard_date_widgets.py / _dashboard_date_range.py
+                        historical import sites for the row the date filter is
+                        laid out in and the bar a window is picked in,
+                        forwarding to the two date owners
   _dashboard_read_rollups.py / _dashboard_read_breakdowns.py / _dashboard_read_skills.py
                         historical import sites for the seven headline and
                         lifecycle reads, the six comparison-panel ones, and the
@@ -822,7 +826,8 @@ orchestrator/
                         the step / turn / trajectory records they return
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
     dashboard/          the Streamlit analytics page: the visual theme both
-                        pages are drawn in, the state one run of it carries,
+                        pages are drawn in, the state one run of it carries
+                        and the bar its window is picked in,
                         the two waves its load is staged into, the fan-out
                         each is issued through and the dispatch that drives
                         both, the seven a
@@ -927,6 +932,13 @@ orchestrator/
       filters.py        the offset a timestamp is displayed in, the issue and
                         stage selections a read is narrowed by, and the key
                         every cached read is stored under
+      date_controls.py  the five slots the filter bar that window is picked in
+                        is laid out across, the label naming it, and the three
+                        presets it offers inline
+      date_filter.py    the bar itself: the window a preset opens the pickers
+                        on, the inclusive days they hand back, and the
+                        half-open window plus the filter-line slot the caller
+                        leaves with
       read_mode.py      the parallel-read knob and its truthy spellings, the
                         parse that reads it and the flag one process's loads
                         are issued under, the worker cap, and the refusal an
@@ -1783,6 +1795,24 @@ read at opposite times on purpose: the flag is parsed once at that module's impo
 fan-out on by restarting the Streamlit process, while the database URL is read inside the call off whichever analytics
 package the name resolves to.
 
+`date_controls.py` and `date_filter.py` are where an operator picks that window. The first owns the row the filter bar
+is laid out in — five slots rather than a row of equal ones, because each holds a different widget: the label naming
+the bar, the preset radio, the two date pickers, and the room the filter line is written into. It also names the three
+presets offered inline once, since the options the radio lists and the position the current one reopens at are read
+off the same tuple, and a preset offered by one and unknown to the other falls to the last option — which is how a bar
+could reopen on `All` after every rerun. `Custom` is deliberately not among the three: it names no window of its own,
+so it stays the sidebar fallback rather than a fourth button that resolves to nothing. The second owns the round trip
+drawn inside those slots. What the preset resolves to is what the pickers are seeded with, and what they hand back is
+the window every read below is bounded by, which is why the two sit in one owner. The dates an operator reads and
+types are inclusive — `To` is the last day the window covers — while the reads are bounded `ts < end`, so the end
+picker is seeded one day back from the half-open boundary and the pair is handed to the window owner, which puts that
+day back. Both pickers are clamped to the recorded extent, because a window reaching past what the database holds is a
+panel drawn over days nobody wrote, and a preset that resolves to nothing — `Custom`, or any preset on an extent with
+no rows — falls back to the whole extent rather than to an empty bar. The chosen preset is written to the session only
+after the bar is drawn, so a rerun reopens the radio on the choice the operator just made; the fifth slot is handed
+back as an empty placeholder rather than filled here, because the line restating what the filters narrowed to counts
+runs, which the first wave of reads has not answered yet.
+
 `read_plan.py` is what that state is spent on: the two waves one page load is staged into, the cached task each entry
 of a wave is bound as, and the pair of keys those entries are issued under. The split is what lets the page paint
 before the load finishes — the first wave is exactly the six reads the chrome above the fold is reduced from, so the
@@ -2247,8 +2277,10 @@ the panel by what they hand back, and the row projection by what it reduces, whi
 column set alone and so names nothing outside — and the two cards those panels are reported on name it as well, for
 the cohort rows and matrix cells both are handed and the adoption cells only the first is; those
 are the only things
-any of the thirty-seven reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
-past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
+any of the thirty-nine reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+past the siblings they take their worker cap, their adapters, and their scope from — as do the two the filter bar is
+drawn out of, which take the presets they offer and the window they resolve from that window owner and each other, and
+are handed Streamlit rather than importing it — the table markup reaches not one of
 those — every value a cell reports is handed to it — the sparkline projection reaches nothing at all and the markup
 over it only that projection, the chrome around the strip only that markup — for the line a tile carries — the card
 markup names only the insight
@@ -2263,6 +2295,11 @@ the hub the whole read inventory is resolved through, and the ten flat leaves be
 `_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_dispatch.py`, `_dashboard_read_rollups.py`,
 `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and forward each historical name to
 the owner's own object. The read hub defines nothing of its own either, so nothing there rewrites a defining module.
+`_dashboard_date_widgets.py` and `_dashboard_date_range.py` are two more beside them, the first forwarding the five
+slots the filter bar is laid out across, the label and the preset radio drawn in the first two of them, and the
+position that radio reopens at, and the second the window a preset opens the pickers on, the pair those pickers hand
+back, and the bar assembling all of it — each under the private spellings the page always imported them by. The page
+pipeline reaches the bar on the owner rather than through that leaf, so a test intercepting it patches `date_filter`.
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
 them to the two owners that hold each. `dashboard_kpi_strip.py` is the hub the widget pipeline and the lazy facade
 build the strip through, and `_dashboard_kpi_series.py` and `_dashboard_kpi_values.py` the two leaves beneath it: the

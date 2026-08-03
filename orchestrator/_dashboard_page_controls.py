@@ -7,9 +7,8 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Any, Sequence
 
-from orchestrator import _dashboard_date_range as date_range
 from orchestrator import dashboard_state, dashboard_widgets
-from orchestrator.observability.dashboard import read_plan
+from orchestrator.observability.dashboard import date_filter, read_plan
 
 
 @dataclass(frozen=True)
@@ -54,7 +53,7 @@ def _render_dashboard_controls(
     selections = _render_sidebar_filters(st=modules.st, options=options)
     timezone_offset = _timezone_choice(modules.st)
     topbar_slot = modules.st.empty()
-    window_meta = date_range._render_date_filter_bar(
+    window_meta = date_filter.render_date_filter_bar(
         st=modules.st,
         extent=extent,
         extent_min_d=extent.min_ts.date(),

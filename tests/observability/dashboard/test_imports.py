@@ -26,6 +26,10 @@ _COVERAGE_CARD_OWNER = "coverage_card"
 
 _CSS_OWNER = "css"
 
+_DATE_CONTROLS_OWNER = "date_controls"
+
+_DATE_FILTER_OWNER = "date_filter"
+
 _DISPATCH_OWNER = "dispatch"
 
 _FANOUT_OWNER = "fanout"
@@ -111,6 +115,8 @@ _OWNERS = (
     _CARD_HTML_OWNER,
     _COVERAGE_CARD_OWNER,
     _CSS_OWNER,
+    _DATE_CONTROLS_OWNER,
+    _DATE_FILTER_OWNER,
     _DISPATCH_OWNER,
     _FANOUT_OWNER,
     _FILTER_BINDING_OWNER,
@@ -152,7 +158,9 @@ _OWNERS = (
 )
 
 # What each owner answers for, declared rather than discovered so a second way
-# to resolve a color, lay a chart out, shorten a number, spell a window,
+# to resolve a color, lay a chart out, shorten a number, spell a window, lay
+# out the bar one is picked in, offer the presets that name one, turn the days
+# typed into that bar back into a window,
 # normalize a selection, key a cached read, read that key back as a read's
 # filters, decide which way a load's reads are issued, stage that load into the
 # two waves it is drawn in, run one wave of them that way, drive both waves
@@ -186,7 +194,8 @@ _OWNERS = (
 # carries: the geometry owner's whole surface is its measurements and the two
 # font stacks, and the stylesheet owner's is one string. The palette's chrome
 # colors and seven dimension maps, the preset vocabulary the window owner
-# decides, the read-mode owner's knob name, truthy spellings, worker cap,
+# decides together with the three of those the control owner beside it offers
+# inline, the read-mode owner's knob name, truthy spellings, worker cap,
 # refusal message, and the flag its import binds, the alias the fan-out owner
 # names a reader by, the TTL the read plan caches a wave's entries under, the
 # spinner message the dispatch owner opens a load under together with the
@@ -241,6 +250,18 @@ _SURFACES = MappingProxyType({
         "coverage_segments",
     ),
     _CSS_OWNER: (),
+    _DATE_CONTROLS_OWNER: (
+        "DateFilterColumns",
+        "date_filter_columns",
+        "preset_radio_index",
+        "render_date_filter_label",
+        "render_preset_choice",
+    ),
+    _DATE_FILTER_OWNER: (
+        "initial_filter_window",
+        "render_date_filter_bar",
+        "render_date_inputs",
+    ),
     _DISPATCH_OWNER: (
         "dispatch_reads",
         "log_dashboard_load",
@@ -443,8 +464,9 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
-# all but the KPI one, and the two widget leaves the skill panels and the run
-# listing are reached through, which sit under the widget hub instead.
+# all but the KPI one, the two widget leaves the skill panels and the run
+# listing are reached through, which sit under the widget hub instead, and the
+# two the filter bar is reached through, which sit under no hub at all.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
@@ -457,6 +479,8 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_backend_card",
     "orchestrator._dashboard_card_headers",
     "orchestrator._dashboard_coverage_card",
+    "orchestrator._dashboard_date_range",
+    "orchestrator._dashboard_date_widgets",
     "orchestrator._dashboard_filter_state",
     "orchestrator._dashboard_issue_table",
     "orchestrator._dashboard_kpi_series",
