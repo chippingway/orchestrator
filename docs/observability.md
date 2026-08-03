@@ -1279,9 +1279,10 @@ into the shared import-light `orchestrator/script_launch.py` helper (`ensure_rep
 The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: KPI
 series/values; cards, tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read
 and chart leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the cost and usage
-ones on the other — hold no implementation of their own; each forwards to the owners named below, and so does the
-card-markup leaf among the card ones, leaving the backend-efficiency card and the coverage bar as the two that still
-implement what their hub publishes.
+ones on the other — hold no implementation of their own; each forwards to the owners named below, and so do the
+card-markup leaf among the card ones and the shared-table leaf among the table ones, leaving the backend-efficiency
+card and the coverage bar as the two that still implement what the card hub publishes, and the four panels that
+shared table is assembled into — two on the HTML hub, one on each skill hub — as leaves that still build their own.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1305,7 +1306,10 @@ beneath those, `kpis.py` holds the four numbers the headline tiles report — th
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
 `card_html.py` is what those two reach the browser as, together with the header every panel beneath them is titled by:
 the hidden mark `css.py` selects a card's container by, the banner stack whose severity picks a class and a glyph, and
-the reliability strip whose numbers the calling page's own formatter renders.
+the reliability strip whose numbers the calling page's own formatter renders. `tables.py` is the markup beside it —
+the compact table the four hand-rolled panels are listed in: the stylesheet each scopes to its own class, the header
+and body they are assembled from, and the bar width, short repository name, missing count, and unpriced amount a cell
+reports.
 What those reads are drawn as sits one level down, under `charts/`, where `primitives.py` holds what every figure
 family is built out of, `cost_layout.py` the frame the horizontal cost families share, `cost_horizontal.py` the
 generic spend ranking, `cost_repo.py` the per-repository one drawn through it, `cost_stage.py` the per-stage cache
@@ -1324,7 +1328,8 @@ is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`
 `_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, `_dashboard_cost_repo.py`,
 `_dashboard_cost_stage.py`, `_dashboard_cost_review.py`,
 `_dashboard_usage_models.py`, `_dashboard_usage_data.py`, `_dashboard_usage_axis.py`,
-`_dashboard_usage_traces.py`, `_dashboard_usage_chart.py`, and `_dashboard_card_headers.py`
+`_dashboard_usage_traces.py`, `_dashboard_usage_chart.py`, `_dashboard_card_headers.py`, and
+`_dashboard_table_html.py`
 forward each historical name to the owner's own object. Neither hub defines a name of its own, so neither rewrites a
 defining module; the
 compatibility metadata that keeps the established defining-module assertions intact now belongs to the component hubs
