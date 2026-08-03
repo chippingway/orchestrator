@@ -15,6 +15,10 @@ _READS_HUB = "orchestrator.dashboard_reads"
 
 _KPI_SITE = "orchestrator.dashboard_kpis"
 
+_CARD_HUB = "orchestrator.dashboard_cards"
+
+_CARD_HEADERS_LEAF = "orchestrator._dashboard_card_headers"
+
 _READ_CORE_LEAF = "orchestrator._dashboard_read_core"
 
 _DISPATCH_LEAF = "orchestrator._dashboard_read_dispatch"
@@ -38,6 +42,8 @@ _FUTURE_DIRECTIVE = "annotations"
 _PACKAGE = "orchestrator.observability.dashboard"
 
 _BREAKDOWNS = f"{_PACKAGE}.breakdowns"
+
+_CARD_HTML = f"{_PACKAGE}.card_html"
 
 _CSS = f"{_PACKAGE}.css"
 
@@ -351,6 +357,33 @@ _FORWARDED_KPIS = (
     ("top_expensive_issues", _KPIS, "top_expensive_issues"),
 )
 
+# The card markup both flat card sites publish: the mark and title every panel
+# is headed by, the banner stack a page opens with, and the reliability strip
+# beneath its headline tiles. The leaf spells all three publicly and the hub
+# privately, and each has to be the owner's own object -- a copy of the header
+# on either site is a set of cards the stylesheet stops selecting, because what
+# it selects them by is the hidden mark this markup writes.
+_CARD_MARKUP_NAMES = (
+    ("card_header_html", _CARD_HTML, "card_header_html"),
+    ("insights_html", _CARD_HTML, "insights_html"),
+    ("reliability_tiles_html", _CARD_HTML, "reliability_tiles_html"),
+)
+
+_HUB_CARD_MARKUP_NAMES = (
+    ("_card_header_html", _CARD_HTML, "card_header_html"),
+    ("_insights_html", _CARD_HTML, "insights_html"),
+    ("_reliability_tiles_html", _CARD_HTML, "reliability_tiles_html"),
+)
+
+# The two builders the card hub still claims. Their leaves define them and the
+# hub stamps its own name on each, because that is the import site their API is
+# documented at. The three above carry no stamp: it mutates the function, so
+# claiming one there would rewrite the markup owner's own object.
+_CARD_HUB_STAMPED = frozenset((
+    "_backend_efficiency_card_html",
+    "_cost_coverage_bar_html",
+))
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -379,8 +412,9 @@ _FILTER_NAMES = (
 # under, a scope entered here the one they all share, a panel read issued here
 # the one a page draws that panel from, a wave staged here the one the load
 # actually runs, a load driven here the one the operator's log line comes off,
-# and a KPI computed here the one every tile reports, or a fix under the owners
-# would reach only half of the callers.
+# a KPI computed here the one every tile reports, and a card headed here the one
+# the stylesheet paints, or a fix under the owners would reach only half of the
+# callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -400,6 +434,7 @@ _FORWARDED_MODULES = MappingProxyType({
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,
     _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),
     _READS_HUB: _FORWARDED_READS_HUB,
+    _CARD_HEADERS_LEAF: _CARD_MARKUP_NAMES,
 })
 
 # The hub the page and the compatibility facade in front of it read the state
@@ -478,10 +513,10 @@ class ForwardedFlatModuleTest(unittest.TestCase):
 
     def test_no_flat_module_defines_one_itself(self) -> None:
         # The same rule the theme site is held to, applied to the read hub, the
-        # leaves beneath it and the state hub, and the KPI site beside them: a
-        # module that defined a name of its own would be a second
-        # implementation the check above cannot see, because it only compares
-        # the names the module was asked for.
+        # leaves beneath it, the state hub, and the card-markup leaf, and the
+        # KPI site beside them: a module that defined a name of its own would
+        # be a second implementation the check above cannot see, because it
+        # only compares the names the module was asked for.
         for module_name in _FORWARDED_MODULES:
             defined = tuple(
                 name
@@ -490,6 +525,32 @@ class ForwardedFlatModuleTest(unittest.TestCase):
             )
             with self.subTest(module=module_name):
                 self.assertEqual(defined, ())
+
+
+class ForwardedCardHubTest(unittest.TestCase):
+    """The hub the page draws its cards through binds the owner's objects."""
+
+    def test_each_name_resolves_to_the_owner(self) -> None:
+        hub = import_module(_CARD_HUB)
+        for name, owner_name, attribute in _HUB_CARD_MARKUP_NAMES:
+            with self.subTest(name=name):
+                self.assertIs(
+                    getattr(hub, name),
+                    getattr(import_module(owner_name), attribute),
+                )
+
+    def test_it_claims_only_what_a_leaf_defines(self) -> None:
+        # This site cannot be held to the defines-nothing rule while two card
+        # leaves are still flat, because it stamps their builders with its own
+        # name. What it must not claim is a name the markup owner defines: the
+        # stamp would move that function's reported home off its owner.
+        hub = import_module(_CARD_HUB)
+        claimed = frozenset(
+            name
+            for name, member in hub.__dict__.items()
+            if getattr(member, "__module__", None) == _CARD_HUB
+        )
+        self.assertEqual(claimed, _CARD_HUB_STAMPED)
 
 
 class ForwardedStateHubTest(unittest.TestCase):

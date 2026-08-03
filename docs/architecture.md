@@ -479,6 +479,9 @@ orchestrator/
                         and fan-out owners under observability/dashboard/
   dashboard_kpis.py     historical import site for the headline KPI arithmetic
                         and the banners above it, forwarding to those owners
+  dashboard_cards.py    stable card surface, forwarding the header, banner
+                        stack, and reliability strip to the card-markup owner
+                        and reaching the two card leaves still flat
   dashboard_charts_base.py
                         historical import site for the primitives every chart
                         family is drawn out of, forwarding to the charts owner;
@@ -527,6 +530,10 @@ orchestrator/
                         historical import site for the hero usage figure and
                         the backend-day stub beside it, forwarding to the
                         charts owner that builds them
+  _dashboard_card_headers.py
+                        historical import site for the card header, insight
+                        banners, and reliability tiles, forwarding to the
+                        card-markup owner
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -765,7 +772,8 @@ orchestrator/
                         what one of those reads then runs on and is narrowed
                         by, the banners a window is interrupted with above all
                         of them and the numbers it is summarized by beneath
-                        them, the figures those reads are drawn as, and the
+                        them, the markup a card, a banner, and a tile are
+                        drawn as, the figures those reads are drawn as, and the
                         destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
@@ -832,6 +840,11 @@ orchestrator/
                         the run-health tiles, the order and depth a spend table
                         is cut to, and the share of spend that was a second
                         pass
+      card_html.py      the markup those two are drawn as, and the header
+                        every panel beneath them is titled by: the hidden mark
+                        the stylesheet selects a card's container by, the
+                        banner stack, and the reliability strip whose numbers
+                        the caller's own formatter renders
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the frame the horizontal
                         cost families share, the generic spend ranking, the
@@ -1700,6 +1713,19 @@ row -- issues tying on cost fall back to run count and then to the repository an
 unpriced issue sorts below every priced one rather than beside the cheapest -- so a table redrawn on the same window
 is the same table.
 
+`card_html.py` is how those two reach the browser, and the header every panel below them is titled by. Each of the
+three is a string handed to `st.markdown(unsafe_allow_html=True)` whose class names are the ones `css.py` writes rules
+for, which is why they sit in one owner: a header spelled in one module and a tile in another are two places the
+chrome can stop agreeing with the stylesheet painting it. The header's first element is a hidden mark, because that is
+what the stylesheet selects a card's container by — Streamlit renders no class of its own to catch. What a card is
+told stays with the owner that decided it: a banner arrives as the shape `insights.py` raises, so only the glyph and
+the class its severity paints through are settled here and a severity nothing is mapped for falls back to the neutral
+one rather than an empty box; a tile arrives already reduced by `kpis.py`, and its number is rendered by the formatter
+the caller injects, since the same strip is drawn beside counts and percentages and a value already reading as text
+passes through untouched. Every value a caller passes is escaped on the way in — a repo name, a skill, an issue title,
+and a severity all reach a card off the sink rather than out of this repository, and the whole surface is markup a
+browser is asked to interpret.
+
 `charts/` is where what those reads answer becomes a figure, and `primitives.py` is the first owner in it: the pieces
 every family is drawn out of rather than a family of its own. The no-data placeholder is the sharpest of them. Plotly
 answers an empty series with a blank canvas rather than an error, so a card that read nothing and a card that failed
@@ -1859,9 +1885,10 @@ answered by plus the issue-summary owner
 that spells the cost-first ordering one of them asks for, the breakdown owner names the two families its six adapters
 are answered by, the skill owner names the one family its three are, and the insight and KPI owners name the result
 families the window totals, cost-source split, and issue rows they read arrive as; those are the only things any of
-the fourteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing past the
-siblings they take their worker cap, their adapters, and their scope from, and the rollup owner names one sibling of
-its own beside those query families: the KPI owner whose ranking depth its spend table is cut to.
+the fifteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing past the
+siblings they take their worker cap, their adapters, and their scope from, the card markup names only the insight
+owner whose banner shape it renders, and the rollup owner names one sibling of its own beside those query families:
+the KPI owner whose ranking depth its spend table is cut to.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
 the hub the whole read inventory is resolved through, and the ten flat leaves beneath them —
@@ -1870,7 +1897,13 @@ the hub the whole read inventory is resolved through, and the ten flat leaves be
 `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and forward each historical name to
 the owner's own object. The read hub defines nothing of its own either, so nothing there rewrites a defining module.
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
-them to the two owners that hold each. `dashboard_charts_base.py` is one too: the placeholder, the three label
+them to the two owners that hold each. `_dashboard_card_headers.py` is one more, forwarding the header, the banner
+stack, and the reliability strip to the markup owner under its own public spellings. `dashboard_cards.py` stays the
+surface in front of it, publishing those three under the private names the page always imported them by — but it is
+the one site here that still claims something, because the backend-efficiency card and the cost-source coverage bar
+are defined by flat leaves and stamped with this module. Neither stamp may name a builder the markup owner defines:
+the stamp mutates the function, so claiming one would move its reported home off its owner.
+`dashboard_charts_base.py` is one too: the placeholder, the three label
 helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height are the
 charts owner's objects under the private spellings they were always imported by. Every chart family now names that
 owner directly, so nothing in the tree reads them off this site; it stays for the callers outside it that do.

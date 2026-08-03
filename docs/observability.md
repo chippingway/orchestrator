@@ -33,11 +33,13 @@ read-mode state one run of the analytics page carries plus the two waves its loa
 is issued through, and the dispatch that drives both, the seven a
 headline or lifecycle section is drawn from, the six a comparison panel is, the three a skill panel is, the
 connection, filter binding, and unfiltered metadata each read goes through, and the banners a window is interrupted
-with above all of them plus the four numbers it is summarized by beneath those (`dashboard/windows.py`,
+with above all of them plus the four numbers it is summarized by beneath those, and the markup those two and every
+card header are drawn as (`dashboard/windows.py`,
 `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
-`dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`), the primitives every chart family on
+`dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`, `dashboard/card_html.py`), the
+primitives every chart family on
 that page is drawn out of plus the frame the horizontal cost families share, the generic spend ranking, the
 per-repository one drawn through it, the per-stage cache split, the per-review-round one beside it, the
 weekday-by-hour grid, and the per-day throughput strip above them, and the usage family's own bands, day span, stack
@@ -1298,6 +1300,9 @@ feeds, `insights.py` holds the two observations a window is worth interrupting f
 the parser could not price — the ratio each is raised at, and the banner line a crossing is rendered as; directly
 beneath those, `kpis.py` holds the four numbers the headline tiles report — the move against the window before it,
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
+`card_html.py` is what those two reach the browser as, together with the header every panel beneath them is titled by:
+the hidden mark `css.py` selects a card's container by, the banner stack whose severity picks a class and a glyph, and
+the reliability strip whose numbers the calling page's own formatter renders.
 What those reads are drawn as sits one level down, under `charts/`, where `primitives.py` holds what every figure
 family is built out of, `cost_layout.py` the frame the horizontal cost families share, `cost_horizontal.py` the
 generic spend ranking, `cost_repo.py` the per-repository one drawn through it, `cost_stage.py` the per-stage cache
@@ -1316,11 +1321,13 @@ is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`
 `_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, `_dashboard_cost_repo.py`,
 `_dashboard_cost_stage.py`, `_dashboard_cost_review.py`,
 `_dashboard_usage_models.py`, `_dashboard_usage_data.py`, `_dashboard_usage_axis.py`,
-`_dashboard_usage_traces.py`, and `_dashboard_usage_chart.py`
+`_dashboard_usage_traces.py`, `_dashboard_usage_chart.py`, and `_dashboard_card_headers.py`
 forward each historical name to the owner's own object. Neither hub defines a name of its own, so neither rewrites a
 defining module; the
 compatibility metadata that keeps the established defining-module assertions intact now belongs to the component hubs
-alone, and names only members a flat leaf still defines. Streamlit is never imported in these
+alone, and names only members a flat leaf still defines — `dashboard_cards.py` stamps the backend-efficiency card and
+the coverage bar, whose leaves are still flat, and leaves the header, banner stack, and reliability strip to the
+markup owner that defines them. Streamlit is never imported in these
 helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
 
 ```sh
@@ -1515,7 +1522,9 @@ does every other chart surface, since no flat chart module pulls it in at load e
 The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are built by inline-HTML
 helpers in `orchestrator/dashboard_html.py`; the insight banners, per-card header, backend-efficiency cards,
-cost-source coverage bar, and reliability-tile strip live in `orchestrator/dashboard_cards.py`; the primary per-session
+cost-source coverage bar, and reliability-tile strip are reached through `orchestrator/dashboard_cards.py` — the first,
+second, and last of those built by `observability/dashboard/card_html.py` and forwarded through the flat
+`orchestrator/_dashboard_card_headers.py`; the primary per-session
 skill-adoption matrix (its `adopt_sort` / `adopt_dir` sort-param parser and the sortable table) lives in
 `orchestrator/dashboard_skill_adoption.py`, and the invocation-level per-skill trigger matrix (its `mtx_sort` /
 `mtx_dir` sort-param parser and the sortable table) in `orchestrator/dashboard_skill_matrix.py` (all re-exported through

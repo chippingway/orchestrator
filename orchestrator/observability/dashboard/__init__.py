@@ -26,7 +26,10 @@ the seven a headline or lifecycle section is built from, ``breakdowns`` for
 the six a comparison section is, and ``skills`` for the three a skill section
 is. Above all of them, ``insights`` holds the two observations a window is
 worth interrupting a page for and the ratio each is raised at, and ``kpis``
-the four numbers that window is summarized by beneath them. What those reads
+the four numbers that window is summarized by beneath them. ``card_html``
+is the markup those two reach the browser as, together with the header every
+panel below them is titled by and the hidden mark ``css`` selects a card's
+container by. What those reads
 are then drawn as arrives under ``charts``, where ``primitives`` holds what
 every figure family is built out of -- the placeholder a window holding no
 rows is answered with, the labels a bar is annotated by, and the height and

@@ -28,37 +28,41 @@ CONFIGURED_DB_URL = "postgresql://h/db"
 CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 
 
-_MOVED_CARD_MEMBERS = (
-    "_card_header_html",
-    "_insights_html",
-    "_backend_efficiency_card_html",
-    "_cost_coverage_bar_html",
-    "_reliability_tiles_html",
-)
+CARD_MARKUP_OWNER = "orchestrator.observability.dashboard.card_html"
+
+
+# Each builder the hub publishes and the module that defines it. The header,
+# banner stack, and reliability strip report the markup owner under
+# `observability/`; the backend-efficiency card and the coverage bar report the
+# hub, which is the import site those two flat leaves stamp them with.
+_CARD_MEMBER_HOMES = MappingProxyType({
+    "_card_header_html": CARD_MARKUP_OWNER,
+    "_insights_html": CARD_MARKUP_OWNER,
+    "_reliability_tiles_html": CARD_MARKUP_OWNER,
+    "_backend_efficiency_card_html": DASHBOARD_CARDS_MODULE,
+    "_cost_coverage_bar_html": DASHBOARD_CARDS_MODULE,
+})
 
 
 class CardHtmlExtractionTest(unittest.TestCase):
     """The insight / backend-efficiency / cost-coverage / reliability-tile
-    inline-HTML card family lives in `orchestrator.dashboard_cards`, and
-    `orchestrator.dashboard` re-exports each builder under the same
+    inline-HTML card family is reached through `orchestrator.dashboard_cards`,
+    and `orchestrator.dashboard` re-exports each builder under the same
     name so the page pipeline and the `dashboard.<name>`
     surface keep resolving to the same object.
     """
 
-    def test_card_members_defined_in_cards_module(self) -> None:
+    def test_card_members_report_their_home(self) -> None:
         _reload(CONFIGURED_DB_ENV)
         cards = sys.modules[DASHBOARD_CARDS_MODULE]
-        for name in _MOVED_CARD_MEMBERS:
+        for name, home in _CARD_MEMBER_HOMES.items():
             with self.subTest(name=name):
-                self.assertEqual(
-                    getattr(cards, name).__module__,
-                    DASHBOARD_CARDS_MODULE,
-                )
+                self.assertEqual(getattr(cards, name).__module__, home)
 
     def test_facade_reexports_cards_objects(self) -> None:
         _, dashboard = _reload(CONFIGURED_DB_ENV)
         cards = sys.modules[DASHBOARD_CARDS_MODULE]
-        for name in _MOVED_CARD_MEMBERS:
+        for name in _CARD_MEMBER_HOMES:
             with self.subTest(name=name):
                 self.assertTrue(
                     hasattr(dashboard, name),
