@@ -1345,9 +1345,10 @@ project, and binds the `values` / `color` / `w` / `h` surface a caller asks for 
 filter bar restating what a run narrowed it to, the pill one tile's move against the window before it is annotated
 with, and the four tiles assembled around them. A rise reads red and a drop green, because these numbers are costs;
 `invert` swaps the hue for the readings where up is the good direction without moving the arrow off the value's sign,
-and a window with nothing to compare against or one that did not move renders no pill at all. Every caller-supplied
-string is escaped, and the pill's `value` keyword and the banner's six keyword-only readings are bound as explicit
-signatures so both still answer the call every caller spells.
+and a window with nothing to compare against or one that did not move renders no pill at all. What reaches the markup
+as caller text is escaped — the banner's span label and spend figure, and each tile's label, value, and sub-line —
+while the counts beside them and the filter line's own dates carry nothing to escape; the pill's `value` keyword and the
+banner's six keyword-only readings are bound as explicit signatures so both still answer the call every caller spells.
 `card_html.py` is what the banners and the run-health tiles reach the browser as, together with the header every panel
 beneath them is titled by: the hidden mark `css.py` selects a card's container by, the banner stack whose severity
 picks a class and a glyph, and the reliability strip whose numbers the calling page's own formatter renders.
