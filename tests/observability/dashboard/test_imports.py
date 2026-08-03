@@ -16,9 +16,13 @@ from tests.observability.observability_test_support import (
 
 _PACKAGE = "orchestrator.observability.dashboard"
 
+_BACKEND_CARD_OWNER = "backend_card"
+
 _BREAKDOWNS_OWNER = "breakdowns"
 
 _CARD_HTML_OWNER = "card_html"
+
+_COVERAGE_CARD_OWNER = "coverage_card"
 
 _CSS_OWNER = "css"
 
@@ -66,8 +70,10 @@ _WINDOWS_OWNER = "windows"
 # in the module map, which is what the inventory check compares the directory
 # against.
 _OWNERS = (
+    _BACKEND_CARD_OWNER,
     _BREAKDOWNS_OWNER,
     _CARD_HTML_OWNER,
+    _COVERAGE_CARD_OWNER,
     _CSS_OWNER,
     _DISPATCH_OWNER,
     _FANOUT_OWNER,
@@ -103,7 +109,9 @@ _OWNERS = (
 # reduce its window to the four numbers a headline tile reports, plot the days
 # behind three of them, assemble all four into the strip a page opens with,
 # head a card and draw that banner and those numbers as the markup a browser
-# reads, or list a panel's rows in the compact table beside them is a
+# reads, list a panel's rows in the compact table beside them, weigh one
+# backend's spend against the tokens and runs behind it, or size a window's
+# priced share into one bar is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
 # bound and the cache's tri-state -- could disagree. Two owners report nothing
 # because the check reads `__module__`, which only a class or a function
@@ -121,6 +129,12 @@ _OWNERS = (
 # its four entries back as, and the TTL the metadata owner caches under are all
 # invisible here for the same reason.
 _SURFACES = MappingProxyType({
+    _BACKEND_CARD_OWNER: (
+        "BackendEfficiencyMetrics",
+        "backend_efficiency_card_html",
+        "backend_efficiency_metrics",
+        "safe_ratio",
+    ),
     _BREAKDOWNS_OWNER: (
         "read_backend_daily_tokens",
         "read_backend_efficiency",
@@ -133,6 +147,14 @@ _SURFACES = MappingProxyType({
         "card_header_html",
         "insights_html",
         "reliability_tiles_html",
+    ),
+    _COVERAGE_CARD_OWNER: (
+        "CoverageSegment",
+        "cost_coverage_bar_html",
+        "cost_coverage_weights",
+        "cost_source_color",
+        "coverage_segment",
+        "coverage_segments",
     ),
     _CSS_OWNER: (),
     _DISPATCH_OWNER: (
@@ -245,11 +267,13 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, and HTML hubs, and
-# the fourteen leaves beneath all but the KPI one. No owner here may plant one
+# the sixteen leaves beneath all but the KPI one. No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
+    "orchestrator._dashboard_backend_card",
     "orchestrator._dashboard_card_headers",
+    "orchestrator._dashboard_coverage_card",
     "orchestrator._dashboard_filter_state",
     "orchestrator._dashboard_kpi_series",
     "orchestrator._dashboard_kpi_values",
@@ -285,8 +309,9 @@ _COMPATIBILITY_SITES = (
 # six a comparison panel is drawn from are the rollup and breakdown families',
 # the three a skill panel is drawn from are the skill family's, and the totals
 # and cost-source split a banner is raised over -- and the window totals a tile
-# reports, the pair of windows the strip beneath it is reduced from, and the
-# issue rows a table is ranked from -- are the rows those reads hand back.
+# reports, the pair of windows the strip beneath it is reduced from, the issue
+# rows a table is ranked from, and the per-backend and per-cost-source rows the
+# two card owners weigh and size -- are the rows those reads hand back.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

@@ -25,6 +25,10 @@ _CARD_HUB = "orchestrator.dashboard_cards"
 
 _CARD_HEADERS_LEAF = "orchestrator._dashboard_card_headers"
 
+_BACKEND_CARD_LEAF = "orchestrator._dashboard_backend_card"
+
+_COVERAGE_CARD_LEAF = "orchestrator._dashboard_coverage_card"
+
 _HTML_SURFACE = "orchestrator.dashboard_html"
 
 _READ_CORE_LEAF = "orchestrator._dashboard_read_core"
@@ -51,9 +55,13 @@ _FUTURE_DIRECTIVE = "annotations"
 
 _PACKAGE = "orchestrator.observability.dashboard"
 
+_BACKEND_CARD = f"{_PACKAGE}.backend_card"
+
 _BREAKDOWNS = f"{_PACKAGE}.breakdowns"
 
 _CARD_HTML = f"{_PACKAGE}.card_html"
+
+_COVERAGE_CARD = f"{_PACKAGE}.coverage_card"
 
 _CSS = f"{_PACKAGE}.css"
 
@@ -385,20 +393,49 @@ _CARD_MARKUP_NAMES = (
     ("reliability_tiles_html", _CARD_HTML, "reliability_tiles_html"),
 )
 
-_HUB_CARD_MARKUP_NAMES = (
+# The per-backend efficiency card, published by its own leaf: the builder the
+# page renders one `st.markdown` per backend from, and the three readings and
+# the divide-by-zero guard beneath it. A copy of the guard is a card that
+# raises on the first window a backend barely ran in.
+_BACKEND_CARD_NAMES = (
+    ("BackendEfficiencyMetrics", _BACKEND_CARD, "BackendEfficiencyMetrics"),
+    (
+        "backend_efficiency_card_html",
+        _BACKEND_CARD,
+        "backend_efficiency_card_html",
+    ),
+    ("backend_efficiency_metrics", _BACKEND_CARD, "backend_efficiency_metrics"),
+    ("safe_ratio", _BACKEND_CARD, "safe_ratio"),
+)
+
+# The cost-attribution coverage bar beside it: the bar itself, the segment pair
+# a slice and its legend line are built as, the hue a source is recognized by,
+# and the denominator the whole bar is sized against. A copy of that last one
+# is a page whose bar and whose banners could disagree about how much of a
+# window went unpriced.
+_COVERAGE_CARD_NAMES = (
+    ("CoverageSegment", _COVERAGE_CARD, "CoverageSegment"),
+    ("cost_coverage_bar_html", _COVERAGE_CARD, "cost_coverage_bar_html"),
+    ("cost_coverage_weights", _COVERAGE_CARD, "cost_coverage_weights"),
+    ("cost_source_color", _COVERAGE_CARD, "cost_source_color"),
+    ("coverage_segment", _COVERAGE_CARD, "coverage_segment"),
+    ("coverage_segments", _COVERAGE_CARD, "coverage_segments"),
+)
+
+# The whole card surface as the hub publishes it, under the private spellings
+# the page always imported them by: the markup owner's three, the backend
+# card's four, and the coverage bar's six.
+_HUB_CARD_NAMES = (
     ("_card_header_html", _CARD_HTML, "card_header_html"),
     ("_insights_html", _CARD_HTML, "insights_html"),
     ("_reliability_tiles_html", _CARD_HTML, "reliability_tiles_html"),
+    *(
+        (f"_{name}", owner, attribute)
+        for name, owner, attribute in (
+            *_BACKEND_CARD_NAMES, *_COVERAGE_CARD_NAMES,
+        )
+    ),
 )
-
-# The two builders the card hub still claims. Their leaves define them and the
-# hub stamps its own name on each, because that is the import site their API is
-# documented at. The three above carry no stamp: it mutates the function, so
-# claiming one there would rewrite the markup owner's own object.
-_CARD_HUB_STAMPED = frozenset((
-    "_backend_efficiency_card_html",
-    "_cost_coverage_bar_html",
-))
 
 # The compact table four panels are drawn as, published under the same private
 # spellings by the leaf and by the HTML surface above it. Both sites have to
@@ -482,9 +519,9 @@ _FILTER_NAMES = (
 # the one a page draws that panel from, a wave staged here the one the load
 # actually runs, a load driven here the one the operator's log line comes off,
 # a KPI computed here the one every tile reports, a strip assembled here the one
-# the page opens with, a card headed here the one the stylesheet paints, and a
-# table drawn here the one every hand-rolled panel is, or a fix under the owners
-# would reach only half of the callers.
+# the page opens with, a card headed, weighed, or sized here the one the
+# stylesheet paints, and a table drawn here the one every hand-rolled panel is,
+# or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -510,6 +547,9 @@ _FORWARDED_MODULES = MappingProxyType({
     _READS_HUB: _FORWARDED_READS_HUB,
     _CARD_HEADERS_LEAF: _CARD_MARKUP_NAMES,
     _HTML_SURFACE: _TABLE_NAMES,
+    _BACKEND_CARD_LEAF: _BACKEND_CARD_NAMES,
+    _COVERAGE_CARD_LEAF: _COVERAGE_CARD_NAMES,
+    _CARD_HUB: _HUB_CARD_NAMES,
 })
 
 # The hub the page and the compatibility facade in front of it read the state
@@ -588,11 +628,14 @@ class ForwardedFlatModuleTest(unittest.TestCase):
 
     def test_no_flat_module_defines_one_itself(self) -> None:
         # The same rule the theme site is held to, applied to the read, state,
-        # KPI-strip, and HTML hubs, the leaves beneath them including the
+        # KPI-strip, card, and HTML hubs, the leaves beneath them including the
         # card-markup and table ones, and the KPI site beside those: a module
         # that defined a name of its own would be a second implementation the
         # check above cannot see, because it only compares the names the module
-        # was asked for.
+        # was asked for. The card hub is held to it like the rest -- the
+        # `__module__` stamp a claim is made with mutates the function, so
+        # claiming a name there would move an owner's own object off the owner
+        # that defines it.
         for module_name in _FORWARDED_MODULES:
             defined = tuple(
                 name
@@ -601,32 +644,6 @@ class ForwardedFlatModuleTest(unittest.TestCase):
             )
             with self.subTest(module=module_name):
                 self.assertEqual(defined, ())
-
-
-class ForwardedCardHubTest(unittest.TestCase):
-    """The hub the page draws its cards through binds the owner's objects."""
-
-    def test_each_name_resolves_to_the_owner(self) -> None:
-        hub = import_module(_CARD_HUB)
-        for name, owner_name, attribute in _HUB_CARD_MARKUP_NAMES:
-            with self.subTest(name=name):
-                self.assertIs(
-                    getattr(hub, name),
-                    getattr(import_module(owner_name), attribute),
-                )
-
-    def test_it_claims_only_what_a_leaf_defines(self) -> None:
-        # This site cannot be held to the defines-nothing rule while two card
-        # leaves are still flat, because it stamps their builders with its own
-        # name. What it must not claim is a name the markup owner defines: the
-        # stamp would move that function's reported home off its owner.
-        hub = import_module(_CARD_HUB)
-        claimed = frozenset(
-            name
-            for name, member in hub.__dict__.items()
-            if getattr(member, "__module__", None) == _CARD_HUB
-        )
-        self.assertEqual(claimed, _CARD_HUB_STAMPED)
 
 
 class ForwardedStateHubTest(unittest.TestCase):
