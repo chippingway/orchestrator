@@ -10,21 +10,7 @@ from datetime import date
 
 from tests.dashboard_reload_helpers import (
     reload_dashboard as _reload,
-    load_dashboard_theme as _theme_module,
 )
-from orchestrator.analytics.read import (
-    ReviewRoundBucketRow,
-    ThroughputDayRow,
-    TimeSeriesPoint,
-)
-
-_TOKENS_DAILY_SPARKS_TOTAL_CO = 12.0
-_TOKENS_DAILY_SPARKS_TOTAL_OU = 20
-_TOKENS_DAILY_SPARKS_SECONDARY = 6.0
-_TOKENS_DAILY_SPARKS_COST_USD = 1.5
-_TOKENS_DAILY_SPARKS_C_TERTIARY = 4.0
-_TOKENS_DAILY_SPARKS_T_TERTIARY = 5.0
-_TOKENS_DAILY_SPARKS_QUATERNARY = 3.0
 
 
 SKIP_DOTENV_ENV = "ORCHESTRATOR_SKIP_DOTENV"
@@ -83,113 +69,14 @@ MAY01 = date(_YEAR, 5, 1)
 MAY07 = date(_YEAR, 5, 7)
 
 
-EVENT_AGENT_EXIT = "agent_exit"
-
-
 BACKEND_CLAUDE = "claude"
 
 
 BACKEND_CODEX = "codex"
 
 
-KPI_TOTAL_TOKENS = "Total tokens"
-
-
-BUCKET_INITIAL = "0"
-
-
-BUCKET_FIRST_ROUND = "1"
-
-
-def _kpi_inputs(dashboard):
-    return dashboard._KpiInputs(
-        theme=_theme_module(),
-        summary=dashboard.Summary(
-            total_cost_usd=_TOKENS_DAILY_SPARKS_TOTAL_CO,
-            total_input_tokens=10,
-            total_output_tokens=_TOKENS_DAILY_SPARKS_TOTAL_OU,
-            total_cache_read_tokens=3,
-            total_cache_write_tokens=7,
-        ),
-        prev_summary=dashboard.Summary(
-            total_cost_usd=_TOKENS_DAILY_SPARKS_SECONDARY,
-            total_input_tokens=5,
-            total_output_tokens=5,
-            total_cache_read_tokens=5,
-            total_cache_write_tokens=5,
-        ),
-        ts_points=[
-            TimeSeriesPoint(
-                day=MAY01,
-                event=EVENT_AGENT_EXIT,
-                count=1,
-                cost_usd=_TOKENS_DAILY_SPARKS_COST_USD,
-                input_tokens=10,
-                output_tokens=5,
-                cache_read_tokens=2,
-                cache_write_tokens=3,
-            ),
-            TimeSeriesPoint(
-                day=MAY01,
-                event=EVENT_AGENT_EXIT,
-                count=1,
-                cost_usd=0.5,
-                input_tokens=1,
-                output_tokens=2,
-            ),
-            TimeSeriesPoint(
-                day=MAY07,
-                event=EVENT_AGENT_EXIT,
-                count=1,
-                cost_usd=_TOKENS_DAILY_SPARKS_C_TERTIARY,
-                input_tokens=2,
-                output_tokens=3,
-                cache_read_tokens=1,
-                cache_write_tokens=1,
-            ),
-        ],
-        throughput_rows=[
-            ThroughputDayRow(day=MAY01, resolved=2, rejected=1),
-            ThroughputDayRow(day=MAY07, resolved=0, rejected=1),
-        ],
-        review_round_rows=[
-            ReviewRoundBucketRow(
-                bucket=BUCKET_INITIAL,
-                runs=2,
-                total_cost_usd=_TOKENS_DAILY_SPARKS_T_TERTIARY,
-            ),
-            ReviewRoundBucketRow(
-                bucket=BUCKET_FIRST_ROUND,
-                runs=1,
-                total_cost_usd=_TOKENS_DAILY_SPARKS_QUATERNARY,
-            ),
-        ],
-        days_in_window=2,
-    )
-
-
 class DashboardDataPrepTest(unittest.TestCase):
     """Small data-prep helpers keep `main()` focused on render sequencing."""
-
-    def test_kpis_use_cache_tokens_and_daily_sparks(self) -> None:
-        _, dashboard = _reload()
-        kpis, resolved, rejected = dashboard._build_kpi_strip_data(
-            _kpi_inputs(dashboard)
-        )
-
-        by_label = {kpi["label"]: kpi for kpi in kpis}
-        self.assertEqual(resolved, 2)
-        self.assertEqual(rejected, 2)
-        self.assertEqual(by_label[KPI_TOTAL_TOKENS]["value"], "40")
-        self.assertEqual(by_label[KPI_TOTAL_TOKENS]["delta"], 1.0)
-        self.assertEqual(by_label[KPI_TOTAL_TOKENS]["spark"], [23.0, 7.0])
-        self.assertEqual(by_label["Total spend"]["spark"], [2.0, 4.0])
-        self.assertEqual(by_label["Cost / resolved issue"]["value"], "$6.00")
-        self.assertEqual(
-            by_label["Cost / resolved issue"]["spark"],
-            [2, 0],
-        )
-        self.assertEqual(by_label["Rework share"]["value"], "38%")
 
     def test_backend_day_tokens_sum_duplicate_cells(self) -> None:
         _, dashboard = _reload()

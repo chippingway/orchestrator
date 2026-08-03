@@ -36,6 +36,10 @@ _INSIGHTS_OWNER = "insights"
 
 _KPIS_OWNER = "kpis"
 
+_KPI_SERIES_OWNER = "kpi_series"
+
+_KPI_STRIP_OWNER = "kpi_strip"
+
 _LAYOUT_OWNER = "layout"
 
 _PALETTE_OWNER = "palette"
@@ -72,6 +76,8 @@ _OWNERS = (
     _FORMATTING_OWNER,
     _INSIGHTS_OWNER,
     _KPIS_OWNER,
+    _KPI_SERIES_OWNER,
+    _KPI_STRIP_OWNER,
     _LAYOUT_OWNER,
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
@@ -94,9 +100,10 @@ _OWNERS = (
 # draw a headline or lifecycle section from one of the seven reads behind it, a
 # comparison panel from one of the six, or a skill panel from one of the three,
 # open a page on the extent behind its filter bar, interrupt one with a banner,
-# reduce its window to the four numbers a headline tile reports, head a card
-# and draw that banner and those numbers as the markup a browser reads, or list
-# a panel's rows in the compact table beside them is a
+# reduce its window to the four numbers a headline tile reports, plot the days
+# behind three of them, assemble all four into the strip a page opens with,
+# head a card and draw that banner and those numbers as the markup a browser
+# reads, or list a panel's rows in the compact table beside them is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
 # bound and the cache's tri-state -- could disagree. Two owners report nothing
 # because the check reads `__module__`, which only a class or a function
@@ -110,8 +117,9 @@ _OWNERS = (
 # mapping a wave hands back and the logger its load line is emitted on, the cap
 # the rollup owner reads a run list under, the two bands the insight owner
 # raises a banner at and the spellings an unpriced run reaches it under, the
-# KPI owner's ranking cap and rework buckets, and the TTL the metadata owner
-# caches under are all invisible here for the same reason.
+# KPI owner's ranking cap and rework buckets, the triple the strip owner hands
+# its four entries back as, and the TTL the metadata owner caches under are all
+# invisible here for the same reason.
 _SURFACES = MappingProxyType({
     _BREAKDOWNS_OWNER: (
         "read_backend_daily_tokens",
@@ -158,6 +166,22 @@ _SURFACES = MappingProxyType({
         "reliability_tile_data",
         "rework_totals",
         "top_expensive_issues",
+    ),
+    _KPI_SERIES_OWNER: (
+        "DailyKpiSeries",
+        "daily_kpi_series",
+        "daily_point_totals",
+        "summary_total_tokens",
+        "throughput_totals",
+        "time_series_total_tokens",
+    ),
+    _KPI_STRIP_OWNER: (
+        "KpiInputs",
+        "KpiTotals",
+        "build_kpi_strip_data",
+        "cost_per_resolved",
+        "kpi_strip_entries",
+        "kpi_totals",
     ),
     _LAYOUT_OWNER: ("base_layout",),
     _PALETTE_OWNER: ("color_for",),
@@ -220,13 +244,15 @@ _SURFACES = MappingProxyType({
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
-# flat theme module, the state, read, KPI, card, and HTML hubs, and the twelve
-# leaves beneath the state, read, card, and HTML ones. No owner here may plant
-# one -- that is what keeps the forwarding one-directional and the flat modules
+# flat theme module, the state, read, KPI, KPI-strip, card, and HTML hubs, and
+# the fourteen leaves beneath all but the KPI one. No owner here may plant one
+# -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_card_headers",
     "orchestrator._dashboard_filter_state",
+    "orchestrator._dashboard_kpi_series",
+    "orchestrator._dashboard_kpi_values",
     "orchestrator._dashboard_read_breakdowns",
     "orchestrator._dashboard_read_core",
     "orchestrator._dashboard_read_dispatch",
@@ -239,6 +265,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_cards",
     "orchestrator.dashboard_html",
+    "orchestrator.dashboard_kpi_strip",
     "orchestrator.dashboard_kpis",
     "orchestrator.dashboard_reads",
     "orchestrator.dashboard_state",
@@ -258,8 +285,8 @@ _COMPATIBILITY_SITES = (
 # six a comparison panel is drawn from are the rollup and breakdown families',
 # the three a skill panel is drawn from are the skill family's, and the totals
 # and cost-source split a banner is raised over -- and the window totals a tile
-# reports and the issue rows a table is ranked from -- are the rows those reads
-# hand back.
+# reports, the pair of windows the strip beneath it is reduced from, and the
+# issue rows a table is ranked from -- are the rows those reads hand back.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

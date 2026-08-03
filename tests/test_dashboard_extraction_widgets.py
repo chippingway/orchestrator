@@ -71,7 +71,9 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     `orchestrator.dashboard_widgets`, and `orchestrator.dashboard`
     re-exports the members the page pipeline and these tests reach under
     the same names so the `dashboard.<name>` surface keeps resolving to the
-    same object. The KPI-strip aggregations live in
+    same object. The KPI-strip aggregations live under
+    `observability/dashboard/` -- `kpi_series` for the per-day lines and
+    `kpi_strip` for the tiles drawn over them -- and are reached through
     `orchestrator.dashboard_kpi_strip` (`KpiStripExtractionTest`).
     """
 
