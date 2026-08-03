@@ -1278,7 +1278,9 @@ into the shared import-light `orchestrator/script_launch.py` helper (`ensure_rep
 The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: KPI
 series/values; cards, tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read
 and chart leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the cost and usage
-ones on the other — hold no implementation of their own; each forwards to the owners named below.
+ones on the other — hold no implementation of their own; each forwards to the owners named below, and so does the
+card-markup leaf among the card ones, leaving the backend-efficiency card and the coverage bar as the two that still
+implement what their hub publishes.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
