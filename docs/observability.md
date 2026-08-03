@@ -48,7 +48,8 @@ heights, aligned axes, traces, and hero figure
 `dashboard/charts/cost_repo.py`, `dashboard/charts/cost_stage.py`, `dashboard/charts/cost_review.py`,
 `dashboard/charts/heatmap.py`,
 `dashboard/charts/throughput.py`, `dashboard/charts/usage_bands.py`, `dashboard/charts/usage_series.py`,
-`dashboard/charts/usage_axis.py`, `dashboard/charts/usage_traces.py`, `dashboard/charts/usage.py`), the
+`dashboard/charts/usage_axis.py`, `dashboard/charts/usage_traces.py`, `dashboard/charts/usage.py`), the compact
+table the panels beside those figures are drawn as (`dashboard/tables.py`), the
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
@@ -1523,7 +1524,12 @@ Plotly at module scope, so the flat usage surface imports in the default install
 does every other chart surface, since no flat chart module pulls it in at load either.
 The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are built by inline-HTML
-helpers in `orchestrator/dashboard_html.py`; the insight banners, per-card header, backend-efficiency cards,
+helpers in `orchestrator/dashboard_html.py`. The compact table those last two — and the two skill matrices named
+below — are drawn as lives at `observability/dashboard/tables.py`: the stylesheet each panel scopes to
+itself under its own class, the header and body they are assembled from, and the bar width, short repository name,
+missing count, and unpriced amount a cell reports. `orchestrator/_dashboard_table_html.py` stays the historical
+import site for those seven, forwarding each to the owner's own object and implementing nothing, as the HTML surface
+above it does. Beside them, the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip are reached through `orchestrator/dashboard_cards.py` — the first,
 second, and last of those built by `observability/dashboard/card_html.py` and forwarded through the flat
 `orchestrator/_dashboard_card_headers.py`; the primary per-session

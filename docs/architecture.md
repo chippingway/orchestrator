@@ -534,6 +534,10 @@ orchestrator/
                         historical import site for the card header, insight
                         banners, and reliability tiles, forwarding to the
                         card-markup owner
+  _dashboard_table_html.py
+                        historical import site for the compact table the
+                        hand-rolled panels are drawn as, forwarding to the
+                        table-markup owner
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -772,9 +776,9 @@ orchestrator/
                         what one of those reads then runs on and is narrowed
                         by, the banners a window is interrupted with above all
                         of them and the numbers it is summarized by beneath
-                        them, the markup a card, a banner, and a tile are
-                        drawn as, the figures those reads are drawn as, and the
-                        destination for the rest
+                        them, the markup a card, a banner, a tile, and a
+                        compact table are drawn as, the figures those reads are
+                        drawn as, and the destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -790,6 +794,11 @@ orchestrator/
       formatting.py     the compact money, token, and count renderings a KPI
                         tile, an axis tick, and a bar label are narrow enough
                         to need
+      tables.py         the compact table the hand-rolled panels are drawn as:
+                        the stylesheet each scopes to itself, the header and
+                        body they are assembled from, and the bar width, short
+                        repository name, missing count, and unpriced amount a
+                        cell reports
       windows.py        the half-open UTC window a run reports over, the
                         presets that name one, and the clamp that keeps a
                         preset inside the data extent
@@ -1726,6 +1735,19 @@ passes through untouched. Every value a caller passes is escaped on the way in �
 and a severity all reach a card off the sink rather than out of this repository, and the whole surface is markup a
 browser is asked to interpret.
 
+`tables.py` is the markup beside it, holding the compact table four panels are listed in rather than the chrome
+around them. Those four are inline HTML rather than `st.dataframe` —
+the most expensive issues, the aggregate skill-trigger rates, the per-session adoption matrix, and the
+invocation-level trigger matrix — because each carries an in-row bar, a status pill, or a sortable header Streamlit's
+own table cannot draw, and a panel hand-rolling its own type scale, header row, and hairline rule stops matching the
+three beside it the first time a padding is nudged. The class name is interpolated rather than fixed so each panel
+scopes its rules to itself, and a caller's extra rules are appended inside the same `<style>` tag the shared ones are
+written in, so a panel cannot render styled by half of what it asked for. The four readings a cell is built from sit
+here rather than beside the compact formatters because of the last of them: a bar is drawn as a share of the widest
+one in its own table, a repository is labelled without the owner hosting it, a missing count reports as zero — and an
+amount nobody priced reports as a dash, because a run that cost nothing and a run the parser could not price are
+different answers, and a table spelling both `$0.00` would hide the gap the coverage banner is raised for.
+
 `charts/` is where what those reads answer becomes a figure, and `primitives.py` is the first owner in it: the pieces
 every family is drawn out of rather than a family of its own. The no-data placeholder is the sharpest of them. Plotly
 answers an empty series with a blank canvas rather than an error, so a card that read nothing and a card that failed
@@ -1903,10 +1925,15 @@ surface in front of it, publishing those three under the private names the page 
 the one site here that still claims something, because the backend-efficiency card and the cost-source coverage bar
 are defined by flat leaves and stamped with this module. Neither stamp may name a builder the markup owner defines:
 the stamp mutates the function, so claiming one would move its reported home off its owner.
-`dashboard_charts_base.py` is one too: the placeholder, the three label
-helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height are the
-charts owner's objects under the private spellings they were always imported by. Every chart family now names that
-owner directly, so nothing in the tree reads them off this site; it stays for the callers outside it that do.
+`_dashboard_table_html.py` is another, forwarding the stylesheet, header, and
+assembly the hand-rolled panels are drawn by, and the bar width, short repository name, missing count, and unpriced
+amount a cell reports, under the private spellings they were always imported by. `dashboard_html.py` is the surface
+in front of it, publishing those same seven names beside the topbar, filter meta, KPI strip, sparkline, delta pill,
+and two table builders it reaches through the leaves named for each, and defining nothing of its own — so a panel and
+the owner cannot be drawn by two different tables. `dashboard_charts_base.py` is one too: the placeholder, the three
+label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
+are the charts owner's objects under the private spellings they were always imported by. Every chart family now names
+that owner directly, so nothing in the tree reads them off this site; it stays for the callers outside it that do.
 `dashboard_charts_heatmap.py` is the same site for the grid family — `hour_weekday_heatmap` under its own name, and the
 cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
 resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
