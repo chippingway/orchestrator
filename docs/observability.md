@@ -1307,8 +1307,9 @@ the parser could not price — the ratio each is raised at, and the banner line 
 beneath those, `kpis.py` holds the four numbers the headline tiles report — the move against the window before it,
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
 Beside it, `kpi_series.py` holds the per-day spend, token, and resolved lines drawn under three of those tiles,
-together with the two token totals and the throughput pair every one of them is counted by, and `kpi_strip.py` the
-strip itself — what one is built from, the scalars a window and the one before it are reduced to, and the four
+together with the two token totals they are counted by and the throughput pair reported beside them, and
+`kpi_strip.py` the strip itself — what one is built from, the scalars a window and the one before it are reduced to,
+and the four
 display entries a page opens with.
 `card_html.py` is what the banners and the run-health tiles reach the browser as, together with the header every panel
 beneath them is titled by: the hidden mark `css.py` selects a card's container by, the banner stack whose severity
