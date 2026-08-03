@@ -108,7 +108,7 @@ class MainRenderDispatchTest(_MainSourceTest):
     def test_render_helpers_called_in_page_order(self) -> None:
         self._assert_source_order(
             "_render_dashboard_controls",
-            ("_render_sidebar_filters(", "_render_date_filter_bar("),
+            ("_render_sidebar_filters(", "render_date_filter_bar("),
         )
         self._assert_source_order(
             "_render_chart_widgets",

@@ -9,7 +9,12 @@ The state a run carries is the first to arrive -- ``windows`` for the date
 span and the presets that name one, ``filters`` for the offset, issue, stage,
 and cache key it is narrowed and displayed by, and ``read_mode`` for the knob
 its reads are issued under and the message an unconfigured database is refused
-with. ``read_plan`` is what that state is spent on: the two waves a load is
+with. ``date_controls`` and ``date_filter`` are where an operator picks that
+span: the five slots the filter bar is laid out across together with the label
+and the three inline presets drawn among them, and the bar itself -- the window
+a preset opens the pickers on, the inclusive days those pickers hand back, and
+the half-open window plus the placeholder for the filter line they leave with.
+``read_plan`` is what that state is spent on: the two waves a load is
 staged into, the cached task each entry is bound as, and the pair of keys --
 this window and the one before it -- they are issued under. ``fanout`` runs
 one of those waves the way the knob said, on the calling thread or across a

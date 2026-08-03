@@ -29,7 +29,8 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
-read-mode state one run of the analytics page carries plus the two waves its load is staged into, the fan-out each
+read-mode state one run of the analytics page carries plus the bar that window is picked in, the two waves its load is
+staged into, the fan-out each
 is issued through, and the dispatch that drives both, the seven a
 headline or lifecycle section is drawn from, the six a comparison panel is, the three a skill panel is, the
 connection, filter binding, and unfiltered metadata each read goes through, and the banners a window is interrupted
@@ -39,7 +40,8 @@ as, the banner, filter line, and delta pill that strip sits among, the markup th
 every card
 header are drawn as, and the two panels drawn as markup rather than as a figure — one backend's efficiency, and
 the share of a window's spend that could be priced (`dashboard/windows.py`,
-`dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
+`dashboard/filters.py`, `dashboard/date_controls.py`, `dashboard/date_filter.py`,
+`dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
 `dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`, `dashboard/kpi_series.py`,
@@ -1284,7 +1286,8 @@ a test or non-dashboard caller does not require the group to be installed. A reg
 
 **Module layout.** `orchestrator/dashboard.py` is a manifest-backed lazy compatibility facade with a complete
 `dashboard.pyi`. `_dashboard_facade_bootstrap.py` owns both package import and direct-script setup, while
-`_dashboard_runtime.py`, `_dashboard_page_controls.py`, and the date/drill-down leaves own page orchestration.
+`_dashboard_runtime.py`, `_dashboard_page_controls.py`, and the drill-down leaf own page orchestration, with the two
+date leaves beside them forwarding to the owners the filter bar lives on.
 Historical `dashboard.<name>` imports, wildcard exports, and object identity are unchanged — every alias still
 resolves to the one object its owner defines. Where a patch has to land is a separate question, and it follows the
 call path rather than the alias: the page pipeline reaches the staged plan and the wave dispatch on
@@ -1313,7 +1316,8 @@ The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` le
 tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read, KPI-strip, and chart
 leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the KPI series and values
 pair in the middle, the cost and usage ones on the other — hold no implementation of their own; each forwards to the
-owners named below, and so do all three card leaves, both sparkline leaves, the chrome leaf beside them, and the
+owners named below, and so do all three card leaves, both sparkline leaves, the chrome leaf beside them, the two the
+filter bar is reached through, and the
 shared-table, issue-table,
 skill-trigger, five adoption,
 and five trigger-matrix leaves among the table ones, which is what lets the card hub above them and both skill hubs
@@ -1327,7 +1331,11 @@ The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
 that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by,
-`read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database message,
+`date_controls.py` for the five slots the bar that window is picked in is laid out across together with the label and
+the three inline presets drawn in the first two of them, `date_filter.py` for the bar itself — the window a preset
+opens the pickers on, the inclusive days they hand back, and the half-open window plus the filter-line slot the caller
+leaves with — `read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database
+message,
 `read_plan.py` for the two waves a load is staged into, the minute each cached entry is held for, and the current /
 previous key pair they are issued under,
 `fanout.py` for running one wave of named readers the way that flag said, `dispatch.py` for driving both waves around
@@ -1667,7 +1675,12 @@ the box, the empty box a window with nothing to draw still holds, and the histor
 way as well. The chrome around that strip — the topbar, the filter-meta line, the delta pill one tile is annotated
 with, and the strip itself — is `observability/dashboard/summary_html.py`, which reaches the sparkline owner directly
 for the line a tile carries, and is reached through `orchestrator/_dashboard_summary_html.py`, forwarding the same way
-too.
+too. The bar the filter line sits under is `observability/dashboard/date_controls.py` for the five slots it is laid
+out across, the label naming it, and the three presets it offers inline, and
+`observability/dashboard/date_filter.py` for the window a preset opens its pickers on, the inclusive days they hand
+back, and the bar assembling all of it — reached through `orchestrator/_dashboard_date_widgets.py` and
+`orchestrator/_dashboard_date_range.py`, which forward the same way as well; the page pipeline calls the bar on its
+owner, so a test intercepting it patches `date_filter`.
 Beside them, the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip are reached through `orchestrator/dashboard_cards.py` — the first,
 second, and last of those built by `observability/dashboard/card_html.py` and forwarded through the flat

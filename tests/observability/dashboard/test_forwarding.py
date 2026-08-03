@@ -79,6 +79,10 @@ _SPARKLINE_HTML_LEAF = "orchestrator._dashboard_sparkline_html"
 
 _SUMMARY_HTML_LEAF = "orchestrator._dashboard_summary_html"
 
+_DATE_CONTROLS_LEAF = "orchestrator._dashboard_date_widgets"
+
+_DATE_FILTER_LEAF = "orchestrator._dashboard_date_range"
+
 _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
 _WIDGET_RUNS_LEAF = "orchestrator._dashboard_widget_runs"
@@ -102,6 +106,10 @@ _CARD_HTML = f"{_PACKAGE}.card_html"
 _COVERAGE_CARD = f"{_PACKAGE}.coverage_card"
 
 _CSS = f"{_PACKAGE}.css"
+
+_DATE_CONTROLS = f"{_PACKAGE}.date_controls"
+
+_DATE_FILTER = f"{_PACKAGE}.date_filter"
 
 _DISPATCH = f"{_PACKAGE}.dispatch"
 
@@ -936,6 +944,25 @@ _LEAF_SUMMARY_NAMES = (
     *_SUMMARY_MARKUP_NAMES,
 )
 
+# The bar that window is picked in, split across the slot it is laid out in
+# and the round trip drawn inside it. The two leaves spell all eight the same
+# way. A copy of the slots is a bar whose label, presets, and pickers could be
+# laid out in one module and filled in another; a copy of the round trip is a
+# window an operator typed into that no read below is bounded by.
+_DATE_CONTROL_NAMES = (
+    ("_DateFilterColumns", _DATE_CONTROLS, "DateFilterColumns"),
+    ("_date_filter_columns", _DATE_CONTROLS, "date_filter_columns"),
+    ("_preset_radio_index", _DATE_CONTROLS, "preset_radio_index"),
+    ("_render_date_filter_label", _DATE_CONTROLS, "render_date_filter_label"),
+    ("_render_preset_choice", _DATE_CONTROLS, "render_preset_choice"),
+)
+
+_DATE_FILTER_NAMES = (
+    ("_initial_filter_window", _DATE_FILTER, "initial_filter_window"),
+    ("_render_date_filter_bar", _DATE_FILTER, "render_date_filter_bar"),
+    ("_render_date_inputs", _DATE_FILTER, "render_date_inputs"),
+)
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -972,7 +999,8 @@ _FILTER_NAMES = (
 # table or a matrix headed, ordered, projected, or assembled here the one an
 # operator's click reorders, a window's days placed or written here the
 # line a tile above them carries, a window bannered, restated, or annotated
-# here the chrome that strip of tiles sits in, and a skill card rendered here
+# here the chrome that strip of tiles sits in, a bar laid out or a window
+# picked here the one every read is bounded by, and a skill card rendered here
 # the one an operator reads three of those tables on,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
@@ -985,6 +1013,8 @@ _FORWARDED_MODULES = MappingProxyType({
     ),
     "orchestrator._dashboard_windows": (*_WINDOW_NAMES, _LEAF_EXTENT_NAME),
     "orchestrator._dashboard_filter_state": _FILTER_NAMES,
+    _DATE_CONTROLS_LEAF: _DATE_CONTROL_NAMES,
+    _DATE_FILTER_LEAF: _DATE_FILTER_NAMES,
     _READ_CORE_LEAF: _READ_CORE_NAMES,
     _DISPATCH_LEAF: _DISPATCH_NAMES,
     _READ_MODE_LEAF: (*_LEAF_READ_MODE_HELPERS, *_LEAF_FAN_OUT_NAMES),
@@ -1121,7 +1151,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # The same rule the theme site is held to, applied to the read, state,
         # KPI-strip, card, HTML, skill-adoption, and skill-matrix hubs, the
         # leaves beneath them including the card-markup one, the two sparkline
-        # ones, the chrome one beside them, and the
+        # ones, the chrome one beside them, the two the filter bar is reached
+        # through, the
         # shared-table, issue-table, skill-trigger, five adoption, and five
         # matrix ones, the widget leaf the two skill cards are drawn
         # through, and the KPI
