@@ -82,6 +82,10 @@ _SKILL_TRIGGER_TABLE_OWNER = "skill_trigger_table"
 
 _SKILLS_OWNER = "skills"
 
+_SPARKLINE_HTML_OWNER = "sparkline_html"
+
+_SPARKLINE_POINTS_OWNER = "sparkline_points"
+
 _STATIC_METADATA_OWNER = "static_metadata"
 
 _TABLES_OWNER = "tables"
@@ -127,6 +131,8 @@ _OWNERS = (
     _SKILL_MATRIX_SORT_OWNER,
     _SKILL_TRIGGER_TABLE_OWNER,
     _SKILLS_OWNER,
+    _SPARKLINE_HTML_OWNER,
+    _SPARKLINE_POINTS_OWNER,
     _STATIC_METADATA_OWNER,
     _TABLES_OWNER,
     _TOKENS_OWNER,
@@ -144,6 +150,8 @@ _OWNERS = (
 # open a page on the extent behind its filter bar, interrupt one with a banner,
 # reduce its window to the four numbers a headline tile reports, plot the days
 # behind three of them, assemble all four into the strip a page opens with,
+# place one of those days on the line under a tile and write that line as the
+# SVG the tile carries,
 # head a card and draw that banner and those numbers as the markup a browser
 # reads, list a panel's rows in the compact table beside them, rank a window's
 # issues into the first of those panels, report a cohort's skill-trigger rate
@@ -174,7 +182,9 @@ _OWNERS = (
 # trigger matrix is, each with the two query parameters its headings write and
 # the counts among them a first click sorts down, the rules either scopes to
 # its own class and the notice each renders in place of a table, the KPI
-# owner's ranking cap and rework buckets, the
+# owner's ranking cap and rework buckets, the floor the projection owner
+# clamps a flat window's span at, the default box the rendering owner beside it
+# draws a line in together with the keyword surface it binds one through, the
 # triple the
 # strip owner hands its four entries back as, and the TTL the metadata owner
 # caches under are all
@@ -340,6 +350,23 @@ _SURFACES = MappingProxyType({
         "read_skill_trigger_matrix",
         "read_skill_trigger_rates",
     ),
+    _SPARKLINE_HTML_OWNER: (
+        "SparklinePaths",
+        "SparklineRequest",
+        "render_sparkline",
+        "sparkline_area_path",
+        "sparkline_paths",
+        "sparkline_point_text",
+        "sparkline_svg",
+    ),
+    _SPARKLINE_POINTS_OWNER: (
+        "SparklineLayout",
+        "sparkline_layout",
+        "sparkline_point",
+        "sparkline_points",
+        "sparkline_step",
+        "sparkline_y",
+    ),
     _STATIC_METADATA_OWNER: (
         "read_data_extent",
         "read_filter_options",
@@ -372,7 +399,7 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
-# skill-adoption, and skill-matrix hubs, and the twenty-eight leaves beneath
+# skill-adoption, and skill-matrix hubs, and the thirty leaves beneath
 # all but the KPI one.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
@@ -403,6 +430,8 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_read_rollups",
     "orchestrator._dashboard_read_skills",
     "orchestrator._dashboard_skill_trigger_table",
+    "orchestrator._dashboard_sparkline_data",
+    "orchestrator._dashboard_sparkline_html",
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_table_html",
     "orchestrator._dashboard_windows",

@@ -73,6 +73,10 @@ _MATRIX_SORT_LEAF = "orchestrator._dashboard_matrix_sort"
 
 _SKILL_TRIGGER_TABLE_LEAF = "orchestrator._dashboard_skill_trigger_table"
 
+_SPARKLINE_DATA_LEAF = "orchestrator._dashboard_sparkline_data"
+
+_SPARKLINE_HTML_LEAF = "orchestrator._dashboard_sparkline_html"
+
 _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
 # `from __future__ import annotations` opens every module in the repository and
@@ -148,6 +152,10 @@ _SKILL_MATRIX_SORT = f"{_PACKAGE}.skill_matrix_sort"
 _SKILL_TRIGGER_TABLE = f"{_PACKAGE}.skill_trigger_table"
 
 _SKILLS = f"{_PACKAGE}.skills"
+
+_SPARKLINE_HTML = f"{_PACKAGE}.sparkline_html"
+
+_SPARKLINE_POINTS = f"{_PACKAGE}.sparkline_points"
 
 _STATIC_METADATA = f"{_PACKAGE}.static_metadata"
 
@@ -808,6 +816,51 @@ _KPI_ENTRY_KEYS = (
     ("_VALUE_KEY", _KPI_STRIP, "_VALUE_KEY"),
 )
 
+# Where one of those lines puts each day it is drawn from: the floor a flat
+# window's span is clamped at, the anchoring a window is projected through, and
+# the placement itself. The projection leaf and the HTML surface above it spell
+# all seven the same way. A page reaching a copy of the floor would scale a
+# quiet window against a range nobody else can widen.
+_SPARKLINE_POINT_NAMES = (
+    ("_EPSILON", _SPARKLINE_POINTS, "EPSILON"),
+    ("_SparklineLayout", _SPARKLINE_POINTS, "SparklineLayout"),
+    ("_sparkline_layout", _SPARKLINE_POINTS, "sparkline_layout"),
+    ("_sparkline_point", _SPARKLINE_POINTS, "sparkline_point"),
+    ("_sparkline_points", _SPARKLINE_POINTS, "sparkline_points"),
+    ("_sparkline_step", _SPARKLINE_POINTS, "sparkline_step"),
+    ("_sparkline_y", _SPARKLINE_POINTS, "sparkline_y"),
+)
+
+# The pair of path strings a projected window is written as, listed apart
+# because the projection leaf publishes it while the rendering owner beside it
+# is where both are built.
+_SPARKLINE_PATHS_NAME = ("_SparklinePaths", _SPARKLINE_HTML, "SparklinePaths")
+
+# The markup those points reach a tile as: the two paths, the rounding they
+# share, and the render the strip calls. All four are spelled the same way by
+# the rendering leaf and the HTML surface above it. A copy of the rounding is a
+# fill tracing days the line above it does not.
+_SPARKLINE_MARKUP_NAMES = (
+    ("_sparkline_area_path", _SPARKLINE_HTML, "sparkline_area_path"),
+    ("_sparkline_paths", _SPARKLINE_HTML, "sparkline_paths"),
+    ("_sparkline_point_text", _SPARKLINE_HTML, "sparkline_point_text"),
+    ("_sparkline_svg", _SPARKLINE_HTML, "sparkline_svg"),
+)
+
+# What only the rendering leaf published: the box a tile draws a line in when
+# a caller names none, the request one line is described by, the renderer the
+# keyword surface applies onto, and that surface itself. A copy of the
+# signature is a call spelled the way every caller spells it that binds to
+# nothing.
+_LEAF_SPARKLINE_NAMES = (
+    ("DEFAULT_SPARKLINE_HEIGHT", _SPARKLINE_HTML, "DEFAULT_SPARKLINE_HEIGHT"),
+    ("DEFAULT_SPARKLINE_WIDTH", _SPARKLINE_HTML, "DEFAULT_SPARKLINE_WIDTH"),
+    ("_SPARKLINE_SIGNATURE", _SPARKLINE_HTML, "SPARKLINE_SIGNATURE"),
+    ("_SparklineRequest", _SPARKLINE_HTML, "SparklineRequest"),
+    ("_render_sparkline", _SPARKLINE_HTML, "render_sparkline"),
+    *_SPARKLINE_MARKUP_NAMES,
+)
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -840,9 +893,10 @@ _FILTER_NAMES = (
 # the page opens with, a card headed, weighed, or sized here the one the
 # stylesheet paints, a table drawn here the one every hand-rolled panel is,
 # a window's issues ranked here the ones the page lists, a cohort's skill
-# use reported here the rate the panel beneath them shows, and an adoption
+# use reported here the rate the panel beneath them shows, an adoption
 # table or a matrix headed, ordered, projected, or assembled here the one an
-# operator's click reorders,
+# operator's click reorders, and a window's days placed or written here the
+# line a tile above them carries,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -882,10 +936,15 @@ _FORWARDED_MODULES = MappingProxyType({
     _KPI_STRIP_HUB: (*_FORWARDED_KPI_SERIES, *_FORWARDED_KPI_TILES),
     _READS_HUB: _FORWARDED_READS_HUB,
     _CARD_HEADERS_LEAF: _CARD_MARKUP_NAMES,
+    _SPARKLINE_DATA_LEAF: (*_SPARKLINE_POINT_NAMES, _SPARKLINE_PATHS_NAME),
+    _SPARKLINE_HTML_LEAF: _LEAF_SPARKLINE_NAMES,
     _HTML_SURFACE: (
         *_TABLE_NAMES,
         *_HTML_ISSUE_TABLE_NAMES,
         *_HTML_SKILL_TRIGGER_NAMES,
+        *_SPARKLINE_POINT_NAMES,
+        *_SPARKLINE_MARKUP_NAMES,
+        _SPARKLINE_PATHS_NAME,
     ),
     _BACKEND_CARD_LEAF: _BACKEND_CARD_NAMES,
     _COVERAGE_CARD_LEAF: _COVERAGE_CARD_NAMES,
@@ -969,7 +1028,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
     def test_no_flat_module_defines_one_itself(self) -> None:
         # The same rule the theme site is held to, applied to the read, state,
         # KPI-strip, card, HTML, skill-adoption, and skill-matrix hubs, the
-        # leaves beneath them including the card-markup one and the
+        # leaves beneath them including the card-markup one, the two sparkline
+        # ones, and the
         # shared-table, issue-table, skill-trigger, five adoption, and five
         # matrix ones, and the KPI
         # site beside those: a module that defined a name of its own would be a
