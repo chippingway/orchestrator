@@ -35,7 +35,8 @@ headline or lifecycle section is drawn from, the six a comparison panel is, the 
 connection, filter binding, and unfiltered metadata each read goes through, and the banners a window is interrupted
 with above all of them plus the four numbers it is summarized by beneath those, the per-day lines drawn under three
 of them, the strip all four are assembled into, where each day of one of those lines sits and the SVG it is written
-as, the markup the banners, the run-health tiles, and every card
+as, the banner, filter line, and delta pill that strip sits among, the markup the banners, the run-health tiles, and
+every card
 header are drawn as, and the two panels drawn as markup rather than as a figure — one backend's efficiency, and
 the share of a window's spend that could be priced (`dashboard/windows.py`,
 `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
@@ -43,7 +44,7 @@ the share of a window's spend that could be priced (`dashboard/windows.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
 `dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`, `dashboard/kpi_series.py`,
 `dashboard/kpi_strip.py`, `dashboard/sparkline_points.py`, `dashboard/sparkline_html.py`,
-`dashboard/card_html.py`, `dashboard/backend_card.py`,
+`dashboard/summary_html.py`, `dashboard/card_html.py`, `dashboard/backend_card.py`,
 `dashboard/coverage_card.py`), the primitives every chart family on
 that page is drawn out of plus the frame the horizontal cost families share, the generic spend ranking, the
 per-repository one drawn through it, the per-stage cache split, the per-review-round one beside it, the
@@ -1304,7 +1305,8 @@ The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` le
 tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read, KPI-strip, and chart
 leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the KPI series and values
 pair in the middle, the cost and usage ones on the other — hold no implementation of their own; each forwards to the
-owners named below, and so do all three card leaves, both sparkline leaves, and the shared-table, issue-table,
+owners named below, and so do all three card leaves, both sparkline leaves, the chrome leaf beside them, and the
+shared-table, issue-table,
 skill-trigger, five adoption,
 and five trigger-matrix leaves among the table ones, which is what lets the card hub above them and both skill hubs
 claim nothing either, leaving none of the four panels that shared table is assembled into building its own.
@@ -1339,6 +1341,13 @@ axis, scaled to the window's own range, floored at an epsilon where a window has
 window reported nothing at all; the second writes that projection as one polyline and the same trace closed along the
 bottom edge of the box into the tint under it, holds the tile's room with an empty box where there was nothing to
 project, and binds the `values` / `color` / `w` / `h` surface a caller asks for one through.
+`summary_html.py` is the band that strip sits in — the banner naming what the database holds, the line under the
+filter bar restating what a run narrowed it to, the pill one tile's move against the window before it is annotated
+with, and the four tiles assembled around them. A rise reads red and a drop green, because these numbers are costs;
+`invert` swaps the hue for the readings where up is the good direction without moving the arrow off the value's sign,
+and a window with nothing to compare against or one that did not move renders no pill at all. Every caller-supplied
+string is escaped, and the pill's `value` keyword and the banner's six keyword-only readings are bound as explicit
+signatures so both still answer the call every caller spells.
 `card_html.py` is what the banners and the run-health tiles reach the browser as, together with the header every panel
 beneath them is titled by: the hidden mark `css.py` selects a card's container by, the banner stack whose severity
 picks a class and a glyph, and the reliability strip whose numbers the calling page's own formatter renders.
@@ -1396,7 +1405,7 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_usage_traces.py`, `_dashboard_usage_chart.py`, `_dashboard_card_headers.py`,
 `_dashboard_backend_card.py`, `_dashboard_coverage_card.py`,
 `_dashboard_table_html.py`, `_dashboard_issue_table.py`,
-`_dashboard_sparkline_data.py`, `_dashboard_sparkline_html.py`,
+`_dashboard_sparkline_data.py`, `_dashboard_sparkline_html.py`, `_dashboard_summary_html.py`,
 `_dashboard_skill_trigger_table.py`, `_dashboard_adoption_columns.py`, `_dashboard_adoption_sort.py`,
 `_dashboard_adoption_headers.py`, `_dashboard_adoption_rows.py`, `_dashboard_adoption_render.py`,
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
@@ -1602,8 +1611,7 @@ Plotly at module scope, so the flat usage surface imports in the default install
 does every other chart surface, since no flat chart module pulls it in at load either.
 The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are reached through
-`orchestrator/dashboard_html.py`, and all but the two tables and the sparkline are built by inline-HTML helpers on the
-leaves beneath it.
+`orchestrator/dashboard_html.py`, which builds none of them itself.
 The compact table those two — and the two sortable skill panels named
 below — are drawn as lives at `observability/dashboard/tables.py`: the stylesheet each panel scopes to
 itself under its own class, the header and body they are assembled from, and the bar width, short repository name,
@@ -1623,7 +1631,10 @@ a flat one is floored at, and the window left unprojected — and
 the box, the empty box a window with nothing to draw still holds, and the historical
 `values` / `color` / `w` / `h` surface, reached through
 `orchestrator/_dashboard_sparkline_data.py` and `orchestrator/_dashboard_sparkline_html.py`, which forward the same
-way as well.
+way as well. The chrome around that strip — the topbar, the filter-meta line, the delta pill one tile is annotated
+with, and the strip itself — is `observability/dashboard/summary_html.py`, which reaches the sparkline owner directly
+for the line a tile carries, and is reached through `orchestrator/_dashboard_summary_html.py`, forwarding the same way
+too.
 Beside them, the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip are reached through `orchestrator/dashboard_cards.py` — the first,
 second, and last of those built by `observability/dashboard/card_html.py` and forwarded through the flat

@@ -561,6 +561,10 @@ orchestrator/
                         historical import sites for the line under a KPI tile
                         and the SVG it is written as, forwarding to the two
                         sparkline owners
+  _dashboard_summary_html.py
+                        historical import site for the topbar, filter meta,
+                        delta pill, and KPI strip, forwarding to the
+                        chrome-markup owner
   _dashboard_adoption_columns.py / _dashboard_adoption_sort.py
   _dashboard_adoption_headers.py / _dashboard_adoption_rows.py
   _dashboard_adoption_render.py
@@ -819,8 +823,9 @@ orchestrator/
                         what one of those reads then runs on and is narrowed
                         by, the banners a window is interrupted with above all
                         of them, the numbers it is summarized by beneath them,
-                        the strip those numbers are shown in and the line
-                        drawn under three of them, the markup a
+                        the strip those numbers are shown in, the line
+                        drawn under three of them, and the banner, filter line,
+                        and delta pill that strip sits among, the markup a
                         card, a banner, a tile, and a compact table are drawn
                         as, the four panels listed in that table — the last two
                         each split across the five owners a sortable one
@@ -959,6 +964,11 @@ orchestrator/
                         the bottom edge of the box into the tint under it, the
                         box a window with nothing to draw still holds, and the
                         keyword surface a caller asks for one through
+      summary_html.py   the band that strip sits in: the banner naming what the
+                        database holds, the line restating what a run's filters
+                        narrowed it to, the pill one tile's move against the
+                        window before it is annotated with, and the four tiles
+                        assembled around them
       card_html.py      the markup the banners and the run-health tiles are
                         drawn as, and the header every panel beneath them is
                         titled by: the hidden mark the stylesheet selects a
@@ -1878,6 +1888,22 @@ a caller asks for one through — `values`, `color`, `w`, and `h` — is bound a
 spelled as parameters, because two of those names are shorter than a parameter may be spelled here and the historical
 site still answers a call that names them.
 
+`summary_html.py` is the band that strip sits in: the banner naming what the database holds, the line under the filter
+bar restating what a run narrowed it to, the pill one tile's move against the window before it is annotated with, and
+the four tiles assembled around them. They are one owner because they are drawn as one band — a tile carries the pill,
+and every class name across them is one `css.py` writes rules for, so a pill spelled in one module and the tile
+carrying it in another are two places the strip can stop agreeing with the stylesheet painting it. The coloring is a
+cost dashboard's: a rise reads red and a drop green, and `invert` is for the readings where up is the good direction —
+issues resolved, success rate — swapping the hue only, since the arrow keeps following the value's sign and which way
+a tile moved must not be readable off the color alone. A window with no prior to compare against, or one that did not
+move, renders no pill rather than a grey placeholder that read as a control doing nothing. Every caller-supplied
+string is escaped, because the page writes this markup with `unsafe_allow_html=True` and a KPI label or an
+already-formatted amount is text the dashboard was handed rather than text it owns — the formatters themselves are
+handed in for the same reason the strip's are, so a figure in the banner and the same figure in a tile are rendered
+once. The two keyword surfaces are bound as explicit signatures rather than spelled as parameters: the pill's is
+`value`, which a parameter here may not be named, and the banner's is six readings, more than one call is given to
+name, so the banner takes one request object underneath while both still answer the call every caller spells.
+
 `card_html.py` is how the banners and the run-health tiles among those numbers reach the browser, and the header every
 panel below them is titled by. Each of the
 three is a string handed to `st.markdown(unsafe_allow_html=True)` whose class names are the ones `css.py` writes rules
@@ -2156,10 +2182,11 @@ name
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
 column set alone and so names nothing outside; those
 are the only things
-any of the thirty-four reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the thirty-five reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
 those — every value a cell reports is handed to it — the sparkline projection reaches nothing at all and the markup
-over it only that projection, the card markup names only the insight
+over it only that projection, the chrome around the strip only that markup — for the line a tile carries — the card
+markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
 its own beside those query families -- the KPI owner whose ranking depth its spend table is cut to -- and the strip
 owner names two: the series owner whose lines it draws under three of its tiles, and that same KPI owner, for the
@@ -2196,13 +2223,16 @@ forwarding the span floor, the anchoring a window is projected through, the heig
 the projection itself under the private spellings they were always imported by — with the path pair among them
 reaching the rendering owner that builds it — and the second the default box under its public spellings and the
 request, the two paths, the point rounding, the renderer, and the bound keyword surface under their private ones.
+`_dashboard_summary_html.py` is the sixth, forwarding the banner, the filter line, the pill, the strip, the plural
+suffix all three count their nouns by, the tone and arrow a move is painted from, the request the banner is described
+by, and the two bound keyword surfaces under the private spellings they were always imported by.
 `dashboard_html.py` is the
-surface in front of all five, publishing those seven table names, the issues panel's eight, the skill panel's
-five, and the sparkline's twelve beside the topbar, filter meta, KPI strip, and delta pill it reaches through the
-leaves named for
-each — the columns, rules, and label under a leading underscore the leaves spell bare — and defining nothing of its
+surface in front of all six, publishing those seven table names, the issues panel's eight, the skill panel's
+five, the sparkline's twelve, and the chrome's five — the topbar, filter meta, delta pill, KPI strip, and that plural
+suffix — and defining nothing of its
 own, so a panel and
-the owner cannot be drawn by two different tables, or one window's line scaled two ways.
+the owner cannot be drawn by two different tables, or one window's line scaled two ways, or one tile's move annotated
+two ways. The columns, rules, and label among those names take a leading underscore the leaves spell bare.
 `_dashboard_adoption_columns.py`, `_dashboard_adoption_sort.py`, `_dashboard_adoption_headers.py`,
 `_dashboard_adoption_rows.py`, and `_dashboard_adoption_render.py` are five more beside them, forwarding the adoption
 table's column vocabulary and query parameters, its parse and two orders, its header row, its row projection, and its

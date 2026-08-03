@@ -34,7 +34,11 @@ are assembled into. ``sparkline_points`` and ``sparkline_html`` are how one of
 those lines reaches a tile: where each day sits in a box too narrow for an axis
 -- scaled to the window's own range, floored where a window has none, and left
 undrawn where it reported nothing at all -- and the polyline and closed fill
-that projection is written as. ``card_html`` is the markup the banners and the
+that projection is written as. ``summary_html`` is the band that strip sits in:
+the banner naming what the database holds, the line restating what a run's
+filters narrowed it to, the pill one tile's move against the window before it
+is annotated with, and the four tiles assembled around them.
+``card_html`` is the markup the banners and the
 run-health
 tiles among those numbers reach the browser as, together with the header every
 panel below them is titled by and the hidden mark ``css`` selects a card's

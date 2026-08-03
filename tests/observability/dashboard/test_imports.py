@@ -88,6 +88,8 @@ _SPARKLINE_POINTS_OWNER = "sparkline_points"
 
 _STATIC_METADATA_OWNER = "static_metadata"
 
+_SUMMARY_HTML_OWNER = "summary_html"
+
 _TABLES_OWNER = "tables"
 
 _TOKENS_OWNER = "tokens"
@@ -134,6 +136,7 @@ _OWNERS = (
     _SPARKLINE_HTML_OWNER,
     _SPARKLINE_POINTS_OWNER,
     _STATIC_METADATA_OWNER,
+    _SUMMARY_HTML_OWNER,
     _TABLES_OWNER,
     _TOKENS_OWNER,
     _WINDOWS_OWNER,
@@ -151,7 +154,9 @@ _OWNERS = (
 # reduce its window to the four numbers a headline tile reports, plot the days
 # behind three of them, assemble all four into the strip a page opens with,
 # place one of those days on the line under a tile and write that line as the
-# SVG the tile carries,
+# SVG the tile carries, banner what the database holds above that strip,
+# restate what a run's filters narrowed it to, and annotate one of its tiles
+# with the move it made,
 # head a card and draw that banner and those numbers as the markup a browser
 # reads, list a panel's rows in the compact table beside them, rank a window's
 # issues into the first of those panels, report a cohort's skill-trigger rate
@@ -185,6 +190,8 @@ _OWNERS = (
 # owner's ranking cap and rework buckets, the floor the projection owner
 # clamps a flat window's span at, the default box the rendering owner beside it
 # draws a line in together with the keyword surface it binds one through, the
+# two historical surfaces the chrome owner past them binds its pill and its
+# banner through, the
 # triple the
 # strip owner hands its four entries back as, and the TTL the metadata owner
 # caches under are all
@@ -372,6 +379,15 @@ _SURFACES = MappingProxyType({
         "read_filter_options",
         "read_static_metadata",
     ),
+    _SUMMARY_HTML_OWNER: (
+        "TopbarRequest",
+        "delta_pill",
+        "delta_style",
+        "filter_meta_html",
+        "kpi_strip_html",
+        "plural_s",
+        "topbar_html",
+    ),
     _TABLES_OWNER: (
         "int_or_zero",
         "money_or_dash",
@@ -399,7 +415,7 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
-# skill-adoption, and skill-matrix hubs, and the thirty leaves beneath
+# skill-adoption, and skill-matrix hubs, and the thirty-one leaves beneath
 # all but the KPI one.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
@@ -433,6 +449,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_sparkline_data",
     "orchestrator._dashboard_sparkline_html",
     "orchestrator._dashboard_state_constants",
+    "orchestrator._dashboard_summary_html",
     "orchestrator._dashboard_table_html",
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_cards",
