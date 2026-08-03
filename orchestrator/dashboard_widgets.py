@@ -61,7 +61,8 @@ _render_drilldown_view = runs._render_drilldown_view
 
 # The members a flat leaf defines itself. The stamp mutates the function, so
 # naming one an owner under `observability/dashboard/` holds -- either skill
-# card -- would move that function off the owner that defines it.
+# card, or the recent-run listing -- would move that function off the owner
+# that defines it.
 _COMPATIBILITY_MEMBERS = (
     _DashboardModules,
     _DashboardFilters,
@@ -89,7 +90,6 @@ _COMPATIBILITY_MEMBERS = (
     _render_issues_and_backends,
     _render_repo_and_reliability,
     _render_activity_heatmap,
-    _render_recent_runs,
     _render_drilldown_view,
 )
 compatibility.preserve_defining_module(__name__, _COMPATIBILITY_MEMBERS)

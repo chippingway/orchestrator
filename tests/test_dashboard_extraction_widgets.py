@@ -31,6 +31,9 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 DASHBOARD_OWNERS = "orchestrator.observability.dashboard"
 
 
+RECENT_RUNS_OWNER = f"{DASHBOARD_OWNERS}.recent_runs"
+
+
 SKILL_PANEL_OWNER = f"{DASHBOARD_OWNERS}.skill_panel"
 
 
@@ -38,9 +41,10 @@ SKILL_TRIGGER_PANEL_OWNER = f"{DASHBOARD_OWNERS}.skill_trigger_panel"
 
 
 # Each member the hub publishes and the module that defines it. The widget
-# sections still living on the hub report it; the two skill cards report the
-# owners under `observability/` that hold them, since a claim here would move
-# an owner's own function off the owner that defines it.
+# sections still living on the hub report it; the two skill cards and the
+# recent-run listing report the owners under `observability/` that hold them,
+# since a claim here would move an owner's own function off the owner that
+# defines it.
 _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_DashboardModules": DASHBOARD_WIDGETS_MODULE,
     "_DashboardFilters": DASHBOARD_WIDGETS_MODULE,
@@ -65,7 +69,7 @@ _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_render_skill_invocation_diagnostics": SKILL_PANEL_OWNER,
     "_render_skill_triggers": SKILL_TRIGGER_PANEL_OWNER,
     "_render_skill_matrix_expander": SKILL_TRIGGER_PANEL_OWNER,
-    "_render_recent_runs": DASHBOARD_WIDGETS_MODULE,
+    "_render_recent_runs": RECENT_RUNS_OWNER,
     "_render_drilldown_view": DASHBOARD_WIDGETS_MODULE,
 })
 
@@ -90,7 +94,8 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     `orchestrator.dashboard_kpi_strip` (`KpiStripExtractionTest`); the two
     skill cards live there too -- `skill_panel` for the adoption card and the
     diagnostics folded under it, `skill_trigger_panel` for the trigger-rate one
-    beside them -- and are reached through this hub.
+    beside them -- as does the recent-run listing above that drill-down, under
+    `recent_runs`, and all three are reached through this hub.
     """
 
     def test_widget_members_report_their_home(self) -> None:

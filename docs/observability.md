@@ -60,13 +60,13 @@ of them, the aggregate skill-trigger rates that are the second, and the per-sess
 invocation-level trigger matrix that are the last two — each split into the columns a click is expressed in, the parse
 and orders behind one, the header row it is clicked from, what one cell says, and the panel they assemble into — plus
 the two cards three of those panels are reported on, one leading with adoption and folding the invocation views under
-it and one kept for a caller reaching past that
+it and one kept for a caller reaching past that, and the listing of the runs under all four
 (`dashboard/tables.py`, `dashboard/issue_table.py`, `dashboard/skill_trigger_table.py`,
 `dashboard/skill_adoption_columns.py`, `dashboard/skill_adoption_sort.py`,
 `dashboard/skill_adoption_headers.py`, `dashboard/skill_adoption_rows.py`, `dashboard/skill_adoption.py`,
 `dashboard/skill_matrix_columns.py`, `dashboard/skill_matrix_sort.py`, `dashboard/skill_matrix_headers.py`,
 `dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`, `dashboard/skill_panel.py`,
-`dashboard/skill_trigger_panel.py`), the
+`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`), the
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
@@ -1395,6 +1395,11 @@ presence of a row already proves is on. Whether that evidence was there is what 
 window where no run triggered reads as a genuine no-trigger or as a prompt to switch tracking on accordingly. The
 second is the card the section led with before adoption did; nothing in the render pipeline draws it now, and its
 prompt is unconditional, since trigger rates alone carry no per-session evidence to tell those two windows apart.
+`recent_runs.py` is the listing under those four panels rather than a fifth among them — the runs behind the readings
+above it, projected into the columns one is scanned by and the offset the sidebar picked, drawn as `st.dataframe`
+because a raw listing carries no bar, pill, or sortable heading Streamlit's own table cannot already handle. It opens
+collapsed so a window's worth of rows does not push the per-issue drill-down off the screen the page ends on, and a
+window with no `agent_exit` row renders the notice rather than an empty frame.
 Two more panels are drawn as markup rather than as a figure: `backend_card.py` for what a run on one backend
 is worth — the cost of a million tokens, the cost of a run, and the share of billable input the cache answered, each
 divided through one guard so a window a backend barely ran in reads zero rather than raising — and `coverage_card.py`
@@ -1429,14 +1434,17 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
 `_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`, and
 `_dashboard_widget_skills.py`
-forward each historical name to the owner's own object. None of the state, read, KPI-strip, skill-adoption, and
+forward each historical name to the owner's own object. `_dashboard_widget_runs.py` forwards the run listing and its
+empty-window notice the same way while still building the per-issue drill-down beneath them. None of the state, read,
+KPI-strip, skill-adoption, and
 skill-matrix hubs defines a name of
 its own, so none of them rewrites a
 defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
 and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
 publishes are the card, backend, and coverage owners' own objects, and the widget hub leaves the six the two skill
-cards are reached by out of its own list for the same reason: a `__module__` stamp there would move one of
+cards are reached by, plus the run listing beneath them, out of its own list for the same reason: a `__module__` stamp
+there would move one of
 them off the owner that defines it. Streamlit is never imported in these
 helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
 
@@ -1679,7 +1687,11 @@ in, and the invocation views folded collapsed under it — and `observability/da
 trigger-rate card the section led with before adoption did, and its own fold-out matrix — reached through
 `orchestrator/_dashboard_widget_skills.py`, which forwards all seven historical spellings (the six renders plus the
 notice the second card answers an empty window with), and the `orchestrator/dashboard_widgets.py` hub above it, which
-republishes the six without claiming any of them.
+republishes the six without claiming any of them. The listing under all four panels is
+`observability/dashboard/recent_runs.py` — the columns one run
+is scanned by, the offset its timestamp is read on, the collapsed expander it is drawn inside, and the notice a window
+with no `agent_exit` row renders instead — reached through `orchestrator/_dashboard_widget_runs.py`, which forwards
+those two names and builds the per-issue drill-down beneath them itself.
 
 **Theme.** The plotly-free theme lives under `orchestrator/observability/dashboard/`, split by what a value is.
 `palette.py` holds the chrome colors (cool gray `#f4f5f8` page, white cards, indigo accent, muted ink tints), the

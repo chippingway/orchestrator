@@ -589,6 +589,10 @@ orchestrator/
                         historical import site for the two skill cards -- the
                         adoption one and the trigger-rate one beside it --
                         forwarding to the two skill-panel owners
+  _dashboard_widget_runs.py
+                        the per-issue drill-down, plus the historical import
+                        site for the run listing above it, forwarding to the
+                        recent-runs owner
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -834,7 +838,8 @@ orchestrator/
                         as, the four panels listed in that table — the last two
                         each split across the five owners a sortable one
                         needs — the two cards three of those panels are
-                        reported on, and the two
+                        reported on, the listing of the
+                        runs beneath them, and the two
                         that are markup rather than a figure, the figures the
                         rest are drawn as, and the
                         destination for what is left
@@ -911,6 +916,11 @@ orchestrator/
                         the trigger-rate card a caller reaching past that one
                         still gets, its own notice and enable-tracking prompt,
                         and the matrix folded collapsed beneath it
+      recent_runs.py    the runs under those four panels rather than a fifth
+                        in that table: the columns one is scanned by, the
+                        offset its timestamp is read on, the collapsed expander
+                        the page ends on, and the notice a window with no
+                        `agent_exit` row renders in place of an empty frame
       windows.py        the half-open UTC window a run reports over, the
                         presets that name one, and the clamp that keeps a
                         preset inside the data extent
@@ -2035,6 +2045,21 @@ Both owners are handed their `st` rather than reaching for one, so neither names
 each is typed against, the first reaches the card header, all three of those tables, and both sort parses; the second
 reaches the header, the two tables it draws, and the matrix parse alone.
 
+`recent_runs.py` is the listing under those four tables rather than a fifth panel among them. Every panel above it
+reduces a window to a reading, so this is where an operator lands once one of those readings raises a question the
+aggregate cannot answer: which run, on which issue, at what cost. That is also why it is the one panel drawn as
+`st.dataframe`
+rather than hand-rolled markup — it carries no in-row bar, status pill, or sortable heading of its own, and
+Streamlit's own table already sorts, widens, and scrolls a raw listing. It opens collapsed, because a listing as long
+as the read's cap allows would push the per-issue drill-down below it off the screen the page ends on, and a window
+with no `agent_exit` row renders the notice instead of an empty frame, so the expander says why it holds nothing
+rather than showing a header with no rows under it. The timestamp is the one reading converted here: every panel above
+this one reports over a window rather than at an instant, so this is the only place a stored UTC instant is read back
+as a wall clock — and the clock is the offset the sidebar picked rather than the server's, since the operator asking
+which run this was is reading against their own day. The columns are ordered the way that question is asked: when and
+where, then what ran, then how it went, then what it cost. Streamlit and pandas are the caller's, handed in as
+parameters, so the row projection stays readable with neither installed.
+
 `backend_card.py` and `coverage_card.py` hold two more panels drawn as markup rather than as a figure, each with the
 arithmetic behind its own. The first answers what work on one backend is worth, in three readings an
 operator compares agents by: what a million tokens cost, what a run cost, and how much of the billable input the cache
@@ -2290,9 +2315,12 @@ underscore the leaves spell bare — and defining none of them, so a click an op
 run cannot come apart. `_dashboard_widget_skills.py` is the widget-side site beside those two, forwarding the adoption
 card, the caption under it, the invocation fold, the trigger-rate card, and its own fold to the two panel owners under
 the private spellings the page always imported them by, plus the notice the second of them answers an empty window
-with, under its own public one. The
-widget hub above it republishes those six and claims none of them, since the `__module__` stamp mutates the function
-and a claim there would move an owner's own render off the owner that defines it.
+with, under its own public one. `_dashboard_widget_runs.py` forwards the same way without being one of these sites
+outright: the run listing and the notice a window with no `agent_exit` row renders are the recent-runs owner's own
+objects under the private spelling the page always imported them by, while the per-issue drill-down beneath that
+listing is still built there. The
+widget hub above both republishes those seven and claims none of them, since the `__module__` stamp mutates the
+function and a claim there would move an owner's own render off the owner that defines it.
 `dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
 are the charts owner's objects under the private spellings they were always imported by. Every chart family now names

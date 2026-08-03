@@ -54,6 +54,8 @@ _READ_MODE_OWNER = "read_mode"
 
 _READ_PLAN_OWNER = "read_plan"
 
+_RECENT_RUNS_OWNER = "recent_runs"
+
 _ROLLUPS_OWNER = "rollups"
 
 _SCOPED_READS_OWNER = "scoped_reads"
@@ -123,6 +125,7 @@ _OWNERS = (
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
     _READ_PLAN_OWNER,
+    _RECENT_RUNS_OWNER,
     _ROLLUPS_OWNER,
     _SCOPED_READS_OWNER,
     _SKILL_ADOPTION_OWNER,
@@ -174,8 +177,9 @@ _OWNERS = (
 # a quiet window did record, draw the trigger-rate card a caller reaching past
 # that one still gets, weigh
 # one backend's spend against the
-# tokens and runs behind it, or size a window's
-# priced share into one bar is a
+# tokens and runs behind it, size a window's
+# priced share into one bar, or read one of the runs under all of them back as
+# the columns it is scanned by is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
 # bound and the cache's tri-state -- could disagree. Two owners report nothing
 # because the check reads `__module__`, which only a class or a function
@@ -203,7 +207,9 @@ _OWNERS = (
 # two historical surfaces the chrome owner past them binds its pill and its
 # banner through, the
 # triple the
-# strip owner hands its four entries back as, and the TTL the metadata owner
+# strip owner hands its four entries back as, the label the run listing is
+# collapsed under together with the notice a window with no run renders
+# instead, and the TTL the metadata owner
 # caches under are all
 # invisible here for the same reason.
 _SURFACES = MappingProxyType({
@@ -306,6 +312,7 @@ _SURFACES = MappingProxyType({
         "widget_readers",
         "widget_task",
     ),
+    _RECENT_RUNS_OWNER: ("recent_run_row", "render_recent_runs"),
     _ROLLUPS_OWNER: (
         "read_prev_kpi",
         "read_recent_agent_exits",
@@ -436,8 +443,8 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
-# all but the KPI one, and the widget leaf the two skill panels are reached
-# through, which sits under the widget hub instead.
+# all but the KPI one, and the two widget leaves the skill panels and the run
+# listing are reached through, which sit under the widget hub instead.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
@@ -472,6 +479,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_summary_html",
     "orchestrator._dashboard_table_html",
+    "orchestrator._dashboard_widget_runs",
     "orchestrator._dashboard_widget_skills",
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_cards",
@@ -502,10 +510,10 @@ _COMPATIBILITY_SITES = (
 # rows a table is ranked from, the cohort rows the trigger-rate panel beneath it
 # reports, the adoption cells and the matrix cells four of each panel's five
 # owners order, parse for, reduce, and assemble -- and the two panel owners
-# above all three of those tables are handed a window's worth of each -- and
-# the per-backend and
-# per-cost-source rows the two card owners weigh and size -- are the rows those
-# reads hand back.
+# above all three of those tables are handed a window's worth of each -- the
+# per-backend and per-cost-source rows the two card owners weigh and size, and
+# the run rows the listing under all of them is projected from -- are the rows
+# those reads hand back.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here
