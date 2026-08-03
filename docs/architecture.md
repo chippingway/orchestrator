@@ -797,8 +797,9 @@ orchestrator/
                         of them, the numbers it is summarized by beneath them
                         and the strip those numbers are shown in, the markup a
                         card, a banner, a tile, and a compact table are drawn
-                        as, the two panels that are markup rather than a
-                        figure, the figures the rest are drawn as, and the
+                        as, the two panels listed in that table and the two
+                        that are markup rather than a figure, the figures the
+                        rest are drawn as, and the
                         destination for what is left
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
@@ -2014,8 +2015,10 @@ that spells the cost-first ordering one of them asks for, the breakdown owner na
 are answered by, the skill owner names the one family its three are, and the insight, the KPI, and the two KPI-strip
 owners name the result families the window totals, cost-source split, and issue rows they read arrive as -- the last
 two of those for the pair of windows a strip reduces rather than the one a tile reports -- while the two card owners
-name the family the per-backend and per-cost-source rows they weigh and size arrive as; those are the only things
-any of the twenty reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+name the family the per-backend and per-cost-source rows they weigh and size arrive as, and the two panels listed in
+the compact table name the families the issue rows one ranks and the cohort rows the other reports arrive as; those
+are the only things
+any of the twenty-two reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not one of
 those — every value a cell reports is handed to it — the card markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
