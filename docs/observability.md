@@ -1594,7 +1594,7 @@ does every other chart surface, since no flat chart module pulls it in at load e
 The topbar, filter meta, KPI strip,
 sparkline / delta pill, most-expensive-issues table, and skill-trigger-rates aggregate table are reached through
 `orchestrator/dashboard_html.py`, and all but the two tables are built by inline-HTML helpers on the leaves beneath it.
-The compact table those two — and the two skill matrices named
+The compact table those two — and the two sortable skill panels named
 below — are drawn as lives at `observability/dashboard/tables.py`: the stylesheet each panel scopes to
 itself under its own class, the header and body they are assembled from, and the bar width, short repository name,
 missing count, and unpriced amount a cell reports. `orchestrator/_dashboard_table_html.py` stays the historical
@@ -1618,7 +1618,7 @@ second, and last of those built by `observability/dashboard/card_html.py` and fo
 headings write, the parse and the two orders behind a click, the header row those clicks come from, what one cell
 says, and the sorted panel with the notice a window carrying no session evidence renders instead — reached through the
 five `orchestrator/_dashboard_adoption_*.py` leaves and the `orchestrator/dashboard_skill_adoption.py` surface above
-them. The invocation-level per-skill trigger matrix is
+them, all forwarding and implementing nothing. The invocation-level per-skill trigger matrix is
 `observability/dashboard/skill_matrix_columns.py`, `skill_matrix_sort.py`, `skill_matrix_headers.py`,
 `skill_matrix_rows.py`, and `skill_matrix.py` — its seven columns and the `mtx_sort` / `mtx_dir` pair its headings
 write, the parse and the two orders behind a click, the header row those clicks come from, what one cell says, and
