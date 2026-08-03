@@ -1303,7 +1303,9 @@ one patches the widget module that draws it — `patch.object(_dashboard_widget_
 page renderer `patch.object(dashboard, ...)` still intercepts, because the pipeline resolves it through the facade at
 call time, but the tables and sort parses one draws with are the panel owner's own module-scope imports rather than a
 widget module's — so a case that has to intercept the adoption table, the trigger-rate one, the matrix, or either sort
-parse patches `skill_panel` or `skill_trigger_panel`.
+parse patches `skill_panel` or `skill_trigger_panel`. The recent-run listing sits the same way: the render is
+facade-intercepted, but the offset shift each `ts` is converted through is `recent_runs`'s own module-scope import of
+`filters`, so a case that has to intercept that shift patches there rather than the widget module.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
@@ -1317,7 +1319,10 @@ skill-trigger, five adoption,
 and five trigger-matrix leaves among the table ones, which is what lets the card hub above them and both skill hubs
 claim nothing either, leaving none of the four panels that shared table is assembled into building its own. The
 widget-skill section is the same kind of leaf one level up: the two cards three of those panels are reported on are
-owners as well, so it forwards both and the widget hub above it claims neither.
+owners as well, so it forwards both and the widget hub above it claims neither. The widget-run section forwards that
+way only in part: the listing beneath all four panels is an owner too, so it hands over that render and the
+empty-window notice beside it — which the hub likewise republishes without claiming — while still building the
+per-issue drill-down under that listing itself.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
