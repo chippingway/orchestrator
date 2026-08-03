@@ -52,6 +52,8 @@ _SKILLS_OWNER = "skills"
 
 _STATIC_METADATA_OWNER = "static_metadata"
 
+_TABLES_OWNER = "tables"
+
 _TOKENS_OWNER = "tokens"
 
 _WINDOWS_OWNER = "windows"
@@ -78,6 +80,7 @@ _OWNERS = (
     _SCOPED_READS_OWNER,
     _SKILLS_OWNER,
     _STATIC_METADATA_OWNER,
+    _TABLES_OWNER,
     _TOKENS_OWNER,
     _WINDOWS_OWNER,
 )
@@ -91,8 +94,9 @@ _OWNERS = (
 # draw a headline or lifecycle section from one of the seven reads behind it, a
 # comparison panel from one of the six, or a skill panel from one of the three,
 # open a page on the extent behind its filter bar, interrupt one with a banner,
-# reduce its window to the four numbers a headline tile reports, or head a card
-# and draw that banner and those numbers as the markup a browser reads is a
+# reduce its window to the four numbers a headline tile reports, head a card
+# and draw that banner and those numbers as the markup a browser reads, or list
+# a panel's rows in the compact table beside them is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
 # bound and the cache's tri-state -- could disagree. Two owners report nothing
 # because the check reads `__module__`, which only a class or a function
@@ -190,6 +194,15 @@ _SURFACES = MappingProxyType({
         "read_filter_options",
         "read_static_metadata",
     ),
+    _TABLES_OWNER: (
+        "int_or_zero",
+        "money_or_dash",
+        "relative_width_pct",
+        "short_repo_name",
+        "table_css",
+        "table_head_html",
+        "table_html",
+    ),
     _TOKENS_OWNER: (),
     _WINDOWS_OWNER: (
         "DateWindow",
@@ -207,10 +220,10 @@ _SURFACES = MappingProxyType({
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
-# flat theme module, the state, read, KPI, and card hubs, and the eleven leaves
-# beneath the state, read, and card ones. No owner here may plant one -- that is
-# what keeps the forwarding one-directional and the flat modules retirable
-# rather than load-bearing.
+# flat theme module, the state, read, KPI, card, and HTML hubs, and the twelve
+# leaves beneath the state, read, card, and HTML ones. No owner here may plant
+# one -- that is what keeps the forwarding one-directional and the flat modules
+# retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_card_headers",
     "orchestrator._dashboard_filter_state",
@@ -222,8 +235,10 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_read_rollups",
     "orchestrator._dashboard_read_skills",
     "orchestrator._dashboard_state_constants",
+    "orchestrator._dashboard_table_html",
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_cards",
+    "orchestrator.dashboard_html",
     "orchestrator.dashboard_kpis",
     "orchestrator.dashboard_reads",
     "orchestrator.dashboard_state",

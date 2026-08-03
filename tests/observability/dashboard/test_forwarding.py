@@ -19,6 +19,8 @@ _CARD_HUB = "orchestrator.dashboard_cards"
 
 _CARD_HEADERS_LEAF = "orchestrator._dashboard_card_headers"
 
+_HTML_SURFACE = "orchestrator.dashboard_html"
+
 _READ_CORE_LEAF = "orchestrator._dashboard_read_core"
 
 _DISPATCH_LEAF = "orchestrator._dashboard_read_dispatch"
@@ -32,6 +34,8 @@ _READ_PLAN_LEAF = "orchestrator._dashboard_read_plan"
 _ROLLUPS_LEAF = "orchestrator._dashboard_read_rollups"
 
 _SKILLS_LEAF = "orchestrator._dashboard_read_skills"
+
+_TABLE_LEAF = "orchestrator._dashboard_table_html"
 
 # `from __future__ import annotations` opens every module in the repository and
 # binds the compiler directive under a public name. It is a compilation
@@ -76,6 +80,8 @@ _SCOPED_READS = f"{_PACKAGE}.scoped_reads"
 _SKILLS = f"{_PACKAGE}.skills"
 
 _STATIC_METADATA = f"{_PACKAGE}.static_metadata"
+
+_TABLES = f"{_PACKAGE}.tables"
 
 _TOKENS = f"{_PACKAGE}.tokens"
 
@@ -384,6 +390,21 @@ _CARD_HUB_STAMPED = frozenset((
     "_cost_coverage_bar_html",
 ))
 
+# The compact table four panels are drawn as, published under the same private
+# spellings by the leaf and by the HTML surface above it. Both sites have to
+# reach the one owner: a copy of the stylesheet is a panel that stops matching
+# the ones beside it, and a copy of the dash would let one table report an
+# unpriced amount as a cost of nothing.
+_TABLE_NAMES = (
+    ("_int_or_zero", _TABLES, "int_or_zero"),
+    ("_money_or_dash", _TABLES, "money_or_dash"),
+    ("_relative_width_pct", _TABLES, "relative_width_pct"),
+    ("_short_repo_name", _TABLES, "short_repo_name"),
+    ("_table_css", _TABLES, "table_css"),
+    ("_table_head_html", _TABLES, "table_head_html"),
+    ("_table_html", _TABLES, "table_html"),
+)
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -412,9 +433,9 @@ _FILTER_NAMES = (
 # under, a scope entered here the one they all share, a panel read issued here
 # the one a page draws that panel from, a wave staged here the one the load
 # actually runs, a load driven here the one the operator's log line comes off,
-# a KPI computed here the one every tile reports, and a card headed here the one
-# the stylesheet paints, or a fix under the owners would reach only half of the
-# callers.
+# a KPI computed here the one every tile reports, a card headed here the one
+# the stylesheet paints, and a table drawn here the one every hand-rolled panel
+# is, or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -432,9 +453,11 @@ _FORWARDED_MODULES = MappingProxyType({
     _ROLLUPS_LEAF: _ROLLUP_READ_NAMES,
     _BREAKDOWNS_LEAF: (*_BREAKDOWN_READ_NAMES, _SKILL_TRIGGER_RATES_NAME),
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,
+    _TABLE_LEAF: _TABLE_NAMES,
     _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),
     _READS_HUB: _FORWARDED_READS_HUB,
     _CARD_HEADERS_LEAF: _CARD_MARKUP_NAMES,
+    _HTML_SURFACE: _TABLE_NAMES,
 })
 
 # The hub the page and the compatibility facade in front of it read the state
