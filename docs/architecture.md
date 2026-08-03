@@ -479,6 +479,12 @@ orchestrator/
                         and fan-out owners under observability/dashboard/
   dashboard_kpis.py     historical import site for the headline KPI arithmetic
                         and the banners above it, forwarding to those owners
+  dashboard_kpi_strip.py
+                        stable KPI-strip surface, forwarding the per-day series
+                        and the tiles assembled over them to those owners
+  _dashboard_kpi_series.py / _dashboard_kpi_values.py
+                        historical import sites for those series and tiles,
+                        forwarding to the same owners
   dashboard_cards.py    stable card surface, forwarding the header, banner
                         stack, and reliability strip to the card-markup owner
                         and reaching the two card leaves still flat
@@ -775,10 +781,11 @@ orchestrator/
                         comparison panel is and the three a skill panel is,
                         what one of those reads then runs on and is narrowed
                         by, the banners a window is interrupted with above all
-                        of them and the numbers it is summarized by beneath
-                        them, the markup a card, a banner, a tile, and a
-                        compact table are drawn as, the figures those reads are
-                        drawn as, and the destination for the rest
+                        of them, the numbers it is summarized by beneath them
+                        and the strip those numbers are shown in, the markup a
+                        card, a banner, a tile, and a compact table are drawn
+                        as, the figures those reads are drawn as, and the
+                        destination for the rest
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -849,11 +856,19 @@ orchestrator/
                         the run-health tiles, the order and depth a spend table
                         is cut to, and the share of spend that was a second
                         pass
-      card_html.py      the markup those two are drawn as, and the header
-                        every panel beneath them is titled by: the hidden mark
-                        the stylesheet selects a card's container by, the
-                        banner stack, and the reliability strip whose numbers
-                        the caller's own formatter renders
+      kpi_series.py     the per-day spend, token, and resolved lines drawn
+                        under three of those numbers, the two token totals they
+                        and the tiles are counted by, and the throughput pair
+                        reported beside them
+      kpi_strip.py      the strip itself: what one is built from, the scalars a
+                        window and the one before it are reduced to, and the
+                        four display entries a page opens with
+      card_html.py      the markup the banners and the run-health tiles are
+                        drawn as, and the header every panel beneath them is
+                        titled by: the hidden mark the stylesheet selects a
+                        card's container by, the banner stack, and the
+                        reliability strip whose numbers the caller's own
+                        formatter renders
       charts/           the Plotly figures those reads are drawn as: what
                         every family is built out of, the frame the horizontal
                         cost families share, the generic spend ranking, the
@@ -1722,7 +1737,24 @@ row -- issues tying on cost fall back to run count and then to the repository an
 unpriced issue sorts below every priced one rather than beside the cheapest -- so a table redrawn on the same window
 is the same table.
 
-`card_html.py` is how those two reach the browser, and the header every panel below them is titled by. Each of the
+`kpi_series.py` and `kpi_strip.py` are how those reductions reach the page. The series owner holds what a number is
+counted over: a token total is the four columns added together -- input, output, cache read, and cache write --
+wherever it is taken, because a window totalling all four under a sparkline counting fewer would be a line below its
+own headline, and the two shapes it is taken off are read apart only because a window's aggregate spells those columns
+`total_*` and a point in the day series does not. The days a line is plotted over are the days the activity series
+holds rather than a calendar over the window, with resolved counts looked up against them and defaulting to zero, so a
+day that ran agents without resolving anything draws a gap instead of dropping the spend and token points beside it,
+and a resolution dated outside those days is not an extra point on the lines. The strip owner is what a page's
+first-wave rows then become: the window's own aggregate and the one before it, the day series, the throughput days,
+and the review-round split arrive together and leave as four display entries plus the resolved / rejected pair the
+reliability tiles are also reported with. Two of those readings are not a division. Cost per resolved issue is an em
+dash when nothing was resolved, because a window that resolved nothing has no such cost and printing one is a number
+an operator could act on; the rework share falls back to zero the same way when no review round recorded any spend, so
+an unpriced window reports no rework rather than failing to draw the tile. The theme is handed in rather than
+imported, because the module a page renders through is the one whose formatters and hues a tile has to match.
+
+`card_html.py` is how the banners and the run-health tiles among those numbers reach the browser, and the header every
+panel below them is titled by. Each of the
 three is a string handed to `st.markdown(unsafe_allow_html=True)` whose class names are the ones `css.py` writes rules
 for, which is why they sit in one owner: a header spelled in one module and a tile in another are two places the
 chrome can stop agreeing with the stylesheet painting it. The header's first element is a hidden mark, because that is
@@ -1905,13 +1937,16 @@ socket out of, the metadata owner and the dispatch owner both name the error a f
 alongside the two unfiltered reads it issues — the rollup owner names the three read families its seven adapters are
 answered by plus the issue-summary owner
 that spells the cost-first ordering one of them asks for, the breakdown owner names the two families its six adapters
-are answered by, the skill owner names the one family its three are, and the insight and KPI owners name the result
-families the window totals, cost-source split, and issue rows they read arrive as; those are the only things any of
-the sixteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing past the
+are answered by, the skill owner names the one family its three are, and the insight, KPI, and KPI-strip owners name
+the result families the window totals, cost-source split, and issue rows they read arrive as -- the last two of them
+for the pair of windows a strip is reduced from; those are the only things any of
+the eighteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing past the
 siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not even one of
 those — every value a cell reports is handed to it — the card markup names only the insight
-owner whose banner shape it renders, and the rollup owner names one sibling of its own beside those query families:
-the KPI owner whose ranking depth its spend table is cut to.
+owner whose banner shape it renders, the rollup owner names one sibling of
+its own beside those query families -- the KPI owner whose ranking depth its spend table is cut to -- and the strip
+owner names two: the series owner whose lines it draws under three of its tiles, and that same KPI owner, for the
+delta a tile is annotated with and the rework share one of them reports.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
 the hub the whole read inventory is resolved through, and the ten flat leaves beneath them —
@@ -1920,7 +1955,12 @@ the hub the whole read inventory is resolved through, and the ten flat leaves be
 `_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and forward each historical name to
 the owner's own object. The read hub defines nothing of its own either, so nothing there rewrites a defining module.
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
-them to the two owners that hold each. `_dashboard_card_headers.py` is one more, forwarding the header, the banner
+them to the two owners that hold each. `dashboard_kpi_strip.py` is the hub the widget pipeline and the lazy facade
+build the strip through, and `_dashboard_kpi_series.py` and `_dashboard_kpi_values.py` the two leaves beneath it: the
+two token totals, the throughput pair, and the three per-day lines are the series owner's objects, and the inputs, the
+window scalars, the entry keys, the four tiles, and the build itself the strip owner's, all under the private
+spellings a caller reached them by. That hub stamps no defining module of its own, so a name reached through it
+reports the owner that holds it. `_dashboard_card_headers.py` is one more, forwarding the header, the banner
 stack, and the reliability strip to the markup owner under its own public spellings. `dashboard_cards.py` stays the
 surface in front of it, publishing those three under the private names the page always imported them by — but it is
 the one site here that still claims something, because the backend-efficiency card and the cost-source coverage bar

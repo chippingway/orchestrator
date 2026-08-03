@@ -26,8 +26,12 @@ the seven a headline or lifecycle section is built from, ``breakdowns`` for
 the six a comparison section is, and ``skills`` for the three a skill section
 is. Above all of them, ``insights`` holds the two observations a window is
 worth interrupting a page for and the ratio each is raised at, and ``kpis``
-the four numbers that window is summarized by beneath them. ``card_html``
-is the markup those two reach the browser as, together with the header every
+the four numbers that window is summarized by beneath them. ``kpi_series`` and
+``kpi_strip`` are how those numbers reach the page: the per-day spend, token,
+and resolved lines a sparkline is drawn from, and the four display entries a
+window's own aggregate, the one before it, and three of its first-wave reads
+are assembled into. ``card_html`` is the markup the banners and the run-health
+tiles among those numbers reach the browser as, together with the header every
 panel below them is titled by and the hidden mark ``css`` selects a card's
 container by, and ``tables`` is the markup beside it: the compact table the
 four hand-rolled panels are listed in, with the stylesheet each scopes to its

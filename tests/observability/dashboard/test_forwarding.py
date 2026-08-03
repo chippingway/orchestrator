@@ -15,6 +15,12 @@ _READS_HUB = "orchestrator.dashboard_reads"
 
 _KPI_SITE = "orchestrator.dashboard_kpis"
 
+_KPI_STRIP_HUB = "orchestrator.dashboard_kpi_strip"
+
+_KPI_SERIES_LEAF = "orchestrator._dashboard_kpi_series"
+
+_KPI_VALUES_LEAF = "orchestrator._dashboard_kpi_values"
+
 _CARD_HUB = "orchestrator.dashboard_cards"
 
 _CARD_HEADERS_LEAF = "orchestrator._dashboard_card_headers"
@@ -64,6 +70,10 @@ _FORMATTING = f"{_PACKAGE}.formatting"
 _INSIGHTS = f"{_PACKAGE}.insights"
 
 _KPIS = f"{_PACKAGE}.kpis"
+
+_KPI_SERIES = f"{_PACKAGE}.kpi_series"
+
+_KPI_STRIP = f"{_PACKAGE}.kpi_strip"
 
 _LAYOUT = f"{_PACKAGE}.layout"
 
@@ -405,6 +415,44 @@ _TABLE_NAMES = (
     ("_table_html", _TABLES, "table_html"),
 )
 
+# The per-day lines drawn under three of those tiles, and the two reductions
+# the tiles themselves are totalled by. A second token total is the sharpest
+# copy here: a window counts all four token columns, so a line reduced anywhere
+# but the owner is one that could sit below its own headline.
+_FORWARDED_KPI_SERIES = (
+    ("_DailyKpiSeries", _KPI_SERIES, "DailyKpiSeries"),
+    ("_daily_kpi_series", _KPI_SERIES, "daily_kpi_series"),
+    ("_daily_point_totals", _KPI_SERIES, "daily_point_totals"),
+    ("_summary_total_tokens", _KPI_SERIES, "summary_total_tokens"),
+    ("_throughput_totals", _KPI_SERIES, "throughput_totals"),
+    ("_time_series_total_tokens", _KPI_SERIES, "time_series_total_tokens"),
+)
+
+# The strip those lines are drawn inside: what one is built from, the scalars a
+# window is reduced to, the four entries, and the build the widget pipeline
+# calls. The build is the one the page renders the strip out of, so a copy here
+# would be four tiles an operator reads that no fix under the owner reaches.
+_FORWARDED_KPI_TILES = (
+    ("_KpiInputs", _KPI_STRIP, "KpiInputs"),
+    ("_KpiStripData", _KPI_STRIP, "KpiStripData"),
+    ("_KpiTotals", _KPI_STRIP, "KpiTotals"),
+    ("_build_kpi_strip_data", _KPI_STRIP, "build_kpi_strip_data"),
+    ("_cost_per_resolved", _KPI_STRIP, "cost_per_resolved"),
+    ("_kpi_strip_entries", _KPI_STRIP, "kpi_strip_entries"),
+    ("_kpi_totals", _KPI_STRIP, "kpi_totals"),
+)
+
+# The keys one entry is read back by, listed apart because only the leaf ever
+# published them: the strip's HTML builder looks a tile up under each, so the
+# names it writes and the names that builder reads have to be one set.
+_KPI_ENTRY_KEYS = (
+    ("_DELTA_KEY", _KPI_STRIP, "_DELTA_KEY"),
+    ("_LABEL_KEY", _KPI_STRIP, "_LABEL_KEY"),
+    ("_SPARK_KEY", _KPI_STRIP, "_SPARK_KEY"),
+    ("_SUBTITLE_KEY", _KPI_STRIP, "_SUBTITLE_KEY"),
+    ("_VALUE_KEY", _KPI_STRIP, "_VALUE_KEY"),
+)
+
 _WINDOW_NAMES = (
     ("DateWindow", _WINDOWS, "DateWindow"),
     ("default_date_range", _WINDOWS, "default_date_range"),
@@ -433,9 +481,10 @@ _FILTER_NAMES = (
 # under, a scope entered here the one they all share, a panel read issued here
 # the one a page draws that panel from, a wave staged here the one the load
 # actually runs, a load driven here the one the operator's log line comes off,
-# a KPI computed here the one every tile reports, a card headed here the one
-# the stylesheet paints, and a table drawn here the one every hand-rolled panel
-# is, or a fix under the owners would reach only half of the callers.
+# a KPI computed here the one every tile reports, a strip assembled here the one
+# the page opens with, a card headed here the one the stylesheet paints, and a
+# table drawn here the one every hand-rolled panel is, or a fix under the owners
+# would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
         *_PRESET_NAMES,
@@ -455,6 +504,9 @@ _FORWARDED_MODULES = MappingProxyType({
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,
     _TABLE_LEAF: _TABLE_NAMES,
     _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),
+    _KPI_SERIES_LEAF: _FORWARDED_KPI_SERIES,
+    _KPI_VALUES_LEAF: (*_KPI_ENTRY_KEYS, *_FORWARDED_KPI_TILES),
+    _KPI_STRIP_HUB: (*_FORWARDED_KPI_SERIES, *_FORWARDED_KPI_TILES),
     _READS_HUB: _FORWARDED_READS_HUB,
     _CARD_HEADERS_LEAF: _CARD_MARKUP_NAMES,
     _HTML_SURFACE: _TABLE_NAMES,
@@ -535,11 +587,12 @@ class ForwardedFlatModuleTest(unittest.TestCase):
                     )
 
     def test_no_flat_module_defines_one_itself(self) -> None:
-        # The same rule the theme site is held to, applied to the read hub, the
-        # leaves beneath it, the state hub, and the card-markup leaf, and the
-        # KPI site beside them: a module that defined a name of its own would
-        # be a second implementation the check above cannot see, because it
-        # only compares the names the module was asked for.
+        # The same rule the theme site is held to, applied to the read, state,
+        # KPI-strip, and HTML hubs, the leaves beneath them including the
+        # card-markup and table ones, and the KPI site beside those: a module
+        # that defined a name of its own would be a second implementation the
+        # check above cannot see, because it only compares the names the module
+        # was asked for.
         for module_name in _FORWARDED_MODULES:
             defined = tuple(
                 name

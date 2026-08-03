@@ -33,13 +33,14 @@ read-mode state one run of the analytics page carries plus the two waves its loa
 is issued through, and the dispatch that drives both, the seven a
 headline or lifecycle section is drawn from, the six a comparison panel is, the three a skill panel is, the
 connection, filter binding, and unfiltered metadata each read goes through, and the banners a window is interrupted
-with above all of them plus the four numbers it is summarized by beneath those, and the markup those two and every
-card header are drawn as (`dashboard/windows.py`,
+with above all of them plus the four numbers it is summarized by beneath those, the per-day lines drawn under three
+of them, the strip all four are assembled into, and the markup the banners, the run-health tiles, and every card
+header are drawn as (`dashboard/windows.py`,
 `dashboard/filters.py`, `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
-`dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`, `dashboard/card_html.py`), the
-primitives every chart family on
+`dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`, `dashboard/kpi_series.py`,
+`dashboard/kpi_strip.py`, `dashboard/card_html.py`), the primitives every chart family on
 that page is drawn out of plus the frame the horizontal cost families share, the generic spend ranking, the
 per-repository one drawn through it, the per-stage cache split, the per-review-round one beside it, the
 weekday-by-hour grid, and the per-day throughput strip above them, and the usage family's own bands, day span, stack
@@ -1276,13 +1277,14 @@ the facade at call time.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
-The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: KPI
-series/values; cards, tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read
-and chart leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the cost and usage
-ones on the other — hold no implementation of their own; each forwards to the owners named below, and so do the
-card-markup leaf among the card ones and the shared-table leaf among the table ones, leaving the backend-efficiency
-card and the coverage bar as the two that still implement what the card hub publishes, and the four panels that
-shared table is assembled into — two on the HTML hub, one on each skill hub — as leaves that still build their own.
+The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: cards,
+tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read, KPI-strip, and chart
+leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the KPI series and values
+pair in the middle, the cost and usage ones on the other — hold no implementation of their own; each forwards to the
+owners named below, and so do the card-markup leaf among the card ones and the shared-table leaf among the table
+ones, leaving the backend-efficiency card and the coverage bar as the two that still implement what the card hub
+publishes, and the four panels that shared table is assembled into — two on the HTML hub, one on each skill hub — as
+leaves that still build their own.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1304,9 +1306,14 @@ feeds, `insights.py` holds the two observations a window is worth interrupting f
 the parser could not price — the ratio each is raised at, and the banner line a crossing is rendered as; directly
 beneath those, `kpis.py` holds the four numbers the headline tiles report — the move against the window before it,
 the run-health tiles, the order and depth a spend table is cut to, and the share of spend that was a second pass.
-`card_html.py` is what those two reach the browser as, together with the header every panel beneath them is titled by:
-the hidden mark `css.py` selects a card's container by, the banner stack whose severity picks a class and a glyph, and
-the reliability strip whose numbers the calling page's own formatter renders. `tables.py` is the markup beside it —
+Beside it, `kpi_series.py` holds the per-day spend, token, and resolved lines drawn under three of those tiles,
+together with the two token totals and the throughput pair every one of them is counted by, and `kpi_strip.py` the
+strip itself — what one is built from, the scalars a window and the one before it are reduced to, and the four
+display entries a page opens with.
+`card_html.py` is what the banners and the run-health tiles reach the browser as, together with the header every panel
+beneath them is titled by: the hidden mark `css.py` selects a card's container by, the banner stack whose severity
+picks a class and a glyph, and the reliability strip whose numbers the calling page's own formatter renders.
+`tables.py` is the markup beside it —
 the compact table the four hand-rolled panels are listed in: the stylesheet each scopes to its own class, the header
 and body they are assembled from, and the bar width, short repository name, missing count, and unpriced amount a cell
 reports.
@@ -1318,8 +1325,10 @@ split, `cost_review.py` the per-review-round one beside it, `heatmap.py` the wee
 `usage_bands.py` / `usage_series.py` / `usage_axis.py` / `usage_traces.py` / `usage.py` the bands, day span, stack
 heights, aligned axes, traces, and assembled hero figure the usage family draws its reads as (see **Chart builders**
 below).
-`dashboard_state.py` stays the hub the page reads the state off and `dashboard_reads.py` the hub the read inventory
-is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`,
+`dashboard_state.py` stays the hub the page reads the state off, `dashboard_reads.py` the hub the read inventory
+is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the panels is built through, while
+`_dashboard_kpi_series.py`, `_dashboard_kpi_values.py`,
+`_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`,
 `_dashboard_read_mode.py`, `_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_dispatch.py`,
 `_dashboard_read_rollups.py`,
 `_dashboard_read_breakdowns.py`, `_dashboard_read_skills.py`, `dashboard_kpis.py`, `dashboard_charts_base.py`,
@@ -1330,11 +1339,12 @@ is resolved through, while `_dashboard_windows.py`, `_dashboard_filter_state.py`
 `_dashboard_usage_models.py`, `_dashboard_usage_data.py`, `_dashboard_usage_axis.py`,
 `_dashboard_usage_traces.py`, `_dashboard_usage_chart.py`, `_dashboard_card_headers.py`, and
 `_dashboard_table_html.py`
-forward each historical name to the owner's own object. Neither hub defines a name of its own, so neither rewrites a
+forward each historical name to the owner's own object. None of the state, read, and KPI-strip hubs defines a name of
+its own, so none of them rewrites a
 defining module; the
-compatibility metadata that keeps the established defining-module assertions intact now belongs to the component hubs
-alone, and names only members a flat leaf still defines — `dashboard_cards.py` stamps the backend-efficiency card and
-the coverage bar, whose leaves are still flat, and leaves the header, banner stack, and reliability strip to the
+compatibility metadata that keeps the established defining-module assertions intact belongs to the widget and card
+hubs alone, and names only members a flat leaf still defines — `dashboard_cards.py` stamps the backend-efficiency card
+and the coverage bar, whose leaves are still flat, and leaves the header, banner stack, and reliability strip to the
 markup owner that defines them. Streamlit is never imported in these
 helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
 
