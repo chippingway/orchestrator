@@ -7,8 +7,9 @@ sections and every historical `dashboard.<name>` import reach the panel a
 window's costliest issues are ranked into, and `_skill_triggers_html` the panel
 each cohort's skill use is reported in; the same holds for the compact table
 both are drawn as, for the line and the SVG a KPI tile's sparkline is projected
-and written as, and for the topbar, filter meta, delta pill, and KPI strip
-those tiles sit in. All of them are the owners' own objects under
+and written as, and for the band a page opens with: the topbar, the filter
+meta beneath it, the KPI strip, and the delta pill one of its tiles is
+annotated with. All of them are the owners' own objects under
 `observability/dashboard/`, published here under the private spellings a caller
 always imported them by, so a page and the owners cannot draw one table two
 ways -- or scale one window's line two ways, or annotate one tile two ways.

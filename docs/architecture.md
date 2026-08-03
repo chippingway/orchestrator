@@ -1896,11 +1896,15 @@ carrying it in another are two places the strip can stop agreeing with the style
 cost dashboard's: a rise reads red and a drop green, and `invert` is for the readings where up is the good direction —
 issues resolved, success rate — swapping the hue only, since the arrow keeps following the value's sign and which way
 a tile moved must not be readable off the color alone. A window with no prior to compare against, or one that did not
-move, renders no pill rather than a grey placeholder that read as a control doing nothing. Every caller-supplied
-string is escaped, because the page writes this markup with `unsafe_allow_html=True` and a KPI label or an
-already-formatted amount is text the dashboard was handed rather than text it owns — the formatters themselves are
-handed in for the same reason the strip's are, so a figure in the banner and the same figure in a tile are rendered
-once. The two keyword surfaces are bound as explicit signatures rather than spelled as parameters: the pill's is
+move, renders no pill at all, because a placeholder in that slot reads as a control that does nothing. What reaches
+the markup as caller text is escaped — the banner's span label and spend figure, and each tile's label, value, and
+sub-line — because the page writes this with `unsafe_allow_html=True` and a KPI label or an already-formatted amount
+is text the dashboard was handed rather than text it owns; the repository, event, day, and run counts beside them,
+and the filter line's own dates, are formatted integers and ISO text with nothing in them to escape. The banner and
+the filter line take their formatters as
+arguments for the same reason the strip takes its whole theme: the module a page renders through is the one whose
+formatting a figure has to match, so the same total reads the same way in the banner and in the tile below it. The two
+keyword surfaces are bound as explicit signatures rather than spelled as parameters: the pill's is
 `value`, which a parameter here may not be named, and the banner's is six readings, more than one call is given to
 name, so the banner takes one request object underneath while both still answer the call every caller spells.
 
@@ -2224,8 +2228,8 @@ the projection itself under the private spellings they were always imported by �
 reaching the rendering owner that builds it — and the second the default box under its public spellings and the
 request, the two paths, the point rounding, the renderer, and the bound keyword surface under their private ones.
 `_dashboard_summary_html.py` is the sixth, forwarding the banner, the filter line, the pill, the strip, the plural
-suffix all three count their nouns by, the tone and arrow a move is painted from, the request the banner is described
-by, and the two bound keyword surfaces under the private spellings they were always imported by.
+suffix the first two count their repos and days by, the tone and arrow a move is painted from, the request the banner
+is described by, and the two bound keyword surfaces under the private spellings they were always imported by.
 `dashboard_html.py` is the
 surface in front of all six, publishing those seven table names, the issues panel's eight, the skill panel's
 five, the sparkline's twelve, and the chrome's five — the topbar, filter meta, delta pill, KPI strip, and that plural

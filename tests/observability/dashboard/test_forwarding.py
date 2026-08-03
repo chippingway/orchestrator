@@ -867,7 +867,7 @@ _LEAF_SPARKLINE_NAMES = (
 
 # The band those tiles sit in: the banner above the strip, the line under the
 # filter bar, the pill one tile's move is annotated with, the strip itself, and
-# the suffix all three of the first count their nouns by. The chrome leaf and
+# the suffix the first two count their repos and days by. The chrome leaf and
 # the HTML surface above it spell all five the same way. A copy of the pill is
 # a strip whose tiles could paint a rise two ways.
 _SUMMARY_MARKUP_NAMES = (

@@ -10,17 +10,20 @@ pill, and every class name across the band is one `css.py` writes rules for. A
 pill spelled in one module and the tile that carries it in another are two
 places the strip can stop agreeing with the stylesheet painting it.
 
-Every caller-supplied string is handed to ``html.escape`` first, because a page
-writes this markup with ``unsafe_allow_html=True`` and a repository count, a
-KPI label, or an already-formatted amount is text the dashboard was given
-rather than text it owns.
+What reaches the markup as caller text is handed to ``html.escape`` first: the
+banner's span label and spend figure, and each tile's label, value, and
+sub-line. A page writes this with ``unsafe_allow_html=True``, and a KPI label
+or an already-formatted amount is text the dashboard was given rather than text
+it owns. The readings beside them -- the repository, event, day, and run counts
+-- are integers and ISO dates a formatter rendered, so there is nothing in them
+to escape.
 
 A rise is painted red and a drop green, because the numbers a window is
 summarized by are costs. ``invert`` is for the readings where up is the good
 direction -- issues resolved, success rate -- and it swaps the color only: the
 arrow keeps following the value's sign, so which way a tile moved is never read
 off the hue alone. A window with no prior to compare against, or one that did
-not move, renders no pill rather than a grey placeholder, which read as a
+not move, renders no pill at all, because a placeholder in that slot reads as a
 control that does nothing.
 
 The keyword surfaces the pill and the banner are reached through are bound as
