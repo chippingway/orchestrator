@@ -29,7 +29,11 @@ worth interrupting a page for and the ratio each is raised at, and ``kpis``
 the four numbers that window is summarized by beneath them. ``card_html``
 is the markup those two reach the browser as, together with the header every
 panel below them is titled by and the hidden mark ``css`` selects a card's
-container by. What those reads
+container by, and ``tables`` is the markup beside it: the compact table the
+four hand-rolled panels are listed in, with the stylesheet each scopes to its
+own class, the header and body they are assembled from, and the bar width,
+short repository name, missing count, and unpriced amount a cell reports.
+What those reads
 are then drawn as arrives under ``charts``, where ``primitives`` holds what
 every figure family is built out of -- the placeholder a window holding no
 rows is answered with, the labels a bar is annotated by, and the height and

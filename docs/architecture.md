@@ -1907,8 +1907,9 @@ answered by plus the issue-summary owner
 that spells the cost-first ordering one of them asks for, the breakdown owner names the two families its six adapters
 are answered by, the skill owner names the one family its three are, and the insight and KPI owners name the result
 families the window totals, cost-source split, and issue rows they read arrive as; those are the only things any of
-the fifteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing past the
-siblings they take their worker cap, their adapters, and their scope from, the card markup names only the insight
+the sixteen reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing past the
+siblings they take their worker cap, their adapters, and their scope from, the table markup reaches not even one of
+those — every value a cell reports is handed to it — the card markup names only the insight
 owner whose banner shape it renders, and the rollup owner names one sibling of its own beside those query families:
 the KPI owner whose ranking depth its spend table is cut to.
 
