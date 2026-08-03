@@ -1,6 +1,16 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable dashboard HTML surface backed by focused rendering leaves."""
+"""Stable dashboard HTML surface backed by focused rendering leaves.
+
+`from orchestrator.dashboard_html import _issues_table_html` is how the widget
+sections and every historical `dashboard.<name>` import reach the panel a
+window's costliest issues are ranked into, and the same holds for the compact
+table that panel is drawn as. Both are the owner's own objects under
+`observability/dashboard/`, published here under the private spellings a caller
+always imported them by, so a page and the owners cannot draw one table two
+ways. The topbar, filter meta, KPI strip, sparkline, delta pill, and
+skill-trigger panel beside them are still the flat leaves' own.
+"""
 from __future__ import annotations
 
 from orchestrator import _dashboard_issue_table as issues

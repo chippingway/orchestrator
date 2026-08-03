@@ -38,6 +38,8 @@ _FORMATTING_OWNER = "formatting"
 
 _INSIGHTS_OWNER = "insights"
 
+_ISSUE_TABLE_OWNER = "issue_table"
+
 _KPIS_OWNER = "kpis"
 
 _KPI_SERIES_OWNER = "kpi_series"
@@ -81,6 +83,7 @@ _OWNERS = (
     _FILTERS_OWNER,
     _FORMATTING_OWNER,
     _INSIGHTS_OWNER,
+    _ISSUE_TABLE_OWNER,
     _KPIS_OWNER,
     _KPI_SERIES_OWNER,
     _KPI_STRIP_OWNER,
@@ -109,8 +112,9 @@ _OWNERS = (
 # reduce its window to the four numbers a headline tile reports, plot the days
 # behind three of them, assemble all four into the strip a page opens with,
 # head a card and draw that banner and those numbers as the markup a browser
-# reads, list a panel's rows in the compact table beside them, weigh one
-# backend's spend against the tokens and runs behind it, or size a window's
+# reads, list a panel's rows in the compact table beside them, rank a window's
+# issues into the first of those panels, weigh one backend's spend against the
+# tokens and runs behind it, or size a window's
 # priced share into one bar is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
 # bound and the cache's tri-state -- could disagree. Two owners report nothing
@@ -125,8 +129,10 @@ _OWNERS = (
 # mapping a wave hands back and the logger its load line is emitted on, the cap
 # the rollup owner reads a run list under, the two bands the insight owner
 # raises a banner at and the spellings an unpriced run reaches it under, the
-# KPI owner's ranking cap and rework buckets, the triple the strip owner hands
-# its four entries back as, and the TTL the metadata owner caches under are all
+# columns the issue table is headed by and the rules its bars and pills are
+# painted from, the KPI owner's ranking cap and rework buckets, the triple the
+# strip owner hands its four entries back as, and the TTL the metadata owner
+# caches under are all
 # invisible here for the same reason.
 _SURFACES = MappingProxyType({
     _BACKEND_CARD_OWNER: (
@@ -183,6 +189,14 @@ _SURFACES = MappingProxyType({
         "fmt_tokens",
     ),
     _INSIGHTS_OWNER: ("InsightBanner", "compute_insights"),
+    _ISSUE_TABLE_OWNER: (
+        "IssueRowView",
+        "issue_row_view",
+        "issue_status_pill",
+        "issue_table_row_html",
+        "issues_table_html",
+        "review_round_html",
+    ),
     _KPIS_OWNER: (
         "kpi_delta",
         "reliability_tile_data",
@@ -267,7 +281,7 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, and HTML hubs, and
-# the sixteen leaves beneath all but the KPI one. No owner here may plant one
+# the seventeen leaves beneath all but the KPI one. No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
@@ -275,6 +289,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_card_headers",
     "orchestrator._dashboard_coverage_card",
     "orchestrator._dashboard_filter_state",
+    "orchestrator._dashboard_issue_table",
     "orchestrator._dashboard_kpi_series",
     "orchestrator._dashboard_kpi_values",
     "orchestrator._dashboard_read_breakdowns",

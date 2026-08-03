@@ -31,6 +31,8 @@ _COVERAGE_CARD_LEAF = "orchestrator._dashboard_coverage_card"
 
 _HTML_SURFACE = "orchestrator.dashboard_html"
 
+_ISSUE_TABLE_LEAF = "orchestrator._dashboard_issue_table"
+
 _READ_CORE_LEAF = "orchestrator._dashboard_read_core"
 
 _DISPATCH_LEAF = "orchestrator._dashboard_read_dispatch"
@@ -76,6 +78,8 @@ _FILTERS = f"{_PACKAGE}.filters"
 _FORMATTING = f"{_PACKAGE}.formatting"
 
 _INSIGHTS = f"{_PACKAGE}.insights"
+
+_ISSUE_TABLE = f"{_PACKAGE}.issue_table"
 
 _KPIS = f"{_PACKAGE}.kpis"
 
@@ -452,6 +456,36 @@ _TABLE_NAMES = (
     ("_table_html", _TABLES, "table_html"),
 )
 
+# The first of those four panels: the readings one row is reduced to and the
+# reduction itself, the tone a review round crosses into, the pill a row's run
+# health is read off, the row those three are rendered as, and the ranking the
+# rows are assembled into. The leaf and the HTML surface above it spell all six
+# the same way. A page reaching a copy would size its bars against a maximum,
+# and tone its rounds at a threshold, nobody else can change.
+_ISSUE_TABLE_NAMES = (
+    ("_IssueRowView", _ISSUE_TABLE, "IssueRowView"),
+    ("_issue_row_view", _ISSUE_TABLE, "issue_row_view"),
+    ("_issue_status_pill", _ISSUE_TABLE, "issue_status_pill"),
+    ("_issue_table_row_html", _ISSUE_TABLE, "issue_table_row_html"),
+    ("_issues_table_html", _ISSUE_TABLE, "issues_table_html"),
+    ("_review_round_html", _ISSUE_TABLE, "review_round_html"),
+)
+
+# The columns the panel is headed by and the rules its bars and pills are
+# painted from are the pair the two sites spell differently: bare on the leaf,
+# and under a leading underscore on the surface.
+_LEAF_ISSUE_TABLE_NAMES = (
+    ("ISSUES_TABLE_COLUMNS", _ISSUE_TABLE, "ISSUES_TABLE_COLUMNS"),
+    ("ISSUES_TABLE_EXTRA_CSS", _ISSUE_TABLE, "ISSUES_TABLE_EXTRA_CSS"),
+    *_ISSUE_TABLE_NAMES,
+)
+
+_HTML_ISSUE_TABLE_NAMES = (
+    ("_ISSUES_TABLE_COLUMNS", _ISSUE_TABLE, "ISSUES_TABLE_COLUMNS"),
+    ("_ISSUES_TABLE_EXTRA_CSS", _ISSUE_TABLE, "ISSUES_TABLE_EXTRA_CSS"),
+    *_ISSUE_TABLE_NAMES,
+)
+
 # The per-day lines drawn under three of those tiles, and the two reductions
 # the tiles themselves are totalled by. A second token total is the sharpest
 # copy here: a window counts all four token columns, so a line reduced anywhere
@@ -520,7 +554,8 @@ _FILTER_NAMES = (
 # actually runs, a load driven here the one the operator's log line comes off,
 # a KPI computed here the one every tile reports, a strip assembled here the one
 # the page opens with, a card headed, weighed, or sized here the one the
-# stylesheet paints, and a table drawn here the one every hand-rolled panel is,
+# stylesheet paints, a table drawn here the one every hand-rolled panel is, and
+# a window's issues ranked here the ones the page lists,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -540,13 +575,14 @@ _FORWARDED_MODULES = MappingProxyType({
     _BREAKDOWNS_LEAF: (*_BREAKDOWN_READ_NAMES, _SKILL_TRIGGER_RATES_NAME),
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,
     _TABLE_LEAF: _TABLE_NAMES,
+    _ISSUE_TABLE_LEAF: _LEAF_ISSUE_TABLE_NAMES,
     _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),
     _KPI_SERIES_LEAF: _FORWARDED_KPI_SERIES,
     _KPI_VALUES_LEAF: (*_KPI_ENTRY_KEYS, *_FORWARDED_KPI_TILES),
     _KPI_STRIP_HUB: (*_FORWARDED_KPI_SERIES, *_FORWARDED_KPI_TILES),
     _READS_HUB: _FORWARDED_READS_HUB,
     _CARD_HEADERS_LEAF: _CARD_MARKUP_NAMES,
-    _HTML_SURFACE: _TABLE_NAMES,
+    _HTML_SURFACE: (*_TABLE_NAMES, *_HTML_ISSUE_TABLE_NAMES),
     _BACKEND_CARD_LEAF: _BACKEND_CARD_NAMES,
     _COVERAGE_CARD_LEAF: _COVERAGE_CARD_NAMES,
     _CARD_HUB: _HUB_CARD_NAMES,
@@ -629,10 +665,11 @@ class ForwardedFlatModuleTest(unittest.TestCase):
     def test_no_flat_module_defines_one_itself(self) -> None:
         # The same rule the theme site is held to, applied to the read, state,
         # KPI-strip, card, and HTML hubs, the leaves beneath them including the
-        # card-markup and table ones, and the KPI site beside those: a module
-        # that defined a name of its own would be a second implementation the
-        # check above cannot see, because it only compares the names the module
-        # was asked for. The card hub is held to it like the rest -- the
+        # card-markup and the shared-table and issue-table ones, and the KPI
+        # site beside those: a module that defined a name of its own would be a
+        # second implementation the check above cannot see, because it only
+        # compares the names the module was asked for. The card hub is held to
+        # it like the rest -- the
         # `__module__` stamp a claim is made with mutates the function, so
         # claiming a name there would move an owner's own object off the owner
         # that defines it.

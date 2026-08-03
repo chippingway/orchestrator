@@ -37,6 +37,9 @@ container by, and ``tables`` is the markup beside it: the compact table the
 four hand-rolled panels are listed in, with the stylesheet each scopes to its
 own class, the header and body they are assembled from, and the bar width,
 short repository name, missing count, and unpriced amount a cell reports.
+``issue_table`` is the first of those four panels: the six columns a window's
+costliest issues are ranked into, the rules their in-row bars and status pills
+are painted by, and the row each issue is reduced to and rendered as.
 Two panels are markup of their own rather than a figure: ``backend_card``
 for what a run on one backend is worth and the card the three readings behind
 it are laid out on, and ``coverage_card`` for the share of a window's spend the
