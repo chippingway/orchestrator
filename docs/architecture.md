@@ -955,10 +955,10 @@ orchestrator/
                         scaled to, the floor a window without one is clamped
                         at, and the window that is left undrawn instead
       sparkline_html.py the SVG that projection is written as: the polyline
-                        the line is stroked along, the fill closed on the
-                        baseline beneath it, the box a window with nothing to
-                        draw still holds, and the keyword surface a caller
-                        asks for one through
+                        the line is stroked along, the same trace closed along
+                        the bottom edge of the box into the tint under it, the
+                        box a window with nothing to draw still holds, and the
+                        keyword surface a caller asks for one through
       card_html.py      the markup the banners and the run-health tiles are
                         drawn as, and the header every panel beneath them is
                         titled by: the hidden mark the stylesheet selects a
@@ -1866,16 +1866,17 @@ happened in. Two windows have no range to scale against, and they are answered d
 equal floors its span at an epsilon and settles along the baseline, rather than the projection dividing by zero.
 One with no days at all, or one whose days are every zero, is left undrawn: it would sit on that same baseline, so
 drawing it would let a window that never rose and a window that reported nothing say the same thing in one stroke.
-A day a read answered with a null is counted as a zero first, so a quiet day narrows the window it is scaled inside
-instead of dropping out of it. The rendering owner beside it writes that projection as markup rather than asking
-Plotly for it — four figures per page for a shape with no axis, legend, or hover would be the alternative — and
-writes both strings from the one projection, since the polyline the line is stroked along and the path the tint under
-it is filled from trace the same days and differ only in how they end. That fill closes on the baseline of the box
-rather than on the window's lowest day, so four tiles read as one strip; a window with nothing to draw still renders
-the empty box at the requested size, so the strip keeps its tiles lined up. The keyword surface a caller asks for one
-through — `values`, `color`, `w`, and `h` — is bound as an explicit signature rather than spelled as parameters,
-because two of those names are shorter than a readable parameter may be here while every call that passes them
-predates the rule.
+A day a read answered with a null is counted as a zero first, so a quiet day pulls the window's floor down to zero
+instead of dropping out of the line. The rendering owner beside it writes that projection as markup rather than asking
+Plotly for it — three figures per page for a shape with no axis, legend, or hover would be the alternative, since
+three of the strip's four tiles carry a line — and writes both strings from the one projection, since the polyline the
+line is stroked along and the path the tint under it is filled from trace the same days and differ only in the two
+points that close the second one along the bottom edge of the box. That edge is the line the window's own lowest day
+is drawn on, so the tint sits under the stroke rather than beside it however the window moved; a window with nothing
+to draw still renders the empty box at the requested size, so the strip keeps its tiles lined up. The keyword surface
+a caller asks for one through — `values`, `color`, `w`, and `h` — is bound as an explicit signature rather than
+spelled as parameters, because two of those names are shorter than a parameter may be spelled here and the historical
+site still answers a call that names them.
 
 `card_html.py` is how the banners and the run-health tiles among those numbers reach the browser, and the header every
 panel below them is titled by. Each of the

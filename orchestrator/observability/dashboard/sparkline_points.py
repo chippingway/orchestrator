@@ -17,9 +17,9 @@ the baseline a window that merely never rose above its own minimum draws on,
 and the caller renders the empty box rather than let one line say both things.
 
 A day a read answered with a null is counted as a zero before any of that, so
-a quiet day narrows the window it is scaled inside instead of dropping out of
-it. Projecting these points costs neither Streamlit nor Plotly, so an importer
-that never renders one still loads cleanly.
+a quiet day pulls the window's floor down to zero instead of dropping out of
+the line. Projecting these points costs neither Streamlit nor Plotly, so an
+importer that never renders one still loads cleanly.
 """
 from __future__ import annotations
 
