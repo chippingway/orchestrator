@@ -47,6 +47,8 @@ _ROLLUPS_LEAF = "orchestrator._dashboard_read_rollups"
 
 _SKILLS_LEAF = "orchestrator._dashboard_read_skills"
 
+_SKILL_TRIGGER_TABLE_LEAF = "orchestrator._dashboard_skill_trigger_table"
+
 _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
 # `from __future__ import annotations` opens every module in the repository and
@@ -98,6 +100,8 @@ _READ_PLAN = f"{_PACKAGE}.read_plan"
 _ROLLUPS = f"{_PACKAGE}.rollups"
 
 _SCOPED_READS = f"{_PACKAGE}.scoped_reads"
+
+_SKILL_TRIGGER_TABLE = f"{_PACKAGE}.skill_trigger_table"
 
 _SKILLS = f"{_PACKAGE}.skills"
 
@@ -486,6 +490,39 @@ _HTML_ISSUE_TABLE_NAMES = (
     *_ISSUE_TABLE_NAMES,
 )
 
+# The second of the four: the row one cohort's skill use is rendered as, and
+# the panel the rows are assembled into. Both sites spell the pair the same
+# way. A page reaching a copy would size its rate bars against a busiest cohort
+# nobody else can change.
+_SKILL_TRIGGER_TABLE_NAMES = (
+    (
+        "_skill_trigger_row_html",
+        _SKILL_TRIGGER_TABLE,
+        "skill_trigger_row_html",
+    ),
+    ("_skill_triggers_html", _SKILL_TRIGGER_TABLE, "skill_triggers_html"),
+)
+
+# The columns the panel is headed by, the rules its rate bars are painted from,
+# and the label a cohort the sink named no role or backend for is read under.
+# Those three are the ones the two sites spell differently: bare on the leaf,
+# and under a leading underscore on the surface -- where the two skill matrices
+# beside the panel read the label off, so all three tables bucket a missing
+# category the same way.
+_LEAF_SKILL_TRIGGER_NAMES = (
+    ("SKILL_TRIGGERS_TABLE_COLUMNS", _SKILL_TRIGGER_TABLE, "SKILL_TRIGGERS_TABLE_COLUMNS"),
+    ("SKILL_TRIGGERS_EXTRA_CSS", _SKILL_TRIGGER_TABLE, "SKILL_TRIGGERS_EXTRA_CSS"),
+    ("UNKNOWN", _SKILL_TRIGGER_TABLE, "UNKNOWN"),
+    *_SKILL_TRIGGER_TABLE_NAMES,
+)
+
+_HTML_SKILL_TRIGGER_NAMES = (
+    ("_SKILL_TRIGGERS_TABLE_COLUMNS", _SKILL_TRIGGER_TABLE, "SKILL_TRIGGERS_TABLE_COLUMNS"),
+    ("_SKILL_TRIGGERS_EXTRA_CSS", _SKILL_TRIGGER_TABLE, "SKILL_TRIGGERS_EXTRA_CSS"),
+    ("_UNKNOWN", _SKILL_TRIGGER_TABLE, "UNKNOWN"),
+    *_SKILL_TRIGGER_TABLE_NAMES,
+)
+
 # The per-day lines drawn under three of those tiles, and the two reductions
 # the tiles themselves are totalled by. A second token total is the sharpest
 # copy here: a window counts all four token columns, so a line reduced anywhere
@@ -554,8 +591,9 @@ _FILTER_NAMES = (
 # actually runs, a load driven here the one the operator's log line comes off,
 # a KPI computed here the one every tile reports, a strip assembled here the one
 # the page opens with, a card headed, weighed, or sized here the one the
-# stylesheet paints, a table drawn here the one every hand-rolled panel is, and
-# a window's issues ranked here the ones the page lists,
+# stylesheet paints, a table drawn here the one every hand-rolled panel is,
+# a window's issues ranked here the ones the page lists, and a cohort's skill
+# use reported here the rate the panel beneath them shows,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -576,13 +614,18 @@ _FORWARDED_MODULES = MappingProxyType({
     _SKILLS_LEAF: _SKILL_LEAF_NAMES,
     _TABLE_LEAF: _TABLE_NAMES,
     _ISSUE_TABLE_LEAF: _LEAF_ISSUE_TABLE_NAMES,
+    _SKILL_TRIGGER_TABLE_LEAF: _LEAF_SKILL_TRIGGER_NAMES,
     _KPI_SITE: (*_FORWARDED_KPIS, *_FORWARDED_INSIGHTS),
     _KPI_SERIES_LEAF: _FORWARDED_KPI_SERIES,
     _KPI_VALUES_LEAF: (*_KPI_ENTRY_KEYS, *_FORWARDED_KPI_TILES),
     _KPI_STRIP_HUB: (*_FORWARDED_KPI_SERIES, *_FORWARDED_KPI_TILES),
     _READS_HUB: _FORWARDED_READS_HUB,
     _CARD_HEADERS_LEAF: _CARD_MARKUP_NAMES,
-    _HTML_SURFACE: (*_TABLE_NAMES, *_HTML_ISSUE_TABLE_NAMES),
+    _HTML_SURFACE: (
+        *_TABLE_NAMES,
+        *_HTML_ISSUE_TABLE_NAMES,
+        *_HTML_SKILL_TRIGGER_NAMES,
+    ),
     _BACKEND_CARD_LEAF: _BACKEND_CARD_NAMES,
     _COVERAGE_CARD_LEAF: _COVERAGE_CARD_NAMES,
     _CARD_HUB: _HUB_CARD_NAMES,
@@ -665,7 +708,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
     def test_no_flat_module_defines_one_itself(self) -> None:
         # The same rule the theme site is held to, applied to the read, state,
         # KPI-strip, card, and HTML hubs, the leaves beneath them including the
-        # card-markup and the shared-table and issue-table ones, and the KPI
+        # card-markup one and the shared-table, issue-table, and skill-trigger
+        # ones, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only
         # compares the names the module was asked for. The card hub is held to

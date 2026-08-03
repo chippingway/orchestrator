@@ -4,12 +4,13 @@
 
 `from orchestrator.dashboard_html import _issues_table_html` is how the widget
 sections and every historical `dashboard.<name>` import reach the panel a
-window's costliest issues are ranked into, and the same holds for the compact
-table that panel is drawn as. Both are the owner's own objects under
+window's costliest issues are ranked into, and `_skill_triggers_html` the panel
+each cohort's skill use is reported in; the same holds for the compact table
+both are drawn as. All three are the owners' own objects under
 `observability/dashboard/`, published here under the private spellings a caller
 always imported them by, so a page and the owners cannot draw one table two
-ways. The topbar, filter meta, KPI strip, sparkline, delta pill, and
-skill-trigger panel beside them are still the flat leaves' own.
+ways. The topbar, filter meta, KPI strip, sparkline, and delta pill beside them
+are still the flat leaves' own.
 """
 from __future__ import annotations
 

@@ -58,6 +58,8 @@ _ROLLUPS_OWNER = "rollups"
 
 _SCOPED_READS_OWNER = "scoped_reads"
 
+_SKILL_TRIGGER_TABLE_OWNER = "skill_trigger_table"
+
 _SKILLS_OWNER = "skills"
 
 _STATIC_METADATA_OWNER = "static_metadata"
@@ -93,6 +95,7 @@ _OWNERS = (
     _READ_PLAN_OWNER,
     _ROLLUPS_OWNER,
     _SCOPED_READS_OWNER,
+    _SKILL_TRIGGER_TABLE_OWNER,
     _SKILLS_OWNER,
     _STATIC_METADATA_OWNER,
     _TABLES_OWNER,
@@ -113,7 +116,8 @@ _OWNERS = (
 # behind three of them, assemble all four into the strip a page opens with,
 # head a card and draw that banner and those numbers as the markup a browser
 # reads, list a panel's rows in the compact table beside them, rank a window's
-# issues into the first of those panels, weigh one backend's spend against the
+# issues into the first of those panels, report a cohort's skill-trigger rate
+# in the second, weigh one backend's spend against the
 # tokens and runs behind it, or size a window's
 # priced share into one bar is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
@@ -130,7 +134,9 @@ _OWNERS = (
 # the rollup owner reads a run list under, the two bands the insight owner
 # raises a banner at and the spellings an unpriced run reaches it under, the
 # columns the issue table is headed by and the rules its bars and pills are
-# painted from, the KPI owner's ranking cap and rework buckets, the triple the
+# painted from, the columns and rate-bar rules the skill-trigger table beside it
+# is drawn with together with the label it reads a category the sink left empty
+# under, the KPI owner's ranking cap and rework buckets, the triple the
 # strip owner hands its four entries back as, and the TTL the metadata owner
 # caches under are all
 # invisible here for the same reason.
@@ -244,6 +250,10 @@ _SURFACES = MappingProxyType({
         "read_top_cost_issues",
     ),
     _SCOPED_READS_OWNER: ("scoped_read",),
+    _SKILL_TRIGGER_TABLE_OWNER: (
+        "skill_trigger_row_html",
+        "skill_triggers_html",
+    ),
     _SKILLS_OWNER: (
         "read_skill_adoption",
         "read_skill_trigger_matrix",
@@ -281,7 +291,7 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, and HTML hubs, and
-# the seventeen leaves beneath all but the KPI one. No owner here may plant one
+# the eighteen leaves beneath all but the KPI one. No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
 _COMPATIBILITY_SITES = (
@@ -299,6 +309,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_read_plan",
     "orchestrator._dashboard_read_rollups",
     "orchestrator._dashboard_read_skills",
+    "orchestrator._dashboard_skill_trigger_table",
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_table_html",
     "orchestrator._dashboard_windows",
