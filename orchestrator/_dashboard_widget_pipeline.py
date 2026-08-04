@@ -123,7 +123,6 @@ def _render_chart_widgets(
 
     dashboard_module._render_hero_usage(
         st=modules.st,
-        dashboard_charts=modules.charts,
         ts_points=loaded.read_results["ts_points"],
         backend_daily_rows=loaded.read_results["backend_daily_rows"],
     )

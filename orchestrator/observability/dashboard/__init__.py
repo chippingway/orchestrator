@@ -88,6 +88,12 @@ that table: the rows behind the readings above it, projected into the columns
 one run is scanned by and the offset the sidebar picked, drawn in the collapsed
 expander the page ends on, and the notice a window with no `agent_exit` row
 renders in place of an empty frame.
+``usage_panel`` is the card above all of them, the first one under the strip:
+the header it is titled by, the two-value toggle deciding whether a day's
+tokens are stacked by what they were spent on or by who spent them, the
+session-state key that mode survives a rerun in, and the per-day per-backend
+totals the second stack is drawn from, summed so a `(day, backend)` cell read
+back twice is one band rather than the last of two.
 Two panels are markup of their own rather than a figure: ``backend_card``
 for what a run on one backend is worth and the card the three readings behind
 it are laid out on, and ``coverage_card`` for the share of a window's spend the

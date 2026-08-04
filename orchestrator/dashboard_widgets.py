@@ -59,8 +59,9 @@ _render_drilldown_view = runs._render_drilldown_view
 
 # The members a flat leaf defines itself. The stamp mutates the object, so
 # naming one an owner under `observability/dashboard/` holds -- either skill
-# card, the recent-run listing, or any of the seven page-state shapes -- would
-# move that object off the owner that defines it.
+# card, the recent-run listing, the hero usage card and the totals behind its
+# stack, or any of the seven page-state shapes -- would move that object off
+# the owner that defines it.
 _COMPATIBILITY_MEMBERS = (
     _render_topbar_and_meta,
     _render_dashboard_insights,
@@ -72,10 +73,6 @@ _COMPATIBILITY_MEMBERS = (
     _render_dashboard_footer,
     _render_no_data,
     _render_empty_window,
-    _backend_tokens_by_day,
-    _stack_mode_label,
-    _stack_mode_index,
-    _render_hero_usage,
     _render_stage_review_bars,
     _paired_bars_height,
     _render_issues_and_backends,

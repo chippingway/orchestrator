@@ -93,6 +93,8 @@ _WIDGET_RUNS_LEAF = "orchestrator._dashboard_widget_runs"
 
 _WIDGET_SKILLS_LEAF = "orchestrator._dashboard_widget_skills"
 
+_WIDGET_USAGE_LEAF = "orchestrator._dashboard_widget_usage"
+
 # `from __future__ import annotations` opens every module in the repository and
 # binds the compiler directive under a public name. It is a compilation
 # instruction rather than something the theme answers for, so the surface check
@@ -192,6 +194,8 @@ _SUMMARY_HTML = f"{_PACKAGE}.summary_html"
 _TABLES = f"{_PACKAGE}.tables"
 
 _TOKENS = f"{_PACKAGE}.tokens"
+
+_USAGE_PANEL = f"{_PACKAGE}.usage_panel"
 
 _WINDOWS = f"{_PACKAGE}.windows"
 
@@ -844,6 +848,19 @@ _SKILL_PANEL_NAMES = (
     ),
 )
 
+# The card above every one of those panels, and the toggle deciding what it
+# stacks: the render itself, the label and index one mode is offered and seeded
+# by, and the per-day totals the backend stack is drawn from. The label and the
+# index are the same choice read from two ends -- what the option says and
+# where it sits -- so a copy of either is a toggle that opens on a mode other
+# than the one it names.
+_USAGE_PANEL_NAMES = (
+    ("_backend_tokens_by_day", _USAGE_PANEL, "backend_tokens_by_day"),
+    ("_render_hero_usage", _USAGE_PANEL, "render_hero_usage"),
+    ("_stack_mode_index", _USAGE_PANEL, "stack_mode_index"),
+    ("_stack_mode_label", _USAGE_PANEL, "stack_mode_label"),
+)
+
 # The seven shapes one render is threaded through, as the widget leaf still
 # publishes them: the caller's module handles, the selections every read is
 # narrowed by, the controls and the page they open on, the headline numbers a
@@ -1036,7 +1053,8 @@ _FILTER_NAMES = (
 # line a tile above them carries, a window bannered, restated, or annotated
 # here the chrome that strip of tiles sits in, a bar laid out or a window
 # picked here the one every read is bounded by, a skill card rendered here
-# the one an operator reads three of those tables on, and a page threaded here
+# the one an operator reads three of those tables on, a hero card drawn or a
+# stack mode offered here the one the page opens with, and a page threaded here
 # the one every section is handed,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
@@ -1096,6 +1114,7 @@ _FORWARDED_MODULES = MappingProxyType({
     _CARD_HUB: _HUB_CARD_NAMES,
     _WIDGET_MODELS_LEAF: _PAGE_STATE_NAMES,
     _WIDGET_SKILLS_LEAF: _SKILL_PANEL_NAMES,
+    _WIDGET_USAGE_LEAF: _USAGE_PANEL_NAMES,
 })
 
 # The two sites that forward and still answer for something of their own. The
@@ -1194,8 +1213,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # ones, the chrome one beside them, the two the filter bar is reached
         # through, the
         # shared-table, issue-table, skill-trigger, five adoption, and five
-        # matrix ones, the two widget leaves the skill cards are drawn through
-        # and the page state is threaded through, and the KPI
+        # matrix ones, the three widget leaves the skill cards and the hero one
+        # are drawn through and the page state is threaded through, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only
         # compares the names the module was asked for. The card hub is held to

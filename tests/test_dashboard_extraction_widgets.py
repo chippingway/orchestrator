@@ -43,17 +43,20 @@ SKILL_PANEL_OWNER = f"{DASHBOARD_OWNERS}.skill_panel"
 SKILL_TRIGGER_PANEL_OWNER = f"{DASHBOARD_OWNERS}.skill_trigger_panel"
 
 
+USAGE_PANEL_OWNER = f"{DASHBOARD_OWNERS}.usage_panel"
+
+
 # Each member the hub publishes and the module that defines it. The widget
 # sections still living on the hub report it; the page-state shapes, the two
-# skill cards, and the recent-run listing report the owners under
-# `observability/` that hold them, since a claim here would move an owner's own
-# object off the owner that defines it.
+# skill cards, the recent-run listing, and the hero usage card report the
+# owners under `observability/` that hold them, since a claim here would move
+# an owner's own object off the owner that defines it.
 _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_DashboardModules": PAGE_MODELS_OWNER,
     "_DashboardFilters": PAGE_MODELS_OWNER,
     "_DashboardControls": PAGE_MODELS_OWNER,
     "_DashboardPage": PAGE_MODELS_OWNER,
-    "_backend_tokens_by_day": DASHBOARD_WIDGETS_MODULE,
+    "_backend_tokens_by_day": USAGE_PANEL_OWNER,
     "_load_dashboard_data": DASHBOARD_WIDGETS_MODULE,
     "_render_topbar_and_meta": DASHBOARD_WIDGETS_MODULE,
     "_render_first_wave": DASHBOARD_WIDGETS_MODULE,
@@ -63,7 +66,7 @@ _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_render_dashboard_footer": DASHBOARD_WIDGETS_MODULE,
     "_render_no_data": DASHBOARD_WIDGETS_MODULE,
     "_render_empty_window": DASHBOARD_WIDGETS_MODULE,
-    "_render_hero_usage": DASHBOARD_WIDGETS_MODULE,
+    "_render_hero_usage": USAGE_PANEL_OWNER,
     "_render_stage_review_bars": DASHBOARD_WIDGETS_MODULE,
     "_render_issues_and_backends": DASHBOARD_WIDGETS_MODULE,
     "_render_repo_and_reliability": DASHBOARD_WIDGETS_MODULE,
@@ -98,9 +101,10 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     skill cards live there too -- `skill_panel` for the adoption card and the
     diagnostics folded under it, `skill_trigger_panel` for the trigger-rate one
     beside them -- as do the recent-run listing above that drill-down, under
-    `recent_runs`, the shapes the pipeline threads, under `page_models`, and
-    the Plotly defaults its figures are drawn under, in `render_config`, and
-    all of them are reached through this hub.
+    `recent_runs`, the hero spend and token-usage card the page opens with,
+    under `usage_panel`, the shapes the pipeline threads, under `page_models`,
+    and the Plotly defaults its figures are drawn under, in `render_config`,
+    and all of them are reached through this hub.
     """
 
     def test_widget_members_report_their_home(self) -> None:

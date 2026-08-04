@@ -62,13 +62,15 @@ of them, the aggregate skill-trigger rates that are the second, and the per-sess
 invocation-level trigger matrix that are the last two — each split into the columns a click is expressed in, the parse
 and orders behind one, the header row it is clicked from, what one cell says, and the panel they assemble into — plus
 the two cards three of those panels are reported on, one leading with adoption and folding the invocation views under
-it and one kept for a caller reaching past that, and the listing of the runs under all four
+it and one kept for a caller reaching past that, the listing of the runs under all four, and the hero spend and
+token-usage card above every one of them
 (`dashboard/tables.py`, `dashboard/issue_table.py`, `dashboard/skill_trigger_table.py`,
 `dashboard/skill_adoption_columns.py`, `dashboard/skill_adoption_sort.py`,
 `dashboard/skill_adoption_headers.py`, `dashboard/skill_adoption_rows.py`, `dashboard/skill_adoption.py`,
 `dashboard/skill_matrix_columns.py`, `dashboard/skill_matrix_sort.py`, `dashboard/skill_matrix_headers.py`,
 `dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`, `dashboard/skill_panel.py`,
-`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`), the seven frozen shapes one render of that page is
+`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`, `dashboard/usage_panel.py`), the seven frozen shapes
+one render of that page is
 threaded through and the Plotly configuration each of its figures is handed (`dashboard/page_models.py`,
 `dashboard/render_config.py`), the
 trajectory viewer's whole read model — its file
@@ -1311,7 +1313,11 @@ call time, but the tables and sort parses one draws with are the panel owner's o
 widget module's — so a case that has to intercept the adoption table, the trigger-rate one, the matrix, or either sort
 parse patches `skill_panel` or `skill_trigger_panel`. The recent-run listing sits the same way: the render is
 facade-intercepted, but the offset shift each `ts` is converted through is `recent_runs`'s own module-scope import of
-`filters`, so a case that has to intercept that shift patches there rather than the widget module.
+`filters`, so a case that has to intercept that shift patches there rather than the widget module. So does the hero
+usage card: the render is facade-intercepted, while the card header it is titled by, the usage figure it draws, and
+the Plotly defaults it hands that figure are `usage_panel`'s own module-scope imports rather than a widget module's or
+a facade lookup — so a case that has to intercept any of the three patches `usage_panel`, and `PLOTLY_CONFIG` on the
+facade reaches only the cost sections that still resolve it there.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
@@ -1326,7 +1332,10 @@ skill-trigger, five adoption,
 and five trigger-matrix leaves among the table ones, which is what lets the card hub above them and both skill hubs
 claim nothing either, leaving none of the four panels that shared table is assembled into building its own. The
 widget-skill section is the same kind of leaf one level up: the two cards three of those panels are reported on are
-owners as well, so it forwards both and the widget hub above it claims neither. The widget-run section forwards that
+owners as well, so it forwards both and the widget hub above it claims neither. The widget-usage section beside it is
+the same: the hero card above every panel is an owner, so it forwards that render, the two helpers its stack toggle
+offers a mode by, and the per-day totals behind that stack, and claims none of the four. The widget-run section
+forwards that
 way only in part: the listing beneath all four panels is an owner too, so it hands over that render and the
 empty-window notice beside it — which the hub likewise republishes without claiming — while still building the
 per-issue drill-down under that listing itself.
@@ -1416,6 +1425,16 @@ above it, projected into the columns one is scanned by and the offset the sideba
 because a raw listing carries no bar, pill, or sortable heading Streamlit's own table cannot already handle. It opens
 collapsed so a window's worth of rows does not push the per-issue drill-down off the screen the page ends on, and a
 window with no `agent_exit` row renders the notice rather than an empty frame.
+`usage_panel.py` is the card above every one of those panels — the first one under the KPI strip, so it answers the
+question the page is opened with: whether a day's cost tracks the work behind it. The figure carrying both readings is
+the usage chart family's; this owner decides the card around it — the header naming it, the toggle deciding what it
+stacks, and the rows the chart is handed for the mode an operator picked. The toggle is a two-value radio because
+neither stack is the drilldown of the other: by token type is what a day's tokens went on, by backend is who spent
+them. Streamlit reruns the whole script on every interaction, so the picked mode is kept in the page's own session
+state under a key apart from the radio's own and the radio is seeded from it by index, since the widget takes an
+option's position rather than its value. The per-backend rows are totalled per day here — the same `(day, backend)`
+cell can arrive more than once, and only when the backend stack is the one being drawn, because the token-type bands
+already ride on the time-series points.
 Two more panels are drawn as markup rather than as a figure: `backend_card.py` for what a run on one backend
 is worth — the cost of a million tokens, the cost of a run, and the share of billable input the cache answered, each
 divided through one guard so a window a backend barely ran in reads zero rather than raising — and `coverage_card.py`
@@ -1460,7 +1479,7 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_adoption_headers.py`, `_dashboard_adoption_rows.py`, `_dashboard_adoption_render.py`,
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
 `_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`,
-`_dashboard_widget_skills.py`, and `_dashboard_widget_models.py`
+`_dashboard_widget_skills.py`, `_dashboard_widget_usage.py`, and `_dashboard_widget_models.py`
 forward each historical name to the owner's own object. `_dashboard_widget_runs.py` forwards the run listing and its
 empty-window notice the same way while still building the per-issue drill-down beneath them, and
 `dashboard_widgets.py` forwards the Plotly configuration off the render-config owner and the seven page shapes through
@@ -1472,11 +1491,13 @@ defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
 and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
 publishes are the card, backend, and coverage owners' own objects, and the widget hub leaves the six the two skill
-cards are reached by, the run listing beneath them, and the seven shapes a render is threaded through out of its own
+cards are reached by, the run listing beneath them, the four the hero card is, and the seven shapes a render is
+threaded through out of its own
 list for the same reason: a `__module__` stamp
 there would move one of
 them off the owner that defines it. Streamlit is never imported in these
-helpers — `st` (with chart, theme, and pandas handles) is passed in as a parameter.
+helpers — `st` (with theme and pandas handles, plus the chart handle every section but the hero card is still drawn
+through) is passed in as a parameter.
 
 ```sh
 uv sync --group dashboard                                  # install streamlit + plotly alongside the runtime + dev deps
@@ -1726,7 +1747,11 @@ republishes the six without claiming any of them. The listing under all four pan
 `observability/dashboard/recent_runs.py` — the columns one run
 is scanned by, the offset its timestamp is read on, the collapsed expander it is drawn inside, and the notice a window
 with no `agent_exit` row renders instead — reached through `orchestrator/_dashboard_widget_runs.py`, which forwards
-those two names and builds the per-issue drill-down beneath them itself. What a whole render of that page is threaded
+those two names and builds the per-issue drill-down beneath them itself. The card above all of them is
+`observability/dashboard/usage_panel.py` — the header it is titled by, the two-value toggle deciding what a day's
+tokens are stacked by, the session key that mode survives a rerun in, and the per-day per-backend totals the second
+stack is drawn from — reached through `orchestrator/_dashboard_widget_usage.py`, which forwards all four historical
+spellings and defines none of them. What a whole render of that page is threaded
 through is `observability/dashboard/page_models.py` — the seven frozen shapes, with the issue scope and window span
 read off the filters among them — reached through `orchestrator/_dashboard_widget_models.py`, which defines nothing
 and forwards all seven under the private spellings the pipeline imported them by, and the Plotly configuration every
