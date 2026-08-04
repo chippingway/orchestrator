@@ -15,7 +15,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from orchestrator import workflow, workflow_drift, workflow_messages
+from orchestrator import workflow, workflow_messages
 from orchestrator.agents import AgentResult
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import messages
@@ -65,10 +65,6 @@ _FACADE_FORWARDS = (
         "_parse_review_verdict",
         "_refuse_parked_continue",
         "_stderr_log_tail",
-    )),
-    (workflow_drift, (
-        "_as_blockquote",
-        "_is_bare_orchestrator_continue",
     )),
 )
 

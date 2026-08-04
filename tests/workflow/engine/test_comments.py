@@ -16,7 +16,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import base_sync, config, workflow, workflow_drift, workflow_messages
+from orchestrator import base_sync, config, workflow, workflow_messages
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments
 
@@ -57,11 +57,6 @@ _FACADE_FORWARDS = (
         "_recent_comments_text",
         "_track_orchestrator_comment",
         "_with_orch_marker",
-    )),
-    (workflow_drift, (
-        "_ORCH_COMMENT_MARKER",
-        "_orchestrator_ids",
-        "_post_issue_comment",
     )),
     (base_sync, ("_post_pr_comment",)),
 )
