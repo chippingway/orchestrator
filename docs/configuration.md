@@ -455,6 +455,11 @@ Postgres or Streamlit, so deferring or disabling the dashboard never affects wor
    Streamlit prints a `http://localhost:8501` URL. The dashboard is independent of the polling tick and can be killed
    and relaunched without affecting workflow progress. Re-run step 4 to pick up new records.
 
+   `orchestrator/apps/analytics_dashboard.py` is the application entrypoint to name in shell history, scripts, and
+   service units. `orchestrator/dashboard.py` still starts the same page, but only as temporary compatibility for
+   commands and bookmarks that already carry it — it is not the recommended launch path, so point new invocations at
+   the app above.
+
 See [`observability.md#analytics-database`](observability.md#analytics-database-analytics-db) for the schema, sync
 internals, read-model split, dashboard layout, and the in-app empty / error banners.
 
@@ -677,10 +682,11 @@ When each setting's change takes effect:
   `TRAJECTORY_RETENTION_DAYS`, `REPO` / `REPOS` / `TARGET_REPO_ROOT` / `BASE_BRANCH` / `REMOTE_NAME`, `HITL_HANDLE`,
   `ALLOWED_ISSUE_AUTHORS` — next Python start
 - `ANALYTICS_DB_URL` — next `python -m orchestrator.observability.analytics.sync.cli` invocation, and next
-  `streamlit run orchestrator/apps/analytics_dashboard.py` start (the dashboard reads it from the imported analytics
-  module, so a browser reload is not enough — relaunch Streamlit). The polling loop does not read this setting.
-- `DASHBOARD_PARALLEL_READS` — next `streamlit run orchestrator/apps/analytics_dashboard.py` start. Parsed once per
-  process, on the first render's import of the read-mode owner.
+  `uv run streamlit run orchestrator/apps/analytics_dashboard.py` start (the dashboard reads it from the imported
+  analytics module, so a browser reload is not enough — relaunch Streamlit). The polling loop does not read this
+  setting.
+- `DASHBOARD_PARALLEL_READS` — next `uv run streamlit run orchestrator/apps/analytics_dashboard.py` start. Parsed once
+  per process, on the first render's import of the read-mode owner.
 - `MAX_PARALLEL_ISSUES_PER_REPO`, `MAX_PARALLEL_ISSUES_GLOBAL` — next Python start. Per-`REPOS` `parallel_limit`
   overrides take precedence over `MAX_PARALLEL_ISSUES_PER_REPO`.
 - `WORKFLOW_TRANSITION_GUARD` — next Python start (parsed at config import).

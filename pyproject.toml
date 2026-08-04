@@ -30,7 +30,8 @@ dev = ["pytest>=9.1.1", "ruff>=0.15.19", "wemake-python-styleguide>=1.6.2"]
 # theme tokens in `orchestrator/dashboard_theme.py`). They are NOT in
 # the default `dev` group so `uv sync --locked` keeps installing the
 # orchestrator's runtime + tests minimal; install with
-# `uv sync --group dashboard` before running `streamlit run`.
+# `uv sync --group dashboard` before running
+# `uv run streamlit run orchestrator/apps/analytics_dashboard.py`.
 dashboard = ["streamlit>=1.36", "plotly>=6.8.0"]
 
 [tool.pytest.ini_options]
