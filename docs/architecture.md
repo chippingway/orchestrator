@@ -594,9 +594,13 @@ orchestrator/
                         adoption one and the trigger-rate one beside it --
                         forwarding to the two skill-panel owners
   _dashboard_widget_runs.py
-                        the per-issue drill-down, plus the historical import
-                        site for the run listing above it, forwarding to the
-                        recent-runs owner
+                        historical import site for the run listing at the foot
+                        of the page and the per-issue trace beneath it,
+                        forwarding to the recent-runs and drill-down owners
+  _dashboard_drilldown.py
+                        historical import site for that trace's typed request
+                        and call adapter, forwarding to the drill-down-request
+                        owner
   _dashboard_widget_costs.py
                         historical import site for the two cost-comparison
                         sections, the repository-spend and reliability pair
@@ -941,6 +945,15 @@ orchestrator/
                         offset its timestamp is read on, the collapsed expander
                         the page ends on, and the notice a window with no
                         `agent_exit` row renders in place of an empty frame
+      drilldown.py      one issue's trace under that listing: the read it
+                        issues outside the cached wrappers, the columns one
+                        event is traced in, and the notices a number typed
+                        before a repository, an empty window, and a failed
+                        read are answered with
+      drilldown_request.py
+                        the call shape that trace is still reachable under:
+                        the declared signature seven keywords are bound
+                        through, and the typed request they are read back as
       usage_panel.py    the hero card above all of them: the header it is
                         titled by, the toggle deciding whether a day's tokens
                         stack by what they were spent on or by who spent them,
@@ -2163,6 +2176,28 @@ which run this was is reading against their own day. The columns are ordered the
 where, then what ran, then how it went, then what it cost. Streamlit and pandas are the caller's, handed in as
 parameters, so the row projection stays readable with neither installed.
 
+`drilldown.py` is the last narrowing on the page, under that listing: one issue's events in the order they happened,
+which is where an operator lands once a run in the listing raised a question the row cannot answer — what ran before
+it, how long each step took, and where the cost went. It is the one page read issued outside the cached wrappers,
+because it is scoped by an issue on top of the window and filter set those keys are hashed from; it still goes through
+the scope owner, so it runs on the socket the waves above it opened rather than dialing one of its own. A repository
+has to be picked before a number narrows anything — GitHub issue numbers repeat across repositories, so a trace opened
+while every repo is selected would interleave runs sharing nothing but a number — and the section names the control
+that answers it instead. The subheading is written before that check, so a number typed too early still says which
+issue the notice is about. The other two answers are the empty window, which names the repository, issue, and filters
+it found nothing under rather than drawing an empty frame, and the failed read, which banners itself and returns:
+every panel above this one already rendered, so a trace that cannot reach the database is not a reason to stop the
+page. Streamlit and pandas are the caller's here too.
+
+`drilldown_request.py` is the call shape that section is still reachable under. The render pipeline threads the frozen
+shapes the page-state owner holds, but the drill-down predates them, and a caller outside that pipeline names the
+seven keyword arguments it was written with. Both spellings meet here, so the section itself is written against the
+state every panel beside it is handed and nothing on the page carries the older vocabulary. Those keywords are bound
+through a declared signature that is also what the adapter reports, which keeps the historical shape one thing rather
+than three descriptions of the same call — and binding is what makes it strict, so an unknown or missing keyword
+raises here instead of reaching the render as a half-filled request. The chart and theme handles are the two a
+drill-down has no use for, so it is handed the modules shape with both left unanswered rather than a shape of its own.
+
 `usage_panel.py` is the card above every one of those panels, the first one under the KPI strip, so it answers the
 question the page is opened with: whether a day's cost tracks the work behind it. The figure carrying both readings is
 the usage chart family's; what this owner decides is the card around it — the header naming it, the one control an
@@ -2415,8 +2450,9 @@ names the usage one.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
-socket out of, the metadata owner and the dispatch owner both name the error a failed read arrives as — the first
-alongside the two unfiltered reads it issues — the rollup owner names the three read families its seven adapters are
+socket out of, the metadata owner, the dispatch owner, and the drill-down owner all name the error a failed read
+arrives as — the first alongside the two unfiltered reads it issues — the rollup owner names the three read families
+its seven adapters are
 answered by plus the issue-summary owner
 that spells the cost-first ordering one of them asks for, the breakdown owner names the two families its six adapters
 are answered by, the skill owner names the one family its three are, and the insight, the KPI, and the two KPI-strip
@@ -2430,7 +2466,9 @@ name
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
 column set alone and so names nothing outside — and the two cards those panels are reported on name it as well, for
 the cohort rows and matrix cells both are handed and the adoption cells only the first is, while the run listing
-beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects, the two
+beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects — as does the trace
+under that listing, for the traced-event rows it reads, beside the raw family answering the one per-issue read it is
+the only page caller of — the two
 cost-comparison sections name `analytics/query/cost_models.py` and `analytics/query/run_models.py` between them — the
 paired bars for the stage and review-round rows they are drawn from, the ranking beside them for the issue rows it
 cuts and the per-backend and per-cost-source rows the cards and the bar in its other column are — the activity grid
@@ -2441,7 +2479,7 @@ all of them names that same owner for the per-backend daily rows it totals and
 owner names `analytics/query/overview_models.py` without issuing a read of its own, for the extent a page opened on
 and the window totals a comparison panel reports; those
 are the only things
-any of the forty-seven reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the forty-nine reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from — as do the two the filter bar is
 drawn out of, which take the presets they offer and the window they resolve from that window owner and each other, and
 are handed Streamlit rather than importing it — the table markup reaches not one of
@@ -2528,21 +2566,22 @@ underscore the leaves spell bare — and defining none of them, so a click an op
 run cannot come apart. `_dashboard_widget_skills.py` is the widget-side site beside those two, forwarding the adoption
 card, the caption under it, the invocation fold, the trigger-rate card, and its own fold to the two panel owners under
 the private spellings the page always imported them by, plus the notice the second of them answers an empty window
-with, under its own public one. `_dashboard_widget_runs.py` forwards the same way without being one of these sites
-outright: the run listing and the notice a window with no `agent_exit` row renders are the recent-runs owner's own
-objects under the private spelling the page always imported them by, while the per-issue drill-down beneath that
-listing is still built there. `_dashboard_widget_costs.py` is one of these sites outright: the paired lifecycle bars,
+with, under its own public one. `_dashboard_widget_runs.py` is the second, forwarding the run listing, the notice a
+window with no `agent_exit` row renders, and the per-issue trace beneath that listing to the recent-runs and
+drill-down owners under the spellings the page always imported them by. `_dashboard_widget_costs.py` is the third: the
+paired lifecycle bars,
 the height both are pinned to and the row and base measurement behind it, the ranked issues beside the backend cards,
 the notice those cards answer a window with no run with, the repository spend beside the run-health tiles, and the
 activity grid beneath all three are the four panel owners' objects — the notice under
 its own public spelling and the rest under the private ones the page always imported them by — and it defines none of
 them.
-`_dashboard_widget_models.py` is another, forwarding the seven
+`_dashboard_widget_models.py` is the fourth, forwarding the seven
 shapes a render is threaded through to the page-state owner under the private spellings the pipeline always imported
-them by, and so is `_dashboard_widget_usage.py`, which forwards the hero card, the label
+them by, and `_dashboard_widget_usage.py` the fifth, forwarding the hero card, the label
 and index its stack toggle offers a mode by, and the per-day per-backend totals behind that stack to the usage-panel
-owner. The
-widget hub above all five republishes those twenty-six and the Plotly configuration it reads straight off the
+owner. `_dashboard_drilldown.py` sits beside those five under no hub at all, forwarding the typed request and the
+adapter the facade exports that trace's historical call shape from. The
+widget hub above all five republishes those twenty-seven and the Plotly configuration it reads straight off the
 render-config owner, and claims none of them, since the `__module__` stamp mutates the object and a claim there would
 move an owner's own render, measurement, or shape off the owner that defines it.
 `dashboard_charts_base.py` is one too: the placeholder, the three

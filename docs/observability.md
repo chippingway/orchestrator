@@ -69,7 +69,9 @@ token-usage card above every one of them
 `dashboard/skill_adoption_headers.py`, `dashboard/skill_adoption_rows.py`, `dashboard/skill_adoption.py`,
 `dashboard/skill_matrix_columns.py`, `dashboard/skill_matrix_sort.py`, `dashboard/skill_matrix_headers.py`,
 `dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`, `dashboard/skill_panel.py`,
-`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`, `dashboard/usage_panel.py`), the three sections that
+`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`, `dashboard/usage_panel.py`), the per-issue trace
+beneath that listing together with the call shape it is still reachable under (`dashboard/drilldown.py`,
+`dashboard/drilldown_request.py`), the three sections that
 window's spend is compared across — the paired lifecycle bars and the one height both are pinned to, the ranked
 issues beside the backends that ran them, and the per-repository ranking beside the tiles and days those runs are
 read for — together with the weekday-by-hour grid closing them and the zone selectbox inside its card
@@ -1295,8 +1297,9 @@ a test or non-dashboard caller does not require the group to be installed. A reg
 
 **Module layout.** `orchestrator/dashboard.py` is a manifest-backed lazy compatibility facade with a complete
 `dashboard.pyi`. `_dashboard_facade_bootstrap.py` owns both package import and direct-script setup, while
-`_dashboard_runtime.py`, `_dashboard_page_controls.py`, and the drill-down leaf own page orchestration, with the two
-date leaves beside them forwarding to the owners the filter bar lives on.
+`_dashboard_runtime.py` and `_dashboard_page_controls.py` own page orchestration, with the two
+date leaves and the drill-down one beside them forwarding to the owners the filter bar and the per-issue trace live
+on.
 Historical `dashboard.<name>` imports, wildcard exports, and object identity are unchanged — every alias still
 resolves to the one object its owner defines. Where a patch has to land is a separate question, and it follows the
 call path rather than the alias: the page pipeline reaches the staged plan and the wave dispatch on
@@ -1334,8 +1337,12 @@ written by are its module-scope import of `filters` — so a case naming either 
 sits
 the same way as the panels: the render is
 facade-intercepted, but the offset shift each `ts` is converted through is `recent_runs`'s own module-scope import of
-`filters`, so a case that has to intercept that shift patches there rather than the widget module. So does the hero
-usage card: the render is facade-intercepted, while the card header it is titled by, the usage figure it draws, and
+`filters`, so a case that has to intercept that shift patches there rather than the widget module. So does the
+per-issue trace beneath it: its render is facade-intercepted, while the scope its one uncached read is issued inside
+is `drilldown`'s own import of `scoped_reads`, so a case that has to answer that read patches
+`patch.object(scoped_reads, "scoped_read", ...)`. The hero
+usage card sits that way too: the render is facade-intercepted, while the card header it is titled by, the usage
+figure it draws, and
 the Plotly defaults it hands that figure are `usage_panel`'s own module-scope imports rather than a widget module's or
 a facade lookup — so a case that has to intercept any of the three patches `usage_panel`. That leaves `PLOTLY_CONFIG`
 on the facade a republished reference for a caller reaching past the owners rather than a patch point any section
@@ -1360,11 +1367,10 @@ offers a mode by, and the per-day totals behind that stack, and claims none of t
 section: the three sections a window's spend is compared across and the activity grid closing them are owners as
 well, so it hands over the paired lifecycle bars, the height both are pinned to and the two measurements
 behind it, the ranked issues beside the backend cards, the notice that column answers a window with no run with,
-the repository ranking beside the run-health tiles, and that grid, and claims none of the eight. The widget-run
-section is the one that forwards
-that way only in part: the listing beneath all four panels is an owner too, so it hands over that render and the
-empty-window notice beside it — which the hub likewise republishes without claiming — while still building the
-per-issue drill-down under that listing itself.
+the repository ranking beside the run-health tiles, and that grid, and claims none of the eight. So is the widget-run
+section: the listing beneath all four panels and the per-issue trace under it are owners too, so it hands over
+both renders and the empty-window notice beside them — which the hub likewise republishes without claiming — and the
+site the facade exports that trace's historical call shape from forwards the same way under no hub at all.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1451,6 +1457,17 @@ above it, projected into the columns one is scanned by and the offset the sideba
 because a raw listing carries no bar, pill, or sortable heading Streamlit's own table cannot already handle. It opens
 collapsed so a window's worth of rows does not push the per-issue drill-down off the screen the page ends on, and a
 window with no `agent_exit` row renders the notice rather than an empty frame.
+`drilldown.py` is that drill-down — one issue's events in the order they happened, which is where an operator lands
+once a run in the listing raised a question the row cannot answer. It is the one page read issued outside the cached
+wrappers, because it is scoped by an issue on top of the window and filters those keys are hashed from, and it still
+goes through the scope owner so it runs on the socket the waves above it opened. A repository has to be picked before
+a number narrows anything, since GitHub issue numbers repeat across repositories, and the section names the control
+that answers it; an empty window names the repository, issue, and filters it found nothing under; and a failed read
+banners itself and returns rather than stopping a page whose panels already rendered.
+`drilldown_request.py` is the call shape that section is still reachable under: the seven keyword arguments a caller
+outside the render pipeline names, the declared signature they are bound through — the same object the adapter
+reports, so the historical shape stays one description — and the typed request they are read back as before the page
+state is rebuilt from it.
 `usage_panel.py` is the card above every one of those panels — the first one under the KPI strip, so it answers the
 question the page is opened with: whether a day's cost tracks the work behind it. The figure carrying both readings is
 the usage chart family's; this owner decides the card around it — the header naming it, the toggle deciding what it
@@ -1528,13 +1545,13 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_adoption_headers.py`, `_dashboard_adoption_rows.py`, `_dashboard_adoption_render.py`,
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
 `_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`,
-`_dashboard_widget_skills.py`, `_dashboard_widget_usage.py`, `_dashboard_widget_models.py`, and
-`_dashboard_widget_costs.py` — the last of them for the three spend comparisons, the activity card beneath them, the
-height the paired bars share with the two measurements behind it, and the notice the backend cards beside that
-ranking answer an empty window with —
-forward each historical name to the owner's own object. `_dashboard_widget_runs.py` forwards the run listing and its
-empty-window notice the same way while still building the per-issue drill-down beneath them, and
-`dashboard_widgets.py` forwards the Plotly configuration off the render-config owner and the seven page shapes through
+`_dashboard_widget_skills.py`, `_dashboard_widget_usage.py`, `_dashboard_widget_models.py`,
+`_dashboard_widget_costs.py`, `_dashboard_widget_runs.py`, and `_dashboard_drilldown.py`
+forward each historical name to the owner's own object — the cost one for the three spend comparisons, the activity
+card beneath them, the height the paired bars share with the two measurements behind it, and the notice the backend
+cards beside that ranking answer an empty window with, and the last two for the run listing with its empty-window
+notice and the per-issue trace beneath it, and that trace's typed request and call adapter. `dashboard_widgets.py`
+forwards the Plotly configuration off the render-config owner and the seven page shapes through
 the leaf named for them while still claiming the render passes it stamps. None of the state, read,
 KPI-strip, skill-adoption, and
 skill-matrix hubs defines a name of
@@ -1543,7 +1560,8 @@ defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
 and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
 publishes are the card, backend, and coverage owners' own objects, and the widget hub leaves the six the two skill
-cards are reached by, the run listing beneath them, the four the three spend comparisons are drawn and sized by, the
+cards are reached by, the run listing beneath them, the per-issue trace under that listing, the four the three spend
+comparisons are drawn and sized by, the
 activity grid closing them, the
 four the hero card is, and the seven shapes a render is threaded through out of its own
 list for the same reason: a `__module__` stamp
@@ -1800,8 +1818,12 @@ notice the second card answers an empty window with), and the `orchestrator/dash
 republishes the six without claiming any of them. The listing under all four panels is
 `observability/dashboard/recent_runs.py` — the columns one run
 is scanned by, the offset its timestamp is read on, the collapsed expander it is drawn inside, and the notice a window
-with no `agent_exit` row renders instead — reached through `orchestrator/_dashboard_widget_runs.py`, which forwards
-those two names and builds the per-issue drill-down beneath them itself. The three sections that listing's window is
+with no `agent_exit` row renders instead — and the trace under it is `observability/dashboard/drilldown.py` — the one
+page read issued outside the cached wrappers, the columns one event is traced in, and the notices a number typed
+before a repository, an empty window, and a failed read are answered with. Both are reached through
+`orchestrator/_dashboard_widget_runs.py`, which forwards all three names and defines none of them, while the call
+shape the facade still exports that trace under is `observability/dashboard/drilldown_request.py`, reached through
+`orchestrator/_dashboard_drilldown.py`. The three sections that listing's window is
 compared across are `observability/dashboard/stage_cost_panel.py` — the paired lifecycle bars, the 7:5 columns they
 are laid out in, and the one height both figures are pinned to together with the row and base measurement behind it —
 `observability/dashboard/issue_cost_panel.py` — the window's costliest issues ranked beside one efficiency card

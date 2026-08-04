@@ -34,6 +34,10 @@ _DATE_FILTER_OWNER = "date_filter"
 
 _DISPATCH_OWNER = "dispatch"
 
+_DRILLDOWN_OWNER = "drilldown"
+
+_DRILLDOWN_REQUEST_OWNER = "drilldown_request"
+
 _FANOUT_OWNER = "fanout"
 
 _FILTER_BINDING_OWNER = "filter_binding"
@@ -133,6 +137,8 @@ _OWNERS = (
     _DATE_CONTROLS_OWNER,
     _DATE_FILTER_OWNER,
     _DISPATCH_OWNER,
+    _DRILLDOWN_OWNER,
+    _DRILLDOWN_REQUEST_OWNER,
     _FANOUT_OWNER,
     _FILTER_BINDING_OWNER,
     _FILTERS_OWNER,
@@ -213,9 +219,10 @@ _OWNERS = (
 # one backend's spend against the
 # tokens and runs behind it, size a window's
 # priced share into one bar, read one of the runs under all of them back as
-# the columns it is scanned by, draw the card above all of them on the stack
-# an operator picked and total a day's tokens per backend for it, or carry what
-# a render was narrowed to from
+# the columns it is scanned by, trace one issue's events under that listing,
+# read a historical call back as the state that trace is drawn from, draw the
+# card above all of them on the stack an operator picked and total a day's
+# tokens per backend for it, or carry what a render was narrowed to from
 # the controls at the top of the page down to those panels is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
 # bound and the cache's tri-state -- could disagree. Three owners report
@@ -253,9 +260,11 @@ _OWNERS = (
 # triple the
 # strip owner hands its four entries back as, the label the run listing is
 # collapsed under together with the notice a window with no run renders
-# instead, the two stack modes the hero card is drawn in together with the
-# title, subtitle, and toggle label above them and the two keys the picked one
-# is remembered and keyed by, and the TTL the metadata owner
+# instead, the notice the trace beneath that listing answers a number typed
+# before a repository with and the declared signature the adapter beside it
+# binds a historical call through, the two stack modes the hero card is drawn
+# in together with the title, subtitle, and toggle label above them and the two
+# keys the picked one is remembered and keyed by, and the TTL the metadata owner
 # caches under are all
 # invisible here for the same reason.
 _SURFACES = MappingProxyType({
@@ -305,6 +314,12 @@ _SURFACES = MappingProxyType({
         "log_dashboard_load",
         "run_read_waves",
     ),
+    _DRILLDOWN_OWNER: (
+        "drilldown_event_row",
+        "read_issue_trace",
+        "render_drilldown_view",
+    ),
+    _DRILLDOWN_REQUEST_OWNER: ("DrilldownRequest", "render_drilldown"),
     _FANOUT_OWNER: ("fan_out_reads",),
     _FILTER_BINDING_OWNER: (
         "filter_list",
@@ -528,10 +543,11 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # all but the KPI one, the five widget leaves the skill panels, the two
 # cost-comparison panels with the repository-and-reliability pair and the
 # activity grid beneath them,
-# the run listing, the hero usage card, and the page
+# the run listing with the trace beneath it, the hero usage card, and the page
 # state are reached through, which sit under the widget
 # hub instead, and the
-# two the filter bar is reached through, which sit under no hub at all.
+# two the filter bar and the one the drill-down's historical call shape are
+# reached through, which sit under no hub at all.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
 # retirable rather than load-bearing.
@@ -546,6 +562,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_coverage_card",
     "orchestrator._dashboard_date_range",
     "orchestrator._dashboard_date_widgets",
+    "orchestrator._dashboard_drilldown",
     "orchestrator._dashboard_filter_state",
     "orchestrator._dashboard_issue_table",
     "orchestrator._dashboard_kpi_series",
@@ -605,7 +622,9 @@ _COMPATIBILITY_SITES = (
 # above all three of those tables are handed a window's worth of each -- the
 # per-backend and per-cost-source rows the two card owners weigh and size, and
 # the run rows the listing under all of them is projected from -- are the rows
-# those reads hand back. The two cost-comparison panels are handed four of
+# those reads hand back, and the trace under that listing names the raw family
+# for the per-issue read it is the only page caller of.
+# The two cost-comparison panels are handed four of
 # those row families for the same reason and issue no read of their own: each
 # is what the section it draws is typed against, and what it draws that section
 # with -- a header, a ranking, a table, a card, a bar, a figure -- is the
