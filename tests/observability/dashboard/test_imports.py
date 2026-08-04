@@ -108,6 +108,8 @@ _TABLES_OWNER = "tables"
 
 _TOKENS_OWNER = "tokens"
 
+_USAGE_PANEL_OWNER = "usage_panel"
+
 _WINDOWS_OWNER = "windows"
 
 # The declared inventory. A new owner is a deliberate edit here and a paragraph
@@ -160,6 +162,7 @@ _OWNERS = (
     _SUMMARY_HTML_OWNER,
     _TABLES_OWNER,
     _TOKENS_OWNER,
+    _USAGE_PANEL_OWNER,
     _WINDOWS_OWNER,
 )
 
@@ -193,7 +196,9 @@ _OWNERS = (
 # one backend's spend against the
 # tokens and runs behind it, size a window's
 # priced share into one bar, read one of the runs under all of them back as
-# the columns it is scanned by, or carry what a render was narrowed to from
+# the columns it is scanned by, draw the card above all of them on the stack
+# an operator picked and total a day's tokens per backend for it, or carry what
+# a render was narrowed to from
 # the controls at the top of the page down to those panels is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
 # bound and the cache's tri-state -- could disagree. Three owners report
@@ -228,7 +233,9 @@ _OWNERS = (
 # triple the
 # strip owner hands its four entries back as, the label the run listing is
 # collapsed under together with the notice a window with no run renders
-# instead, and the TTL the metadata owner
+# instead, the two stack modes the hero card is drawn in together with the
+# title, subtitle, and toggle label above them and the two keys the picked one
+# is remembered and keyed by, and the TTL the metadata owner
 # caches under are all
 # invisible here for the same reason.
 _SURFACES = MappingProxyType({
@@ -466,6 +473,13 @@ _SURFACES = MappingProxyType({
         "table_html",
     ),
     _TOKENS_OWNER: (),
+    _USAGE_PANEL_OWNER: (
+        "backend_tokens_by_day",
+        "render_hero_usage",
+        "select_stack_mode",
+        "stack_mode_index",
+        "stack_mode_label",
+    ),
     _WINDOWS_OWNER: (
         "DateWindow",
         "default_date_range",
@@ -484,9 +498,9 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
-# all but the KPI one, the three widget leaves the skill panels, the run
-# listing, and the page state are reached through, which sit under the widget
-# hub instead, and the
+# all but the KPI one, the four widget leaves the skill panels, the run
+# listing, the hero usage card, and the page state are reached through, which
+# sit under the widget hub instead, and the
 # two the filter bar is reached through, which sit under no hub at all.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
@@ -527,6 +541,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_widget_models",
     "orchestrator._dashboard_widget_runs",
     "orchestrator._dashboard_widget_skills",
+    "orchestrator._dashboard_widget_usage",
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_cards",
     "orchestrator.dashboard_html",
@@ -562,7 +577,10 @@ _COMPATIBILITY_SITES = (
 # those reads hand back. The page-state owner names two of those result
 # families for the same reason without issuing a read of its own: the extent a
 # page opened on and the window totals a comparison panel reports are what the
-# shapes it threads are typed against.
+# shapes it threads are typed against. One sibling is a package rather than a
+# module: the card a figure is drawn inside names the chart family that builds
+# it, since a panel is the card and the figure together and a handle passed in
+# would let the two be assembled from different families.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

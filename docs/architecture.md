@@ -597,6 +597,10 @@ orchestrator/
                         the per-issue drill-down, plus the historical import
                         site for the run listing above it, forwarding to the
                         recent-runs owner
+  _dashboard_widget_usage.py
+                        historical import site for the hero spend and
+                        token-usage card, its stack toggle, and the per-day
+                        totals behind it, forwarding to the usage-panel owner
   _dashboard_widget_models.py
                         historical import site for the seven shapes one page
                         render is threaded through, forwarding to the
@@ -932,6 +936,12 @@ orchestrator/
                         offset its timestamp is read on, the collapsed expander
                         the page ends on, and the notice a window with no
                         `agent_exit` row renders in place of an empty frame
+      usage_panel.py    the hero card above all of them: the header it is
+                        titled by, the toggle deciding whether a day's tokens
+                        stack by what they were spent on or by who spent them,
+                        the session key that mode survives a rerun in, and the
+                        per-day per-backend totals the second stack is drawn
+                        from
       windows.py        the half-open UTC window a run reports over, the
                         presets that name one, and the clamp that keeps a
                         preset inside the data extent
@@ -2125,6 +2135,22 @@ which run this was is reading against their own day. The columns are ordered the
 where, then what ran, then how it went, then what it cost. Streamlit and pandas are the caller's, handed in as
 parameters, so the row projection stays readable with neither installed.
 
+`usage_panel.py` is the card above every one of those panels, the first one under the KPI strip, so it answers the
+question the page is opened with: whether a day's cost tracks the work behind it. The figure carrying both readings is
+the usage chart family's; what this owner decides is the card around it — the header naming it, the one control an
+operator has over it, and the rows the chart is handed for the mode they picked. That control is a two-value radio
+rather than a checkbox because neither stack is the drilldown of the other: by token type is what a day's tokens went
+on, by backend is who spent them, and an operator switches between the two readings rather than opening one out of the
+other. Streamlit reruns the whole script on every interaction, so the picked mode is kept in the page's own session
+state and the radio is seeded from it by index — the widget takes an option's position rather than its value, and a
+mode read back any other way would snap the hero card to the default stack every time a filter beside it moved. The
+per-backend rows are totalled here rather than read that way, since the same `(day, backend)` cell can arrive more
+than once and a stack drawn off the raw rows would show the last of them instead of the day; they are totalled only
+when the backend stack is the one being drawn, because the token-type bands already ride on the time-series points.
+The header, the figure builder, and the Plotly defaults all come off their owners directly, so what this card is
+titled by, drawn as, and configured with are the objects every panel beside it uses. Streamlit is the caller's, handed
+in as a parameter, and the figure builder reaches Plotly inside its own call, so importing this owner costs neither.
+
 `backend_card.py` and `coverage_card.py` hold two more panels drawn as markup rather than as a figure, each with the
 arithmetic behind its own. The first answers what work on one backend is worth, in three readings an
 operator compares agents by: what a million tokens cost, what a run cost, and how much of the billable input the cache
@@ -2407,8 +2433,10 @@ outright: the run listing and the notice a window with no `agent_exit` row rende
 objects under the private spelling the page always imported them by, while the per-issue drill-down beneath that
 listing is still built there. `_dashboard_widget_models.py` is the third, defining nothing and forwarding the seven
 shapes a render is threaded through to the page-state owner under the private spellings the pipeline always imported
-them by. The
-widget hub above all three republishes those fourteen and the Plotly configuration it reads straight off the
+them by. `_dashboard_widget_usage.py` is the fourth, defining nothing either and forwarding the hero card, the label
+and index its stack toggle offers a mode by, and the per-day per-backend totals behind that stack to the usage-panel
+owner. The
+widget hub above all four republishes those eighteen and the Plotly configuration it reads straight off the
 render-config owner, and claims none of them, since the `__module__` stamp mutates the object and a claim there would
 move an owner's own render or shape off the owner that defines it.
 `dashboard_charts_base.py` is one too: the placeholder, the three
