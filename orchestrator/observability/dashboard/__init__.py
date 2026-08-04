@@ -88,6 +88,15 @@ that table: the rows behind the readings above it, projected into the columns
 one run is scanned by and the offset the sidebar picked, drawn in the collapsed
 expander the page ends on, and the notice a window with no `agent_exit` row
 renders in place of an empty frame.
+``drilldown`` is the last narrowing under that listing: one issue's events in
+the order they happened, read outside the cached wrappers because it is scoped
+by an issue on top of the window those keys carry, together with the columns
+one event is traced in, the notice a number typed before a repository is
+answered with, and the two an empty window and a failed read leave instead.
+``drilldown_request`` is the call shape that section is still reachable under:
+the seven keyword arguments a caller outside the render pipeline names, the
+declared signature they are bound through, and the typed request they are read
+back as before the page state is rebuilt from it.
 ``usage_panel`` is the card above all of them, the first one under the strip:
 the header it is titled by, the two-value toggle deciding whether a day's
 tokens are stacked by what they were spent on or by who spent them, the
