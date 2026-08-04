@@ -14,6 +14,15 @@ span: the five slots the filter bar is laid out across together with the label
 and the three inline presets drawn among them, and the bar itself -- the window
 a preset opens the pickers on, the inclusive days those pickers hand back, and
 the half-open window plus the placeholder for the filter line they leave with.
+``page_controls`` is the band that bar sits in and the load the choices made
+there open: the sidebar a run is narrowed in, the offset its timestamps are
+displayed against -- seeded here on the first render and read back off the
+session on every one after, since the card that offers it sits at the foot of
+the page -- the normalization those raw selections go through, the controls the
+whole band is read back as, and the staged plan every panel below is drawn
+from. Keeping the narrowing and the staging together is what makes them one
+description, since the filters one resolves are what the other's keys are
+hashed from.
 ``read_plan`` is what that state is spent on: the two waves a load is
 staged into, the cached task each entry is bound as, and the pair of keys --
 this window and the one before it -- they are issued under. ``fanout`` runs

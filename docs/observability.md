@@ -29,7 +29,8 @@ the analytics configuration, recording, retention, trajectory-sink, read-path, a
 (`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
 `analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in (`dashboard/palette.py`,
 `dashboard/tokens.py`, `dashboard/layout.py`, `dashboard/css.py`, `dashboard/formatting.py`), the window, filter, and
-read-mode state one run of the analytics page carries plus the bar that window is picked in, the two waves its load is
+read-mode state one run of the analytics page carries plus the bar that window is picked in, the band above the
+panels that bar sits in together with the load the choices made there open, the two waves its load is
 staged into, the fan-out each
 is issued through, and the dispatch that drives both, the seven a
 headline or lifecycle section is drawn from, the six a comparison panel is, the three a skill panel is, the
@@ -41,6 +42,7 @@ every card
 header are drawn as, and the two panels drawn as markup rather than as a figure — one backend's efficiency, and
 the share of a window's spend that could be priced (`dashboard/windows.py`,
 `dashboard/filters.py`, `dashboard/date_controls.py`, `dashboard/date_filter.py`,
+`dashboard/page_controls.py`,
 `dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
 `dashboard/dispatch.py`, `dashboard/rollups.py`,
 `dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
@@ -1298,13 +1300,16 @@ a test or non-dashboard caller does not require the group to be installed. A reg
 
 **Module layout.** `orchestrator/dashboard.py` is a manifest-backed lazy compatibility facade with a complete
 `dashboard.pyi`. `_dashboard_facade_bootstrap.py` owns both package import and direct-script setup, while
-`_dashboard_runtime.py` and `_dashboard_page_controls.py` own page orchestration, with the two
-date leaves and the drill-down one beside them forwarding to the owners the filter bar and the per-issue trace live
+`_dashboard_runtime.py` owns page orchestration, with the two
+date leaves, the page-controls one, and the drill-down one beside them forwarding to the owners the filter bar, the
+band above the panels, and the per-issue trace live
 on.
 Historical `dashboard.<name>` imports, wildcard exports, and object identity are unchanged — every alias still
 resolves to the one object its owner defines. Where a patch has to land is a separate question, and it follows the
-call path rather than the alias: the page pipeline reaches the staged plan and the wave dispatch on
-`observability/dashboard/`, so a test intercepts those with `patch.object(read_plan | dispatch, ...)`, while
+call path rather than the alias: the page pipeline reaches the controls it opens on, the staged plan, and the wave
+dispatch on
+`observability/dashboard/`, so a test intercepts those with
+`patch.object(page_controls | read_plan | dispatch, ...)`, while
 `patch.object(dashboard, ...)` still intercepts the page renderers — the mapping the `PLOTLY_CONFIG` alias lands on is
 `render_config`'s own, and the shapes
 the pipeline
@@ -1379,7 +1384,10 @@ that name one, `filters.py` for the offset, issue, stage, and cache key it is na
 `date_controls.py` for the five slots the bar that window is picked in is laid out across together with the label and
 the three inline presets drawn in the first two of them, `date_filter.py` for the bar itself — the window a preset
 opens the pickers on, the inclusive days they hand back, and the half-open window plus the filter-line slot the caller
-leaves with — `read_mode.py` for the parallel-read knob, the flag its import binds, and the unconfigured-database
+leaves with — `page_controls.py` for the band that bar sits in and the load the choices made there open — the sidebar
+a run is narrowed in, the offset its timestamps are displayed against, the filters those raw selections normalize
+into, the controls the band is read back as, and the staged plan beneath it — `read_mode.py` for the parallel-read
+knob, the flag its import binds, and the unconfigured-database
 message,
 `read_plan.py` for the two waves a load is staged into, the minute each cached entry is held for, and the current /
 previous key pair they are issued under,
@@ -1808,7 +1816,12 @@ out across, the label naming it, and the three presets it offers inline, and
 `observability/dashboard/date_filter.py` for the window a preset opens its pickers on, the inclusive days they hand
 back, and the bar assembling all of it — reached through `orchestrator/_dashboard_date_widgets.py` and
 `orchestrator/_dashboard_date_range.py`, which forward the same way as well; the page pipeline calls the bar on its
-owner, so a test intercepting it patches `date_filter`.
+owner, so a test intercepting it patches `date_filter`. The band that bar sits in and the load the choices made there
+open is `observability/dashboard/page_controls.py` — the sidebar a run is narrowed in and the selections it answers
+with, the offset that run's timestamps are displayed against, the filters those selections normalize into, the
+controls the band is read back as, and the staged plan beneath it — reached through
+`orchestrator/_dashboard_page_controls.py`, which forwards all six historical spellings and defines none of them; the
+runtime prepares its page on the owner, so a test intercepting that patches `page_controls`.
 Beside them, the insight banners, per-card header, backend-efficiency cards,
 cost-source coverage bar, and reliability-tile strip are reached through `orchestrator/dashboard_cards.py` — the first,
 second, and last of those built by `observability/dashboard/card_html.py` and forwarded through the flat

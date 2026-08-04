@@ -60,6 +60,8 @@ _KPI_STRIP_OWNER = "kpi_strip"
 
 _LAYOUT_OWNER = "layout"
 
+_PAGE_CONTROLS_OWNER = "page_controls"
+
 _PAGE_MODELS_OWNER = "page_models"
 
 _PAGE_STATES_OWNER = "page_states"
@@ -152,6 +154,7 @@ _OWNERS = (
     _KPI_SERIES_OWNER,
     _KPI_STRIP_OWNER,
     _LAYOUT_OWNER,
+    _PAGE_CONTROLS_OWNER,
     _PAGE_MODELS_OWNER,
     _PAGE_STATES_OWNER,
     _PALETTE_OWNER,
@@ -227,7 +230,10 @@ _OWNERS = (
 # card above all of them on the stack an operator picked and total a day's
 # tokens per backend for it, answer a database with nothing in it or a window
 # matching nothing with the state a page leaves through, close a page that did
-# draw on the span and run count it was drawn over, or carry what a render was
+# draw on the span and run count it was drawn over, offer the sidebar a run of
+# that page is narrowed in, read the zone its timestamps are displayed against
+# back off the session, resolve one pass through those controls into what every
+# read is bounded by, stage the load they open, or carry what a render was
 # narrowed to from
 # the controls at the top of the page down to those panels is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
@@ -269,7 +275,9 @@ _OWNERS = (
 # instead, the notice the trace beneath that listing answers a number typed
 # before a repository with and the declared signature the adapter beside it
 # binds a historical call through, the two messages an un-ingested database and
-# a window nothing matched are answered with, the two stack modes
+# a window nothing matched are answered with, the heading the sidebar is titled
+# by together with the option its repository box names no repository under and
+# the three help texts its other controls are qualified by, the two stack modes
 # the hero card is drawn
 # in together with the title, subtitle, and toggle label above them and the two
 # keys the picked one is remembered and keyed by, and the TTL the metadata owner
@@ -381,6 +389,14 @@ _SURFACES = MappingProxyType({
         "kpi_totals",
     ),
     _LAYOUT_OWNER: ("base_layout",),
+    _PAGE_CONTROLS_OWNER: (
+        "SidebarSelections",
+        "prepare_dashboard_page",
+        "render_dashboard_controls",
+        "render_sidebar_filters",
+        "resolve_dashboard_filters",
+        "timezone_choice",
+    ),
     _PAGE_MODELS_OWNER: (
         "DashboardControls",
         "DashboardFilters",
@@ -560,7 +576,8 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # states a page leaves through with the line it ends on, and the page
 # state are reached through, which sit under the widget
 # hub instead, and the
-# two the filter bar and the one the drill-down's historical call shape are
+# two the filter bar, the one the sidebar and the load it opens, and the one
+# the drill-down's historical call shape are
 # reached through, which sit under no hub at all.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
@@ -586,6 +603,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_matrix_render",
     "orchestrator._dashboard_matrix_rows",
     "orchestrator._dashboard_matrix_sort",
+    "orchestrator._dashboard_page_controls",
     "orchestrator._dashboard_read_breakdowns",
     "orchestrator._dashboard_read_core",
     "orchestrator._dashboard_read_dispatch",
@@ -655,7 +673,13 @@ _COMPATIBILITY_SITES = (
 # against those two readings. That owner is also the one place a sibling render
 # is called rather than a shape: an empty window hands the page on to the trace
 # at the foot of it, which is scoped by an issue rather than by the cache key
-# the reads it skipped share. The panel below those two is typed
+# the reads it skipped share. The owner at the top of the page names no result
+# family at all, because what a run is narrowed by is decided out of the
+# selections an operator made rather than out of anything read back: its whole
+# reach is six siblings -- the bar the days are picked in and the window that
+# bar resolves to, the normalization and default offset a selection is read
+# through, the knob deciding how the load is issued and the plan staging it,
+# and the shapes all of it is threaded on as. The panel below those two is typed
 # against the shapes rather than the rows, so the page state is the only
 # vocabulary it names, while the grid beneath it is back to the rows and names
 # the activity family for the weekday-by-hour points it draws. One sibling is a

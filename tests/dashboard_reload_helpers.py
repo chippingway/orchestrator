@@ -35,7 +35,6 @@ _RELOAD_POP_MODULES = (
     "orchestrator.dashboard_skill_matrix",
     "orchestrator.dashboard_reads",
     "orchestrator.dashboard_widgets",
-    READ_MODE_OWNER,
     DASHBOARD_MODULE,
 )
 
@@ -51,19 +50,24 @@ def hermetic_environment(extra: dict[str, str] | None = None) -> dict[str, str]:
     return environment
 
 
-def _unbind_read_mode_owner() -> None:
-    """Drop the parent binding the read-mode owner is also resolved by.
+def _rebuild_read_mode_owner() -> None:
+    """Re-parse the read-mode owner's knob against the environment under patch.
 
-    The parallel-read flag is parsed while that owner imports, so it is one of
-    the modules a reload has to rebuild. Clearing `sys.modules` alone would not
-    do it: the import system also binds a submodule as an attribute of its
-    package, and `from <package> import read_mode` answers off that attribute
-    without consulting `sys.modules` at all -- so the page would read whatever
-    flag some earlier import happened to decide.
+    The parallel-read flag is bound while that owner imports, so the reload has
+    to be what re-runs that import, and it has to re-run it *in place*. Popping
+    `sys.modules` and importing again would build a second module object, and
+    the first one does not go away: the sibling owners that name this one --
+    the page controls that stage a load under the flag, the fan-out that reads
+    the worker cap beside it -- bound it once, at their own import, and are not
+    themselves rebuilt. A page would then report the reloaded world's flag
+    through the facade while issuing its reads the way the world before it
+    asked, which is the one thing this helper exists to prevent.
+
+    Reloading keeps that single object and rebinds its globals, so every holder
+    -- the flat sites the facade resolves through, and the owners that never
+    left `sys.modules` -- reads the knob this environment set.
     """
-    package = sys.modules.get(DASHBOARD_OWNERS)
-    if package is not None:
-        package.__dict__.pop(READ_MODE_ATTRIBUTE, None)
+    importlib.reload(importlib.import_module(READ_MODE_OWNER))
 
 
 def reload_dashboard(
@@ -79,7 +83,7 @@ def reload_dashboard(
         with patch.dict(os.environ, hermetic_environment(environment), clear=True):
             for module_name in _RELOAD_POP_MODULES:
                 sys.modules.pop(module_name, None)
-            _unbind_read_mode_owner()
+            _rebuild_read_mode_owner()
             analytics = importlib.import_module("orchestrator.analytics")
             dashboard = importlib.import_module(DASHBOARD_MODULE)
     return analytics, dashboard

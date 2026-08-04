@@ -10,11 +10,15 @@ import unittest
 from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
-from orchestrator.observability.dashboard import read_mode
+from orchestrator.observability.dashboard import date_filter, read_mode, windows
 from tests.dashboard_reload_helpers import reload_dashboard
+from tests.observability.dashboard import (
+    dashboard_test_support as fixtures,
+    page_controls_test_support as fakes,
+)
 
 
 _PACKAGE = "orchestrator.observability.dashboard"
@@ -49,6 +53,18 @@ _MESSAGE_POINTERS = (
     ".env.example.advanced",
     "docs/configuration.md",
 )
+
+# What one page load is staged against, whichever world the reload built: the
+# extent a window could be picked from at all, the window the bar is stood in
+# for with, and a sidebar vocabulary empty enough that the selections normalize
+# without naming anything.
+_STAGED_EXTENT = fixtures.data_extent(fixtures.MAY01, fixtures.MAY28)
+
+_STAGED_WINDOW = windows.to_window(fixtures.MAY02, fixtures.MAY06)
+
+_STAGED_OPTIONS = SimpleNamespace(repos=(), events=(), stages=())
+
+_BAR_ATTRIBUTE = "render_date_filter_bar"
 
 
 @contextmanager
@@ -142,7 +158,13 @@ class ReloadedPageFlagTest(unittest.TestCase):
     The lazy facade and the state hub in front of this owner publish the flag
     rather than re-deriving it, so a dashboard loaded against one environment
     has to issue its reads the way that environment asked for -- which is also
-    what keeps a knob parsed at import testable at all.
+    what keeps a knob parsed at import testable at all. What the facade reports
+    and what a load actually runs are asserted apart, because they reach this
+    owner by different routes: the facade through the flat sites a reload
+    rebuilds, and the staged plan through the sibling owner that bound this
+    module once and is not rebuilt with them. A reload that replaced this
+    module rather than re-running it in place would satisfy the first and leave
+    the second issuing the world before it.
     """
 
     def test_the_facade_reads_the_reloaded_world(self) -> None:
@@ -155,6 +177,40 @@ class ReloadedPageFlagTest(unittest.TestCase):
                     dashboard.dashboard_parallel_reads_enabled(), expected,
                 )
                 self.assertIs(dashboard.DASHBOARD_PARALLEL_READS, expected)
+
+    def test_the_staged_load_is_issued_that_way(self) -> None:
+        # The plan a page carries between its two waves is what the fan-out is
+        # actually driven off, so it is the reading an operator's `parallel=`
+        # log line and the threads behind it come from.
+        for spelling, expected in ((_ENABLED, True), ("", False)):
+            with self.subTest(spelling=spelling):
+                _, dashboard = reload_dashboard(
+                    {_PARALLEL_READS_ENV: spelling},
+                )
+
+                self.assertIs(self._staged(dashboard).parallel, expected)
+
+    def _staged(self, dashboard: ModuleType):
+        """Stage one load through the reloaded facade, issuing no read.
+
+        The controls are drawn against a stand-in Streamlit and the bar is
+        answered for, so what comes back is the plan alone -- which is where
+        the flag this world set has to have landed.
+        """
+        page = fakes.FakeStreamlit()
+        with patch.object(
+            date_filter,
+            _BAR_ATTRIBUTE,
+            side_effect=fakes.BarAnswer(page, _STAGED_WINDOW),
+        ):
+            prepared = dashboard._prepare_dashboard_page(
+                dashboard._DashboardModules(
+                    st=page, pd=None, charts=None, theme=None,
+                ),
+                _STAGED_EXTENT,
+                _STAGED_OPTIONS,
+            )
+        return prepared.reads
 
 
 class DbUnconfiguredMessageTest(unittest.TestCase):
