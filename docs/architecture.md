@@ -359,7 +359,6 @@ orchestrator/
   _workflow_state.py    immutable values the engine owners share: the logger,
                         the per-issue failure log line, and the issue-state
                         attribute and its open / closed values
-  workflow_messages.py  lazy prompt/parser/comment compatibility facade
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
@@ -1348,9 +1347,8 @@ park from `workflow/engine/guards.py` -- not from its own `guards` sibling, whic
 refusals -- and the PR-comment poster straight off its owning module, and `publication` and `conflicts` bind
 the same poster for their notices, so a patch for the park targets `orchestrator.workflow.engine.guards` and
 one for any of the notices targets `orchestrator.workflow.engine.comments` -- the
-`workflow` forward of `_park_awaiting_human` and the `base_sync` and `workflow_messages` forwards of
-`_post_pr_comment` still resolve, but they are
-not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
+`workflow` forward of `_park_awaiting_human` and the `base_sync` forward of `_post_pr_comment` still resolve, but
+they are not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
 the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/`, `workflow/stages/`, or
 `workflow/state.py`, so importing the facade resolves no manifest target and pulls in neither the stage tree, the
 config and analytics graph behind the shared dependency bindings, nor the git and GitHub
@@ -1368,9 +1366,8 @@ explicit package reload still reparses sink settings and keeps stale package hol
 marker and append to the id ledger in-module, and the thread read applies the per-comment trust filter in-module -- and
 the workflow and stage leaves that post a comment, quote one, or read the thread import the owner rather than reaching
 for the name on a facade. So a patch that has to intercept a posted issue or PR comment, the tracked-repos block, or
-the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`; `workflow`,
-`workflow_messages`, and `base_sync` each still resolve their historical slice of those names to the
-owner's exact object for callers outside the package.
+the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`; `workflow` and `base_sync` each
+still resolve their historical slice of those names to the owner's exact object for callers outside the package.
 
 `workflow/engine/messages.py` is bound the same way. It owns both halves of what an agent's last message is worth:
 the strict markers read out of it -- the review and documentation verdicts, the drift `ACK:`, and the operator's
@@ -1378,8 +1375,8 @@ the strict markers read out of it -- the review and documentation verdicts, the 
 log line carries when there was no usable message at all. Its own parsers call each other in-module, and the workflow
 and stage leaves that read a verdict, quote a blockquote, or classify a continue import the owner. So a patch that has
 to intercept a verdict parse, an ack read, a continue classification or refusal, or a stderr diagnostic targets
-`orchestrator.workflow.engine.messages`; `workflow` and `workflow_messages` each still resolve
-their historical slice of those names to the owner's exact object. The implementing stage keeps its own
+`orchestrator.workflow.engine.messages`; `workflow` still resolves its historical slice of those names to the
+owner's exact object. The implementing stage keeps its own
 `_as_blockquote` on `workflow/stages/implementing/session_read.py`, so a patch aimed at that stage's quoting still
 targets the stage owner.
 
@@ -1396,10 +1393,15 @@ the tracked-repos block, and the paragraph break its own sections are joined on 
 quoted thread and the prompt built around it breaking the same way -- and `messages.py` for the blockquote; the stage
 leaves that build a prompt or append a note import the owner. So a
 patch that has to intercept a built prompt, a shared note, or the single-decision comment targets
-`orchestrator.workflow.engine.prompts`; `workflow` and `workflow_messages` each still resolve their
-historical slice of those names to the owner's exact object. A prompt with only one caller stays with that caller:
+`orchestrator.workflow.engine.prompts`; `workflow` still resolves its historical slice of those names to the owner's
+exact object. A prompt with only one caller stays with that caller:
 `engine/drift.py` composes the drift-resume prompt beside the route that sends it and borrows just the two notes from
 here, so a patch aimed at that prompt still targets the drift owner.
+
+No flat module sits beside these three owners, or beside the decomposition stage's manifest and validation helpers: a
+check in `tests/workflow/test_imports.py` asserts nothing resolves at the flat message module paths, so the posters
+and thread read, the marker parsers, the prompt builders, and the manifest decode and child checks are each answered
+on their owner alone.
 
 `workflow/engine/usage.py` is bound the same way. It owns what a tracked agent run is bookended by: the frozen request
 a caller describes the run with, the `agent_spawn` / `agent_exit` audit pair, the analytics record the exit appends

@@ -70,12 +70,17 @@ _LAZINESS_PROBE = (
 # leaf, and a whole module the manifest binds by name.
 _PROBE_EXPORTS = ("_handle_ready", "contextlib")
 
-# The module paths a second import site for the drift owner would take: the flat
-# spelling itself, and the inventory and resolver hooks one would be built from.
-_FLAT_DRIFT_MODULES = (
+# The module paths a second import site for the drift owner, or for the comment,
+# message, prompt, and decomposition manifest owners one flat spelling would
+# answer for together, would take: the flat spelling itself, and the inventory
+# and resolver hooks one would be built from.
+_FLAT_MODULES = (
     "orchestrator._workflow_drift_export_manifest",
     "orchestrator._workflow_drift_exports",
+    "orchestrator._workflow_messages_export_manifest",
+    "orchestrator._workflow_messages_exports",
     "orchestrator.workflow_drift",
+    "orchestrator.workflow_messages",
 )
 
 
@@ -179,16 +184,17 @@ class PackageSurfaceTest(unittest.TestCase):
         self.assertIn("engine", _workflow.__dir__())
 
 
-class DriftImportSiteTest(unittest.TestCase):
-    """`engine/drift.py` is the only module the drift surface answers on."""
+class OwnerImportSiteTest(unittest.TestCase):
+    """The engine owners are the only modules their surfaces answer on."""
 
-    def test_no_flat_drift_module_exists(self) -> None:
+    def test_no_flat_module_exists(self) -> None:
         # Anything importable at these paths would be a second identity for the
-        # hash live issues are already parked on, free to drift from the owner
-        # silently and invisible to a patch aimed at it. Resolving the spec
-        # rather than stat-ing one path catches a copy planted anywhere the
-        # interpreter would find it.
-        for module in _FLAT_DRIFT_MODULES:
+        # hash live issues are already parked on, the marker their comments are
+        # stamped with, or the prompt text an agent is spawned with -- free to
+        # drift from the owner silently and invisible to a patch aimed at it.
+        # Resolving the spec rather than stat-ing one path catches a copy
+        # planted anywhere the interpreter would find it.
+        for module in _FLAT_MODULES:
             with self.subTest(module=module):
                 self.assertIsNone(find_spec(module))
 
