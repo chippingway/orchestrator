@@ -63,7 +63,6 @@ orchestrator/
     repositories.py     REPOS entry parsing, validation, and default-spec
                         construction
   state_machine.py      forwarding-only surface over `workflow/state.py`
-  comment_trust.py      forwarding-only surface over `github/comments.py`
   github/
     __init__.py         stable public surface (`__all__`): the composed
                         `GitHubClient` and the pinned durable-state model,

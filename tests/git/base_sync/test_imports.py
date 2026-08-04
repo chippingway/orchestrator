@@ -105,19 +105,15 @@ _ALLOWED_ROOTS = (
 # because it resolves the very names these owners define -- an owner that read
 # one back off the facade would be importing its own definitions. Resolving any
 # inventory name imports the leaf that holds it, which is what these prefixes
-# catch past the label owner the exempt set above allows. The flat
-# `comment_trust` module is listed for the same reason: the trusted-reply filter
-# the eligibility gate binds at import time has an owner in the GitHub domain,
-# and reaching it through the forwarding module would put a workflow-layer
-# import back under these owners. The collaborators that do live above this
-# package -- the park guard and the comment poster in the workflow engine -- are
-# reached through call-time imports, which is what keeps them out of this check.
+# catch past the label owner the exempt set above allows. The collaborators that
+# do live above this package -- the park guard and the comment poster in the
+# workflow engine -- are reached through call-time imports, which is what keeps
+# them out of this check.
 _FORBIDDEN_PREFIXES = (
     "orchestrator._base_sync",
     "orchestrator._workflow",
     "orchestrator.base_sync",
     "orchestrator.cli",
-    "orchestrator.comment_trust",
     "orchestrator.main",
     "orchestrator.stages",
     "orchestrator.verify",
