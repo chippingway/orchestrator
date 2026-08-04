@@ -62,6 +62,8 @@ _LAYOUT_OWNER = "layout"
 
 _PAGE_MODELS_OWNER = "page_models"
 
+_PAGE_STATES_OWNER = "page_states"
+
 _PALETTE_OWNER = "palette"
 
 _READ_MODE_OWNER = "read_mode"
@@ -151,6 +153,7 @@ _OWNERS = (
     _KPI_STRIP_OWNER,
     _LAYOUT_OWNER,
     _PAGE_MODELS_OWNER,
+    _PAGE_STATES_OWNER,
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
     _READ_PLAN_OWNER,
@@ -222,7 +225,10 @@ _OWNERS = (
 # the columns it is scanned by, trace one issue's events under that listing,
 # read a historical call back as the state that trace is drawn from, draw the
 # card above all of them on the stack an operator picked and total a day's
-# tokens per backend for it, or carry what a render was narrowed to from
+# tokens per backend for it, answer a database with nothing in it or a window
+# matching nothing with the state a page leaves through, close a page that did
+# draw on the span and run count it was drawn over, or carry what a render was
+# narrowed to from
 # the controls at the top of the page down to those panels is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
 # bound and the cache's tri-state -- could disagree. Three owners report
@@ -262,7 +268,9 @@ _OWNERS = (
 # collapsed under together with the notice a window with no run renders
 # instead, the notice the trace beneath that listing answers a number typed
 # before a repository with and the declared signature the adapter beside it
-# binds a historical call through, the two stack modes the hero card is drawn
+# binds a historical call through, the two messages an un-ingested database and
+# a window nothing matched are answered with, the two stack modes
+# the hero card is drawn
 # in together with the title, subtitle, and toggle label above them and the two
 # keys the picked one is remembered and keyed by, and the TTL the metadata owner
 # caches under are all
@@ -381,6 +389,11 @@ _SURFACES = MappingProxyType({
         "DashboardPage",
         "LoadedDashboard",
         "ReliabilityPanelData",
+    ),
+    _PAGE_STATES_OWNER: (
+        "render_dashboard_footer",
+        "render_empty_window",
+        "render_no_data",
     ),
     _PALETTE_OWNER: ("color_for",),
     _READ_MODE_OWNER: (
@@ -540,10 +553,11 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
-# all but the KPI one, the five widget leaves the skill panels, the two
+# all but the KPI one, the six widget leaves the skill panels, the two
 # cost-comparison panels with the repository-and-reliability pair and the
 # activity grid beneath them,
-# the run listing with the trace beneath it, the hero usage card, and the page
+# the run listing with the trace beneath it, the hero usage card, the two
+# states a page leaves through with the line it ends on, and the page
 # state are reached through, which sit under the widget
 # hub instead, and the
 # two the filter bar and the one the drill-down's historical call shape are
@@ -589,6 +603,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_widget_models",
     "orchestrator._dashboard_widget_runs",
     "orchestrator._dashboard_widget_skills",
+    "orchestrator._dashboard_widget_states",
     "orchestrator._dashboard_widget_usage",
     "orchestrator._dashboard_windows",
     "orchestrator.dashboard_cards",
@@ -633,7 +648,14 @@ _COMPATIBILITY_SITES = (
 # The page-state owner names two of those result
 # families for the same reason without issuing a read of its own: the extent a
 # page opened on and the window totals a comparison panel reports are what the
-# shapes it threads are typed against. The panel below those two is typed
+# shapes it threads are typed against, and the owner holding the two states a
+# page leaves through with the line it ends on names the same pair, since the
+# banner an un-ingested database is answered with and the footer a drawn page
+# closes on are typed
+# against those two readings. That owner is also the one place a sibling render
+# is called rather than a shape: an empty window hands the page on to the trace
+# at the foot of it, which is scoped by an issue rather than by the cache key
+# the reads it skipped share. The panel below those two is typed
 # against the shapes rather than the rows, so the page state is the only
 # vocabulary it names, while the grid beneath it is back to the rows and names
 # the activity family for the weekday-by-hour points it draws. One sibling is a

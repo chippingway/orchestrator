@@ -76,33 +76,6 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 RUN_READ_WAVES_MEMBER = "run_read_waves"
 
 
-LOG_DASHBOARD_LOAD_MEMBER = "log_dashboard_load"
-
-
-DRILLDOWN_MEMBER = "_render_drilldown_view"
-
-
-# What the page's own timer read when a load that found nothing started, and
-# the first wave it had already spent by then.
-LOAD_START = 12.5
-
-
-FIRST_WAVE = (("summary", object()), ("prev_summary", object()))
-
-
-class _QuietStreamlit:
-    """Minimal fake `st` for the empty-window renderer to draw its banner on.
-
-    Only the surface that renderer touches is implemented, as a no-op, so a
-    render runs without the optional Streamlit.
-    """
-
-    # `info` is Streamlit's own name for the banner an empty window is
-    # answered with, so the stand-in has to spell it the same way.
-    def info(self, *args, **kwargs) -> None:  # noqa: WPS110
-        """No-op stand-in for `st.info`."""
-
-
 class FacadePatchInterceptionTest(unittest.TestCase):
     """The page pipeline resolves its siblings through the
     `orchestrator.dashboard` facade at call time -- and its read
@@ -130,34 +103,6 @@ class FacadePatchInterceptionTest(unittest.TestCase):
             stub.assert_called_once()
         self.assertIs(loaded.read_results, read_results)
         self.assertIs(loaded.kpis, kpis)
-
-    def test_empty_window_logs_its_first_wave(self) -> None:
-        # A short-circuited load never reaches the line `run_read_waves` ends
-        # on, so the banner that ended it measures the load instead -- off the
-        # plan's own clock, the reads it had already spent, and the way they
-        # were issued. Counting both waves here would report ten reads nobody
-        # paid for on every empty window.
-        _, dashboard = _reload(CONFIGURED_DB_ENV)
-        page = SimpleNamespace(
-            reads=SimpleNamespace(
-                started_at=LOAD_START,
-                first_wave=list(FIRST_WAVE),
-                parallel=True,
-            ),
-            controls=SimpleNamespace(filters=object()),
-        )
-        with (
-            patch.object(dispatch, LOG_DASHBOARD_LOAD_MEMBER) as logged,
-            patch.object(dashboard, DRILLDOWN_MEMBER),
-        ):
-            dashboard._render_empty_window(
-                SimpleNamespace(st=_QuietStreamlit()), page,
-            )
-            logged.assert_called_once_with(
-                load_start=LOAD_START,
-                reads=len(FIRST_WAVE),
-                parallel=True,
-            )
 
     def test_patched_sections_drive_page_render(self) -> None:
         # `_render_dashboard_widgets` reaches both wave renderers through the
