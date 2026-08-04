@@ -1265,8 +1265,6 @@ orchestrator/
     discovery.py        per-run filesystem skill discovery and codex tool
                         list, plus the skill roots and SKILL.md marker
                         `catalog.py` reads back
-  skill_catalog.py      temporary compatibility site re-exporting the skills
-                        owners under skills/
   stages/
     <stage>.py          temporary forwarder for each historical stage, reading
                         every name back off its owners under `workflow/stages/`
@@ -1546,9 +1544,8 @@ object, `tick` among them, which keeps `main._run_tick`'s `workflow.tick(...)` c
 it deliberately reaches back through the facade for is `_refresh_base_and_worktrees`: that is the seam the tick tests
 replace to drive a pass without a git remote or a clone, so `patch.object(workflow, ...)` stays the way to intercept
 it. The skill-catalog emission is named on its owner instead — the tick imports `orchestrator/skills/catalog.py`, so
-`patch.object(catalog, "_emit_repo_skill_catalog", ...)` is what intercepts that pass and nothing on the tick path
-loads the `skill_catalog.py` compatibility site. `workflow._emit_repo_skill_catalog` still resolves to the same
-owner object for historical callers.
+`patch.object(catalog, "_emit_repo_skill_catalog", ...)` is what intercepts that pass.
+`workflow._emit_repo_skill_catalog` still resolves to the same owner object for historical callers.
 
 Stage-private helpers stay private to the stage that owns them (`_bump_in_review_watermarks`,
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). A helper more than one stage reaches for is
@@ -1566,9 +1563,8 @@ nothing outside the standard library, and `catalog` reads them back so a git pat
 disagree about what a skill definition is. The initializer binds nothing and both live callers name an owner: the tick
 calls `catalog._emit_repo_skill_catalog`, and the analytics codex backfill calls `discovery.discover_local_skills` /
 `discover_codex_tools` — so a patch that has to intercept a run's offered skills or tools targets
-`orchestrator.skills.discovery` and not `skill_catalog`. That leaves root-level `skill_catalog.py` a temporary
-compatibility site: it re-exports those four names as the owners' own objects, nothing on the tick or analytics path
-imports it any more, and a check under `tests/skills/` holds the direction the package runs in — neither owner may
+`orchestrator.skills.discovery`, the module that defines them. No flat module sits beside the package: a check under
+`tests/skills/` asserts the package root carries none and holds the direction the package runs in — neither owner may
 reach the workflow engine, a stage, or an application entrypoint, because a catalog is observation the tick drives
 rather than state a handler consults.
 

@@ -14,10 +14,11 @@ roots and the ``SKILL.md`` marker that both scans are defined by live on
 disagree about what a skill definition is.
 
 Callers import the owner they need, so this initializer binds nothing: an
-importer of ``discovery`` pays for neither the analytics sink nor git.
-Neither owner may reach the workflow engine, a stage, or an application
-entrypoint -- a catalog is observation the tick drives, never state it
-consults, and the dependency runs one way.
-``orchestrator.skill_catalog`` stays the historical import site until the last
-caller names an owner here.
+importer of ``discovery`` pays for neither the analytics sink nor git. Both
+live callers name one -- the tick calls ``catalog._emit_repo_skill_catalog``
+and the analytics codex backfill calls ``discovery.discover_local_skills`` /
+``discover_codex_tools`` -- so a patch that has to intercept either scan
+targets the owner defining it. Neither owner may reach the workflow engine, a
+stage, or an application entrypoint -- a catalog is observation the tick
+drives, never state it consults, and the dependency runs one way.
 """
