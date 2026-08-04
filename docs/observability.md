@@ -1360,7 +1360,12 @@ reference for a caller reaching past the owners rather than a patch point any se
 resolves through.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports comes from
 `orchestrator/apps/bootstrap.py` (`ensure_repo_root_on_path`) for the canonical target; the two historical launch
-paths take the same shim from the import-light `orchestrator/script_launch.py`.
+paths take the same shim from the import-light `orchestrator/script_launch.py`. The same
+`tests/apps/test_analytics_dashboard_launch.py` reproduces both of the analytics page's launch shapes without
+installing Streamlit: each file executes with only its own directory on `sys.path` (Streamlit's shape, not the repo
+root's), a decoy `orchestrator` package sitting behind it on the path cannot answer for the real one, and a package
+import resolves its shim qualified — so a stray top-level `bootstrap`, `script_launch`, or
+`_dashboard_facade_bootstrap` is never probed.
 The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: cards,
 tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run/pipeline sections. The read, KPI-strip,
 and chart

@@ -405,7 +405,8 @@ an unmergeable PR.
   [audit event log](observability.md#audit-event-log-event_log_path).
 - `DASHBOARD_PARALLEL_READS` — default _(unset, off)_. opt-in switch for the Streamlit dashboard's parallel read
   fan-out. `1` / `true` / `on` / `yes` (case-insensitive) flips the dashboard's widget reads from sequential to a
-  `ThreadPoolExecutor` (eight workers). Parsed at dashboard import; the polling loop never reads it.
+  `ThreadPoolExecutor` (eight workers). Parsed once per Streamlit process, when the page's read-mode owner is first
+  imported; the polling loop never reads it.
 
 `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, `ANALYTICS_DB_URL`, `TRACK_SKILL_TRIGGERS`, `TRAJECTORY_LOG_PATH`, and
 `TRAJECTORY_RETENTION_DAYS` are parsed by `orchestrator/observability/analytics/config.py` and bound as attributes of
@@ -678,8 +679,8 @@ When each setting's change takes effect:
 - `ANALYTICS_DB_URL` — next `python -m orchestrator.observability.analytics.sync.cli` invocation, and next
   `streamlit run orchestrator/apps/analytics_dashboard.py` start (the dashboard reads it from the imported analytics
   module, so a browser reload is not enough — relaunch Streamlit). The polling loop does not read this setting.
-- `DASHBOARD_PARALLEL_READS` — next `streamlit run orchestrator/apps/analytics_dashboard.py` start. Parsed at
-  dashboard import.
+- `DASHBOARD_PARALLEL_READS` — next `streamlit run orchestrator/apps/analytics_dashboard.py` start. Parsed once per
+  process, on the first render's import of the read-mode owner.
 - `MAX_PARALLEL_ISSUES_PER_REPO`, `MAX_PARALLEL_ISSUES_GLOBAL` — next Python start. Per-`REPOS` `parallel_limit`
   overrides take precedence over `MAX_PARALLEL_ISSUES_PER_REPO`.
 - `WORKFLOW_TRANSITION_GUARD` — next Python start (parsed at config import).
