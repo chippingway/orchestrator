@@ -87,6 +87,8 @@ _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
 _WIDGET_HUB = "orchestrator.dashboard_widgets"
 
+_WIDGET_COSTS_LEAF = "orchestrator._dashboard_widget_costs"
+
 _WIDGET_MODELS_LEAF = "orchestrator._dashboard_widget_models"
 
 _WIDGET_RUNS_LEAF = "orchestrator._dashboard_widget_runs"
@@ -128,6 +130,8 @@ _FILTERS = f"{_PACKAGE}.filters"
 _FORMATTING = f"{_PACKAGE}.formatting"
 
 _INSIGHTS = f"{_PACKAGE}.insights"
+
+_ISSUE_COST_PANEL = f"{_PACKAGE}.issue_cost_panel"
 
 _ISSUE_TABLE = f"{_PACKAGE}.issue_table"
 
@@ -186,6 +190,8 @@ _SKILLS = f"{_PACKAGE}.skills"
 _SPARKLINE_HTML = f"{_PACKAGE}.sparkline_html"
 
 _SPARKLINE_POINTS = f"{_PACKAGE}.sparkline_points"
+
+_STAGE_COST_PANEL = f"{_PACKAGE}.stage_cost_panel"
 
 _STATIC_METADATA = f"{_PACKAGE}.static_metadata"
 
@@ -813,7 +819,7 @@ _HUB_SKILL_MATRIX_NAMES = (
 )
 
 # The notice a window with no `agent_exit` row is answered with, spelled once
-# because two owners under the package publish it under this one public name.
+# because three owners under the package publish it under this one public name.
 _NO_AGENT_EXITS = "NO_AGENT_EXITS_MESSAGE"
 
 # The two cards those three skill tables are reported on, and the caption the
@@ -878,13 +884,39 @@ _PAGE_STATE_NAMES = (
     ("_ReliabilityPanelData", _PAGE_MODELS, "ReliabilityPanelData"),
 )
 
-# What the widget hub above that leaf publishes on an owner's behalf: those
-# seven, and the Plotly defaults every figure the page draws is handed. A copy
-# of the defaults is a panel whose hover toolbar nobody switched off, and this
+# The two sections a window's spend is compared across, as the widget leaf
+# still publishes them: the paired lifecycle bars with the height both are
+# pinned to and the two measurements that height is built from, and the ranked
+# issues beside the backends that ran them, with the notice those backend cards
+# answer a window carrying no run with. The height is forwarded rather than
+# recomputed because a copy is two panels sized apart, which is the one thing
+# drawing them side by side exists to prevent.
+_COST_PANEL_NAMES = (
+    (_NO_AGENT_EXITS, _ISSUE_COST_PANEL, _NO_AGENT_EXITS),
+    ("_TABLE_BASE_HEIGHT", _STAGE_COST_PANEL, "TABLE_BASE_HEIGHT"),
+    ("_TABLE_ROW_HEIGHT", _STAGE_COST_PANEL, "TABLE_ROW_HEIGHT"),
+    ("_paired_bars_height", _STAGE_COST_PANEL, "paired_bars_height"),
+    (
+        "_render_issues_and_backends",
+        _ISSUE_COST_PANEL,
+        "render_issues_and_backends",
+    ),
+    (
+        "_render_stage_review_bars",
+        _STAGE_COST_PANEL,
+        "render_stage_review_bars",
+    ),
+)
+
+# What the widget hub above those leaves publishes on an owner's behalf: those
+# seven, the six the cost sections are drawn and sized by, and the Plotly
+# defaults every figure the page draws is handed. A copy of the defaults is a
+# panel whose hover toolbar nobody switched off, and this
 # is the alias the page renderers resolve them through at call time, so what a
 # test patches here and what the owner holds have to be one object.
 _WIDGET_HUB_NAMES = (
     *_PAGE_STATE_NAMES,
+    *_COST_PANEL_NAMES,
     ("PLOTLY_CONFIG", _RENDER_CONFIG, "PLOTLY_CONFIG"),
 )
 
@@ -1117,18 +1149,23 @@ _FORWARDED_MODULES = MappingProxyType({
     _WIDGET_USAGE_LEAF: _USAGE_PANEL_NAMES,
 })
 
-# The two sites that forward and still answer for something of their own. The
+# The three sites that forward and still answer for something of their own. The
 # widget leaf named for the run listing publishes the render a page draws the
 # expander with and the notice a window with no `agent_exit` row renders
 # instead, while still building the per-issue drill-down beneath that listing.
-# The widget hub above it publishes the page state and the Plotly defaults,
-# while still claiming the render passes it stamps. Both are held to resolving
-# what they forward rather than to defining nothing.
+# The one named for the cost sections publishes both comparison panels and what
+# they are sized and answered by, while still drawing the repository-spend and
+# reliability pair and the activity heatmap beneath them.
+# The widget hub above them publishes the page state, those cost sections, and
+# the Plotly defaults,
+# while still claiming the render passes it stamps. All three are held to
+# resolving what they forward rather than to defining nothing.
 _PARTLY_FORWARDED_MODULES = MappingProxyType({
     _WIDGET_RUNS_LEAF: (
         (_NO_AGENT_EXITS, _RECENT_RUNS, _NO_AGENT_EXITS),
         ("_render_recent_runs", _RECENT_RUNS, "render_recent_runs"),
     ),
+    _WIDGET_COSTS_LEAF: _COST_PANEL_NAMES,
     _WIDGET_HUB: _WIDGET_HUB_NAMES,
 })
 

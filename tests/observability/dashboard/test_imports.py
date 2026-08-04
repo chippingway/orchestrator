@@ -42,6 +42,8 @@ _FORMATTING_OWNER = "formatting"
 
 _INSIGHTS_OWNER = "insights"
 
+_ISSUE_COST_PANEL_OWNER = "issue_cost_panel"
+
 _ISSUE_TABLE_OWNER = "issue_table"
 
 _KPIS_OWNER = "kpis"
@@ -100,6 +102,8 @@ _SPARKLINE_HTML_OWNER = "sparkline_html"
 
 _SPARKLINE_POINTS_OWNER = "sparkline_points"
 
+_STAGE_COST_PANEL_OWNER = "stage_cost_panel"
+
 _STATIC_METADATA_OWNER = "static_metadata"
 
 _SUMMARY_HTML_OWNER = "summary_html"
@@ -129,6 +133,7 @@ _OWNERS = (
     _FILTERS_OWNER,
     _FORMATTING_OWNER,
     _INSIGHTS_OWNER,
+    _ISSUE_COST_PANEL_OWNER,
     _ISSUE_TABLE_OWNER,
     _KPIS_OWNER,
     _KPI_SERIES_OWNER,
@@ -158,6 +163,7 @@ _OWNERS = (
     _SKILLS_OWNER,
     _SPARKLINE_HTML_OWNER,
     _SPARKLINE_POINTS_OWNER,
+    _STAGE_COST_PANEL_OWNER,
     _STATIC_METADATA_OWNER,
     _SUMMARY_HTML_OWNER,
     _TABLES_OWNER,
@@ -192,7 +198,9 @@ _OWNERS = (
 # panel those cells are sorted into, draw the card the adoption one leads and
 # the two invocation views fold under together with the caption that names what
 # a quiet window did record, draw the trigger-rate card a caller reaching past
-# that one still gets, weigh
+# that one still gets, pair the lifecycle bars a window's spend is split across
+# at the one height both are drawn at, rank that window's issues beside the
+# backends that ran them, weigh
 # one backend's spend against the
 # tokens and runs behind it, size a window's
 # priced share into one bar, read one of the runs under all of them back as
@@ -220,7 +228,10 @@ _OWNERS = (
 # columns the issue table is headed by and the rules its bars and pills are
 # painted from, the columns and rate-bar rules the skill-trigger table beside it
 # is drawn with together with the label it reads a category the sink left empty
-# under, the nine columns the adoption table is read across and the seven the
+# under, the row and base measurements the paired lifecycle bars are sized from
+# and the notice the backend cards beside that ranking answer a window with no
+# run with,
+# the nine columns the adoption table is read across and the seven the
 # trigger matrix is, each with the two query parameters its headings write and
 # the counts among them a first click sorts down, the rules either scopes to
 # its own class and the notice each renders in place of a table, the notice the
@@ -305,6 +316,7 @@ _SURFACES = MappingProxyType({
         "fmt_tokens",
     ),
     _INSIGHTS_OWNER: ("InsightBanner", "compute_insights"),
+    _ISSUE_COST_PANEL_OWNER: ("render_issues_and_backends",),
     _ISSUE_TABLE_OWNER: (
         "IssueRowView",
         "issue_row_view",
@@ -449,6 +461,10 @@ _SURFACES = MappingProxyType({
         "sparkline_step",
         "sparkline_y",
     ),
+    _STAGE_COST_PANEL_OWNER: (
+        "paired_bars_height",
+        "render_stage_review_bars",
+    ),
     _STATIC_METADATA_OWNER: (
         "read_data_extent",
         "read_filter_options",
@@ -498,9 +514,10 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
-# all but the KPI one, the four widget leaves the skill panels, the run
-# listing, the hero usage card, and the page state are reached through, which
-# sit under the widget hub instead, and the
+# all but the KPI one, the five widget leaves the skill panels, the two
+# cost-comparison panels, the run listing, the hero usage card, and the page
+# state are reached through, which sit under the widget
+# hub instead, and the
 # two the filter bar is reached through, which sit under no hub at all.
 # No owner here may plant one
 # -- that is what keeps the forwarding one-directional and the flat modules
@@ -538,6 +555,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_state_constants",
     "orchestrator._dashboard_summary_html",
     "orchestrator._dashboard_table_html",
+    "orchestrator._dashboard_widget_costs",
     "orchestrator._dashboard_widget_models",
     "orchestrator._dashboard_widget_runs",
     "orchestrator._dashboard_widget_skills",
@@ -574,13 +592,21 @@ _COMPATIBILITY_SITES = (
 # above all three of those tables are handed a window's worth of each -- the
 # per-backend and per-cost-source rows the two card owners weigh and size, and
 # the run rows the listing under all of them is projected from -- are the rows
-# those reads hand back. The page-state owner names two of those result
+# those reads hand back. The two cost-comparison panels are handed four of
+# those row families for the same reason and issue no read of their own: each
+# is what the section it draws is typed against, and what it draws that section
+# with -- a header, a ranking, a table, a card, a bar, a figure -- is the
+# sibling owner that already decided it, down to the toolbar every figure is
+# configured by.
+# The page-state owner names two of those result
 # families for the same reason without issuing a read of its own: the extent a
 # page opened on and the window totals a comparison panel reports are what the
 # shapes it threads are typed against. One sibling is a package rather than a
-# module: the card a figure is drawn inside names the chart family that builds
-# it, since a panel is the card and the figure together and a handle passed in
-# would let the two be assembled from different families.
+# module: the two owners that draw a figure inside a card name the chart
+# families that build it -- the hero card one, the paired lifecycle bars two --
+# since a panel is the card and the figure together and a handle passed in
+# would let them be assembled from different families, which for a pairing
+# pinned to one shared height is two panels measured apart.
 _PERMITTED_PREFIXES = ("orchestrator.observability", "orchestrator._package")
 
 # The driver the reads behind these windows are issued over. Nothing here

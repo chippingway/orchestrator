@@ -597,6 +597,11 @@ orchestrator/
                         the per-issue drill-down, plus the historical import
                         site for the run listing above it, forwarding to the
                         recent-runs owner
+  _dashboard_widget_costs.py
+                        the repository-spend, reliability, and activity cards,
+                        plus the historical import site for the two
+                        cost-comparison sections above them, forwarding to the
+                        two cost-panel owners
   _dashboard_widget_usage.py
                         historical import site for the hero spend and
                         token-usage card, its stack toggle, and the per-day
@@ -1043,6 +1048,18 @@ orchestrator/
                         sized by token volume wherever there is any and by run
                         count where there is none, drawn as one bar and the
                         legend beneath it
+      stage_cost_panel.py
+                        the paired lifecycle bars a window's spend is split
+                        across: the 7:5 columns the stage and review-round
+                        figures are laid out in, and the one height both are
+                        pinned to together with the row and base measurement it
+                        is built from
+      issue_cost_panel.py
+                        the ranking beneath those bars and the backends beside
+                        it: the columns a window's costliest issues and its
+                        per-backend cards are split into, the coverage bar that
+                        closes the second, and the two notices an unpriced
+                        window and a window with no run at all are answered with
       render_config.py  the Plotly configuration every one of those figures is
                         handed: the hover toolbar switched off once for the
                         whole page rather than per call site
@@ -2169,6 +2186,31 @@ naming a width the bar above it does not have. Both owners take the theme as a p
 here is handed one: a page resolves a single theme object and passes it down, so a card is tinted and set from what
 the chrome and charts around it were.
 
+`stage_cost_panel.py` and `issue_cost_panel.py` are the two sections a window's spend is compared across, and each is
+a pair of columns rather than a panel: the money is only readable as an answer once two cuts of it sit beside each
+other. The first pairs the two lifecycle axes — which stage of an issue's life the spend landed in, and which review
+cycle it landed in — and pins both figures to one height, taken off whichever of the two reads came back with more
+buckets. That is the decision the pairing exists for: a horizontal bar family sizes itself by its own row count, so
+two panels left to size themselves stand at different heights the moment one axis is longer, and an operator
+comparing spend across the gutter would be comparing bars of two different thicknesses. The columns are split 7:5
+rather than evenly because the stage axis carries the wider vocabulary — a full stage name needs room a round bucket,
+which is a digit or `6+`, does not.
+
+The second pairs the work with the agent that did it: the window's costliest issues ranked on the left, one
+efficiency card per backend on the right, so an expensive issue and whether the backend behind it is expensive per
+run or merely busy are one glance apart. The coverage bar closes that right column rather than standing on its own,
+because it is the qualification on the money the cards above it report — what share of the window's spend the parser
+could price at all — and it is drawn only where the window carries that split, since a bar with nothing to divide
+would claim a reading no row supports. The two columns render different empty states for the same reason they are
+paired: a window can carry runs the parser could not price, so the ranking says no run in it had a recorded cost,
+while the cards beside it are drawn from `agent_exit` rows directly and their absence is the window having no run to
+report. Streamlit and the theme are the caller's, handed in as parameters, so neither owner names either. Everything
+each section is assembled out of it names itself: the header above a column, the ranking, table, card, and bar inside
+one, and — for the bars — the two figure builders in `charts/cost_stage.py` and `charts/cost_review.py`, since a
+panel is the card and the figure together and a builder handed down would let a pairing whose whole point is one
+shared height be drawn by two families that measure it differently. The Plotly configuration is the exception both
+reach for at call time rather than bind, off the owner below.
+
 `render_config.py` holds the one thing every figure below is handed alongside itself: the Plotly configuration the
 page draws each of them under. It is one mapping rather than a keyword spelled at each `st.plotly_chart`, because a
 hover toolbar switched off in every panel but one is chrome over exactly the card nobody remembered. What it switches
@@ -2329,7 +2371,8 @@ figure. That is what leaves the whole usage path clear of the optional group: no
 `dashboard_charts_usage.py` down through the flat sites to these five owners names Plotly at module scope, and neither
 does the `usage_panel.py` card that names this owner directly — which is the route the page itself takes — so every
 surface the hero figure is reached through imports in the default install. Nothing on the cost, heatmap, or
-throughput paths names it at load either, so no flat chart module pulls it in.
+throughput paths names it at load either, so no flat chart module pulls it in — nor does the `stage_cost_panel.py`
+card that names two of the cost owners directly, the way the hero card names the usage one.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
 names `analytics/config.py` for the URL it refuses without, the scope owner names the connection cache it checks a
@@ -2348,13 +2391,16 @@ name
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
 column set alone and so names nothing outside — and the two cards those panels are reported on name it as well, for
 the cohort rows and matrix cells both are handed and the adoption cells only the first is, while the run listing
-beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects, the hero card above
+beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects, the two
+cost-comparison sections name `analytics/query/cost_models.py` and `analytics/query/run_models.py` between them — the
+paired bars for the stage and review-round rows they are drawn from, the ranking beside them for the issue rows it
+cuts and the per-backend and per-cost-source rows the cards and the bar in its other column are — the hero card above
 all of them names `analytics/query/activity_models.py` for the per-backend daily rows it totals and
 `analytics/query/overview_models.py` for the series it hands its figure, and the page-state
 owner names `analytics/query/overview_models.py` without issuing a read of its own, for the extent a page opened on
 and the window totals a comparison panel reports; those
 are the only things
-any of the forty-three reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the forty-five reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from — as do the two the filter bar is
 drawn out of, which take the presets they offer and the window they resolve from that window owner and each other, and
 are handed Streamlit rather than importing it — the table markup reaches not one of
@@ -2366,11 +2412,13 @@ markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
 its own beside those query families -- the KPI owner whose ranking depth its spend table is cut to -- and the strip
 owner names two: the series owner whose lines it draws under three of its tiles, and that same KPI owner, for the
-delta a tile is annotated with and the rework share one of them reports. The hero card is the one that reaches a
-sibling a directory down: every other section drawing a figure is handed the chart hub as a parameter and calls a
-builder off it, while this one names `charts/usage.py` for the figure it draws, beside the card markup it is headed by
-and the Plotly configuration it hands that figure — so a panel is the card and the figure together rather than two
-halves a caller pairs up, and the three cannot be assembled from different owners than the panels beside it use.
+delta a tile is annotated with and the rework share one of them reports. Two panels reach a sibling a directory down
+for the figure inside them: the hero card names `charts/usage.py`, and the paired lifecycle bars name
+`charts/cost_stage.py` and `charts/cost_review.py` — each beside the card markup it is headed by and the Plotly
+configuration it hands that figure, so a panel is the card and the figure together rather than two halves a caller
+pairs up, and neither is titled, drawn, or configured out of a different owner than the panels beside it use. The
+sections still handed the chart hub as a parameter and calling a builder off it are the three the flat widget leaf
+draws: repository spend, reliability and throughput, and the activity heatmap.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
 the hub the whole read inventory is resolved through, and the ten flat leaves beneath them —
@@ -2438,14 +2486,19 @@ the private spellings the page always imported them by, plus the notice the seco
 with, under its own public one. `_dashboard_widget_runs.py` forwards the same way without being one of these sites
 outright: the run listing and the notice a window with no `agent_exit` row renders are the recent-runs owner's own
 objects under the private spelling the page always imported them by, while the per-issue drill-down beneath that
-listing is still built there. `_dashboard_widget_models.py` is the third, defining nothing and forwarding the seven
+listing is still built there. `_dashboard_widget_costs.py` is the third of that kind: the paired lifecycle bars, the
+height both are pinned to and the row and base measurement behind it, the ranked issues beside the backend cards, and
+the notice those cards answer a window with no run with are the two cost-panel owners' objects — the notice under
+its own public spelling and the rest under the private ones the page always imported them by — while the
+repository-spend and reliability pair and the activity heatmap beneath them are still drawn there.
+`_dashboard_widget_models.py` is the fourth, defining nothing and forwarding the seven
 shapes a render is threaded through to the page-state owner under the private spellings the pipeline always imported
-them by. `_dashboard_widget_usage.py` is the fourth, defining nothing either and forwarding the hero card, the label
+them by. `_dashboard_widget_usage.py` is the fifth, defining nothing either and forwarding the hero card, the label
 and index its stack toggle offers a mode by, and the per-day per-backend totals behind that stack to the usage-panel
 owner. The
-widget hub above all four republishes those eighteen and the Plotly configuration it reads straight off the
+widget hub above all five republishes those twenty-four and the Plotly configuration it reads straight off the
 render-config owner, and claims none of them, since the `__module__` stamp mutates the object and a claim there would
-move an owner's own render or shape off the owner that defines it.
+move an owner's own render, measurement, or shape off the owner that defines it.
 `dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
 are the charts owner's objects under the private spellings they were always imported by. Every chart family now names
