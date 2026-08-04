@@ -216,7 +216,7 @@ class FixingPostFeedbackRoutingTest(unittest.TestCase, _FixingFixtureMixin):
         # past the watermark. The rescan filters orchestrator-authored
         # comments (by recorded id AND by hidden body marker) so a HITL
         # ping does not re-trigger a dev resume.
-        from orchestrator.workflow_messages import _ORCH_COMMENT_MARKER
+        from orchestrator.workflow.engine.comments import _ORCH_COMMENT_MARKER
 
         orch_comment = FakeComment(
             id=ORCHESTRATOR_PARK_COMMENT_ID,
