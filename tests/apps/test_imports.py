@@ -16,24 +16,44 @@ _PACKAGE = f"{_ORCHESTRATOR}.apps"
 
 _BOOTSTRAP = f"{_PACKAGE}.bootstrap"
 
-_APP = f"{_PACKAGE}.trajectory_dashboard"
+_ANALYTICS_APP = f"{_PACKAGE}.analytics_dashboard"
+
+_TRAJECTORY_APP = f"{_PACKAGE}.trajectory_dashboard"
+
+_APPS = (_ANALYTICS_APP, _TRAJECTORY_APP)
 
 # The declared inventory. A new app is a deliberate edit here and a paragraph
 # in the package's own map, which is what the inventory check compares the
 # directory against.
-_MODULES = (_BOOTSTRAP, _APP)
+_MODULES = (_BOOTSTRAP, *_APPS)
 
-# The launch path an operator's shell history already carries, kept beside the
-# canonical one because both have to answer for the same page.
-_LEGACY = f"{_ORCHESTRATOR}.trajectory_dashboard"
+# Each app paired with the launch path an operator's shell history already
+# carries, kept beside it because both have to answer for the same page.
+_LAUNCH_PAIRS = (
+    (_ANALYTICS_APP, f"{_ORCHESTRATOR}.dashboard"),
+    (_TRAJECTORY_APP, f"{_ORCHESTRATOR}.trajectory_dashboard"),
+)
 
-# What `import orchestrator` alone plants, so the cost check can hold the app
+# The historical import site the analytics facade resolves the page's own
+# composition through, and every spelling it answers for.
+_RUNTIME_LEAF = f"{_ORCHESTRATOR}._dashboard_runtime"
+
+_RUNTIME_NAMES = (
+    ("main", "main"),
+    ("_configure_dashboard", "configure_dashboard"),
+    ("_load_dashboard_modules", "load_dashboard_modules"),
+    ("_render_dashboard", "render_dashboard"),
+    ("_run_dashboard", "run_dashboard"),
+    ("_stop_if_dashboard_unconfigured", "stop_if_dashboard_unconfigured"),
+)
+
+# What `import orchestrator` alone plants, so the cost check can hold each app
 # to its own chain and nothing besides.
 _ROOT_MODULES = (_ORCHESTRATOR, f"{_ORCHESTRATOR}._package_exports")
 
-# The optional dependency group neither launch path may cost at import: it is
-# what the function-local imports inside `main()` exist for.
-_VIEWER_GROUP = ("pandas", "plotly", "streamlit")
+# The optional dependency group no launch path may cost at import: it is what
+# the function-local imports inside the page's passes exist for.
+_DASHBOARD_GROUP = ("pandas", "plotly", "streamlit")
 
 _PROBE = """
 import sys
@@ -85,33 +105,49 @@ class AppInventoryTest(unittest.TestCase):
 class AppImportCostTest(unittest.TestCase):
     """Naming a launch path costs the shim, never the page behind it."""
 
-    def test_the_app_plants_only_its_own_chain(self) -> None:
-        # Every owner the page composes is imported inside `main()`, because
-        # under a script launch the repo root only reaches `sys.path` on the
-        # line above the entry function. Holding the cost to the shim is what
-        # keeps that ordering from being undone by a tidy-looking hoist.
-        planted = _planted(_APP)
-        self.assertEqual(
-            tuple(sorted(
-                name for name in planted
-                if name.startswith(_ORCHESTRATOR)
-            )),
-            (*_ROOT_MODULES, _PACKAGE, _BOOTSTRAP, _APP),
-        )
+    def test_each_app_plants_only_its_own_chain(self) -> None:
+        # Every owner a page composes is imported inside the pass that reaches
+        # it, because under a script launch the repo root only reaches
+        # `sys.path` on the line above them. Holding the cost to the shim is
+        # what keeps that ordering from being undone by a tidy-looking hoist.
+        for app in _APPS:
+            with self.subTest(app=app):
+                planted = _planted(app)
+                self.assertEqual(
+                    tuple(sorted(
+                        name for name in planted
+                        if name.startswith(_ORCHESTRATOR)
+                    )),
+                    tuple(sorted((*_ROOT_MODULES, _PACKAGE, _BOOTSTRAP, app))),
+                )
 
-    def test_neither_path_costs_the_viewer_group(self) -> None:
-        for module in (_APP, _LEGACY):
+    def test_no_path_costs_the_dashboard_group(self) -> None:
+        for module in (*_APPS, *(legacy for _, legacy in _LAUNCH_PAIRS)):
             planted = _planted(module)
-            for dependency in _VIEWER_GROUP:
+            for dependency in _DASHBOARD_GROUP:
                 with self.subTest(module=module, dependency=dependency):
                     self.assertNotIn(dependency, planted)
 
 
 class LegacyForwardingTest(unittest.TestCase):
-    """The historical launch path hands back the app's own entry point."""
+    """The historical launch paths hand back the apps' own compositions."""
 
-    def test_the_facade_main_is_the_app_s_own(self) -> None:
-        self.assertIs(import_module(_LEGACY).main, import_module(_APP).main)
+    def test_each_facade_main_is_its_app_s_own(self) -> None:
+        for app, legacy in _LAUNCH_PAIRS:
+            with self.subTest(app=app):
+                self.assertIs(
+                    import_module(legacy).main, import_module(app).main,
+                )
+
+    def test_the_leaf_republishes_the_app_s_passes(self) -> None:
+        # The analytics facade resolves the page's composition through this
+        # leaf, so a copy on it is where the page an operator launches and the
+        # page a historical caller drives would start to differ.
+        leaf = import_module(_RUNTIME_LEAF)
+        app = import_module(_ANALYTICS_APP)
+        for historical, owned in _RUNTIME_NAMES:
+            with self.subTest(name=historical):
+                self.assertIs(getattr(leaf, historical), getattr(app, owned))
 
 
 if __name__ == "__main__":

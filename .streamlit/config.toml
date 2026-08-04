@@ -1,11 +1,12 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
 #
-# Streamlit theme + server defaults for `orchestrator/dashboard.py`.
+# Streamlit theme + server defaults for the analytics page at
+# `orchestrator/apps/analytics_dashboard.py`.
 #
 # Streamlit auto-loads `.streamlit/config.toml` from the working
-# directory when `streamlit run orchestrator/dashboard.py` is launched
-# from the repo root. The `[theme]` values mirror the tokens exposed
+# directory when `streamlit run orchestrator/apps/analytics_dashboard.py`
+# is launched from the repo root. The `[theme]` values mirror the tokens exposed
 # from `orchestrator/dashboard_theme.py` so Plotly figures (which
 # render through the theme module) share a palette with the surrounding
 # Streamlit chrome. Anything custom that the Plotly figures need lives

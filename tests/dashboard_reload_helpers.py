@@ -18,6 +18,7 @@ TOKEN_FILE_ENV = "ORCHESTRATOR_TOKEN_FILE"
 MISSING_TOKEN_FILE = "/tmp/agent-orchestrator-token-missing"
 ANALYTICS_READ_MODULE = "orchestrator.analytics.read"
 DASHBOARD_MODULE = "orchestrator.dashboard"
+WIDGETS_MODULE = "orchestrator.dashboard_widgets"
 THEME_MODULE = "orchestrator.dashboard_theme"
 DASHBOARD_OWNERS = "orchestrator.observability.dashboard"
 READ_MODE_ATTRIBUTE = "read_mode"
@@ -34,7 +35,7 @@ _RELOAD_POP_MODULES = (
     "orchestrator.dashboard_skill_adoption",
     "orchestrator.dashboard_skill_matrix",
     "orchestrator.dashboard_reads",
-    "orchestrator.dashboard_widgets",
+    WIDGETS_MODULE,
     DASHBOARD_MODULE,
 )
 
@@ -78,6 +79,13 @@ def reload_dashboard(
     The returned pair is the hermetic reload; `orchestrator.config` is put back
     so a later test that first imports a module binding it still binds the same
     object every earlier importer holds.
+
+    The widget surface is named here rather than left to the facade's own
+    import, and named after it. The page's composition reaches each owner
+    inside the pass that draws with it, so importing the facade plants none of
+    the flat hubs -- and its bootstrap evicts them on the way in, so a hub
+    imported before it would be dropped again and a caller reading one back
+    off `sys.modules` would find nothing there at all.
     """
     with restored_import_world():
         with patch.dict(os.environ, hermetic_environment(environment), clear=True):
@@ -86,6 +94,7 @@ def reload_dashboard(
             _rebuild_read_mode_owner()
             analytics = importlib.import_module("orchestrator.analytics")
             dashboard = importlib.import_module(DASHBOARD_MODULE)
+            importlib.import_module(WIDGETS_MODULE)
     return analytics, dashboard
 
 

@@ -92,9 +92,8 @@ read, record parse, run models, and the filtering and summary aggregation over t
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
 composition one run of it is driven by (`trajectory_viewer/`), and the packages the rest of the analytics sink,
 the dashboard, and the trajectory viewer are each migrating into; until a responsibility has an owner in that tree,
-the module named for it below stays the import site. The page that composes those viewer owners is not one of them:
-it sits beside the tree, at `orchestrator/apps/trajectory_dashboard.py`, and the analytics page is still started at
-`orchestrator/dashboard.py`. See
+the module named for it below stays the import site. Neither page that composes those owners is one of them: both sit
+beside the tree, at `orchestrator/apps/analytics_dashboard.py` and `orchestrator/apps/trajectory_dashboard.py`. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -378,7 +377,8 @@ panel), which counts, for each `(repo, role, backend, skill)` cell, how many log
 available and how many loaded it — an incidental `SKILL.md` reference stays a separate diagnostic column and never
 raises the rate. The invocation-level views (`get_skill_trigger_rates` and `get_skill_trigger_matrix`) sit
 beneath it as a clearly named invocation-level diagnostic — see the
-[read model](#read-model-orchestratoranalyticsreadpy) and [dashboard](#dashboard-orchestratordashboardpy) sections
+[read model](#read-model-orchestratoranalyticsreadpy) and
+[dashboard](#dashboard-orchestratorappsanalytics_dashboardpy) sections
 below. All are pure read-side additions over `extras JSONB` with no schema change. See
 [Session-aware skill adoption](#session-aware-skill-adoption) for the four evidence forms and the per-session adoption
 semantics that sit on top of these fields.
@@ -453,7 +453,7 @@ used for ordering and context, not a displayed column. A pre-window load counts 
 the three, since all three are window-scoped. The collapsed invocation-level diagnostic beneath the adoption table
 (`get_skill_trigger_rates` / `get_skill_trigger_matrix`) reports the same per-run granularity across roles / backends
 and per-skill cohorts. See the [read model](#read-model-orchestratoranalyticsreadpy) for the exact query shapes and the
-[dashboard](#dashboard-orchestratordashboardpy) for the rendered columns.
+[dashboard](#dashboard-orchestratorappsanalytics_dashboardpy) for the rendered columns.
 
 ### `repo_skill_catalog` records
 
@@ -598,7 +598,8 @@ path, create/rename or `copytruncate` rotation is safe between writes.
 
 **Local filesystem only.** A trajectory record is never written to `ANALYTICS_LOG_PATH`, never replayed into Postgres by
 `analytics.sync` (the sync only reads `ANALYTICS_LOG_PATH`), and never surfaced in the **analytics** dashboard
-(`orchestrator/dashboard.py`), which renders only the Postgres rollup. The sink is one JSONL file on local disk; the
+(`orchestrator/apps/analytics_dashboard.py`), which renders only the Postgres rollup. The sink is one JSONL file on
+local disk; the
 only reader is the dedicated trajectory viewer below, which reads that file straight off disk.
 
 **Observation-only, like every surface here.** The polling tick never reads the trajectory file back and no dispatch
@@ -1292,19 +1293,23 @@ selects on it regardless of which module the close lives in.
 The read model is deliberately separate from the sync: `observability/analytics/sync/` owns the JSONL → Postgres write
 path, while reads have a different error story and injection shape.
 
-### Dashboard (`orchestrator/dashboard.py`)
+### Dashboard (`orchestrator/apps/analytics_dashboard.py`)
 
 Streamlit app over the read model. Opt-in via the `dashboard` dependency group so the default `uv sync --locked` keeps
 installing only the polling runtime plus `pytest`, `ruff`, and `wemake-python-styleguide`. Streamlit (and its transitive
-pandas), `plotly`, the Plotly figure builders in `orchestrator/dashboard_charts.py`, and the plotly-free theme reached
-through `orchestrator/dashboard_theme.py` are imported lazily inside `main()` — importing `orchestrator.dashboard` from
-a test or non-dashboard caller does not require the group to be installed. A regression-guard test in
-`tests/test_dashboard.py` asserts that loading `orchestrator.dashboard` keeps `streamlit`, `pandas`, `plotly`, and
+pandas), `plotly`, the Plotly figure builders in `orchestrator/dashboard_charts.py`, the plotly-free theme reached
+through `orchestrator/dashboard_theme.py`, and every dashboard owner the page composes are imported inside the pass
+that reaches them — importing either launch path from a test or non-dashboard caller does not require the group to be
+installed. A regression-guard test in `tests/apps/test_analytics_dashboard_launch.py` asserts that loading
+`orchestrator.apps.analytics_dashboard` or `orchestrator.dashboard` keeps `streamlit`, `pandas`, `plotly`, and
 `orchestrator.dashboard_charts` out of `sys.modules`.
 
-**Module layout.** `orchestrator/dashboard.py` is a manifest-backed lazy compatibility facade with a complete
-`dashboard.pyi`. `_dashboard_facade_bootstrap.py` owns both package import and direct-script setup, while
-`_dashboard_runtime.py` owns page orchestration, with the two
+**Module layout.** `orchestrator/apps/analytics_dashboard.py` is the canonical `streamlit run` target and the whole
+page composition: the entrypoint, the four handles every pass draws with, the chrome, the unconfigured-database
+refusal, the pass that opens the page on the two reads no filter narrows, and the one that draws the window they
+allow. `orchestrator/dashboard.py` stays the historical launch path and a manifest-backed lazy compatibility facade
+with a complete `dashboard.pyi`; `_dashboard_facade_bootstrap.py` owns both its package import and its direct-script
+setup, and `_dashboard_runtime.py` republishes the app's own passes, with the two
 date leaves, the page-controls one, the widget-pipeline one, and the drill-down one beside them forwarding to the
 owners the filter bar, the
 band above the panels, the two-wave render, and the per-issue trace live
@@ -1353,9 +1358,9 @@ the Plotly defaults it hands that figure are that owner's own module-scope impor
 a facade lookup. That leaves every `dashboard.<name>` render alias — and `PLOTLY_CONFIG` beside them — a republished
 reference for a caller reaching past the owners rather than a patch point any section
 resolves through.
-The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
-into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
-`orchestrator/trajectory_dashboard.py` also calls.
+The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports comes from
+`orchestrator/apps/bootstrap.py` (`ensure_repo_root_on_path`) for the canonical target; the two historical launch
+paths take the same shim from the import-light `orchestrator/script_launch.py`.
 The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: cards,
 tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run/pipeline sections. The read, KPI-strip,
 and chart
@@ -1604,7 +1609,7 @@ owners) is passed in as a parameter.
 
 ```sh
 uv sync --group dashboard                                  # install streamlit + plotly alongside the runtime + dev deps
-uv run streamlit run orchestrator/dashboard.py             # launches a local browser tab
+uv run streamlit run orchestrator/apps/analytics_dashboard.py   # launches a local browser tab
 ```
 
 **Page chrome.** A sticky topbar carries the page title with the data extent / repo / event summary on the left and the
@@ -1919,8 +1924,8 @@ as a labeled banner.
 
 - `` `ANALYTICS_DB_URL` is not configured. … `` (top-level `st.warning`, app stops) — *env* — `ANALYTICS_DB_URL`
   is unset, empty, or set to `off` / `disabled` / `none`. Set it in `.env` and **relaunch** `streamlit run
-  orchestrator/dashboard.py` (the dashboard reads the URL from the imported analytics module at startup, so a browser
-  reload alone will not pick up the new value).
+  orchestrator/apps/analytics_dashboard.py` (the dashboard reads the URL from the imported analytics module at startup,
+  so a browser reload alone will not pick up the new value).
 - `Could not load analytics filter options: …` (top-level `st.error`, app stops) — *DB connectivity* — The
   dashboard could not reach Postgres at startup. Confirm `docker compose ps` shows `analytics-db` healthy, that the host
   / port / credentials in `ANALYTICS_DB_URL` match `analytics-db/.env`, and that the user can connect with `psql`.

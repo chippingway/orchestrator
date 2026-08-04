@@ -32,10 +32,12 @@ holding one of its own:
 No module on any of those paths imports Plotly at module load: an owner
 reaches it inside the call that builds its figure, so importing one costs
 nothing in the default install. The lazy ``import`` inside
-``orchestrator.dashboard.main`` is still the only route to this hub (see the
-lazy-import guard in ``tests/test_dashboard.py``): the orchestrator polling
-tick must not import this module, and ``orchestrator/dashboard.py`` must not
-import it at module load -- both invariants are enforced by tests.
+``orchestrator.apps.analytics_dashboard.load_dashboard_modules`` is the only
+route to this hub (see the lazy-import guard in
+``tests/apps/test_analytics_dashboard_launch.py``): the orchestrator polling
+tick must not import this module, and neither the canonical app nor the
+historical ``orchestrator/dashboard.py`` launch path may import it at module
+load -- both invariants are enforced by tests.
 """
 from __future__ import annotations
 
