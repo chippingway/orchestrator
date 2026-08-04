@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Inventory, layering, and forwarding checks for the skill owners."""
+"""Inventory, layering, and call-site checks for the skill owners."""
 from __future__ import annotations
 
 import subprocess
@@ -13,15 +13,12 @@ from unittest.mock import patch
 
 from orchestrator import (
     _workflow_export_manifest,
-    skill_catalog as _facade,
     skills as _package,
     workflow as _workflow,
 )
 
 
 _PACKAGE = "orchestrator.skills"
-
-_FACADE = "orchestrator.skill_catalog"
 
 _CATALOG_OWNER = "catalog"
 
@@ -38,19 +35,17 @@ _OWNER_MODULES = MappingProxyType({
     owner: import_module(f"{_PACKAGE}.{owner}") for owner in _OWNERS
 })
 
-# What the compatibility site forwards, grouped by the owner defining it: the
-# per-tick producer the workflow facade still exports, and the two per-run codex
-# collectors with the baseline one of them answers with.
-_FORWARDED = MappingProxyType({
-    _CATALOG_OWNER: ("_emit_repo_skill_catalog",),
-    _DISCOVERY_OWNER: (
-        "_CODEX_OFFERED_TOOLS",
-        "discover_codex_tools",
-        "discover_local_skills",
-    ),
-})
-
 _EMIT_CATALOG = "_emit_repo_skill_catalog"
+
+# What a live caller reaches each owner for: the per-tick producer the workflow
+# facade still exports, and the two per-run codex collectors. `__module__` is
+# what holds them here, so the offered-tools baseline `discover_codex_tools`
+# answers with -- a plain tuple carrying no stamp -- is pinned by
+# `tests/skills/test_discovery.py` instead.
+_OWNED_CALLABLES = MappingProxyType({
+    _CATALOG_OWNER: (_EMIT_CATALOG,),
+    _DISCOVERY_OWNER: ("discover_codex_tools", "discover_local_skills"),
+})
 
 # The one pass that drives the catalog owner, and the only workflow module that
 # names it.
@@ -79,9 +74,8 @@ _ROOT_PACKAGE_MODULES = frozenset((
 
 _RESOLVER_HOOKS = ("__dir__", "__getattr__")
 
-# The compatibility site's own inventory tuple and the feature flag
-# `from __future__ import annotations` binds are not names it forwards.
-_UNFORWARDED_BINDINGS = frozenset(("_COMPATIBILITY_EXPORTS", "annotations"))
+# Every flat spelling a scan could still be reached through beside the package.
+_FLAT_MODULE_PATTERNS = ("_local_skills*.py", "skill_catalog*.py")
 
 _PROBE_PATH = Path("/tmp/orchestrator-skills-owner-probe")
 
@@ -114,7 +108,7 @@ def _imported_orchestrator_modules(module: str) -> frozenset[str]:
 
 
 class CleanProcessImportTest(unittest.TestCase):
-    """The package, each owner, and the site left behind all import alone.
+    """The package and each owner import alone.
 
     A subprocess per module gives each one a `sys.modules` no earlier import
     has populated, which is the only place a cycle shows up at all: the
@@ -125,7 +119,7 @@ class CleanProcessImportTest(unittest.TestCase):
 
     def test_each_module_imports_standalone(self) -> None:
         owners = (module.__name__ for module in _OWNER_MODULES.values())
-        for module_name in (_PACKAGE, _FACADE, *owners):
+        for module_name in (_PACKAGE, *owners):
             with self.subTest(module=module_name):
                 completed = subprocess.run(
                     [sys.executable, "-c", f"import {module_name}"],
@@ -157,15 +151,6 @@ class LayeringTest(unittest.TestCase):
                         imported.startswith(_FORBIDDEN_PREFIXES),
                         f"{owner} inverts the dependency via {imported}",
                     )
-
-    def test_no_owner_reaches_the_compatibility_site(self) -> None:
-        # An owner reading the temporary module back would both cycle and make
-        # it load-bearing rather than deletable.
-        for owner, module in _OWNER_MODULES.items():
-            with self.subTest(owner=owner):
-                self.assertNotIn(
-                    _FACADE, _imported_orchestrator_modules(module.__name__),
-                )
 
     def test_discovery_reaches_no_sibling(self) -> None:
         # The roots and the `SKILL.md` marker are defined on `discovery` rather
@@ -211,48 +196,44 @@ class PackageSurfaceTest(unittest.TestCase):
             with self.subTest(hook=hook):
                 self.assertNotIn(hook, _package.__dict__)
 
-    def test_no_flat_leaf_is_left_behind(self) -> None:
-        # The migration is only finished when every scan resolves off an owner
-        # here; a `_local_skills` leaf beside the compatibility site would be
-        # one the flat package still owns.
+    def test_no_flat_module_is_left_behind(self) -> None:
+        # Every scan resolves off an owner here, so a flat module beside the
+        # package would be a second import site for names this one defines --
+        # and one a patch aimed at an owner would not intercept.
         package_root = Path(import_module("orchestrator").__file__).parent
-        self.assertEqual(list(package_root.glob("_local_skills*.py")), [])
+        for pattern in _FLAT_MODULE_PATTERNS:
+            with self.subTest(pattern=pattern):
+                self.assertEqual(list(package_root.glob(pattern)), [])
 
 
-class ForwardedSurfaceTest(unittest.TestCase):
-    """The compatibility site hands back the owners' own objects."""
+class OwnerSurfaceTest(unittest.TestCase):
+    """Each owner defines the names its callers reach it for."""
 
-    def test_the_site_forwards_the_owner_objects(self) -> None:
-        for owner, forwarded in _FORWARDED.items():
+    def test_owners_define_what_callers_reach_for(self) -> None:
+        # A name re-exported from elsewhere would leave a patch aimed here
+        # intercepting a copy while the definition kept answering.
+        for owner, owned in _OWNED_CALLABLES.items():
             module = _OWNER_MODULES[owner]
-            for name in forwarded:
+            for name in owned:
                 with self.subTest(owner=owner, name=name):
-                    self.assertIs(getattr(_facade, name), getattr(module, name))
-
-    def test_the_site_forwards_nothing_else(self) -> None:
-        forwarded = {
-            name for name in _facade.__dict__
-            if not name.startswith("__")
-            and name not in _UNFORWARDED_BINDINGS
-        }
-        owned = set()
-        for names in _FORWARDED.values():
-            owned.update(names)
-        self.assertEqual(forwarded, owned)
+                    self.assertEqual(
+                        getattr(module, name).__module__, module.__name__,
+                    )
 
 
 class CallSiteTest(unittest.TestCase):
-    """Neither live producer resolves through the site left behind."""
+    """Both live producers resolve through the owner they drive."""
 
     def test_the_tick_names_the_catalog_owner(self) -> None:
         # The per-tick pass is reached on its owner rather than as a facade
         # attribute, so that is where a test intercepting it has to patch --
-        # and the tick pays for the owner at import, never the site.
-        planted = _imported_orchestrator_modules(_TICK)
-        self.assertIn(_OWNER_MODULES[_CATALOG_OWNER].__name__, planted)
-        self.assertNotIn(_FACADE, planted)
+        # and the tick pays for that owner at import.
+        self.assertIn(
+            _OWNER_MODULES[_CATALOG_OWNER].__name__,
+            _imported_orchestrator_modules(_TICK),
+        )
 
-    def test_the_facade_still_forwards_the_owner(self) -> None:
+    def test_the_workflow_facade_exports_the_owner(self) -> None:
         # The historical export outlives the call site that used to resolve
         # through it, and it answers with the owner's own object.
         owner = _OWNER_MODULES[_CATALOG_OWNER]
@@ -266,15 +247,9 @@ class CallSiteTest(unittest.TestCase):
             getattr(_workflow, _EMIT_CATALOG), getattr(owner, _EMIT_CATALOG),
         )
 
-    def test_no_manifest_target_names_the_site(self) -> None:
-        for target in _workflow_export_manifest.EXPORTS:
-            with self.subTest(name=target.export_name):
-                self.assertNotEqual(target.module_name, _FACADE)
-
     def test_codex_backfill_reads_the_owner(self) -> None:
         # Patching the owner is what intercepts a codex run's offered skills
-        # and tools, which holds only while the writer names it: the site left
-        # behind binds the same objects but resolves nothing later.
+        # and tools, which holds only while the writer names it.
         from orchestrator.observability.analytics.recording import (
             catalog as recording_catalog,
             models as recording_models,
