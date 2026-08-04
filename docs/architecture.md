@@ -2326,8 +2326,9 @@ parameter. Besides the four owners beneath it and the placeholder above them, th
 signatures are typed against — `analytics/query/overview_models.py` for the series a figure is built from and
 `analytics/query/cost_models.py` for the rows the stub is handed — and Plotly, inside the one call that builds the
 figure. That is what leaves the whole usage path clear of the optional group: no module from
-`dashboard_charts_usage.py` down through the flat sites to these five owners names Plotly at module scope, so the
-surface a page reaches the hero figure through imports in the default install. Nothing on the cost, heatmap, or
+`dashboard_charts_usage.py` down through the flat sites to these five owners names Plotly at module scope, and neither
+does the `usage_panel.py` card that names this owner directly — which is the route the page itself takes — so every
+surface the hero figure is reached through imports in the default install. Nothing on the cost, heatmap, or
 throughput paths names it at load either, so no flat chart module pulls it in.
 
 The window owner names `analytics/query/overview_models.py` for the extent a preset anchors at, the read-mode owner
@@ -2347,11 +2348,13 @@ name
 the panel by what they hand back, and the row projection by what it reduces, while the header row is typed by the
 column set alone and so names nothing outside — and the two cards those panels are reported on name it as well, for
 the cohort rows and matrix cells both are handed and the adoption cells only the first is, while the run listing
-beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects, and the page-state
+beneath those cards names `analytics/query/run_models.py` for the `agent_exit` rows it projects, the hero card above
+all of them names `analytics/query/activity_models.py` for the per-backend daily rows it totals and
+`analytics/query/overview_models.py` for the series it hands its figure, and the page-state
 owner names `analytics/query/overview_models.py` without issuing a read of its own, for the extent a page opened on
 and the window totals a comparison panel reports; those
 are the only things
-any of the forty-two reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the forty-three reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from — as do the two the filter bar is
 drawn out of, which take the presets they offer and the window they resolve from that window owner and each other, and
 are handed Streamlit rather than importing it — the table markup reaches not one of
@@ -2363,7 +2366,11 @@ markup names only the insight
 owner whose banner shape it renders, the rollup owner names one sibling of
 its own beside those query families -- the KPI owner whose ranking depth its spend table is cut to -- and the strip
 owner names two: the series owner whose lines it draws under three of its tiles, and that same KPI owner, for the
-delta a tile is annotated with and the rework share one of them reports.
+delta a tile is annotated with and the rework share one of them reports. The hero card is the one that reaches a
+sibling a directory down: every other section drawing a figure is handed the chart hub as a parameter and calls a
+builder off it, while this one names `charts/usage.py` for the figure it draws, beside the card markup it is headed by
+and the Plotly configuration it hands that figure — so a panel is the card and the figure together rather than two
+halves a caller pairs up, and the three cannot be assembled from different owners than the panels beside it use.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
 the hub the whole read inventory is resolved through, and the ten flat leaves beneath them —
