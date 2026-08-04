@@ -131,9 +131,9 @@ _FORWARDED_COST_RANKING = (
 )
 
 # The per-repository adapter the hub re-exports through its own site, with the
-# label helper beneath it. The public builder is the one the widget pipeline
-# draws the repo panel with, so a copy here would be a ranking an operator
-# reads that no fix under the owner reaches.
+# label helper beneath it. The repository panel names the chart owner directly,
+# so a copy here would be a ranking a caller outside that owner reads that no
+# fix under it reaches.
 _FORWARDED_COST_REPO = (
     ("_repo_short_name", _COST_REPO, "repo_short_name"),
     (_COST_BY_REPO, _COST_REPO, _COST_BY_REPO),
@@ -141,9 +141,8 @@ _FORWARDED_COST_REPO = (
 
 # The per-review-round split the surface re-exports through its own site, with
 # the eight columns, the ordering, the role totals, and the traces beneath it.
-# The public builder is the one the widget pipeline draws the review panel
-# with, so a copy here would be a split an operator reads that no fix under the
-# owner reaches.
+# The paired lifecycle bars name the chart owner directly, so a copy here would
+# be a split a caller outside that owner reads that no fix under it reaches.
 _FORWARDED_COST_REVIEW = (
     ("REVIEW_BAR_EXTRA_HEIGHT", _COST_REVIEW, "REVIEW_BAR_EXTRA_HEIGHT"),
     ("REVIEW_BAR_ROW_HEIGHT", _COST_REVIEW, "REVIEW_BAR_ROW_HEIGHT"),
@@ -176,9 +175,9 @@ _FORWARDED_COST_STAGE = (
 )
 
 # The heatmap the hub re-exports through its own site, with the cells, labels,
-# hour span, and layout the figure is assembled from beneath it. The public
-# builder is the one the widget pipeline draws the panel with, so a copy here
-# would be a grid an operator reads that no fix under the owner reaches.
+# hour span, and layout the figure is assembled from beneath it. The activity
+# card names the chart owner directly, so a copy here would be a grid a caller
+# outside that owner reads that no fix under it reaches.
 _FORWARDED_HEATMAP = (
     ("_HOURS_PER_DAY", _HEATMAP, "HOURS_PER_DAY"),
     ("_WEEKDAY_LABELS", _HEATMAP, "WEEKDAY_LABELS"),
@@ -189,9 +188,9 @@ _FORWARDED_HEATMAP = (
 )
 
 # The strip the hub re-exports through its own site, with the calendar, series,
-# and pinned height it is drawn from beneath it. The public builder is the one
-# the widget pipeline draws the reliability panel with, so a copy here would be
-# a strip an operator reads that no fix under the owner reaches.
+# and pinned height it is drawn from beneath it. The reliability panel names
+# the chart owner directly, so a copy here would be a strip a caller outside
+# that owner reads that no fix under it reaches.
 _FORWARDED_THROUGHPUT = (
     ("_THROUGHPUT_CHART_HEIGHT", _THROUGHPUT, "THROUGHPUT_CHART_HEIGHT"),
     ("_ThroughputSeries", _THROUGHPUT, "ThroughputSeries"),
@@ -267,9 +266,9 @@ _BACKEND_PER_DAY = "backend_per_day"
 _USAGE_OVER_TIME = "usage_over_time"
 
 # The hero figure and the stub beside it, under the names the public usage
-# surface reaches them by. The widget pipeline draws the panel with the object
-# behind this site, so a copy here would be a chart an operator reads that no
-# fix under the owner reaches.
+# surface reaches them by. The hero card names the chart owner directly, so a
+# copy here would be a chart a caller outside that owner reads that no fix
+# under it reaches.
 _FORWARDED_USAGE_CHART = (
     (_BACKEND_PER_DAY, _USAGE, _BACKEND_PER_DAY),
     (_USAGE_OVER_TIME, _USAGE, _USAGE_OVER_TIME),

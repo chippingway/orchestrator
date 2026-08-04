@@ -151,7 +151,6 @@ def _render_chart_widgets(
     )
     dashboard_module._render_activity_heatmap(
         st=modules.st,
-        dashboard_charts=modules.charts,
         heatmap_rows=loaded.read_results["heatmap_rows"],
         tz_offset_choice=page.controls.timezone_offset,
     )

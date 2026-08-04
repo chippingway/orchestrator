@@ -5,9 +5,9 @@
 The 7x24 figure, the cells it is drawn from, the weekday labels and hour span
 those cells are shaped by, and the layout that squares them off are the charts
 owner's own objects. `orchestrator.dashboard_charts` re-exports
-`hour_weekday_heatmap` from here under its original name, so the grid the
-widget pipeline draws and the grid the owner builds cannot be two figures that
-merely agree.
+`hour_weekday_heatmap` from here under its original name, so the grid a caller
+reaches through that hub and the grid the activity card draws off the owner
+cannot be two figures that merely agree.
 """
 from __future__ import annotations
 

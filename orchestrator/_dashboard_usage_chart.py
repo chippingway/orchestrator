@@ -5,8 +5,8 @@
 The hero figure a window's spend and token usage is drawn as, and the
 backend-day stub beside it, are the charts owner's own objects. The public
 usage surface reaches them through here under the names it has always
-published, so the figure the widget pipeline draws and the figure the owner
-builds cannot be two that merely agree.
+published, so the figure a caller reaches through that surface and the figure
+the hero card draws off the owner cannot be two that merely agree.
 """
 from __future__ import annotations
 
