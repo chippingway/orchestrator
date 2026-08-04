@@ -108,6 +108,13 @@ and closes that column with the coverage bar qualifying the money the cards
 above it report; its two columns answer an empty window differently, since a
 window can carry runs the parser could not price while a window with no
 `agent_exit` row had nothing to run at all.
+``reliability_panel`` closes that run of sections with the third pair, split
+the same way: where the window's money went by repository, beside whether the
+runs it went to held up. The narrow column is a strip of run-health tiles over
+the days the issues those runs resolved landed on, and that day figure is
+handed the window's last included day rather than its end, since the reads
+below are issued under `ts < end` and a bound taken off `end` itself would draw
+a trailing day none of them covered.
 ``page_models`` is what a render carries between all of those: the seven frozen
 shapes threaded from the controls at the top of the page to the last panel on
 it -- the caller's own Streamlit, pandas, chart, and theme handles, the

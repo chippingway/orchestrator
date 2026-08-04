@@ -64,6 +64,8 @@ _READ_PLAN_OWNER = "read_plan"
 
 _RECENT_RUNS_OWNER = "recent_runs"
 
+_RELIABILITY_PANEL_OWNER = "reliability_panel"
+
 _RENDER_CONFIG_OWNER = "render_config"
 
 _ROLLUPS_OWNER = "rollups"
@@ -144,6 +146,7 @@ _OWNERS = (
     _READ_MODE_OWNER,
     _READ_PLAN_OWNER,
     _RECENT_RUNS_OWNER,
+    _RELIABILITY_PANEL_OWNER,
     _RENDER_CONFIG_OWNER,
     _ROLLUPS_OWNER,
     _SCOPED_READS_OWNER,
@@ -200,7 +203,8 @@ _OWNERS = (
 # a quiet window did record, draw the trigger-rate card a caller reaching past
 # that one still gets, pair the lifecycle bars a window's spend is split across
 # at the one height both are drawn at, rank that window's issues beside the
-# backends that ran them, weigh
+# backends that ran them, set that window's repositories beside the tiles and
+# days the runs behind them are read for, weigh
 # one backend's spend against the
 # tokens and runs behind it, size a window's
 # priced share into one bar, read one of the runs under all of them back as
@@ -372,6 +376,7 @@ _SURFACES = MappingProxyType({
         "widget_task",
     ),
     _RECENT_RUNS_OWNER: ("recent_run_row", "render_recent_runs"),
+    _RELIABILITY_PANEL_OWNER: ("render_repo_and_reliability",),
     _RENDER_CONFIG_OWNER: (),
     _ROLLUPS_OWNER: (
         "read_prev_kpi",
@@ -515,7 +520,8 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
 # all but the KPI one, the five widget leaves the skill panels, the two
-# cost-comparison panels, the run listing, the hero usage card, and the page
+# cost-comparison panels and the repository-and-reliability pair beneath them,
+# the run listing, the hero usage card, and the page
 # state are reached through, which sit under the widget
 # hub instead, and the
 # two the filter bar is reached through, which sit under no hub at all.
@@ -601,9 +607,12 @@ _COMPATIBILITY_SITES = (
 # The page-state owner names two of those result
 # families for the same reason without issuing a read of its own: the extent a
 # page opened on and the window totals a comparison panel reports are what the
-# shapes it threads are typed against. One sibling is a package rather than a
-# module: the two owners that draw a figure inside a card name the chart
-# families that build it -- the hero card one, the paired lifecycle bars two --
+# shapes it threads are typed against. The panel below those two is typed
+# against the shapes rather than the rows, so the page state is the only
+# vocabulary it names. One sibling is a package rather than a
+# module: the three owners that draw a figure inside a card name the chart
+# families that build it -- the hero card one, the paired lifecycle bars two,
+# and the repository ranking beside the run-health tiles two more --
 # since a panel is the card and the figure together and a handle passed in
 # would let them be assembled from different families, which for a pairing
 # pinned to one shared height is two panels measured apart.

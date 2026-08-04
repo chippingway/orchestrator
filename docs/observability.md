@@ -69,9 +69,11 @@ token-usage card above every one of them
 `dashboard/skill_adoption_headers.py`, `dashboard/skill_adoption_rows.py`, `dashboard/skill_adoption.py`,
 `dashboard/skill_matrix_columns.py`, `dashboard/skill_matrix_sort.py`, `dashboard/skill_matrix_headers.py`,
 `dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`, `dashboard/skill_panel.py`,
-`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`, `dashboard/usage_panel.py`), the two sections that
-window's spend is compared across — the paired lifecycle bars and the one height both are pinned to, and the ranked
-issues beside the backends that ran them (`dashboard/stage_cost_panel.py`, `dashboard/issue_cost_panel.py`) — the
+`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`, `dashboard/usage_panel.py`), the three sections that
+window's spend is compared across — the paired lifecycle bars and the one height both are pinned to, the ranked
+issues beside the backends that ran them, and the per-repository ranking beside the tiles and days those runs are
+read for (`dashboard/stage_cost_panel.py`, `dashboard/issue_cost_panel.py`,
+`dashboard/reliability_panel.py`) — the
 seven frozen shapes one render of that page is
 threaded through and the Plotly configuration each of its figures is handed (`dashboard/page_models.py`,
 `dashboard/render_config.py`), the
@@ -1302,34 +1304,37 @@ call path rather than the alias: the page pipeline reaches the staged plan and t
 resolve it through the facade at call time — the mapping that alias lands on is `render_config`'s own, and the shapes
 the pipeline
 threads are `page_models`'. A card builder is the one kind of name on that path a patch must not follow to the owner,
-and which module holds the binding is what a case has to name. A widget section still drawing one binds the
-header, banner stack, and reliability strip by name at import
-(`from orchestrator.dashboard_cards import _card_header_html`), and the state section beside it binds the topbar the
+and which module holds the binding is what a case has to name. Two widget sections still draw one off the card hub —
+the activity heatmap binds the header and the first-wave pass the banner stack
+(`from orchestrator.dashboard_cards import _card_header_html`) — and the state section beside them binds the topbar the
 same way off the HTML hub, so what the page calls is the reference captured then
 rather than whatever `card_html.py` or `summary_html.py` holds at call time: a
 test intercepting
-one patches the widget module that draws it — `patch.object(_dashboard_widget_costs, "_reliability_tiles_html", ...)`
+one patches the widget module that draws it — `patch.object(_dashboard_widget_costs, "_card_header_html", ...)`
 — and reaches the owner only to assert what an unpatched page renders. The sections that moved sit differently. Each
 is a
 page renderer `patch.object(dashboard, ...)` still intercepts, because the pipeline resolves it through the facade at
 call time, but what one draws with is the panel owner's own module-scope import rather than a
 widget module's — so a case that has to intercept the adoption table, the trigger-rate one, the matrix, or either sort
 parse patches `skill_panel` or `skill_trigger_panel`, and one that has to intercept the issues table, the efficiency
-card, the coverage bar, or the ranking depth patches `issue_cost_panel`. The paired lifecycle bars sit there too, and
-a figure builder is on that list beside the card ones: the per-stage and per-review-round builders are
-`stage_cost_panel`'s own module-scope imports off `charts/cost_stage.py` and `charts/cost_review.py` rather than a
-chart handle the pipeline hands down, so a case intercepting either patches that owner. They carry one more exception
+card, the coverage bar, or the ranking depth patches `issue_cost_panel`. The paired lifecycle bars and the
+repository-spend pair beneath them sit there too, and a figure builder is on that list beside the card ones: the
+per-stage and per-review-round builders are `stage_cost_panel`'s own module-scope imports off `charts/cost_stage.py`
+and `charts/cost_review.py`, and the per-repository ranking and per-day strip are `reliability_panel`'s off
+`charts/cost_repo.py` and `charts/throughput.py`, rather than a
+chart handle the pipeline hands down, so a case intercepting any of the four patches the owner that names it. Those
+two carry one more exception
 on the configuration side: they read `PLOTLY_CONFIG` off `render_config` as a module attribute at call time
-rather than through the facade, so a case pinning the toolbar for that section patches the owner as well, while the
-repository-spend and activity-heatmap sections beside it still take their figures from the handed-down chart hub and
-are facade-intercepted throughout. The recent-run listing sits
+rather than through the facade, so a case pinning the toolbar for either section patches the owner as well, while the
+activity heatmap beneath them still takes its figure from the handed-down chart hub and
+is facade-intercepted throughout. The recent-run listing sits
 the same way as the panels: the render is
 facade-intercepted, but the offset shift each `ts` is converted through is `recent_runs`'s own module-scope import of
 `filters`, so a case that has to intercept that shift patches there rather than the widget module. So does the hero
 usage card: the render is facade-intercepted, while the card header it is titled by, the usage figure it draws, and
 the Plotly defaults it hands that figure are `usage_panel`'s own module-scope imports rather than a widget module's or
 a facade lookup — so a case that has to intercept any of the three patches `usage_panel`, and `PLOTLY_CONFIG` on the
-facade reaches only the cost sections that still resolve it there.
+facade reaches only the activity heatmap, the last section that still resolves it there.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
@@ -1350,10 +1355,10 @@ offers a mode by, and the per-day totals behind that stack, and claims none of t
 widget-cost sections forward that
 way only in part. The listing beneath all four panels is an owner too, so the first hands over that render and the
 empty-window notice beside it — which the hub likewise republishes without claiming — while still building the
-per-issue drill-down under that listing itself. The two sections a window's spend is compared across are owners as
+per-issue drill-down under that listing itself. The three sections a window's spend is compared across are owners as
 well, so the second hands over the paired lifecycle bars, the height both are pinned to and the two measurements
-behind it, the ranked issues beside the backend cards, and the notice that column answers a window with no run with,
-while still drawing the repository-spend and reliability pair and the activity heatmap beneath them.
+behind it, the ranked issues beside the backend cards, the notice that column answers a window with no run with, and
+the repository ranking beside the run-health tiles, while still drawing the activity heatmap beneath all three.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1455,7 +1460,8 @@ is worth — the cost of a million tokens, the cost of a run, and the share of b
 divided through one guard so a window a backend barely ran in reads zero rather than raising — and `coverage_card.py`
 for how much of a window's spend the parser could price, sized by token share whenever the window carries any and by
 run share only when it does not, drawn as one bar and the legend beneath it.
-`stage_cost_panel.py` and `issue_cost_panel.py` are the two sections that spend is compared across, each a pair of
+`stage_cost_panel.py`, `issue_cost_panel.py`, and `reliability_panel.py` are the three sections that spend is compared
+across, each a pair of
 7:5 columns rather than a single panel. The first pairs the two lifecycle axes — spend by workflow stage beside spend
 by review cycle, each figure built by naming `charts/cost_stage.py` and `charts/cost_review.py` directly rather than
 by reaching a builder off a handle — and pins both to one height taken off whichever of the two reads returned more
@@ -1465,7 +1471,12 @@ did it:
 the window's costliest issues ranked on the left, one efficiency card per backend on the right, and the coverage bar
 closing that column because it qualifies the money the cards above it report — drawn only where the window carries a
 cost-source split. Its two columns answer an empty window differently, since a window can carry runs the parser could
-not price while a window with no `agent_exit` row had nothing to run at all.
+not price while a window with no `agent_exit` row had nothing to run at all. The third pairs the money with whether
+the runs behind it held up: the window's spend by repository on the left, the six run-health tiles over the per-day
+strip of the issues those runs resolved on the right, each figure built by naming `charts/cost_repo.py` and
+`charts/throughput.py` directly. That strip is handed the window's bounds so a day nothing resolved on stands as a
+zero bar, and the closing bound is the day before the window's end — the reads beneath the page are issued under
+`ts < end`, so drawing through `end` itself would add a trailing day none of them covered.
 `page_models.py` holds the seven frozen shapes a render carries between all of that: the caller's Streamlit, pandas,
 chart, and theme handles, the selections every read is narrowed by, the controls and page they open on, what one load
 answers with, and the rows, totals, and counts the paired repository-spend and run-health section is drawn from.
@@ -1508,9 +1519,9 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_widget_skills.py`, `_dashboard_widget_usage.py`, and `_dashboard_widget_models.py`
 forward each historical name to the owner's own object. `_dashboard_widget_runs.py` forwards the run listing and its
 empty-window notice the same way while still building the per-issue drill-down beneath them,
-`_dashboard_widget_costs.py` forwards the two spend comparisons, the height the paired bars share with the two
+`_dashboard_widget_costs.py` forwards the three spend comparisons, the height the paired bars share with the two
 measurements behind it, and the notice the backend cards beside that ranking answer an empty window with, while still
-drawing the repository-spend, reliability, and activity cards beneath them, and
+drawing the activity card beneath them, and
 `dashboard_widgets.py` forwards the Plotly configuration off the render-config owner and the seven page shapes through
 the leaf named for them while still claiming the render passes it stamps. None of the state, read,
 KPI-strip, skill-adoption, and
@@ -1520,13 +1531,13 @@ defining module; the
 compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
 and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
 publishes are the card, backend, and coverage owners' own objects, and the widget hub leaves the six the two skill
-cards are reached by, the run listing beneath them, the three the two spend comparisons are drawn and sized by, the
+cards are reached by, the run listing beneath them, the four the three spend comparisons are drawn and sized by, the
 four the hero card is, and the seven shapes a render is threaded through out of its own
 list for the same reason: a `__module__` stamp
 there would move one of
 them off the owner that defines it. Streamlit is never imported in these
-helpers — `st` (with theme and pandas handles, plus the chart handle the repository-spend, reliability, and
-activity-heatmap sections are still drawn through, the hero card and the paired lifecycle bars naming their own chart
+helpers — `st` (with theme and pandas handles, plus the chart handle the activity-heatmap section is still drawn
+through, the hero card, the paired lifecycle bars, and the repository-spend pair naming their own chart
 owners instead) is passed in as a parameter.
 
 ```sh
@@ -1777,13 +1788,16 @@ republishes the six without claiming any of them. The listing under all four pan
 `observability/dashboard/recent_runs.py` — the columns one run
 is scanned by, the offset its timestamp is read on, the collapsed expander it is drawn inside, and the notice a window
 with no `agent_exit` row renders instead — reached through `orchestrator/_dashboard_widget_runs.py`, which forwards
-those two names and builds the per-issue drill-down beneath them itself. The two sections that listing's window is
+those two names and builds the per-issue drill-down beneath them itself. The three sections that listing's window is
 compared across are `observability/dashboard/stage_cost_panel.py` — the paired lifecycle bars, the 7:5 columns they
 are laid out in, and the one height both figures are pinned to together with the row and base measurement behind it —
-and `observability/dashboard/issue_cost_panel.py` — the window's costliest issues ranked beside one efficiency card
+`observability/dashboard/issue_cost_panel.py` — the window's costliest issues ranked beside one efficiency card
 per backend, the coverage bar closing that column, and the notice those cards answer a window with no run with —
-reached through `orchestrator/_dashboard_widget_costs.py`, which forwards all six historical spellings while still
-drawing the repository-spend and reliability pair and the activity heatmap beneath them. The card above all of them is
+and `observability/dashboard/reliability_panel.py` — the window's spend by repository beside the six run-health tiles
+and the per-day strip of the issues its runs resolved, bounded by the last day the window covers rather than by its
+half-open end —
+reached through `orchestrator/_dashboard_widget_costs.py`, which forwards all seven historical spellings while still
+drawing the activity heatmap beneath them. The card above all of them is
 `observability/dashboard/usage_panel.py` — the header it is titled by, the two-value toggle deciding what a day's
 tokens are stacked by, the session key that mode survives a rerun in, and the per-day per-backend totals the second
 stack is drawn from — reached through `orchestrator/_dashboard_widget_usage.py`, which forwards all four historical

@@ -153,6 +153,8 @@ _READ_PLAN = f"{_PACKAGE}.read_plan"
 
 _RECENT_RUNS = f"{_PACKAGE}.recent_runs"
 
+_RELIABILITY_PANEL = f"{_PACKAGE}.reliability_panel"
+
 _RENDER_CONFIG = f"{_PACKAGE}.render_config"
 
 _ROLLUPS = f"{_PACKAGE}.rollups"
@@ -908,8 +910,19 @@ _COST_PANEL_NAMES = (
     ),
 )
 
+# The third section beneath those two, as the same leaf publishes it: a
+# window's repository ranking beside the tiles and days its runs are read for.
+_RELIABILITY_PANEL_NAMES = (
+    (
+        "_render_repo_and_reliability",
+        _RELIABILITY_PANEL,
+        "render_repo_and_reliability",
+    ),
+)
+
 # What the widget hub above those leaves publishes on an owner's behalf: those
-# seven, the six the cost sections are drawn and sized by, and the Plotly
+# seven, the six the cost sections are drawn and sized by, the pair beneath
+# them, and the Plotly
 # defaults every figure the page draws is handed. A copy of the defaults is a
 # panel whose hover toolbar nobody switched off, and this
 # is the alias the page renderers resolve them through at call time, so what a
@@ -917,6 +930,7 @@ _COST_PANEL_NAMES = (
 _WIDGET_HUB_NAMES = (
     *_PAGE_STATE_NAMES,
     *_COST_PANEL_NAMES,
+    *_RELIABILITY_PANEL_NAMES,
     ("PLOTLY_CONFIG", _RENDER_CONFIG, "PLOTLY_CONFIG"),
 )
 
@@ -1153,11 +1167,11 @@ _FORWARDED_MODULES = MappingProxyType({
 # widget leaf named for the run listing publishes the render a page draws the
 # expander with and the notice a window with no `agent_exit` row renders
 # instead, while still building the per-issue drill-down beneath that listing.
-# The one named for the cost sections publishes both comparison panels and what
-# they are sized and answered by, while still drawing the repository-spend and
-# reliability pair and the activity heatmap beneath them.
-# The widget hub above them publishes the page state, those cost sections, and
-# the Plotly defaults,
+# The one named for the cost sections publishes both comparison panels, what
+# they are sized and answered by, and the repository-spend and reliability pair
+# beneath them, while still drawing the activity heatmap under all three.
+# The widget hub above them publishes the page state, those cost sections, that
+# pair, and the Plotly defaults,
 # while still claiming the render passes it stamps. All three are held to
 # resolving what they forward rather than to defining nothing.
 _PARTLY_FORWARDED_MODULES = MappingProxyType({
@@ -1165,7 +1179,7 @@ _PARTLY_FORWARDED_MODULES = MappingProxyType({
         (_NO_AGENT_EXITS, _RECENT_RUNS, _NO_AGENT_EXITS),
         ("_render_recent_runs", _RECENT_RUNS, "render_recent_runs"),
     ),
-    _WIDGET_COSTS_LEAF: _COST_PANEL_NAMES,
+    _WIDGET_COSTS_LEAF: (*_COST_PANEL_NAMES, *_RELIABILITY_PANEL_NAMES),
     _WIDGET_HUB: _WIDGET_HUB_NAMES,
 })
 
