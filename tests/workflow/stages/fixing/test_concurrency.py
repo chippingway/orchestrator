@@ -95,7 +95,7 @@ class FixingContentHashAndConcurrencyTest(
         # validating tick's `_detect_user_content_change` will be a
         # no-op rather than re-resuming the dev on the already-consumed
         # comment.
-        from orchestrator.workflow_messages import _orchestrator_ids
+        from orchestrator.workflow.engine.comments import _orchestrator_ids
 
         expected = _compute_user_content_hash(
             scenario.issue,
