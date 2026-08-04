@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Inventory, layering, and forwarding checks for the usage owners."""
+"""Inventory, layering, and public-surface checks for the usage owners."""
 from __future__ import annotations
 
 import unittest
@@ -8,7 +8,6 @@ from importlib import import_module
 from pathlib import Path
 from types import MappingProxyType
 
-from orchestrator import usage as _facade
 from orchestrator.observability import usage as _package
 from tests.observability.observability_test_support import (
     _imported_orchestrator_modules,
@@ -16,8 +15,6 @@ from tests.observability.observability_test_support import (
 
 
 _PACKAGE = "orchestrator.observability.usage"
-
-_FACADE = "orchestrator.usage"
 
 # The owner every agent result and the per-issue meter is typed by.
 _METRICS_OWNER = "metrics"
@@ -54,8 +51,7 @@ _OWNER_MODULES = MappingProxyType({
     owner: import_module(f"{_PACKAGE}.{owner}") for owner in _OWNERS
 })
 
-# What the package publishes, grouped by the owner each name is defined on --
-# and, taken together, the whole surface the compatibility site forwards.
+# What the package publishes, grouped by the owner each name is defined on.
 _PUBLISHED = MappingProxyType({
     _METRICS_OWNER: (
         "UsageMetrics",
@@ -96,9 +92,9 @@ _CALLERS = (
     ("orchestrator.observability.analytics.trajectories.serialize", _RECORD_OWNER),
 )
 
-# `from __future__ import annotations` binds its own feature flag, which is
-# not something the facade forwards.
-_FUTURE_FEATURE = "annotations"
+# Every flat spelling a parser could still be reached through beside the
+# package.
+_FLAT_MODULE_PATTERNS = ("_usage_*.py", "usage*.py")
 
 
 def _qualified(owner: str) -> str:
@@ -117,12 +113,14 @@ class OwnerInventoryTest(unittest.TestCase):
         ))
         self.assertEqual(found, tuple(sorted(_OWNERS)))
 
-    def test_no_flat_leaf_is_left_behind(self) -> None:
-        # The migration is only finished when every parser resolves off an
-        # owner here; a `_usage_*` leaf beside the facade would be one the
-        # flat package still owns.
+    def test_no_flat_module_is_left_behind(self) -> None:
+        # Every parser resolves off an owner here, so a flat module beside the
+        # package would be a second import site for names this one defines --
+        # and one a patch aimed at an owner would not intercept.
         package_root = Path(import_module("orchestrator").__file__).parent
-        self.assertEqual(list(package_root.glob("_usage_*.py")), [])
+        for pattern in _FLAT_MODULE_PATTERNS:
+            with self.subTest(pattern=pattern):
+                self.assertEqual(list(package_root.glob(pattern)), [])
 
 
 class PublicSurfaceTest(unittest.TestCase):
@@ -178,12 +176,13 @@ class PublicSurfaceTest(unittest.TestCase):
 
 
 class LayeringTest(unittest.TestCase):
-    """The owners reach nothing outside, and no caller reaches the facade."""
+    """The owners reach nothing outside, and every caller names one."""
 
     def test_no_owner_reaches_outside_the_package(self) -> None:
-        # The sharpest case this rejects is the compatibility site: it imports
-        # the owners, so an owner reading it back would both cycle and make
-        # the temporary module load-bearing rather than deletable.
+        # A parser is fed a payload rather than an issue, so the dependency
+        # runs one way: an owner reaching the workflow that meters a run, the
+        # agent that produced the payload, or a module beside the package
+        # would invert that and cycle back through its own caller.
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
             for imported in planted:
@@ -195,45 +194,16 @@ class LayeringTest(unittest.TestCase):
                         f"{owner} reaches {imported}",
                     )
 
-    def test_no_caller_pulls_the_facade_in(self) -> None:
-        # Every module that meters a run names an owner, so nothing on the
-        # tick path imports the compatibility site. That is what makes it
-        # deletable: while one live caller still reaches it, the module is
-        # load-bearing on every import of the analytics or workflow layer.
+    def test_every_caller_names_its_owner(self) -> None:
+        # Every module that meters a run pays for the owner it is typed by at
+        # import, which is what makes patching that owner intercept the parse:
+        # a caller reaching the package instead would bind a name the package
+        # resolved once, and a patch on the owner would not reach it.
         for caller, owner in _CALLERS:
-            planted = _imported_orchestrator_modules(caller)
             with self.subTest(caller=caller):
-                self.assertIn(_qualified(owner), planted)
-                self.assertNotIn(_FACADE, planted)
-
-
-class ForwardedSurfaceTest(unittest.TestCase):
-    """The facade hands back the owners' own objects."""
-
-    def test_entry_points_are_forwarded(self) -> None:
-        for owner, published in _PUBLISHED.items():
-            for name in published:
-                with self.subTest(owner=owner, name=name):
-                    self.assertIs(
-                        getattr(_facade, name),
-                        getattr(_OWNER_MODULES[owner], name),
-                    )
-
-    def test_records_are_forwarded(self) -> None:
-        owner = _OWNER_MODULES[_RECORD_OWNER]
-        for name in _RECORDS:
-            with self.subTest(name=name):
-                self.assertIs(getattr(_facade, name), getattr(owner, name))
-
-    def test_the_facade_forwards_nothing_else(self) -> None:
-        forwarded = {
-            name for name in _facade.__dict__
-            if not name.startswith("_") and name != _FUTURE_FEATURE
-        }
-        owned = set(_RECORDS)
-        for published in _PUBLISHED.values():
-            owned.update(published)
-        self.assertEqual(forwarded, owned)
+                self.assertIn(
+                    _qualified(owner), _imported_orchestrator_modules(caller),
+                )
 
 
 if __name__ == "__main__":
