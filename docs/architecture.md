@@ -2192,7 +2192,8 @@ naming a width the bar above it does not have. Both owners take the theme as a p
 here is handed one: a page resolves a single theme object and passes it down, so a card is tinted and set from what
 the chrome and charts around it were.
 
-`stage_cost_panel.py` and `issue_cost_panel.py` are the two sections a window's spend is compared across, and each is
+`stage_cost_panel.py` and `issue_cost_panel.py` are the first two of the three sections a window's spend is compared
+across, and each is
 a pair of columns rather than a panel: the money is only readable as an answer once two cuts of it sit beside each
 other. The first pairs the two lifecycle axes — which stage of an issue's life the spend landed in, and which review
 cycle it landed in — and pins both figures to one height, taken off whichever of the two reads came back with more
@@ -2227,7 +2228,9 @@ beneath the page is issued under `ts < end`, so the last day an operator asked f
 drawing through `end` itself would add a trailing empty day no read covered. What the section is handed is the page
 state rather than the rows — it is the only panel typed against the shape a load assembles for it — and what it draws
 with it names itself: the header, the tile reduction, the markup that strip is written as, and the two figure
-builders in `charts/cost_repo.py` and `charts/throughput.py`.
+builders in `charts/cost_repo.py` and `charts/throughput.py`. Its two figures take the Plotly configuration the same
+way the bars above them do — read off the owner below at call time rather than bound here — so a page whose toolbar
+decision changed does not leave this pair drawn under the one it was imported with.
 
 `render_config.py` holds the one thing every figure below is handed alongside itself: the Plotly configuration the
 page draws each of them under. It is one mapping rather than a keyword spelled at each `st.plotly_chart`, because a

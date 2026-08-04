@@ -111,7 +111,7 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     `orchestrator.dashboard_kpi_strip` (`KpiStripExtractionTest`); the two
     skill cards live there too -- `skill_panel` for the adoption card and the
     diagnostics folded under it, `skill_trigger_panel` for the trigger-rate one
-    beside them -- as do the two cost-comparison sections -- `stage_cost_panel`
+    beside them -- as do the three cost-comparison sections -- `stage_cost_panel`
     for the paired lifecycle bars and the height they share,
     `issue_cost_panel` for the ranked issues beside the backends that ran
     them, and `reliability_panel` for the repository ranking beside the tiles
