@@ -1358,8 +1358,9 @@ config and analytics graph behind the shared dependency bindings, nor the git an
 subsystems the targets sit on. An import that cheap is what lets the GitHub and git layers reach
 `workflow/state.py` for the label vocabulary they are typed by -- a submodule import runs the initializer first, so
 anything bound there would be a cost every one of them pays. `github/labels.py`, `github/issues.py`, and the
-`git/base_sync/` owners all bind that owner directly, and the labels, graph, coercion, and guard are reached there
-rather than on a top-level module of their own. Config and analytics modules
+`git/base_sync/` owners all bind that owner directly. No flat module sits beside the package: a check in
+`tests/test_runtime_core_compat.py` asserts nothing resolves at that module path, so the owner is the one import
+site the label vocabulary, its graph, and the write guard answer on. Config and analytics modules
 retain their original import-time identity through `_workflow_dependencies.py`, so a diagnostic reload does not
 silently rebind already-imported workflow leaves. The analytics package has its own import-only bootstrap so an
 explicit package reload still reparses sink settings and keeps stale package holders isolated as before.
