@@ -49,7 +49,7 @@ The compatibility surface on `orchestrator/workflow/__init__.py` is load-bearing
   `_bump_in_review_watermarks`, `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`,
   etc.) should **not** be re-exported.
 - Stage modules access cross-module helpers via `from orchestrator import workflow as _wf` **at call
-  time**, not via top-level `from orchestrator.workflow import _foo` and not via direct imports from `workflow_drift` /
+  time**, not via top-level `from orchestrator.workflow import _foo` and not via direct imports from
   `workflow_messages` / `worktrees`. The late-binding pattern preserves `patch.object(workflow, ...)`
   semantics in tests.
 - Test patches target the new module boundary after a move (or the facade alias, consistently). Flag

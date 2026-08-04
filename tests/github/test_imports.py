@@ -51,7 +51,6 @@ _OWNER_ONLY_NAMES = (
 _FORBIDDEN_PREFIXES = (
     "orchestrator.main",
     "orchestrator.stages",
-    "orchestrator.workflow_drift",
     "orchestrator.workflow_messages",
     "orchestrator.worktrees",
 )
