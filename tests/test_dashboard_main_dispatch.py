@@ -75,18 +75,15 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 ENTRYPOINT_ATTR = "main"
 
 
-RENDER_FIRST_WAVE_MEMBER = "_render_first_wave"
-
-
 class _MainSourceTest(unittest.TestCase):
     """Base for source checks over the lazy entrypoint and page helpers.
 
     Streamlit / Plotly are opt-in (not installed for the default
     `uv sync --locked`), so these read the rendered function source
     rather than driving the page under Streamlit. The entrypoint loads
-    optional modules lazily and the page pipeline delegates read waves,
-    empty states, and widget sections to named helpers, so `_source_of`
-    fetches the boundary each assertion protects.
+    optional modules lazily and delegates the metadata load, the
+    no-data state, and the staged render beneath it to named helpers,
+    so `_source_of` fetches the boundary each assertion protects.
     """
 
     def _main_source(self) -> str:
@@ -96,50 +93,19 @@ class _MainSourceTest(unittest.TestCase):
         _, dashboard = _reload(CONFIGURED_DB_ENV)
         return inspect.getsource(getattr(dashboard, name))
 
-    def _assert_source_order(self, member_name: str, markers: tuple[str, ...]) -> None:
-        source = self._source_of(member_name)
-        indexes = [source.index(marker) for marker in markers]
-        self.assertEqual(indexes, sorted(indexes))
-
 
 class MainRenderDispatchTest(_MainSourceTest):
-    """The page pipeline preserves widget render order."""
-
-    def test_render_helpers_called_in_page_order(self) -> None:
-        self._assert_source_order(
-            "_render_chart_widgets",
-            (
-                "_render_hero_usage(",
-                "_render_stage_review_bars(",
-                "_render_issues_and_backends(",
-                "_render_repo_and_reliability(",
-                "_render_activity_heatmap(",
-            ),
-        )
-        self._assert_source_order(
-            "_render_remaining_widgets",
-            (
-                "_render_skill_adoption(",
-                "_render_recent_runs(",
-                "_render_drilldown_view(",
-                "_render_dashboard_footer(",
-            ),
-        )
-        self._assert_source_order(
-            "_render_dashboard_widgets",
-            ("_render_chart_widgets(", "_render_remaining_widgets("),
-        )
+    """`main` reaches its branches through named helpers, not inline."""
 
     def test_read_and_error_paths_use_helpers(self) -> None:
-        # `main` dispatches the staged read fan-out and the empty /
-        # error rendering branches through focused helpers rather than
-        # inlining the cached wrappers, the fan-out, the load log, and
-        # the metadata / no-data / empty-window banners.
+        # `main` dispatches the metadata load and the no-data branch
+        # through focused helpers rather than inlining the cached
+        # wrappers, the fan-out, the load log, and the banners. Which
+        # panel the staged render below then draws, and in what order,
+        # is the dashboard owners' and pinned beside them.
         for helper, marker in (
             ("_run_dashboard", "read_static_metadata("),
             ("_render_dashboard", "_render_no_data("),
-            ("_load_dashboard_data", "dispatch.run_read_waves("),
-            (RENDER_FIRST_WAVE_MEMBER, "_render_empty_window("),
         ):
             with self.subTest(helper=helper, marker=marker):
                 self.assertIn(marker, self._source_of(helper))

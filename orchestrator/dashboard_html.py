@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Stable dashboard HTML surface backed by focused rendering leaves.
 
-`from orchestrator.dashboard_html import _issues_table_html` is how the widget
-sections and every historical `dashboard.<name>` import reach the panel a
+`from orchestrator.dashboard_html import _issues_table_html` is how every
+historical `dashboard.<name>` import reaches the panel a
 window's costliest issues are ranked into, and `_skill_triggers_html` the panel
 each cohort's skill use is reported in; the same holds for the compact table
 both are drawn as, for the line and the SVG a KPI tile's sparkline is projected
@@ -11,8 +11,14 @@ and written as, and for the band a page opens with: the topbar, the filter
 meta beneath it, the KPI strip, and the delta pill one of its tiles is
 annotated with. All of them are the owners' own objects under
 `observability/dashboard/`, published here under the private spellings a caller
-always imported them by, so a page and the owners cannot draw one table two
-ways -- or scale one window's line two ways, or annotate one tile two ways.
+always imported them by, so a caller reaching past the owners cannot draw one
+table two ways -- or scale one window's line two ways, or annotate one tile two
+ways.
+
+Nothing on the page's own path imports this surface. Each panel names the table
+or sparkline owner it is drawn by, and the render pass writing the band above
+them names `summary_html`, so a test that has to intercept any of that markup
+patches the owner rather than this module.
 """
 from __future__ import annotations
 

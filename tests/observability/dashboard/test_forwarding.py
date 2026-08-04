@@ -91,6 +91,8 @@ _PAGE_CONTROLS_LEAF = "orchestrator._dashboard_page_controls"
 
 _WIDGET_HUB = "orchestrator.dashboard_widgets"
 
+_WIDGET_PIPELINE_LEAF = "orchestrator._dashboard_widget_pipeline"
+
 _WIDGET_COSTS_LEAF = "orchestrator._dashboard_widget_costs"
 
 _WIDGET_MODELS_LEAF = "orchestrator._dashboard_widget_models"
@@ -118,6 +120,8 @@ _BACKEND_CARD = f"{_PACKAGE}.backend_card"
 _BREAKDOWNS = f"{_PACKAGE}.breakdowns"
 
 _CARD_HTML = f"{_PACKAGE}.card_html"
+
+_CHART_SECTIONS = f"{_PACKAGE}.chart_sections"
 
 _COVERAGE_CARD = f"{_PACKAGE}.coverage_card"
 
@@ -158,6 +162,10 @@ _LAYOUT = f"{_PACKAGE}.layout"
 _PAGE_CONTROLS = f"{_PACKAGE}.page_controls"
 
 _PAGE_MODELS = f"{_PACKAGE}.page_models"
+
+_PAGE_PIPELINE = f"{_PACKAGE}.page_pipeline"
+
+_PAGE_SECTIONS = f"{_PACKAGE}.page_sections"
 
 _PAGE_STATES = f"{_PACKAGE}.page_states"
 
@@ -950,8 +958,9 @@ _ACTIVITY_PANEL_NAMES = (
 # the widget leaf still publishes them: the expander a window's runs are drawn
 # in, the notice a window with none renders instead, and the section an
 # operator opens on one of those runs. The render has to be the owner's own
-# object -- the page renderers are resolved through the facade at call time, so
-# a copy here is a section a fix under the owner would never reach.
+# object -- the page reaches both on the owners themselves, so what this leaf
+# publishes is what a caller reaching past them lands on, and a copy here is a
+# section no fix under the owner would ever show up in.
 _RUN_SECTION_NAMES = (
     (_NO_AGENT_EXITS, _RECENT_RUNS, _NO_AGENT_EXITS),
     ("_render_drilldown_view", _DRILLDOWN, "render_drilldown_view"),
@@ -969,8 +978,8 @@ _DRILLDOWN_CALL_NAMES = (
 # leaf still publishes them: the startup state a database nobody has ingested
 # into is answered with, the notice a window matching no row renders, the
 # footer beneath a page that did draw, and the two messages the first two say
-# it in. The renders are reached through the facade at call time, so a copy
-# here is a banner or a footer a fix under the owner would never reach.
+# it in. The page reaches all three on `page_states` itself, so a copy
+# here is a banner or a footer no fix under the owner would ever show up in.
 _PAGE_END_NAMES = (
     ("EMPTY_WINDOW_MESSAGE", _PAGE_STATES, "EMPTY_WINDOW_MESSAGE"),
     ("NO_DATA_MESSAGE", _PAGE_STATES, "NO_DATA_MESSAGE"),
@@ -982,6 +991,37 @@ _PAGE_END_NAMES = (
     ("_render_empty_window", _PAGE_STATES, "render_empty_window"),
     ("_render_no_data", _PAGE_STATES, "render_no_data"),
 )
+
+# The two-wave render itself, as the leaf named for it still publishes them:
+# the two chrome slots filled above the panels, the banners raised between
+# them, the pass drawing all three off the first wave, the staged load that
+# pass runs inside, the five figure cards the second wave answers for, the four
+# panels beneath them, and the one call the page's whole order is drawn by.
+# Each has to be the owner's own object -- the page reaches the load and the
+# whole-order call on the owners, so a copy here is a section an operator reads
+# that no fix under them would ever reach.
+_PIPELINE_NAMES = (
+    ("_load_dashboard_data", _PAGE_PIPELINE, "load_dashboard_data"),
+    (
+        "_render_dashboard_insights",
+        _PAGE_PIPELINE,
+        "render_dashboard_insights",
+    ),
+    ("_render_first_wave", _PAGE_PIPELINE, "render_first_wave"),
+    ("_render_topbar_and_meta", _PAGE_PIPELINE, "render_topbar_and_meta"),
+    ("_render_chart_widgets", _CHART_SECTIONS, "render_chart_widgets"),
+    (
+        "_render_dashboard_widgets",
+        _PAGE_SECTIONS,
+        "render_dashboard_widgets",
+    ),
+    (
+        "_render_remaining_widgets",
+        _PAGE_SECTIONS,
+        "render_remaining_widgets",
+    ),
+)
+
 
 # The top of the page and the load it opens, as the flat site the facade
 # exports them from still publishes them: the selections the sidebar comes back
@@ -1014,7 +1054,8 @@ _PAGE_CONTROL_NAMES = (
 # What the widget hub above those leaves publishes on an owner's behalf: those
 # seven, the six the cost sections are drawn and sized by, the pair and the
 # grid beneath them, the per-issue trace under the run listing, the two states
-# the page leaves through with the line it ends on, and the Plotly
+# the page leaves through with the line it ends on, the seven passes the
+# two-wave render is drawn by, and the Plotly
 # defaults every figure the page draws is handed. A copy of the defaults is a
 # panel whose hover toolbar nobody switched off, and this
 # is the alias a caller reaching past the owners still reads them off, so what
@@ -1025,6 +1066,7 @@ _WIDGET_HUB_NAMES = (
     *_RELIABILITY_PANEL_NAMES,
     *_ACTIVITY_PANEL_NAMES,
     *_PAGE_END_NAMES,
+    *_PIPELINE_NAMES,
     ("_render_drilldown_view", _DRILLDOWN, "render_drilldown_view"),
     ("PLOTLY_CONFIG", _RENDER_CONFIG, "PLOTLY_CONFIG"),
 )
@@ -1043,9 +1085,10 @@ _FORWARDED_KPI_SERIES = (
 )
 
 # The strip those lines are drawn inside: what one is built from, the scalars a
-# window is reduced to, the four entries, and the build the widget pipeline
-# calls. The build is the one the page renders the strip out of, so a copy here
-# would be four tiles an operator reads that no fix under the owner reaches.
+# window is reduced to, the four entries, and the build itself. The page
+# assembles its tiles on the owner, so what these two sites publish is what a
+# caller reaching past that owner lands on, and a copy here would be four tiles
+# such a caller reads that no fix under the owner shows up in.
 _FORWARDED_KPI_TILES = (
     ("_KpiInputs", _KPI_STRIP, "KpiInputs"),
     ("_KpiStripData", _KPI_STRIP, "KpiStripData"),
@@ -1200,8 +1243,10 @@ _FILTER_NAMES = (
 # a page threaded here
 # the one every section is handed, a run listed or an issue traced here
 # the section the page ends on, an empty database, an empty window, or a
-# drawn page signed off here the state that page leaves through, and a run
-# narrowed or a load staged here the one every panel below is drawn from,
+# drawn page signed off here the state that page leaves through, a run
+# narrowed or a load staged here the one every panel below is drawn from, and
+# the chrome drawn or the sections ordered here the two waves an operator
+# actually watches,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -1270,15 +1315,7 @@ _FORWARDED_MODULES = MappingProxyType({
         *_RELIABILITY_PANEL_NAMES,
         *_ACTIVITY_PANEL_NAMES,
     ),
-})
-
-# The one site that forwards and still answers for something of its own: the
-# widget hub publishes the page state, the four sections beneath the hero card,
-# the per-issue trace, the two states the page leaves through with the line it
-# ends on, and the Plotly defaults while still claiming the render
-# passes it stamps, so it is held to resolving what it forwards rather than to
-# defining nothing.
-_PARTLY_FORWARDED_MODULES = MappingProxyType({
+    _WIDGET_PIPELINE_LEAF: _PIPELINE_NAMES,
     _WIDGET_HUB: _WIDGET_HUB_NAMES,
 })
 
@@ -1363,17 +1400,20 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # ones, the chrome one beside them, the two the filter bar is reached
         # through, the
         # shared-table, issue-table, skill-trigger, five adoption, and five
-        # matrix ones, the six widget leaves the skill cards, the hero one,
+        # matrix ones, the widget hub with the seven leaves beneath it: the
+        # skill cards, the hero one,
         # and the four sections under it are drawn through, the run listing and
         # the trace beneath it are reached through, the two states the page
-        # leaves through and the line it ends on are drawn through, and the
+        # leaves through and the line it ends on are drawn through, the
         # page state is
-        # threaded through, the site the drill-down's historical call shape is
+        # threaded through, and the two waves are rendered through, the site
+        # the drill-down's historical call shape is
         # exported from, the one the sidebar and the staged load beneath it are
         # reached through, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only
-        # compares the names the module was asked for. The card hub is held to
+        # compares the names the module was asked for. The card and widget hubs
+        # are held to
         # it like the rest -- the
         # `__module__` stamp a claim is made with mutates the function, so
         # claiming a name there would move an owner's own object off the owner
@@ -1386,19 +1426,6 @@ class ForwardedFlatModuleTest(unittest.TestCase):
             )
             with self.subTest(module=module_name):
                 self.assertEqual(defined, ())
-
-
-class PartlyForwardedSiteTest(unittest.TestCase):
-    """A site that kept members of its own forwards the moved ones."""
-
-    def test_each_name_resolves_to_the_owner(self) -> None:
-        for module_name, forwarded in _PARTLY_FORWARDED_MODULES.items():
-            for name, owner_name, attribute in forwarded:
-                with self.subTest(module=module_name, name=name):
-                    self.assertIs(
-                        getattr(import_module(module_name), name),
-                        getattr(import_module(owner_name), attribute),
-                    )
 
 
 class ForwardedStateHubTest(unittest.TestCase):

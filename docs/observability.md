@@ -1301,31 +1301,25 @@ a test or non-dashboard caller does not require the group to be installed. A reg
 **Module layout.** `orchestrator/dashboard.py` is a manifest-backed lazy compatibility facade with a complete
 `dashboard.pyi`. `_dashboard_facade_bootstrap.py` owns both package import and direct-script setup, while
 `_dashboard_runtime.py` owns page orchestration, with the two
-date leaves, the page-controls one, and the drill-down one beside them forwarding to the owners the filter bar, the
-band above the panels, and the per-issue trace live
+date leaves, the page-controls one, the widget-pipeline one, and the drill-down one beside them forwarding to the
+owners the filter bar, the
+band above the panels, the two-wave render, and the per-issue trace live
 on.
 Historical `dashboard.<name>` imports, wildcard exports, and object identity are unchanged — every alias still
 resolves to the one object its owner defines. Where a patch has to land is a separate question, and it follows the
-call path rather than the alias: the page pipeline reaches the controls it opens on, the staged plan, and the wave
-dispatch on
-`observability/dashboard/`, so a test intercepts those with
-`patch.object(page_controls | read_plan | dispatch, ...)`, while
-`patch.object(dashboard, ...)` still intercepts the page renderers — the mapping the `PLOTLY_CONFIG` alias lands on is
-`render_config`'s own, and the shapes
+call path rather than the alias, which now runs entirely through `observability/dashboard/`: the page reaches the
+controls it opens on, the staged plan, the wave dispatch, and the render passes those drive on the owners that hold
+them, so a test intercepts them with
+`patch.object(page_controls | read_plan | dispatch | page_pipeline | chart_sections | page_sections, ...)`. The
+`PLOTLY_CONFIG` alias lands on `render_config`'s own mapping, and the shapes
 the pipeline
-threads are `page_models`'. A card builder is the one kind of name on that path a patch must not follow to the owner,
-and which module holds the binding is what a case has to name. One widget section still draws one off the card hub —
-the first-wave pass binds the banner stack
-(`from orchestrator.dashboard_cards import _insights_html`) — and the state section beside it binds the topbar the
-same way off the HTML hub, so what the page calls is the reference captured then
-rather than whatever `card_html.py` or `summary_html.py` holds at call time: a
-test intercepting
-one patches the widget module that draws it — `patch.object(_dashboard_widget_pipeline, "_insights_html", ...)`
-— and reaches the owner only to assert what an unpatched page renders. The sections that moved sit differently. Each
-is a
-page renderer `patch.object(dashboard, ...)` still intercepts, because the pipeline resolves it through the facade at
-call time, but what one draws with is the panel owner's own module-scope import rather than a
-widget module's — so a case that has to intercept the adoption table, the trigger-rate one, the matrix, or either sort
+threads are `page_models`'. A card builder follows the same rule: nothing on the page's path binds one off the flat
+card or HTML hub any more, so a case intercepting the banner stack the first-wave pass draws patches
+`patch.object(card_html, "insights_html", ...)`, and one intercepting the topbar or the filter line patches
+`summary_html`. Each panel below sits the same way. Its
+render is intercepted on the section owner that orders it — `chart_sections` for the five figure cards,
+`page_sections` for the four beneath them — while what one draws with is the panel owner's own module-scope import, so
+a case that has to intercept the adoption table, the trigger-rate one, the matrix, or either sort
 parse patches `skill_panel` or `skill_trigger_panel`, and one that has to intercept the issues table, the efficiency
 card, the coverage bar, or the ranking depth patches `issue_cost_panel`. The paired lifecycle bars, the
 repository-spend pair beneath them, and the activity grid under both sit there too, and a figure builder is on that
@@ -1341,23 +1335,26 @@ rather than through the facade, so a case pinning the toolbar for any of them pa
 zone selectbox inside that last card is `activity_panel`'s too — the options it offers and the formatter each is
 written by are its module-scope import of `filters` — so a case naming either patches there. The recent-run listing
 sits
-the same way as the panels: the render is
-facade-intercepted, but the offset shift each `ts` is converted through is `recent_runs`'s own module-scope import of
+the same way as the panels: the render is intercepted on `recent_runs`, and the offset shift each `ts` is converted
+through is that same owner's module-scope import of
 `filters`, so a case that has to intercept that shift patches there rather than the widget module. So does the
-per-issue trace beneath it: its render is facade-intercepted, while the scope its one uncached read is issued inside
-is `drilldown`'s own import of `scoped_reads`, so a case that has to answer that read patches
+per-issue trace beneath it: its render is intercepted on `drilldown`, while the scope its one uncached read is issued
+inside
+is that owner's import of `scoped_reads`, so a case that has to answer that read patches
 `patch.object(scoped_reads, "scoped_read", ...)`. The hero
-usage card sits that way too: the render is facade-intercepted, while the card header it is titled by, the usage
+usage card sits that way too: the render is intercepted on `usage_panel`, and the card header it is titled by, the
+usage
 figure it draws, and
-the Plotly defaults it hands that figure are `usage_panel`'s own module-scope imports rather than a widget module's or
-a facade lookup — so a case that has to intercept any of the three patches `usage_panel`. That leaves `PLOTLY_CONFIG`
-on the facade a republished reference for a caller reaching past the owners rather than a patch point any section
+the Plotly defaults it hands that figure are that owner's own module-scope imports rather than a widget module's or
+a facade lookup. That leaves every `dashboard.<name>` render alias — and `PLOTLY_CONFIG` beside them — a republished
+reference for a caller reaching past the owners rather than a patch point any section
 resolves through.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports is factored
 into the shared import-light `orchestrator/script_launch.py` helper (`ensure_repo_root_on_path`), which
 `orchestrator/trajectory_dashboard.py` also calls.
 The stable `dashboard_*.py` component hubs delegate to focused `_dashboard_*` leaves grouped by responsibility: cards,
-tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run sections. The read, KPI-strip, and chart
+tables, sparklines, and skill matrices; and widget state/usage/cost/skill/run/pipeline sections. The read, KPI-strip,
+and chart
 leaves beside them — raw, rollup, skill, read-mode, read-plan, and dispatch on one side, the KPI series and values
 pair in the middle, the cost and usage ones on the other — hold no implementation of their own; each forwards to the
 owners named below, and so do all three card leaves, both sparkline leaves, the chrome leaf beside them, the two the
@@ -1376,7 +1373,10 @@ behind it, the ranked issues beside the backend cards, the notice that column an
 the repository ranking beside the run-health tiles, and that grid, and claims none of the eight. So is the widget-run
 section: the listing beneath all four panels and the per-issue trace under it are owners too, so it hands over
 both renders and the empty-window notice beside them — which the hub likewise republishes without claiming — and the
-site the facade exports that trace's historical call shape from forwards the same way under no hub at all.
+site the facade exports that trace's historical call shape from forwards the same way under no hub at all. The
+widget-pipeline section is the last of the seven: the two-wave render itself is three owners now — the chrome and the
+staged load, the five figure cards, and the four panels beneath them — so it forwards all seven passes and the hub
+above it claims none, which leaves that hub defining nothing at all.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1548,7 +1548,10 @@ split, `cost_review.py` the per-review-round one beside it, `heatmap.py` the wee
 heights, aligned axes, traces, and assembled hero figure the usage family draws its reads as (see **Chart builders**
 below).
 `dashboard_state.py` stays the hub the page reads the state off, `dashboard_reads.py` the hub the read inventory
-is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the panels is built through, while
+is resolved through, and `dashboard_kpi_strip.py` the hub a caller reaching past the strip owners lands on — the
+render pass that builds the four tiles names `kpi_strip` itself, as the pass drawing the band above them names
+`summary_html` and the one raising the banners beside it names `card_html`, so `dashboard_html.py` and
+`dashboard_cards.py` are compatibility surfaces with nothing on the page's path left importing them — while
 `_dashboard_kpi_series.py`, `_dashboard_kpi_values.py`,
 `_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`,
 `_dashboard_read_mode.py`, `_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_dispatch.py`,
@@ -1568,31 +1571,29 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
 `_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`,
 `_dashboard_widget_skills.py`, `_dashboard_widget_usage.py`, `_dashboard_widget_models.py`,
-`_dashboard_widget_costs.py`, `_dashboard_widget_runs.py`, `_dashboard_widget_states.py`, and
+`_dashboard_widget_costs.py`, `_dashboard_widget_runs.py`, `_dashboard_widget_states.py`,
+`_dashboard_widget_pipeline.py`, and
 `_dashboard_drilldown.py`
 forward each historical name to the owner's own object — the cost one for the three spend comparisons, the activity
 card beneath them, the height the paired bars share with the two measurements behind it, and the notice the backend
 cards beside that ranking answer an empty window with, the run one for the run listing with its empty-window
 notice and the per-issue trace beneath it, the state one for the two the page leaves through with the line it ends on
-and the two messages the first two say it in, and the last for that trace's typed request and call adapter.
+and the two messages the first two say it in, the pipeline one for the seven passes the two waves are drawn by, and
+the last for that trace's typed request and call adapter.
 `dashboard_widgets.py`
 forwards the Plotly configuration off the render-config owner and the seven page shapes through
-the leaf named for them while still claiming the render passes it stamps. None of the state, read,
-KPI-strip, skill-adoption, and
-skill-matrix hubs defines a name of
+the leaf named for them. None of the state, read,
+KPI-strip, card, skill-adoption,
+skill-matrix, and widget hubs defines a name of
 its own, so none of them rewrites a
-defining module; the
-compatibility metadata that keeps the established defining-module assertions intact belongs to the widget hub alone,
-and names only members a flat leaf still defines — `dashboard_cards.py` names none, because all thirteen it
-publishes are the card, backend, and coverage owners' own objects, and the widget hub leaves the six the two skill
+defining module: no module in the tree carries historical `__module__` metadata any more, since the stamp mutates the
+object and every name these sites publish is now an owner's own — `dashboard_cards.py` claims none of the thirteen it
+publishes, and the widget hub none of the six the two skill
 cards are reached by, the run listing beneath them, the per-issue trace under that listing, the four the three spend
 comparisons are drawn and sized by, the
 activity grid closing them, the
-four the hero card is, the three the page leaves through or signs off with, and the seven shapes a render is
-threaded through out of its own
-list for the same reason: a `__module__` stamp
-there would move one of
-them off the owner that defines it. Streamlit is never imported in these
+four the hero card is, the three the page leaves through or signs off with, the seven shapes a render is
+threaded through, or the seven passes that render is drawn by. Streamlit is never imported in these
 helpers — `st` (with theme and pandas handles; the chart handle threaded beside them reaches no panel, since the hero
 card, the paired lifecycle bars, the repository-spend pair, and the activity grid all name their own chart
 owners) is passed in as a parameter.
@@ -1755,8 +1756,8 @@ window into a calendar to draw zero bars across. In front of each,
 forwarding the public builder plus the spellings beneath it -- the cell / label / layout ones for the grid, the
 calendar / series / pinned-height ones for the strip -- to the owner's own objects and implementing nothing. A test
 that has to intercept one of them patches the owner, because that is what the flat site resolves to. No chart builder
-carries a historical `__module__` stamp -- the cost, heatmap, throughput, and usage sites make no
-`preserve_defining_module` call at all -- so each reports the charts owner that defines it.
+carries a historical `__module__` stamp -- the cost, heatmap, throughput, and usage sites rewrite no defining module
+at all -- so each reports the charts owner that defines it.
 No owner under `charts/` names Plotly at module scope: the ones that assemble a figure import it inside that call,
 and an adapter like `charts/cost_repo.py`, which only shapes rows and hands them to another builder, never imports it
 at all -- `from __future__ import annotations` leaves its `go.Figure` return annotation unevaluated. Either way every

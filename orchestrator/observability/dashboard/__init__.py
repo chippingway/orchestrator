@@ -30,7 +30,13 @@ one of those waves the way the knob said, on the calling thread or across a
 pool capped at the count beside it, and ``dispatch`` drives both of them in
 turn: one spinner over the pair, the chrome rendered between them, a banner and
 a stop when a read cannot reach the database, and one timing line when the load
-comes back. Each
+comes back. ``page_pipeline`` is that chrome and the load it opens: the banner
+and filter line written back into the slots the controls left, the banners a
+window is worth interrupting a page for, the four-tile strip every section
+below is read against, and the staged load all three are drawn inside -- whose
+first pass is also where a load can end, since a window reporting no event at
+all leaves through the empty-window notice and hands nothing back, which is
+what the dispatch above short-circuits the second wave on. Each
 of those readers goes through ``scoped_reads`` for the connection it runs on,
 ``filter_binding`` for the filters its cache key is read back as, and --
 before any of them, because it is what a window can be picked at all from --
@@ -149,6 +155,17 @@ changes what the figure means rather than which rows reach it, and it is keyed
 into the session under the name the page reads the offset back off at the top
 of the next rerun -- the read buckets the cells, so the label is true only
 while the widget and that read name one key.
+``chart_sections`` and ``page_sections`` are the order all of those panels are
+reached in once the second wave answers. The first holds the five cards a
+window's figures are drawn on, stacked as the page argues them: whether a day's
+cost tracked the work behind it, where that cost went, which issues and
+backends it went to, whether the runs it went to held up, and -- last, because
+it is the only card that keeps the clock rather than reducing the window to a
+reading -- when they ran. The second holds the four beneath those cards: what
+the runs were working with, the rows every reading above was reduced from, the
+trace an operator opens one of those rows into, and the line the page signs off
+on. It also holds the single call the whole second wave is drawn by, so the
+order across both halves stays readable from one place.
 ``page_models`` is what a render carries between all of those: the seven frozen
 shapes threaded from the controls at the top of the page to the last panel on
 it -- the caller's own Streamlit, pandas, chart, and theme handles, the

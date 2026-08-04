@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Dashboard card extraction tests."""
 
-import sys
-
-
 import unittest
+
+
+from importlib import import_module
 
 
 from types import MappingProxyType
@@ -56,20 +56,23 @@ class CardHtmlExtractionTest(unittest.TestCase):
     """The insight / backend-efficiency / cost-coverage / reliability-tile
     inline-HTML card family is reached through `orchestrator.dashboard_cards`,
     and `orchestrator.dashboard` re-exports each builder under the same
-    name so the page pipeline and the `dashboard.<name>`
-    surface keep resolving to the same object.
+    name so the `dashboard.<name>`
+    surface keeps resolving to the same object. Nothing on the page's own path
+    imports that hub any more -- every section names the owner it draws with --
+    so the hub is imported here rather than read off a reload that no longer
+    plants it.
     """
 
     def test_card_members_report_their_home(self) -> None:
         _reload(CONFIGURED_DB_ENV)
-        cards = sys.modules[DASHBOARD_CARDS_MODULE]
+        cards = import_module(DASHBOARD_CARDS_MODULE)
         for name, home in _CARD_MEMBER_HOMES.items():
             with self.subTest(name=name):
                 self.assertEqual(getattr(cards, name).__module__, home)
 
     def test_facade_reexports_cards_objects(self) -> None:
         _, dashboard = _reload(CONFIGURED_DB_ENV)
-        cards = sys.modules[DASHBOARD_CARDS_MODULE]
+        cards = import_module(DASHBOARD_CARDS_MODULE)
         for name in _CARD_MEMBER_HOMES:
             with self.subTest(name=name):
                 self.assertTrue(

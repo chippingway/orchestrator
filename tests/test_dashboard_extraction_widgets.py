@@ -64,27 +64,23 @@ STAGE_COST_PANEL_OWNER = f"{DASHBOARD_OWNERS}.stage_cost_panel"
 USAGE_PANEL_OWNER = f"{DASHBOARD_OWNERS}.usage_panel"
 
 
-# Each member the hub publishes and the module that defines it. The widget
-# sections still living on the hub report it; the page-state shapes, the two
+# Each member the hub publishes and the module that defines it. Every one
+# reports an owner under `observability/` -- the page-state shapes, the two
 # skill cards, the two cost-comparison panels, the repository-spend and
 # reliability pair and the activity grid beneath them, the recent-run listing,
 # the per-issue trace beneath it, the two states the page leaves through with
 # the line it ends on, and the
-# hero usage card report the owners under
-# `observability/` that hold them, since a claim here would move an owner's own
-# object off the owner that defines it.
+# hero usage card -- since a claim
+# here would move an owner's own object off the owner that defines it. The
+# two-wave render above all of them is left out: `tests/observability/dashboard/
+# test_forwarding.py` is where the seven passes are held to resolving to their
+# owners, on the leaf and on this hub both.
 _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_DashboardModules": PAGE_MODELS_OWNER,
     "_DashboardFilters": PAGE_MODELS_OWNER,
     "_DashboardControls": PAGE_MODELS_OWNER,
     "_DashboardPage": PAGE_MODELS_OWNER,
     "_backend_tokens_by_day": USAGE_PANEL_OWNER,
-    "_load_dashboard_data": DASHBOARD_WIDGETS_MODULE,
-    "_render_topbar_and_meta": DASHBOARD_WIDGETS_MODULE,
-    "_render_first_wave": DASHBOARD_WIDGETS_MODULE,
-    "_render_chart_widgets": DASHBOARD_WIDGETS_MODULE,
-    "_render_remaining_widgets": DASHBOARD_WIDGETS_MODULE,
-    "_render_dashboard_widgets": DASHBOARD_WIDGETS_MODULE,
     "_render_dashboard_footer": PAGE_STATES_OWNER,
     "_render_no_data": PAGE_STATES_OWNER,
     "_render_empty_window": PAGE_STATES_OWNER,
@@ -110,11 +106,12 @@ _WIDGETS_FACADE_CONSTANTS = (
 
 
 class WidgetRenderingExtractionTest(unittest.TestCase):
-    """The widget-rendering pipeline -- the two-wave render passes -- lives in
-    `orchestrator.dashboard_widgets`, and `orchestrator.dashboard`
-    re-exports the members the page pipeline and these tests reach under
+    """`orchestrator.dashboard_widgets` is the hub the widget surface is
+    reached through, and `orchestrator.dashboard`
+    re-exports the members these tests reach under
     the same names so the `dashboard.<name>` surface keeps resolving to the
-    same object. The KPI-strip aggregations live under
+    same object. The KPI-strip
+    aggregations live under
     `observability/dashboard/` -- `kpi_series` for the per-day lines and
     `kpi_strip` for the tiles drawn over them -- and are reached through
     `orchestrator.dashboard_kpi_strip` (`KpiStripExtractionTest`); the two
