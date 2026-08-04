@@ -1549,8 +1549,9 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_widget_costs.py`, `_dashboard_widget_runs.py`, and `_dashboard_drilldown.py`
 forward each historical name to the owner's own object — the cost one for the three spend comparisons, the activity
 card beneath them, the height the paired bars share with the two measurements behind it, and the notice the backend
-cards beside that ranking answer an empty window with, and the last two for the run listing with its empty-window
-notice and the per-issue trace beneath it, and that trace's typed request and call adapter. `dashboard_widgets.py`
+cards beside that ranking answer an empty window with, the run one for the run listing with its empty-window
+notice and the per-issue trace beneath it, and the last for that trace's typed request and call adapter.
+`dashboard_widgets.py`
 forwards the Plotly configuration off the render-config owner and the seven page shapes through
 the leaf named for them while still claiming the render passes it stamps. None of the state, read,
 KPI-strip, skill-adoption, and

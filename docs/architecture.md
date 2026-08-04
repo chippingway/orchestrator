@@ -2563,7 +2563,8 @@ its panel and empty notice to the five owners that hold each. `dashboard_skill_m
 those five, publishing all twenty-one names under the spellings a page always imported them by — the column model,
 the column set, the numeric keys, the sort keys, the header state, the row view, and the panel rules under a leading
 underscore the leaves spell bare — and defining none of them, so a click an operator makes and the order the owners
-run cannot come apart. `_dashboard_widget_skills.py` is the widget-side site beside those two, forwarding the adoption
+run cannot come apart. `_dashboard_widget_skills.py` is the first of the five widget-side sites beside those two,
+forwarding the adoption
 card, the caption under it, the invocation fold, the trigger-rate card, and its own fold to the two panel owners under
 the private spellings the page always imported them by, plus the notice the second of them answers an empty window
 with, under its own public one. `_dashboard_widget_runs.py` is the second, forwarding the run listing, the notice a
