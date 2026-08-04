@@ -1263,8 +1263,9 @@ orchestrator/
                         list, plus the skill roots and SKILL.md marker
                         `catalog.py` reads back
   stages/
-    <stage>.py          temporary forwarder for each historical stage, reading
-                        every name back off its owners under `workflow/stages/`
+    <stage>.py          temporary forwarder for a stage still reached for here,
+                        reading every name back off its owners under
+                        `workflow/stages/`; `validating` has none left
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
 ```
@@ -3080,10 +3081,10 @@ same object. Identity is all a forwarder carries: it caches each name it resolve
 lookup site it lands on rather than both, and the owner is the site orchestrator code reads. Dispatch makes that
 explicit: `_STAGE_HANDLER_TARGETS` names the owner a handler lives on, and so does the same-tick start in
 `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
-is dropped once the callers it serves name the owner. Like `workflow/engine/`, the new package and each stage
-subpackage inside it bind nothing in their initializers -- the dispatcher resolves one handler per issue, so an eager
-binding there would charge that import for every other stage's leaves and for the worktree and GitHub subsystems they
-reach.
+is dropped once the callers it serves name the owner, and `validating` has no module left in the flat package. Like
+`workflow/engine/`, the new package and each stage subpackage inside it bind nothing in their initializers -- the
+dispatcher resolves one handler per issue, so an eager binding there would charge that import for every other stage's
+leaves and for the worktree and GitHub subsystems they reach.
 
 The decomposition owners bind their collaborators directly. `manifest` calls `validation` for the split rules,
 `run` calls `session`, `recovery`, and `outcomes` for the order a tick asks them in, `outcomes` calls `manifest` and
@@ -3148,10 +3149,12 @@ documenting it imports the resume, the session read, and the question / dirty-tr
 `workflow/stages/implementing/` directly, and the squash from `git/publication/squash.py`, so a patch on one of those
 lands on the owner rather than on the facade — which would not intercept the call. The seams that stay on the facade
 are the ones the stage does not own — the worktree, fetch, git, and push helpers plus base-sync's
-`_AUTO_REBASE_PARK_REASONS` are read as `_wf` attributes at call time — and the whole historical inventory still
-resolves on `orchestrator.stages.validating` with the owner's exact identity. Six of its names resolve on `workflow`
-as well — `_post_user_content_change_result`, `_handle_dev_fix_result`, `_stranded_fix_unpushed`,
-`_try_recover_validating_transient_park`, `_VALIDATING_TRANSIENT_PARK_REASONS`, and `_latest_pr_comment_ids` — but
+`_AUTO_REBASE_PARK_REASONS` are read as `_wf` attributes at call time. No flat module sits beside these owners: a
+check in `tests/workflow/stages/validating/test_imports.py` asserts nothing resolves at the
+`orchestrator.stages.validating` paths, so the reviewer round, the parks, and the watermark seed are each answered on
+an owner alone. Six names resolve on `workflow` as well — `_post_user_content_change_result`,
+`_handle_dev_fix_result`, `_stranded_fix_unpushed`, `_try_recover_validating_transient_park`,
+`_VALIDATING_TRANSIENT_PARK_REASONS`, and `_latest_pr_comment_ids`, each read straight off its owner — but
 every in-tree caller of those names the owner itself: in_review's and resolving_conflict's drift routes for the first,
 fixing's resume and parked owners for the next four, documenting's final-docs handoff for the last. Those entries
 serve historical callers alone.
