@@ -16,7 +16,10 @@ trimmed, which is what keeps an outsider on a public repo from steering a
 coding agent through the issue thread.
 
 The tracked-repository awareness block sits beside the thread read because both
-are bounded, non-secret context folded into the same agent prompts.
+are bounded, non-secret context folded into the same agent prompts. So is the
+paragraph break the thread read joins its quoted comments with: ``prompts.py``
+assembles its own sections around that quote with the same break, and one
+definition is what keeps the two reading as a single document.
 """
 from __future__ import annotations
 
@@ -25,9 +28,6 @@ from typing import Optional
 from github.Issue import Issue
 
 from orchestrator import config
-# The blank line between quoted comments is the paragraph break the prompt
-# builders assemble their own sections with, so it keeps one definition.
-from orchestrator._workflow_messages_state import _SECTION_SEP
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import is_trusted_author
 from orchestrator.github.pinned_state import PinnedState
@@ -35,6 +35,10 @@ from orchestrator.github.pinned_state import PinnedState
 _ORCH_COMMENT_ID_CAP = 500
 
 _ORCH_COMMENT_MARKER = "<!--orchestrator-comment-->"
+
+# The blank line between quoted comments is the paragraph break the prompt
+# builders assemble their own sections with, so it keeps one definition.
+_SECTION_SEP = "\n\n"
 
 _TRACKED_REPOS_CAP = 20
 

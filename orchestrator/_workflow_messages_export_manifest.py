@@ -20,10 +20,6 @@ EXPORTS = (
         (("config", "config"),),
     ),
     *export_group(
-        "orchestrator._workflow_messages_state",
-        (("_SECTION_SEP", "_SECTION_SEP"),),
-    ),
-    *export_group(
         "orchestrator.agents",
         (("AgentResult", "AgentResult"),),
     ),
@@ -56,6 +52,7 @@ EXPORTS = (
         (
             ("_ORCH_COMMENT_ID_CAP", "_ORCH_COMMENT_ID_CAP"),
             ("_ORCH_COMMENT_MARKER", "_ORCH_COMMENT_MARKER"),
+            ("_SECTION_SEP", "_SECTION_SEP"),
             ("_TRACKED_REPOS_CAP", "_TRACKED_REPOS_CAP"),
             ("_build_tracked_repos_context", "_build_tracked_repos_context"),
             ("_orchestrator_ids", "_orchestrator_ids"),

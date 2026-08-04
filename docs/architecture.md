@@ -118,7 +118,8 @@ orchestrator/
                         shared-helper owners
       comments.py       the orchestrator marker and capped id ledger both
                         comment posters write, the trusted-author thread read
-                        every prompt quotes, and the tracked-repos block
+                        every prompt quotes, the paragraph break that read and
+                        the prompt builders share, and the tracked-repos block
       dispatch.py       one tick's pollable issues turned into handler calls:
                         the hard-skip filter, the family / fanout partition and
                         its cap exemptions, the per-worker refetch, the
@@ -362,8 +363,6 @@ orchestrator/
                         attribute and its open / closed values
   workflow_drift.py     lazy user-content-drift compatibility facade
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
-  _workflow_messages_state.py
-                        the section separator its prompt leaves share
   git/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
@@ -1398,9 +1397,10 @@ earlier commit already carried), and one set of placeholders for an empty body o
 promises -- `VERDICT:`, `DOCS: NO_CHANGE`, `ACK:`, the
 fenced manifest -- is parsed by `engine/messages.py` or the decomposition stage's manifest owners, so the prompt and
 the parser that reads its answer are edited as a pair; the child cap the decompose prompt states is read straight off
-`workflow/stages/decomposition/validation.py` so the two cannot disagree. It reaches `comments.py` for the thread text
-and the tracked-repos block and `messages.py` for the blockquote, and the stage leaves that build a prompt or append a
-note import the owner. So a
+`workflow/stages/decomposition/validation.py` so the two cannot disagree. It reaches `comments.py` for the thread text,
+the tracked-repos block, and the paragraph break its own sections are joined on -- one definition is what keeps a
+quoted thread and the prompt built around it breaking the same way -- and `messages.py` for the blockquote; the stage
+leaves that build a prompt or append a note import the owner. So a
 patch that has to intercept a built prompt, a shared note, or the single-decision comment targets
 `orchestrator.workflow.engine.prompts`; `workflow`, `workflow_messages`, and `workflow_drift` each still resolve their
 historical slice of those names to the owner's exact object. A prompt with only one caller stays with that caller:
