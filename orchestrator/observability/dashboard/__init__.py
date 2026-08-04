@@ -98,6 +98,16 @@ Two panels are markup of their own rather than a figure: ``backend_card``
 for what a run on one backend is worth and the card the three readings behind
 it are laid out on, and ``coverage_card`` for the share of a window's spend the
 parser could price, drawn as one bar and the legend under it.
+``stage_cost_panel`` and ``issue_cost_panel`` are the two sections that spend
+is compared across, each a pair of columns split 7:5. The first draws the
+lifecycle bars -- where the money went by stage beside where it went by review
+cycle -- pinned to one height taken off whichever axis carried more buckets, so
+two figures read across a gutter cannot stand at different bar thicknesses. The
+second draws the window's costliest issues beside the backends that ran them,
+and closes that column with the coverage bar qualifying the money the cards
+above it report; its two columns answer an empty window differently, since a
+window can carry runs the parser could not price while a window with no
+`agent_exit` row had nothing to run at all.
 ``page_models`` is what a render carries between all of those: the seven frozen
 shapes threaded from the controls at the top of the page to the last panel on
 it -- the caller's own Streamlit, pandas, chart, and theme handles, the

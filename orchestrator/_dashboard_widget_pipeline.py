@@ -128,7 +128,6 @@ def _render_chart_widgets(
     )
     dashboard_module._render_stage_review_bars(
         st=modules.st,
-        dashboard_charts=modules.charts,
         stage_rows=loaded.read_results["stage_rows"],
         review_round_rows=loaded.read_results["review_round_rows"],
     )

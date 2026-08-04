@@ -31,6 +31,9 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 DASHBOARD_OWNERS = "orchestrator.observability.dashboard"
 
 
+ISSUE_COST_PANEL_OWNER = f"{DASHBOARD_OWNERS}.issue_cost_panel"
+
+
 PAGE_MODELS_OWNER = f"{DASHBOARD_OWNERS}.page_models"
 
 
@@ -43,14 +46,18 @@ SKILL_PANEL_OWNER = f"{DASHBOARD_OWNERS}.skill_panel"
 SKILL_TRIGGER_PANEL_OWNER = f"{DASHBOARD_OWNERS}.skill_trigger_panel"
 
 
+STAGE_COST_PANEL_OWNER = f"{DASHBOARD_OWNERS}.stage_cost_panel"
+
+
 USAGE_PANEL_OWNER = f"{DASHBOARD_OWNERS}.usage_panel"
 
 
 # Each member the hub publishes and the module that defines it. The widget
 # sections still living on the hub report it; the page-state shapes, the two
-# skill cards, the recent-run listing, and the hero usage card report the
-# owners under `observability/` that hold them, since a claim here would move
-# an owner's own object off the owner that defines it.
+# skill cards, the two cost-comparison panels, the recent-run listing, and the
+# hero usage card report the owners under
+# `observability/` that hold them, since a claim here would move an owner's own
+# object off the owner that defines it.
 _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_DashboardModules": PAGE_MODELS_OWNER,
     "_DashboardFilters": PAGE_MODELS_OWNER,
@@ -67,8 +74,8 @@ _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_render_no_data": DASHBOARD_WIDGETS_MODULE,
     "_render_empty_window": DASHBOARD_WIDGETS_MODULE,
     "_render_hero_usage": USAGE_PANEL_OWNER,
-    "_render_stage_review_bars": DASHBOARD_WIDGETS_MODULE,
-    "_render_issues_and_backends": DASHBOARD_WIDGETS_MODULE,
+    "_render_stage_review_bars": STAGE_COST_PANEL_OWNER,
+    "_render_issues_and_backends": ISSUE_COST_PANEL_OWNER,
     "_render_repo_and_reliability": DASHBOARD_WIDGETS_MODULE,
     "_render_activity_heatmap": DASHBOARD_WIDGETS_MODULE,
     "_render_skill_adoption": SKILL_PANEL_OWNER,
@@ -100,7 +107,10 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     `orchestrator.dashboard_kpi_strip` (`KpiStripExtractionTest`); the two
     skill cards live there too -- `skill_panel` for the adoption card and the
     diagnostics folded under it, `skill_trigger_panel` for the trigger-rate one
-    beside them -- as do the recent-run listing above that drill-down, under
+    beside them -- as do the two cost-comparison sections -- `stage_cost_panel`
+    for the paired lifecycle bars and the height they share,
+    `issue_cost_panel` for the ranked issues beside the backends that ran
+    them -- the recent-run listing above that drill-down, under
     `recent_runs`, the hero spend and token-usage card the page opens with,
     under `usage_panel`, the shapes the pipeline threads, under `page_models`,
     and the Plotly defaults its figures are drawn under, in `render_config`,
