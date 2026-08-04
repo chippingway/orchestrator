@@ -24,6 +24,8 @@ _BREAKDOWNS_OWNER = "breakdowns"
 
 _CARD_HTML_OWNER = "card_html"
 
+_CHART_SECTIONS_OWNER = "chart_sections"
+
 _COVERAGE_CARD_OWNER = "coverage_card"
 
 _CSS_OWNER = "css"
@@ -63,6 +65,10 @@ _LAYOUT_OWNER = "layout"
 _PAGE_CONTROLS_OWNER = "page_controls"
 
 _PAGE_MODELS_OWNER = "page_models"
+
+_PAGE_PIPELINE_OWNER = "page_pipeline"
+
+_PAGE_SECTIONS_OWNER = "page_sections"
 
 _PAGE_STATES_OWNER = "page_states"
 
@@ -136,6 +142,7 @@ _OWNERS = (
     _BACKEND_CARD_OWNER,
     _BREAKDOWNS_OWNER,
     _CARD_HTML_OWNER,
+    _CHART_SECTIONS_OWNER,
     _COVERAGE_CARD_OWNER,
     _CSS_OWNER,
     _DATE_CONTROLS_OWNER,
@@ -156,6 +163,8 @@ _OWNERS = (
     _LAYOUT_OWNER,
     _PAGE_CONTROLS_OWNER,
     _PAGE_MODELS_OWNER,
+    _PAGE_PIPELINE_OWNER,
+    _PAGE_SECTIONS_OWNER,
     _PAGE_STATES_OWNER,
     _PALETTE_OWNER,
     _READ_MODE_OWNER,
@@ -233,7 +242,11 @@ _OWNERS = (
 # draw on the span and run count it was drawn over, offer the sidebar a run of
 # that page is narrowed in, read the zone its timestamps are displayed against
 # back off the session, resolve one pass through those controls into what every
-# read is bounded by, stage the load they open, or carry what a render was
+# read is bounded by, stage the load they open, fill the two slots that band
+# left above the panels and raise the banners between them, drive the staged
+# load the strip is drawn inside, stack the five figure cards that load
+# answers for, close the page on the four panels beneath them, or carry what a
+# render was
 # narrowed to from
 # the controls at the top of the page down to those panels is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
@@ -312,6 +325,7 @@ _SURFACES = MappingProxyType({
         "coverage_segment",
         "coverage_segments",
     ),
+    _CHART_SECTIONS_OWNER: ("render_chart_widgets",),
     _CSS_OWNER: (),
     _DATE_CONTROLS_OWNER: (
         "DateFilterColumns",
@@ -405,6 +419,16 @@ _SURFACES = MappingProxyType({
         "DashboardPage",
         "LoadedDashboard",
         "ReliabilityPanelData",
+    ),
+    _PAGE_PIPELINE_OWNER: (
+        "load_dashboard_data",
+        "render_dashboard_insights",
+        "render_first_wave",
+        "render_topbar_and_meta",
+    ),
+    _PAGE_SECTIONS_OWNER: (
+        "render_dashboard_widgets",
+        "render_remaining_widgets",
     ),
     _PAGE_STATES_OWNER: (
         "render_dashboard_footer",
@@ -569,13 +593,14 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # The historical import sites the pages still reach these owners through: the
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
-# all but the KPI one, the six widget leaves the skill panels, the two
+# all but the KPI one, the widget hub with the seven leaves the skill panels,
+# the two
 # cost-comparison panels with the repository-and-reliability pair and the
 # activity grid beneath them,
 # the run listing with the trace beneath it, the hero usage card, the two
-# states a page leaves through with the line it ends on, and the page
-# state are reached through, which sit under the widget
-# hub instead, and the
+# states a page leaves through with the line it ends on, the page
+# state, and the two-wave render pipeline above all of them are reached
+# through, and the
 # two the filter bar, the one the sidebar and the load it opens, and the one
 # the drill-down's historical call shape are
 # reached through, which sit under no hub at all.
@@ -619,6 +644,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator._dashboard_table_html",
     "orchestrator._dashboard_widget_costs",
     "orchestrator._dashboard_widget_models",
+    "orchestrator._dashboard_widget_pipeline",
     "orchestrator._dashboard_widget_runs",
     "orchestrator._dashboard_widget_skills",
     "orchestrator._dashboard_widget_states",
@@ -633,6 +659,7 @@ _COMPATIBILITY_SITES = (
     "orchestrator.dashboard_skill_matrix",
     "orchestrator.dashboard_state",
     "orchestrator.dashboard_theme",
+    "orchestrator.dashboard_widgets",
 )
 
 # What an owner here may reach: its siblings, plus the analytics owners named
@@ -682,7 +709,15 @@ _COMPATIBILITY_SITES = (
 # and the shapes all of it is threaded on as. The panel below those two is typed
 # against the shapes rather than the rows, so the page state is the only
 # vocabulary it names, while the grid beneath it is back to the rows and names
-# the activity family for the weekday-by-hour points it draws. One sibling is a
+# the activity family for the weekday-by-hour points it draws. The owner
+# drawing the chrome between the two waves names two result families without
+# issuing a read either -- the window aggregate its banner, filter line, and
+# strip are all reduced from, and the cost-source rows one of its banners is
+# raised over -- while the two that only order the panels beneath name no
+# result family at all, since every row they hand on arrived with the load:
+# their whole reach is the panels themselves plus the shapes those are typed
+# against, and the second of the two names the first because one call has to
+# draw the page's whole order. One sibling is a
 # package rather than a
 # module: the four owners that draw a figure inside a card name the chart
 # families that build it -- the hero card one, the paired lifecycle bars two,

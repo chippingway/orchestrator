@@ -6,7 +6,12 @@ from __future__ import annotations
 from typing import Any
 
 from orchestrator import dashboard_widgets
-from orchestrator.observability.dashboard import page_controls, static_metadata
+from orchestrator.observability.dashboard import (
+    page_controls,
+    page_pipeline,
+    page_sections,
+    static_metadata,
+)
 
 
 def main() -> None:
@@ -72,7 +77,7 @@ def _render_dashboard(
         )
         return
     page = page_controls.prepare_dashboard_page(modules, extent, options)
-    loaded = dashboard_widgets._load_dashboard_data(modules, page)
+    loaded = page_pipeline.load_dashboard_data(modules, page)
     if loaded is None:
         return
-    dashboard_widgets._render_dashboard_widgets(modules, page, loaded)
+    page_sections.render_dashboard_widgets(modules, page, loaded)

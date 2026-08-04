@@ -2,16 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 """Stable dashboard card surface backed by focused card leaves.
 
-`from orchestrator.dashboard_cards import _insights_html` is how the widget
-pipeline reaches the banner stack a page opens with, and every historical
-`dashboard.<name>` import reaches that stack together with the header a panel
+`from orchestrator.dashboard_cards import _insights_html` is how every
+historical `dashboard.<name>` import reaches the banner stack a page opens
+with, together with the header a panel
 is titled by, the reliability strip beneath its headline tiles, the per-backend
 efficiency card, and the cost-attribution coverage bar. Each of those is the
 owner's own object under `observability/dashboard/`, published here under the
-private spellings a caller always imported it by, so a page and the owners
-cannot draw a card differently. The panels themselves take the header and the
-strip off `card_html` directly, so the banner is the one name on this surface a
-render still resolves through it.
+private spellings a caller always imported it by, so a caller reaching past the
+owners and the owners themselves cannot draw a card differently.
+
+Nothing on the page's own path imports this surface. Every section names the
+owner it draws with -- `card_html` for the header, the banner stack, and the
+reliability strip, and the two card owners beside it for the efficiency card
+and the coverage bar -- so a test that has to intercept a builder patches the
+owner rather than this module.
 """
 from __future__ import annotations
 

@@ -622,6 +622,10 @@ orchestrator/
                         historical import site for the two states a page
                         leaves through and the line it signs off with,
                         forwarding to page_states.py
+  _dashboard_widget_pipeline.py
+                        historical import site for the two-wave render above
+                        all of those sections, forwarding to page_pipeline.py,
+                        chart_sections.py, and page_sections.py
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -1010,6 +1014,16 @@ orchestrator/
                         spinner over the pair, the banner and stop a failed
                         read is answered with, and the line a completed load
                         is measured by
+      page_pipeline.py  what is drawn in between, and the load it is drawn
+                        inside: the banner and filter line written back into
+                        the slots the controls left, the banners a window is
+                        worth interrupting a page for, the four-tile strip
+                        every section below is read against, and the staged
+                        load whose first pass is also where one can end early
+      chart_sections.py the five cards a window's figures are drawn on, in
+                        the order the page stacks them
+      page_sections.py  the four panels beneath those cards, and the one call
+                        the whole second wave is drawn by
       page_models.py    the seven frozen shapes one render is threaded
                         through: the caller's module handles, the selections
                         every read is narrowed by together with the issue
@@ -1953,6 +1967,28 @@ operator's switch rather than a setting and a single grep has to be able to A/B 
 on the `orchestrator._dashboard_read_dispatch` logger, spelled out literally rather than derived from the module path,
 so the name an operator's level and handler selection is keyed on holds still while the module emitting it moves.
 
+`page_pipeline.py` is what fills the gap that staging opens. The banner and the filter line go into the two slots the
+controls reserved, the banners a window is worth interrupting a page for go between them, and the four-tile strip goes
+under those — all three off the first wave, while the panels beneath are still being read. Its first pass is also the
+one branch a load can end on: a window whose first wave reported no event at all has nothing for the panels to draw,
+so the chrome is written, the empty-window notice takes over, and reporting nothing back is what the dispatch above
+short-circuits the second wave on. That makes the return value a short circuit rather than only a result, which is why
+it is `None` rather than an empty strip. Every sibling it draws with is named on the owner that holds it rather than
+resolved off the flat facade at call time, so a page and a fix under one of those owners land on the same object.
+
+`chart_sections.py` and `page_sections.py` are the order every panel below that strip is reached in once the second
+wave answers. Each panel is its own owner; what these two decide is which comes first, and that order is the page's
+argument rather than a layout preference. The five cards a figure is drawn on stack in the first: whether a day's cost
+tracked the work behind it, where that cost went across the lifecycle, which issues and backends it went to, whether
+the runs it went to held up, and — last, because it is the only card that keeps the clock rather than reducing the
+window to a reading — when they ran. The four beneath them are the second: what those runs were working with, the rows
+every reading above was reduced from, the trace an operator opens one of those rows into, and the line the page signs
+off on. The paired repository-spend and run-health card is the one handed a shape rather than keyword rows, because it
+is the only one drawn from four reads at once and a repo list and a throughput series passed positionally are two
+arguments nothing would catch swapped. The single call the whole wave is drawn by sits with the second half: splitting
+the order across two calls is what lets a caller draw either half against a stand-in, and keeping the pair in one call
+is what keeps the page's order readable from one place.
+
 `page_models.py` holds what a render carries between all of that and the panels below it. Streamlit reruns the whole
 script on every widget interaction, so a render is one pass with nothing kept between passes, and these seven frozen
 shapes are what that pass threads from the controls at the top of the page down to the last table on it. Frozen is the
@@ -2535,17 +2571,21 @@ cuts and the per-backend and per-cost-source rows the cards and the bar in its o
 that closes those sections names `analytics/query/activity_models.py` for the weekday-by-hour points it draws, the
 hero card above
 all of them names that same owner for the per-backend daily rows it totals and
-`analytics/query/overview_models.py` for the series it hands its figure, and the page-state
+`analytics/query/overview_models.py` for the series it hands its figure, the page-state
 owner names `analytics/query/overview_models.py` without issuing a read of its own, for the extent a page opened on
-and the window totals a comparison panel reports; those
+and the window totals a comparison panel reports, and the owner drawing the chrome between the two waves names that
+same one and `analytics/query/cost_models.py` for the same reason — the window aggregate its banner, filter line, and
+strip are all reduced from, and the cost-source rows one of its banners is raised over; those
 are the only things
-any of the fifty-one reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the fifty-four reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from — as do the two the filter bar is
 drawn out of, which take the presets they offer and the window they resolve from that window owner and each other, and
 are handed Streamlit rather than importing it, and the owner above those two, which names no result family at all
 because what a run is narrowed by is decided out of the selections an operator made rather than out of anything read
 back, and takes the bar it draws, the normalization those selections go through, the knob and the plan its load is
-staged by, and the shapes all of it is threaded on as off six siblings — the table markup reaches not one of
+staged by, and the shapes all of it is threaded on as off six siblings, and the two ordering the panels below, which
+name no result family either since every row they hand on arrived with the load, so their whole reach is the panels
+themselves and the shapes those are typed against — the table markup reaches not one of
 those — every value a cell reports is handed to it — the sparkline projection and the Plotly configuration reach
 nothing at all, the markup
 over the projection only that projection, the chrome around the strip only that markup — for the line a tile carries
@@ -2583,18 +2623,20 @@ the whole band is read back as, and the staged plan beneath it to `page_controls
 page always imported them by, and reached by nothing on the live path either, since the runtime prepares its page on
 the owner.
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
-them to the two owners that hold each. `dashboard_kpi_strip.py` is the hub the widget pipeline and the lazy facade
-build the strip through, and `_dashboard_kpi_series.py` and `_dashboard_kpi_values.py` the two leaves beneath it: the
+them to the two owners that hold each. `dashboard_kpi_strip.py` is the hub the lazy facade resolves the strip
+through, and `_dashboard_kpi_series.py` and `_dashboard_kpi_values.py` the two leaves beneath it: the
 two token totals, the throughput pair, and the three per-day lines are the series owner's objects, and the inputs, the
 window scalars, the entry keys, the four tiles, and the build itself the strip owner's, all under the private
 spellings a caller reached them by. That hub stamps no defining module of its own, so a name reached through it
-reports the owner that holds it. `_dashboard_card_headers.py`, `_dashboard_backend_card.py`, and
+reports the owner that holds it — and nothing on the live path builds a strip through it either, since the render pass
+that assembles the four tiles names `kpi_strip.py`. `_dashboard_card_headers.py`, `_dashboard_backend_card.py`, and
 `_dashboard_coverage_card.py` are three more, forwarding the header, the banner stack, and the reliability strip to
 the markup owner, the efficiency card and the readings behind it to the backend-card owner, and the coverage bar and
 its segments to the coverage-card owner, each under its own public spellings. `dashboard_cards.py` stays the surface
 in front of the three, publishing all thirteen names under the private spellings the page always imported them by, and
 claims none of them: the `__module__` stamp mutates the function, so a name claimed here would move an owner's own
-object off the owner that defines it.
+object off the owner that defines it. Nothing on the live path reaches it any more either — the banner stack the page
+opens with was the last card a render resolved through this surface, and the pass drawing it names `card_html.py`.
 `_dashboard_table_html.py` is another, forwarding the stylesheet, header, and
 assembly the hand-rolled panels are drawn by, and the bar width, short repository name, missing count, and unpriced
 amount a cell reports, under the private spellings they were always imported by. `_dashboard_issue_table.py` is the
@@ -2631,7 +2673,7 @@ its panel and empty notice to the five owners that hold each. `dashboard_skill_m
 those five, publishing all twenty-one names under the spellings a page always imported them by — the column model,
 the column set, the numeric keys, the sort keys, the header state, the row view, and the panel rules under a leading
 underscore the leaves spell bare — and defining none of them, so a click an operator makes and the order the owners
-run cannot come apart. `_dashboard_widget_skills.py` is the first of the six widget-side sites beside those two,
+run cannot come apart. `_dashboard_widget_skills.py` is the first of the seven widget-side sites beside those two,
 forwarding the adoption
 card, the caption under it, the invocation fold, the trigger-rate card, and its own fold to the two panel owners under
 the private spellings the page always imported them by, plus the notice the second of them answers an empty window
@@ -2651,11 +2693,16 @@ and index its stack toggle offers a mode by, and the per-day per-backend totals 
 owner. `_dashboard_widget_states.py` is the sixth, forwarding the startup state a database nobody has ingested into
 is answered with, the notice a window matching no row renders, and the footer a page that did draw closes on to
 `page_states.py` — the three renders under the private spellings the page always imported them by, the two messages
-the first two say it in under their public ones.
-`_dashboard_drilldown.py` sits beside those six under no hub at all, forwarding the typed request and the
+the first two say it in under their public ones. `_dashboard_widget_pipeline.py` is the seventh, forwarding the two
+slots the chrome is written into, the banners raised between them, the pass drawing all three off the first wave, and
+the staged load that pass runs inside to `page_pipeline.py`, the five figure cards to `chart_sections.py`, and the
+four panels beneath them together with the call the whole wave is drawn by to `page_sections.py` — all seven under the
+private spellings the page always imported them by.
+`_dashboard_drilldown.py` sits beside those seven under no hub at all, forwarding the typed request and the
 adapter the facade exports that trace's historical call shape from. The
-widget hub above all six republishes those thirty-two and the Plotly configuration it reads straight off the
-render-config owner, and claims none of them, since the `__module__` stamp mutates the object and a claim there would
+widget hub above all seven republishes those thirty-nine and the Plotly configuration it reads straight off the
+render-config owner, and claims none of them, so it defines nothing of its own either — the `__module__` stamp a claim
+used to be made with mutates the object, and a claim there would
 move an owner's own render, measurement, or shape off the owner that defines it.
 `dashboard_charts_base.py` is one too: the placeholder, the three
 label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
@@ -2673,9 +2720,9 @@ per-stage split's seven columns, sort key, full-price fallback, lightening facto
 per-review-round split's eight columns, round order and labels, row heights, two role totals, traces, and builder.
 `dashboard_charts_cost.py` is the surface in front of those five, publishing the four builders under their own names
 and the shaping beneath them under the private spellings it always did, and implementing nothing — so, like the
-heatmap, throughput, and usage sites, it makes no `preserve_defining_module` call at all. No chart builder anywhere
-carries a historical `__module__` stamp any more: the stamp mutates the object, so claiming a builder a charts owner
-defines would rewrite the owner's own function.
+heatmap, throughput, and usage sites, it rewrites no defining module at all. Nothing anywhere in the tree does any
+more: the stamp mutates the object, so claiming a name a dashboard owner defines would rewrite the owner's own
+function.
 `_dashboard_usage_models.py` and `_dashboard_usage_data.py` are the same kind of site one family down, and the fifteen
 names they publish are split across the two shaping owners: the per-day table's alias, the four band names, the mode
 beside them, and the three helpers that zero a bucket, roll the series up into one, and total a day's tokens are

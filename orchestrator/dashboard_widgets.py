@@ -3,7 +3,6 @@
 """Stable dashboard widget surface backed by focused component leaves."""
 from __future__ import annotations
 
-from orchestrator import _dashboard_compatibility as compatibility
 from orchestrator import _dashboard_widget_costs as costs
 from orchestrator import _dashboard_widget_models as models
 from orchestrator import _dashboard_widget_pipeline as pipeline
@@ -56,22 +55,3 @@ _render_skill_triggers = skills._render_skill_triggers
 _render_skill_matrix_expander = skills._render_skill_matrix_expander
 _render_recent_runs = runs._render_recent_runs
 _render_drilldown_view = runs._render_drilldown_view
-
-# The members a flat leaf defines itself. The stamp mutates the object, so
-# naming one an owner under `observability/dashboard/` holds -- either skill
-# card, either cost-comparison panel, the repository-spend and reliability
-# pair, the activity grid beneath them, the recent-run listing, the per-issue
-# trace beneath it, the hero usage card and the totals behind its stack, the
-# two states a page leaves through with the line it ends on, or any
-# of the seven page-state shapes -- would move that object off the owner that
-# defines it.
-_COMPATIBILITY_MEMBERS = (
-    _render_topbar_and_meta,
-    _render_dashboard_insights,
-    _render_first_wave,
-    _load_dashboard_data,
-    _render_chart_widgets,
-    _render_remaining_widgets,
-    _render_dashboard_widgets,
-)
-compatibility.preserve_defining_module(__name__, _COMPATIBILITY_MEMBERS)
