@@ -50,9 +50,10 @@ on owners in
 `orchestrator/workflow/stages/in_review/`, `_handle_fixing` in
 `orchestrator/workflow/stages/fixing/`, `_handle_resolving_conflict` in
 `orchestrator/workflow/stages/conflicts/`, and `_handle_question` in
-`orchestrator/workflow/stages/question/`. The module each stage vacated under `orchestrator/stages/` stays
-behind as a temporary forwarder onto those owners, so both import sites keep handing back the same handler; the
-dispatcher and the same-tick pickup start name the owner directly. The per-stage
+`orchestrator/workflow/stages/question/`. The module a stage vacated under `orchestrator/stages/` stays
+behind as a temporary forwarder onto those owners, so both import sites keep handing back the same handler, and goes
+once its callers name the owner — `validating` has none left. The dispatcher and the same-tick pickup start name the
+owner directly. The per-stage
 behavior is documented in
 [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What follows is the role-specific glue.
 

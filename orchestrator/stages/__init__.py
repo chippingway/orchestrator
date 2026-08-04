@@ -5,10 +5,12 @@
 Every stage now lives as a subpackage of responsibility-named owners under
 `orchestrator.workflow.stages`; `decomposition`, `implementing`,
 `documenting`, `validating`, `in_review`, `fixing`, `conflicts`, and
-`question` have all gone. The module each vacated stays here as a temporary
-forwarder that reads every name back off those owners rather than rebuilding
-one, so this package stays the import site historical callers and patches
-already name until they name the owner instead.
+`question` have all gone. A stage still reached for under its historical
+spelling keeps the module it vacated here as a temporary forwarder that reads
+every name back off those owners rather than rebuilding one, so this package
+stays the import site those callers and their patches already name. The
+forwarder goes once they name the owner instead, which `validating` has
+already outlived: nothing here answers for that stage.
 
 Orchestrator code itself no longer reads through here. The dispatcher
 (`orchestrator.workflow.engine.dispatch`) owns the label->handler routing and
