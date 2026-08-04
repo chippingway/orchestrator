@@ -79,7 +79,11 @@ window's spend is compared across — the paired lifecycle bars and the one heig
 issues beside the backends that ran them, and the per-repository ranking beside the tiles and days those runs are
 read for — together with the weekday-by-hour grid closing them and the zone selectbox inside its card
 (`dashboard/stage_cost_panel.py`, `dashboard/issue_cost_panel.py`,
-`dashboard/reliability_panel.py`, `dashboard/activity_panel.py`) — the
+`dashboard/reliability_panel.py`, `dashboard/activity_panel.py`) — the banner, filter line, and four-tile strip drawn
+off the first of that page's two read waves together with the staged load all three are drawn inside, and the order
+every panel below them is reached in once the second wave answers, split into the five cards a figure is drawn on and
+the four panels beneath them with the single call the whole wave is drawn by
+(`dashboard/page_pipeline.py`, `dashboard/chart_sections.py`, `dashboard/page_sections.py`) — the
 seven frozen shapes one render of that page is
 threaded through and the Plotly configuration each of its figures is handed (`dashboard/page_models.py`,
 `dashboard/render_config.py`), the
@@ -1875,6 +1879,17 @@ spellings and defines none of them. What is drawn where none of those panels can
 the notice a window matching no row renders together with the load line its skipped second wave would have carried
 and the hand-off to the trace beneath, and the footer a page that did draw closes on — reached through
 `orchestrator/_dashboard_widget_states.py`, which forwards all five historical spellings and defines none of them.
+What draws every one of those, and in what order, is three owners. `observability/dashboard/page_pipeline.py` holds
+what the page puts on screen between its two read waves — the banner and filter line written back into the slots the
+controls left, the banners a window is worth interrupting the page for, the four-tile strip beneath them, and the
+staged load all three are drawn inside, whose first pass reports nothing back on a window that matched no row and is
+therefore what ends a load before the second wave is paid for. `observability/dashboard/chart_sections.py` holds the
+five cards a figure is drawn on in the order the page stacks them, and `observability/dashboard/page_sections.py` the
+four panels beneath those cards together with the single call the whole second wave is drawn by. All three are
+reached through `orchestrator/_dashboard_widget_pipeline.py`, which forwards all seven historical spellings and
+defines none of them, and the `orchestrator/dashboard_widgets.py` hub above it, which republishes the seven without
+claiming any; the runtime opens its load and draws its wave on the owners, so a test intercepting either patches
+`page_pipeline` or `page_sections`.
 What a whole render of that page is threaded
 through is `observability/dashboard/page_models.py` — the seven frozen shapes, with the issue scope and window span
 read off the filters among them — reached through `orchestrator/_dashboard_widget_models.py`, which defines nothing
