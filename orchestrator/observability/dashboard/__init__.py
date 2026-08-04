@@ -97,6 +97,14 @@ answered with, and the two an empty window and a failed read leave instead.
 the seven keyword arguments a caller outside the render pipeline names, the
 declared signature they are bound through, and the typed request they are read
 back as before the page state is rebuilt from it.
+``page_states`` is what is drawn where none of those panels can be: the startup
+state a database nobody has ingested into is answered with, which zeroes the
+banner's counts and stops the script where it stands; the notice a filtered
+window matching no row gets, which emits the load line the skipped second wave
+would have carried and hands the page on to that trace; and the footer
+restating the span and the run count everything above it was measured over,
+closed on the day before the window's end since the reads beneath it are issued
+under ``ts < end``.
 ``usage_panel`` is the card above all of them, the first one under the strip:
 the header it is titled by, the two-value toggle deciding whether a day's
 tokens are stacked by what they were spent on or by who spent them, the

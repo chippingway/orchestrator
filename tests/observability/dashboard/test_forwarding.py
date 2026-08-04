@@ -97,6 +97,8 @@ _WIDGET_RUNS_LEAF = "orchestrator._dashboard_widget_runs"
 
 _WIDGET_SKILLS_LEAF = "orchestrator._dashboard_widget_skills"
 
+_WIDGET_STATES_LEAF = "orchestrator._dashboard_widget_states"
+
 _WIDGET_USAGE_LEAF = "orchestrator._dashboard_widget_usage"
 
 # `from __future__ import annotations` opens every module in the repository and
@@ -152,6 +154,8 @@ _KPI_STRIP = f"{_PACKAGE}.kpi_strip"
 _LAYOUT = f"{_PACKAGE}.layout"
 
 _PAGE_MODELS = f"{_PACKAGE}.page_models"
+
+_PAGE_STATES = f"{_PACKAGE}.page_states"
 
 _PALETTE = f"{_PACKAGE}.palette"
 
@@ -957,9 +961,28 @@ _DRILLDOWN_CALL_NAMES = (
     ("_render_drilldown", _DRILLDOWN_REQUEST, "render_drilldown"),
 )
 
+# The two states a page leaves through and the line it ends on, as the widget
+# leaf still publishes them: the startup state a database nobody has ingested
+# into is answered with, the notice a window matching no row renders, the
+# footer beneath a page that did draw, and the two messages the first two say
+# it in. The renders are reached through the facade at call time, so a copy
+# here is a banner or a footer a fix under the owner would never reach.
+_PAGE_END_NAMES = (
+    ("EMPTY_WINDOW_MESSAGE", _PAGE_STATES, "EMPTY_WINDOW_MESSAGE"),
+    ("NO_DATA_MESSAGE", _PAGE_STATES, "NO_DATA_MESSAGE"),
+    (
+        "_render_dashboard_footer",
+        _PAGE_STATES,
+        "render_dashboard_footer",
+    ),
+    ("_render_empty_window", _PAGE_STATES, "render_empty_window"),
+    ("_render_no_data", _PAGE_STATES, "render_no_data"),
+)
+
 # What the widget hub above those leaves publishes on an owner's behalf: those
 # seven, the six the cost sections are drawn and sized by, the pair and the
-# grid beneath them, the per-issue trace under the run listing, and the Plotly
+# grid beneath them, the per-issue trace under the run listing, the two states
+# the page leaves through with the line it ends on, and the Plotly
 # defaults every figure the page draws is handed. A copy of the defaults is a
 # panel whose hover toolbar nobody switched off, and this
 # is the alias a caller reaching past the owners still reads them off, so what
@@ -969,6 +992,7 @@ _WIDGET_HUB_NAMES = (
     *_COST_PANEL_NAMES,
     *_RELIABILITY_PANEL_NAMES,
     *_ACTIVITY_PANEL_NAMES,
+    *_PAGE_END_NAMES,
     ("_render_drilldown_view", _DRILLDOWN, "render_drilldown_view"),
     ("PLOTLY_CONFIG", _RENDER_CONFIG, "PLOTLY_CONFIG"),
 )
@@ -1142,8 +1166,9 @@ _FILTER_NAMES = (
 # stack mode offered here the one the page opens with, a window's spend
 # compared or its hours laid out here the four sections beneath that card,
 # a page threaded here
-# the one every section is handed, and a run listed or an issue traced here
-# the section the page ends on,
+# the one every section is handed, a run listed or an issue traced here
+# the section the page ends on, and an empty database, an empty window, or a
+# drawn page signed off here the state that page leaves through,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -1204,6 +1229,7 @@ _FORWARDED_MODULES = MappingProxyType({
     _WIDGET_MODELS_LEAF: _PAGE_STATE_NAMES,
     _WIDGET_RUNS_LEAF: _RUN_SECTION_NAMES,
     _WIDGET_SKILLS_LEAF: _SKILL_PANEL_NAMES,
+    _WIDGET_STATES_LEAF: _PAGE_END_NAMES,
     _WIDGET_USAGE_LEAF: _USAGE_PANEL_NAMES,
     _WIDGET_COSTS_LEAF: (
         *_COST_PANEL_NAMES,
@@ -1214,7 +1240,8 @@ _FORWARDED_MODULES = MappingProxyType({
 
 # The one site that forwards and still answers for something of its own: the
 # widget hub publishes the page state, the four sections beneath the hero card,
-# the per-issue trace, and the Plotly defaults while still claiming the render
+# the per-issue trace, the two states the page leaves through with the line it
+# ends on, and the Plotly defaults while still claiming the render
 # passes it stamps, so it is held to resolving what it forwards rather than to
 # defining nothing.
 _PARTLY_FORWARDED_MODULES = MappingProxyType({
@@ -1302,9 +1329,11 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # ones, the chrome one beside them, the two the filter bar is reached
         # through, the
         # shared-table, issue-table, skill-trigger, five adoption, and five
-        # matrix ones, the five widget leaves the skill cards, the hero one,
+        # matrix ones, the six widget leaves the skill cards, the hero one,
         # and the four sections under it are drawn through, the run listing and
-        # the trace beneath it are reached through, and the page state is
+        # the trace beneath it are reached through, the two states the page
+        # leaves through and the line it ends on are drawn through, and the
+        # page state is
         # threaded through, the site the drill-down's historical call shape is
         # exported from, and the KPI
         # site beside those: a module that defined a name of its own would be a

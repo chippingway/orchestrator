@@ -61,7 +61,8 @@ _render_drilldown_view = runs._render_drilldown_view
 # naming one an owner under `observability/dashboard/` holds -- either skill
 # card, either cost-comparison panel, the repository-spend and reliability
 # pair, the activity grid beneath them, the recent-run listing, the per-issue
-# trace beneath it, the hero usage card and the totals behind its stack, or any
+# trace beneath it, the hero usage card and the totals behind its stack, the
+# two states a page leaves through with the line it ends on, or any
 # of the seven page-state shapes -- would move that object off the owner that
 # defines it.
 _COMPATIBILITY_MEMBERS = (
@@ -72,8 +73,5 @@ _COMPATIBILITY_MEMBERS = (
     _render_chart_widgets,
     _render_remaining_widgets,
     _render_dashboard_widgets,
-    _render_dashboard_footer,
-    _render_no_data,
-    _render_empty_window,
 )
 compatibility.preserve_defining_module(__name__, _COMPATIBILITY_MEMBERS)

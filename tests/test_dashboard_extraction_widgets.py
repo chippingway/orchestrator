@@ -43,6 +43,9 @@ ISSUE_COST_PANEL_OWNER = f"{DASHBOARD_OWNERS}.issue_cost_panel"
 PAGE_MODELS_OWNER = f"{DASHBOARD_OWNERS}.page_models"
 
 
+PAGE_STATES_OWNER = f"{DASHBOARD_OWNERS}.page_states"
+
+
 RECENT_RUNS_OWNER = f"{DASHBOARD_OWNERS}.recent_runs"
 
 
@@ -65,7 +68,8 @@ USAGE_PANEL_OWNER = f"{DASHBOARD_OWNERS}.usage_panel"
 # sections still living on the hub report it; the page-state shapes, the two
 # skill cards, the two cost-comparison panels, the repository-spend and
 # reliability pair and the activity grid beneath them, the recent-run listing,
-# the per-issue trace beneath it, and the
+# the per-issue trace beneath it, the two states the page leaves through with
+# the line it ends on, and the
 # hero usage card report the owners under
 # `observability/` that hold them, since a claim here would move an owner's own
 # object off the owner that defines it.
@@ -81,9 +85,9 @@ _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_render_chart_widgets": DASHBOARD_WIDGETS_MODULE,
     "_render_remaining_widgets": DASHBOARD_WIDGETS_MODULE,
     "_render_dashboard_widgets": DASHBOARD_WIDGETS_MODULE,
-    "_render_dashboard_footer": DASHBOARD_WIDGETS_MODULE,
-    "_render_no_data": DASHBOARD_WIDGETS_MODULE,
-    "_render_empty_window": DASHBOARD_WIDGETS_MODULE,
+    "_render_dashboard_footer": PAGE_STATES_OWNER,
+    "_render_no_data": PAGE_STATES_OWNER,
+    "_render_empty_window": PAGE_STATES_OWNER,
     "_render_hero_usage": USAGE_PANEL_OWNER,
     "_render_stage_review_bars": STAGE_COST_PANEL_OWNER,
     "_render_issues_and_backends": ISSUE_COST_PANEL_OWNER,
@@ -106,9 +110,7 @@ _WIDGETS_FACADE_CONSTANTS = (
 
 
 class WidgetRenderingExtractionTest(unittest.TestCase):
-    """The widget-rendering pipeline -- the two-wave render passes, the
-    empty / no-data states, and the page
-    footer -- lives in
+    """The widget-rendering pipeline -- the two-wave render passes -- lives in
     `orchestrator.dashboard_widgets`, and `orchestrator.dashboard`
     re-exports the members the page pipeline and these tests reach under
     the same names so the `dashboard.<name>` surface keeps resolving to the
@@ -127,7 +129,9 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     of the page, under
     `recent_runs`, the per-issue trace beneath it, under `drilldown`, the hero
     spend and token-usage card the page opens with,
-    under `usage_panel`, the shapes the pipeline threads, under `page_models`,
+    under `usage_panel`, the two states the page leaves through and the line it
+    ends on, under `page_states`, the shapes the pipeline threads, under
+    `page_models`,
     and the Plotly defaults its figures are drawn under, in `render_config`,
     and all of them are reached through this hub.
     """

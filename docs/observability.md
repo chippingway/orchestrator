@@ -71,7 +71,8 @@ token-usage card above every one of them
 `dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`, `dashboard/skill_panel.py`,
 `dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`, `dashboard/usage_panel.py`), the per-issue trace
 beneath that listing together with the call shape it is still reachable under (`dashboard/drilldown.py`,
-`dashboard/drilldown_request.py`), the three sections that
+`dashboard/drilldown_request.py`), the two states that page leaves through and the line it signs off with
+(`dashboard/page_states.py`), the three sections that
 window's spend is compared across — the paired lifecycle bars and the one height both are pinned to, the ranked
 issues beside the backends that ran them, and the per-repository ranking beside the tiles and days those runs are
 read for — together with the weekday-by-hour grid closing them and the zone selectbox inside its card
@@ -1468,6 +1469,19 @@ banners itself and returns rather than stopping a page whose panels already rend
 outside the render pipeline names, the declared signature they are bound through — the same object the adapter
 reports, so the historical shape stays one description — and the typed request they are read back as before the page
 state is rebuilt from it.
+`page_states.py` is what is drawn where none of those panels can be, and it holds two dead ends of different kinds. A
+database nobody has ingested into has no extent to pick a window from, so there is no filter bar to offer: the banner
+is drawn with every count it carries zeroed, the notice names the sync command that fills the table, and the script
+stops where it stands. A window that merely matched nothing still has a page around it, so that one keeps the chrome
+already rendered above it, says which way to broaden, and hands the page on to the trace at the foot of it — an
+operator narrowing to one issue is exactly who lands on an empty window, and that trace is scoped by the issue on top
+of the window rather than by the cache key the skipped reads share. Emitting the load line is the other half of that
+hand-off: `dispatch.py` times a load off the line `run_read_waves` ends on, and a window that short-circuits the
+second wave never reaches it, so this owner reports the load off the plan's own clock and the first wave alone rather
+than the full inventory nobody paid for. The third render is the footer beneath a page that did draw, restating the
+window span and the run count everything above it was measured over — closed on the day before the window's end,
+since the reads beneath the page are issued under `ts < end` and restating `end` itself would name a day none of
+those numbers covered.
 `usage_panel.py` is the card above every one of those panels — the first one under the KPI strip, so it answers the
 question the page is opened with: whether a day's cost tracks the work behind it. The figure carrying both readings is
 the usage chart family's; this owner decides the card around it — the header naming it, the toggle deciding what it
@@ -1546,11 +1560,13 @@ is resolved through, and `dashboard_kpi_strip.py` the hub the strip above the pa
 `_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`,
 `_dashboard_matrix_headers.py`, `_dashboard_matrix_rows.py`, `_dashboard_matrix_render.py`,
 `_dashboard_widget_skills.py`, `_dashboard_widget_usage.py`, `_dashboard_widget_models.py`,
-`_dashboard_widget_costs.py`, `_dashboard_widget_runs.py`, and `_dashboard_drilldown.py`
+`_dashboard_widget_costs.py`, `_dashboard_widget_runs.py`, `_dashboard_widget_states.py`, and
+`_dashboard_drilldown.py`
 forward each historical name to the owner's own object — the cost one for the three spend comparisons, the activity
 card beneath them, the height the paired bars share with the two measurements behind it, and the notice the backend
 cards beside that ranking answer an empty window with, the run one for the run listing with its empty-window
-notice and the per-issue trace beneath it, and the last for that trace's typed request and call adapter.
+notice and the per-issue trace beneath it, the state one for the two the page leaves through with the line it ends on
+and the two messages the first two say it in, and the last for that trace's typed request and call adapter.
 `dashboard_widgets.py`
 forwards the Plotly configuration off the render-config owner and the seven page shapes through
 the leaf named for them while still claiming the render passes it stamps. None of the state, read,
@@ -1564,7 +1580,8 @@ publishes are the card, backend, and coverage owners' own objects, and the widge
 cards are reached by, the run listing beneath them, the per-issue trace under that listing, the four the three spend
 comparisons are drawn and sized by, the
 activity grid closing them, the
-four the hero card is, and the seven shapes a render is threaded through out of its own
+four the hero card is, the three the page leaves through or signs off with, and the seven shapes a render is
+threaded through out of its own
 list for the same reason: a `__module__` stamp
 there would move one of
 them off the owner that defines it. Streamlit is never imported in these
@@ -1839,7 +1856,12 @@ none of them. The card above all of them is
 `observability/dashboard/usage_panel.py` — the header it is titled by, the two-value toggle deciding what a day's
 tokens are stacked by, the session key that mode survives a rerun in, and the per-day per-backend totals the second
 stack is drawn from — reached through `orchestrator/_dashboard_widget_usage.py`, which forwards all four historical
-spellings and defines none of them. What a whole render of that page is threaded
+spellings and defines none of them. What is drawn where none of those panels can be is
+`observability/dashboard/page_states.py` — the startup state an un-ingested database is answered with and stopped on,
+the notice a window matching no row renders together with the load line its skipped second wave would have carried
+and the hand-off to the trace beneath, and the footer a page that did draw closes on — reached through
+`orchestrator/_dashboard_widget_states.py`, which forwards all five historical spellings and defines none of them.
+What a whole render of that page is threaded
 through is `observability/dashboard/page_models.py` — the seven frozen shapes, with the issue scope and window span
 read off the filters among them — reached through `orchestrator/_dashboard_widget_models.py`, which defines nothing
 and forwards all seven under the private spellings the pipeline imported them by, and the Plotly configuration every

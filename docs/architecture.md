@@ -614,6 +614,10 @@ orchestrator/
                         historical import site for the seven shapes one page
                         render is threaded through, forwarding to the
                         page-state owner
+  _dashboard_widget_states.py
+                        historical import site for the two states a page
+                        leaves through and the line it signs off with,
+                        forwarding to the page-states owner
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -954,6 +958,12 @@ orchestrator/
                         the call shape that trace is still reachable under:
                         the declared signature seven keywords are bound
                         through, and the typed request they are read back as
+      page_states.py    what is drawn where none of those panels can be: the
+                        startup state an un-ingested database is answered with
+                        and stopped on, the notice a window matching no row
+                        renders together with the load line its skipped second
+                        wave would have carried, and the footer a page that
+                        did draw closes on
       usage_panel.py    the hero card above all of them: the header it is
                         titled by, the toggle deciding whether a day's tokens
                         stack by what they were spent on or by who spent them,
@@ -2198,6 +2208,22 @@ than three descriptions of the same call — and binding is what makes it strict
 raises here instead of reaching the render as a half-filled request. The chart and theme handles are the two a
 drill-down has no use for, so it is handed the modules shape with both left unanswered rather than a shape of its own.
 
+`page_states.py` is what is drawn where none of those panels can be. Two of its three renders are dead ends, and they
+are dead ends of different kinds. A database nobody has ingested into has no extent to pick a window from, so there
+is nothing below the banner to render: it draws that banner with every count it carries zeroed, names the sync command
+that fills the table, and stops the script where it stands rather than falling through to a filter bar with no dates
+to offer. A window that merely matched nothing still has a page around it, so that one keeps the chrome already
+rendered above it, says which way to broaden, and hands the page on to the trace at the foot of it — an operator
+narrowing to one issue is exactly who lands on an empty window, and that trace is scoped by the issue on top of the
+window rather than by the cache key the reads it skipped share, so it can still have something to show. Emitting the
+load line is the other half of that hand-off: the dispatch owner times a load off the line `run_read_waves` ends on,
+and a window short-circuiting the second wave never reaches it, so the notice that ended the load reports it instead —
+off the plan's own clock and the first wave alone, rather than the full inventory nobody paid for. The third render is
+the footer beneath a page that did draw, restating the window and the run count everything above it was measured over;
+it closes on the day before the window's end, since the reads beneath the page are issued under `ts < end` and
+restating `end` itself would name a day none of those numbers covered. Streamlit and the theme are the caller's here
+too, so the markup this owner assembles stays readable without either.
+
 `usage_panel.py` is the card above every one of those panels, the first one under the KPI strip, so it answers the
 question the page is opened with: whether a day's cost tracks the work behind it. The figure carrying both readings is
 the usage chart family's; what this owner decides is the card around it — the header naming it, the one control an
@@ -2563,7 +2589,7 @@ its panel and empty notice to the five owners that hold each. `dashboard_skill_m
 those five, publishing all twenty-one names under the spellings a page always imported them by — the column model,
 the column set, the numeric keys, the sort keys, the header state, the row view, and the panel rules under a leading
 underscore the leaves spell bare — and defining none of them, so a click an operator makes and the order the owners
-run cannot come apart. `_dashboard_widget_skills.py` is the first of the five widget-side sites beside those two,
+run cannot come apart. `_dashboard_widget_skills.py` is the first of the six widget-side sites beside those two,
 forwarding the adoption
 card, the caption under it, the invocation fold, the trigger-rate card, and its own fold to the two panel owners under
 the private spellings the page always imported them by, plus the notice the second of them answers an empty window
@@ -2580,9 +2606,13 @@ them.
 shapes a render is threaded through to the page-state owner under the private spellings the pipeline always imported
 them by, and `_dashboard_widget_usage.py` the fifth, forwarding the hero card, the label
 and index its stack toggle offers a mode by, and the per-day per-backend totals behind that stack to the usage-panel
-owner. `_dashboard_drilldown.py` sits beside those five under no hub at all, forwarding the typed request and the
+owner. `_dashboard_widget_states.py` is the sixth, forwarding the startup state a database nobody has ingested into
+is answered with, the notice a window matching no row renders, and the footer a page that did draw closes on to
+`page_states.py` — the three renders under the private spellings the page always imported them by, the two messages
+the first two say it in under their public ones.
+`_dashboard_drilldown.py` sits beside those six under no hub at all, forwarding the typed request and the
 adapter the facade exports that trace's historical call shape from. The
-widget hub above all five republishes those twenty-seven and the Plotly configuration it reads straight off the
+widget hub above all six republishes those thirty-two and the Plotly configuration it reads straight off the
 render-config owner, and claims none of them, since the `__module__` stamp mutates the object and a claim there would
 move an owner's own render, measurement, or shape off the owner that defines it.
 `dashboard_charts_base.py` is one too: the placeholder, the three
