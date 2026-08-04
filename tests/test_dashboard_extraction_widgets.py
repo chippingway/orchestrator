@@ -40,6 +40,9 @@ PAGE_MODELS_OWNER = f"{DASHBOARD_OWNERS}.page_models"
 RECENT_RUNS_OWNER = f"{DASHBOARD_OWNERS}.recent_runs"
 
 
+RELIABILITY_PANEL_OWNER = f"{DASHBOARD_OWNERS}.reliability_panel"
+
+
 SKILL_PANEL_OWNER = f"{DASHBOARD_OWNERS}.skill_panel"
 
 
@@ -54,7 +57,8 @@ USAGE_PANEL_OWNER = f"{DASHBOARD_OWNERS}.usage_panel"
 
 # Each member the hub publishes and the module that defines it. The widget
 # sections still living on the hub report it; the page-state shapes, the two
-# skill cards, the two cost-comparison panels, the recent-run listing, and the
+# skill cards, the two cost-comparison panels, the repository-spend and
+# reliability pair beneath them, the recent-run listing, and the
 # hero usage card report the owners under
 # `observability/` that hold them, since a claim here would move an owner's own
 # object off the owner that defines it.
@@ -76,7 +80,7 @@ _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_render_hero_usage": USAGE_PANEL_OWNER,
     "_render_stage_review_bars": STAGE_COST_PANEL_OWNER,
     "_render_issues_and_backends": ISSUE_COST_PANEL_OWNER,
-    "_render_repo_and_reliability": DASHBOARD_WIDGETS_MODULE,
+    "_render_repo_and_reliability": RELIABILITY_PANEL_OWNER,
     "_render_activity_heatmap": DASHBOARD_WIDGETS_MODULE,
     "_render_skill_adoption": SKILL_PANEL_OWNER,
     "_render_skill_invocation_diagnostics": SKILL_PANEL_OWNER,
@@ -110,7 +114,9 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     beside them -- as do the two cost-comparison sections -- `stage_cost_panel`
     for the paired lifecycle bars and the height they share,
     `issue_cost_panel` for the ranked issues beside the backends that ran
-    them -- the recent-run listing above that drill-down, under
+    them, and `reliability_panel` for the repository ranking beside the tiles
+    and days those runs are read for -- the recent-run listing above that
+    drill-down, under
     `recent_runs`, the hero spend and token-usage card the page opens with,
     under `usage_panel`, the shapes the pipeline threads, under `page_models`,
     and the Plotly defaults its figures are drawn under, in `render_config`,
