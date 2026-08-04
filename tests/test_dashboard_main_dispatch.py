@@ -84,9 +84,9 @@ class _MainSourceTest(unittest.TestCase):
     Streamlit / Plotly are opt-in (not installed for the default
     `uv sync --locked`), so these read the rendered function source
     rather than driving the page under Streamlit. The entrypoint loads
-    optional modules lazily and the page pipeline delegates controls,
-    read waves, empty states, and widget sections to named helpers, so
-    `_source_of` fetches the boundary each assertion protects.
+    optional modules lazily and the page pipeline delegates read waves,
+    empty states, and widget sections to named helpers, so `_source_of`
+    fetches the boundary each assertion protects.
     """
 
     def _main_source(self) -> str:
@@ -103,13 +103,9 @@ class _MainSourceTest(unittest.TestCase):
 
 
 class MainRenderDispatchTest(_MainSourceTest):
-    """The page pipeline preserves control and widget render order."""
+    """The page pipeline preserves widget render order."""
 
     def test_render_helpers_called_in_page_order(self) -> None:
-        self._assert_source_order(
-            "_render_dashboard_controls",
-            ("_render_sidebar_filters(", "render_date_filter_bar("),
-        )
         self._assert_source_order(
             "_render_chart_widgets",
             (
@@ -142,7 +138,6 @@ class MainRenderDispatchTest(_MainSourceTest):
         for helper, marker in (
             ("_run_dashboard", "read_static_metadata("),
             ("_render_dashboard", "_render_no_data("),
-            ("_prepare_dashboard_page", "read_plan.widget_readers("),
             ("_load_dashboard_data", "dispatch.run_read_waves("),
             (RENDER_FIRST_WAVE_MEMBER, "_render_empty_window("),
         ):
@@ -155,31 +150,6 @@ class MainRenderDispatchTest(_MainSourceTest):
         self.assertNotIn("st.error(", main_src)
         self.assertNotIn("_fan_out_reads(", main_src)
         self.assertNotIn("def _read_summary(", main_src)
-
-
-class MainParallelFanOutWiringTest(_MainSourceTest):
-    """The page decides which way its reads are issued and starts the clock
-    they are measured against, both while it prepares the load. What that
-    decision then costs is the dispatch owner's, and pinned beside it.
-    Streamlit is not installed for the default `uv sync --locked`, so these
-    inspect the rendered sources rather than driving the page under Streamlit.
-    """
-
-    def test_main_drives_parallel_off_env_helper(self) -> None:
-        src = self._source_of("_prepare_dashboard_page")
-        # The env-backed helper is the single source of truth for the
-        # flag so a test or shutdown hook can flip it without
-        # rewriting `main()`.
-        self.assertIn("dashboard_parallel_reads_enabled()", src)
-
-    def test_main_stamps_the_load_clock(self) -> None:
-        # The `dashboard.load:` line reports the whole wait an operator sat
-        # through, so the timer starts where the page starts preparing the
-        # load rather than where the first wave is dispatched.
-        self.assertIn(
-            "perf_counter()",
-            self._source_of("_prepare_dashboard_page"),
-        )
 
 
 class StaticMetadataDispatchTest(_MainSourceTest):

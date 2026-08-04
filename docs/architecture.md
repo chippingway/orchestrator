@@ -525,6 +525,10 @@ orchestrator/
                         historical import sites for the row the date filter is
                         laid out in and the bar a window is picked in,
                         forwarding to the two date owners
+  _dashboard_page_controls.py
+                        historical import site for the sidebar a run is
+                        narrowed in and the load those choices open,
+                        forwarding to page_controls.py
   _dashboard_read_rollups.py / _dashboard_read_breakdowns.py / _dashboard_read_skills.py
                         historical import sites for the seven headline and
                         lifecycle reads, the six comparison-panel ones, and the
@@ -983,6 +987,13 @@ orchestrator/
                         on, the inclusive days they hand back, and the
                         half-open window plus the filter-line slot the caller
                         leaves with
+      page_controls.py  the whole band above the panels and the load it
+                        opens: the sidebar a run is narrowed in and the
+                        selections it answers with, the offset that run's
+                        timestamps are displayed against, the filters those
+                        selections normalize into, the controls the band is
+                        read back as, and the staged plan every panel below
+                        is then drawn from
       read_mode.py      the parallel-read knob and its truthy spellings, the
                         parse that reads it and the flag one process's loads
                         are issued under, the worker cap, and the refusal an
@@ -1890,6 +1901,28 @@ after the bar is drawn, so a rerun reopens the radio on the choice the operator 
 back as an empty placeholder rather than filled here, because the line restating what the filters narrowed to counts
 runs, which the first wave of reads has not answered yet.
 
+`page_controls.py` is the whole band that bar sits in, and the load the choices made there open. Both halves are one
+owner because they are one description: the sidebar's selections are normalized into the filters every shape carries,
+and those filters are hashed into the pair of cache keys the two waves are bound to, so nothing between the widget an
+operator touched and the first read issued can narrow one without narrowing the other. The sidebar and the bar answer
+different questions about the same window — which rows it holds, and which days — so the selections come back raw and
+are normalized in one place afterwards. Three of those normalizations are the point of it. `All` in the repository box
+is the absence of a repository rather than a repository named `All`. The two multiselects are read asymmetrically, and
+by column rather than by preference: `event` is `NOT NULL`, so that selection maps straight through and a box still
+holding everything narrows nothing, while `stage` is optional and the box offers only the stages actually recorded —
+so a stage selection still holding everything collapses to no clause at all, which is what keeps the rows carrying no
+stage inside the window a default page reports rather than silently dropping them. Clearing either box is the clause
+matching nothing rather than the absence of one, since an operator who unticked every value is asking for exactly
+that. The issue box is free text, so `123` and `#123` are one number and anything
+else is none. The placeholder the topbar is written into is taken between the sidebar and the bar, because the banner
+it holds counts rows the first wave has not answered yet. The display offset is the one selection this owner does not
+draw: the card offering it sits at the foot of the page while the read it changes is bound at the top, so it travels
+through the session — seeded here on the first render, read back on every one after, and passed beside the cache key
+rather than hashed into it, since an offset moves which cell a row is counted into rather than which rows the window
+holds. The clock a load is measured against is stamped here too, as the plan is built rather than inside the dispatch
+that runs it, which is what leaves the empty-window notice — the one path that skips that dispatch — a reading to
+report the load off.
+
 `read_plan.py` is what that state is spent on: the two waves one page load is staged into, the cached task each entry
 of a wave is bound as, and the pair of keys those entries are issued under. The split is what lets the page paint
 before the load finishes — the first wave is exactly the six reads the chrome above the fold is reduced from, so the
@@ -2506,10 +2539,13 @@ all of them names that same owner for the per-backend daily rows it totals and
 owner names `analytics/query/overview_models.py` without issuing a read of its own, for the extent a page opened on
 and the window totals a comparison panel reports; those
 are the only things
-any of the forty-nine reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
+any of the fifty-one reaches outside the package. The fan-out, the read plan, and the filter binding reach nothing
 past the siblings they take their worker cap, their adapters, and their scope from — as do the two the filter bar is
 drawn out of, which take the presets they offer and the window they resolve from that window owner and each other, and
-are handed Streamlit rather than importing it — the table markup reaches not one of
+are handed Streamlit rather than importing it, and the owner above those two, which names no result family at all
+because what a run is narrowed by is decided out of the selections an operator made rather than out of anything read
+back, and takes the bar it draws, the normalization those selections go through, the knob and the plan its load is
+staged by, and the shapes all of it is threaded on as off six siblings — the table markup reaches not one of
 those — every value a cell reports is handed to it — the sparkline projection and the Plotly configuration reach
 nothing at all, the markup
 over the projection only that projection, the chrome around the strip only that markup — for the line a tile carries
@@ -2541,6 +2577,11 @@ slots the filter bar is laid out across, the label and the preset radio drawn in
 position that radio reopens at, and the second the window a preset opens the pickers on, the pair those pickers hand
 back, and the bar assembling all of it — each under the private spellings the page always imported them by. The page
 pipeline reaches the bar on the owner rather than through that leaf, so a test intercepting it patches `date_filter`.
+`_dashboard_page_controls.py` is a third beside those two, forwarding the selections the sidebar answers with and the
+render that draws it, the offset a run is displayed in, the normalization those selections go through, the controls
+the whole band is read back as, and the staged plan beneath it to `page_controls.py` — under the private spellings the
+page always imported them by, and reached by nothing on the live path either, since the runtime prepares its page on
+the owner.
 `dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
 them to the two owners that hold each. `dashboard_kpi_strip.py` is the hub the widget pipeline and the lazy facade
 build the strip through, and `_dashboard_kpi_series.py` and `_dashboard_kpi_values.py` the two leaves beneath it: the

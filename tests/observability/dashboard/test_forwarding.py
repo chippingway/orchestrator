@@ -87,6 +87,8 @@ _TABLE_LEAF = "orchestrator._dashboard_table_html"
 
 _DRILLDOWN_LEAF = "orchestrator._dashboard_drilldown"
 
+_PAGE_CONTROLS_LEAF = "orchestrator._dashboard_page_controls"
+
 _WIDGET_HUB = "orchestrator.dashboard_widgets"
 
 _WIDGET_COSTS_LEAF = "orchestrator._dashboard_widget_costs"
@@ -152,6 +154,8 @@ _KPI_SERIES = f"{_PACKAGE}.kpi_series"
 _KPI_STRIP = f"{_PACKAGE}.kpi_strip"
 
 _LAYOUT = f"{_PACKAGE}.layout"
+
+_PAGE_CONTROLS = f"{_PACKAGE}.page_controls"
 
 _PAGE_MODELS = f"{_PACKAGE}.page_models"
 
@@ -979,6 +983,34 @@ _PAGE_END_NAMES = (
     ("_render_no_data", _PAGE_STATES, "render_no_data"),
 )
 
+# The top of the page and the load it opens, as the flat site the facade
+# exports them from still publishes them: the selections the sidebar comes back
+# with and the render that draws it, the offset a run is displayed in, the
+# normalization those raw selections go through, the controls the whole band is
+# read back as, and the staged plan beneath it. The page pipeline reaches the
+# preparation on the owner, so a copy here is a sidebar or a cache key a fix
+# under that owner would never reach.
+_PAGE_CONTROL_NAMES = (
+    ("_SidebarSelections", _PAGE_CONTROLS, "SidebarSelections"),
+    (
+        "_prepare_dashboard_page",
+        _PAGE_CONTROLS,
+        "prepare_dashboard_page",
+    ),
+    (
+        "_render_dashboard_controls",
+        _PAGE_CONTROLS,
+        "render_dashboard_controls",
+    ),
+    ("_render_sidebar_filters", _PAGE_CONTROLS, "render_sidebar_filters"),
+    (
+        "_resolve_dashboard_filters",
+        _PAGE_CONTROLS,
+        "resolve_dashboard_filters",
+    ),
+    ("_timezone_choice", _PAGE_CONTROLS, "timezone_choice"),
+)
+
 # What the widget hub above those leaves publishes on an owner's behalf: those
 # seven, the six the cost sections are drawn and sized by, the pair and the
 # grid beneath them, the per-issue trace under the run listing, the two states
@@ -1167,8 +1199,9 @@ _FILTER_NAMES = (
 # compared or its hours laid out here the four sections beneath that card,
 # a page threaded here
 # the one every section is handed, a run listed or an issue traced here
-# the section the page ends on, and an empty database, an empty window, or a
-# drawn page signed off here the state that page leaves through,
+# the section the page ends on, an empty database, an empty window, or a
+# drawn page signed off here the state that page leaves through, and a run
+# narrowed or a load staged here the one every panel below is drawn from,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
     "orchestrator._dashboard_state_constants": (
@@ -1226,6 +1259,7 @@ _FORWARDED_MODULES = MappingProxyType({
     _COVERAGE_CARD_LEAF: _COVERAGE_CARD_NAMES,
     _CARD_HUB: _HUB_CARD_NAMES,
     _DRILLDOWN_LEAF: _DRILLDOWN_CALL_NAMES,
+    _PAGE_CONTROLS_LEAF: _PAGE_CONTROL_NAMES,
     _WIDGET_MODELS_LEAF: _PAGE_STATE_NAMES,
     _WIDGET_RUNS_LEAF: _RUN_SECTION_NAMES,
     _WIDGET_SKILLS_LEAF: _SKILL_PANEL_NAMES,
@@ -1335,7 +1369,8 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # leaves through and the line it ends on are drawn through, and the
         # page state is
         # threaded through, the site the drill-down's historical call shape is
-        # exported from, and the KPI
+        # exported from, the one the sidebar and the staged load beneath it are
+        # reached through, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only
         # compares the names the module was asked for. The card hub is held to

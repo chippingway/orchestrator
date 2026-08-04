@@ -5,9 +5,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from orchestrator import _dashboard_page_controls as page_controls
 from orchestrator import dashboard_widgets
-from orchestrator.observability.dashboard import static_metadata
+from orchestrator.observability.dashboard import page_controls, static_metadata
 
 
 def main() -> None:
@@ -72,7 +71,7 @@ def _render_dashboard(
             theme=modules.theme,
         )
         return
-    page = page_controls._prepare_dashboard_page(modules, extent, options)
+    page = page_controls.prepare_dashboard_page(modules, extent, options)
     loaded = dashboard_widgets._load_dashboard_data(modules, page)
     if loaded is None:
         return
