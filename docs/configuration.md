@@ -448,7 +448,7 @@ Postgres or Streamlit, so deferring or disabling the dashboard never affects wor
 
    ```sh
    uv sync --group dashboard
-   uv run streamlit run orchestrator/dashboard.py
+   uv run streamlit run orchestrator/apps/analytics_dashboard.py
    ```
 
    Streamlit prints a `http://localhost:8501` URL. The dashboard is independent of the polling tick and can be killed
@@ -676,9 +676,10 @@ When each setting's change takes effect:
   `TRAJECTORY_RETENTION_DAYS`, `REPO` / `REPOS` / `TARGET_REPO_ROOT` / `BASE_BRANCH` / `REMOTE_NAME`, `HITL_HANDLE`,
   `ALLOWED_ISSUE_AUTHORS` — next Python start
 - `ANALYTICS_DB_URL` — next `python -m orchestrator.observability.analytics.sync.cli` invocation, and next
-  `streamlit run orchestrator/dashboard.py` start (the dashboard reads it from the imported analytics module, so a
-  browser reload is not enough — relaunch Streamlit). The polling loop does not read this setting.
-- `DASHBOARD_PARALLEL_READS` — next `streamlit run orchestrator/dashboard.py` start. Parsed at dashboard import.
+  `streamlit run orchestrator/apps/analytics_dashboard.py` start (the dashboard reads it from the imported analytics
+  module, so a browser reload is not enough — relaunch Streamlit). The polling loop does not read this setting.
+- `DASHBOARD_PARALLEL_READS` — next `streamlit run orchestrator/apps/analytics_dashboard.py` start. Parsed at
+  dashboard import.
 - `MAX_PARALLEL_ISSUES_PER_REPO`, `MAX_PARALLEL_ISSUES_GLOBAL` — next Python start. Per-`REPOS` `parallel_limit`
   overrides take precedence over `MAX_PARALLEL_ISSUES_PER_REPO`.
 - `WORKFLOW_TRANSITION_GUARD` — next Python start (parsed at config import).

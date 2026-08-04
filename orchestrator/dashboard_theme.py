@@ -2,18 +2,21 @@
 # SPDX-License-Identifier: Apache-2.0
 """Historical import site for the visual theme the dashboards share.
 
-`from orchestrator import dashboard_theme as theme` is how the analytics page,
-its chart builders, and the trajectory viewer beside it reach one palette, one
+`from orchestrator import dashboard_theme as theme` is how the analytics page
+and the trajectory viewer's historical surface beside it reach one palette, one
 set of geometry and type tokens, the Plotly layout assembled from both, the
-page stylesheet, and the compact number formatters. Every one of those names is
-the owner's own object, re-exported here rather than rebuilt, so `theme.ACCENT`
-and the owner's `ACCENT` are the same value and a chart drawn through either
-lands on the same grid.
+page stylesheet, and the compact number formatters -- the chart families name
+those owners themselves. Every one of these names is the owner's own object,
+re-exported here rather than rebuilt, so `theme.ACCENT` and the owner's
+`ACCENT` are the same value and a chart drawn through either lands on the same
+grid.
 
-This module implements nothing and imports neither Plotly nor Streamlit, which
-is what the page depends on: `orchestrator/dashboard.py` reads a color at module
-load to paint its banner, so making the tokens cost the optional `dashboard`
-dependency group would drag it into the polling tick's import surface.
+This module implements nothing and imports neither Plotly nor Streamlit. The
+analytics page reaches it inside `load_dashboard_modules`, beside pandas and
+the chart hub, so an ordinary import of either of that page's launch paths
+carries none of it. Staying free of both is what keeps the site reachable from
+anywhere else: it is a compatibility surface, so a caller may name it at module
+load in an install carrying no optional `dashboard` group at all.
 """
 from __future__ import annotations
 

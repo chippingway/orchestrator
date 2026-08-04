@@ -472,7 +472,11 @@ orchestrator/
     sync.py             historical `-m` target and import site for the sync
                         command, forwarding to the sync owners
     _sync_*.py          the nine leaves forwarding to the sync owners
-  dashboard.py          lazy compatibility facade and direct Streamlit entrypoint
+  dashboard.py          historical Streamlit launch path and lazy compatibility
+                        facade over the canonical app under apps/
+  _dashboard_runtime.py historical import site for the entrypoint and the five
+                        passes one run of the page is drawn by, forwarding to
+                        that app
   dashboard_theme.py    historical import site for the shared visual theme,
                         forwarding to the dashboard owners
   dashboard_state.py    stable state hub reading the window, filter, read-mode,
@@ -1246,12 +1250,14 @@ orchestrator/
                         through, notices before timeline
       page_render.py    the order a whole page is drawn in, and the two empty
                         reads it stops short on
-  apps/                 launch targets that have an owner here; so far the
-                        trajectory viewer's, the analytics page still being
-                        started at dashboard.py
+  apps/                 launch targets that have an owner here; both Streamlit
+                        pages, the CLI still being started at cli.py
     __init__.py         package marker only; an app is named to be launched
     bootstrap.py        the repo-root `sys.path` shim a script launch needs,
                         standard library only so it resolves before it runs
+    analytics_dashboard.py
+                        the analytics page's `streamlit run` target, composing
+                        the dashboard owners inside the passes that draw
     trajectory_dashboard.py
                         the trajectory viewer's `streamlit run` target,
                         composing the viewer owners inside `main()`
@@ -1876,10 +1882,10 @@ review round — to a hue so it reads the same on every panel; `tokens.py` holds
 stacks; `layout.py` assembles the Plotly layout every figure is merged with; `css.py` interpolates the stylesheet the
 page injects out of both token owners rather than restating a hue or a radius, which is what keeps the chrome and the
 charts inside it from drifting apart; and `formatting.py` holds the compact renderings a KPI tile, an axis tick, and a
-bar label are too narrow to skip. None of the five imports Plotly or Streamlit, so the page can read a color at module
-load to paint its banner without pulling the optional `dashboard` group into the polling tick's import surface.
-Root-level `dashboard_theme.py` stays the historical import site — the analytics page's runtime, which hands the
-module itself to the widget renderers, and the trajectory viewer's export manifest both still spell
+bar label are too narrow to skip. None of the five imports Plotly or Streamlit, so a caller can read a color at module
+load without pulling the optional `dashboard` group into its own import surface.
+Root-level `dashboard_theme.py` stays the historical import site — the analytics app's `load_dashboard_modules`, which
+hands the module itself to the renderers beneath it, and the trajectory viewer's export manifest both still spell
 `from orchestrator import dashboard_theme as theme` — and, like the sync leaves, defines nothing and forwards each
 name to the owner's own object. No chart module is among them any more: every family reads its hues off the palette
 owner directly, so a color reaches a figure without a root-level hop.
@@ -2949,6 +2955,18 @@ sink's knob is read at call time for the same reason. `trajectory_dashboard.py` 
 shell history already carries, and its lazy inventory now resolves the page's own two renderings on `page_render` and
 `main` on the app, so a historical caller holds the same objects the canonical target runs.
 
+`orchestrator/apps/analytics_dashboard.py` sits the same way above `observability/dashboard/`: the canonical
+`streamlit run` target, and what composes those owners into one run of the analytics page — the four handles every
+pass draws with, the chrome, the refusal an install with no database behind it is stopped by, the two reads no filter
+narrows, and then either the notice that there is no span to pick a window from or the controls, the staged load, and
+the panels beneath. Each owner is imported inside the pass that reaches it, alongside Streamlit, pandas, and the chart
+hub in front of Plotly, for the reason the viewer's app defers its own: the repo root only reaches `sys.path` on the
+line above, so importing the app costs that shim and nothing else, and the refusal reads the analytics world it is
+entered against rather than the one the module was imported alongside. `dashboard.py` stays the launch path an
+operator's shell history already carries and the lazy inventory a historical caller reaches the whole surface through,
+with `main` resolving to the app's own; `_dashboard_runtime.py` is the site the other five passes are republished
+from, forwarding each under the private spelling the facade always resolved it by.
+
 Every other responsibility of those four surfaces is still where it was: `orchestrator/analytics/`, the rest of
 `dashboard*.py`, and `trajectory_dashboard.py` stay the import site every historical caller names until the one it
 needs has an owner here.
@@ -2969,8 +2987,8 @@ object, bound once at import rather than resolved per lookup, so the module defi
 it and where a patch has to land, rather than a facade answering for it — the compatibility layer this destination
 exists to retire. Nothing observed is on the workflow's decision path, so no module may import the workflow engine, a
 stage, or an application entrypoint — the CLI and the runtime loop on one side, and on the other every `streamlit run`
-target: the trajectory viewer's canonical one under `apps/`, the analytics page's own `dashboard.py`, the historical
-`trajectory_dashboard.py` beside it, and the leaves they front; the dependency runs one way, and an
+target: the two canonical ones under `apps/`, the historical `dashboard.py` and `trajectory_dashboard.py` beside
+them, and the leaves they front; the dependency runs one way, and an
 entrypoint composes these owners rather than the reverse. And Streamlit and Plotly stay function-local: they live in the
 optional `dashboard` dependency group, so every module has to import cleanly with both blocked outright *and* with no
 attempt on either recorded — a module-scope import that swallows its own `ImportError` is still a load in the install

@@ -105,7 +105,7 @@ class MainRenderDispatchTest(_MainSourceTest):
         # is the dashboard owners' and pinned beside them.
         for helper, marker in (
             ("_run_dashboard", "read_static_metadata("),
-            ("_render_dashboard", "_render_no_data("),
+            ("_render_dashboard", "page_states.render_no_data("),
         ):
             with self.subTest(helper=helper, marker=marker):
                 self.assertIn(marker, self._source_of(helper))

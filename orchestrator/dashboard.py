@@ -1,6 +1,13 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Lazy Streamlit dashboard facade with a direct-launch entrypoint."""
+"""Historical analytics-page launch path and lazy compatibility facade.
+
+The page is `orchestrator/apps/analytics_dashboard.py`. This module keeps the
+`streamlit run` target an operator's shell history and bookmarks already carry,
+and the lazy inventory a historical caller reaches the whole dashboard surface
+through -- every name on it resolving to the object its owner defines, `main`
+included, which is the canonical app's own entrypoint.
+"""
 from __future__ import annotations
 
 if __package__:

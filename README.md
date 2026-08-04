@@ -167,7 +167,7 @@ Streamlit:
 ```sh
 uv run python -m orchestrator.observability.analytics.sync.cli
 uv sync --group dashboard
-uv run streamlit run orchestrator/dashboard.py
+uv run streamlit run orchestrator/apps/analytics_dashboard.py
 ```
 
 To browse per-run agent reasoning trajectories together with their token usage and cost (including a claude per-turn

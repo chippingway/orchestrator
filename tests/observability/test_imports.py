@@ -34,9 +34,9 @@ _ROOT_PACKAGE_MODULES = frozenset((
 # handlers, and the CLI and runtime loop under them, where the flat
 # `_workflow_*` inventory is the sharpest entry because resolving any name on
 # it imports the leaf that holds it. On the page side it is every `streamlit
-# run` target -- the trajectory viewer's canonical one under `apps`, the
-# analytics page's own `dashboard`, and the historical `trajectory_dashboard`
-# beside it -- and the leaves they front: those are entry points in the same
+# run` target -- the two canonical ones under `apps`, and the historical
+# `dashboard` and `trajectory_dashboard` beside them -- and the leaves they
+# front: those are entry points in the same
 # sense `main` is, they are what a migrated owner is composed *by*, and reading
 # one back would drag Streamlit and Plotly in behind it.
 _FORBIDDEN_PREFIXES = (
