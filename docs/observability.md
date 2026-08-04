@@ -1307,9 +1307,10 @@ installed. A regression-guard test in `tests/apps/test_analytics_dashboard_launc
 **Module layout.** `orchestrator/apps/analytics_dashboard.py` is the canonical `streamlit run` target and the whole
 page composition: the entrypoint, the four handles every pass draws with, the chrome, the unconfigured-database
 refusal, the pass that opens the page on the two reads no filter narrows, and the one that draws the window they
-allow. `orchestrator/dashboard.py` stays the historical launch path and a manifest-backed lazy compatibility facade
-with a complete `dashboard.pyi`; `_dashboard_facade_bootstrap.py` owns both its package import and its direct-script
-setup, and `_dashboard_runtime.py` republishes the app's own passes, with the two
+allow. `orchestrator/dashboard.py` is temporary compatibility rather than a launch path to recommend: it keeps
+working the `streamlit run` target an operator's shell history and bookmarks already carry, and is a manifest-backed
+lazy compatibility facade with a complete `dashboard.pyi`. `_dashboard_facade_bootstrap.py` owns both its package
+import and its direct-script setup, and `_dashboard_runtime.py` republishes the app's own passes, with the two
 date leaves, the page-controls one, the widget-pipeline one, and the drill-down one beside them forwarding to the
 owners the filter bar, the
 band above the panels, the two-wave render, and the per-issue trace live
@@ -1928,7 +1929,7 @@ The dashboard never raises an unhandled exception at the user — every missing-
 as a labeled banner.
 
 - `` `ANALYTICS_DB_URL` is not configured. … `` (top-level `st.warning`, app stops) — *env* — `ANALYTICS_DB_URL`
-  is unset, empty, or set to `off` / `disabled` / `none`. Set it in `.env` and **relaunch** `streamlit run
+  is unset, empty, or set to `off` / `disabled` / `none`. Set it in `.env` and **relaunch** `uv run streamlit run
   orchestrator/apps/analytics_dashboard.py` (the dashboard reads the URL from the imported analytics module at startup,
   so a browser reload alone will not pick up the new value).
 - `Could not load analytics filter options: …` (top-level `st.error`, app stops) — *DB connectivity* — The
