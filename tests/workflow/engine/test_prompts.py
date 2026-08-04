@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The prompt owner's shared parts, and the facades still forwarding it.
+"""The prompt owner's shared parts, and the facade still forwarding it.
 
 What every builder has in common is what this module pins: the header that
 carries the issue body and the thread text (with placeholders when either is
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow, workflow_messages
+from orchestrator import workflow
 from orchestrator.workflow.engine import drift, prompts
 
 from tests.fakes import FakeComment, FakeUser, make_issue
@@ -43,7 +43,7 @@ _HEADER_BUILDERS = (
     ("decompose", prompts._build_decompose_prompt),
 )
 
-# Every name each historical facade still has to answer for, and the facade it
+# Every name the historical facade still has to answer for, and the facade it
 # answers on. Live issues and external operator scripts reach the owner through
 # these, so a forward that stops resolving is a break, not a rename.
 _FACADE_FORWARDS = (
@@ -61,27 +61,6 @@ _FACADE_FORWARDS = (
         "_build_question_prompt",
         "_build_review_prompt",
         "_build_single_decision_comment",
-    )),
-    (workflow_messages, (
-        "_COMMIT_STYLE_NOTE",
-        "_CONTINUE_RETRY_PROMPT",
-        "_FOREGROUND_ONLY_NOTE",
-        "_MAX_FILES_SHOWN",
-        "_NO_BODY",
-        "_NO_PRIOR_COMMENTS",
-        "_build_conflict_resolution_prompt",
-        "_build_decompose_prompt",
-        "_build_documentation_prompt",
-        "_build_fix_prompt",
-        "_build_fresh_respawn_preamble",
-        "_build_implement_prompt",
-        "_build_pr_comment_followup",
-        "_build_question_followup_prompt",
-        "_build_question_prompt",
-        "_build_review_prompt",
-        "_build_single_decision_comment",
-        "_single_manifest_files",
-        "_single_manifest_text",
     )),
 )
 
@@ -247,7 +226,7 @@ class FixPromptTest(unittest.TestCase):
 
 
 class PromptFacadeForwardTest(unittest.TestCase):
-    """Each historical facade resolves to the owner's exact object."""
+    """The historical facade resolves to the owner's exact object."""
 
     def test_facades_forward_the_owner_objects(self) -> None:
         for facade, forwarded_names in _FACADE_FORWARDS:

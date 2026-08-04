@@ -16,7 +16,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import base_sync, config, workflow, workflow_messages
+from orchestrator import base_sync, config, workflow
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments
 
@@ -41,21 +41,6 @@ _FACADE_FORWARDS = (
         "_post_pr_comment",
         "_quote_comment_line",
         "_recent_comments_text",
-        "_with_orch_marker",
-    )),
-    (workflow_messages, (
-        "_ORCH_COMMENT_ID_CAP",
-        "_ORCH_COMMENT_MARKER",
-        "_SECTION_SEP",
-        "_TRACKED_REPOS_CAP",
-        "_build_tracked_repos_context",
-        "_orchestrator_ids",
-        "_post_issue_comment",
-        "_post_pr_comment",
-        "_prompt_comment_chunk",
-        "_quote_comment_line",
-        "_recent_comments_text",
-        "_track_orchestrator_comment",
         "_with_orch_marker",
     )),
     (base_sync, ("_post_pr_comment",)),
