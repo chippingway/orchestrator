@@ -115,6 +115,14 @@ the days the issues those runs resolved landed on, and that day figure is
 handed the window's last included day rather than its end, since the reads
 below are issued under `ts < end` and a bound taken off `end` itself would draw
 a trailing day none of them covered.
+``activity_panel`` is the card under all three, and the only one that keeps the
+clock rather than reducing the window to a reading: the weekday-by-hour grid
+its tokens landed on, headed by the zone those hours are read in and carrying
+the one selectbox that picks it. That control sits in the card because it
+changes what the figure means rather than which rows reach it, and it is keyed
+into the session under the name the page reads the offset back off at the top
+of the next rerun -- the read buckets the cells, so the label is true only
+while the widget and that read name one key.
 ``page_models`` is what a render carries between all of those: the seven frozen
 shapes threaded from the controls at the top of the page to the last panel on
 it -- the caller's own Streamlit, pandas, chart, and theme handles, the

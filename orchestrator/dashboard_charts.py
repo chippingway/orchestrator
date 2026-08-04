@@ -4,8 +4,9 @@
 
 Compatibility hub: the pure figure builders live in focused sibling modules,
 and this module re-imports each public builder under its original name so
-``dashboard_charts.<builder>`` keeps resolving for the widget pipeline and the
-existing tests. Every builder takes already-fetched read-model rows (or a raw
+``dashboard_charts.<builder>`` keeps resolving for the existing tests and any
+caller outside the panel owners, each of which names the chart owner it draws
+with directly. Every builder takes already-fetched read-model rows (or a raw
 matrix for the 7x24 heatmap) and returns a ``plotly.graph_objects.Figure``;
 the dashboard layer owns the query + sidebar filters and hands the resulting
 ``Figure`` to ``st.plotly_chart``.

@@ -105,6 +105,8 @@ _FUTURE_DIRECTIVE = "annotations"
 
 _PACKAGE = "orchestrator.observability.dashboard"
 
+_ACTIVITY_PANEL = f"{_PACKAGE}.activity_panel"
+
 _BACKEND_CARD = f"{_PACKAGE}.backend_card"
 
 _BREAKDOWNS = f"{_PACKAGE}.breakdowns"
@@ -920,17 +922,28 @@ _RELIABILITY_PANEL_NAMES = (
     ),
 )
 
+# The card that leaf closes on, beneath all three: the weekday-by-hour grid the
+# window's tokens are laid out on.
+_ACTIVITY_PANEL_NAMES = (
+    (
+        "_render_activity_heatmap",
+        _ACTIVITY_PANEL,
+        "render_activity_heatmap",
+    ),
+)
+
 # What the widget hub above those leaves publishes on an owner's behalf: those
-# seven, the six the cost sections are drawn and sized by, the pair beneath
-# them, and the Plotly
+# seven, the six the cost sections are drawn and sized by, the pair and the
+# grid beneath them, and the Plotly
 # defaults every figure the page draws is handed. A copy of the defaults is a
 # panel whose hover toolbar nobody switched off, and this
-# is the alias the page renderers resolve them through at call time, so what a
-# test patches here and what the owner holds have to be one object.
+# is the alias a caller reaching past the owners still reads them off, so what
+# a test patches here and what the owner holds have to be one object.
 _WIDGET_HUB_NAMES = (
     *_PAGE_STATE_NAMES,
     *_COST_PANEL_NAMES,
     *_RELIABILITY_PANEL_NAMES,
+    *_ACTIVITY_PANEL_NAMES,
     ("PLOTLY_CONFIG", _RENDER_CONFIG, "PLOTLY_CONFIG"),
 )
 
@@ -1100,7 +1113,9 @@ _FILTER_NAMES = (
 # here the chrome that strip of tiles sits in, a bar laid out or a window
 # picked here the one every read is bounded by, a skill card rendered here
 # the one an operator reads three of those tables on, a hero card drawn or a
-# stack mode offered here the one the page opens with, and a page threaded here
+# stack mode offered here the one the page opens with, a window's spend
+# compared or its hours laid out here the four sections beneath that card, and
+# a page threaded here
 # the one every section is handed,
 # or a fix under the owners would reach only half of the callers.
 _FORWARDED_MODULES = MappingProxyType({
@@ -1161,25 +1176,26 @@ _FORWARDED_MODULES = MappingProxyType({
     _WIDGET_MODELS_LEAF: _PAGE_STATE_NAMES,
     _WIDGET_SKILLS_LEAF: _SKILL_PANEL_NAMES,
     _WIDGET_USAGE_LEAF: _USAGE_PANEL_NAMES,
+    _WIDGET_COSTS_LEAF: (
+        *_COST_PANEL_NAMES,
+        *_RELIABILITY_PANEL_NAMES,
+        *_ACTIVITY_PANEL_NAMES,
+    ),
 })
 
-# The three sites that forward and still answer for something of their own. The
+# The two sites that forward and still answer for something of their own. The
 # widget leaf named for the run listing publishes the render a page draws the
 # expander with and the notice a window with no `agent_exit` row renders
 # instead, while still building the per-issue drill-down beneath that listing.
-# The one named for the cost sections publishes both comparison panels, what
-# they are sized and answered by, and the repository-spend and reliability pair
-# beneath them, while still drawing the activity heatmap under all three.
-# The widget hub above them publishes the page state, those cost sections, that
-# pair, and the Plotly defaults,
-# while still claiming the render passes it stamps. All three are held to
+# The widget hub above it publishes the page state, the four sections beneath
+# the hero card, and the Plotly defaults,
+# while still claiming the render passes it stamps. Both are held to
 # resolving what they forward rather than to defining nothing.
 _PARTLY_FORWARDED_MODULES = MappingProxyType({
     _WIDGET_RUNS_LEAF: (
         (_NO_AGENT_EXITS, _RECENT_RUNS, _NO_AGENT_EXITS),
         ("_render_recent_runs", _RECENT_RUNS, "render_recent_runs"),
     ),
-    _WIDGET_COSTS_LEAF: (*_COST_PANEL_NAMES, *_RELIABILITY_PANEL_NAMES),
     _WIDGET_HUB: _WIDGET_HUB_NAMES,
 })
 
@@ -1264,8 +1280,9 @@ class ForwardedFlatModuleTest(unittest.TestCase):
         # ones, the chrome one beside them, the two the filter bar is reached
         # through, the
         # shared-table, issue-table, skill-trigger, five adoption, and five
-        # matrix ones, the three widget leaves the skill cards and the hero one
-        # are drawn through and the page state is threaded through, and the KPI
+        # matrix ones, the four widget leaves the skill cards, the hero one, and
+        # the four sections under it are drawn through and the page state is
+        # threaded through, and the KPI
         # site beside those: a module that defined a name of its own would be a
         # second implementation the check above cannot see, because it only
         # compares the names the module was asked for. The card hub is held to

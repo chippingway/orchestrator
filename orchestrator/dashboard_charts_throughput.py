@@ -5,9 +5,9 @@
 The resolved-per-day bars, the calendar a window's days are filled in from,
 the series those days and counts arrive as, and the height the strip is
 pinned to are the charts owner's own objects. `orchestrator.dashboard_charts`
-re-exports `done_per_day_bars` from here under its original name, so the
-strip the widget pipeline draws and the strip the owner builds cannot be two
-figures that merely agree.
+re-exports `done_per_day_bars` from here under its original name, so the strip
+a caller reaches through that hub and the strip the reliability panel draws off
+the owner cannot be two figures that merely agree.
 """
 from __future__ import annotations
 

@@ -31,6 +31,9 @@ CONFIGURED_DB_ENV = MappingProxyType({ANALYTICS_DB_URL_ENV: CONFIGURED_DB_URL})
 DASHBOARD_OWNERS = "orchestrator.observability.dashboard"
 
 
+ACTIVITY_PANEL_OWNER = f"{DASHBOARD_OWNERS}.activity_panel"
+
+
 ISSUE_COST_PANEL_OWNER = f"{DASHBOARD_OWNERS}.issue_cost_panel"
 
 
@@ -58,7 +61,8 @@ USAGE_PANEL_OWNER = f"{DASHBOARD_OWNERS}.usage_panel"
 # Each member the hub publishes and the module that defines it. The widget
 # sections still living on the hub report it; the page-state shapes, the two
 # skill cards, the two cost-comparison panels, the repository-spend and
-# reliability pair beneath them, the recent-run listing, and the
+# reliability pair and the activity grid beneath them, the recent-run listing,
+# and the
 # hero usage card report the owners under
 # `observability/` that hold them, since a claim here would move an owner's own
 # object off the owner that defines it.
@@ -81,7 +85,7 @@ _WIDGET_MEMBER_HOMES = MappingProxyType({
     "_render_stage_review_bars": STAGE_COST_PANEL_OWNER,
     "_render_issues_and_backends": ISSUE_COST_PANEL_OWNER,
     "_render_repo_and_reliability": RELIABILITY_PANEL_OWNER,
-    "_render_activity_heatmap": DASHBOARD_WIDGETS_MODULE,
+    "_render_activity_heatmap": ACTIVITY_PANEL_OWNER,
     "_render_skill_adoption": SKILL_PANEL_OWNER,
     "_render_skill_invocation_diagnostics": SKILL_PANEL_OWNER,
     "_render_skill_triggers": SKILL_TRIGGER_PANEL_OWNER,
@@ -115,7 +119,8 @@ class WidgetRenderingExtractionTest(unittest.TestCase):
     for the paired lifecycle bars and the height they share,
     `issue_cost_panel` for the ranked issues beside the backends that ran
     them, and `reliability_panel` for the repository ranking beside the tiles
-    and days those runs are read for -- the recent-run listing above that
+    and days those runs are read for -- the weekday-by-hour grid closing that
+    run of sections, under `activity_panel`, the recent-run listing above that
     drill-down, under
     `recent_runs`, the hero spend and token-usage card the page opens with,
     under `usage_panel`, the shapes the pipeline threads, under `page_models`,

@@ -153,8 +153,8 @@ class DirectLeafImportTest(unittest.TestCase):
 class ChartHubExtractionTest(unittest.TestCase):
     """Each chart family's public builders live in one focused module, and
     the `orchestrator.dashboard_charts` hub re-exports each under its original
-    name so `dashboard_charts.<builder>` (the widget pipeline and these tests
-    reach it) keeps resolving to the same object.
+    name so `dashboard_charts.<builder>` (how these tests and any caller
+    outside the panel owners reach it) keeps resolving to the same object.
     """
 
     def test_builders_defined_in_their_home(self) -> None:

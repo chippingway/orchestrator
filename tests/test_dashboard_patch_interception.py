@@ -90,53 +90,22 @@ LOAD_START = 12.5
 FIRST_WAVE = (("summary", object()), ("prev_summary", object()))
 
 
-class _NullContext:
-    """`with`-usable stand-in for `st.container(...)` / `st.columns(...)`."""
+class _QuietStreamlit:
+    """Minimal fake `st` for the empty-window renderer to draw its banner on.
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-
-class _RecordingStreamlit:
-    """Minimal fake `st` that records the `config=` handed to `plotly_chart`.
-
-    Only the surface the heatmap and empty-window renderers touch is
-    implemented; every other call is a no-op so a render runs without the
-    optional Streamlit.
+    Only the surface that renderer touches is implemented, as a no-op, so a
+    render runs without the optional Streamlit.
     """
-
-    def __init__(self) -> None:
-        self.plotly_configs: list = []
-
-    def container(self, **kwargs):
-        return _NullContext()
-
-    def markdown(self, *args, **kwargs) -> None:
-        """No-op stand-in for `st.markdown`."""
-
-    def selectbox(self, *args, **kwargs) -> None:
-        """No-op stand-in for `st.selectbox`."""
 
     # `info` is Streamlit's own name for the banner an empty window is
     # answered with, so the stand-in has to spell it the same way.
     def info(self, *args, **kwargs) -> None:  # noqa: WPS110
         """No-op stand-in for `st.info`."""
 
-    def plotly_chart(self, figure, *, config=None, **kwargs) -> None:
-        self.plotly_configs.append(config)
-
-
-class _StubCharts:
-    def hour_weekday_heatmap(self, rows, *, tz_label):
-        return object()
-
 
 class FacadePatchInterceptionTest(unittest.TestCase):
-    """The moved page-pipeline resolves its siblings and `PLOTLY_CONFIG`
-    through the `orchestrator.dashboard` facade at call time -- and its read
+    """The page pipeline resolves its siblings through the
+    `orchestrator.dashboard` facade at call time -- and its read
     waves on the dashboard owner that drives them -- so a `patch.object` on
     either intercepts the running pipeline (mirroring the `workflow`
     stage-handler facade). Identity re-export alone would not catch a stubbed
@@ -182,7 +151,7 @@ class FacadePatchInterceptionTest(unittest.TestCase):
             patch.object(dashboard, DRILLDOWN_MEMBER),
         ):
             dashboard._render_empty_window(
-                SimpleNamespace(st=_RecordingStreamlit()), page,
+                SimpleNamespace(st=_QuietStreamlit()), page,
             )
             logged.assert_called_once_with(
                 load_start=LOAD_START,
@@ -209,22 +178,3 @@ class FacadePatchInterceptionTest(unittest.TestCase):
         ):
             dashboard._render_dashboard_widgets(object(), object(), object())
         self.assertEqual(calls, ["chart", "remaining"])
-
-    def test_patched_plotly_config_reaches_chart(self) -> None:
-        # A leaf renderer reads `PLOTLY_CONFIG` through the facade and hands
-        # Plotly a plain-dict copy, so patching `dashboard.PLOTLY_CONFIG`
-        # changes the config the chart receives (never the mapping proxy,
-        # which is not JSON-serializable).
-        _, dashboard = _reload(CONFIGURED_DB_ENV)
-        fake_st = _RecordingStreamlit()
-        sentinel = {"displayModeBar": True, "scrollZoom": True}
-        with patch.object(dashboard, "PLOTLY_CONFIG", sentinel):
-            dashboard._render_activity_heatmap(
-                st=fake_st,
-                dashboard_charts=_StubCharts(),
-                heatmap_rows=[],
-                tz_offset_choice=0,
-            )
-        self.assertEqual(fake_st.plotly_configs, [sentinel])
-        self.assertIsInstance(fake_st.plotly_configs[0], dict)
-        self.assertIsNot(fake_st.plotly_configs[0], sentinel)

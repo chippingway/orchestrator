@@ -16,6 +16,8 @@ from tests.observability.observability_test_support import (
 
 _PACKAGE = "orchestrator.observability.dashboard"
 
+_ACTIVITY_PANEL_OWNER = "activity_panel"
+
 _BACKEND_CARD_OWNER = "backend_card"
 
 _BREAKDOWNS_OWNER = "breakdowns"
@@ -122,6 +124,7 @@ _WINDOWS_OWNER = "windows"
 # in the module map, which is what the inventory check compares the directory
 # against.
 _OWNERS = (
+    _ACTIVITY_PANEL_OWNER,
     _BACKEND_CARD_OWNER,
     _BREAKDOWNS_OWNER,
     _CARD_HTML_OWNER,
@@ -204,7 +207,9 @@ _OWNERS = (
 # that one still gets, pair the lifecycle bars a window's spend is split across
 # at the one height both are drawn at, rank that window's issues beside the
 # backends that ran them, set that window's repositories beside the tiles and
-# days the runs behind them are read for, weigh
+# days the runs behind them are read for, lay the tokens under all of those out
+# by the hour and weekday they landed on and name the zone that grid is read
+# in, weigh
 # one backend's spend against the
 # tokens and runs behind it, size a window's
 # priced share into one bar, read one of the runs under all of them back as
@@ -254,6 +259,7 @@ _OWNERS = (
 # caches under are all
 # invisible here for the same reason.
 _SURFACES = MappingProxyType({
+    _ACTIVITY_PANEL_OWNER: ("card_subtitle", "render_activity_heatmap"),
     _BACKEND_CARD_OWNER: (
         "BackendEfficiencyMetrics",
         "backend_efficiency_card_html",
@@ -520,7 +526,8 @@ _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
 # flat theme module, the state, read, KPI, KPI-strip, card, HTML,
 # skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
 # all but the KPI one, the five widget leaves the skill panels, the two
-# cost-comparison panels and the repository-and-reliability pair beneath them,
+# cost-comparison panels with the repository-and-reliability pair and the
+# activity grid beneath them,
 # the run listing, the hero usage card, and the page
 # state are reached through, which sit under the widget
 # hub instead, and the
@@ -609,10 +616,13 @@ _COMPATIBILITY_SITES = (
 # page opened on and the window totals a comparison panel reports are what the
 # shapes it threads are typed against. The panel below those two is typed
 # against the shapes rather than the rows, so the page state is the only
-# vocabulary it names. One sibling is a package rather than a
-# module: the three owners that draw a figure inside a card name the chart
+# vocabulary it names, while the grid beneath it is back to the rows and names
+# the activity family for the weekday-by-hour points it draws. One sibling is a
+# package rather than a
+# module: the four owners that draw a figure inside a card name the chart
 # families that build it -- the hero card one, the paired lifecycle bars two,
-# and the repository ranking beside the run-health tiles two more --
+# the repository ranking beside the run-health tiles two more, and that grid
+# one --
 # since a panel is the card and the figure together and a handle passed in
 # would let them be assembled from different families, which for a pairing
 # pinned to one shared height is two panels measured apart.
