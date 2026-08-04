@@ -3075,8 +3075,9 @@ those keeps targeting the facade.
 `orchestrator/workflow/stages/` is the destination the per-label facades moved to, one stage at a time;
 `decomposition`, `implementing`, `documenting`, `validating`, `in_review`, `fixing`, `conflicts`, and `question` have
 all arrived. Each became a subpackage of
-responsibility-named owners there, and the `orchestrator/stages/<stage>.py` it vacated stays behind as a temporary
-forwarder that reads every name back off those owners rather than rebuilding one, so both import sites hand back the
+responsibility-named owners there, and a stage still reached for under its flat spelling keeps the
+`orchestrator/stages/<stage>.py` it vacated as a temporary forwarder that reads every name back off those owners
+rather than rebuilding one, so both import sites hand back the
 same object. Identity is all a forwarder carries: it caches each name it resolved, so a `patch.object` intercepts the
 lookup site it lands on rather than both, and the owner is the site orchestrator code reads. Dispatch makes that
 explicit: `_STAGE_HANDLER_TARGETS` names the owner a handler lives on, and so does the same-tick start in
