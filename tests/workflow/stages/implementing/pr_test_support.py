@@ -5,10 +5,17 @@
 from __future__ import annotations
 
 from orchestrator import workflow as workflow
-from orchestrator.stages import implementing as _implementing
+from orchestrator.workflow.stages.implementing import (
+    publication as _publication,
+    state as _state,
+)
 from tests import fakes, implementing_fixing_test_cases, workflow_helpers
 
-implementing = _implementing
+# The cap and the marker are state constants; the formatter that applies them
+# to a PR body belongs to the publication owner that builds the body.
+_PR_BODY_AGENT_MESSAGE_CAP = _state._PR_BODY_AGENT_MESSAGE_CAP
+_PR_BODY_TRUNCATION_MARKER = _state._PR_BODY_TRUNCATION_MARKER
+_format_pr_agent_message = _publication._format_pr_agent_message
 
 FakeComment = fakes.FakeComment
 FakeGitHubClient = fakes.FakeGitHubClient
