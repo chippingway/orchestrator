@@ -157,6 +157,27 @@ class SharedPromptHeaderTest(unittest.TestCase):
                 self.assertIn(prompts._NO_PRIOR_COMMENTS, prompt)
 
 
+class QuotedCommentSectionsTest(unittest.TestCase):
+    """A multi-comment quote keeps the paragraph break the thread read uses.
+
+    The builders that fold several comments into one blockquote join them on
+    the separator the comment owner defines, so the quote inside a prompt and
+    the sections around it break into paragraphs the same way.
+    """
+
+    def test_quoted_comments_break_on_a_blank_line(self) -> None:
+        quoted_comments = [
+            FakeComment(_FEEDBACK_COMMENT_ID, "rename foo to bar", FakeUser("alice")),
+            FakeComment(_FEEDBACK_COMMENT_ID + 1, "and drop the flag", FakeUser("bob")),
+        ]
+
+        prompt = prompts._build_pr_comment_followup(quoted_comments)
+
+        self.assertIn(
+            "> @alice: rename foo to bar\n> \n> @bob: and drop the flag", prompt,
+        )
+
+
 class CommitProducingNotesTest(unittest.TestCase):
     """The two notes every commit-producing prompt carries.
 

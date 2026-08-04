@@ -7,7 +7,9 @@ the thread text ``comments.py`` already trust-filtered, and the tracked-reposito
 block beside it. That shared opening is why an untrusted author's comment is
 absent from the implement, review, documentation, decompose, and question
 prompts alike -- one filtered read feeds all five -- and why the placeholders for
-an empty body or an empty thread read the same in each.
+an empty body or an empty thread read the same in each. The blank line those
+sections are joined on comes from ``comments.py`` too, so a quoted thread and
+the prompt assembled around it break into paragraphs the same way.
 
 The notes appended below it are contracts the rest of the workflow enforces.
 ``_FOREGROUND_ONLY_NOTE`` goes on every prompt that can end in a commit: a
@@ -34,9 +36,9 @@ from __future__ import annotations
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_messages_state import _SECTION_SEP
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine.comments import _SECTION_SEP
 from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
 
 _MAX_FILES_SHOWN = 20

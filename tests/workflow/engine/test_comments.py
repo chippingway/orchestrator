@@ -27,6 +27,7 @@ from tests.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
 _LEDGER_KEY = "orchestrator_comment_ids"
 _LEDGER_ISSUE_NUMBER = 1010
 _LEDGER_PR_NUMBER = 77
+_THREAD_ISSUE_NUMBER = 1011
 _ISSUE_BODY = "picking up"
 # Every name each historical facade still has to answer for, and the facade it
 # answers on. Live issues and external operator scripts reach the owner through
@@ -45,6 +46,7 @@ _FACADE_FORWARDS = (
     (workflow_messages, (
         "_ORCH_COMMENT_ID_CAP",
         "_ORCH_COMMENT_MARKER",
+        "_SECTION_SEP",
         "_TRACKED_REPOS_CAP",
         "_build_tracked_repos_context",
         "_orchestrator_ids",
@@ -142,6 +144,29 @@ class RecentCommentsTrustFilterTest(unittest.TestCase):
 
         self.assertIn(trust.MALICIOUS_URL, text)
         self.assertIn(trust.ALLOWED_MARKER, text)
+
+
+class ThreadTextParagraphsTest(unittest.TestCase):
+    """Quoted comments reach a prompt as separate paragraphs.
+
+    The prompt builders assemble their own sections around this text with the
+    same break, so a thread that ran together with the sections framing it
+    would read to the agent as one undifferentiated block.
+    """
+
+    def test_kept_comments_are_joined_by_a_blank_line(self) -> None:
+        issue = make_issue(
+            _THREAD_ISSUE_NUMBER,
+            comments=[
+                FakeComment(1, "please rebase", FakeUser("alice")),
+                FakeComment(2, "and squash", FakeUser("bob")),
+            ],
+        )
+
+        with patch.object(config, trust.ALLOWLIST_CONFIG, ()):
+            text = comments._recent_comments_text(issue)
+
+        self.assertEqual(text, "@alice: please rebase\n\n@bob: and squash")
 
 
 class QuoteCommentLineTest(unittest.TestCase):
