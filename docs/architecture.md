@@ -2460,8 +2460,10 @@ for the figure inside them: the hero card names `charts/usage.py`, the paired li
 beside the card markup it is headed by and the Plotly
 configuration it hands that figure, so a panel is the card and the figure together rather than two halves a caller
 pairs up, and none is titled, drawn, or configured out of a different owner than the panels beside it use. That is
-every figure the page draws: no section is handed the chart hub as a parameter and calls a builder off it, and the
-handle the page state still carries is the one a caller outside the tree threads rather than one a panel reads.
+every figure the page draws: no section is handed the chart hub as a parameter and calls a builder off it. The page
+state still carries the handle — bound by the runtime that assembles that shape, and left `None` by the drill-down
+path that assembles the same shape without one — because those seven shapes are a frozen contract the whole pipeline
+is threaded through, not because a panel reads a builder off it.
 
 `dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
 the hub the whole read inventory is resolved through, and the ten flat leaves beneath them —
