@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow, workflow_drift, workflow_messages
-from orchestrator.workflow.engine import prompts
+from orchestrator import workflow, workflow_messages
+from orchestrator.workflow.engine import drift, prompts
 
 from tests.fakes import FakeComment, FakeUser, make_issue
 from tests.workflow_helpers import _TEST_SPEC
@@ -83,7 +83,6 @@ _FACADE_FORWARDS = (
         "_single_manifest_files",
         "_single_manifest_text",
     )),
-    (workflow_drift, ("_COMMIT_STYLE_NOTE", "_FOREGROUND_ONLY_NOTE")),
 )
 
 
@@ -122,7 +121,7 @@ def _commit_producing_prompts() -> dict[str, str]:
         "conflict": prompts._build_conflict_resolution_prompt(
             _BASE_REF, ["a.rs"],
         ),
-        "user_content_change": workflow_drift._build_user_content_change_prompt(
+        "user_content_change": drift._build_user_content_change_prompt(
             issue, comments_text="",
         ),
     }
