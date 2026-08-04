@@ -7,6 +7,7 @@ import importlib
 import subprocess
 import sys
 import unittest
+from importlib.util import find_spec
 
 from orchestrator import __version__ as imported_version
 from orchestrator.github import (
@@ -15,24 +16,11 @@ from orchestrator.github import (
     labels,
     pull_requests,
 )
-from orchestrator.state_machine import WorkflowLabel, coerce_workflow_label
-from orchestrator.workflow import state as workflow_state
+from orchestrator.workflow.state import WorkflowLabel, coerce_workflow_label
 
 _VALIDATING_LABEL = "validating"
-_STATE_MACHINE_FORWARDS = (
-    "ALLOWED_TRANSITIONS",
-    "ControlLabel",
-    "IllegalTransition",
-    "WorkflowLabel",
-    "_DETOUR_TO_RESOLVING",
-    "coerce_workflow_label",
-    "guard_transition",
-    "is_allowed_transition",
-    "log",
-)
-# The `from __future__` binding and the owner alias the forwards are read off.
-_MODULE_INTERNALS = frozenset(("annotations", "_state"))
-_STATE_MACHINE_FACADE = importlib.import_module("orchestrator.state_machine")
+# The module path a second import site for the label vocabulary would take.
+_TOP_LEVEL_STATE_MODULE = "orchestrator.state_machine"
 _STATIC_HELPERS = (
     ("workflow_label", labels.workflow_label),
     ("pr_has_label", pull_requests.pr_has_label),
@@ -110,28 +98,15 @@ class GitHubStaticHelperCompatibilityTest(unittest.TestCase):
                 )
 
 
-class StateMachineForwardTest(unittest.TestCase):
-    """`state_machine` forwards the typed-state owner and defines nothing."""
+class StateVocabularyImportSiteTest(unittest.TestCase):
+    """`workflow.state` is the only module the state vocabulary answers on."""
 
-    def test_every_name_is_the_owner_object(self) -> None:
-        for forwarded_name in _STATE_MACHINE_FORWARDS:
-            with self.subTest(name=forwarded_name):
-                self.assertIs(
-                    getattr(_STATE_MACHINE_FACADE, forwarded_name),
-                    getattr(workflow_state, forwarded_name),
-                )
-
-    def test_module_defines_nothing_of_its_own(self) -> None:
-        # A locally defined name here would be a second definition of the graph
-        # or guard live issues already run on, drifting from the owner silently.
-        published = {
-            name
-            for name in _STATE_MACHINE_FACADE.__dict__
-            if not name.startswith("__")
-        }
-        self.assertEqual(
-            published - _MODULE_INTERNALS, set(_STATE_MACHINE_FORWARDS),
-        )
+    def test_no_top_level_state_module_exists(self) -> None:
+        # Anything importable here would be a second identity for the graph and
+        # the write guard live issues already run on, free to drift from the
+        # owner silently. Resolving the spec rather than stat-ing one path
+        # catches a copy planted anywhere the interpreter would find it.
+        self.assertIsNone(find_spec(_TOP_LEVEL_STATE_MODULE))
 
 
 class WorkflowLabelInputCompatibilityTest(unittest.TestCase):
