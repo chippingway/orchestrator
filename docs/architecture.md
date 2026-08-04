@@ -1265,8 +1265,8 @@ orchestrator/
   stages/
     <stage>.py          temporary forwarder for a stage still reached for here,
                         reading every name back off its owners under
-                        `workflow/stages/`; `validating` and `in_review` have
-                        none left
+                        `workflow/stages/`; `validating`, `in_review`, and
+                        `question` have none left
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
 ```
@@ -3083,8 +3083,8 @@ same object. Identity is all a forwarder carries: it caches each name it resolve
 lookup site it lands on rather than both, and the owner is the site orchestrator code reads. Dispatch makes that
 explicit: `_STAGE_HANDLER_TARGETS` names the owner a handler lives on, and so does the same-tick start in
 `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
-is dropped once the callers it serves name the owner, and neither `validating` nor `in_review` has a module left in
-the flat package. Like
+is dropped once the callers it serves name the owner, and none of `validating`, `in_review`, and `question` has a
+module left in the flat package. Like
 `workflow/engine/`, the new package and each stage subpackage inside it bind nothing in their initializers -- the
 dispatcher resolves one handler per issue, so an eager binding there would charge that import for every other stage's
 leaves and for the worktree and GitHub subsystems they reach.
@@ -3248,9 +3248,10 @@ the stderr diagnostics come from `workflow/engine/`, and `_cleanup_question_work
 `git/worktrees/terminal.py` — the last one matters because that name also resolves on `workflow` and `worktrees`, so a
 mock left on a facade would let a real teardown run. The seams that stay on the facade are the ones the stage does not
 own — `_worktree_path`, `_ensure_worktree`, `_resolve_branch_name`, `_has_new_commits`, and `_worktree_dirty_files` are
-read as `_wf` attributes at call time — and the whole historical inventory still resolves on
-`orchestrator.stages.question` with the owner's exact identity, with `_handle_question` resolving on `workflow` as
-well.
+read as `_wf` attributes at call time. No flat module sits beside these owners: a check in
+`tests/workflow/stages/question/test_imports.py` asserts nothing resolves at the `orchestrator.stages.question` paths,
+so the session lock, the parks, and the wire keys are each answered on an owner alone. `_handle_question` resolves on
+`workflow` as well, read straight off `handler`.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked
