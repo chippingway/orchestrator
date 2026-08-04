@@ -1265,7 +1265,8 @@ orchestrator/
   stages/
     <stage>.py          temporary forwarder for a stage still reached for here,
                         reading every name back off its owners under
-                        `workflow/stages/`; `validating` has none left
+                        `workflow/stages/`; `validating` and `in_review` have
+                        none left
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
 ```
@@ -3082,7 +3083,8 @@ same object. Identity is all a forwarder carries: it caches each name it resolve
 lookup site it lands on rather than both, and the owner is the site orchestrator code reads. Dispatch makes that
 explicit: `_STAGE_HANDLER_TARGETS` names the owner a handler lives on, and so does the same-tick start in
 `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
-is dropped once the callers it serves name the owner, and `validating` has no module left in the flat package. Like
+is dropped once the callers it serves name the owner, and neither `validating` nor `in_review` has a module left in
+the flat package. Like
 `workflow/engine/`, the new package and each stage subpackage inside it bind nothing in their initializers -- the
 dispatcher resolves one handler per issue, so an eager binding there would charge that import for every other stage's
 leaves and for the worktree and GitHub subsystems they reach.
@@ -3175,9 +3177,11 @@ This stage owns no dev machinery either: the resume comes from `workflow/stages/
 disposition from `workflow/stages/validating/drift_outcomes.py`, so a patch on one of those lands on the owner. The
 seams that stay on the facade are the ones the stage does not own — the worktree and HEAD helpers plus
 base-sync's `_AUTO_REBASE_PARK_REASONS`, which is what tells a park the rebase loop owns from one this stage may
-answer — and the whole historical inventory still resolves on `orchestrator.stages.in_review` with the owner's exact
-identity. Two of its names keep resolving on `workflow` as well: `_handle_in_review` for the stage-to-stage edge and
-`_comment_created_at`, whose one cross-package caller — fixing's quiet window — names `watermarks` itself.
+answer. No flat module sits beside these owners: a check in `tests/workflow/stages/in_review/test_imports.py` asserts
+nothing resolves at the `orchestrator.stages.in_review` paths, so the feedback scan, the fixing route, the drift
+resume, and the merge ping are each answered on an owner alone. Two names keep resolving on `workflow` as well:
+`_handle_in_review` for the stage-to-stage edge and `_comment_created_at`, whose one cross-package caller — fixing's
+quiet window — names `watermarks` itself.
 
 The fixing owners divide by what one tick has to settle, and two of them exist as a pair because the batch that starts
 the loop is not the batch that ends it. `feedback` scans forward from the three in_review watermarks; `bookmarks`
