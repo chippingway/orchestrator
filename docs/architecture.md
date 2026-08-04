@@ -612,12 +612,12 @@ orchestrator/
                         totals behind it, forwarding to the usage-panel owner
   _dashboard_widget_models.py
                         historical import site for the seven shapes one page
-                        render is threaded through, forwarding to the
-                        page-state owner
+                        render is threaded through, forwarding to
+                        page_models.py
   _dashboard_widget_states.py
                         historical import site for the two states a page
                         leaves through and the line it signs off with,
-                        forwarding to the page-states owner
+                        forwarding to page_states.py
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   usage.py              temporary compatibility site re-exporting the usage
                         owners under observability/usage/
@@ -1910,8 +1910,9 @@ partial page.
 pair runs inside a single spinner with the first-wave render between them, so an operator watches one indicator over
 the load while the chrome that render draws is already on screen. That render is also where a load can end early: a
 window holding no rows has nothing for the ten panels to draw, so a render reporting nothing back short-circuits the
-second wave and leaves the load unlogged here — the caller that drew the empty-window banner measures it, because
-what it spent is the six reads already issued. The first read error the fan-out lets through becomes one banner
+second wave and leaves the load unlogged here — `page_states.py`, which drew the banner that ended it, measures it
+instead, because what the load spent is the six reads already issued. The first read error the fan-out lets through
+becomes one banner
 naming what to check and the stop that ends the script, rather than a trace from the window, the tiles, and every
 panel below them saying the same thing sixteen times. Every load that does come back emits one `dashboard.load:` INFO
 line carrying the wall clock, the read count off the plan, and which way they were issued, because the fan-out is an
