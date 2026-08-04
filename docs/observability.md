@@ -1777,7 +1777,13 @@ republishes the six without claiming any of them. The listing under all four pan
 `observability/dashboard/recent_runs.py` — the columns one run
 is scanned by, the offset its timestamp is read on, the collapsed expander it is drawn inside, and the notice a window
 with no `agent_exit` row renders instead — reached through `orchestrator/_dashboard_widget_runs.py`, which forwards
-those two names and builds the per-issue drill-down beneath them itself. The card above all of them is
+those two names and builds the per-issue drill-down beneath them itself. The two sections that listing's window is
+compared across are `observability/dashboard/stage_cost_panel.py` — the paired lifecycle bars, the 7:5 columns they
+are laid out in, and the one height both figures are pinned to together with the row and base measurement behind it —
+and `observability/dashboard/issue_cost_panel.py` — the window's costliest issues ranked beside one efficiency card
+per backend, the coverage bar closing that column, and the notice those cards answer a window with no run with —
+reached through `orchestrator/_dashboard_widget_costs.py`, which forwards all six historical spellings while still
+drawing the repository-spend and reliability pair and the activity heatmap beneath them. The card above all of them is
 `observability/dashboard/usage_panel.py` — the header it is titled by, the two-value toggle deciding what a day's
 tokens are stacked by, the session key that mode survives a rerun in, and the per-day per-backend totals the second
 stack is drawn from — reached through `orchestrator/_dashboard_widget_usage.py`, which forwards all four historical
