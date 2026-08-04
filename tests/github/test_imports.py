@@ -8,7 +8,6 @@ import subprocess
 import sys
 import unittest
 
-from orchestrator import comment_trust as _comment_trust
 from orchestrator import github as _github
 from orchestrator.github import client as _github_client
 from orchestrator.github import comments as _comments
@@ -47,11 +46,9 @@ _OWNER_ONLY_NAMES = (
 )
 
 # The trust owner is what the git base-sync gates and the workflow stage leaves
-# both ask, so it has to stay reachable without any of them: the flat
-# `comment_trust` forwarding module the workflow layer historically owned, the
-# stage tree, the worktree and message facades, and the process entrypoint.
+# both ask, so it has to stay reachable without any of them: the stage tree,
+# the worktree and message facades, and the process entrypoint.
 _FORBIDDEN_PREFIXES = (
-    "orchestrator.comment_trust",
     "orchestrator.main",
     "orchestrator.stages",
     "orchestrator.workflow_drift",
@@ -65,8 +62,9 @@ import {module}
 print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 """
 
-# Names the flat module forwards off the trust owner rather than rebuilding.
-_TRUST_FORWARDS = ("filter_trusted", "is_trusted_author")
+# The allowlist gate the git base-sync eligibility check and the workflow stage
+# leaves bind at import time.
+_TRUST_NAMES = ("filter_trusted", "is_trusted_author")
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -117,7 +115,10 @@ class LayeringTest(unittest.TestCase):
 
 
 class PublicSurfaceTest(unittest.TestCase):
-    """The facade publishes a narrow `__all__` backed by owner identities."""
+    """The facade publishes a narrow `__all__` backed by owner identities.
+
+    Everything past that surface stays reachable only through its owner.
+    """
 
     def test_all_names_the_narrow_public_surface(self) -> None:
         self.assertEqual(
@@ -141,15 +142,15 @@ class PublicSurfaceTest(unittest.TestCase):
                 with self.assertRaises(AttributeError):
                     getattr(_github, owner_only_name)
 
-    def test_flat_trust_module_forwards_to_the_owner(self) -> None:
-        # `comment_trust` stays the import site older callers and operator
-        # scripts reference, and it forwards rather than rebuilding, so a
-        # caller reaching through it gates on the owner's exact policy.
-        for forwarded_name in _TRUST_FORWARDS:
-            with self.subTest(name=forwarded_name):
-                self.assertIs(
-                    getattr(_comment_trust, forwarded_name),
-                    getattr(_comments, forwarded_name),
+    def test_trust_owner_defines_the_gated_names(self) -> None:
+        # The facade hides both names, so the owner is the one import site
+        # every consumer gates on: it defines the policy rather than
+        # re-exporting it, leaving a single object to patch.
+        for trust_name in _TRUST_NAMES:
+            with self.subTest(name=trust_name):
+                self.assertEqual(
+                    getattr(_comments, trust_name).__module__,
+                    _comments.__name__,
                 )
 
     def test_client_inherits_the_state_mixin_owner(self) -> None:
