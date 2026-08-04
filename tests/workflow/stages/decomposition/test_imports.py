@@ -8,15 +8,12 @@ import importlib
 import subprocess
 import sys
 import unittest
+from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 
 from orchestrator import _workflow_export_manifest
 from orchestrator import workflow as _workflow
-from orchestrator.stages import (
-    _decomposition_export_manifest as _forwarder_manifest,
-    decomposition as _forwarder,
-)
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages import decomposition as _package
 
@@ -64,6 +61,20 @@ _DISPATCHED_HANDLERS = (
     ("umbrella", "umbrella", "_handle_umbrella"),
 )
 
+# The module paths a second import site for these owners would take: the flat
+# spelling itself, and the inventory and resolver hooks one would be built from.
+_FLAT_MODULES = (
+    "orchestrator.stages._decomposition_export_manifest",
+    "orchestrator.stages._decomposition_exports",
+    "orchestrator.stages.decomposition",
+)
+
+# Every workflow-manifest entry this package owns.
+_PACKAGE_TARGETS = tuple(
+    target for target in _workflow_export_manifest.EXPORTS
+    if target.module_name.startswith(_PACKAGE)
+)
+
 
 def _imported_orchestrator_modules(module: str) -> set[str]:
     """Names of the orchestrator modules a fresh `import module` plants."""
@@ -74,14 +85,6 @@ def _imported_orchestrator_modules(module: str) -> set[str]:
         check=True,
     )
     return set(completed.stdout.split())
-
-
-def _package_targets(manifest) -> list:
-    """Every manifest entry this package owns."""
-    return [
-        target for target in manifest.EXPORTS
-        if target.module_name.startswith(_PACKAGE)
-    ]
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -140,29 +143,27 @@ class PackageSurfaceTest(unittest.TestCase):
                     getattr(bound, "__name__", None), f"{_PACKAGE}.{name}",
                 )
 
-    def test_no_flat_leaf_is_left_behind(self) -> None:
-        # The migration is only finished when every historical name resolves
-        # off an owner here; a `_decomposition_*` target left in the inventory
-        # would be a leaf the flat package still owns.
-        for target in _forwarder_manifest.EXPORTS:
-            with self.subTest(name=target.export_name):
-                self.assertNotIn("_decomposition_", target.module_name)
+
+class OwnerImportSiteTest(unittest.TestCase):
+    """The owners here are the only modules this stage's surface answers on."""
+
+    def test_no_flat_module_exists(self) -> None:
+        # Anything importable at these paths would be a second identity for the
+        # manifest a parked parent is recovered from, the pinned-state keys its
+        # children are seeded with, and the handlers a decomposed issue is
+        # dispatched to -- free to drift from the owner silently and invisible
+        # to a patch aimed at it. Resolving the spec rather than stat-ing one
+        # path catches a copy planted anywhere the interpreter would find it.
+        for module in _FLAT_MODULES:
+            with self.subTest(module=module):
+                self.assertIsNone(find_spec(module))
 
 
 class ForwardedSurfaceTest(unittest.TestCase):
-    """Both historical import sites hand back the owner's own objects."""
-
-    def test_flat_facade_forwards_owner_names(self) -> None:
-        for target in _package_targets(_forwarder_manifest):
-            with self.subTest(name=target.export_name):
-                owner = _OWNER_MODULES[target.module_name.rsplit(".", 1)[1]]
-                self.assertIs(
-                    getattr(_forwarder, target.export_name),
-                    getattr(owner, target.target_name),
-                )
+    """The workflow facade hands back the owner's own objects."""
 
     def test_workflow_facade_forwards_owner_names(self) -> None:
-        for target in _package_targets(_workflow_export_manifest):
+        for target in _PACKAGE_TARGETS:
             with self.subTest(name=target.export_name):
                 owner = _OWNER_MODULES[target.module_name.rsplit(".", 1)[1]]
                 self.assertIs(
@@ -172,12 +173,12 @@ class ForwardedSurfaceTest(unittest.TestCase):
 
 
 class DispatchTargetTest(unittest.TestCase):
-    """The dispatcher names the owner a migrated handler now lives on."""
+    """The dispatcher names the owner each handler lives on."""
 
     def test_each_label_resolves_to_its_owner(self) -> None:
-        # A migrated stage keeps answering through the forwarder it left
-        # behind, but a dispatched handler is resolved off the module the table
-        # names -- so that is where a patch has to land to intercept one.
+        # A dispatched handler is resolved off the module the table names -- so
+        # that is where a patch has to land to intercept one, for every one of
+        # the four labels this stage answers for.
         for label, owner_name, handler_name in _DISPATCHED_HANDLERS:
             with self.subTest(label=label):
                 owner = _OWNER_MODULES[owner_name]

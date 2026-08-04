@@ -11,7 +11,7 @@ from pathlib import Path
 
 from orchestrator import stages as _flat_stages
 from orchestrator import workflow as _workflow
-from orchestrator.stages import decomposition as _decomposition
+from orchestrator.stages import implementing as _implementing
 from orchestrator.workflow import stages as _stages
 
 _PACKAGE = "orchestrator.workflow.stages"
@@ -24,9 +24,9 @@ import {module}
 print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 """
 
-# One handler the manifest reads off a flat stage leaf, so a name resolved
-# through the facade proves the historical route is still wired.
-_PROBE_HANDLER = "_handle_ready"
+# One handler a stage that still has a forwarder answers for, so resolving it on
+# both facades proves the historical route is still wired.
+_PROBE_HANDLER = "_handle_implementing"
 
 
 def _imported_orchestrator_modules(module: str) -> set[str]:
@@ -102,13 +102,13 @@ class PackageSurfaceTest(unittest.TestCase):
     def test_flat_stage_package_stays_the_route(self) -> None:
         # A nested package carrying the flat one's name is the hazard this
         # destination introduces: `orchestrator.stages` has to stay the module
-        # historical imports land on, answering with the same object the
-        # workflow facade does whether the handler still lives there or has
-        # already moved to an owner under this package.
+        # historical imports land on for every stage that still keeps a
+        # forwarder there, answering with the same object the workflow facade
+        # does now that the handler lives on an owner under this package.
         self.assertIsNot(_stages, _flat_stages)
         self.assertIs(
             getattr(_workflow, _PROBE_HANDLER),
-            getattr(_decomposition, _PROBE_HANDLER),
+            getattr(_implementing, _PROBE_HANDLER),
         )
         self.assertIs(_workflow.stages, _stages)
         self.assertIn("stages", _workflow.__dir__())

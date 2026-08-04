@@ -15,8 +15,8 @@ and the owner is the site orchestrator code reads. Dispatch makes that explicit
 -- the label table names the owner a handler lives on, so a patch meant
 to intercept a dispatched handler has to land there. A forwarder is dropped once
 the callers it serves name the owner directly, which ``validating``,
-``in_review``, and ``question`` have already outlived: their names answer on the
-owners here alone.
+``in_review``, ``question``, and ``decomposition`` have already outlived: their
+names answer on the owners here alone.
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per issue, and an eager binding here would
