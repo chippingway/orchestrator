@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 from orchestrator import config, workflow
 from orchestrator.github import PinnedState
-from orchestrator.usage import UsageMetrics
+from orchestrator.observability.usage.metrics import UsageMetrics
 from orchestrator.workflow.engine import usage as engine_usage
 
 from tests.fakes import FakeGitHubClient, make_issue

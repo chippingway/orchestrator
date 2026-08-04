@@ -629,8 +629,6 @@ orchestrator/
                         all of those sections, forwarding to page_pipeline.py,
                         chart_sections.py, and page_sections.py
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
-  usage.py              temporary compatibility site re-exporting the usage
-                        owners under observability/usage/
   trajectory_reader.py  historical import site for the file-backed read model,
                         forwarding to the trajectory-viewer owners
   _trajectory_*.py      the record facade binding a caller's analytics world,
@@ -1582,8 +1580,8 @@ every inline-HTML builder it is drawn with, and the controls and rendering one r
 the first to
 arrive: its owners live under `usage/`, whose initializer publishes the parser surface, while the callers that meter a
 run — `agents/models.py`, `workflow/engine/usage.py`, and the analytics recording and trajectory writers — name the
-owner they need. Root-level `usage.py` stays behind as a temporary compatibility site re-exporting those owners' own
-objects, and nothing on the tick path imports it any more — which is what makes it deletable rather than load-bearing.
+owner they need. No flat module sits beside the package: a check under `tests/observability/usage/` asserts the
+package root carries none, so the owner a caller imports is the only site a parse resolves through.
 
 `analytics/config.py` is the first owner under the analytics destination: the six environment knobs the two JSONL
 sinks and the Postgres surfaces are configured by, the `off` / `disabled` / `none` disable vocabulary three of them
