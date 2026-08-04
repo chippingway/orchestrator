@@ -359,7 +359,6 @@ orchestrator/
   _workflow_state.py    immutable values the engine owners share: the logger,
                         the per-issue failure log line, and the issue-state
                         attribute and its open / closed values
-  workflow_drift.py     lazy user-content-drift compatibility facade
   workflow_messages.py  lazy prompt/parser/comment compatibility facade
   git/
     __init__.py         package marker only; callers import an owner directly
@@ -1370,7 +1369,7 @@ marker and append to the id ledger in-module, and the thread read applies the pe
 the workflow and stage leaves that post a comment, quote one, or read the thread import the owner rather than reaching
 for the name on a facade. So a patch that has to intercept a posted issue or PR comment, the tracked-repos block, or
 the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`; `workflow`,
-`workflow_messages`, `workflow_drift`, and `base_sync` each still resolve their historical slice of those names to the
+`workflow_messages`, and `base_sync` each still resolve their historical slice of those names to the
 owner's exact object for callers outside the package.
 
 `workflow/engine/messages.py` is bound the same way. It owns both halves of what an agent's last message is worth:
@@ -1379,7 +1378,7 @@ the strict markers read out of it -- the review and documentation verdicts, the 
 log line carries when there was no usable message at all. Its own parsers call each other in-module, and the workflow
 and stage leaves that read a verdict, quote a blockquote, or classify a continue import the owner. So a patch that has
 to intercept a verdict parse, an ack read, a continue classification or refusal, or a stderr diagnostic targets
-`orchestrator.workflow.engine.messages`; `workflow`, `workflow_messages`, and `workflow_drift` each still resolve
+`orchestrator.workflow.engine.messages`; `workflow` and `workflow_messages` each still resolve
 their historical slice of those names to the owner's exact object. The implementing stage keeps its own
 `_as_blockquote` on `workflow/stages/implementing/session_read.py`, so a patch aimed at that stage's quoting still
 targets the stage owner.
@@ -1397,7 +1396,7 @@ the tracked-repos block, and the paragraph break its own sections are joined on 
 quoted thread and the prompt built around it breaking the same way -- and `messages.py` for the blockquote; the stage
 leaves that build a prompt or append a note import the owner. So a
 patch that has to intercept a built prompt, a shared note, or the single-decision comment targets
-`orchestrator.workflow.engine.prompts`; `workflow`, `workflow_messages`, and `workflow_drift` each still resolve their
+`orchestrator.workflow.engine.prompts`; `workflow` and `workflow_messages` each still resolve their
 historical slice of those names to the owner's exact object. A prompt with only one caller stays with that caller:
 `engine/drift.py` composes the drift-resume prompt beside the route that sends it and borrows just the two notes from
 here, so a patch aimed at that prompt still targets the drift owner.
@@ -1436,8 +1435,9 @@ children it stops tracking in a notice, and flips the label back to `decomposing
 id ledger and the thread text, `messages.py` for the blockquote and the bare-continue test, and `prompts.py` for the
 two shared notes, and every stage leaf that hashes, detects, resumes, or reroutes imports the owner. So a patch that
 has to intercept a hash, a drift detection, the resume prompt or its watermark bump, or the decomposition reroute
-targets `orchestrator.workflow.engine.drift`; `workflow` resolves the five names it published and `workflow_drift`
-resolves the whole group to the owner's exact object.
+targets `orchestrator.workflow.engine.drift`; `workflow` resolves the five names it published to the owner's exact
+object. No flat module sits beside the package: a check in `tests/workflow/test_imports.py` asserts nothing resolves
+at the drift module paths, so the owner is the one import site the hash, its filters, and the two routes answer on.
 
 `workflow/engine/guards.py` is bound the same way. It owns what a finished agent run is allowed to leave behind.
 Two of its three helpers decline a run: `_ignore_if_interrupted` reads the shutdown sweep's kill off the result,

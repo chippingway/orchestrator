@@ -8,6 +8,7 @@ import importlib
 import subprocess
 import sys
 import unittest
+from importlib.util import find_spec
 from pathlib import Path
 
 from orchestrator import _workflow_export_manifest
@@ -68,6 +69,14 @@ _LAZINESS_PROBE = (
 # One export per resolver branch: a stage handler the manifest reads off its
 # leaf, and a whole module the manifest binds by name.
 _PROBE_EXPORTS = ("_handle_ready", "contextlib")
+
+# The module paths a second import site for the drift owner would take: the flat
+# spelling itself, and the inventory and resolver hooks one would be built from.
+_FLAT_DRIFT_MODULES = (
+    "orchestrator._workflow_drift_export_manifest",
+    "orchestrator._workflow_drift_exports",
+    "orchestrator.workflow_drift",
+)
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -168,6 +177,20 @@ class PackageSurfaceTest(unittest.TestCase):
             _workflow.__all__, _workflow_export_manifest.EXPORTED_NAMES,
         )
         self.assertIn("engine", _workflow.__dir__())
+
+
+class DriftImportSiteTest(unittest.TestCase):
+    """`engine/drift.py` is the only module the drift surface answers on."""
+
+    def test_no_flat_drift_module_exists(self) -> None:
+        # Anything importable at these paths would be a second identity for the
+        # hash live issues are already parked on, free to drift from the owner
+        # silently and invisible to a patch aimed at it. Resolving the spec
+        # rather than stat-ing one path catches a copy planted anywhere the
+        # interpreter would find it.
+        for module in _FLAT_DRIFT_MODULES:
+            with self.subTest(module=module):
+                self.assertIsNone(find_spec(module))
 
 
 if __name__ == "__main__":

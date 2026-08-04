@@ -45,7 +45,7 @@ _SUBPROCESS_OWNERS = (
 # registry and credential filter, which drag the agent models' usage parser in
 # with them, so an allowlist would not describe their graph. What they still owe
 # is the direction of the dependency, checked as a prefix so the workflow
-# subsystem facades (`workflow_drift`, `workflow_messages`, ...) are covered too.
+# subsystem facades (`workflow_messages`, ...) are covered too.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.base_sync",
     "orchestrator.cli",
