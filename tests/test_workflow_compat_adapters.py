@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from orchestrator import workflow
-from orchestrator.stages import implementing
+from orchestrator.workflow.stages.implementing import execution as _execution
 
 
 _SPEC = "spec"
@@ -24,7 +24,7 @@ class WorkflowCompatibilityAdapterTest(unittest.TestCase):
         execution.execute.return_value = (Path("worktree"), "result", False)
         build = Mock(return_value=execution)
         with patch.object(
-            implementing._DevResumeContext,
+            _execution._DevResumeContext,
             "build",
             build,
         ):
