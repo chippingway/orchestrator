@@ -17,7 +17,7 @@ import unittest
 from itertools import takewhile
 from pathlib import Path
 
-from orchestrator import workflow_messages
+from orchestrator.workflow.engine import prompts
 
 from tests.fakes import make_issue
 from tests.workflow_helpers import _TEST_SPEC
@@ -86,7 +86,7 @@ class DevelopSkillTriggerAnchorTest(unittest.TestCase):
                 self.assertNotIn("push", desc)
 
     def test_implementer_prompt_matches_anchor(self) -> None:
-        prompt = workflow_messages._build_implement_prompt(
+        prompt = prompts._build_implement_prompt(
             _TEST_SPEC, make_issue(1), "", [_TEST_SPEC],
         )
         # The prompt drives the agent to commit -- the anchor's verb -- while

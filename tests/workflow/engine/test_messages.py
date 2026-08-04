@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The agent-message contract, and the facades still forwarding it.
+"""The agent-message contract, and the facade still forwarding it.
 
 Three behaviors carry the weight here. Agent stderr is redacted before it is
 trimmed, so a secret straddling either budget cannot survive as a partial
@@ -15,7 +15,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from orchestrator import workflow, workflow_messages
+from orchestrator import workflow
 from orchestrator.agents import AgentResult
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import messages
@@ -28,33 +28,13 @@ _REDACTION_MARKER = "***"
 _CONTINUE_COMMAND = "/orchestrator continue"
 _REFUSAL_ISSUE_NUMBER = 1011
 _WATERMARK_KEY = "last_action_comment_id"
-# Every name each historical facade still has to answer for, and the facade it
+# Every name the historical facade still has to answer for, and the facade it
 # answers on. Live issues and external operator scripts reach the owner through
 # these, so a forward that stops resolving is a break, not a rename.
 _FACADE_FORWARDS = (
     (workflow, (
         "_CONTINUE_PARK_REASONS",
         "_STDERR_TAIL_BUDGET",
-        "_as_blockquote",
-        "_continue_command_action",
-        "_drift_ack_reason",
-        "_format_stderr_diagnostics",
-        "_is_bare_orchestrator_continue",
-        "_parse_documentation_verdict",
-        "_parse_orchestrator_continue",
-        "_parse_review_verdict",
-        "_refuse_parked_continue",
-        "_stderr_log_tail",
-    )),
-    (workflow_messages, (
-        "_CONTINUE_NEEDS_GUIDANCE_MSG",
-        "_CONTINUE_PARK_REASONS",
-        "_DOC_VERDICT_RE",
-        "_DRIFT_ACK_RE",
-        "_ORCHESTRATOR_CONTINUE_RE",
-        "_STDERR_TAIL_BUDGET",
-        "_VERDICT_RE",
-        "_VERDICT_UNKNOWN",
         "_as_blockquote",
         "_continue_command_action",
         "_drift_ack_reason",
@@ -279,7 +259,7 @@ class RefuseParkedContinueTest(unittest.TestCase):
 
 
 class MessageFacadeForwardTest(unittest.TestCase):
-    """Each historical facade resolves to the owner's exact object."""
+    """The historical facade resolves to the owner's exact object."""
 
     def test_facades_forward_the_owner_objects(self) -> None:
         for facade, forwarded_names in _FACADE_FORWARDS:
