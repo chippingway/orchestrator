@@ -1265,8 +1265,8 @@ orchestrator/
   stages/
     <stage>.py          temporary forwarder for a stage still reached for here,
                         reading every name back off its owners under
-                        `workflow/stages/`; `validating`, `in_review`, and
-                        `question` have none left
+                        `workflow/stages/`; `validating`, `in_review`,
+                        `question`, and `decomposition` have none left
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
 ```
@@ -1478,7 +1478,7 @@ stage handler it dispatches in the same tick is reached through a call-time impo
 `workflow/stages/decomposition/run.py` or `workflow/stages/implementing/handler.py` — the stage tree imports this
 subpackage, so binding either at module scope would point that edge back at itself — which also makes the stage
 module, not `workflow`, the target for a patch that has to intercept the dispatch. A migrated stage is named by
-the owner its handler lives on rather than by the forwarder it left behind, so that patch target is the same one
+the owner its handler lives on rather than by any forwarder it left behind, so that patch target is the same one
 `_STAGE_HANDLER_TARGETS` names.
 
 `workflow/engine/terminals.py` is bound the same way. It owns how an issue stops being worked. Three conditions
@@ -1522,7 +1522,7 @@ because the facade's inventory is the historical surface rather than a mirror of
 is `_ISSUE_HANDLER_NAMES`, the label → handler-name half of it, derived from the table so the two cannot disagree
 about which labels route. The import is deferred because the stage tree imports this subpackage, so binding one at
 module scope would point that edge back at itself; the lookup stays an attribute read on whichever module the table
-names, and every stage is named by the owner its handler lives on rather than by the forwarder it left behind.
+names, and every stage is named by the owner its handler lives on rather than by any forwarder it left behind.
 That makes the owning module, not `workflow`, the target for a patch that has to intercept a
 dispatched handler, and this owner the target for one aimed at the partition, the cap-exemption probe, the timed
 dispatch, or a scheduler submit. `workflow` still resolves all nineteen names to the owner's exact object for callers
@@ -3083,8 +3083,8 @@ same object. Identity is all a forwarder carries: it caches each name it resolve
 lookup site it lands on rather than both, and the owner is the site orchestrator code reads. Dispatch makes that
 explicit: `_STAGE_HANDLER_TARGETS` names the owner a handler lives on, and so does the same-tick start in
 `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
-is dropped once the callers it serves name the owner, and none of `validating`, `in_review`, and `question` has a
-module left in the flat package. Like
+is dropped once the callers it serves name the owner, and none of `validating`, `in_review`, `question`, and
+`decomposition` has a module left in the flat package. Like
 `workflow/engine/`, the new package and each stage subpackage inside it bind nothing in their initializers -- the
 dispatcher resolves one handler per issue, so an eager binding there would charge that import for every other stage's
 leaves and for the worktree and GitHub subsystems they reach.
@@ -3098,8 +3098,13 @@ carriers, and the whole parse are decidable without a client, which is why the m
 one. So a patch that has to intercept the manifest parse, a child scan, or the split writer targets the owner
 module. The seams that stay on the facade are the ones a stage does not own: `_handle_implementing`, the decompose
 worktree helpers, `_has_new_commits` / `_worktree_dirty_files`, and `_check_and_increment_retry_budget` are read as
-`_wf` attributes at call time, and the whole historical inventory still resolves on `orchestrator.stages.decomposition`
-with the owner's exact identity. `_MAX_CHILDREN` runs the other way: the cap lives with the validator that rejects past
+`_wf` attributes at call time. No flat module sits beside these owners: a check in
+`tests/workflow/stages/decomposition/test_imports.py` asserts nothing resolves at the
+`orchestrator.stages.decomposition` paths, so the manifest parse, the child scan, the split writer, and all four
+dispatched handlers are each answered on an owner alone. Seven names resolve on `workflow` as well —
+`_handle_decomposing`, `_handle_ready`, `_handle_blocked`, `_handle_umbrella`, `_parse_manifest`, `_MANIFEST_RE`, and
+`_read_decomposer_session`, each read straight off its owner. `_MAX_CHILDREN` runs the other way: the cap lives with
+the validator that rejects past
 it and `workflow/engine/prompts.py` reads it back, so the bound the decomposer is told and the bound it is judged
 against cannot drift apart.
 
