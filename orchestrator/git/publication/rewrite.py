@@ -23,9 +23,10 @@ from orchestrator.git import authentication, commands
 from orchestrator.git.publication import planning
 from orchestrator.git.verification import probes as verification_probes
 
-# Named for the historical facade, not this module: operators filter the
-# rendered `orchestrator.branch_publication` prefix and attach handlers to
-# that logger, so every owner reporting on a squash uses it.
+# The channel is named for the branch-publication domain rather than for this
+# module's path: operators filter the rendered `orchestrator.branch_publication`
+# prefix and attach handlers to it, so a squash reports where their filters
+# already point whichever owner here is the one emitting.
 log = logging.getLogger("orchestrator.branch_publication")
 
 
