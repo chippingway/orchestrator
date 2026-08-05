@@ -438,11 +438,13 @@ orchestrator/
                         the git/ owners
   _git_plumbing_export_manifest.py / _git_plumbing_exports.py
                         immutable historical inventory and lazy resolver hooks
-  worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners
-  worktrees.py          lazy compatibility hub: the git_plumbing and
-                        worktree_lifecycle facades above, plus the base-sync,
-                        publication, verification, and authentication owners
-                        under git/ the rest of its inventory names directly
+  worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners, plus
+                        the command and lock owners its two plumbing names
+                        resolve off
+  worktrees.py          lazy compatibility hub: the worktree_lifecycle facade
+                        above, plus the command, lock, base-sync, publication,
+                        verification, and authentication owners under git/ the
+                        rest of its inventory names directly
   _worktrees_export_manifest.py / _worktrees_exports.py
                         immutable public inventory and lazy resolver hooks
   analytics/
@@ -1300,7 +1302,15 @@ refusal helpers directly -- so a patch that has to intercept the transport probe
 or the remote-ref lease read targets `orchestrator.git.authentication` and not `git_plumbing`; `_authed_fetch` /
 `_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `git_plumbing`, `worktrees`,
 and `workflow` -- but the squash rewrite reads it off `git.authentication`, so a mock that has to
-intercept that force-push targets the owner and not the facade. The `git/worktrees/` owners
+intercept that force-push targets the owner and not the facade. The plumbing names the aggregate surfaces
+carry are inventoried against those owners too: `worktrees` publishes six -- the no-prompt environment and the
+plain and hardened runners off `git.commands`, and the lock registry, its guard, and the per-root lock off
+`git.locks` -- and `worktree_lifecycle` two, the plain runner and the per-root lock off the same pair. So
+`git_plumbing` answers for the callers that import it under that name and for no hub above it, and a check in
+`tests/git/test_imports.py` asserts no inventory in the package targets it. Each hub hands back the owner's own
+object, so a patch there and a patch on the owner are two interceptions rather than three, and a test that has to
+intercept a hardened command or the lock a worktree operation serializes on targets `orchestrator.git.commands` /
+`orchestrator.git.locks`. The `git/worktrees/` owners
 bind the same way — the creators reach `git.commands`, `git.locks`, `git.authentication`, and their in-package
 `paths` / `recovery` siblings directly, the decomposer lifecycle resolves its own path helper, and `terminal`
 composes its local teardown from `cleanup` — so a patch that has to intercept the git plumbing, the authenticated

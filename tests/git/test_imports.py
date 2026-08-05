@@ -1,16 +1,29 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Clean-process import checks and package surface for the git package."""
+"""Clean-process import, package-surface, and inventory checks for the git package."""
 
 from __future__ import annotations
 
 import subprocess
 import sys
 import unittest
+from importlib import import_module
+from pathlib import Path
+from types import MappingProxyType
 
+from orchestrator import _worktree_lifecycle_export_manifest, _worktrees_export_manifest
 from orchestrator import git as _git_package
 from orchestrator import git_plumbing
 from orchestrator.git import authentication, commands, locks
+from tests.reexport_test_support import lazy_targets
+
+_PACKAGE = "orchestrator"
+
+_PLUMBING_FACADE = "orchestrator.git_plumbing"
+
+# Every immutable export inventory in the package, which is where a name's
+# resolution target is declared.
+_INVENTORY_GLOB = "*_export_manifest.py"
 
 _MODULES = (
     "orchestrator.git",
@@ -20,17 +33,23 @@ _MODULES = (
     "orchestrator.git_plumbing",
 )
 
+# The plain runner and the per-root lock, named once because each recurs in the
+# owner surface, in the facade forwards, and in both hub slices below.
+_PLAIN_GIT = "_git"
+
+_ROOT_LOCK = "_target_root_lock"
+
 # The initializer binds nothing, so each name stays reachable only through its
 # owner or the historical `git_plumbing` facade.
 _OWNER_ONLY_NAMES = (
     "TargetRootLockRegistry",
     "_TARGET_ROOT_LOCKS",
     "_authed_fetch",
-    "_git",
+    _PLAIN_GIT,
     "_git_auth_session",
     "_git_hardened",
     "_push_branch",
-    "_target_root_lock",
+    _ROOT_LOCK,
     "_unsafe_local_transport_config",
 )
 
@@ -47,7 +66,7 @@ _FACADE_FORWARDS = (
     ("_authed_fetch", authentication),
     ("_authed_target_fetch", authentication),
     ("_failed_fetch", authentication),
-    ("_git", commands),
+    (_PLAIN_GIT, commands),
     ("_git_auth_env", authentication),
     ("_git_auth_session", authentication),
     ("_git_hardened", commands),
@@ -55,10 +74,49 @@ _FACADE_FORWARDS = (
     ("_push_with_auth", authentication),
     ("_remote_branch_sha", authentication),
     ("_resolved_git_token", authentication),
-    ("_target_root_lock", locks),
+    (_ROOT_LOCK, locks),
     ("_unsafe_local_transport_config", commands),
     ("log", authentication),
 )
+
+# The plumbing names each aggregate facade above the package republishes,
+# paired with the owner that defines them.
+_HUB_PUBLISHED = MappingProxyType({
+    "orchestrator.worktree_lifecycle": (
+        (_PLAIN_GIT, commands),
+        (_ROOT_LOCK, locks),
+    ),
+    "orchestrator.worktrees": (
+        ("_GIT_NO_PROMPT_ENV", commands),
+        ("_TARGET_ROOT_LOCKS", locks),
+        ("_TARGET_ROOT_LOCKS_LOCK", locks),
+        (_PLAIN_GIT, commands),
+        ("_git_hardened", commands),
+        (_ROOT_LOCK, locks),
+    ),
+})
+
+# Each hub's inventory keyed the same way, so one lookup carries both the module
+# a name is declared to resolve off and the object the hub hands back.
+_HUB_INVENTORIES = MappingProxyType({
+    "orchestrator.worktree_lifecycle": lazy_targets(_worktree_lifecycle_export_manifest),
+    "orchestrator.worktrees": lazy_targets(_worktrees_export_manifest),
+})
+
+_HUB_LOOKUPS = tuple(
+    (facade_name, export_name, owner)
+    for facade_name, published in _HUB_PUBLISHED.items()
+    for export_name, owner in published
+)
+
+
+def _inventory_modules() -> tuple[str, ...]:
+    """Import paths of every export inventory the package carries."""
+    package_root = Path(import_module(_PACKAGE).__file__).parent
+    return tuple(sorted(
+        ".".join(path.relative_to(package_root.parent).with_suffix("").parts)
+        for path in package_root.rglob(_INVENTORY_GLOB)
+    ))
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -101,6 +159,38 @@ class PackageSurfaceTest(unittest.TestCase):
                 self.assertIs(
                     getattr(git_plumbing, export_name),
                     getattr(owner, export_name),
+                )
+
+
+class AggregateInventoryTest(unittest.TestCase):
+    """The hubs above the package resolve plumbing names off the owners."""
+
+    def test_each_hub_names_the_owner(self) -> None:
+        # A hop through `git_plumbing` would hand back the same object, so the
+        # declared target is what separates a hub reading the owner from one
+        # reading a forwarder of it -- and only the first keeps a patch aimed
+        # at the owner and one aimed at the hub two interceptions rather than
+        # three.
+        for facade_name, export_name, owner in _HUB_LOOKUPS:
+            with self.subTest(facade=facade_name, name=export_name):
+                target = _HUB_INVENTORIES[facade_name][export_name]
+                self.assertEqual(target.module_name, owner.__name__)
+                self.assertIs(
+                    getattr(import_module(facade_name), export_name),
+                    getattr(owner, export_name),
+                )
+
+    def test_no_inventory_targets_the_facade(self) -> None:
+        # The facade's own inventory names the owners like every other one, so
+        # nothing in the package is exempt: a target spelled at the facade
+        # would be a second resolution hop for a name whose owner already
+        # answers directly.
+        for inventory_name in _inventory_modules():
+            with self.subTest(inventory=inventory_name):
+                inventory = import_module(inventory_name)
+                self.assertNotIn(
+                    _PLUMBING_FACADE,
+                    {target.module_name for target in inventory.EXPORTS},
                 )
 
 

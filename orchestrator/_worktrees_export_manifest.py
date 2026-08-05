@@ -62,6 +62,22 @@ EXPORTS = (
         ),
     ),
     *export_group(
+        "orchestrator.git.commands",
+        (
+            ("_GIT_NO_PROMPT_ENV", "_GIT_NO_PROMPT_ENV"),
+            ("_git", "_git"),
+            ("_git_hardened", "_git_hardened"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.locks",
+        (
+            ("_TARGET_ROOT_LOCKS", "_TARGET_ROOT_LOCKS"),
+            ("_TARGET_ROOT_LOCKS_LOCK", "_TARGET_ROOT_LOCKS_LOCK"),
+            ("_target_root_lock", "_target_root_lock"),
+        ),
+    ),
+    *export_group(
         "orchestrator.git.publication.probes",
         (
             ("_CONVENTIONAL_RE", "_CONVENTIONAL_RE"),
@@ -107,17 +123,6 @@ EXPORTS = (
         (
             ("_cleanup_question_worktree", "_cleanup_question_worktree"),
             ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.git_plumbing",
-        (
-            ("_GIT_NO_PROMPT_ENV", "_GIT_NO_PROMPT_ENV"),
-            ("_TARGET_ROOT_LOCKS", "_TARGET_ROOT_LOCKS"),
-            ("_TARGET_ROOT_LOCKS_LOCK", "_TARGET_ROOT_LOCKS_LOCK"),
-            ("_git", "_git"),
-            ("_git_hardened", "_git_hardened"),
-            ("_target_root_lock", "_target_root_lock"),
         ),
     ),
     *export_group(

@@ -24,6 +24,14 @@ EXPORTS = (
         (("_authed_target_fetch", "_authed_target_fetch"),),
     ),
     *export_group(
+        "orchestrator.git.commands",
+        (("_git", "_git"),),
+    ),
+    *export_group(
+        "orchestrator.git.locks",
+        (("_target_root_lock", "_target_root_lock"),),
+    ),
+    *export_group(
         "orchestrator.git.worktrees.cleanup",
         (
             ("_delete_local_issue_branch", "_delete_local_issue_branch"),
@@ -79,13 +87,6 @@ EXPORTS = (
         (
             ("_cleanup_question_worktree", "_cleanup_question_worktree"),
             ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.git_plumbing",
-        (
-            ("_git", "_git"),
-            ("_target_root_lock", "_target_root_lock"),
         ),
     ),
     *export_group(
