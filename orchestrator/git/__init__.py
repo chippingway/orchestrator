@@ -11,6 +11,6 @@ initializer binds nothing and an import pulls in only what the chosen
 owner itself needs --
 ``authentication`` builds on ``commands`` and ``locks``, while those two
 depend on nothing else in the package. ``orchestrator.git_plumbing`` stays
-the historical facade for callers that still reach these helpers through
-the workflow compatibility surface.
+the historical facade for callers that import it by that name; the
+aggregate compatibility surfaces name these owners themselves.
 """
