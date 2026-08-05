@@ -5,17 +5,11 @@
 Owner of every per-label stage handler. Each arrived here as its own subpackage
 of responsibility-named owners -- ``decomposition``, ``implementing``,
 ``documenting``, ``validating``, ``in_review``, ``fixing``, ``conflicts``, and
-``question`` -- and
-the module a stage vacated in the flat ``orchestrator.stages`` package stays
-behind as a temporary forwarder that reads every name
-back off those owners instead of rebuilding one, so both import sites hand back
-the same object. Identity is all a forwarder carries: it caches what it resolved,
-so a ``patch.object`` intercepts the lookup site it lands on rather than both,
-and the owner is the site orchestrator code reads. Dispatch makes that explicit
--- the label table names the owner a handler lives on, so a patch meant
-to intercept a dispatched handler has to land there. A forwarder is dropped once
-the callers it serves name the owner directly, which every stage but ``fixing``
-has already outlived: their names answer on the owners here alone.
+``question`` -- and every one of them has outlived the temporary forwarder it
+left behind in the flat ``orchestrator.stages`` package, so a stage's names
+answer on the owners here alone. Dispatch names them too: the label table names
+the owner a handler lives on, so a patch meant to intercept a dispatched
+handler has to land there.
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per issue, and an eager binding here would
