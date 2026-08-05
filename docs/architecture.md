@@ -1288,11 +1288,13 @@ the prefix an operator's level and handler selection is keyed on holds still whi
 `git/verification/` is bound the same way -- `output`
 calls `models`, `process` calls `output` and `probes`, `runner` calls `process` -- and the validating approval gate
 reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or
-the dirty-file scan targets the owner module. No facade of the verification domain's own sits beside
-`git/verification/`, and a check in `tests/git/verification/test_imports.py` asserts none does. That gate is the
-runner's only caller, so `workflow` does not carry `_run_verify_commands`; it answers on the `worktrees` hub next to
-`VerifyResult` and `_truncate_verify_output`, while `_head_sha` / `_worktree_dirty_files` answer on both hubs for the
-stage leaves that read them off `workflow`. `git/authentication.py` binds the same way --
+the dirty-file scan targets the owner module. That gate is the runner's only caller, so `workflow` does not carry
+`_run_verify_commands`; it answers on the `worktrees` hub next to `VerifyResult` and `_truncate_verify_output`, while
+`_head_sha` / `_worktree_dirty_files` answer on both hubs for the stage leaves that read them off `workflow`. No
+facade of the verification domain's own sits beside `git/verification/`: a check in
+`tests/git/verification/test_imports.py` asserts nothing resolves at `orchestrator.verify` or at the inventory and
+resolver-hook paths a second import site would be built from, so every verification name is defined on an owner and
+those two hubs are the only other surfaces one answers on. `git/authentication.py` binds the same way --
 the authenticated fetches and the push reach `git.commands` and `git.locks` plus their own token, session, lease, and
 refusal helpers directly -- so a patch that has to intercept the transport probe, the target-root lock, the session,
 or the remote-ref lease read targets `orchestrator.git.authentication` and not `git_plumbing`; `_authed_fetch` /
