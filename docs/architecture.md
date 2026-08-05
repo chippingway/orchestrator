@@ -1266,7 +1266,8 @@ orchestrator/
     <stage>.py          temporary forwarder for a stage still reached for here,
                         reading every name back off its owners under
                         `workflow/stages/`; `validating`, `in_review`,
-                        `question`, and `decomposition` have none left
+                        `question`, `decomposition`, and `implementing` have
+                        none left
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
 ```
@@ -3083,8 +3084,8 @@ same object. Identity is all a forwarder carries: it caches each name it resolve
 lookup site it lands on rather than both, and the owner is the site orchestrator code reads. Dispatch makes that
 explicit: `_STAGE_HANDLER_TARGETS` names the owner a handler lives on, and so does the same-tick start in
 `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
-is dropped once the callers it serves name the owner, and none of `validating`, `in_review`, `question`, and
-`decomposition` has a module left in the flat package. Like
+is dropped once the callers it serves name the owner, and none of `validating`, `in_review`, `question`,
+`decomposition`, and `implementing` has a module left in the flat package. Like
 `workflow/engine/`, the new package and each stage subpackage inside it bind nothing in their initializers -- the
 dispatcher resolves one handler per issue, so an eager binding there would charge that import for every other stage's
 leaves and for the worktree and GitHub subsystems they reach.
@@ -3119,8 +3120,11 @@ owner, no GitHub client, and no worktree helper — `session_read` reads the con
 which is why the pinned-state keys, the carriers, and the CLI-marker classifiers can be exercised without a client. So
 a patch that has to intercept a park, a push, a resume, or a session read targets the owner module. The seams that stay
 on the facade are the ones the stage does not own -- the worktree, git, and push helpers are read as `_wf` attributes
-at call time -- and the whole historical inventory still resolves on `orchestrator.stages.implementing` with the
-owner's exact identity.
+at call time. No flat module sits beside these owners: a check in
+`tests/workflow/stages/implementing/test_imports.py` asserts nothing resolves at the
+`orchestrator.stages.implementing` paths, so the dev session, the retry budget, and the park reasons are each answered
+on an owner alone — including for the sibling stages that borrow the resume, the session read, and the question /
+dirty-tree parks from here.
 
 The documenting owners divide by what one final-docs tick has to settle before it may spawn. `handler` asks
 `preconditions` first for the checks that end the tick outright — the PR-merged and issue-closed terminals, the
