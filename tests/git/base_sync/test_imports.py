@@ -1,36 +1,14 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Clean-process import, layering, and facade checks for base sync."""
+"""Clean-process import, layering, and package-surface checks for base sync."""
 
 from __future__ import annotations
 
 import subprocess
 import sys
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
-from orchestrator import base_sync, git
-from orchestrator.git.base_sync import (
-    conflicts,
-    eligibility,
-    guards,
-    models,
-    pr,
-    publication,
-    state,
-)
-from orchestrator.git.base_sync import (
-    outcomes,
-    persistence,
-    pre_pr,
-    recovery,
-    refresh,
-    snapshot,
-    startup,
-)
-from orchestrator.github import labels
-from orchestrator.workflow.engine import comments
+from orchestrator.git import base_sync
 
 _MODELS_OWNER = "orchestrator.git.base_sync.models"
 
@@ -67,14 +45,7 @@ _OWNERS = (
     _PR_OWNER, _CONFLICTS_OWNER,
 )
 
-_MODULES = ("orchestrator.git.base_sync", *_OWNERS, "orchestrator.base_sync")
-
-# The lazy inventory and its resolver hooks are all `orchestrator/` still
-# carries for base sync; both are pure compatibility wiring with no behavior.
-_COMPATIBILITY_LEAVES = frozenset((
-    "_base_sync_export_manifest.py",
-    "_base_sync_exports.py",
-))
+_MODULES = ("orchestrator.git.base_sync", *_OWNERS)
 
 # The state owner exists to spell out the pinned-state keys and the label
 # vocabulary one rebase attempt is routed by, so the workflow package's `state`
@@ -129,8 +100,8 @@ import {module}
 print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 """
 
-# The initializer binds nothing, so each name stays reachable only through its
-# owner or the historical `base_sync` facade.
+# The initializer binds nothing, so each name stays reachable only through the
+# owner that defines it.
 _OWNER_ONLY_NAMES = (
     "_AUTO_REBASE_PARK_REASONS",
     "_AutoRebaseContext",
@@ -149,95 +120,6 @@ _OWNER_ONLY_NAMES = (
     "log",
 )
 
-_FACADE_FORWARDS = (
-    ("_AUTO_REBASE_PARK_REASONS", state),
-    ("_AWAITING_HUMAN", state),
-    ("_AutoRebaseContext", models),
-    ("_AutoRebaseDecision", models),
-    ("_AutoRebaseRecoveryContext", models),
-    ("_AutoRebaseRecoverySnapshot", models),
-    ("_AutoRebaseRequest", models),
-    ("_CONFLICT_ROUND", state),
-    ("_ConflictRouteContext", models),
-    ("_ERROR_SNIPPET_LEN", state),
-    ("_PARK_REASON", state),
-    ("_PENDING_PUSH_SHA", state),
-    ("_PR_REFRESH_DETOUR_LABELS", state),
-    ("_REASON_AUTO_BASE_REBASE_FAILED", state),
-    ("_REASON_AUTO_BASE_REBASE_PUSH_FAILED", state),
-    ("_REVIEW_ROUND", state),
-    ("_abort_recovery_unverified", snapshot),
-    ("_already_published_recovery_notice", outcomes),
-    ("_auto_rebase_label_is_eligible", eligibility),
-    ("_auto_rebase_recovery_decision", eligibility),
-    ("_auto_rebase_retry_decision", eligibility),
-    ("_base_sync_issue", refresh),
-    ("_clear_ineligible_recovery", snapshot),
-    ("_clear_unchanged_recovery", snapshot),
-    ("_complete_recovery_snapshot", snapshot),
-    ("_emit_auto_rebase_event", publication),
-    ("_emit_recovered_rebase_event", persistence),
-    ("_fetch_recovery_snapshot", snapshot),
-    ("_finalize_already_published_recovery", outcomes),
-    ("_finalize_auto_rebase", publication),
-    ("_finalize_recovered_rebase", persistence),
-    ("_finish_noop_auto_rebase", guards),
-    ("_handle_failed_auto_rebase", startup),
-    ("_issue_skips_base_sync", refresh),
-    ("_issue_worktree_number", refresh),
-    ("_merge_base_into_worktree", pre_pr),
-    ("_normal_auto_rebase_can_start", eligibility),
-    ("_open_auto_rebase_pr", eligibility),
-    ("_park_auto_rebase_failure", persistence),
-    ("_park_dirty_auto_rebase", guards),
-    ("_park_dirty_recovery", outcomes),
-    ("_park_diverged_recovery", outcomes),
-    ("_park_failed_auto_rebase_push", guards),
-    ("_park_failed_recovery_push", outcomes),
-    ("_park_unreadable_post_rebase_head", guards),
-    ("_park_unreadable_pre_rebase_head", startup),
-    ("_post_auto_rebase_notice", publication),
-    ("_post_recovered_rebase_notice", persistence),
-    ("_prepare_recovered_rebase_state", persistence),
-    ("_publish_auto_rebase", publication),
-    ("_publish_auto_rebase_from_pr", pr),
-    ("_pushed_recovery_notice", outcomes),
-    ("_read_remote_recovery_head", snapshot),
-    ("_rebase_base_into_worktree", pre_pr),
-    ("_rebase_in_progress", pre_pr),
-    ("_rebase_state_exists", pre_pr),
-    ("_recover_pending_auto_base_rebase", recovery),
-    ("_recover_pending_auto_base_rebase_context", recovery),
-    ("_record_auto_rebase_attempt", startup),
-    ("_refresh_base_and_worktrees", refresh),
-    ("_reject_unknown_recovery_comparison", outcomes),
-    ("_reset_clear_and_park", persistence),
-    ("_retry_recovery_push", recovery),
-    ("_route_pr_worktree_conflict_context", conflicts),
-    ("_route_pr_worktree_to_resolving_conflict", conflicts),
-    ("_route_recovered_rebase", persistence),
-    ("_route_recovery_snapshot", recovery),
-    ("_start_auto_rebase", startup),
-    ("_sync_discovered_worktree", refresh),
-    ("_sync_pr_worktree_context", pr),
-    ("_sync_pr_worktree_to_base", pr),
-    ("_sync_pre_pr_worktree", pre_pr),
-    ("_sync_worktree_with_base", refresh),
-    ("_worktree_behind_base", refresh),
-    ("log", state),
-)
-
-# The names the facade answers for that no base-sync owner defines, and the
-# owner each is declared against. These sit above the git package, so the
-# declaration is all that ties the facade to the definition: one aimed at a
-# module holding only a copy would still resolve, but would stop reporting what
-# the owner currently binds.
-_BORROWED_FORWARDS = (
-    ("_post_pr_comment", comments),
-    ("hard_skip_control_label", labels),
-    ("issue_has_label", labels),
-)
-
 
 def _imported_orchestrator_modules(module: str) -> list[str]:
     """Names of the orchestrator modules a fresh `import module` pulls in."""
@@ -253,11 +135,11 @@ def _imported_orchestrator_modules(module: str) -> list[str]:
 class CleanProcessImportTest(unittest.TestCase):
     """Each base-sync module imports standalone in a fresh interpreter.
 
-    The owners bind their collaborators at import time while the `base_sync`
-    facade resolves them lazily, so importing any one of them first must not
-    need a name a half-run module has not defined yet. A subprocess per module
-    gives each a clean `sys.modules` no other test has already populated,
-    exposing an import-order cycle a facade-first suite run would mask.
+    The owners bind their collaborators at import time, so importing any one
+    of them first must not need a name a half-run module has not defined yet.
+    A subprocess per module gives each a clean `sys.modules` no other test has
+    already populated, exposing an import-order cycle a suite run that always
+    reaches the owners in the same order would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:
@@ -310,53 +192,13 @@ class LayeringTest(unittest.TestCase):
 
 
 class PackageSurfaceTest(unittest.TestCase):
-    """The initializer carries no bindings; `base_sync` forwards to owners."""
-
-    def test_no_flat_implementation_leaf_survives(self) -> None:
-        # Every behavior now has an owner in the package, so a flat module
-        # beyond the two compatibility hooks would be base sync re-flattening
-        # itself back onto the facade it is meant to be reachable through.
-        flat_layer = Path(base_sync.__file__).parent
-        flat_modules = {
-            leaf.name for leaf in flat_layer.glob("_base_sync_*.py")
-        }
-        self.assertEqual(flat_modules, _COMPATIBILITY_LEAVES)
+    """The package initializer carries no bindings of its own."""
 
     def test_initializer_exposes_no_owner_names(self) -> None:
         for owner_only_name in _OWNER_ONLY_NAMES:
             with self.subTest(name=owner_only_name):
                 with self.assertRaises(AttributeError):
-                    getattr(git.base_sync, owner_only_name)
-
-    def test_facade_resolves_owner_objects(self) -> None:
-        # The facade forwards rather than rebuilding, so a leaf reading a
-        # context class or a pinned-state key off `base_sync` -- and the
-        # patches aimed at that facade -- see the owner's definition.
-        for export_name, owner in _FACADE_FORWARDS:
-            with self.subTest(name=export_name):
-                self.assertIs(
-                    getattr(base_sync, export_name),
-                    getattr(owner, export_name),
-                )
-
-    def test_borrowed_forwards_observe_their_owner(self) -> None:
-        sentinel = object()
-        for export_name, owner in _BORROWED_FORWARDS:
-            with self.subTest(name=export_name):
-                self._assert_resolves_from(export_name, owner, sentinel)
-
-    def _assert_resolves_from(
-        self,
-        export_name: str,
-        owner: object,
-        sentinel: object,
-    ) -> None:
-        # Drop the cached resolution (before) and the patched one (after
-        # teardown) so the forward re-resolves through the facade `__getattr__`.
-        base_sync.__dict__.pop(export_name, None)
-        self.addCleanup(base_sync.__dict__.pop, export_name, None)
-        with patch.object(owner, export_name, sentinel):
-            self.assertIs(getattr(base_sync, export_name), sentinel)
+                    getattr(base_sync, owner_only_name)
 
 
 if __name__ == "__main__":
