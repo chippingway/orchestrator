@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Both directions of the comment owner, and the facades still forwarding it.
+"""Both directions of the comment owner, and the facade still forwarding it.
 
 The write side keeps the ledger every "is this comment ours?" scan reads: one
 bounded id list spanning both comment surfaces, plus the hidden marker that
@@ -16,7 +16,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import base_sync, config, workflow
+from orchestrator import config, workflow
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments
 
@@ -29,7 +29,7 @@ _LEDGER_ISSUE_NUMBER = 1010
 _LEDGER_PR_NUMBER = 77
 _THREAD_ISSUE_NUMBER = 1011
 _ISSUE_BODY = "picking up"
-# Every name each historical facade still has to answer for, and the facade it
+# Every name the historical facade still has to answer for, and the facade it
 # answers on. Live issues and external operator scripts reach the owner through
 # these, so a forward that stops resolving is a break, not a rename.
 _FACADE_FORWARDS = (
@@ -43,7 +43,6 @@ _FACADE_FORWARDS = (
         "_recent_comments_text",
         "_with_orch_marker",
     )),
-    (base_sync, ("_post_pr_comment",)),
 )
 
 
@@ -170,7 +169,7 @@ class QuoteCommentLineTest(unittest.TestCase):
 
 
 class CommentFacadeForwardTest(unittest.TestCase):
-    """Each historical facade resolves to the owner's exact object."""
+    """The historical facade resolves to the owner's exact object."""
 
     def test_facades_forward_the_owner_objects(self) -> None:
         for facade, forwarded_names in _FACADE_FORWARDS:

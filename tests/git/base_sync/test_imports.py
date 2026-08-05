@@ -8,6 +8,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from orchestrator import base_sync, git
 from orchestrator.git.base_sync import (
@@ -28,6 +29,8 @@ from orchestrator.git.base_sync import (
     snapshot,
     startup,
 )
+from orchestrator.github import labels
+from orchestrator.workflow.engine import comments
 
 _MODELS_OWNER = "orchestrator.git.base_sync.models"
 
@@ -224,6 +227,17 @@ _FACADE_FORWARDS = (
     ("log", state),
 )
 
+# The names the facade answers for that no base-sync owner defines, and the
+# owner each is declared against. These sit above the git package, so the
+# declaration is all that ties the facade to the definition: one aimed at a
+# module holding only a copy would still resolve, but would stop reporting what
+# the owner currently binds.
+_BORROWED_FORWARDS = (
+    ("_post_pr_comment", comments),
+    ("hard_skip_control_label", labels),
+    ("issue_has_label", labels),
+)
+
 
 def _imported_orchestrator_modules(module: str) -> list[str]:
     """Names of the orchestrator modules a fresh `import module` pulls in."""
@@ -324,6 +338,25 @@ class PackageSurfaceTest(unittest.TestCase):
                     getattr(base_sync, export_name),
                     getattr(owner, export_name),
                 )
+
+    def test_borrowed_forwards_observe_their_owner(self) -> None:
+        sentinel = object()
+        for export_name, owner in _BORROWED_FORWARDS:
+            with self.subTest(name=export_name):
+                self._assert_resolves_from(export_name, owner, sentinel)
+
+    def _assert_resolves_from(
+        self,
+        export_name: str,
+        owner: object,
+        sentinel: object,
+    ) -> None:
+        # Drop the cached resolution (before) and the patched one (after
+        # teardown) so the forward re-resolves through the facade `__getattr__`.
+        base_sync.__dict__.pop(export_name, None)
+        self.addCleanup(base_sync.__dict__.pop, export_name, None)
+        with patch.object(owner, export_name, sentinel):
+            self.assertIs(getattr(base_sync, export_name), sentinel)
 
 
 if __name__ == "__main__":

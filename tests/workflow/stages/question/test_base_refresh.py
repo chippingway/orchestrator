@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from orchestrator import base_sync
+from orchestrator.git.base_sync import refresh
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.git.base_sync.sync_test_support import _patch_base_sync
@@ -143,7 +143,7 @@ class QuestionLabelBaseRefreshSkipTest(unittest.TestCase):
             dirty=MagicMock(return_value=[]),
             rebase=rebase_mock,
         ):
-            base_sync._sync_worktree_with_base(
+            refresh._sync_worktree_with_base(
                 gh,
                 _TEST_SPEC,
                 Path(f"/tmp/q-issue-{issue.number}"),
