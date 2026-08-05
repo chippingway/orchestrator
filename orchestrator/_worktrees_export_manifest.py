@@ -12,27 +12,53 @@ EXPORTS = (
         (("logging", None),),
     ),
     *export_group(
-        "orchestrator.base_sync",
-        (
-            ("_AUTO_REBASE_PARK_REASONS", "_AUTO_REBASE_PARK_REASONS"),
-            ("_PR_REFRESH_DETOUR_LABELS", "_PR_REFRESH_DETOUR_LABELS"),
-            ("_merge_base_into_worktree", "_merge_base_into_worktree"),
-            ("_park_auto_rebase_failure", "_park_auto_rebase_failure"),
-            ("_rebase_base_into_worktree", "_rebase_base_into_worktree"),
-            ("_rebase_in_progress", "_rebase_in_progress"),
-            ("_recover_pending_auto_base_rebase", "_recover_pending_auto_base_rebase"),
-            ("_refresh_base_and_worktrees", "_refresh_base_and_worktrees"),
-            ("_route_pr_worktree_to_resolving_conflict", "_route_pr_worktree_to_resolving_conflict"),
-            ("_sync_pr_worktree_to_base", "_sync_pr_worktree_to_base"),
-            ("_sync_worktree_with_base", "_sync_worktree_with_base"),
-        ),
-    ),
-    *export_group(
         "orchestrator.git.authentication",
         (
             ("_authed_fetch", "_authed_fetch"),
             ("_authed_target_fetch", "_authed_target_fetch"),
             ("_push_branch", "_push_branch"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.conflicts",
+        (
+            ("_route_pr_worktree_to_resolving_conflict", "_route_pr_worktree_to_resolving_conflict"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.persistence",
+        (("_park_auto_rebase_failure", "_park_auto_rebase_failure"),),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.pr",
+        (("_sync_pr_worktree_to_base", "_sync_pr_worktree_to_base"),),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.pre_pr",
+        (
+            ("_merge_base_into_worktree", "_merge_base_into_worktree"),
+            ("_rebase_base_into_worktree", "_rebase_base_into_worktree"),
+            ("_rebase_in_progress", "_rebase_in_progress"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.recovery",
+        (
+            ("_recover_pending_auto_base_rebase", "_recover_pending_auto_base_rebase"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.refresh",
+        (
+            ("_refresh_base_and_worktrees", "_refresh_base_and_worktrees"),
+            ("_sync_worktree_with_base", "_sync_worktree_with_base"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.state",
+        (
+            ("_AUTO_REBASE_PARK_REASONS", "_AUTO_REBASE_PARK_REASONS"),
+            ("_PR_REFRESH_DETOUR_LABELS", "_PR_REFRESH_DETOUR_LABELS"),
         ),
     ),
     *export_group(

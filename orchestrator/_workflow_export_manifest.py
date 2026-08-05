@@ -74,20 +74,31 @@ EXPORTS = (
         ),
     ),
     *export_group(
-        "orchestrator.base_sync",
+        "orchestrator.config.credentials",
+        (("_redact_secrets", "redact_secrets"),),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.pr",
+        (("_sync_pr_worktree_to_base", "_sync_pr_worktree_to_base"),),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.pre_pr",
         (
-            ("_AUTO_REBASE_PARK_REASONS", "_AUTO_REBASE_PARK_REASONS"),
             ("_merge_base_into_worktree", "_merge_base_into_worktree"),
             ("_rebase_base_into_worktree", "_rebase_base_into_worktree"),
             ("_rebase_in_progress", "_rebase_in_progress"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.base_sync.refresh",
+        (
             ("_refresh_base_and_worktrees", "_refresh_base_and_worktrees"),
-            ("_sync_pr_worktree_to_base", "_sync_pr_worktree_to_base"),
             ("_sync_worktree_with_base", "_sync_worktree_with_base"),
         ),
     ),
     *export_group(
-        "orchestrator.config.credentials",
-        (("_redact_secrets", "redact_secrets"),),
+        "orchestrator.git.base_sync.state",
+        (("_AUTO_REBASE_PARK_REASONS", "_AUTO_REBASE_PARK_REASONS"),),
     ),
     *export_group(
         "orchestrator.git.worktrees.terminal",
