@@ -25,7 +25,8 @@ _OWNER_MODULES = MappingProxyType({
     owner: import_module(f"{_PACKAGE}.{owner}") for owner in _OWNERS
 })
 
-# The one name all three aggregate facades carry, base sync among them.
+# The divergence probe, named once because it recurs in the owner surface
+# below and in both hub slices under it.
 _AHEAD_BEHIND = "_branch_ahead_behind"
 
 # What each owner defines: the whole publication surface, split by the module a
@@ -94,9 +95,9 @@ _FOREIGN_LOOKUPS = tuple(
 )
 
 # The slice of these names each aggregate facade answers for: `worktrees`
-# nine, `workflow` seven of those through it, and `base_sync` the divergence
-# probe its own owners call. Every other name is the owner's alone, so this is
-# the whole set of second sites one of them can be patched at.
+# nine and `workflow` seven of those through it. Every other name is the
+# owner's alone, so this is the whole set of second sites one of them can be
+# patched at.
 _HUB_PUBLISHED = MappingProxyType({
     "orchestrator.worktrees": (
         "_CONVENTIONAL_RE",
@@ -118,7 +119,6 @@ _HUB_PUBLISHED = MappingProxyType({
         "_pr_title_from_commit_or_issue",
         "_squash_and_force_push",
     ),
-    "orchestrator.base_sync": (_AHEAD_BEHIND,),
 })
 
 _HUB_LOOKUPS = tuple(

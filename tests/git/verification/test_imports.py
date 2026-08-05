@@ -45,10 +45,13 @@ _SUBPROCESS_OWNERS = (
 # registry and credential filter, which drag the agent models' usage parser in
 # with them, so an allowlist would not describe their graph. What they still owe
 # is the direction of the dependency, checked as a prefix so every owner under
-# the workflow package -- and the worktree facade beside it -- is covered too.
+# the workflow and base-sync packages -- and the worktree facade beside them --
+# is covered too. Base sync is the sharpest of those: its snapshot and
+# publication owners call these very probes, so one read back the other way
+# would close the loop.
 _FORBIDDEN_PREFIXES = (
-    "orchestrator.base_sync",
     "orchestrator.cli",
+    "orchestrator.git.base_sync",
     "orchestrator.main",
     "orchestrator.verify",
     "orchestrator.workflow",

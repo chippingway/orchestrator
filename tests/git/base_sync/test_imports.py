@@ -7,6 +7,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import unittest
+from importlib.util import find_spec
 
 from orchestrator.git import base_sync
 
@@ -47,6 +48,14 @@ _OWNERS = (
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS)
 
+# The module paths a second import site for these owners would take: the flat
+# spelling itself, and the inventory and resolver hooks one would be built from.
+_FLAT_MODULES = (
+    "orchestrator._base_sync_export_manifest",
+    "orchestrator._base_sync_exports",
+    "orchestrator.base_sync",
+)
+
 # The state owner exists to spell out the pinned-state keys and the label
 # vocabulary one rebase attempt is routed by, so the workflow package's `state`
 # owner -- plus the initializer and the export-hook leaves an import of it
@@ -73,20 +82,17 @@ _ALLOWED_ROOTS = (
 # Every owner outside that layer annotates its fields and arguments with the
 # composed GitHub client, which drags the analytics and usage graph in behind
 # it, so an allowlist would not describe them. What every owner owes is the
-# direction of the dependency: none may reach the base-sync leaves, the facade
-# over them, the workflow engine and its leaves and stage handlers, or an
-# application entrypoint. The workflow inventory is the sharpest of those,
-# because it resolves the very names these owners define -- an owner that read
-# one back off the facade would be importing its own definitions. Resolving any
-# inventory name imports the leaf that holds it, which is what these prefixes
-# catch past the label owner the exempt set above allows. The collaborators that
-# do live above this package -- the park guard and the comment poster in the
-# workflow engine -- are reached through call-time imports, which is what keeps
-# them out of this check.
+# direction of the dependency: none may reach the workflow engine and its
+# leaves and stage handlers, or an application entrypoint. The workflow
+# inventory is the sharpest of those, because it resolves the very names these
+# owners define -- an owner that read one back off the facade would be
+# importing its own definitions. Resolving any inventory name imports the leaf
+# that holds it, which is what these prefixes catch past the label owner the
+# exempt set above allows. The collaborators that do live above this package --
+# the park guard and the comment poster in the workflow engine -- are reached
+# through call-time imports, which is what keeps them out of this check.
 _FORBIDDEN_PREFIXES = (
-    "orchestrator._base_sync",
     "orchestrator._workflow",
-    "orchestrator.base_sync",
     "orchestrator.cli",
     "orchestrator.main",
     "orchestrator.verify",
@@ -199,6 +205,21 @@ class PackageSurfaceTest(unittest.TestCase):
             with self.subTest(name=owner_only_name):
                 with self.assertRaises(AttributeError):
                     getattr(base_sync, owner_only_name)
+
+
+class OwnerImportSiteTest(unittest.TestCase):
+    """No module of this domain's own sits beside the owners."""
+
+    def test_no_flat_module_exists(self) -> None:
+        # Anything importable at these paths would be a second identity for the
+        # pinned-state keys live issues are already parked on and the park
+        # reasons the stage handlers short-circuit against -- free to drift
+        # from the owner silently and invisible to a patch aimed at it.
+        # Resolving the spec rather than stat-ing one path catches a copy
+        # planted anywhere the interpreter would find it.
+        for module in _FLAT_MODULES:
+            with self.subTest(module=module):
+                self.assertIsNone(find_spec(module))
 
 
 if __name__ == "__main__":
