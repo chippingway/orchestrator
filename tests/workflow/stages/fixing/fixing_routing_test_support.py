@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 from unittest import mock
 
-from orchestrator import base_sync as _base_sync, config, workflow
+from orchestrator import config, workflow
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.validating import (
     recovery as _validating_recovery,
@@ -22,7 +22,6 @@ from tests.git.base_sync import sync_test_support
 
 Path = pathlib.Path
 MagicMock = mock.MagicMock
-base_sync = _base_sync
 patch = mock.patch
 _patch_base_sync = sync_test_support._patch_base_sync
 FakeGitHubClient = fakes.FakeGitHubClient

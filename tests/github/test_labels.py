@@ -24,8 +24,6 @@ _LABEL_SPECS = _labels.WORKFLOW_LABEL_SPECS + _labels.CONTROL_LABEL_SPECS
 _LABEL_FACADE_BINDINGS = (
     ("orchestrator.workflow", "COMMUNITY_CONTRIBUTION_LABEL"),
     ("orchestrator.workflow", "hard_skip_control_label"),
-    ("orchestrator.base_sync", "hard_skip_control_label"),
-    ("orchestrator.base_sync", "issue_has_label"),
 )
 
 
@@ -59,7 +57,7 @@ _HARD_SKIP_CASES = (
 
 
 class LabelFacadeBindingTest(unittest.TestCase):
-    """Workflow-facing facades resolve label names from the `labels` owner.
+    """The workflow facade resolves label names from the `labels` owner.
 
     A lazy binding declared against a module that only holds a copy of the label
     surface would miss a monkeypatch on the owner. Targeting

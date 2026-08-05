@@ -8,7 +8,7 @@ import pathlib
 import re
 import unittest
 
-from orchestrator import base_sync
+from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.github import labels as _labels
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.state import (
@@ -55,8 +55,12 @@ class WorkflowLabelEnumTest(unittest.TestCase):
         # string-seeded set -- both must hold (hash/eq match str).
         self.assertIn("blocked", _dispatch._FAMILY_AWARE_LABELS)
         self.assertIn(WorkflowLabel.BLOCKED, _dispatch._FAMILY_AWARE_LABELS)
-        self.assertIn(_VALIDATING_LABEL, base_sync._PR_REFRESH_DETOUR_LABELS)
-        self.assertIn(WorkflowLabel.FIXING, base_sync._PR_REFRESH_DETOUR_LABELS)
+        self.assertIn(
+            _VALIDATING_LABEL, _base_sync_state._PR_REFRESH_DETOUR_LABELS,
+        )
+        self.assertIn(
+            WorkflowLabel.FIXING, _base_sync_state._PR_REFRESH_DETOUR_LABELS,
+        )
 
     def test_workflow_labels_frozenset_is_the_enum(self) -> None:
         self.assertEqual(_labels.WORKFLOW_LABELS, frozenset(WorkflowLabel))
@@ -191,7 +195,7 @@ class TransitionTableTest(unittest.TestCase):
         # The explicit resolving_conflict sources must not drift from the
         # set the base-sync detour actually fires on.
         self.assertEqual(
-            _DETOUR_TO_RESOLVING, base_sync._PR_REFRESH_DETOUR_LABELS,
+            _DETOUR_TO_RESOLVING, _base_sync_state._PR_REFRESH_DETOUR_LABELS,
         )
 
 
