@@ -400,7 +400,9 @@ orchestrator/
       startup.py        pre-rebase HEAD guard, the anchor persisted before git
                         runs, and the abort / route / park a failure takes
       state.py          pinned-state keys, park reasons, refresh detour
-                        labels, and the shared base-sync logger
+                        labels, and the shared logger, named
+                        orchestrator.base_sync for the operator filters that
+                        select on it
     publication/
       __init__.py       package marker only; callers import an owner directly
       planning.py       merge-base, HEAD, dirty and subject preconditions plus
