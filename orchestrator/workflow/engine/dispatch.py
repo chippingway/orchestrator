@@ -46,10 +46,9 @@ conflicts, decomposition, documenting, fixing, implementing, question,
 validating, and in_review owners under `workflow/stages/`, and the twelfth is
 the `pickup` sibling an unlabeled issue starts on -- and the stage tree imports
 this subpackage, so binding any of them
-at module scope would point that edge back at itself. Every stage is named
-by the owner its handler lives on rather than by the forwarder it left behind,
-so the patch that intercepts a dispatch is the one against whichever module the
-table names.
+at module scope would point that edge back at itself. Every entry names the
+owner its handler lives on, so the patch that intercepts a dispatch is the one
+against whichever module the table names.
 """
 from __future__ import annotations
 
@@ -132,8 +131,7 @@ def _route_issue_to_handler(
 
     The module the table names is imported at call time and the handler read
     off it as an attribute, so the patch that intercepts a dispatch is the one
-    against that module -- the stage's own handler owner, never the forwarder
-    it left behind.
+    against that module -- the stage's own handler owner.
     ``done`` / ``rejected`` are terminal no-ops; an unrecognized label is
     logged and left alone for a human. Timing and the ``stage_evaluation``
     analytics record stay in ``_process_issue``, which wraps this call in its

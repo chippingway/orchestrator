@@ -50,7 +50,7 @@ _OWNER_ONLY_NAMES = (
 # the worktree facade, and the process entrypoint.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.main",
-    "orchestrator.stages",
+    "orchestrator.workflow.stages",
     "orchestrator.worktrees",
 )
 

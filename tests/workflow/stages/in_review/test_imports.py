@@ -8,7 +8,6 @@ import importlib
 import subprocess
 import sys
 import unittest
-from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 
@@ -49,14 +48,6 @@ print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 """
 
 _HANDLE_IN_REVIEW = "_handle_in_review"
-
-# The module paths a second import site for these owners would take: the flat
-# spelling itself, and the inventory and resolver hooks one would be built from.
-_FLAT_MODULES = (
-    "orchestrator.stages._in_review_export_manifest",
-    "orchestrator.stages._in_review_exports",
-    "orchestrator.stages.in_review",
-)
 
 
 def _imported_orchestrator_modules(module: str) -> set[str]:
@@ -139,17 +130,6 @@ class PackageSurfaceTest(unittest.TestCase):
 
 class OwnerImportSiteTest(unittest.TestCase):
     """The owners here are the only modules this stage's names answer on."""
-
-    def test_no_flat_module_exists(self) -> None:
-        # Anything importable at these paths would be a second identity for the
-        # PR-comment watermark keys, the pending-fix bookmarks, and the
-        # per-head merge ping live issues are already carrying, free to drift
-        # from the owner silently and invisible to a patch aimed at it.
-        # Resolving the spec rather than stat-ing one path catches a copy
-        # planted anywhere the interpreter would find it.
-        for module in _FLAT_MODULES:
-            with self.subTest(module=module):
-                self.assertIsNone(find_spec(module))
 
     def test_facade_reads_every_name_off_an_owner(self) -> None:
         # The facade is the inventory historical callers and patches still

@@ -50,7 +50,6 @@ _FORBIDDEN_PREFIXES = (
     "orchestrator.base_sync",
     "orchestrator.cli",
     "orchestrator.main",
-    "orchestrator.stages",
     "orchestrator.verify",
     "orchestrator.workflow",
     "orchestrator.worktree",

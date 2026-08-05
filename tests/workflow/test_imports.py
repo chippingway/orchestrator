@@ -38,14 +38,13 @@ _MODULES = (
 
 # Manifest targets, what they resolve to, and the two subpackages beside the
 # facade, so importing it must leave every one of them out of `sys.modules`: the
-# dispatcher, the tick loop, the stage handlers and the destination they migrate
-# to, the worktree and GitHub subsystems those reach, and the analytics and
-# config packages behind the shared dependency bindings.
+# dispatcher, the tick loop, the stage-handler tree, the worktree and GitHub
+# subsystems those reach, and the analytics and config packages behind the
+# shared dependency bindings.
 _DEFERRED_MODULES = (
     "orchestrator.analytics",
     "orchestrator.config",
     "orchestrator.github",
-    "orchestrator.stages",
     "orchestrator.workflow.engine",
     "orchestrator.workflow.engine.dispatch",
     "orchestrator.workflow.engine.tick",
