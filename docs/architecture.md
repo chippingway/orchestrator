@@ -438,15 +438,14 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   verify.py             lazy forwarding shell over git/verification/ owners
   worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners
-  branch_publication.py lazy forwarding shell over git/publication/ owners
-  _branch_publication_export_manifest.py / _branch_publication_exports.py
-                        immutable historical inventory and lazy resolver hooks
   base_sync.py          lazy base-refresh/rebase compatibility facade over the
                         git/base_sync/ owners
   _base_sync_export_manifest.py / _base_sync_exports.py
                         immutable historical inventory and lazy resolver hooks
-  worktrees.py          lazy compatibility hub over the five worktree
-                        subsystem facades above
+  worktrees.py          lazy compatibility hub: the git_plumbing and
+                        worktree_lifecycle facades above, plus the base-sync,
+                        publication, verification, and authentication owners
+                        under git/ the rest of its inventory names directly
   _worktrees_export_manifest.py / _worktrees_exports.py
                         immutable public inventory and lazy resolver hooks
   analytics/
@@ -1268,15 +1267,28 @@ orchestrator/
 inventories, `.pyi` surfaces, and immutable target registries. Resolution is lazy and cached on the facade, but the
 resolved object is the implementation object's exact identity. Existing direct imports, wildcard imports, and
 `patch.object` calls therefore keep working. Base-sync names still resolve on the `base_sync` facade with their
-owner's exact identity, and the publication helpers stay patchable by name on `branch_publication` (or on `worktrees` /
-`workflow`) for the callers that still read them off a facade. Inside `git/publication/`, though, the owners bind their
+owner's exact identity, and so do the publication names a caller reads off an aggregate facade. `worktrees` publishes
+nine of them -- the divergence and subject probes, the conventional-commit pattern behind them, the two title
+helpers, and the squash entry point -- `workflow` republishes seven of those through it, all but the pattern and the
+recent-base-subject read, and `_branch_ahead_behind` resolves on `base_sync` as well, the facade over the owners that
+call it. No facade of the publication domain's own sits beside `git/publication/`, and a check in
+`tests/git/publication/test_imports.py` asserts none does, so a publication name answers on its owner plus at most
+those three aggregate surfaces, and every name outside the nine -- the plan and the preparation it comes from, the
+whole rewrite half, and the parsing and subject-vocabulary helpers the probes are built on -- answers on its owner
+alone. Each surface
+resolves the owner's own object and caches it, so they share identity but not a later patch: a test intercepting one
+targets the module its caller reads it off -- `workflow` for the documenting, validating, conflicts, and implementing
+stage helpers that reach them there, `git.publication.probes` for base sync's divergence check, and
+`git.publication.squash` for validating's squash. Inside the package the owners bind their
 collaborators directly -- `probes` calls `git.commands`, `titles` calls `probes`, `planning` calls `git.commands`,
 both siblings, and the verification probes for its HEAD and dirty-file guards, `rewrite` calls `git.commands`,
 `git.authentication`, and the verification probes, and `squash` calls `planning` and `rewrite` -- so a patch that has
 to intercept the hardened reset, the force-push, or the plan a rewrite spends targets the owner module. The stage
 side is bound that way too: validating's approval arc calls `squash._squash_and_force_push` directly, so a mock that
 has to intercept the squash a review approval runs targets `git.publication.squash` even though the name itself keeps
-resolving on `branch_publication`, `worktrees`, and `workflow` for the historical callers.
+resolving on `worktrees` and `workflow` for the historical callers. What `orchestrator.branch_publication` names is
+the logger `rewrite` reports a failed rollback on, spelled out literally rather than derived from the module path, so
+the prefix an operator's level and handler selection is keyed on holds still while the owners beneath it move.
 `git/verification/` is bound the same way -- `output`
 calls `models`, `process` calls `output` and `probes`, `runner` calls `process` -- and the validating approval gate
 reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or
@@ -1288,9 +1300,8 @@ the authenticated fetches and the push reach `git.commands` and `git.locks` plus
 refusal helpers directly -- so a patch that has to intercept the transport probe, the target-root lock, the session,
 or the remote-ref lease read targets `orchestrator.git.authentication` and not `git_plumbing`; `_authed_fetch` /
 `_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `git_plumbing`, `worktrees`,
-`base_sync`, and `workflow`, and `_push_branch` stays resolvable on `branch_publication` too -- but the squash
-rewrite reads it off `git.authentication`, so a mock that has to intercept that force-push targets the owner and
-not the facade. The `git/worktrees/` owners
+`base_sync`, and `workflow` -- but the squash rewrite reads it off `git.authentication`, so a mock that has to
+intercept that force-push targets the owner and not the facade. The `git/worktrees/` owners
 bind the same way — the creators reach `git.commands`, `git.locks`, `git.authentication`, and their in-package
 `paths` / `recovery` siblings directly, the decomposer lifecycle resolves its own path helper, and `terminal`
 composes its local teardown from `cleanup` — so a patch that has to intercept the git plumbing, the authenticated
