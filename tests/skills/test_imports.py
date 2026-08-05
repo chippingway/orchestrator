@@ -61,7 +61,6 @@ _FORBIDDEN_PREFIXES = (
     "orchestrator._workflow",
     "orchestrator.cli",
     "orchestrator.main",
-    "orchestrator.stages",
     "orchestrator.workflow",
 )
 

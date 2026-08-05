@@ -8,7 +8,6 @@ import importlib
 import subprocess
 import sys
 import unittest
-from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 
@@ -59,14 +58,6 @@ _DISPATCHED_HANDLERS = (
     ("ready", _BLOCKED, "_handle_ready"),
     (_BLOCKED, _BLOCKED, "_handle_blocked"),
     ("umbrella", "umbrella", "_handle_umbrella"),
-)
-
-# The module paths a second import site for these owners would take: the flat
-# spelling itself, and the inventory and resolver hooks one would be built from.
-_FLAT_MODULES = (
-    "orchestrator.stages._decomposition_export_manifest",
-    "orchestrator.stages._decomposition_exports",
-    "orchestrator.stages.decomposition",
 )
 
 # Every workflow-manifest entry this package owns.
@@ -146,17 +137,6 @@ class PackageSurfaceTest(unittest.TestCase):
 
 class OwnerImportSiteTest(unittest.TestCase):
     """The owners here are the only modules this stage's surface answers on."""
-
-    def test_no_flat_module_exists(self) -> None:
-        # Anything importable at these paths would be a second identity for the
-        # manifest a parked parent is recovered from, the pinned-state keys its
-        # children are seeded with, and the handlers a decomposed issue is
-        # dispatched to -- free to drift from the owner silently and invisible
-        # to a patch aimed at it. Resolving the spec rather than stat-ing one
-        # path catches a copy planted anywhere the interpreter would find it.
-        for module in _FLAT_MODULES:
-            with self.subTest(module=module):
-                self.assertIsNone(find_spec(module))
 
 
 class ForwardedSurfaceTest(unittest.TestCase):

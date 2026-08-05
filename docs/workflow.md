@@ -40,20 +40,17 @@ documenting and validating its session read and fixing its poisoned-session drop
 watermark walk, in_review and conflicts its body-edit disposition, and
 fixing its dev-fix disposition, stranded-fix probe, and transient-park recovery plus in_review's comment timestamp;
 conflicts also names base-sync's auto-rebase park reasons on `git/base_sync/state.py` —
-so a patch meant to intercept one of those has to land on the owner. The per-label facades moved to
-`orchestrator/workflow/stages/` one stage at a time, and all eight are there: the `decomposing` / `ready` / `blocked` /
-`umbrella` handlers live
-on owners in
+so a patch meant to intercept one of those has to land on the owner. All eight stages live under
+`orchestrator/workflow/stages/`: the `decomposing` / `ready` / `blocked` / `umbrella` handlers on owners in
 `orchestrator/workflow/stages/decomposition/`, `_handle_implementing` on owners in
 `orchestrator/workflow/stages/implementing/`, `_handle_documenting` in `orchestrator/workflow/stages/documenting/`,
 `_handle_validating` in `orchestrator/workflow/stages/validating/`, `_handle_in_review` in
-`orchestrator/workflow/stages/in_review/`, `_handle_fixing` in
-`orchestrator/workflow/stages/fixing/`, `_handle_resolving_conflict` in
-`orchestrator/workflow/stages/conflicts/`, and `_handle_question` in
-`orchestrator/workflow/stages/question/`. Every stage has outlived the temporary forwarder it left behind under
-`orchestrator/stages/`, so that package answers for none of them and each handler is reached on its owner. The
-dispatcher and the same-tick pickup start name the owner directly. The per-stage behavior is documented in
-[`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What follows is the role-specific glue.
+`orchestrator/workflow/stages/in_review/`, `_handle_fixing` in `orchestrator/workflow/stages/fixing/`,
+`_handle_resolving_conflict` in `orchestrator/workflow/stages/conflicts/`, and `_handle_question` in
+`orchestrator/workflow/stages/question/`. Nothing answers for a stage beside those owners, so each handler is reached on
+the one module that holds it, and the dispatcher and the same-tick pickup start name that module directly. The per-stage
+behavior is documented in [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What follows is the
+role-specific glue.
 
 - **Dev session reuse.** The implementer session is spawned once in `_handle_implementing` and then resumed by
   `_handle_documenting`, `_handle_validating`, `_handle_fixing`, and `_handle_resolving_conflict` whenever they need the

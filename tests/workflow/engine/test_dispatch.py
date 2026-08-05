@@ -47,7 +47,7 @@ _READY_LABEL = "ready"
 
 
 class StageHandlerLookupTest(unittest.TestCase):
-    """Each label resolves to a handler its stage facade owns, per call."""
+    """Each label resolves to a handler its stage owner holds, per call."""
 
     def test_every_target_names_an_importable_handler(self) -> None:
         # The table is the only place a label and its owning module are
