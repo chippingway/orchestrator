@@ -1336,7 +1336,15 @@ keyword-call adapters -- the PR sync in `pr`, the conflict route in `conflicts`,
 `recovery` -- keep working; but nothing inside the package reads a collaborator back off the facade,
 so a test that has to intercept the per-worktree sync the refresh drives, the PR-aware coordinator it hands a
 worktree off to, or the conflict route a failed rebase takes patches `refresh` / `pr` / `conflicts` and not
-the facade.
+the facade. The two aggregate surfaces above are inventoried the same way: the eleven base-sync names
+`worktrees` publishes and the seven `workflow` does each name the owner that defines them -- the park reasons
+and the detour labels off `state`, the two pre-PR rebases and the in-progress probe off `pre_pr`, the base
+refresh and the per-worktree sync off `refresh`, the PR-aware coordinator off `pr`, the crash recovery off
+`recovery`, the conflict route off `conflicts`, and the auto-rebase park off `persistence` -- resolved as
+lazily and with the same object identity as the rest of each inventory, so
+`patch.object(workflow, "_refresh_base_and_worktrees", ...)`, the seam the tick tests drive a pass through,
+still intercepts what the tick reads. `base_sync` therefore sits beside those two facades rather than under
+them: it answers for the callers that import it directly, and a patch on it stands in for one on neither.
 The collaborators these owners reach *upward* are call-time imports: `persistence` binds the awaiting-human
 park from `workflow/engine/guards.py` -- not from its own `guards` sibling, which owns the publication
 refusals -- and the PR-comment poster straight off its owning module, and `publication` and `conflicts` bind
