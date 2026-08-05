@@ -50,10 +50,9 @@ on owners in
 `orchestrator/workflow/stages/in_review/`, `_handle_fixing` in
 `orchestrator/workflow/stages/fixing/`, `_handle_resolving_conflict` in
 `orchestrator/workflow/stages/conflicts/`, and `_handle_question` in
-`orchestrator/workflow/stages/question/`. The module a stage vacated under `orchestrator/stages/` stays
-behind as a temporary forwarder onto those owners, so both import sites keep handing back the same handler, and goes
-once its callers name the owner — only `fixing` has one left. The dispatcher and the same-tick pickup start name the
-owner directly. The per-stage behavior is documented in
+`orchestrator/workflow/stages/question/`. Every stage has outlived the temporary forwarder it left behind under
+`orchestrator/stages/`, so that package answers for none of them and each handler is reached on its owner. The
+dispatcher and the same-tick pickup start name the owner directly. The per-stage behavior is documented in
 [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What follows is the role-specific glue.
 
 - **Dev session reuse.** The implementer session is spawned once in `_handle_implementing` and then resumed by
