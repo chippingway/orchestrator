@@ -57,7 +57,7 @@ def _park_auto_rebase_failure(
     human comment on this issue is the "retry now" signal.
     """
     # Lazy import: the guard owner sits in the workflow layer above this
-    # package, and that layer imports `base_sync` at module load time, so
+    # package, and that layer imports this package at module load time, so
     # binding it here at module load would be circular.
     from orchestrator.workflow.engine import guards as _guards
     assert reason in _AUTO_REBASE_PARK_REASONS, (

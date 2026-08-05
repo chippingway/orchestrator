@@ -438,10 +438,6 @@ orchestrator/
                         immutable historical inventory and lazy resolver hooks
   verify.py             lazy forwarding shell over git/verification/ owners
   worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners
-  base_sync.py          lazy base-refresh/rebase compatibility facade over the
-                        git/base_sync/ owners
-  _base_sync_export_manifest.py / _base_sync_exports.py
-                        immutable historical inventory and lazy resolver hooks
   worktrees.py          lazy compatibility hub: the git_plumbing and
                         worktree_lifecycle facades above, plus the base-sync,
                         publication, verification, and authentication owners
@@ -1266,14 +1262,13 @@ orchestrator/
 `workflow/__init__.py`, `worktrees.py`, `analytics.read`, and `dashboard.py` publish explicit sorted `__all__`
 inventories, `.pyi` surfaces, and immutable target registries. Resolution is lazy and cached on the facade, but the
 resolved object is the implementation object's exact identity. Existing direct imports, wildcard imports, and
-`patch.object` calls therefore keep working. Base-sync names still resolve on the `base_sync` facade with their
-owner's exact identity, and so do the publication names a caller reads off an aggregate facade. `worktrees` publishes
-nine of them -- the divergence and subject probes, the conventional-commit pattern behind them, the two title
-helpers, and the squash entry point -- `workflow` republishes seven of those through it, all but the pattern and the
-recent-base-subject read, and `_branch_ahead_behind` resolves on `base_sync` as well, the facade over the owners that
-call it. No facade of the publication domain's own sits beside `git/publication/`, and a check in
+`patch.object` calls therefore keep working. The publication names a caller reads off an aggregate facade resolve
+that way too. `worktrees` publishes nine of them -- the divergence and subject probes, the conventional-commit
+pattern behind them, the two title helpers, and the squash entry point -- and `workflow` republishes seven of those
+through it, all but the pattern and the recent-base-subject read. No facade of the publication domain's own sits
+beside `git/publication/`, and a check in
 `tests/git/publication/test_imports.py` asserts none does, so a publication name answers on its owner plus at most
-those three aggregate surfaces, and every name outside the nine -- the plan and the preparation it comes from, the
+those two aggregate surfaces, and every name outside the nine -- the plan and the preparation it comes from, the
 whole rewrite half, and the parsing and subject-vocabulary helpers the probes are built on -- answers on its owner
 alone. Each surface
 resolves the owner's own object and caches it, so they share identity but not a later patch: a test intercepting one
@@ -1300,7 +1295,7 @@ the authenticated fetches and the push reach `git.commands` and `git.locks` plus
 refusal helpers directly -- so a patch that has to intercept the transport probe, the target-root lock, the session,
 or the remote-ref lease read targets `orchestrator.git.authentication` and not `git_plumbing`; `_authed_fetch` /
 `_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `git_plumbing`, `worktrees`,
-`base_sync`, and `workflow` -- but the squash rewrite reads it off `git.authentication`, so a mock that has to
+and `workflow` -- but the squash rewrite reads it off `git.authentication`, so a mock that has to
 intercept that force-push targets the owner and not the facade. The `git/worktrees/` owners
 bind the same way — the creators reach `git.commands`, `git.locks`, `git.authentication`, and their in-package
 `paths` / `recovery` siblings directly, the decomposer lifecycle resolves its own path helper, and `terminal`
@@ -1341,27 +1336,32 @@ runs, the crash recovery an eligibility gate triggers, the hardened git command 
 `rev-parse` runs, the authenticated push the publication leases, or the sibling
 helper an owner delegates to therefore targets
 `orchestrator.git.commands` / `orchestrator.git.authentication` / the probe owner / the owner module rather
-than `base_sync`. Every base-sync
-name still resolves on `base_sync` with the owner's exact identity, so historical imports and the three
-keyword-call adapters -- the PR sync in `pr`, the conflict route in `conflicts`, and the crash recovery in
-`recovery` -- keep working; but nothing inside the package reads a collaborator back off the facade,
-so a test that has to intercept the per-worktree sync the refresh drives, the PR-aware coordinator it hands a
-worktree off to, or the conflict route a failed rebase takes patches `refresh` / `pr` / `conflicts` and not
-the facade. The two aggregate surfaces above are inventoried the same way: the eleven base-sync names
-`worktrees` publishes and the seven `workflow` does each name the owner that defines them -- the park reasons
+than one of the aggregate surfaces. No facade of the base-sync domain's own sits beside the package: a check in
+`tests/git/base_sync/test_imports.py` asserts nothing resolves at `orchestrator.base_sync` or at the inventory
+and resolver-hook paths a second import site would be built from, so every base-sync name is defined on an owner
+and the `worktrees` and `workflow` hubs are the only other surfaces one answers on. `state` still names its
+logger `orchestrator.base_sync` -- the one place that string
+is a contract rather than a module path, because operator log filters select on it -- and the three
+keyword-call adapters, the PR sync in `pr`, the conflict route in `conflicts`, and the crash recovery in
+`recovery`, still take the pre-context argument lists their callers spell, normalizing each into the typed
+context entrypoint beside it. Nothing inside the package reads a
+collaborator back off a facade either, so a test that has to intercept the per-worktree sync the refresh
+drives, the PR-aware coordinator it hands a worktree off to, or the conflict route a failed rebase takes
+patches `refresh` / `pr` / `conflicts`. The two aggregate surfaces above are inventoried the same way: the
+eleven base-sync names `worktrees` publishes and the seven `workflow` does each name the owner that defines
+them -- the park reasons
 and the detour labels off `state`, the two pre-PR rebases and the in-progress probe off `pre_pr`, the base
 refresh and the per-worktree sync off `refresh`, the PR-aware coordinator off `pr`, the crash recovery off
 `recovery`, the conflict route off `conflicts`, and the auto-rebase park off `persistence` -- resolved as
 lazily and with the same object identity as the rest of each inventory, so
 `patch.object(workflow, "_refresh_base_and_worktrees", ...)`, the seam the tick tests drive a pass through,
-still intercepts what the tick reads. `base_sync` therefore sits beside those two facades rather than under
-them: it answers for the callers that import it directly, and a patch on it stands in for one on neither.
+still intercepts what the tick reads.
 The collaborators these owners reach *upward* are call-time imports: `persistence` binds the awaiting-human
 park from `workflow/engine/guards.py` -- not from its own `guards` sibling, which owns the publication
 refusals -- and the PR-comment poster straight off its owning module, and `publication` and `conflicts` bind
 the same poster for their notices, so a patch for the park targets `orchestrator.workflow.engine.guards` and
 one for any of the notices targets `orchestrator.workflow.engine.comments` -- the
-`workflow` forward of `_park_awaiting_human` and the `base_sync` forward of `_post_pr_comment` still resolve, but
+`workflow` forwards of `_park_awaiting_human` and `_post_pr_comment` still resolve, but
 they are not what these owners call. `orchestrator.workflow` is itself a package, and its initializer *is* that facade:
 the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/`, `workflow/stages/`, or
 `workflow/state.py`, so importing the facade resolves no manifest target and pulls in neither the stage tree, the
@@ -1380,8 +1380,8 @@ explicit package reload still reparses sink settings and keeps stale package hol
 marker and append to the id ledger in-module, and the thread read applies the per-comment trust filter in-module -- and
 the workflow and stage leaves that post a comment, quote one, or read the thread import the owner rather than reaching
 for the name on a facade. So a patch that has to intercept a posted issue or PR comment, the tracked-repos block, or
-the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`; `workflow` and `base_sync` each
-still resolve their historical slice of those names to the owner's exact object for callers outside the package.
+the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`; `workflow` still resolves
+its historical slice of those names to the owner's exact object for callers outside the package.
 
 `workflow/engine/messages.py` is bound the same way. It owns both halves of what an agent's last message is worth:
 the strict markers read out of it -- the review and documentation verdicts, the drift `ACK:`, and the operator's

@@ -21,10 +21,15 @@ from and the abort / route / park its failure takes. What a finished rebase is
 force-published with lives in ``publication``, the refusals that keep it from
 being published at all live in ``guards``, and the relabel, notice, and audit
 event a rebase that really conflicted is handed to its stage with live in
-``conflicts``. Callers import the owner they
-need directly, so this initializer binds nothing and importing ``state`` or
-``pre_pr`` never drags the PyGithub types ``models``, ``refresh``, and
-``startup`` annotate their fields with in.
-``orchestrator.base_sync`` stays the historical facade for callers that
-reach these names through the workflow compatibility surface.
+``conflicts``. Every base-sync name is defined on one of these owners, and
+callers import the owner they need directly, so this initializer binds
+nothing and importing ``state`` or ``pre_pr`` never drags the PyGithub types
+``models``, ``refresh``, and ``startup`` annotate their fields with in.
+
+No facade of this domain's own sits beside the package. The aggregate hubs
+publish a slice of these names for the callers that read them off one:
+``worktrees`` eleven and ``workflow`` seven of those, each resolved off the
+owner that defines it. ``state`` names its logger ``orchestrator.base_sync``
+rather than after this package, because that is the name operator log filters
+select on.
 """

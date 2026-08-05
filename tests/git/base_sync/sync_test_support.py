@@ -32,7 +32,7 @@ def _git_result(
 
 # Keyword alias -> the one module attribute the alias replaces. Every base-sync
 # owner reads its collaborators off the owning module, so each alias has a
-# single home and patching the `base_sync` facade would intercept nothing.
+# single home and patching an aggregate hub would intercept nothing.
 _BASE_SYNC_TARGETS = MappingProxyType(
     {
         "dirty": (verification_probes, "_worktree_dirty_files"),
