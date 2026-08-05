@@ -1266,8 +1266,8 @@ orchestrator/
     <stage>.py          temporary forwarder for a stage still reached for here,
                         reading every name back off its owners under
                         `workflow/stages/`; `validating`, `in_review`,
-                        `question`, `decomposition`, and `implementing` have
-                        none left
+                        `question`, `decomposition`, `implementing`, and
+                        `conflicts` have none left
     _<stage>_exports.py / _<stage>_export_manifest.py
                         stage-specific lazy hooks and complete inventories
 ```
@@ -3085,7 +3085,7 @@ lookup site it lands on rather than both, and the owner is the site orchestrator
 explicit: `_STAGE_HANDLER_TARGETS` names the owner a handler lives on, and so does the same-tick start in
 `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to land on the owner. A forwarder
 is dropped once the callers it serves name the owner, and none of `validating`, `in_review`, `question`,
-`decomposition`, and `implementing` has a module left in the flat package. Like
+`decomposition`, `implementing`, and `conflicts` has a module left in the flat package. Like
 `workflow/engine/`, the new package and each stage subpackage inside it bind nothing in their initializers -- the
 dispatcher resolves one handler per issue, so an eager binding there would charge that import for every other stage's
 leaves and for the worktree and GitHub subsystems they reach.
@@ -3235,9 +3235,10 @@ owner module. This stage owns no dev machinery either: the resume and the questi
 `workflow/stages/implementing/`, the body-edit disposition from
 `workflow/stages/validating/drift_outcomes.py`, and the auto-rebase park reasons from `git/base_sync/state.py` — so a
 patch on any of those lands on the owner. The seams that stay on the facade are the ones the stage does not own — the
-worktree, fetch, git, rebase, and push helpers are read as `_wf` attributes at call time — and the whole historical
-inventory still resolves on `orchestrator.stages.conflicts` with the owner's exact identity, with
-`_handle_resolving_conflict` resolving on `workflow` as well.
+worktree, fetch, git, rebase, and push helpers are read as `_wf` attributes at call time. No flat module sits beside
+these owners: a check in `tests/workflow/stages/conflicts/test_imports.py` asserts nothing resolves at the
+`orchestrator.stages.conflicts` paths, so the round counters, the divergence lease, and the park reasons are each
+answered on an owner alone. `_handle_resolving_conflict` resolves on `workflow` as well, read straight off `handler`.
 
 The question owners divide by what one tick has to decide, and the read-only contract is what shapes the split.
 `handler` holds the order — the closed-issue finalize outranks everything, then the run, then its disposition — and
