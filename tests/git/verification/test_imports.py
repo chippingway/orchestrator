@@ -1,15 +1,15 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Clean-process import, layering, and facade checks for verification."""
+"""Clean-process import, layering, and package-surface checks for verification."""
 
 from __future__ import annotations
 
 import subprocess
 import sys
 import unittest
+from importlib.util import find_spec
 
-from orchestrator import git, verify
-from orchestrator.git.verification import models, output, probes, process, runner
+from orchestrator.git import verification
 
 _MODULES = (
     "orchestrator.git.verification",
@@ -18,6 +18,13 @@ _MODULES = (
     "orchestrator.git.verification.probes",
     "orchestrator.git.verification.process",
     "orchestrator.git.verification.runner",
+)
+
+# The module paths a second import site for these owners would take: the flat
+# spelling itself, and the inventory and resolver hooks one would be built from.
+_FLAT_MODULES = (
+    "orchestrator._verify_export_manifest",
+    "orchestrator._verify_exports",
     "orchestrator.verify",
 )
 
@@ -53,7 +60,6 @@ _FORBIDDEN_PREFIXES = (
     "orchestrator.cli",
     "orchestrator.git.base_sync",
     "orchestrator.main",
-    "orchestrator.verify",
     "orchestrator.workflow",
     "orchestrator.worktree",
 )
@@ -64,8 +70,8 @@ import {module}
 print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 """
 
-# The initializer binds nothing, so each name stays reachable only through its
-# owner or the historical `verify` shell.
+# The initializer binds nothing, so each name stays reachable only through the
+# owner that defines it.
 _OWNER_ONLY_NAMES = (
     "VerifyResult",
     "_VERIFY_OUTPUT_BUDGET",
@@ -73,17 +79,6 @@ _OWNER_ONLY_NAMES = (
     "_run_verify_commands",
     "_truncate_verify_output",
     "_worktree_dirty_files",
-)
-
-_FACADE_FORWARDS = (
-    ("VerifyResult", models),
-    ("_VERIFY_OUTPUT_BUDGET", models),
-    ("_head_sha", probes),
-    ("_worktree_dirty_files", probes),
-    ("_truncate_verify_output", output),
-    ("_drain_verify_output", process),
-    ("_spawn_verify_command", process),
-    ("_run_verify_commands", runner),
 )
 
 
@@ -101,11 +96,11 @@ def _imported_orchestrator_modules(module: str) -> list[str]:
 class CleanProcessImportTest(unittest.TestCase):
     """Each verification module imports standalone in a fresh interpreter.
 
-    The owners bind their collaborators at import time and the `verify` shell
-    resolves them lazily, so importing any one of them first must not need a
-    name a half-run module has not defined yet. A subprocess per module gives
-    each a clean `sys.modules` no other test has already populated, exposing an
-    import-order cycle a package-first suite run would mask.
+    The owners bind their collaborators at import time, so importing any one of
+    them first must not need a name a half-run module has not defined yet. A
+    subprocess per module gives each a clean `sys.modules` no other test has
+    already populated, exposing an import-order cycle a package-first suite run
+    would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:
@@ -151,23 +146,28 @@ class LayeringTest(unittest.TestCase):
 
 
 class PackageSurfaceTest(unittest.TestCase):
-    """The initializer carries no bindings; `verify` forwards to owners."""
+    """The package initializer carries no bindings of its own."""
 
     def test_initializer_exposes_no_owner_names(self) -> None:
         for owner_only_name in _OWNER_ONLY_NAMES:
             with self.subTest(name=owner_only_name):
                 with self.assertRaises(AttributeError):
-                    getattr(git.verification, owner_only_name)
+                    getattr(verification, owner_only_name)
 
-    def test_facade_resolves_owner_objects(self) -> None:
-        # The facade forwards rather than rebuilding, so code reaching a helper
-        # through `verify` sees the owner's definition.
-        for export_name, owner in _FACADE_FORWARDS:
-            with self.subTest(name=export_name):
-                self.assertIs(
-                    getattr(verify, export_name),
-                    getattr(owner, export_name),
-                )
+
+class OwnerImportSiteTest(unittest.TestCase):
+    """No module of this domain's own sits beside the owners."""
+
+    def test_no_flat_module_exists(self) -> None:
+        # Anything importable at these paths would be a second identity for the
+        # `VerifyResult` statuses the validating gate branches on and the output
+        # budget the park comment it publishes is sized to -- free to drift from
+        # the owner silently and invisible to a patch aimed at it. Resolving the
+        # spec rather than stat-ing one path catches a copy planted anywhere the
+        # interpreter would find it.
+        for module in _FLAT_MODULES:
+            with self.subTest(module=module):
+                self.assertIsNone(find_spec(module))
 
 
 if __name__ == "__main__":
