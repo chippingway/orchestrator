@@ -9,7 +9,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from orchestrator import base_sync
 from orchestrator.git.base_sync import conflicts, pr, recovery
 
 _SPEC = "spec"
@@ -19,19 +18,25 @@ _SYNC_PR_NUMBER = 31
 _RECOVERY_PR_NUMBER = 41
 _CONFLICT_PR_NUMBER = 51
 
-# The adapters route into their own owners, so every patch lands there even
-# though the calls still enter through the `base_sync` facade.
+# Each of the three is still reached by its pre-context argument list -- the
+# refresh drives the PR sync, an eligibility gate the crash recovery, and a
+# failed rebase the conflict route -- so every owner pins the signature it
+# binds and normalizes into the context entrypoint beside it, which is the
+# boundary the patches below intercept.
 _EXPECTED_SIGNATURES = (
     (
+        pr,
         "_sync_pr_worktree_to_base",
         "(gh, spec, issue, state, worktree, pr_number, behind)",
     ),
     (
+        recovery,
         "_recover_pending_auto_base_rebase",
         "(gh, spec, issue, state, worktree, *, pr_number, label, "
         "pending_pre_rebase_sha, behind=0, unparking_consumed_max=None)",
     ),
     (
+        conflicts,
         "_route_pr_worktree_to_resolving_conflict",
         "(gh, spec, issue, state, pr_number, *, label, behind, "
         "conflicted_files, pr_head_sha)",
@@ -47,7 +52,7 @@ class BaseSyncCompatibilityAdapterTest(unittest.TestCase):
         state.get.return_value = "pre-rebase"
         run_sync = Mock()
         with patch.object(pr, "_sync_pr_worktree_context", run_sync):
-            base_sync._sync_pr_worktree_to_base(
+            pr._sync_pr_worktree_to_base(
                 gh=gh,
                 spec=_SPEC,
                 issue=_ISSUE,
@@ -70,7 +75,7 @@ class BaseSyncCompatibilityAdapterTest(unittest.TestCase):
             "_recover_pending_auto_base_rebase_context",
             recover,
         ):
-            recovered = base_sync._recover_pending_auto_base_rebase(
+            recovered = recovery._recover_pending_auto_base_rebase(
                 "gh",
                 _SPEC,
                 _ISSUE,
@@ -93,7 +98,7 @@ class BaseSyncCompatibilityAdapterTest(unittest.TestCase):
             "_route_pr_worktree_conflict_context",
             route,
         ):
-            base_sync._route_pr_worktree_to_resolving_conflict(
+            conflicts._route_pr_worktree_to_resolving_conflict(
                 "gh",
                 _SPEC,
                 _ISSUE,
@@ -111,10 +116,10 @@ class BaseSyncCompatibilityAdapterTest(unittest.TestCase):
         self.assertEqual(context.pr_head_sha, "head")
 
     def test_adapters_expose_historical_signatures(self) -> None:
-        for adapter_name, expected in _EXPECTED_SIGNATURES:
+        for owner, adapter_name, expected in _EXPECTED_SIGNATURES:
             with self.subTest(adapter=adapter_name):
                 self.assertEqual(
-                    str(inspect.signature(getattr(base_sync, adapter_name))),
+                    str(inspect.signature(getattr(owner, adapter_name))),
                     expected,
                 )
 
