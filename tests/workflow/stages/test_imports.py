@@ -11,7 +11,7 @@ from pathlib import Path
 
 from orchestrator import stages as _flat_stages
 from orchestrator import workflow as _workflow
-from orchestrator.stages import implementing as _implementing
+from orchestrator.stages import documenting as _documenting
 from orchestrator.workflow import stages as _stages
 
 _PACKAGE = "orchestrator.workflow.stages"
@@ -26,7 +26,7 @@ print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 
 # One handler a stage that still has a forwarder answers for, so resolving it on
 # both facades proves the historical route is still wired.
-_PROBE_HANDLER = "_handle_implementing"
+_PROBE_HANDLER = "_handle_documenting"
 
 
 def _imported_orchestrator_modules(module: str) -> set[str]:
@@ -108,7 +108,7 @@ class PackageSurfaceTest(unittest.TestCase):
         self.assertIsNot(_stages, _flat_stages)
         self.assertIs(
             getattr(_workflow, _PROBE_HANDLER),
-            getattr(_implementing, _PROBE_HANDLER),
+            getattr(_documenting, _PROBE_HANDLER),
         )
         self.assertIs(_workflow.stages, _stages)
         self.assertIn("stages", _workflow.__dir__())
