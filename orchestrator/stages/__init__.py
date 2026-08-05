@@ -9,9 +9,8 @@ Every stage now lives as a subpackage of responsibility-named owners under
 spelling keeps the module it vacated here as a temporary forwarder that reads
 every name back off those owners rather than rebuilding one, so this package
 stays the import site those callers and their patches already name. The
-forwarder goes once they name the owner instead, which `validating`,
-`in_review`, `question`, `decomposition`, `implementing`, and `conflicts` have
-already outlived: nothing here answers for those stages.
+forwarder goes once they name the owner instead, which every stage but `fixing`
+has already outlived: nothing here answers for the rest.
 
 Orchestrator code itself no longer reads through here. The dispatcher
 (`orchestrator.workflow.engine.dispatch`) owns the label->handler routing and
