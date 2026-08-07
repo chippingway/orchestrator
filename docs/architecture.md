@@ -1305,12 +1305,16 @@ and `workflow` -- but the squash rewrite reads it off `git.authentication`, so a
 intercept that force-push targets the owner and not the facade. The plumbing names the aggregate surfaces
 carry are inventoried against those owners too: `worktrees` publishes six -- the no-prompt environment and the
 plain and hardened runners off `git.commands`, and the lock registry, its guard, and the per-root lock off
-`git.locks` -- and `worktree_lifecycle` two, the plain runner and the per-root lock off the same pair. So
+`git.locks` -- and `worktree_lifecycle` two, the plain runner and the per-root lock off the same pair.
+`workflow` republishes two of that six through `worktrees` -- the plain and hardened runners, and no lock name --
+and that is the surface the stage side reads them off: documenting's drift reset, the divergence and
+base-distance reads conflicts takes, and fixing's behind-base probe all call them there. So
 `git_plumbing` answers for the callers that import it under that name and for no hub above it, and a check in
 `tests/git/test_imports.py` asserts no inventory in the package targets it. Each hub hands back the owner's own
-object, so a patch there and a patch on the owner are two interceptions rather than three, and a test that has to
-intercept a hardened command or the lock a worktree operation serializes on targets `orchestrator.git.commands` /
-`orchestrator.git.locks`. The `git/worktrees/` owners
+object, so a patch there and a patch on the owner are two interceptions rather than three, and a mock lands on
+the surface its caller reads the name off -- `workflow` for those stage git calls, and
+`orchestrator.git.commands` / `orchestrator.git.locks` for the hardened command or the lock a
+`git/worktrees/` owner runs under. The `git/worktrees/` owners
 bind the same way — the creators reach `git.commands`, `git.locks`, `git.authentication`, and their in-package
 `paths` / `recovery` siblings directly, the decomposer lifecycle resolves its own path helper, and `terminal`
 composes its local teardown from `cleanup` — so a patch that has to intercept the git plumbing, the authenticated
