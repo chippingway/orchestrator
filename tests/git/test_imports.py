@@ -9,10 +9,10 @@ import sys
 import unittest
 from importlib import import_module
 from importlib.util import find_spec
-from types import MappingProxyType
 
-from orchestrator import _worktree_lifecycle_export_manifest, _worktrees_export_manifest
+from orchestrator import _worktrees_export_manifest
 from orchestrator import git as _git_package
+from orchestrator import worktrees
 from orchestrator.git import commands, locks
 from tests.git.inventory_test_support import inventory_modules
 from tests.reexport_test_support import lazy_targets
@@ -39,7 +39,7 @@ _FLAT_MODULES = (
 )
 
 # The plain runner and the per-root lock, named once because each recurs in the
-# owner surface and in both hub slices below.
+# owner surface and in the hub slice below.
 _PLAIN_GIT = "_git"
 
 _ROOT_LOCK = "_target_root_lock"
@@ -58,35 +58,18 @@ _OWNER_ONLY_NAMES = (
     "_unsafe_local_transport_config",
 )
 
-# The plumbing names each aggregate facade above the package republishes,
-# paired with the owner that defines them.
-_HUB_PUBLISHED = MappingProxyType({
-    "orchestrator.worktree_lifecycle": (
-        (_PLAIN_GIT, commands),
-        (_ROOT_LOCK, locks),
-    ),
-    "orchestrator.worktrees": (
-        ("_GIT_NO_PROMPT_ENV", commands),
-        ("_TARGET_ROOT_LOCKS", locks),
-        ("_TARGET_ROOT_LOCKS_LOCK", locks),
-        (_PLAIN_GIT, commands),
-        ("_git_hardened", commands),
-        (_ROOT_LOCK, locks),
-    ),
-})
-
-# Each hub's inventory keyed the same way, so one lookup carries both the module
-# a name is declared to resolve off and the object the hub hands back.
-_HUB_INVENTORIES = MappingProxyType({
-    "orchestrator.worktree_lifecycle": lazy_targets(_worktree_lifecycle_export_manifest),
-    "orchestrator.worktrees": lazy_targets(_worktrees_export_manifest),
-})
-
-_HUB_LOOKUPS = tuple(
-    (facade_name, export_name, owner)
-    for facade_name, published in _HUB_PUBLISHED.items()
-    for export_name, owner in published
+# The plumbing names the aggregate hub above the package republishes, paired
+# with the owner that defines them.
+_HUB_PUBLISHED = (
+    ("_GIT_NO_PROMPT_ENV", commands),
+    ("_TARGET_ROOT_LOCKS", locks),
+    ("_TARGET_ROOT_LOCKS_LOCK", locks),
+    (_PLAIN_GIT, commands),
+    ("_git_hardened", commands),
+    (_ROOT_LOCK, locks),
 )
+
+_HUB_INVENTORY = lazy_targets(_worktrees_export_manifest)
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -137,20 +120,22 @@ class OwnerImportSiteTest(unittest.TestCase):
 
 
 class AggregateInventoryTest(unittest.TestCase):
-    """The hubs above the package resolve plumbing names off the owners."""
+    """The hub above the package resolves plumbing names off the owners."""
 
-    def test_each_hub_names_the_owner(self) -> None:
+    def test_the_hub_names_the_owner(self) -> None:
         # A hub reading a forwarder of an owner would hand back the same
         # object, so the declared target is what separates one from a hub
         # reading the owner itself -- and only the second keeps a patch aimed
         # at the owner and one aimed at the hub two interceptions rather than
         # three.
-        for facade_name, export_name, owner in _HUB_LOOKUPS:
-            with self.subTest(facade=facade_name, name=export_name):
-                target = _HUB_INVENTORIES[facade_name][export_name]
-                self.assertEqual(target.module_name, owner.__name__)
+        for export_name, owner in _HUB_PUBLISHED:
+            with self.subTest(name=export_name):
+                self.assertEqual(
+                    _HUB_INVENTORY[export_name].module_name,
+                    owner.__name__,
+                )
                 self.assertIs(
-                    getattr(import_module(facade_name), export_name),
+                    getattr(worktrees, export_name),
                     getattr(owner, export_name),
                 )
 

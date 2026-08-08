@@ -18,9 +18,10 @@ from orchestrator import config
 from orchestrator.git import authentication, commands, locks
 from orchestrator.git.worktrees import paths, recovery
 
-# Named for the historical facade, not this module: operators filter the
-# rendered `orchestrator.worktree_lifecycle` prefix and attach handlers to
-# that logger, so every owner in this package reports through it.
+# The channel is named for the worktree-lifecycle domain rather than for
+# this module's path: operators filter the rendered
+# `orchestrator.worktree_lifecycle` prefix and attach handlers to it, so
+# every owner in this package reports where their filters already point.
 log = logging.getLogger("orchestrator.worktree_lifecycle")
 
 _WORKTREE_ADD = ("worktree", "add")
