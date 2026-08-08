@@ -17,8 +17,8 @@ uv sync --locked                              # creates .venv/ and installs runt
 uv run ruff check orchestrator tests          # run Ruff
 uv run flake8 orchestrator tests --select=WPS # run wemake-python-styleguide
 uv run pytest tests                           # run the test suite
-uv run python -m orchestrator.main --once     # one polling tick then exit
-uv run python -m orchestrator.main --log-level DEBUG
+uv run python -m orchestrator --once          # one polling tick then exit
+uv run python -m orchestrator --log-level DEBUG
 ```
 
 ## License headers
