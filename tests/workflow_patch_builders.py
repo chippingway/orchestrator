@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from orchestrator.worktrees import VerifyResult
+from orchestrator.git.verification.models import VerifyResult
 
 from tests.workflow_patch_models import (
     _WorkflowRunContext,

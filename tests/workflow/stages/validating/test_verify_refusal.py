@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.worktrees import VerifyResult
+from orchestrator.git.verification.models import VerifyResult
 
 from tests.workflow.stages.validating import (
     validating_verify_test_support as verify_support,
