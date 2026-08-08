@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 _TEXT_ENCODING = "utf-8"
 _SIGINT_EXIT_CODE = 130
 
