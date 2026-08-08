@@ -8,7 +8,7 @@ from orchestrator._compat_exports import export_group
 
 EXPORTS = (
     *export_group(
-        "tests.workflow_event_values",
+        "tests.workflow.engine.event_values",
         (
             ("EVENT_AGENT_EXIT", "EVENT_AGENT_EXIT"),
             ("EVENT_AGENT_SPAWN", "EVENT_AGENT_SPAWN"),

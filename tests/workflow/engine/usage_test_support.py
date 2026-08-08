@@ -9,7 +9,6 @@ from pathlib import Path
 
 from orchestrator.observability.usage import trajectory as _trajectory
 from tests import (
-    workflow_event_values as _events,
     workflow_patch_runner as _runner,
     workflow_repo_values as _repo,
     workflow_stage_labels as _labels,
@@ -18,6 +17,7 @@ from tests import (
     workflow_verdict_values as _verdicts,
 )
 from tests.fakes import FakeGitHubClient
+from tests.workflow.engine import event_values as _events
 
 
 # The owner a tracked run's trajectory is parsed on, so a fail-open test
