@@ -10,6 +10,7 @@ import sys
 import unittest
 from importlib.util import find_spec
 from pathlib import Path
+from types import MappingProxyType
 
 from orchestrator import _workflow_export_manifest
 from orchestrator import workflow as _workflow
@@ -38,12 +39,14 @@ _MODULES = (
 
 # Manifest targets, what they resolve to, and the two subpackages beside the
 # facade, so importing it must leave every one of them out of `sys.modules`: the
-# dispatcher, the tick loop, the stage-handler tree, the worktree and GitHub
-# subsystems those reach, and the analytics and config packages behind the
+# dispatcher, the tick loop, the stage-handler tree, the git and GitHub
+# subsystems those reach -- plus the aggregate hub over the git owners, which
+# nothing here goes through -- and the analytics and config packages behind the
 # shared dependency bindings.
 _DEFERRED_MODULES = (
     "orchestrator.analytics",
     "orchestrator.config",
+    "orchestrator.git",
     "orchestrator.github",
     "orchestrator.workflow.engine",
     "orchestrator.workflow.engine.dispatch",
@@ -81,6 +84,78 @@ _FLAT_MODULES = (
     "orchestrator.workflow_drift",
     "orchestrator.workflow_messages",
 )
+
+_GIT_PREFIX = "orchestrator.git."
+
+# The other aggregate surface over the same git owners. It answers for a
+# superset of the slice below with the owners' own objects, so an inventory
+# target naming it would satisfy every identity check here while adding a
+# resolution hop and a second surface that has to be kept in step with the
+# owner a name is patched on.
+_AGGREGATE_HUB = "orchestrator.worktrees"
+
+# Every git name the facade publishes, keyed by the owner that defines it: the
+# token-carrying fetches and push, the base-sync rebases and the vocabulary
+# they park by, the plain and hardened runners, the subject probes and title
+# helpers behind a PR title, the squash entry point, the HEAD and dirty reads,
+# and the worktree creation, naming, recovery, decomposition, and teardown
+# helpers the stage side reaches through the facade.
+_GIT_PUBLISHED = MappingProxyType({
+    "orchestrator.git.authentication": (
+        "_authed_fetch",
+        "_authed_target_fetch",
+        "_push_branch",
+    ),
+    "orchestrator.git.base_sync.pr": ("_sync_pr_worktree_to_base",),
+    "orchestrator.git.base_sync.pre_pr": (
+        "_merge_base_into_worktree",
+        "_rebase_base_into_worktree",
+        "_rebase_in_progress",
+    ),
+    "orchestrator.git.base_sync.refresh": (
+        "_refresh_base_and_worktrees",
+        "_sync_worktree_with_base",
+    ),
+    "orchestrator.git.base_sync.state": ("_AUTO_REBASE_PARK_REASONS",),
+    "orchestrator.git.commands": ("_git", "_git_hardened"),
+    "orchestrator.git.publication.probes": (
+        "_branch_ahead_behind",
+        "_first_commit_subject",
+        "_is_conventional_subject",
+        "_is_prefixed_subject",
+    ),
+    "orchestrator.git.publication.squash": ("_squash_and_force_push",),
+    "orchestrator.git.publication.titles": (
+        "_infer_subject_prefix",
+        "_pr_title_from_commit_or_issue",
+    ),
+    "orchestrator.git.verification.probes": (
+        "_head_sha",
+        "_worktree_dirty_files",
+    ),
+    "orchestrator.git.worktrees.creation": (
+        "_ensure_pr_worktree",
+        "_ensure_worktree",
+        "_has_new_commits",
+    ),
+    "orchestrator.git.worktrees.decomposition": (
+        "_cleanup_decompose_worktree",
+        "_decompose_worktree_path",
+        "_ensure_decompose_worktree",
+    ),
+    "orchestrator.git.worktrees.paths": (
+        "_branch_name",
+        "_resolve_branch_name",
+        "_sanitize_branch_segment",
+        "_sanitize_slug",
+        "_worktree_path",
+    ),
+    "orchestrator.git.worktrees.recovery": ("_branch_has_unpushed_commits",),
+    "orchestrator.git.worktrees.terminal": (
+        "_cleanup_question_worktree",
+        "_cleanup_terminal_branch",
+    ),
+})
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -181,6 +256,52 @@ class PackageSurfaceTest(unittest.TestCase):
             _workflow.__all__, _workflow_export_manifest.EXPORTED_NAMES,
         )
         self.assertIn("engine", _workflow.__dir__())
+
+
+class GitInventoryTest(unittest.TestCase):
+    """The facade resolves every git name off the owner that defines it."""
+
+    def test_each_name_declares_its_owner(self) -> None:
+        # An aggregate hub over the same owners hands back the same objects,
+        # so identity alone cannot say which module the facade reads a name
+        # off. The declared target is what separates the two -- and only
+        # naming the owner keeps a patch aimed at the owner and one aimed at
+        # the facade two interceptions rather than three.
+        targets = lazy_targets(_workflow_export_manifest)
+        for owner_name, export_names in _GIT_PUBLISHED.items():
+            owner = importlib.import_module(owner_name)
+            for export_name in export_names:
+                with self.subTest(name=export_name):
+                    self.assertEqual(
+                        targets[export_name].module_name, owner_name,
+                    )
+                    self.assertIs(
+                        getattr(_workflow, export_name),
+                        getattr(owner, export_name),
+                    )
+
+    def test_the_git_slice_is_the_declared_one(self) -> None:
+        # Comparing both directions keeps the table above the whole git slice,
+        # so a name routed to a new owner -- or one added to the inventory --
+        # is an edit here rather than a target nothing checks.
+        self.assertEqual(
+            {
+                target.export_name
+                for target in _workflow_export_manifest.EXPORTS
+                if target.module_name.startswith(_GIT_PREFIX)
+            },
+            {
+                export_name
+                for export_names in _GIT_PUBLISHED.values()
+                for export_name in export_names
+            },
+        )
+
+    def test_no_target_reads_through_the_aggregate(self) -> None:
+        self.assertNotIn(
+            _AGGREGATE_HUB,
+            {target.module_name for target in _workflow_export_manifest.EXPORTS},
+        )
 
 
 class OwnerImportSiteTest(unittest.TestCase):
