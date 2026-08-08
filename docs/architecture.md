@@ -439,10 +439,10 @@ orchestrator/
   worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners, plus
                         the authentication, command, and lock owners its three
                         git-execution names resolve off
-  worktrees.py          lazy compatibility hub: the worktree_lifecycle facade
-                        above, plus the command, lock, base-sync, publication,
-                        verification, and authentication owners under git/ the
-                        rest of its inventory names directly
+  worktrees.py          lazy compatibility hub whose inventory names the git/
+                        owners directly: the worktree, command, lock,
+                        base-sync, publication, verification, and
+                        authentication ones
   _worktrees_export_manifest.py / _worktrees_exports.py
                         immutable public inventory and lazy resolver hooks
   analytics/
@@ -1328,7 +1328,13 @@ directly — the terminal owner reading its branch name off `worktrees.paths` fi
 so a mock for either one lands on the owner even though both names stay forwarded — straight off that owner — on
 `workflow`, `worktrees`, and `worktree_lifecycle` for compatibility. `_ensure_worktree`, `_ensure_pr_worktree`,
 `_has_new_commits`, and the decomposer helpers themselves stay patchable by name on `worktree_lifecycle`,
-`worktrees`, and `workflow`. `git/base_sync/` binds the same way: `models` and `state` carry only data -- the
+`worktrees`, and `workflow`. The `worktrees` hub inventories all sixteen worktree names it carries against those
+owners: the slug pattern, the two sanitizers, the branch, root, and worktree-path derivations, and the
+pinned/legacy resolver off `git.worktrees.paths`, the unpushed-commit probe off `recovery`, the two creators and
+the new-commit probe off `creation`, the decomposer's path, creation, and removal off `decomposition`, and the two
+teardowns off `terminal`. So `worktree_lifecycle` answers for the callers that import it under that name and for
+no hub above it, and a check in `tests/git/worktrees/test_imports.py` asserts no inventory in the package targets
+it. `git/base_sync/` binds the same way: `models` and `state` carry only data -- the
 frozen auto-rebase models and the pinned-state keys, park reasons, detour labels, and logger every behavioral
 owner binds straight off `state` -- while its twelve behavioral owners bind their collaborators.
 On the refresh side, `refresh` reaches `git.authentication`, `git.commands`, `git.verification.probes`,

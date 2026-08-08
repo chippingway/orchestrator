@@ -1,14 +1,15 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Clean-process import checks and package surface for the worktrees owners."""
+"""Clean-process import, package-surface, and inventory checks for the worktrees owners."""
 
 from __future__ import annotations
 
 import subprocess
 import sys
 import unittest
+from importlib import import_module
 
-from orchestrator import worktree_lifecycle
+from orchestrator import _worktrees_export_manifest, worktree_lifecycle, worktrees
 from orchestrator.git import worktrees as _worktrees_package
 from orchestrator.git.worktrees import (
     cleanup,
@@ -18,6 +19,12 @@ from orchestrator.git.worktrees import (
     recovery,
     terminal,
 )
+from tests.git.inventory_test_support import inventory_modules
+from tests.reexport_test_support import lazy_targets
+
+_PACKAGE = "orchestrator"
+
+_LIFECYCLE_FACADE = "orchestrator.worktree_lifecycle"
 
 _MODULES = (
     "orchestrator.git.worktrees",
@@ -73,6 +80,31 @@ _FACADE_FORWARDS = (
     ("_worktree_path", paths),
 )
 
+# The worktree names the aggregate hub above the package republishes, paired
+# with the owner that defines them -- the naming, creation, recovery,
+# decomposition, and terminal helpers a stage handler reaches for, and not the
+# removal helpers under `cleanup` that `terminal` composes its teardown from.
+_HUB_PUBLISHED = (
+    ("_SLUG_SAFE_RE", paths),
+    ("_branch_has_unpushed_commits", recovery),
+    ("_branch_name", paths),
+    ("_cleanup_decompose_worktree", decomposition),
+    ("_cleanup_question_worktree", terminal),
+    ("_cleanup_terminal_branch", terminal),
+    ("_decompose_worktree_path", decomposition),
+    ("_ensure_decompose_worktree", decomposition),
+    ("_ensure_pr_worktree", creation),
+    ("_ensure_worktree", creation),
+    ("_has_new_commits", creation),
+    ("_repo_worktrees_root", paths),
+    ("_resolve_branch_name", paths),
+    ("_sanitize_branch_segment", paths),
+    ("_sanitize_slug", paths),
+    ("_worktree_path", paths),
+)
+
+_HUB_INVENTORY = lazy_targets(_worktrees_export_manifest)
+
 
 class CleanProcessImportTest(unittest.TestCase):
     """Each owner imports standalone in a fresh interpreter.
@@ -115,6 +147,39 @@ class PackageSurfaceTest(unittest.TestCase):
                 self.assertIs(
                     getattr(worktree_lifecycle, export_name),
                     getattr(owner, export_name),
+                )
+
+
+class AggregateInventoryTest(unittest.TestCase):
+    """The hub above the package resolves worktree names off the owners."""
+
+    def test_the_hub_names_the_owner(self) -> None:
+        # A hop through `worktree_lifecycle` would hand back the same object,
+        # so the declared target is what separates a hub reading the owner from
+        # one reading a forwarder of it -- and only the first keeps a patch
+        # aimed at the owner and one aimed at the hub two interceptions rather
+        # than three.
+        for export_name, owner in _HUB_PUBLISHED:
+            with self.subTest(name=export_name):
+                self.assertEqual(
+                    _HUB_INVENTORY[export_name].module_name,
+                    owner.__name__,
+                )
+                self.assertIs(
+                    getattr(worktrees, export_name),
+                    getattr(owner, export_name),
+                )
+
+    def test_no_inventory_targets_the_facade(self) -> None:
+        # The facade's own inventory names the owners like every other one, so
+        # nothing is exempt: a target spelled at the facade would be a second
+        # resolution hop for a name whose owner already answers directly.
+        for inventory_name in inventory_modules(_PACKAGE):
+            with self.subTest(inventory=inventory_name):
+                inventory = import_module(inventory_name)
+                self.assertNotIn(
+                    _LIFECYCLE_FACADE,
+                    {target.module_name for target in inventory.EXPORTS},
                 )
 
 

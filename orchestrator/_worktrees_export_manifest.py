@@ -119,29 +119,42 @@ EXPORTS = (
         (("_run_verify_commands", "_run_verify_commands"),),
     ),
     *export_group(
-        "orchestrator.git.worktrees.terminal",
+        "orchestrator.git.worktrees.creation",
         (
-            ("_cleanup_question_worktree", "_cleanup_question_worktree"),
-            ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
-        ),
-    ),
-    *export_group(
-        "orchestrator.worktree_lifecycle",
-        (
-            ("_SLUG_SAFE_RE", "_SLUG_SAFE_RE"),
-            ("_branch_has_unpushed_commits", "_branch_has_unpushed_commits"),
-            ("_branch_name", "_branch_name"),
-            ("_cleanup_decompose_worktree", "_cleanup_decompose_worktree"),
-            ("_decompose_worktree_path", "_decompose_worktree_path"),
-            ("_ensure_decompose_worktree", "_ensure_decompose_worktree"),
             ("_ensure_pr_worktree", "_ensure_pr_worktree"),
             ("_ensure_worktree", "_ensure_worktree"),
             ("_has_new_commits", "_has_new_commits"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.decomposition",
+        (
+            ("_cleanup_decompose_worktree", "_cleanup_decompose_worktree"),
+            ("_decompose_worktree_path", "_decompose_worktree_path"),
+            ("_ensure_decompose_worktree", "_ensure_decompose_worktree"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.paths",
+        (
+            ("_SLUG_SAFE_RE", "_SLUG_SAFE_RE"),
+            ("_branch_name", "_branch_name"),
             ("_repo_worktrees_root", "_repo_worktrees_root"),
             ("_resolve_branch_name", "_resolve_branch_name"),
             ("_sanitize_branch_segment", "_sanitize_branch_segment"),
             ("_sanitize_slug", "_sanitize_slug"),
             ("_worktree_path", "_worktree_path"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.recovery",
+        (("_branch_has_unpushed_commits", "_branch_has_unpushed_commits"),),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.terminal",
+        (
+            ("_cleanup_question_worktree", "_cleanup_question_worktree"),
+            ("_cleanup_terminal_branch", "_cleanup_terminal_branch"),
         ),
     ),
 )

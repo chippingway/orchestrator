@@ -9,12 +9,12 @@ import sys
 import unittest
 from importlib import import_module
 from importlib.util import find_spec
-from pathlib import Path
 from types import MappingProxyType
 
 from orchestrator import _worktree_lifecycle_export_manifest, _worktrees_export_manifest
 from orchestrator import git as _git_package
 from orchestrator.git import commands, locks
+from tests.git.inventory_test_support import inventory_modules
 from tests.reexport_test_support import lazy_targets
 
 _PACKAGE = "orchestrator"
@@ -22,10 +22,6 @@ _PACKAGE = "orchestrator"
 # The flat spelling of the plumbing surface, which no inventory in the package
 # may name as the module a hub resolves one of these names off.
 _PLUMBING_FACADE = "orchestrator.git_plumbing"
-
-# Every immutable export inventory in the package, which is where a name's
-# resolution target is declared.
-_INVENTORY_GLOB = "*_export_manifest.py"
 
 _MODULES = (
     "orchestrator.git",
@@ -91,15 +87,6 @@ _HUB_LOOKUPS = tuple(
     for facade_name, published in _HUB_PUBLISHED.items()
     for export_name, owner in published
 )
-
-
-def _inventory_modules() -> tuple[str, ...]:
-    """Import paths of every export inventory the package carries."""
-    package_root = Path(import_module(_PACKAGE).__file__).parent
-    return tuple(sorted(
-        ".".join(path.relative_to(package_root.parent).with_suffix("").parts)
-        for path in package_root.rglob(_INVENTORY_GLOB)
-    ))
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -172,7 +159,7 @@ class AggregateInventoryTest(unittest.TestCase):
         # dead target that stays quiet until whichever caller reads that one
         # name off the hub runs. Scanning every inventory in the package is
         # what surfaces it before then.
-        for inventory_name in _inventory_modules():
+        for inventory_name in inventory_modules(_PACKAGE):
             with self.subTest(inventory=inventory_name):
                 inventory = import_module(inventory_name)
                 self.assertNotIn(

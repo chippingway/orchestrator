@@ -12,6 +12,6 @@ and the question / PR-terminal teardowns that compose them live in
 ``terminal``. Callers import the owner they need directly, so this
 initializer binds nothing and importing one owner never drags the others
 in. ``orchestrator.worktree_lifecycle`` stays the historical facade for
-callers that reach these helpers through the worktree compatibility
-surface.
+callers that import it by that name; the aggregate compatibility surfaces
+name these owners themselves.
 """
