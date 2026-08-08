@@ -12,11 +12,12 @@ from orchestrator import config
 
 from tests import fakes as _fakes
 from tests import workflow_helpers as _helpers
+from tests.workflow.engine import event_values as _events
 
 
-EVENT_AGENT_EXIT = _helpers.EVENT_AGENT_EXIT
-EVENT_AGENT_SPAWN = _helpers.EVENT_AGENT_SPAWN
-EVENT_STAGE_ENTER = _helpers.EVENT_STAGE_ENTER
+EVENT_AGENT_EXIT = _events.EVENT_AGENT_EXIT
+EVENT_AGENT_SPAWN = _events.EVENT_AGENT_SPAWN
+EVENT_STAGE_ENTER = _events.EVENT_STAGE_ENTER
 LABEL_DECOMPOSING = _helpers.LABEL_DECOMPOSING
 LABEL_DOCUMENTING = _helpers.LABEL_DOCUMENTING
 LABEL_IMPLEMENTING = _helpers.LABEL_IMPLEMENTING
