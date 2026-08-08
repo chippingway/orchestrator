@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator import config, git_plumbing
+from orchestrator import config
 from orchestrator.git import authentication
 
 from tests.git.authentication_test_support import (
@@ -44,8 +44,7 @@ class RefusalChannelTest(unittest.TestCase):
     one.
     """
 
-    def test_shares_the_plumbing_logger(self) -> None:
-        self.assertIs(authentication.log, git_plumbing.log)
+    def test_logger_keeps_its_operator_facing_name(self) -> None:
         self.assertEqual(authentication.log.name, PLUMBING_LOGGER)
 
 

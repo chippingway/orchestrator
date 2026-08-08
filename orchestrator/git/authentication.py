@@ -24,11 +24,10 @@ from typing import Iterator, Optional
 from orchestrator import config
 from orchestrator.git import commands, locks
 
-# Named for the historical facade, not this module: operators filter the
-# rendered `orchestrator.git_plumbing` prefix and attach handlers to that
-# logger, so every fetch and push refusal has to keep landing there.
-# Resolving it by name rather than importing the facade keeps this owner
-# self-contained.
+# The channel is named for the git-plumbing domain rather than for this
+# module's path: operators filter the rendered `orchestrator.git_plumbing`
+# prefix and attach handlers to it, so every fetch and push refusal reports
+# where their filters already point.
 log = logging.getLogger("orchestrator.git_plumbing")
 
 _FETCH = "fetch"
