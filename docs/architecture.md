@@ -353,7 +353,9 @@ orchestrator/
         state.py        the pinned-state keys, park reasons, and outcome tokens
                         they share
   _workflow_export_manifest.py / _workflow_exports.py
-                        immutable historical inventory and lazy resolver hooks
+                        immutable historical inventory and lazy resolver hooks,
+                        the inventory naming the git/ owners directly rather
+                        than the aggregate hub beside them
   _workflow_dependencies.py
                         import-time config/analytics bindings shared by leaves
   _workflow_state.py    immutable values the engine owners share: the logger,
