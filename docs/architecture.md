@@ -363,7 +363,9 @@ orchestrator/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
                         detached environment, the authenticated worktree /
-                        target-root fetches, and the hardened lease push
+                        target-root fetches, the hardened lease push, and the
+                        refusal logger, named orchestrator.git_plumbing for the
+                        operator filters that select on it
     commands.py         plain / hardened git execution, the argv hardening
                         prefixes, and the unsafe local-transport probe
     locks.py            per-target-root re-entrant lock registry and accessor
@@ -434,10 +436,6 @@ orchestrator/
       recovery.py       candidate-branch discovery and unpushed-commit probes
       terminal.py       question-stage teardown and terminal local + remote
                         branch cleanup composed from cleanup.py
-  git_plumbing.py       lazy hardened-git compatibility facade forwarding to
-                        the git/ owners
-  _git_plumbing_export_manifest.py / _git_plumbing_exports.py
-                        immutable historical inventory and lazy resolver hooks
   worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners, plus
                         the command and lock owners its two plumbing names
                         resolve off
@@ -1299,18 +1297,22 @@ resolver-hook paths a second import site would be built from, so every verificat
 those two hubs are the only other surfaces one answers on. `git/authentication.py` binds the same way --
 the authenticated fetches and the push reach `git.commands` and `git.locks` plus their own token, session, lease, and
 refusal helpers directly -- so a patch that has to intercept the transport probe, the target-root lock, the session,
-or the remote-ref lease read targets `orchestrator.git.authentication` and not `git_plumbing`; `_authed_fetch` /
-`_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `git_plumbing`, `worktrees`,
+or the remote-ref lease read targets `orchestrator.git.authentication`; `_authed_fetch` /
+`_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `worktrees`
 and `workflow` -- but the squash rewrite reads it off `git.authentication`, so a mock that has to
-intercept that force-push targets the owner and not the facade. The plumbing names the aggregate surfaces
+intercept that force-push targets the owner and not a hub. The plumbing names the aggregate surfaces
 carry are inventoried against those owners too: `worktrees` publishes six -- the no-prompt environment and the
 plain and hardened runners off `git.commands`, and the lock registry, its guard, and the per-root lock off
 `git.locks` -- and `worktree_lifecycle` two, the plain runner and the per-root lock off the same pair.
 `workflow` republishes two of that six through `worktrees` -- the plain and hardened runners, and no lock name --
 and that is the surface the stage side reads them off: documenting's drift reset, the divergence and
-base-distance reads conflicts takes, and fixing's behind-base probe all call them there. So
-`git_plumbing` answers for the callers that import it under that name and for no hub above it, and a check in
-`tests/git/test_imports.py` asserts no inventory in the package targets it. Each hub hands back the owner's own
+base-distance reads conflicts takes, and fixing's behind-base probe all call them there. No facade of the
+git-execution domain's own sits beside `git/authentication.py`, `git/commands.py`, and `git/locks.py`: two checks in
+`tests/git/test_imports.py` assert that nothing resolves at `orchestrator.git_plumbing` or at the inventory and
+resolver-hook paths a second import site would be built from, and that no inventory in the package names that
+spelling as a target. What `orchestrator.git_plumbing` still names is the logger `authentication` reports a fetch or
+push refusal on, spelled out literally rather than derived from the module path, so the prefix an operator's level
+and handler selection is keyed on holds still. Each hub hands back the owner's own
 object, so a patch there and a patch on the owner are two interceptions rather than three, and a mock lands on
 the surface its caller reads the name off -- `workflow` for those stage git calls, and
 `orchestrator.git.commands` / `orchestrator.git.locks` for the hardened command or the lock a
