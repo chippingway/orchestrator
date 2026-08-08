@@ -34,12 +34,14 @@ designed around that assumption.
 
 The workflow, analytics-read, and dashboard subsystems expose stable lazy facades backed by immutable export
 manifests. Their implementations live in responsibility-named private leaves, while facade lookups preserve every
-historical import and object identity. Leaves call through the owning facade at runtime where patch interception is
-part of the compatibility contract, so `patch.object(workflow, "<helper>", ...)` still intercepts calls made from
-other workflow and stage leaves. Once a responsibility has been lifted into an owner module, though, its in-repo
-callers bind that owner directly and a patch has to target it instead — the facade keeps resolving the name for
-outside callers but is no longer on the call path. Each of those boundaries is named where its owner is described
-below.
+historical import and object identity. What a name resolves on is a separate question from what the tree calls: a
+responsibility that sits on an owner module is named by its in-repo callers directly, so a patch has to target the
+owner, while the facade keeps resolving the same object for callers outside the tree. No workflow or stage leaf
+reads a helper off `orchestrator.workflow`, so `patch.object(workflow, "<helper>", ...)` pins the compatibility
+forward rather than a live call path. Where a leaf does resolve through its own package at call time it is to read
+a knob rather than to borrow a helper — the analytics settings, which `patch.object(analytics,
+"ANALYTICS_LOG_PATH", ...)` decides for whichever package the name resolves to. Each of those boundaries is named
+where its owner is described below.
 
 ```
 orchestrator/
