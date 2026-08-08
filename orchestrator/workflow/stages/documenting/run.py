@@ -27,6 +27,9 @@ from __future__ import annotations
 from orchestrator import config
 from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
+from orchestrator.git import authentication as _authentication
+from orchestrator.git.publication import probes as _publication_probes
+from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.comments import filter_trusted
 from orchestrator.workflow.engine import comments as _comments, prompts as _prompts
 from orchestrator.workflow.stages.documenting import (
@@ -54,11 +57,9 @@ def _prepare_documenting_worktree(ctx: _models._DocumentingContext, wt):
     or None when a fetch failure or diverged worktree parked the issue
     (the caller must return).
     """
-    from orchestrator import workflow as _wf
-
     spec = ctx.spec
     branch = ctx.branch
-    fetch_branch = _wf._authed_fetch(
+    fetch_branch = _authentication._authed_fetch(
         spec,
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}",
         cwd=wt,
@@ -76,7 +77,7 @@ def _prepare_documenting_worktree(ctx: _models._DocumentingContext, wt):
         )
         return None
 
-    ahead, behind = _wf._branch_ahead_behind(spec, wt, branch)
+    ahead, behind = _publication_probes._branch_ahead_behind(spec, wt, branch)
     if behind > 0:
         # Stale or diverged worktree. The reviewer's PR head has commits
         # we never saw, so pushing local state (even a clean recovery
@@ -123,8 +124,6 @@ def _resume_documenting_dev(ctx: _models._DocumentingContext, wt, ahead: int):
     Returns a `_DocumentingRun`, or None when there is no new trusted comment
     and the tick should end without disposition.
     """
-    from orchestrator import workflow as _wf
-
     # Drop untrusted authors before the resume signal / watermark advance:
     # with `ALLOWED_ISSUE_AUTHORS` set an outsider reply must not resume the
     # docs pass NOR advance the consumed watermark. Only trusted comments are
@@ -146,7 +145,7 @@ def _resume_documenting_dev(ctx: _models._DocumentingContext, wt, ahead: int):
     # resumed dev produced a new commit. Persist `docs_checked_sha` BEFORE the
     # spawn for the same reason the fresh-spawn shape does: a no-change verdict
     # on this resume relies on this watermark to identify the confirmed commit.
-    before_sha = _wf._head_sha(wt)
+    before_sha = _verification_probes._head_sha(wt)
     ctx.state.set("docs_checked_sha", before_sha or "")
     wt, documentation_result, paused = _dev_resume._resume_dev_with_text(
         ctx.gh, ctx.spec, ctx.issue, ctx.state, _documentation_prompt(ctx),
@@ -207,9 +206,7 @@ def _fresh_documenting_run(ctx: _models._DocumentingContext, wt, ahead: int):
     still leaves a durable role-identity record; matches
     `_handle_implementing`'s fresh-spawn branch.
     """
-    from orchestrator import workflow as _wf
-
-    before_sha = _wf._head_sha(wt)
+    before_sha = _verification_probes._head_sha(wt)
     ctx.state.set("docs_checked_sha", before_sha or "")
     dev_spec, _, _, _ = _dev_session_read._read_dev_session(ctx.state)
     ctx.state.set("dev_agent", dev_spec)

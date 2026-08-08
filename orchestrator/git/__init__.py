@@ -21,9 +21,13 @@ the no-prompt environment and the whole lock surface among them, answers
 on its owner alone. The hub resolves the owner's own object and caches
 it, so the sites share identity but not a later patch: a test
 intercepting one of these helpers targets the module its caller reads it
-off -- ``workflow`` for the stage git calls, and the owner for the
-``git/worktrees/`` and ``git/publication/`` callers that import it
-directly. ``authentication`` names its logger
+off, and the two sides split by caller. This package is what the
+``git/worktrees/``, ``git/publication/``, and ``git/base_sync/`` owners
+name, what the conflicts and documenting stages name for the fetches and
+the push, and what the conflicts, documenting, and fixing stages name for
+the two runners. The hub is what the implementing and validating stages
+read the push off, and validating the branch fetch.
+``authentication`` names its logger
 ``orchestrator.git_plumbing`` rather than after this package, because that
 is the name operator log filters select on.
 """

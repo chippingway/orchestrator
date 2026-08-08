@@ -11,19 +11,20 @@ import subprocess
 import tempfile
 from unittest import mock
 
-from orchestrator import config, workflow
+from orchestrator import config, workflow as workflow
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.validating import (
     recovery as _validating_recovery,
 )
 
-from tests import fakes, workflow_helpers
+from tests import fakes, workflow_git_owners, workflow_helpers
 from tests.git.base_sync import sync_test_support
 
 Path = pathlib.Path
 MagicMock = mock.MagicMock
 patch = mock.patch
 _patch_base_sync = sync_test_support._patch_base_sync
+seam_patch = workflow_git_owners.seam_patch
 FakeGitHubClient = fakes.FakeGitHubClient
 FakePR = fakes.FakePR
 FakePRRef = fakes.FakePRRef
@@ -220,32 +221,16 @@ class _FixingWorktreeDriftFixtureMixin:
         self.recover = MagicMock(return_value=recovery)
         with contextlib.ExitStack() as stack:
             stack.enter_context(
-                patch.object(
-                    workflow,
-                    "_worktree_path",
-                    MagicMock(return_value=wt_path),
-                )
+                seam_patch("_worktree_path", MagicMock(return_value=wt_path)),
             )
             stack.enter_context(
-                patch.object(
-                    workflow,
-                    "_worktree_dirty_files",
-                    MagicMock(return_value=list(dirty)),
-                )
+                seam_patch(
+                    "_worktree_dirty_files", MagicMock(return_value=list(dirty)),
+                ),
             )
+            stack.enter_context(seam_patch("_git", self._git_behind(behind)))
             stack.enter_context(
-                patch.object(
-                    workflow,
-                    "_git",
-                    self._git_behind(behind),
-                )
-            )
-            stack.enter_context(
-                patch.object(
-                    workflow,
-                    "_head_sha",
-                    MagicMock(return_value=local_head),
-                )
+                seam_patch("_head_sha", MagicMock(return_value=local_head)),
             )
             stack.enter_context(
                 patch.object(

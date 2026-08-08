@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
+from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     _ResolvingConflictMixin,
@@ -31,7 +31,7 @@ class ResolvingConflictStaleDivergedTest(unittest.TestCase, _ResolvingConflictMi
 
         merge_mock = MagicMock(return_value=(True, []))
 
-        with patch.object(workflow, "_rebase_base_into_worktree", merge_mock):
+        with patch.object(_base_sync_pre_pr, "_rebase_base_into_worktree", merge_mock):
             mocks = self._run_resolving_conflict(
                 gh,
                 issue,
@@ -54,7 +54,7 @@ class ResolvingConflictStaleDivergedTest(unittest.TestCase, _ResolvingConflictMi
 
         merge_mock = MagicMock(return_value=(True, []))
 
-        with patch.object(workflow, "_rebase_base_into_worktree", merge_mock):
+        with patch.object(_base_sync_pre_pr, "_rebase_base_into_worktree", merge_mock):
             mocks = self._run_resolving_conflict(
                 gh,
                 issue,

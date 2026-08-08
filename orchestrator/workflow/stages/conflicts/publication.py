@@ -24,6 +24,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from orchestrator import config
+from orchestrator._workflow_state import log
+from orchestrator.git import authentication as _authentication
+from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.stages.conflicts import models as _models
 from orchestrator.workflow.stages.conflicts import outcomes as _outcomes
@@ -47,8 +51,6 @@ def _publish_clean_rebase(
     force-pushes the rebased head and flips to `validating`. The caller
     returns immediately after; every exit writes pinned state.
     """
-    from orchestrator import workflow as _wf
-
     spec = ctx.spec
     # Dirty check before EITHER clean-rebase exit (no-op flip OR rebased-head
     # push): a pre-existing uncommitted edit (left by a previous tick that
@@ -60,7 +62,7 @@ def _publish_clean_rebase(
     # incorrect SHA, inviting a human merge over unreviewed content. Park
     # rather than push or flip, mirroring `_on_dirty_worktree`'s "refuse to
     # publish an incomplete branch" rule.
-    dirty = _wf._worktree_dirty_files(wt)
+    dirty = _verification_probes._worktree_dirty_files(wt)
     if dirty:
         _transitions._park_conflict(
             ctx,
@@ -71,12 +73,13 @@ def _publish_clean_rebase(
             reason="dirty_worktree",
         )
         return
-    after_sha = _wf._head_sha(wt)
+    after_sha = _verification_probes._head_sha(wt)
     if not after_sha or after_sha == before_sha:
         _flip_base_up_to_date(ctx, conflict_round, pr_number, after_sha)
         return
-    if not _wf._push_branch(
-        spec, wt, _wf._resolve_branch_name(ctx.state, spec, ctx.issue.number),
+    if not _authentication._push_branch(
+        spec, wt,
+        _worktree_paths._resolve_branch_name(ctx.state, spec, ctx.issue.number),
         force_with_lease=before_sha or None,
     ):
         _transitions._park_conflict(
@@ -107,9 +110,7 @@ def _flip_base_up_to_date(
     Counting the no-op against the cap surfaces it within MAX_CONFLICT_ROUNDS
     ticks. Does NOT stamp `last_conflict_resolved_at` -- nothing was resolved.
     """
-    from orchestrator import workflow as _wf
-
-    _wf.log.info(
+    log.info(
         "issue=#%d resolving_conflict: branch already up-to-date with %s/%s",
         ctx.issue.number, ctx.spec.remote_name, ctx.spec.base_branch,
     )

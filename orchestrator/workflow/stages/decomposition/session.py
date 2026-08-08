@@ -27,6 +27,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.git.worktrees import decomposition as _worktree_decomposition
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
@@ -36,6 +37,7 @@ from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _DecomposerSession
+from orchestrator.workflow.stages.implementing import session as _dev_session
 
 
 def _read_decomposer_session(
@@ -79,14 +81,12 @@ def _spawn_fresh_decomposer(
     Returns the agent result, or None when the retry budget is exhausted
     (the budget helper already wrote the park; caller must return).
     """
-    from orchestrator import workflow as _wf
-
-    if not _wf._check_and_increment_retry_budget(
+    if not _dev_session._check_and_increment_retry_budget(
         gh, issue, state, stage="decomposing"
     ):
         gh.write_pinned_state(issue, state)
         return None
-    wt = _wf._ensure_decompose_worktree(spec, issue.number)
+    wt = _worktree_decomposition._ensure_decompose_worktree(spec, issue.number)
     session = _DecomposerSession(*_read_decomposer_session(state))
     # Persist the spec BEFORE the spawn so a backend hiccup
     # that yields no `session_id` -- yet still produces a
@@ -147,14 +147,14 @@ def _resume_decomposer_on_human_reply(
     `decomposer_session_id`; resuming across backends would need an
     inter-backend session bridge that does not exist.
     """
-    from orchestrator import workflow as _wf
-
     followup = _decomposer_followup(gh, issue, state)
     if followup is None:
         return None
-    wt = _wf._decompose_worktree_path(spec, issue.number)
+    wt = _worktree_decomposition._decompose_worktree_path(spec, issue.number)
     if not wt.exists():
-        wt = _wf._ensure_decompose_worktree(spec, issue.number)
+        wt = _worktree_decomposition._ensure_decompose_worktree(
+            spec, issue.number,
+        )
     session = _DecomposerSession(*_read_decomposer_session(state))
     decomposer_result = _usage._run_agent_tracked(
         gh, issue.number,

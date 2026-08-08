@@ -5,30 +5,45 @@ from __future__ import annotations
 
 import contextlib
 from functools import partial
-from types import MappingProxyType
 from unittest.mock import patch
 
 from orchestrator import analytics, workflow
-from orchestrator.git.publication import squash as _squash
-from orchestrator.git.verification import runner as _verify_runner
-from orchestrator.git.worktrees import terminal as _worktree_terminal
 
+from tests.workflow_git_owners import GIT_SEAM_OWNERS
 from tests.workflow_patch_builders import _build_workflow_mocks
 from tests.workflow_patch_models import _WorkflowRunContext
 from tests.workflow_repo_values import _TEST_SPEC
 
-# The validating approval gate (verify, then squash) and the question /
-# terminal cleanup callers reach these owners directly, so their mocks have to
-# land on the owner -- patching the workflow facade would not intercept the
-# call.
-_OWNER_PATCH_TARGETS = MappingProxyType(
-    {
-        "_run_verify_commands": _verify_runner,
-        "_squash_and_force_push": _squash,
-        "_cleanup_question_worktree": _worktree_terminal,
-        "_cleanup_terminal_branch": _worktree_terminal,
-    },
-)
+# The mocked names at least one stage resolves on the workflow facade. A mock
+# for one of these is installed on the facade as well as on its owner, because
+# a single handler run crosses stages that read the same name off different
+# modules and both have to see the mock. Every other name here is intercepted
+# on the module its callers name, and nowhere else.
+_FACADE_STILL_READS = frozenset((
+    "_authed_fetch",
+    "_branch_ahead_behind",
+    "_branch_has_unpushed_commits",
+    "_ensure_worktree",
+    "_first_commit_subject",
+    "_has_new_commits",
+    "_head_sha",
+    "_infer_subject_prefix",
+    "_push_branch",
+    "_worktree_dirty_files",
+))
+
+
+def _enter_mock(stack, attribute: str, attribute_mock) -> None:
+    """Install one mock on every module a caller resolves it off."""
+    owner = GIT_SEAM_OWNERS.get(attribute)
+    if owner is None:
+        targets = (workflow,)
+    elif attribute in _FACADE_STILL_READS:
+        targets = (owner, workflow)
+    else:
+        targets = (owner,)
+    for target in targets:
+        stack.enter_context(patch.object(target, attribute, attribute_mock))
 
 
 def _patch_and_run(callable_, context: _WorkflowRunContext):
@@ -45,11 +60,7 @@ def _patch_and_run(callable_, context: _WorkflowRunContext):
             context.trajectory_log_path,
         ))
         for attribute, attribute_mock in workflow_mocks.items():
-            stack.enter_context(patch.object(
-                _OWNER_PATCH_TARGETS.get(attribute, workflow),
-                attribute,
-                attribute_mock,
-            ))
+            _enter_mock(stack, attribute, attribute_mock)
         callable_()
     return workflow_mocks
 

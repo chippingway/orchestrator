@@ -5,7 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.git import commands as _git_commands
+from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 
 from tests.fakes import (
     FakeGitHubClient,
@@ -106,7 +108,7 @@ class AuthedFetchRoutingTest(unittest.TestCase, _PatchedWorkflowMixin):
         # mocks dict rather than installing our own outer patch (which
         # `_run`'s inner `with` would override).
         with patch.object(
-            workflow,
+            _base_sync_pre_pr,
             "_rebase_base_into_worktree",
             merge_mock,
         ):
@@ -327,13 +329,13 @@ class ResolvingConflictTerminalRoutingTest(
         git_mock = MagicMock(return_value=MagicMock(returncode=0, stdout="", stderr=""))
         with (
             patch.object(
-                workflow,
+                _base_sync_pre_pr,
                 "_rebase_base_into_worktree",
                 merge_mock,
             ),
-            patch.object(workflow, "_git", git_mock),
+            patch.object(_git_commands, "_git", git_mock),
             patch.object(
-                workflow,
+                _git_commands,
                 "_git_hardened",
                 git_mock,
             ),

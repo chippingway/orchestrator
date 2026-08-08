@@ -37,6 +37,9 @@ from typing import Optional
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.worktrees import creation as _worktree_creation
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import drift as _engine_drift
 from orchestrator.workflow.engine import messages as _messages
@@ -123,15 +126,15 @@ def _run_fixing_resume(
     `_handle_dev_fix_result` returns before it would use `after_sha`, and
     reading here would burn an extra `_head_sha` the timeout path never did.
     """
-    from orchestrator import workflow as _wf
-
-    wt = _wf._worktree_path(ctx.spec, ctx.issue.number)
+    wt = _worktree_paths._worktree_path(ctx.spec, ctx.issue.number)
     if not wt.exists():
-        wt = _wf._ensure_worktree(
+        wt = _worktree_creation._ensure_worktree(
             ctx.spec, ctx.issue.number,
-            branch=_wf._resolve_branch_name(ctx.state, ctx.spec, ctx.issue.number),
+            branch=_worktree_paths._resolve_branch_name(
+                ctx.state, ctx.spec, ctx.issue.number,
+            ),
         )
-    before_sha = _wf._head_sha(wt)
+    before_sha = _verification_probes._head_sha(wt)
     wt, dev_result, paused = _dev_resume._resume_dev_with_text(
         ctx.gh, ctx.spec, ctx.issue, ctx.state, followup, pause_guard=True,
     )
@@ -142,7 +145,9 @@ def _run_fixing_resume(
             ctx.issue, _comments._orchestrator_ids(ctx.state),
         ),
     )
-    after_sha = None if dev_result.timed_out else _wf._head_sha(wt)
+    after_sha = (
+        None if dev_result.timed_out else _verification_probes._head_sha(wt)
+    )
     return _models._FixingResumeRun(
         worktree=wt,
         dev_result=dev_result,

@@ -23,6 +23,9 @@ from contextlib import suppress
 
 from orchestrator import config
 from orchestrator._workflow_state import log
+from orchestrator.git import authentication as _authentication
+from orchestrator.git import commands as _git_commands
+from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.documenting import models as _models, parks as _parks
 
 
@@ -33,11 +36,9 @@ def _documenting_drift_fetch(ctx: _models._DocumentingContext, wt) -> bool:
     returns False -- a stale local docs commit against the OLD body silently
     riding into the next approval is worse than parking.
     """
-    from orchestrator import workflow as _wf
-
     spec = ctx.spec
     branch = ctx.branch
-    fetch_branch = _wf._authed_fetch(
+    fetch_branch = _authentication._authed_fetch(
         spec,
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}",
         cwd=wt,
@@ -73,11 +74,9 @@ def _documenting_drift_probe(ctx: _models._DocumentingContext, wt):
     Returns `(ahead, behind)` on success; on a probe failure parks with
     `worktree_reset_failed` and returns None.
     """
-    from orchestrator import workflow as _wf
-
     spec = ctx.spec
     branch = ctx.branch
-    probe = _wf._git_hardened(
+    probe = _git_commands._git_hardened(
         "rev-list", "--left-right", "--count",
         f"refs/remotes/{spec.remote_name}/{branch}...HEAD",
         cwd=wt,
@@ -114,11 +113,9 @@ def _documenting_drift_hard_reset(ctx: _models._DocumentingContext, wt) -> bool:
     success; on a git failure parks with `worktree_reset_failed` and returns
     False.
     """
-    from orchestrator import workflow as _wf
-
     spec = ctx.spec
     branch = ctx.branch
-    reset = _wf._git_hardened(
+    reset = _git_commands._git_hardened(
         "reset", "--hard", f"{spec.remote_name}/{branch}", cwd=wt,
     )
     if reset.returncode != 0:
@@ -139,7 +136,7 @@ def _documenting_drift_hard_reset(ctx: _models._DocumentingContext, wt) -> bool:
             "worktree_reset_failed",
         )
         return False
-    clean = _wf._git_hardened("clean", "-fd", cwd=wt)
+    clean = _git_commands._git_hardened("clean", "-fd", cwd=wt)
     if clean.returncode != 0:
         log.error(
             "issue=#%d documenting drift clean failed "
@@ -188,15 +185,13 @@ def _reset_documenting_drift_worktree(
     step failed and the issue was parked -- a stale local commit silently
     riding into the next approval is worse than parking.
     """
-    from orchestrator import workflow as _wf
-
     if not _documenting_drift_fetch(ctx, wt):
         return False
     probe = _documenting_drift_probe(ctx, wt)
     if probe is None:
         return False
     ahead, behind = probe
-    dirty = _wf._worktree_dirty_files(wt)
+    dirty = _verification_probes._worktree_dirty_files(wt)
     if ahead > 0 or behind > 0 or dirty:
         return _documenting_drift_hard_reset(ctx, wt)
     return True

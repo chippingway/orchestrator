@@ -27,6 +27,9 @@ from pathlib import Path
 from typing import Optional
 
 from orchestrator._workflow_state import log
+from orchestrator.git import commands as _git_commands
+from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.fixing import models as _models
 from orchestrator.workflow.stages.fixing import state as _state
@@ -67,9 +70,9 @@ def _fixing_drift_reason(
     `rev-list HEAD..<remote>/<base>`, and the unpushed-rebase check compares
     local HEAD to `pr.head.sha` (the live remote head fetched this tick).
     """
-    from orchestrator import workflow as _wf
-
-    behind_r = _wf._git("rev-list", "--count", f"HEAD..{base_ref}", cwd=wt)
+    behind_r = _git_commands._git(
+        "rev-list", "--count", f"HEAD..{base_ref}", cwd=wt,
+    )
     if behind_r.returncode != 0:
         return None
     try:
@@ -85,7 +88,7 @@ def _fixing_drift_reason(
     # mismatch means the worktree carries a rebase that was never pushed --
     # `_handle_resolving_conflict` republishes it (over a stale,
     # orchestrator-produced PR head).
-    local_head = _wf._head_sha(wt) or ""
+    local_head = _verification_probes._head_sha(wt) or ""
     pr_head = getattr(getattr(ctx.pr, "head", None), "sha", None) or ""
     if local_head and pr_head and local_head != pr_head:
         return _stale_pr_head_reason(base_ref, pr_head, local_head)
@@ -168,13 +171,11 @@ def _reconcile_parked_fixing(ctx: _models._FixingContext) -> bool:
     in sync with the PR head (the transient condition is the real blocker, not
     drift). Returns True after routing the drift to `resolving_conflict`.
     """
-    from orchestrator import workflow as _wf
-
     spec = ctx.spec
-    wt = _wf._worktree_path(spec, ctx.issue.number)
+    wt = _worktree_paths._worktree_path(spec, ctx.issue.number)
     if not wt.exists():
         return False
-    if _wf._worktree_dirty_files(wt):
+    if _verification_probes._worktree_dirty_files(wt):
         return False
 
     base_ref = f"{spec.remote_name}/{spec.base_branch}"

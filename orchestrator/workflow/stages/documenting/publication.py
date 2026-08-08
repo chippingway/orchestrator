@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from orchestrator import config
 from orchestrator._workflow_state import log
+from orchestrator.git import authentication as _authentication
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments, messages as _messages
 from orchestrator.workflow.stages.documenting import (
@@ -62,9 +63,7 @@ def _push_docs_and_advance(
     `docs_verdict=updated`), post `notice` on the PR, and route to
     `in_review`. Writes pinned state; the caller returns unconditionally.
     """
-    from orchestrator import workflow as _wf
-
-    if not _wf._push_branch(ctx.spec, wt, ctx.branch):
+    if not _authentication._push_branch(ctx.spec, wt, ctx.branch):
         _parks._park_documenting(
             ctx,
             f"{config.HITL_MENTIONS} git push failed; see "

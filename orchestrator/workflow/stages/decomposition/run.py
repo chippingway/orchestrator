@@ -30,6 +30,9 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.worktrees import creation as _worktree_creation
+from orchestrator.git.worktrees import decomposition as _worktree_decomposition
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
@@ -43,6 +46,7 @@ from orchestrator.workflow.stages.decomposition.models import (
     _DecomposerCleanup,
     _DecomposerRunPlan,
 )
+from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.state import WorkflowLabel
 
 
@@ -66,8 +70,6 @@ def _route_disabled_to_implementing(
     because new decompositions are now disabled would strand work, which
     is not what a kill switch should do.
     """
-    from orchestrator import workflow as _wf
-
     if config.DECOMPOSE:
         return False
     _comments._post_issue_comment(
@@ -101,7 +103,7 @@ def _route_disabled_to_implementing(
             state.set(_state._LAST_ACTION_COMMENT_ID, latest)
     gh.set_workflow_label(issue, WorkflowLabel.IMPLEMENTING)
     gh.write_pinned_state(issue, state)
-    _wf._handle_implementing(gh, spec, issue)
+    _implementing._handle_implementing(gh, spec, issue)
     return True
 
 
@@ -196,8 +198,6 @@ def _process_decomposer_run(
     state: PinnedState,
     run_plan: _DecomposerRunPlan,
 ) -> None:
-    from orchestrator import workflow as _wf
-
     decomposer_result = run_plan.agent_result
     if decomposer_result is None:
         return
@@ -208,8 +208,11 @@ def _process_decomposer_run(
     # The decomposer is read-only. Preserve a changed worktree for operator
     # inspection, setting the cleanup policy before parking or persistence can
     # raise and trigger the handler's finally block.
-    wt = _wf._decompose_worktree_path(spec, issue.number)
-    if _wf._has_new_commits(spec, wt) or _wf._worktree_dirty_files(wt):
+    wt = _worktree_decomposition._decompose_worktree_path(spec, issue.number)
+    if (
+        _worktree_creation._has_new_commits(spec, wt)
+        or _verification_probes._worktree_dirty_files(wt)
+    ):
         run_plan.keep_worktree = True
         _guards._park_awaiting_human(
             gh, issue, state,

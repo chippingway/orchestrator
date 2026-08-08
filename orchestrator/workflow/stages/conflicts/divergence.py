@@ -22,6 +22,10 @@ from pathlib import Path
 from typing import Optional
 
 from orchestrator import config
+from orchestrator._workflow_state import log
+from orchestrator.git import authentication as _authentication
+from orchestrator.git import commands as _git_commands
+from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.conflicts import guards as _guards
 from orchestrator.workflow.stages.conflicts import models as _models
 from orchestrator.workflow.stages.conflicts import transitions as _transitions
@@ -39,8 +43,6 @@ def _guard_diverged_worktree(
     can force-publish it. Every other case (including `behind == 0`) returns an
     unparked decision with no lease.
     """
-    from orchestrator import workflow as _wf
-
     if sync.behind <= 0:
         return _models._DivergeDecision(parked=False)
 
@@ -58,7 +60,7 @@ def _guard_diverged_worktree(
         and _guards._pr_head_orchestrator_produced(ctx.state, pr)
         and _guards._already_rebased_onto_base(ctx.spec, sync.worktree)
     ):
-        _wf.log.info(
+        log.info(
             "issue=#%d resolving_conflict: worktree already rebased onto "
             "%s/%s and ahead of a stale orchestrator-produced PR head "
             "(`%s`); force-publishing instead of parking",
@@ -113,8 +115,6 @@ def _push_recovered_commits(
     NOT a rebase, so the combined push+rebase round is owned by the rebase
     path).
     """
-    from orchestrator import workflow as _wf
-
     spec = ctx.spec
     wt = sync.worktree
     # Dirty check before pushing recovered work: if the previous tick crashed
@@ -123,7 +123,7 @@ def _push_recovered_commits(
     # a SHA that silently omits those edits, and the reviewer at validating
     # would later run on a local tree that does not match the PR. Mirror
     # `_on_dirty_worktree`: park awaiting human, no flip.
-    dirty = _wf._worktree_dirty_files(wt)
+    dirty = _verification_probes._worktree_dirty_files(wt)
     if dirty:
         _transitions._park_conflict(
             ctx,
@@ -134,12 +134,12 @@ def _push_recovered_commits(
             reason="dirty_worktree",
         )
         return True
-    _wf.log.info(
+    log.info(
         "issue=#%d resolving_conflict: pushing %d recovered commit(s) "
         "ahead of %s/%s before attempting base rebase",
         ctx.issue.number, sync.ahead, spec.remote_name, sync.branch,
     )
-    if not _wf._push_branch(
+    if not _authentication._push_branch(
         spec, wt, sync.branch, force_with_lease=publish_lease,
     ):
         _transitions._park_conflict(
@@ -166,7 +166,7 @@ def _push_recovered_commits(
     base_ref = f"{spec.remote_name}/{spec.base_branch}"
     still_behind = _still_behind_base(wt, base_ref)
     if still_behind != 0:
-        _wf.log.info(
+        log.info(
             "issue=#%d resolving_conflict: pushed %d recovered commit(s) "
             "but worktree still %d behind %s; continuing with base rebase",
             ctx.issue.number, sync.ahead, still_behind, base_ref,
@@ -176,7 +176,7 @@ def _push_recovered_commits(
     # pass runs after final reviewer approval.
     _transitions._hand_resolved_round_to_validating(
         ctx, conflict_round, pr_number,
-        outcome="recovered_push", sha=_wf._head_sha(wt),
+        outcome="recovered_push", sha=_verification_probes._head_sha(wt),
     )
     return True
 
@@ -189,9 +189,7 @@ def _still_behind_base(wt: Path, base_ref: str) -> int:
     no-ops when HEAD already contains base and re-fetches to self-correct a
     stale ref, which is the safer default than a blind fast-path to validating.
     """
-    from orchestrator import workflow as _wf
-
-    behind_base_r = _wf._git(
+    behind_base_r = _git_commands._git(
         "rev-list", "--count", f"HEAD..{base_ref}", cwd=wt,
     )
     if behind_base_r.returncode != 0:

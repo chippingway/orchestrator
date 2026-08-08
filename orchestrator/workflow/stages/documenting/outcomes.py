@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.stages.documenting import (
     models as _models,
@@ -53,8 +55,6 @@ def _dispose_documenting_outcome(
     Writes pinned state on every terminal branch; the caller returns
     unconditionally.
     """
-    from orchestrator import workflow as _wf
-
     if run.agent_result.timed_out:
         _parks._park_documenting(
             ctx,
@@ -64,8 +64,8 @@ def _dispose_documenting_outcome(
         )
         return
 
-    wt = _wf._worktree_path(ctx.spec, ctx.issue.number)
-    after_sha = _wf._head_sha(wt)
+    wt = _worktree_paths._worktree_path(ctx.spec, ctx.issue.number)
+    after_sha = _verification_probes._head_sha(wt)
 
     # A dirty worktree blocks every downstream outcome -- commit + push would
     # publish a branch that omits the dirty files, and the no-change /
@@ -73,7 +73,7 @@ def _dispose_documenting_outcome(
     # eventual reviewer never sees. Check before any other decision so an agent
     # that edited files without committing (and then either emitted
     # `DOCS: NO_CHANGE`, asked a question, or produced nothing) cannot slip past.
-    dirty = _wf._worktree_dirty_files(wt)
+    dirty = _verification_probes._worktree_dirty_files(wt)
     if dirty:
         _parks._park_documenting_dirty(ctx, run.agent_result, dirty)
         return

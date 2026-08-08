@@ -22,6 +22,7 @@ that guard the same park comment would repost on every poll.
 """
 from __future__ import annotations
 
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.comments import filter_trusted
 from orchestrator.workflow.engine import (
     comments as _comments,
@@ -92,8 +93,6 @@ def _reconcile_documenting_drift(ctx: _models._DocumentingContext) -> bool:
     fast-path, a reconcile park, or the relabel to `validating`); False
     when there is no drift and the normal docs flow should continue.
     """
-    from orchestrator import workflow as _wf
-
     new_hash = _engine_drift._detect_user_content_change(
         ctx.gh, ctx.issue, ctx.state,
     )
@@ -115,7 +114,7 @@ def _reconcile_documenting_drift(ctx: _models._DocumentingContext) -> bool:
     if fresh_drift:
         _announce_documenting_drift(ctx, new_hash)
     _begin_documenting_drift_unwind(ctx)
-    wt = _wf._worktree_path(ctx.spec, ctx.issue.number)
+    wt = _worktree_paths._worktree_path(ctx.spec, ctx.issue.number)
     if wt.exists() and not _drift_reset._reset_documenting_drift_worktree(ctx, wt):
         return True
     # Reconcile succeeded (or the worktree didn't exist): the drift unwind is

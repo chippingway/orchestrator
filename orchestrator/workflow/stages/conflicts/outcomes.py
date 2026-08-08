@@ -23,6 +23,10 @@ from pathlib import Path
 from typing import Optional
 
 from orchestrator import config
+from orchestrator.git import authentication as _authentication
+from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
+from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.stages.conflicts import models as _models
@@ -53,15 +57,13 @@ def _post_conflict_resolution_result(
     against the resolved branch; the single docs pass is deferred to the
     post-approval handoff to `documenting` in `_handle_validating`.
     """
-    from orchestrator import workflow as _wf
-
     wt = run.worktree
     # Interrupt / timeout / still-mid-rebase dispositions park (or, for the
     # shutdown-sweep interrupt, silently drop) and signal the caller to stop.
     if _park_stalled_conflict_result(ctx, run):
         return
 
-    after_sha = _wf._head_sha(wt)
+    after_sha = _verification_probes._head_sha(wt)
     if not after_sha or after_sha == before_sha:
         # Agent did not finish the rebase. Treat as a question / silence park,
         # mirroring the implementing handler.
@@ -69,7 +71,7 @@ def _post_conflict_resolution_result(
         ctx.gh.write_pinned_state(ctx.issue, ctx.state)
         return
 
-    dirty = _wf._worktree_dirty_files(wt)
+    dirty = _verification_probes._worktree_dirty_files(wt)
     if dirty:
         _dev_parks._on_dirty_worktree(
             ctx.gh, ctx.issue, ctx.state, run.dev_result, dirty,
@@ -94,8 +96,6 @@ def _park_stalled_conflict_result(
     timeout, and a rebase left mid-flight. Returns False to let the caller
     inspect HEAD for a completed resolution.
     """
-    from orchestrator import workflow as _wf
-
     dev_result = run.dev_result
     # Shutdown-sweep interruption: a conflict-resolution run the orchestrator
     # killed mid-flight has no trustworthy result, so ignore it and return
@@ -115,7 +115,7 @@ def _park_stalled_conflict_result(
         )
         return True
 
-    if not _wf._rebase_in_progress(run.worktree):
+    if not _base_sync_pre_pr._rebase_in_progress(run.worktree):
         return False
 
     raw = dev_result.last_message.strip()
@@ -147,10 +147,12 @@ def _finalize_conflict_resolution(
     reviewer re-runs against the resolved branch. Writes pinned state on
     every exit.
     """
-    from orchestrator import workflow as _wf
-
-    branch = _wf._resolve_branch_name(ctx.state, ctx.spec, ctx.issue.number)
-    if not _wf._push_branch(ctx.spec, wt, branch, force_with_lease=force_with_lease):
+    branch = _worktree_paths._resolve_branch_name(
+        ctx.state, ctx.spec, ctx.issue.number,
+    )
+    if not _authentication._push_branch(
+        ctx.spec, wt, branch, force_with_lease=force_with_lease,
+    ):
         _transitions._park_conflict(
             ctx,
             f"{config.HITL_MENTIONS} git push failed after conflict "

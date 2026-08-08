@@ -30,6 +30,7 @@ from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.decomposition import activation as _activation
 from orchestrator.workflow.stages.decomposition import parents as _parents
 from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.state import WorkflowLabel
 
 
@@ -40,8 +41,6 @@ def _handle_ready(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None
     `implementing`, so the validating handoff watermark and the in_review
     legacy migration have an anchor comment they can key on.
     """
-    from orchestrator import workflow as _wf
-
     state = gh.read_pinned_state(issue)
     # User-content drift before implementation has started: route back to
     # decomposing so the manifest is re-derived against the new body. A
@@ -85,7 +84,7 @@ def _handle_ready(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None
             state.set(_state._LAST_ACTION_COMMENT_ID, latest)
     gh.set_workflow_label(issue, WorkflowLabel.IMPLEMENTING)
     gh.write_pinned_state(issue, state)
-    _wf._handle_implementing(gh, spec, issue)
+    _implementing._handle_implementing(gh, spec, issue)
 
 
 def _handle_empty_blocked_parent(

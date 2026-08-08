@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
+from orchestrator.git import commands as _git_commands
 from orchestrator.workflow.stages.conflicts import guards as _guards
 
 from tests.fakes import (
@@ -88,7 +88,7 @@ class _PublishFixtureMixin(_PatchedWorkflowMixin):
                 "_pr_head_orchestrator_produced",
                 MagicMock(return_value=recognized),
             ),
-            patch.object(workflow, "_git", git_on_base),
+            patch.object(_git_commands, "_git", git_on_base),
         ):
             return self._run_resolving_conflict(
                 gh,

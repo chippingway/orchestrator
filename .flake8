@@ -141,8 +141,10 @@
 # `session.py`, `split.py`, and `umbrella.py` -- because a stage owner is typed
 # by the whole span it acts on: the issue and client it reads, the pinned state
 # and labels it writes, the engine's comment, guard, prompt, and usage surfaces
-# it publishes through, and the sibling owners it hands off to. WPS201 and
-# WPS202 are waived for those files.
+# it publishes through, the git owners the read-only decomposer checkout is
+# opened, probed, and torn down through, and the sibling and implementing owners
+# it hands a `single` verdict off to. WPS201 and WPS202 are waived for those
+# files.
 #
 # Five validating stage owners name more than the same WPS201 ceiling of 12 for
 # the same reason -- `approval.py`, `dev_fix.py`, `drift.py`,
@@ -165,28 +167,36 @@
 # facade from two separate call sites. WPS201 is waived for that file.
 #
 # Two fixing stage owners name more than the same WPS201 ceiling of 12.
-# `resume.py` names 20: it spans one dev run end to end, so it is typed by the
+# `resume.py` names 22: it spans one dev run end to end, so it is typed by the
 # engine's comment, drift, message, prompt, and usage surfaces, the four
 # sibling owners it reads bookmarks, watermarks, records, and keys from, the
 # dev resume it borrows from the implementing owners and the dev-fix
 # disposition and stranded-fix probe from the validating ones, the comment
-# timestamp the debounce borrows from in_review, and the worktree helpers it
-# reaches on the `workflow` facade at call time. `handler.py` names 15 because
+# timestamp the debounce borrows from in_review, and the git owners that name,
+# restore, and measure the worktree it resumes in. `handler.py` names 15 because
 # the order one tick asks its questions in is the contract, so it is typed by
 # every owner an answer can come from plus the engine's guard and terminal
 # surfaces its preflight runs first. Splitting either by import would put one
 # tick's decisions across two modules. WPS201 is waived for those files.
 #
-# orchestrator/workflow/stages/conflicts/resume.py names 19 for the same
-# reason as fixing's: it is the single entry point all three dev resumes on a
-# mid-rebase branch go through, so it is typed by the engine's comment, drift,
-# guard, message, prompt, and usage surfaces, the five sibling owners it reads
-# the worktree probe, the records, the counter keys, the disposition, and the
-# transitions from, the dev resume it borrows from the implementing owners and
-# the body-edit disposition from the validating ones, base-sync's park reasons,
-# the trust filter, and the HEAD helper it reaches on the `workflow` facade at
-# call time. Splitting it would put one resume's decisions across two modules.
-# WPS201 is waived for that file.
+# Four conflicts stage owners name more than the same WPS201 ceiling of 12.
+# `resume.py` names 18 for the same reason as fixing's: it is the single entry
+# point all three dev resumes on a mid-rebase branch go through, so it is typed
+# by the engine's comment, drift, guard, message, prompt, and usage surfaces,
+# the five sibling owners it reads the worktree probe, the records, the counter
+# keys, the disposition, and the transitions from, the dev resume it borrows
+# from the implementing owners and the body-edit disposition from the validating
+# ones, base-sync's park reasons, the trust filter, and the HEAD owner it
+# anchors each resume against. The other three pay the same span in git owners:
+# `publication.py` names 14 and `outcomes.py` 13 because a rebase disposition
+# names one owner per probe it reads and one per branch it publishes -- HEAD and
+# dirty files, the branch name, the leased push, and the mid-rebase check --
+# alongside the engine, sibling, and implementing surfaces the park and the
+# handoff go through, and `routing.py` names 13 because the reconciliation it
+# routes reads the branch name and the ahead/behind measurement before handing
+# the worktree to any of its seven siblings. Splitting any of them by import
+# would put one round's decisions across two modules. WPS201 is waived for
+# those files.
 #
 # orchestrator/observability/analytics/config.py is one owner for everything
 # the analytics and trajectory sinks are configured by -- the six environment
@@ -250,7 +260,10 @@ per-file-ignores =
     orchestrator/workflow/engine/terminals.py:WPS202
     orchestrator/workflow/engine/tick.py:WPS201,WPS202
     orchestrator/workflow/engine/usage.py:WPS201,WPS202
+    orchestrator/workflow/stages/conflicts/outcomes.py:WPS201
+    orchestrator/workflow/stages/conflicts/publication.py:WPS201
     orchestrator/workflow/stages/conflicts/resume.py:WPS201
+    orchestrator/workflow/stages/conflicts/routing.py:WPS201
     orchestrator/workflow/stages/decomposition/blocked.py:WPS201
     orchestrator/workflow/stages/decomposition/outcomes.py:WPS201
     orchestrator/workflow/stages/decomposition/run.py:WPS201

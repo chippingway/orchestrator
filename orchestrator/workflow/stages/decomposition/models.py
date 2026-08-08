@@ -17,6 +17,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.git.worktrees import decomposition as _worktree_decomposition
 
 
 @dataclass
@@ -34,10 +35,10 @@ class _DecomposerCleanup:
     run_plan: _DecomposerRunPlan
 
     def close(self) -> None:
-        from orchestrator import workflow as _wf
-
         if not self.run_plan.keep_worktree:
-            _wf._cleanup_decompose_worktree(self.spec, self.issue_number)
+            _worktree_decomposition._cleanup_decompose_worktree(
+                self.spec, self.issue_number,
+            )
 
 
 @dataclass(frozen=True)

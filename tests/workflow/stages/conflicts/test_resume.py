@@ -5,7 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.git import commands as _git_commands
+from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 
 from tests.fakes import FakeComment, FakeUser
 from tests.workflow.stages.conflicts import conflict_resume_test_support
@@ -44,9 +46,9 @@ def _run_with_git_patches(
     merge_mock = MagicMock(return_value=(True, []))
     git_mock = MagicMock(return_value=MagicMock(returncode=0, stdout="", stderr=""))
     with (
-        patch.object(workflow, "_rebase_base_into_worktree", merge_mock),
-        patch.object(workflow, "_git", git_mock),
-        patch.object(workflow, "_git_hardened", git_mock),
+        patch.object(_base_sync_pre_pr, "_rebase_base_into_worktree", merge_mock),
+        patch.object(_git_commands, "_git", git_mock),
+        patch.object(_git_commands, "_git_hardened", git_mock),
     ):
         mocks = test_case._run_resolving_conflict(
             github,
