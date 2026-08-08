@@ -20,8 +20,8 @@ from orchestrator import config, workflow
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments
 
-from tests import comment_trust_test_support as trust
 from tests.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
+from tests.workflow.engine import comment_trust_test_support as trust
 
 
 _LEDGER_KEY = "orchestrator_comment_ids"

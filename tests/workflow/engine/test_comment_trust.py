@@ -14,36 +14,37 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.engine import comments, drift, prompts
 
-from tests import comment_trust_test_support as trust
 from tests.fakes import FakeComment, FakeUser, make_issue
+from tests.workflow.engine import comment_trust_test_support as trust
 from tests.workflow_helpers import _TEST_SPEC
 
 
-def _prompts(issue, comments_text: str) -> dict[str, str]:
+def _built_prompts(issue, comments_text: str) -> dict[str, str]:
     specs = [_TEST_SPEC]
     return {
-        "implement": workflow._build_implement_prompt(
+        "implement": prompts._build_implement_prompt(
             _TEST_SPEC, issue, comments_text, specs,
         ),
-        "review": workflow._build_review_prompt(
+        "review": prompts._build_review_prompt(
             _TEST_SPEC, issue, comments_text, specs,
         ),
-        "documentation": workflow._build_documentation_prompt(
+        "documentation": prompts._build_documentation_prompt(
             _TEST_SPEC, issue, comments_text, specs,
         ),
-        "decompose": workflow._build_decompose_prompt(
+        "decompose": prompts._build_decompose_prompt(
             _TEST_SPEC, issue, comments_text, specs,
         ),
-        "question": workflow._build_question_prompt(
+        "question": prompts._build_question_prompt(
             _TEST_SPEC, issue, comments_text, specs,
         ),
     }
 
 
 def _content_hash(issue) -> str:
-    return workflow._compute_user_content_hash(issue, set())
+    return drift._compute_user_content_hash(issue, set())
 
 
 class PromptBuilderTrustFilterTest(unittest.TestCase):
@@ -55,8 +56,8 @@ class PromptBuilderTrustFilterTest(unittest.TestCase):
     def test_only_allowed_content_reaches_prompts(self) -> None:
         issue = trust.issue_with_comments()
         with patch.object(config, trust.ALLOWLIST_CONFIG, (trust.ALLOWED_AUTHOR,)):
-            comments_text = workflow._recent_comments_text(issue)
-        for name, prompt in _prompts(issue, comments_text).items():
+            comments_text = comments._recent_comments_text(issue)
+        for name, prompt in _built_prompts(issue, comments_text).items():
             with self.subTest(builder=name):
                 self.assertNotIn(trust.MALICIOUS_URL, prompt)
                 self.assertNotIn(trust.PATCH_INSTRUCTION, prompt)
