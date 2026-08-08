@@ -32,7 +32,7 @@ designed around that assumption.
 
 ## Top-level layout
 
-The workflow, worktree, analytics-read, and dashboard subsystems expose stable lazy facades backed by immutable export
+The workflow, analytics-read, and dashboard subsystems expose stable lazy facades backed by immutable export
 manifests. Their implementations live in responsibility-named private leaves, while facade lookups preserve every
 historical import and object identity. Leaves call through the owning facade at runtime where patch interception is
 part of the compatibility contract, so `patch.object(workflow, "<helper>", ...)` still intercepts calls made from
