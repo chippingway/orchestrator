@@ -1265,8 +1265,10 @@ inventories, `.pyi` surfaces, and immutable target registries. Resolution is laz
 resolved object is the implementation object's exact identity. Existing direct imports, wildcard imports, and
 `patch.object` calls therefore keep working. The publication names a caller reads off an aggregate facade resolve
 that way too. `worktrees` publishes nine of them -- the divergence and subject probes, the conventional-commit
-pattern behind them, the two title helpers, and the squash entry point -- and `workflow` republishes seven of those
-through it, all but the pattern and the recent-base-subject read. No facade of the publication domain's own sits
+pattern behind them, the two title helpers, and the squash entry point -- and `workflow` carries seven of those,
+all but the pattern and the recent-base-subject read. Both inventories name the owner each one is defined on --
+`git.publication.probes`, `.titles`, or `.squash` -- rather than one hub reading the other. No facade of the
+publication domain's own sits
 beside `git/publication/`, and a check in
 `tests/git/publication/test_imports.py` asserts none does, so a publication name answers on its owner plus at most
 those two aggregate surfaces, and every name outside the nine -- the plan and the preparation it comes from, the
@@ -1290,7 +1292,8 @@ calls `models`, `process` calls `output` and `probes`, `runner` calls `process` 
 reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or
 the dirty-file scan targets the owner module. That gate is the runner's only caller, so `workflow` does not carry
 `_run_verify_commands`; it answers on the `worktrees` hub next to `VerifyResult` and `_truncate_verify_output`, while
-`_head_sha` / `_worktree_dirty_files` answer on both hubs for the stage leaves that read them off `workflow`. No
+`_head_sha` / `_worktree_dirty_files` answer on both hubs -- each inventoried against
+`git.verification.probes` -- for the stage leaves that read them off `workflow`. No
 facade of the verification domain's own sits beside `git/verification/`: a check in
 `tests/git/verification/test_imports.py` asserts nothing resolves at `orchestrator.verify` or at the inventory and
 resolver-hook paths a second import site would be built from, so every verification name is defined on an owner and
@@ -1298,12 +1301,13 @@ those two hubs are the only other surfaces one answers on. `git/authentication.p
 the authenticated fetches and the push reach `git.commands` and `git.locks` plus their own token, session, lease, and
 refusal helpers directly -- so a patch that has to intercept the transport probe, the target-root lock, the session,
 or the remote-ref lease read targets `orchestrator.git.authentication`; `_authed_fetch` / `_authed_target_fetch` /
-`_push_branch` themselves stay patchable by name on `worktrees` and `workflow` -- but the squash rewrite reads it
-off `git.authentication`, so a mock that has to intercept that force-push targets the owner and not a hub. The
+`_push_branch` themselves stay patchable by name on `worktrees` and `workflow`, both naming the owner -- but the
+squash rewrite reads it off `git.authentication`, so a mock that has to intercept that force-push targets the owner
+and not a hub. The
 command and lock names the aggregate surfaces carry are inventoried against those owners too: `worktrees`
 publishes six -- the no-prompt environment and the plain and hardened runners off `git.commands`, and the lock
 registry, its guard, and the per-root lock off `git.locks`.
-`workflow` republishes two of that six through `worktrees` -- the plain and hardened runners, and no lock name --
+`workflow` carries two of that six, the plain and hardened runners off `git.commands` and no lock name,
 and that is the surface the stage side reads them off: documenting's drift reset, the divergence and
 base-distance reads conflicts takes, and fixing's behind-base probe all call them there. No facade of the
 git-execution domain's own sits beside `git/authentication.py`, `git/commands.py`, and `git/locks.py`: two checks in
@@ -1330,7 +1334,9 @@ the decomposer helpers themselves stay patchable by name on `worktrees` and `wor
 inventories all sixteen worktree names it carries against those owners: the slug pattern, the two sanitizers, the
 branch, root, and worktree-path derivations, and the pinned/legacy resolver off `git.worktrees.paths`, the
 unpushed-commit probe off `recovery`, the two creators and the new-commit probe off `creation`, the decomposer's
-path, creation, and removal off `decomposition`, and the two teardowns off `terminal`. No facade of the
+path, creation, and removal off `decomposition`, and the two teardowns off `terminal`. `workflow` carries
+fourteen of those sixteen -- all but the slug pattern and the worktrees root -- and names the same owners, so
+neither hub resolves a name by reading the other. No facade of the
 worktree-lifecycle domain's own sits beside `git/worktrees/`: three checks in
 `tests/git/worktrees/test_imports.py` assert that nothing resolves at `orchestrator.worktree_lifecycle` or at the
 inventory and resolver-hook paths a second import site would be built from, that no inventory in the package
@@ -1398,7 +1404,11 @@ they are not what these owners call. `orchestrator.workflow` is itself a package
 the lazy hooks are all that live there, and nothing in it reaches into `workflow/engine/`, `workflow/stages/`, or
 `workflow/state.py`, so importing the facade resolves no manifest target and pulls in neither the stage tree, the
 config and analytics graph behind the shared dependency bindings, nor the git and GitHub
-subsystems the targets sit on. An import that cheap is what lets the GitHub and git layers reach
+subsystems the targets sit on. Three checks in `tests/workflow/test_imports.py` hold the git half of that manifest
+to the owners: every git name it publishes is inventoried against the module that defines it, the slice they cover
+is compared against the manifest both ways, and no target names the `worktrees` hub -- which resolves to the same
+objects, so identity alone would never show the extra hop. An import that cheap is what lets the GitHub and git
+layers reach
 `workflow/state.py` for the label vocabulary they are typed by -- a submodule import runs the initializer first, so
 anything bound there would be a cost every one of them pays. `github/labels.py`, `github/issues.py`, and the
 `git/base_sync/` owners all bind that owner directly. No flat module sits beside the package: a check in

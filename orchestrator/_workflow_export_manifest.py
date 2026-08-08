@@ -78,6 +78,14 @@ EXPORTS = (
         (("_redact_secrets", "redact_secrets"),),
     ),
     *export_group(
+        "orchestrator.git.authentication",
+        (
+            ("_authed_fetch", "_authed_fetch"),
+            ("_authed_target_fetch", "_authed_target_fetch"),
+            ("_push_branch", "_push_branch"),
+        ),
+    ),
+    *export_group(
         "orchestrator.git.base_sync.pr",
         (("_sync_pr_worktree_to_base", "_sync_pr_worktree_to_base"),),
     ),
@@ -99,6 +107,70 @@ EXPORTS = (
     *export_group(
         "orchestrator.git.base_sync.state",
         (("_AUTO_REBASE_PARK_REASONS", "_AUTO_REBASE_PARK_REASONS"),),
+    ),
+    *export_group(
+        "orchestrator.git.commands",
+        (
+            ("_git", "_git"),
+            ("_git_hardened", "_git_hardened"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.publication.probes",
+        (
+            ("_branch_ahead_behind", "_branch_ahead_behind"),
+            ("_first_commit_subject", "_first_commit_subject"),
+            ("_is_conventional_subject", "_is_conventional_subject"),
+            ("_is_prefixed_subject", "_is_prefixed_subject"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.publication.squash",
+        (("_squash_and_force_push", "_squash_and_force_push"),),
+    ),
+    *export_group(
+        "orchestrator.git.publication.titles",
+        (
+            ("_infer_subject_prefix", "_infer_subject_prefix"),
+            ("_pr_title_from_commit_or_issue", "_pr_title_from_commit_or_issue"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.verification.probes",
+        (
+            ("_head_sha", "_head_sha"),
+            ("_worktree_dirty_files", "_worktree_dirty_files"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.creation",
+        (
+            ("_ensure_pr_worktree", "_ensure_pr_worktree"),
+            ("_ensure_worktree", "_ensure_worktree"),
+            ("_has_new_commits", "_has_new_commits"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.decomposition",
+        (
+            ("_cleanup_decompose_worktree", "_cleanup_decompose_worktree"),
+            ("_decompose_worktree_path", "_decompose_worktree_path"),
+            ("_ensure_decompose_worktree", "_ensure_decompose_worktree"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.paths",
+        (
+            ("_branch_name", "_branch_name"),
+            ("_resolve_branch_name", "_resolve_branch_name"),
+            ("_sanitize_branch_segment", "_sanitize_branch_segment"),
+            ("_sanitize_slug", "_sanitize_slug"),
+            ("_worktree_path", "_worktree_path"),
+        ),
+    ),
+    *export_group(
+        "orchestrator.git.worktrees.recovery",
+        (("_branch_has_unpushed_commits", "_branch_has_unpushed_commits"),),
     ),
     *export_group(
         "orchestrator.git.worktrees.terminal",
@@ -406,37 +478,6 @@ EXPORTS = (
     *export_group(
         "orchestrator.workflow.state",
         (("WorkflowLabel", "WorkflowLabel"),),
-    ),
-    *export_group(
-        "orchestrator.worktrees",
-        (
-            ("_authed_fetch", "_authed_fetch"),
-            ("_authed_target_fetch", "_authed_target_fetch"),
-            ("_branch_ahead_behind", "_branch_ahead_behind"),
-            ("_branch_has_unpushed_commits", "_branch_has_unpushed_commits"),
-            ("_branch_name", "_branch_name"),
-            ("_cleanup_decompose_worktree", "_cleanup_decompose_worktree"),
-            ("_decompose_worktree_path", "_decompose_worktree_path"),
-            ("_ensure_decompose_worktree", "_ensure_decompose_worktree"),
-            ("_ensure_pr_worktree", "_ensure_pr_worktree"),
-            ("_ensure_worktree", "_ensure_worktree"),
-            ("_first_commit_subject", "_first_commit_subject"),
-            ("_git", "_git"),
-            ("_git_hardened", "_git_hardened"),
-            ("_has_new_commits", "_has_new_commits"),
-            ("_head_sha", "_head_sha"),
-            ("_infer_subject_prefix", "_infer_subject_prefix"),
-            ("_is_conventional_subject", "_is_conventional_subject"),
-            ("_is_prefixed_subject", "_is_prefixed_subject"),
-            ("_pr_title_from_commit_or_issue", "_pr_title_from_commit_or_issue"),
-            ("_push_branch", "_push_branch"),
-            ("_resolve_branch_name", "_resolve_branch_name"),
-            ("_sanitize_branch_segment", "_sanitize_branch_segment"),
-            ("_sanitize_slug", "_sanitize_slug"),
-            ("_squash_and_force_push", "_squash_and_force_push"),
-            ("_worktree_dirty_files", "_worktree_dirty_files"),
-            ("_worktree_path", "_worktree_path"),
-        ),
     ),
     *export_group(
         "pathlib",
