@@ -16,9 +16,9 @@ No facade of this domain's own sits beside the package. The aggregate hubs
 publish a slice of these names for the callers that read them off one:
 ``worktrees`` nine -- the two authenticated fetches and the push, the
 no-prompt environment and the plain and hardened runners, and the lock
-registry, its guard, and the per-root lock -- ``worktree_lifecycle`` three
-of those, and ``workflow`` five through ``worktrees``, the fetches and the
-push plus the two runners. Every other name answers on its owner alone. A
+registry, its guard, and the per-root lock -- and ``workflow`` five of
+those through ``worktrees``, the fetches and the push plus the two
+runners. Every other name answers on its owner alone. A
 hub resolves the owner's own object and caches it, so the sites share
 identity but not a later patch: a test intercepting one of these helpers
 targets the module its caller reads it off -- ``workflow`` for the stage
