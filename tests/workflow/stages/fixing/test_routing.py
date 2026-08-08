@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import worktrees
+from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.github import labels as _labels
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.engine import pickup as _pickup
@@ -74,7 +74,7 @@ class FixingLabelDefinitionTest(unittest.TestCase, _PatchedWorkflowMixin):
         # `resolving_conflict` by the pre-tick refresh; a `fixing` worktree
         # is PR-having (its sibling labels validating/in_review already
         # qualify) so it must be eligible for the same detour.
-        self.assertIn(LABEL_FIXING, worktrees._PR_REFRESH_DETOUR_LABELS)
+        self.assertIn(LABEL_FIXING, _base_sync_state._PR_REFRESH_DETOUR_LABELS)
 
     def test_dispatcher_routes_fixing_to_handler(self) -> None:
         scenario = IssueScenario(
