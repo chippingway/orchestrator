@@ -437,8 +437,8 @@ orchestrator/
       terminal.py       question-stage teardown and terminal local + remote
                         branch cleanup composed from cleanup.py
   worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners, plus
-                        the command and lock owners its two plumbing names
-                        resolve off
+                        the authentication, command, and lock owners its three
+                        git-execution names resolve off
   worktrees.py          lazy compatibility hub: the worktree_lifecycle facade
                         above, plus the command, lock, base-sync, publication,
                         verification, and authentication owners under git/ the
@@ -1297,10 +1297,10 @@ resolver-hook paths a second import site would be built from, so every verificat
 those two hubs are the only other surfaces one answers on. `git/authentication.py` binds the same way --
 the authenticated fetches and the push reach `git.commands` and `git.locks` plus their own token, session, lease, and
 refusal helpers directly -- so a patch that has to intercept the transport probe, the target-root lock, the session,
-or the remote-ref lease read targets `orchestrator.git.authentication`; `_authed_fetch` /
-`_authed_target_fetch` / `_push_branch` themselves stay patchable by name on `worktrees`
-and `workflow` -- but the squash rewrite reads it off `git.authentication`, so a mock that has to
-intercept that force-push targets the owner and not a hub. The plumbing names the aggregate surfaces
+or the remote-ref lease read targets `orchestrator.git.authentication`; `_authed_fetch` / `_authed_target_fetch` /
+`_push_branch` themselves stay patchable by name on `worktrees` and `workflow`, and the target-root fetch on
+`worktree_lifecycle` as well -- but the squash rewrite reads it off `git.authentication`, so a mock that has to
+intercept that force-push targets the owner and not a hub. The command and lock names the aggregate surfaces
 carry are inventoried against those owners too: `worktrees` publishes six -- the no-prompt environment and the
 plain and hardened runners off `git.commands`, and the lock registry, its guard, and the per-root lock off
 `git.locks` -- and `worktree_lifecycle` two, the plain runner and the per-root lock off the same pair.
