@@ -40,8 +40,7 @@ _MODULES = (
 # Manifest targets, what they resolve to, and the two subpackages beside the
 # facade, so importing it must leave every one of them out of `sys.modules`: the
 # dispatcher, the tick loop, the stage-handler tree, the git and GitHub
-# subsystems those reach -- plus the aggregate hub over the git owners, which
-# nothing here goes through -- and the analytics and config packages behind the
+# subsystems those reach, and the analytics and config packages behind the
 # shared dependency bindings.
 _DEFERRED_MODULES = (
     "orchestrator.analytics",
@@ -52,7 +51,6 @@ _DEFERRED_MODULES = (
     "orchestrator.workflow.engine.dispatch",
     "orchestrator.workflow.engine.tick",
     "orchestrator.workflow.stages",
-    "orchestrator.worktrees",
 )
 
 # The `state` owner is what the GitHub and git layers below the engine are typed
@@ -86,13 +84,6 @@ _FLAT_MODULES = (
 )
 
 _GIT_PREFIX = "orchestrator.git."
-
-# The other aggregate surface over the same git owners. It answers for a
-# superset of the slice below with the owners' own objects, so an inventory
-# target naming it would satisfy every identity check here while adding a
-# resolution hop and a second surface that has to be kept in step with the
-# owner a name is patched on.
-_AGGREGATE_HUB = "orchestrator.worktrees"
 
 # Every git name the facade publishes, keyed by the owner that defines it: the
 # token-carrying fetches and push, the base-sync rebases and the vocabulary
@@ -262,11 +253,11 @@ class GitInventoryTest(unittest.TestCase):
     """The facade resolves every git name off the owner that defines it."""
 
     def test_each_name_declares_its_owner(self) -> None:
-        # An aggregate hub over the same owners hands back the same objects,
-        # so identity alone cannot say which module the facade reads a name
-        # off. The declared target is what separates the two -- and only
-        # naming the owner keeps a patch aimed at the owner and one aimed at
-        # the facade two interceptions rather than three.
+        # A forwarder of an owner hands back the same object, so identity
+        # alone cannot say which module the facade reads a name off. The
+        # declared target is what separates the two -- and only naming the
+        # owner keeps a patch aimed at the owner and one aimed at the facade
+        # two interceptions rather than three.
         targets = lazy_targets(_workflow_export_manifest)
         for owner_name, export_names in _GIT_PUBLISHED.items():
             owner = importlib.import_module(owner_name)
@@ -295,12 +286,6 @@ class GitInventoryTest(unittest.TestCase):
                 for export_names in _GIT_PUBLISHED.values()
                 for export_name in export_names
             },
-        )
-
-    def test_no_target_reads_through_the_aggregate(self) -> None:
-        self.assertNotIn(
-            _AGGREGATE_HUB,
-            {target.module_name for target in _workflow_export_manifest.EXPORTS},
         )
 
 

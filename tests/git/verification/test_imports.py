@@ -30,7 +30,7 @@ _FLAT_MODULES = (
 
 # Verification owns result classification for a worktree, so it may reach the
 # git command owner and the settings it reads. Anything above that -- the
-# workflow engine, its stage handlers, the compatibility facades over them, or
+# workflow engine, its stage handlers, the compatibility facade over them, or
 # an application entrypoint -- would invert the dependency and let a `git
 # status` probe drag the tick loop into its import graph.
 _ALLOWED_ROOTS = ("orchestrator.config", "orchestrator.git")
@@ -52,16 +52,14 @@ _SUBPROCESS_OWNERS = (
 # registry and credential filter, which drag the agent models' usage parser in
 # with them, so an allowlist would not describe their graph. What they still owe
 # is the direction of the dependency, checked as a prefix so every owner under
-# the workflow and base-sync packages -- and the worktree facade beside them --
-# is covered too. Base sync is the sharpest of those: its snapshot and
-# publication owners call these very probes, so one read back the other way
-# would close the loop.
+# the workflow and base-sync packages is covered too. Base sync is the sharpest
+# of those: its snapshot and publication owners call these very probes, so one
+# read back the other way would close the loop.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.cli",
     "orchestrator.git.base_sync",
     "orchestrator.main",
     "orchestrator.workflow",
-    "orchestrator.worktree",
 )
 
 _LAYERING_SCRIPT = """
