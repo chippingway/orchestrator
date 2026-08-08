@@ -47,7 +47,8 @@ orchestrator/
   _package_exports.py   owns root-package export resolution and caching
   cli.py                `agent-orchestrator` console-script entry point,
                         delegating to the `main.py` runtime
-  __main__.py           `python -m orchestrator` launch form over `cli.main`
+  __main__.py           `python -m orchestrator` launch form over `cli.main`;
+                        the target `run.sh` launches
   main.py               stable entry-point and test-patch facade
   _main_*.py            CLI/setup, tick fan-out, loop/drain, logging,
                         self-update probes, and shutdown/watchdog leaves
@@ -3053,7 +3054,7 @@ label, the control-label semantics, and the per-stage transitions they trigger, 
 
 ## Process model
 
-There is **only one long-lived process**: `python -m orchestrator.main`. It is wrapped by `run.sh` so the loop can
+There is **only one long-lived process**: `python -m orchestrator`. It is wrapped by `run.sh` so the loop can
 self-exit and be restarted with new code.
 
 - **Trigger**: started manually (or by a wrapper). Optional `--once` for a single tick.
@@ -3474,7 +3475,7 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
                                     │ PyGithub (one token per slug)
                                     │
    ┌────────────────────────────────┴─────────────────────────────────────┐
-   │  orchestrator process  (python -m orchestrator.main)                 │
+   │  orchestrator process  (python -m orchestrator)                      │
    │  ───────────────────────────────────────────────────                 │
    │   main.py                                                            │
    │     startup: build per-spec [(spec, GitHubClient), ...] from         │

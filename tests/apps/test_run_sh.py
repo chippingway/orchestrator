@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.run_sh_test_support import (
+from tests.apps.run_sh_test_support import (
     _SIGINT_EXIT_CODE,
     _TEXT_ENCODING,
     _WrapperScenario,
@@ -23,7 +23,7 @@ def _assert_launches(
 ) -> None:
     assert completed.returncode == _SIGINT_EXIT_CODE
     assert scenario.python_calls.read_text(encoding=_TEXT_ENCODING) == (
-        "-m orchestrator.main\n" * count
+        "-m orchestrator\n" * count
     )
 
 

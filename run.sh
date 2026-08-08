@@ -50,7 +50,7 @@ self_update() {
 
 self_update
 while true; do
-    .venv/bin/python -m orchestrator.main "$@"
+    .venv/bin/python -m orchestrator "$@"
     rc=$?
     # 130 = SIGINT, 143 = SIGTERM. The orchestrator exits with these codes
     # when it stops because of an explicit signal, which is the user's "I

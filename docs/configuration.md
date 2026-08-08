@@ -632,7 +632,7 @@ hazards are worth knowing:
 Useful inspection commands:
 
 ```sh
-pgrep -af 'python -m orchestrator.main|codex|claude|run.sh'
+pgrep -af 'python -m orchestrator|codex|claude|run.sh'
 tail -f logs/orchestrator.log
 journalctl --user -u agent.service -f   # systemd users
 ```
