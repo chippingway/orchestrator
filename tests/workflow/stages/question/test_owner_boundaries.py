@@ -99,8 +99,8 @@ class _OwnerBoundaryMixin:
 class WorktreeTeardownBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
     """Both teardowns land on the worktree terminal owner.
 
-    `_cleanup_question_worktree` resolves on `workflow` and `worktrees` too, so
-    a mock left on the facade would silently let a real teardown run.
+    `_cleanup_question_worktree` resolves on `workflow` too, so a mock left on
+    the facade would silently let a real teardown run.
     """
 
     def test_safe_exit_tears_down_on_owner(self) -> None:

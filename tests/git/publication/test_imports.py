@@ -8,6 +8,7 @@ import subprocess
 import sys
 import unittest
 from importlib import import_module
+from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 
@@ -26,7 +27,7 @@ _OWNER_MODULES = MappingProxyType({
 })
 
 # The divergence probe, named once because it recurs in the owner surface
-# below and in both hub slices under it.
+# below and in the facade slice under it.
 _AHEAD_BEHIND = "_branch_ahead_behind"
 
 # What each owner defines: the whole publication surface, split by the module a
@@ -94,42 +95,33 @@ _FOREIGN_LOOKUPS = tuple(
     if sibling != owner
 )
 
-# The slice of these names each aggregate facade answers for: `worktrees`
-# nine and `workflow` seven of those through it. Every other name is the
-# owner's alone, so this is the whole set of second sites one of them can be
-# patched at.
-_HUB_PUBLISHED = MappingProxyType({
-    "orchestrator.worktrees": (
-        "_CONVENTIONAL_RE",
-        _AHEAD_BEHIND,
-        "_first_commit_subject",
-        "_infer_subject_prefix",
-        "_is_conventional_subject",
-        "_is_prefixed_subject",
-        "_pr_title_from_commit_or_issue",
-        "_recent_base_subjects",
-        "_squash_and_force_push",
-    ),
-    "orchestrator.workflow": (
-        _AHEAD_BEHIND,
-        "_first_commit_subject",
-        "_infer_subject_prefix",
-        "_is_conventional_subject",
-        "_is_prefixed_subject",
-        "_pr_title_from_commit_or_issue",
-        "_squash_and_force_push",
-    ),
-})
+# The one aggregate facade above the package, and the slice of these names it
+# answers for: seven. Every other name is the owner's alone, so this is the
+# whole set of second sites one of them can be patched at.
+_FACADE = "orchestrator.workflow"
 
-_HUB_LOOKUPS = tuple(
-    (facade_name, name)
-    for facade_name in _HUB_PUBLISHED
-    for name in _OWNER_OF
+_FACADE_PUBLISHED = (
+    _AHEAD_BEHIND,
+    "_first_commit_subject",
+    "_infer_subject_prefix",
+    "_is_conventional_subject",
+    "_is_prefixed_subject",
+    "_pr_title_from_commit_or_issue",
+    "_squash_and_force_push",
 )
 
 # Every flat spelling a publication helper could be reached through beside the
 # package.
 _FLAT_MODULE_PATTERNS = ("branch_publication.py", "_branch_publication_*.py")
+
+# The module paths a second aggregate over the git domains would take: the
+# spelling itself, and the inventory and resolver hooks one would be built
+# from.
+_ABSENT_MODULES = (
+    "orchestrator._worktrees_export_manifest",
+    "orchestrator._worktrees_exports",
+    "orchestrator.worktrees",
+)
 
 # The channel operators filter a squash on. It is a name rather than a module
 # path, so no module answers at the spelling it reads like.
@@ -184,9 +176,10 @@ class PackageSurfaceTest(unittest.TestCase):
 class OwnerBoundaryTest(unittest.TestCase):
     """No facade of this domain's own, and no sibling, answers for a name.
 
-    The aggregate hubs still answer for the slice below, so a caller reading a
-    name there is patched there; what this class holds to is that nothing in
-    the package's own layer becomes a further site the same name resolves at.
+    The workflow facade still answers for the slice below, so a caller reading
+    a name there is patched there; what this class holds to is that nothing in
+    the package's own layer, and no second aggregate above it, becomes a
+    further site the same name resolves at.
     """
 
     def test_no_flat_module_sits_beside_the_package(self) -> None:
@@ -197,6 +190,16 @@ class OwnerBoundaryTest(unittest.TestCase):
         for pattern in _FLAT_MODULE_PATTERNS:
             with self.subTest(pattern=pattern):
                 self.assertEqual(list(package_root.glob(pattern)), [])
+
+    def test_no_second_aggregate_sits_above(self) -> None:
+        # An aggregate over the git domains would answer for a superset of the
+        # slice below with the owners' own objects, so identity alone would
+        # never show the extra surface a mock has to be aimed at. Resolving the
+        # spec rather than stat-ing one path catches a copy planted anywhere
+        # the interpreter would find it.
+        for module in _ABSENT_MODULES:
+            with self.subTest(module=module):
+                self.assertIsNone(find_spec(module))
 
     def test_no_sibling_answers_for_a_foreign_name(self) -> None:
         # The owners reach each other by module rather than by name, so a
@@ -217,25 +220,25 @@ class OwnerBoundaryTest(unittest.TestCase):
 
 
 class AggregateFacadeTest(unittest.TestCase):
-    """Each hub above answers for its declared slice and nothing more."""
+    """The facade above answers for its declared slice and nothing more."""
 
-    def test_each_hub_answers_for_its_slice_alone(self) -> None:
-        # A hub hands back the owner's own object and caches it, so patching
-        # there and patching the owner are two interceptions rather than one
-        # -- which makes which names a hub carries the boundary a caller has
-        # to be read against.
-        for facade_name, name in _HUB_LOOKUPS:
-            with self.subTest(facade=facade_name, name=name):
-                self._assert_hub_answer(facade_name, name)
+    def test_the_facade_answers_for_its_slice_alone(self) -> None:
+        # The facade hands back the owner's own object and caches it, so
+        # patching there and patching the owner are two interceptions rather
+        # than one -- which makes which names it carries the boundary a caller
+        # has to be read against.
+        for name in _OWNER_OF:
+            with self.subTest(name=name):
+                self._assert_facade_answer(name)
 
-    def _assert_hub_answer(self, facade_name: str, name: str) -> None:
-        facade = import_module(facade_name)
+    def _assert_facade_answer(self, name: str) -> None:
+        facade = import_module(_FACADE)
         owned = getattr(_OWNER_MODULES[_OWNER_OF[name]], name)
-        if name in _HUB_PUBLISHED[facade_name]:
+        if name in _FACADE_PUBLISHED:
             self.assertIs(getattr(facade, name), owned)
         else:
-            # `log` is the case identity has to decide: the hubs publish a
-            # logger of their own under that name, and it is not this one.
+            # `log` is the case identity has to decide: the facade publishes a
+            # logger of its own under that name, and it is not this one.
             self.assertIsNot(getattr(facade, name, None), owned)
 
 

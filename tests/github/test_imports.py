@@ -46,12 +46,11 @@ _OWNER_ONLY_NAMES = (
 )
 
 # The trust owner is what the git base-sync gates and the workflow stage leaves
-# both ask, so it has to stay reachable without any of them: the stage tree,
-# the worktree facade, and the process entrypoint.
+# both ask, so it has to stay reachable without either of them: the stage tree
+# and the process entrypoint.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.main",
     "orchestrator.workflow.stages",
-    "orchestrator.worktrees",
 )
 
 _LAYERING_SCRIPT = """

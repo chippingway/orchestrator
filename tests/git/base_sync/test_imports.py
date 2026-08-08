@@ -96,7 +96,6 @@ _FORBIDDEN_PREFIXES = (
     "orchestrator.cli",
     "orchestrator.main",
     "orchestrator.workflow",
-    "orchestrator.worktree",
 )
 
 _LAYERING_SCRIPT = """

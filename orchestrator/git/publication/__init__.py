@@ -11,13 +11,14 @@ the two halves into the entry point stage handlers call. Callers import the
 owner they need directly, so this initializer binds nothing and importing
 ``probes`` never drags the rewrite path in.
 
-No facade of this domain's own sits beside the package. The aggregate hubs
-publish a slice of these names for the callers that read them off one:
-``worktrees`` nine -- the divergence and subject probes, the
-conventional-commit pattern behind them, the two title helpers, and the
-squash entry point -- and ``workflow`` seven of those through it, all but
-the pattern and the recent-base-subject read. Every other name answers on
-its owner alone. A hub resolves the owner's own object and caches it, so the
+No facade of this domain's own sits beside the package. The ``workflow``
+hub publishes a slice of these names for the callers that read them off
+it: seven -- the divergence probe, the first-commit-subject read, the two
+subject-shape predicates, the two title helpers, and the squash entry
+point -- each inventoried against the owner that defines it. Every other
+name, the conventional-commit pattern and the recent-base-subject read
+among them, answers on
+its owner alone. The hub resolves the owner's own object and caches it, so the
 sites share identity but not a later patch: a test intercepting one of these
 helpers targets the module its caller reads it off -- ``workflow`` for the
 stage helpers, and the owner for base sync's divergence check and

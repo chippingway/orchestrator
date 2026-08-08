@@ -26,10 +26,10 @@ callers import the owner they need directly, so this initializer binds
 nothing and importing ``state`` or ``pre_pr`` never drags the PyGithub types
 ``models``, ``refresh``, and ``startup`` annotate their fields with in.
 
-No facade of this domain's own sits beside the package. The aggregate hubs
-publish a slice of these names for the callers that read them off one:
-``worktrees`` eleven and ``workflow`` seven of those, each resolved off the
-owner that defines it. ``state`` names its logger ``orchestrator.base_sync``
+No facade of this domain's own sits beside the package. The ``workflow`` hub
+publishes a slice of these names for the callers that read them off it: seven,
+each resolved off the owner that defines it. Every other name answers on its
+owner alone. ``state`` names its logger ``orchestrator.base_sync``
 rather than after this package, because that is the name operator log filters
 select on.
 """
