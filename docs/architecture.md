@@ -438,7 +438,8 @@ orchestrator/
                         branch cleanup composed from cleanup.py
   worktree_lifecycle.py lazy forwarding shell over git/worktrees/ owners, plus
                         the authentication, command, and lock owners its three
-                        git-execution names resolve off
+                        git-execution names resolve off; the spelling also
+                        names the logger four of those owners report on
   worktrees.py          lazy compatibility hub whose inventory names the git/
                         owners directly: the worktree, command, lock,
                         base-sync, publication, verification, and
@@ -1334,9 +1335,11 @@ pinned/legacy resolver off `git.worktrees.paths`, the unpushed-commit probe off 
 the new-commit probe off `creation`, the decomposer's path, creation, and removal off `decomposition`, and the two
 teardowns off `terminal`. So `worktree_lifecycle` answers for the callers that import it under that name and for
 no hub above it, and a check in `tests/git/worktrees/test_imports.py` asserts no inventory in the package targets
-it. `git/base_sync/` binds the same way: `models` and `state` carry only data -- the
-frozen auto-rebase models and the pinned-state keys, park reasons, detour labels, and logger every behavioral
-owner binds straight off `state` -- while its twelve behavioral owners bind their collaborators.
+it. What the spelling also names is the logger `cleanup`, `creation`, `decomposition`, and `terminal` all report
+on, spelled out literally in each rather than derived from the module path, so the prefix an operator's level and
+handler selection is keyed on holds still. `git/base_sync/` binds the same way: `models` and `state` carry only
+data -- the frozen auto-rebase models and the pinned-state keys, park reasons, detour labels, and logger every
+behavioral owner binds straight off `state` -- while its twelve behavioral owners bind their collaborators.
 On the refresh side, `refresh` reaches `git.authentication`, `git.commands`, `git.verification.probes`,
 `git.worktrees.paths`, and its `pre_pr` and `pr` siblings directly, `pre_pr` reaches `git.commands`, `pr`
 reaches `eligibility`, `startup`, and `publication` for the order it asks them in, `eligibility`
