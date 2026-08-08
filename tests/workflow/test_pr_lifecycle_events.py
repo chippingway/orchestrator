@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from orchestrator import config, workflow
 
-from tests import workflow_pr_lifecycle_test_support as support
+from tests.workflow import pr_lifecycle_test_support as support
 
 
 class PrLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMixin):
