@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Iterator
 
 
-_REPO_ROOT = Path(__file__).resolve().parents[1]
+# The scan walks every tracked file, so it resolves the repository root off
+# this module's own location: `tests/support/` is two levels beneath it.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 _RUFF_OWNED = frozenset((".py",))
 _BINARY_EXT = frozenset((".png",))
 _IGNORED_NAMES = frozenset(("uv.lock", "LICENSE"))
