@@ -10,6 +10,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.github.labels import WORKFLOW_LABEL_SPECS, WORKFLOW_LABELS
 from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
 from orchestrator.workflow.stages.documenting import handler as _documenting
@@ -106,9 +107,7 @@ class DocumentingLabelRegistrationTest(unittest.TestCase):
         # only the next in_review tick would catch it. Including the
         # label here is what lets the pre-tick refresh auto-rebase a
         # behind-base docs-pass worktree instead of stranding it.
-        from orchestrator.worktrees import _PR_REFRESH_DETOUR_LABELS
-
-        self.assertIn(LABEL_DOCUMENTING, _PR_REFRESH_DETOUR_LABELS)
+        self.assertIn(LABEL_DOCUMENTING, _base_sync_state._PR_REFRESH_DETOUR_LABELS)
 
 
 class DocumentingLabelRoutingTest(unittest.TestCase):
