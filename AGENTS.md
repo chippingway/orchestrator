@@ -57,7 +57,7 @@ The repo targets Python 3.12+ and installs from the lockfile with [`uv`](https:/
 ```sh
 uv sync --locked                              # creates .venv/ and installs runtime + dev deps from uv.lock
 uv run pytest tests                           # run the test suite
-uv run python -m orchestrator.main --once     # one polling tick then exit
+uv run python -m orchestrator --once          # one polling tick then exit
 ```
 
 Tests are the primary correctness gate. Add or update tests for any behavioral change.
