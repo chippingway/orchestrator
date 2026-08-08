@@ -31,9 +31,9 @@ authenticated on the host before the orchestrator starts.
 
 Every stage handler lives on responsibility-named owners under `orchestrator/workflow/stages/`, which own entry
 checks, session execution, drift handling, persistence, and terminal routing (see the module map in
-[`architecture.md#top-level-layout`](architecture.md#top-level-layout)). A cross-stage call still resolves through
-`orchestrator.workflow` when its caller reads the name off the facade, preserving the historical patch surface;
-between owners the caller names the owner it borrows instead — documenting, validating, in_review, fixing, and
+[`architecture.md#top-level-layout`](architecture.md#top-level-layout)). `orchestrator.workflow` still re-exports
+every handler under its original name for callers outside the package, but no cross-stage call resolves through it;
+between owners the caller names the owner it borrows — documenting, validating, in_review, fixing, and
 conflicts all
 reach the implementing dev resume, documenting, validating, and conflicts also its question / dirty-tree parks,
 documenting and validating its session read and fixing its poisoned-session drop, documenting reaches validating's
