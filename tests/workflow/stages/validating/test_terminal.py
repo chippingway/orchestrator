@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
+from orchestrator.git.verification.models import VerifyResult
 
 from tests.fakes import (
     FakeComment,
@@ -209,8 +210,6 @@ class ApprovalThroughDocumentingTest(
         # a failed verify must leave the issue parked on `validating`
         # with no relabel to documenting or in_review.
         gh, issue, pr = self._setup()
-        from orchestrator.worktrees import VerifyResult
-
         with patch.object(config, "VERIFY_COMMANDS", ("pytest -q",)):
             self._run_validating(
                 gh,
