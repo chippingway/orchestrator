@@ -526,8 +526,11 @@ dependency.
 
   Ctrl+C (or `SIGTERM`) stops the wrapper: the orchestrator exits with `128 + signum` and `run.sh` skips the restart
   loop. A second Ctrl+C terminates immediately.
-- `python -m orchestrator.main --once` — single tick then exit. Useful for tests and debugging.
-- `python -m orchestrator.main --log-level DEBUG` — verbose logs.
+- `python -m orchestrator --once` — single tick then exit. Useful for tests and debugging.
+- `python -m orchestrator --log-level DEBUG` — verbose logs.
+
+`python -m orchestrator.main` still starts the same loop and is kept working for shell history and wrapper scripts
+that already name it.
 
 On first start the orchestrator creates the workflow labels and the `backlog` / `paused` / `community_contribution`
 control labels on the repo, then begins polling open issues every `POLL_INTERVAL` seconds.
@@ -596,7 +599,7 @@ Check the journal first for "did it start / did it die", then `logs/orchestrator
 
 ## Applying `.env` changes
 
-`.env` is read once, when `python -m orchestrator.main` starts. The orchestrator process never reloads it, so most edits
+`.env` is read once, when `python -m orchestrator` starts. The orchestrator process never reloads it, so most edits
 take effect on the **next fresh Python start** — there is no signal to make a running process re-read configuration.
 `run.sh` is the usual restart mechanism: each loop iteration launches a new Python process (and `git pull --ff-only`s
 the orchestrator checkout to `ORCHESTRATOR_BASE_BRANCH` along the way).
@@ -667,7 +670,7 @@ When `GITHUB_TOKEN` is supplied via the unit's `EnvironmentFile=`, edit that fil
 token is hard-coded in an inline `Environment=` line, changing the value requires editing the unit *and* a
 `daemon-reload` before the restart.
 
-**Direct `python -m orchestrator.main --once`.**
+**Direct `python -m orchestrator --once`.**
 
 Each `--once` invocation is a fresh Python process and reads the current `.env` on every call.
 
