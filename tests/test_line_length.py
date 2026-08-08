@@ -11,7 +11,7 @@ and the verbatim LICENSE.
 """
 import unittest
 
-from tests.line_length_test_support import (
+from tests.support.line_scanning import (
     _file_violations,
     _flagged_lines,
     _tracked_text_files,
