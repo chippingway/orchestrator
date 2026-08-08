@@ -26,6 +26,7 @@ from __future__ import annotations
 from typing import Optional
 
 from orchestrator.git.base_sync import state as _base_sync_state
+from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.comments import filter_trusted
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import drift as _drift
@@ -57,8 +58,6 @@ def _resume_on_user_content_change(
     shutdown-sweep-interrupted / live-paused short-circuits, which return
     without writing so the drift stays unconsumed and re-runs next process.
     """
-    from orchestrator import workflow as _wf
-
     ctx.state.set("user_content_hash", new_hash)
     _comments._post_pr_comment(
         ctx.gh, int(pr_number), ctx.state,
@@ -70,7 +69,7 @@ def _resume_on_user_content_change(
     # replay them.
     _drift._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
     wt = _conflict_guards._ensure_conflict_worktree(ctx)
-    before_sha = _wf._head_sha(wt)
+    before_sha = _verification_probes._head_sha(wt)
     followup = _drift._build_user_content_change_prompt(
         ctx.issue, _comments._recent_comments_text(ctx.issue),
     )
@@ -101,7 +100,8 @@ def _resume_on_user_content_change(
         # docs pass runs after final reviewer approval.
         _transitions._hand_resolved_round_to_validating(
             ctx, int(ctx.state.get(_state._CONFLICT_ROUND) or 0), pr_number,
-            outcome="drift_resolved", sha=_wf._head_sha(run.worktree),
+            outcome="drift_resolved",
+            sha=_verification_probes._head_sha(run.worktree),
         )
         return
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
@@ -118,13 +118,11 @@ def _resume_awaiting_human(
     state when no reply has arrived yet or a live pause landed mid-run; on
     a real reply the shared funnel owns the push / relabel / state write.
     """
-    from orchestrator import workflow as _wf
-
     followup = _awaiting_human_followup(ctx)
     if followup is None:
         return
     wt = _conflict_guards._ensure_conflict_worktree(ctx)
-    before_sha = _wf._head_sha(wt)
+    before_sha = _verification_probes._head_sha(wt)
     run = _run_conflict_resume(ctx, followup)
     # Live pause applied mid-run: honor the helper's decision and return
     # before `_post_conflict_resolution_result` (which parses the result,

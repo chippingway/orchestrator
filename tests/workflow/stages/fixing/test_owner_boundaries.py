@@ -7,7 +7,8 @@ neither half: the resume and the poisoned-session drop belong to
 `workflow/stages/implementing/`, and the dev-fix disposition, the stranded-fix
 probe, and the transient-park recovery to `workflow/stages/validating/`. The
 debounce reads a comment timestamp off `workflow/stages/in_review/`, which is
-where the surfaces it spans are already reconciled. Each is imported from that
+where the surfaces it spans are already reconciled, and the worktree the resume
+runs in is named, restored, and measured on `git/`. Each is imported from that
 owner rather than read off the `orchestrator.workflow` facade, so a patch that
 has to intercept one lands on the owner. Every case patches BOTH -- the owner
 mock has to answer and the facade guard has to stay untouched -- which is what
@@ -15,12 +16,10 @@ fails if a call site drifts back to `_wf`.
 """
 from __future__ import annotations
 
-import contextlib
 import unittest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
 from orchestrator.workflow.stages.fixing import (
     continue_command as _continue,
     models as _models,
@@ -39,6 +38,7 @@ from orchestrator.workflow.stages.validating import (
 
 from tests.fakes import FakeComment, FakeGitHubClient, FakePR, FakeUser, make_issue
 from tests.workflow_helpers import _FAKE_WT, _TEST_SPEC, _agent
+from tests.workflow_owner_boundaries import OwnerBoundaryMixin
 
 BOUNDARY_ISSUE = 890
 BOUNDARY_PR = 891
@@ -82,49 +82,27 @@ def _feedback(*feedback_items) -> _models._FixingFeedback:
     )
 
 
-class _OwnerBoundaryMixin:
-    """Assert a block reached no borrowed helper through the facade."""
+class _FixingBoundaryMixin(OwnerBoundaryMixin):
+    """Hold the git seams one dev resume reads to fixed answers."""
 
-    @contextlib.contextmanager
-    def _facade_out_of_the_path(self, export_name, returns=None):
-        # The guard returns the shape its caller unpacks, so a regression
-        # fails on the assertion below rather than on an unpack of a bare mock.
-        with contextlib.ExitStack() as stack:
-            guard = stack.enter_context(
-                patch.object(workflow, export_name, return_value=returns),
-            )
-            yield
-        self.assertFalse(
-            guard.called, f"{export_name} was read off the workflow facade",
+    def _worktree_on_the_owners(self):
+        return self.git_seams_on_owners(
+            _worktree_path=MagicMock(return_value=_FAKE_WT),
+            _ensure_worktree=MagicMock(return_value=_FAKE_WT),
+            _resolve_branch_name=MagicMock(return_value=BOUNDARY_BRANCH),
+            _head_sha=MagicMock(return_value=BEFORE_SHA),
         )
 
-    @contextlib.contextmanager
-    def _worktree_on_the_facade(self):
-        """Hold the worktree seams the stage does not own to fixed answers."""
-        with (
-            patch.object(
-                workflow, "_worktree_path", lambda spec, number: _FAKE_WT,
-            ),
-            patch.object(
-                workflow, "_ensure_worktree", lambda spec, number, **_: _FAKE_WT,
-            ),
-            patch.object(
-                workflow, "_resolve_branch_name", lambda *args: BOUNDARY_BRANCH,
-            ),
-            patch.object(workflow, "_head_sha", return_value=BEFORE_SHA),
-        ):
-            yield
 
-
-class ImplementingOwnerBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
+class ImplementingOwnerBoundaryTest(unittest.TestCase, _FixingBoundaryMixin):
     """The dev resume and the poisoned-session drop land on implementing."""
 
     def test_fix_resume_lands_on_owner(self) -> None:
         ctx = _context()
         resume_result = (_FAKE_WT, _agent(), False)
         with (
-            self._facade_out_of_the_path(RESUME_WITH_TEXT, returns=resume_result),
-            self._worktree_on_the_facade(),
+            self.facade_out_of_the_path(RESUME_WITH_TEXT, returns=resume_result),
+            self._worktree_on_the_owners(),
             patch.object(
                 _dev_resume, RESUME_WITH_TEXT, return_value=resume_result,
             ) as resume,
@@ -145,7 +123,7 @@ class ImplementingOwnerBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
             pending_fix_issue_ids=[BATCH_COMMENT_ID],
         )
         with (
-            self._facade_out_of_the_path(DROP_POISONED_SESSION),
+            self.facade_out_of_the_path(DROP_POISONED_SESSION),
             patch.object(_dev_session, DROP_POISONED_SESSION) as drop,
         ):
             action, batch = _continue._handle_continue_command(ctx, _feedback())
@@ -156,15 +134,15 @@ class ImplementingOwnerBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
         )
 
 
-class ValidatingDispositionBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
+class ValidatingDispositionBoundaryTest(unittest.TestCase, _FixingBoundaryMixin):
     """The dev-fix disposition and its stranded probe land on the validating owner."""
 
     def test_dev_fix_result_lands_on_owner(self) -> None:
         ctx = _context()
         resume_result = (_FAKE_WT, _agent(last_message="pushed"), False)
         with (
-            self._facade_out_of_the_path(HANDLE_DEV_FIX, returns=False),
-            self._worktree_on_the_facade(),
+            self.facade_out_of_the_path(HANDLE_DEV_FIX, returns=False),
+            self._worktree_on_the_owners(),
             patch.object(_dev_resume, RESUME_WITH_TEXT, return_value=resume_result),
             patch.object(_dev_fix, HANDLE_DEV_FIX, return_value=False) as dispose,
         ):
@@ -176,7 +154,7 @@ class ValidatingDispositionBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
         # observable in the return value rather than only in the call record.
         ctx = _context()
         with (
-            self._facade_out_of_the_path(STRANDED_UNPUSHED, returns=True),
+            self.facade_out_of_the_path(STRANDED_UNPUSHED, returns=True),
             patch.object(_dev_fix, STRANDED_UNPUSHED, return_value=True) as probe,
         ):
             acked = _resume._fixing_ack_fast_path(
@@ -187,13 +165,13 @@ class ValidatingDispositionBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
         self.assertFalse(acked)
 
 
-class ValidatingRecoveryBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
+class ValidatingRecoveryBoundaryTest(unittest.TestCase, _FixingBoundaryMixin):
     """The transient-park recovery lands on the validating recovery owner."""
 
     def test_transient_recovery_lands_on_owner(self) -> None:
         ctx = _context(park_reason=TIMEOUT_PARK, awaiting_human=True)
         with (
-            self._facade_out_of_the_path(RECOVER_TRANSIENT, returns="cleared"),
+            self.facade_out_of_the_path(RECOVER_TRANSIENT, returns="cleared"),
             patch.object(
                 _validating_recovery, RECOVER_TRANSIENT, return_value="cleared",
             ) as recover,
@@ -207,14 +185,14 @@ class ValidatingRecoveryBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
         self.assertIn((BOUNDARY_ISSUE, "validating"), ctx.gh.label_history)
 
 
-class InReviewTimestampBoundaryTest(unittest.TestCase, _OwnerBoundaryMixin):
+class InReviewTimestampBoundaryTest(unittest.TestCase, _FixingBoundaryMixin):
     """The debounce reads its comment timestamp off the in_review owner."""
 
     def test_debounce_timestamp_lands_on_owner(self) -> None:
         just_now = datetime.now(timezone.utc) - timedelta(seconds=1)
         comment = FakeComment(id=BATCH_COMMENT_ID, body="wait", user=FakeUser(AUTHOR))
         with (
-            self._facade_out_of_the_path(COMMENT_CREATED_AT, returns=just_now),
+            self.facade_out_of_the_path(COMMENT_CREATED_AT, returns=just_now),
             patch.object(
                 _watermarks, COMMENT_CREATED_AT, return_value=just_now,
             ) as created_at,

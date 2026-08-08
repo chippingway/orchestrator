@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
 from orchestrator.workflow.stages.fixing import continue_command as _continue_command
@@ -138,8 +139,6 @@ def _dispatch_parked_fixing(
     the preserved feedback batch when an accepted `/orchestrator continue`
     replays it, otherwise ``None``.
     """
-    from orchestrator import workflow as _wf
-
     park_reason = ctx.state.get(_state._PARK_REASON)
     # The refresh-time `_AUTO_REBASE_PARK_REASONS` parks belong to the
     # `_sync_pr_worktree_to_base` retry loop -- the operator's new comment is
@@ -147,7 +146,7 @@ def _dispatch_parked_fixing(
     # fix-loop. Stay silent so the refresh keeps ownership of the comment;
     # resuming the dev here would spawn it on a prompt that has nothing to do
     # with the outstanding fix.
-    if park_reason in _wf._AUTO_REBASE_PARK_REASONS:
+    if park_reason in _base_sync_state._AUTO_REBASE_PARK_REASONS:
         return _models._ParkedFixingDecision(stop=True)
 
     # `/orchestrator continue` operator command (exact line, so a comment

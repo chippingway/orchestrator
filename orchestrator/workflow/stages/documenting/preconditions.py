@@ -22,6 +22,7 @@ from __future__ import annotations
 from github.Issue import Issue
 
 from orchestrator import config
+from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
@@ -75,15 +76,13 @@ def _documenting_parked_no_input(
     Returns True when the issue is parked with nothing to act on (the
     caller must return), False to proceed with the normal docs flow.
     """
-    from orchestrator import workflow as _wf
-
     if not state.get(_state._AWAITING_HUMAN):
         return False
     # The refresh-time `_AUTO_REBASE_PARK_REASONS` parks belong to the
     # `_sync_pr_worktree_to_base` retry loop -- the operator's new comment
     # is the "retry the rebase" signal, NOT a documenting-stage trigger.
     # Stay silent so the refresh keeps ownership of the comment.
-    if state.get(_state._PARK_REASON) in _wf._AUTO_REBASE_PARK_REASONS:
+    if state.get(_state._PARK_REASON) in _base_sync_state._AUTO_REBASE_PARK_REASONS:
         return True
     last_action_id = state.get(_state._LAST_ACTION_COMMENT_ID)
     # Only a trusted reply wakes a parked docs pass: with `ALLOWED_ISSUE_AUTHORS`
@@ -114,12 +113,10 @@ def _refuse_parked_continue_command(
     refresh loop owns the nudge), no new comment, no bare continue, a retryable
     park, or a command posted alongside genuine guidance.
     """
-    from orchestrator import workflow as _wf
-
     if not state.get(_state._AWAITING_HUMAN):
         return False
     park_reason = state.get(_state._PARK_REASON)
-    if park_reason in _wf._AUTO_REBASE_PARK_REASONS:
+    if park_reason in _base_sync_state._AUTO_REBASE_PARK_REASONS:
         return False
     new_comments = filter_trusted(
         gh.comments_after(issue, state.get(_state._LAST_ACTION_COMMENT_ID))

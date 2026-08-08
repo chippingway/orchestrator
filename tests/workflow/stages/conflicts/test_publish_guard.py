@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
+from orchestrator.git import authentication as _authentication
+from orchestrator.git import commands as _git_commands
 from orchestrator.workflow.stages.conflicts import guards as _guards
 
 from tests.fakes import (
@@ -62,9 +63,9 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
     def test_already_rebased_reads_rev_list_count(self) -> None:
         fetch_ok = MagicMock(return_value=MagicMock(returncode=0))
         with (
-            patch.object(workflow, "_authed_fetch", fetch_ok),
+            patch.object(_authentication, "_authed_fetch", fetch_ok),
             patch.object(
-                workflow,
+                _git_commands,
                 "_git_hardened",
                 MagicMock(return_value=MagicMock(returncode=0, stdout="0\n")),
             ),
@@ -73,9 +74,9 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
                 _guards._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
             )
         with (
-            patch.object(workflow, "_authed_fetch", fetch_ok),
+            patch.object(_authentication, "_authed_fetch", fetch_ok),
             patch.object(
-                workflow,
+                _git_commands,
                 "_git_hardened",
                 MagicMock(return_value=MagicMock(returncode=0, stdout="3\n")),
             ),
@@ -97,8 +98,8 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
         rev_list_zero = MagicMock(
             return_value=MagicMock(returncode=0, stdout="0\n"),
         )
-        with patch.object(workflow, "_authed_fetch", fetch_fail), \
-             patch.object(workflow, "_git_hardened", rev_list_zero):
+        with patch.object(_authentication, "_authed_fetch", fetch_fail), \
+             patch.object(_git_commands, "_git_hardened", rev_list_zero):
             self.assertFalse(
                 _guards._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
             )

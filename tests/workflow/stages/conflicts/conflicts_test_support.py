@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from orchestrator import workflow
 
@@ -15,6 +15,7 @@ from tests.fakes import (
     FakePRRef,
     make_issue,
 )
+from tests.workflow_git_owners import seam_patch
 from tests.workflow_other_labels import LABEL_RESOLVING_CONFLICT
 from tests.workflow_patch_models import _agent
 from tests.workflow_patch_runner import _PatchedWorkflowMixin
@@ -112,18 +113,10 @@ def _run_conflict_merge(owner, github, issue, context):
         last_message="resolved",
     )
     mocks = _build_conflict_mocks(context)
-    with patch.object(
-        workflow,
-        "_rebase_base_into_worktree",
-        mocks.merge,
-    ), patch.object(
-        workflow,
-        "_git",
-        mocks.git,
-    ), patch.object(
-        workflow,
-        "_git_hardened",
-        mocks.git_hardened,
+    with (
+        seam_patch("_rebase_base_into_worktree", mocks.merge),
+        seam_patch("_git", mocks.git),
+        seam_patch("_git_hardened", mocks.git_hardened),
     ):
         workflow_mocks = owner._run_resolving_conflict(
             github,

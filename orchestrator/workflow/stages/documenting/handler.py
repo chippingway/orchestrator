@@ -19,6 +19,8 @@ from __future__ import annotations
 from github.Issue import Issue
 
 from orchestrator import config
+from orchestrator.git.worktrees import creation as _worktree_creation
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.engine import guards as _guards, usage as _usage
 from orchestrator.workflow.stages.documenting import (
@@ -38,9 +40,9 @@ def _drive_documenting_pass(ctx: _models._DocumentingContext):
     a fetch / diverged-branch park, an awaiting-human resume with no new
     comment, a shutdown-sweep interruption, or an operator pause.
     """
-    from orchestrator import workflow as _wf
-
-    wt = _wf._ensure_pr_worktree(ctx.spec, ctx.issue.number, branch=ctx.branch)
+    wt = _worktree_creation._ensure_pr_worktree(
+        ctx.spec, ctx.issue.number, branch=ctx.branch,
+    )
 
     ahead = _run._prepare_documenting_worktree(ctx, wt)
     if ahead is None:
@@ -74,8 +76,6 @@ def _drive_documenting_pass(ctx: _models._DocumentingContext):
 
 
 def _handle_documenting(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
-    from orchestrator import workflow as _wf
-
     state = gh.read_pinned_state(issue)
     pr_number = state.get("pr_number")
 
@@ -86,7 +86,8 @@ def _handle_documenting(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -
 
     ctx = _models._DocumentingContext(
         gh, spec, issue, state,
-        _wf._resolve_branch_name(state, spec, issue.number), pr_number,
+        _worktree_paths._resolve_branch_name(state, spec, issue.number),
+        pr_number,
     )
 
     if _drift._reconcile_documenting_drift(ctx):

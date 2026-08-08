@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
+from orchestrator.git import commands as _git_commands
+from orchestrator.git.worktrees import paths as _worktree_paths
 
 from tests.workflow_helpers import _agent
 
@@ -47,8 +48,8 @@ def _run_with_git(
     with tempfile.TemporaryDirectory() as worktree_dir:
         worktree = Path(worktree_dir)
         with (
-            patch.object(workflow, WORKTREE_PATH, return_value=worktree),
-            patch.object(workflow, GIT_HARDENED, git_hardened),
+            patch.object(_worktree_paths, WORKTREE_PATH, return_value=worktree),
+            patch.object(_git_commands, GIT_HARDENED, git_hardened),
         ):
             mocks = case._run_documenting(
                 github,

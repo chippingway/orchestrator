@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Optional
 
 from orchestrator import config
+from orchestrator.git.publication import probes as _publication_probes
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.stages.conflicts import divergence as _divergence
 from orchestrator.workflow.stages.conflicts import guards as _guards
 from orchestrator.workflow.stages.conflicts import models as _models
@@ -78,10 +80,10 @@ def _prepare_conflict_worktree(
     (a fetch failure / diverged-branch / dirty park, or a crash-recovery push
     that flipped straight to `validating`) and the caller must return.
     """
-    from orchestrator import workflow as _wf
-
     wt = _guards._ensure_conflict_worktree(ctx)
-    branch = _wf._resolve_branch_name(ctx.state, ctx.spec, ctx.issue.number)
+    branch = _worktree_paths._resolve_branch_name(
+        ctx.state, ctx.spec, ctx.issue.number,
+    )
 
     # Refresh `<remote>/<branch>` (the PR branch's remote tip) via the same
     # hardened authenticated path `_push_branch` uses. A stale local ref would
@@ -96,7 +98,8 @@ def _prepare_conflict_worktree(
     # anything `behind > 0` is a stale or diverged worktree we refuse to
     # force-push over.
     sync = _models._WorktreeSync(
-        wt, branch, *_wf._branch_ahead_behind(ctx.spec, wt, branch),
+        wt, branch,
+        *_publication_probes._branch_ahead_behind(ctx.spec, wt, branch),
     )
     guard = _divergence._guard_diverged_worktree(ctx, pr, sync)
     if guard.parked:

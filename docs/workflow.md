@@ -39,7 +39,9 @@ reach the implementing dev resume, documenting, validating, and conflicts also i
 documenting and validating its session read and fixing its poisoned-session drop, documenting reaches validating's
 watermark walk, in_review and conflicts its body-edit disposition, and
 fixing its dev-fix disposition, stranded-fix probe, and transient-park recovery plus in_review's comment timestamp;
-conflicts also names base-sync's auto-rebase park reasons on `git/base_sync/state.py` —
+decomposition reaches the implementing handler for a `single` verdict and its retry budget for a fresh decomposer
+spawn; and conflicts, documenting, and fixing all name base-sync's auto-rebase park reasons on
+`git/base_sync/state.py` —
 so a patch meant to intercept one of those has to land on the owner. All eight stages live under
 `orchestrator/workflow/stages/`: the `decomposing` / `ready` / `blocked` / `umbrella` handlers on owners in
 `orchestrator/workflow/stages/decomposition/`, `_handle_implementing` on owners in

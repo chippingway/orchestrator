@@ -17,6 +17,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from orchestrator import config
+from orchestrator.git import authentication as _authentication
+from orchestrator.git import commands as _git_commands
+from orchestrator.git.worktrees import creation as _worktree_creation
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.conflicts import models as _models
 
@@ -29,13 +33,13 @@ def _ensure_conflict_worktree(ctx: _models._ConflictContext) -> Path:
     the PR branch so the PR's commits survive; `_ensure_worktree` would
     silently rebuild from `origin/<base>` and discard them.
     """
-    from orchestrator import workflow as _wf
-
-    wt = _wf._worktree_path(ctx.spec, ctx.issue.number)
+    wt = _worktree_paths._worktree_path(ctx.spec, ctx.issue.number)
     if not wt.exists():
-        wt = _wf._ensure_pr_worktree(
+        wt = _worktree_creation._ensure_pr_worktree(
             ctx.spec, ctx.issue.number,
-            branch=_wf._resolve_branch_name(ctx.state, ctx.spec, ctx.issue.number),
+            branch=_worktree_paths._resolve_branch_name(
+                ctx.state, ctx.spec, ctx.issue.number,
+            ),
         )
     return wt
 
@@ -73,9 +77,7 @@ def _already_rebased_onto_base(spec: config.RepoSpec, wt: Path) -> bool:
     would incorrectly enable the force-publish path without proving HEAD
     is on the current base.
     """
-    from orchestrator import workflow as _wf
-
-    fetch = _wf._authed_fetch(
+    fetch = _authentication._authed_fetch(
         spec,
         f"+refs/heads/{spec.base_branch}:"
         f"refs/remotes/{spec.remote_name}/{spec.base_branch}",
@@ -83,7 +85,7 @@ def _already_rebased_onto_base(spec: config.RepoSpec, wt: Path) -> bool:
     )
     if fetch.returncode != 0:
         return False
-    base_distance_result = _wf._git_hardened(
+    base_distance_result = _git_commands._git_hardened(
         "rev-list", "--count",
         f"HEAD..{spec.remote_name}/{spec.base_branch}", cwd=wt,
     )
