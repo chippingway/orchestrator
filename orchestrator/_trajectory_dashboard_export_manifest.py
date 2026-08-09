@@ -11,8 +11,10 @@ def _identity_exports(*names: str) -> tuple[tuple[str, str], ...]:
 
 
 EXPORTS = (
-    *export_group("orchestrator.dashboard_state", (("dashboard_state", None),)),
-    *export_group("orchestrator.dashboard_theme", (("theme", None),)),
+    *export_group(
+        "orchestrator.observability.dashboard.theme",
+        (("theme", None),),
+    ),
     *export_group("orchestrator.trajectory_reader", (("trajectory_reader", None),)),
     *export_group(
         "orchestrator.trajectory_reader",

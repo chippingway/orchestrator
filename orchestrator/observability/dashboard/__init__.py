@@ -5,6 +5,11 @@
 Destination for the Streamlit page rendered over the operator's Postgres
 target: the filter state a run of it carries, the read plans it issues, the
 KPI, chart, table, and drilldown components, and the theme tokens they share.
+``palette``, ``tokens``, ``layout``, ``css``, and ``formatting`` are those
+tokens, split by what a value is, and ``theme`` is the one object they are
+handed down as: the panels below take a theme as a parameter rather than
+importing one, so a page composes that object once and every card is tinted,
+set, and shortened from the same reading.
 The state a run carries is the first to arrive -- ``windows`` for the date
 span and the presets that name one, ``filters`` for the offset, issue, stage,
 and cache key it is narrowed and displayed by, and ``read_mode`` for the knob
@@ -168,7 +173,7 @@ on. It also holds the single call the whole second wave is drawn by, so the
 order across both halves stays readable from one place.
 ``page_models`` is what a render carries between all of those: the seven frozen
 shapes threaded from the controls at the top of the page to the last panel on
-it -- the caller's own Streamlit, pandas, chart, and theme handles, the
+it -- the caller's own Streamlit, pandas, and theme handles, the
 selections every read is narrowed by together with the issue scope and window
 span read off them, the controls and page they open on, what one load answers
 with, and the rows, totals, and counts the paired repository-spend and

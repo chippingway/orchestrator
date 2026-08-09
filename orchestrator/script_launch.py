@@ -2,16 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """Repo-root `sys.path` shim for Streamlit script-launched entry points.
 
-`streamlit run orchestrator/dashboard.py` (and the trajectory viewer)
-executes the file as a top-level script via `runpy` with no parent
-package: the Streamlit launcher prepends the *script's own directory*
-(`orchestrator/`) to `sys.path`, NOT the repo root. Under that layout a
+`streamlit run orchestrator/trajectory_dashboard.py` executes the file as a
+top-level script via `runpy` with no parent package: the Streamlit launcher
+prepends the *script's own directory* (`orchestrator/`) to `sys.path`, NOT the
+repo root. Under that layout a
 `from . import ...` raises `ImportError: attempted relative import with no
 known parent package` and a bare `from orchestrator import ...` fails too,
 before any Streamlit code can render. Adding the repo root (the parent of
 `orchestrator/`) to `sys.path` makes the absolute `orchestrator.*` imports
 resolve in both the script-launched and the package-imported
-(`import orchestrator.dashboard`) contexts.
+(`import orchestrator.trajectory_dashboard`) contexts.
 
 The entry points select the import by launch mode, keyed on `__package__`.
 A script launch (empty/absent `__package__`) uses the bare

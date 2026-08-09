@@ -16,10 +16,9 @@ so the chrome is drawn, the empty-window notice takes over, and reporting
 nothing back is what ends the load before the second wave is paid for -- which
 makes the return value a short circuit rather than only a result.
 
-Every sibling a pass here calls is named directly. The renders are reached by
-their owners rather than resolved off the flat facade at call time, so a test
-intercepting one patches the module that holds it and a page and a fix land on
-the same object.
+Every sibling a pass here calls is named directly, so a test intercepting a
+render patches the module that holds it and a page and a fix land on the same
+object.
 
 Streamlit and the theme are the caller's, carried in the modules shape, so this
 owner imports neither and what it assembles stays testable without them.

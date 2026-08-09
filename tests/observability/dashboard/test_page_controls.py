@@ -88,7 +88,7 @@ _ZONED_READ = "heatmap_rows"
 def _modules(page: fakes.FakeStreamlit) -> page_models.DashboardModules:
     """The caller's handles, of which only Streamlit's is reached up here."""
     return page_models.DashboardModules(
-        st=page, pd=None, charts=None, theme=None,
+        st=page, pd=None, theme=None,
     )
 
 

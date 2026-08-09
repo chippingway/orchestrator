@@ -168,27 +168,6 @@ _SURFACES = MappingProxyType({
     ),
 })
 
-# The historical import sites the chart leaves still reach these owners
-# through. No owner here may plant one -- that is what keeps the forwarding
-# one-directional and the flat modules retirable rather than load-bearing.
-_COMPATIBILITY_SITES = (
-    "orchestrator.dashboard_charts_base",
-    "orchestrator.dashboard_charts_cost",
-    "orchestrator.dashboard_charts_heatmap",
-    "orchestrator.dashboard_charts_throughput",
-    "orchestrator.dashboard_charts_usage",
-    "orchestrator._dashboard_cost_layout",
-    "orchestrator._dashboard_cost_horizontal",
-    "orchestrator._dashboard_cost_repo",
-    "orchestrator._dashboard_cost_review",
-    "orchestrator._dashboard_cost_stage",
-    "orchestrator._dashboard_usage_axis",
-    "orchestrator._dashboard_usage_chart",
-    "orchestrator._dashboard_usage_data",
-    "orchestrator._dashboard_usage_models",
-    "orchestrator._dashboard_usage_traces",
-)
-
 # What an owner here may reach: the theme owners a figure is drawn with, which
 # is one package up, the read models whose rows it is drawn from, which are
 # under the analytics query owners, and the root package every import plants on
@@ -275,17 +254,6 @@ class LayeringTest(unittest.TestCase):
                         or imported == "orchestrator",
                         f"{owner} reaches {imported}",
                     )
-
-    def test_no_owner_plants_a_historical_site(self) -> None:
-        # The sharpest case the check above rejects, named on its own: the
-        # flat modules the chart leaves import forward *to* these owners, so
-        # an import back would close the loop and leave a direct import of any
-        # chart module resolving off a half-initialized one.
-        for owner in _OWNERS:
-            planted = _imported_orchestrator_modules(_qualified(owner))
-            for site in _COMPATIBILITY_SITES:
-                with self.subTest(owner=owner, site=site):
-                    self.assertNotIn(site, planted)
 
     def test_no_import_here_loads_plotly(self) -> None:
         for module in (_DASHBOARD, _PACKAGE, *map(_qualified, _OWNERS)):

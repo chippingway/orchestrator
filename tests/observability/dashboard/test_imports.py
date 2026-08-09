@@ -128,6 +128,8 @@ _SUMMARY_HTML_OWNER = "summary_html"
 
 _TABLES_OWNER = "tables"
 
+_THEME_OWNER = "theme"
+
 _TOKENS_OWNER = "tokens"
 
 _USAGE_PANEL_OWNER = "usage_panel"
@@ -194,6 +196,7 @@ _OWNERS = (
     _STATIC_METADATA_OWNER,
     _SUMMARY_HTML_OWNER,
     _TABLES_OWNER,
+    _THEME_OWNER,
     _TOKENS_OWNER,
     _USAGE_PANEL_OWNER,
     _WINDOWS_OWNER,
@@ -250,12 +253,15 @@ _OWNERS = (
 # narrowed to from
 # the controls at the top of the page down to those panels is a
 # deliberate edit rather than a place two panels -- or the reads' `ts < end`
-# bound and the cache's tri-state -- could disagree. Three owners report
-# nothing
-# because the check reads `__module__`, which only a class or a function
+# bound and the cache's tri-state -- could disagree. Four owners report
+# nothing. Three of them because the check reads `__module__`, which only a
+# class or a function
 # carries: the geometry owner's whole surface is its measurements and the two
 # font stacks, the stylesheet owner's is one string, and the render-config
-# owner's is the single mapping every figure is drawn under. The palette's
+# owner's is the single mapping every figure is drawn under. The fourth
+# declares nothing of its own at all -- the theme a page hands every panel it
+# draws is the five style owners read back under one name, so each value on it
+# is the object one of them already holds. The palette's
 # chrome
 # colors and seven dimension maps, the preset vocabulary the window owner
 # decides together with the three of those the control owner beside it offers
@@ -567,6 +573,7 @@ _SURFACES = MappingProxyType({
         "table_head_html",
         "table_html",
     ),
+    _THEME_OWNER: (),
     _TOKENS_OWNER: (),
     _USAGE_PANEL_OWNER: (
         "backend_tokens_by_day",
@@ -589,78 +596,6 @@ _SURFACES = MappingProxyType({
 # any: the Plotly defaults every figure is merged with, and the stylesheet the
 # chrome around those figures is drawn by.
 _RENDERED_SURFACES = (_CSS_OWNER, _LAYOUT_OWNER)
-
-# The historical import sites the pages still reach these owners through: the
-# flat theme module, the state, read, KPI, KPI-strip, card, HTML,
-# skill-adoption, and skill-matrix hubs, the thirty-one leaves beneath
-# all but the KPI one, the widget hub with the seven leaves the skill panels,
-# the two
-# cost-comparison panels with the repository-and-reliability pair and the
-# activity grid beneath them,
-# the run listing with the trace beneath it, the hero usage card, the two
-# states a page leaves through with the line it ends on, the page
-# state, and the two-wave render pipeline above all of them are reached
-# through, and the
-# two the filter bar, the one the sidebar and the load it opens, and the one
-# the drill-down's historical call shape are
-# reached through, which sit under no hub at all.
-# No owner here may plant one
-# -- that is what keeps the forwarding one-directional and the flat modules
-# retirable rather than load-bearing.
-_COMPATIBILITY_SITES = (
-    "orchestrator._dashboard_adoption_columns",
-    "orchestrator._dashboard_adoption_headers",
-    "orchestrator._dashboard_adoption_render",
-    "orchestrator._dashboard_adoption_rows",
-    "orchestrator._dashboard_adoption_sort",
-    "orchestrator._dashboard_backend_card",
-    "orchestrator._dashboard_card_headers",
-    "orchestrator._dashboard_coverage_card",
-    "orchestrator._dashboard_date_range",
-    "orchestrator._dashboard_date_widgets",
-    "orchestrator._dashboard_drilldown",
-    "orchestrator._dashboard_filter_state",
-    "orchestrator._dashboard_issue_table",
-    "orchestrator._dashboard_kpi_series",
-    "orchestrator._dashboard_kpi_values",
-    "orchestrator._dashboard_matrix_columns",
-    "orchestrator._dashboard_matrix_headers",
-    "orchestrator._dashboard_matrix_render",
-    "orchestrator._dashboard_matrix_rows",
-    "orchestrator._dashboard_matrix_sort",
-    "orchestrator._dashboard_page_controls",
-    "orchestrator._dashboard_read_breakdowns",
-    "orchestrator._dashboard_read_core",
-    "orchestrator._dashboard_read_dispatch",
-    "orchestrator._dashboard_read_mode",
-    "orchestrator._dashboard_read_plan",
-    "orchestrator._dashboard_read_rollups",
-    "orchestrator._dashboard_read_skills",
-    "orchestrator._dashboard_skill_trigger_table",
-    "orchestrator._dashboard_sparkline_data",
-    "orchestrator._dashboard_sparkline_html",
-    "orchestrator._dashboard_state_constants",
-    "orchestrator._dashboard_summary_html",
-    "orchestrator._dashboard_table_html",
-    "orchestrator._dashboard_widget_costs",
-    "orchestrator._dashboard_widget_models",
-    "orchestrator._dashboard_widget_pipeline",
-    "orchestrator._dashboard_widget_runs",
-    "orchestrator._dashboard_widget_skills",
-    "orchestrator._dashboard_widget_states",
-    "orchestrator._dashboard_widget_usage",
-    "orchestrator._dashboard_windows",
-    "orchestrator.dashboard_cards",
-    "orchestrator.dashboard_html",
-    "orchestrator.dashboard_kpi_strip",
-    "orchestrator.dashboard_kpis",
-    "orchestrator.dashboard_reads",
-    "orchestrator.dashboard_skill_adoption",
-    "orchestrator.dashboard_skill_matrix",
-    "orchestrator.dashboard_state",
-    "orchestrator.dashboard_theme",
-    "orchestrator.dashboard_widgets",
-)
 
 # What an owner here may reach: its siblings, plus the analytics owners named
 # by the ones that touch a database. Each of those is one answer already
@@ -802,17 +737,6 @@ class LayeringTest(unittest.TestCase):
                         or imported == "orchestrator",
                         f"{owner} reaches {imported}",
                     )
-
-    def test_no_owner_plants_a_historical_site(self) -> None:
-        # The sharpest case the check above rejects, named on its own: the
-        # flat modules a page still imports forward *to* these owners, so an
-        # import back would close the loop and put the compatibility layer
-        # inside what rendering a chart or resolving a window costs.
-        for owner in _OWNERS:
-            planted = _imported_orchestrator_modules(_qualified(owner))
-            for site in _COMPATIBILITY_SITES:
-                with self.subTest(owner=owner, site=site):
-                    self.assertNotIn(site, planted)
 
     def test_no_owner_plants_the_driver(self) -> None:
         for owner in _OWNERS:

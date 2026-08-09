@@ -10,11 +10,11 @@ from -- draw the controls, stage the load those choices narrow, and hand the
 panels beneath what came back.
 
 Everything the run is composed of is imported inside the pass that reaches it
-rather than at module scope. Streamlit, pandas, and the chart builders that
-reach Plotly are there because they live in the optional `dashboard` group, so
-importing this module has to work in an install carrying none of it; the domain
-owners are there because the repo root reaches `sys.path` in the line above,
-and under a script launch no `orchestrator.*` name resolves before that.
+rather than at module scope. Streamlit and pandas are there because they live
+in the optional `dashboard` group, so importing this module has to work in an
+install carrying none of it; the domain owners are there because the repo root
+reaches `sys.path` in the line above, and under a script launch no
+`orchestrator.*` name resolves before that.
 Deferring the composition is what keeps the two launch orderings the same one,
 and it is why importing this module costs the shim and nothing else. The one
 owner named at module scope is the shape those passes are annotated in, bound
@@ -48,20 +48,15 @@ def main() -> None:
 
 
 def load_dashboard_modules(st: Any) -> DashboardModules:
-    """Bind the four handles every pass below is handed together."""
+    """Bind the three handles every pass below is handed together."""
     import pandas as pd
 
-    from orchestrator import dashboard_charts, dashboard_theme
+    from orchestrator.observability.dashboard import theme
     from orchestrator.observability.dashboard.page_models import (
         DashboardModules,
     )
 
-    return DashboardModules(
-        st=st,
-        pd=pd,
-        charts=dashboard_charts,
-        theme=dashboard_theme,
-    )
+    return DashboardModules(st=st, pd=pd, theme=theme)
 
 
 def configure_dashboard(modules: DashboardModules) -> None:

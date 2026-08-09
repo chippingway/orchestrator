@@ -27,24 +27,10 @@ _APPS = (_ANALYTICS_APP, _TRAJECTORY_APP)
 # directory against.
 _MODULES = (_BOOTSTRAP, *_APPS)
 
-# Each app paired with the launch path an operator's shell history already
+# The app paired with the launch path an operator's shell history already
 # carries, kept beside it because both have to answer for the same page.
 _LAUNCH_PAIRS = (
-    (_ANALYTICS_APP, f"{_ORCHESTRATOR}.dashboard"),
     (_TRAJECTORY_APP, f"{_ORCHESTRATOR}.trajectory_dashboard"),
-)
-
-# The historical import site the analytics facade resolves the page's own
-# composition through, and every spelling it answers for.
-_RUNTIME_LEAF = f"{_ORCHESTRATOR}._dashboard_runtime"
-
-_RUNTIME_NAMES = (
-    ("main", "main"),
-    ("_configure_dashboard", "configure_dashboard"),
-    ("_load_dashboard_modules", "load_dashboard_modules"),
-    ("_render_dashboard", "render_dashboard"),
-    ("_run_dashboard", "run_dashboard"),
-    ("_stop_if_dashboard_unconfigured", "stop_if_dashboard_unconfigured"),
 )
 
 # What `import orchestrator` alone plants, so the cost check can hold each app
@@ -130,7 +116,7 @@ class AppImportCostTest(unittest.TestCase):
 
 
 class LegacyForwardingTest(unittest.TestCase):
-    """The historical launch paths hand back the apps' own compositions."""
+    """The historical launch path hands back the app's own composition."""
 
     def test_each_facade_main_is_its_app_s_own(self) -> None:
         for app, legacy in _LAUNCH_PAIRS:
@@ -138,16 +124,6 @@ class LegacyForwardingTest(unittest.TestCase):
                 self.assertIs(
                     import_module(legacy).main, import_module(app).main,
                 )
-
-    def test_the_leaf_republishes_the_app_s_passes(self) -> None:
-        # The analytics facade resolves the page's composition through this
-        # leaf, so a copy on it is where the page an operator launches and the
-        # page a historical caller drives would start to differ.
-        leaf = import_module(_RUNTIME_LEAF)
-        app = import_module(_ANALYTICS_APP)
-        for historical, owned in _RUNTIME_NAMES:
-            with self.subTest(name=historical):
-                self.assertIs(getattr(leaf, historical), getattr(app, owned))
 
 
 if __name__ == "__main__":

@@ -96,7 +96,7 @@ def markup_in(region: RecordingRegion) -> str:
 def modules(st: Any, *, frames: Any = None) -> page_models.DashboardModules:
     """The caller's handles, with the marking theme among them."""
     return page_models.DashboardModules(
-        st=st, pd=frames, charts=None, theme=THEME,
+        st=st, pd=frames, theme=THEME,
     )
 
 

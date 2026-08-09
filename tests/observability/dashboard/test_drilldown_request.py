@@ -108,12 +108,12 @@ class RequestRebuildTest(unittest.TestCase):
     """A historical call is rebuilt into the state the section renders."""
 
     def test_the_handles_travel_as_the_modules_shape(self) -> None:
-        # A drill-down draws no figure and paints no card, so the two handles
-        # it has no use for are left unanswered rather than invented.
+        # A drill-down draws no figure and paints no card, so the one handle
+        # it has no use for is left unanswered rather than invented.
         modules, _ = _rendered()
         self.assertEqual(
-            (modules.st, modules.pd, modules.charts, modules.theme),
-            (_ST, _PD, None, None),
+            (modules.st, modules.pd, modules.theme),
+            (_ST, _PD, None),
         )
 
     def test_the_selections_travel_as_filters(self) -> None:
