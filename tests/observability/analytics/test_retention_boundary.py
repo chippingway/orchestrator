@@ -14,10 +14,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 
-from tests.analytics_jsonl_helpers import (
+from tests.observability.analytics.analytics_jsonl_helpers import (
     read_text as _read_text,
     read_lines as _read_lines,
     write_json_lines as _write_json_lines,

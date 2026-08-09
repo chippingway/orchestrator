@@ -529,8 +529,6 @@ _EXTERNAL_CHAINS = MappingProxyType({
 # build a step. It would also close a loop: those modules import these owners.
 _FLAT_PREFIX = "orchestrator._trajectory"
 
-_ANALYTICS_PACKAGE = "orchestrator.analytics"
-
 
 def _qualified(owner: str) -> str:
     return f"{_PACKAGE}.{owner}"
@@ -618,8 +616,7 @@ class LayeringTest(unittest.TestCase):
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
             reached = tuple(sorted(
-                name for name in planted
-                if name.startswith(_FLAT_PREFIX) or name == _ANALYTICS_PACKAGE
+                name for name in planted if name.startswith(_FLAT_PREFIX)
             ))
             with self.subTest(owner=owner):
                 self.assertEqual(reached, ())

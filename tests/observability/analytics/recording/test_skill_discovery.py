@@ -25,15 +25,15 @@ from orchestrator.observability.analytics import (
     settings as analytics_settings,
 )
 
-from tests.analytics_jsonl_helpers import (
+from tests.observability.analytics.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
-from tests.analytics_recording_cases import (
+from tests.observability.analytics.analytics_recording_cases import (
     agent_exit_result as _agent_exit_result,
     claude_stdout_with_skills as _claude_stdout_with_skills,
 )
 
-from tests.analytics_trajectory_cases import (
+from tests.observability.analytics.analytics_trajectory_cases import (
     codex_trajectory_stdout as _codex_trajectory_stdout,
 )
 

@@ -139,8 +139,6 @@ _timezone_choice: Any
 _topbar_html: Any
 _widget_readers: Any
 _widget_task: Any
-analytics: Any
-analytics_read: Any
 cache_key: Any
 compute_insights: Any
 dashboard_parallel_reads_enabled: Any

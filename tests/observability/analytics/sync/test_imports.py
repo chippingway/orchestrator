@@ -119,31 +119,10 @@ _SURFACES = MappingProxyType({
     ),
 })
 
-# The historical `-m` target and import site left outside the package. It
-# implements nothing, so what it still has to prove is that an operator's
-# scheduled command reaches the owner that now holds one.
-_COMPATIBILITY_COMMAND = "orchestrator.analytics.sync"
-
-# The flat leaves whose responsibility the command owner took over: the one
-# that held the parser, the logging, and the summary, and the import hub the
-# facade resolved every name through. A survivor would be a second place the
-# command could be spelled or a name bound from.
-_VACATED_LEAVES = (
-    "orchestrator/analytics/_sync_cli.py",
-    "orchestrator/analytics/_sync_dependencies.py",
-)
-
 # Every owner that has to obtain the row translation from a sibling: the ingest
 # loop that turns each line into a batched tuple, and the run that builds the
 # statement those tuples are sent under once.
 _TRANSLATION_CALLERS = (_INGEST_OWNER, _RUN_OWNER)
-
-# The package the sync's settings and its remaining flat leaves still live on.
-# No owner here may plant it -- that is what keeps the compatibility package
-# retirable rather than load-bearing, and what makes the forwarding beside it
-# one-directional. The run resolves it inside the call, where an import probe
-# cannot see it, which is the point.
-_ANALYTICS_PACKAGE = "orchestrator.analytics"
 
 # The driver the ingestion opens its connection with. It is imported lazily
 # inside the connect helper, and nothing here dials anything at import, so a
@@ -173,7 +152,7 @@ def _defined_here(owner: str) -> tuple[str, ...]:
 
 
 class OwnerInventoryTest(unittest.TestCase):
-    """The declared owners are the ones on disk, and nothing is left behind."""
+    """The declared owners are the ones on disk."""
 
     def test_declared_owners_are_the_ones_on_disk(self) -> None:
         directory = Path(_package.__file__).parent
@@ -183,12 +162,6 @@ class OwnerInventoryTest(unittest.TestCase):
             if module_path.stem != "__init__"
         ))
         self.assertEqual(found, tuple(sorted(_OWNERS)))
-
-    def test_no_vacated_leaf_survives(self) -> None:
-        repository_root = Path(import_module("orchestrator").__file__).parents[1]
-        for leaf in _VACATED_LEAVES:
-            with self.subTest(leaf=leaf):
-                self.assertFalse(repository_root.joinpath(leaf).exists())
 
 
 class PublicSurfaceTest(unittest.TestCase):
@@ -227,16 +200,6 @@ class LayeringTest(unittest.TestCase):
                         f"{owner} reaches {imported}",
                     )
 
-    def test_no_owner_plants_the_flat_package(self) -> None:
-        # The sharpest case the check above rejects, named on its own: the
-        # leaves a historical caller still imports forward *to* these owners,
-        # so an import back would close the loop and make the flat package
-        # part of what a replay costs.
-        for owner in _OWNERS:
-            planted = _imported_orchestrator_modules(_qualified(owner))
-            with self.subTest(owner=owner):
-                self.assertNotIn(_ANALYTICS_PACKAGE, planted)
-
     def test_no_owner_plants_the_driver(self) -> None:
         for owner in _OWNERS:
             probe = _DRIVER_PROBE.format(module=_qualified(owner))
@@ -260,14 +223,6 @@ class LayeringTest(unittest.TestCase):
         self.assertIn(
             _qualified(_RUN_OWNER),
             _imported_orchestrator_modules(_qualified(_CLI_OWNER)),
-        )
-
-    def test_the_forwarder_names_the_command(self) -> None:
-        # An operator whose scheduler still spells the historical `-m` target
-        # has to land on the same command a new entry names directly.
-        self.assertIn(
-            _qualified(_CLI_OWNER),
-            _imported_orchestrator_modules(_COMPATIBILITY_COMMAND),
         )
 
 

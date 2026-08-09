@@ -6,7 +6,7 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.observability.analytics.query.breakdown_reads import get_hourly_heatmap
-from tests.analytics_assertions import assert_column_values, assert_sql_fragments
+from tests.observability.analytics.analytics_assertions import assert_column_values, assert_sql_fragments
 from tests.observability.analytics.query.query_fake_driver import (
     FakeConnect,
     FakeConnection,

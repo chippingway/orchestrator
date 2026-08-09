@@ -25,9 +25,6 @@ TOKEN_FILE_ENV = "ORCHESTRATOR_TOKEN_FILE"
 MISSING_TOKEN_FILE = "/tmp/agent-orchestrator-token-missing"
 
 
-ANALYTICS_READ_MODULE = "orchestrator.analytics.read"
-
-
 DASHBOARD_MODULE = "orchestrator.dashboard"
 
 
@@ -48,8 +45,6 @@ DASHBOARD_STATE_MODULE = "orchestrator.dashboard_state"
 
 _RELOAD_POP_MODULES = (
     "orchestrator.config",
-    ANALYTICS_READ_MODULE,
-    "orchestrator.analytics",
     DASHBOARD_STATE_MODULE,
     "orchestrator.dashboard_kpis",
     "orchestrator.dashboard_html",

@@ -14,8 +14,8 @@ alone and fails in a full run.
 
 The analytics settings holder is never swapped for the same reason, which is
 why it is named here but not restored: a re-parse reloads it in place (see
-`tests/analytics_reload_helpers.py`), so every owner keeps the one object the
-suite-wide fixture patches.
+`tests/observability/analytics/analytics_reload_helpers.py`), so every owner
+keeps the one object the suite-wide fixture patches.
 
 The reloaded modules themselves are still what the test drives; only the
 process-wide bindings are put back. Restoring `sys.modules` alone would not do

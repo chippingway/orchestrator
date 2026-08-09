@@ -22,7 +22,7 @@ from orchestrator.agents import AgentResult
 from orchestrator.observability.analytics import recording
 from orchestrator.observability.analytics import settings as analytics_settings
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 ANALYTICS_LOG_PATH = "ANALYTICS_LOG_PATH"
 

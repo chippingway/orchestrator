@@ -25,13 +25,13 @@ from orchestrator.observability.analytics.trajectories import models as trajecto
 
 
 
-from tests.analytics_jsonl_helpers import (
+from tests.observability.analytics.analytics_jsonl_helpers import (
     read_text as _read_text,
     read_records as _read_records,
 )
 
 
-from tests.analytics_trajectory_cases import (
+from tests.observability.analytics.analytics_trajectory_cases import (
     claude_multistep_stdout as _claude_multistep_stdout,
 )
 

@@ -12,7 +12,7 @@ from orchestrator.observability.analytics.query.rollup_reads import (
     get_kpi_prev,
     get_summary,
 )
-from tests.analytics_assertions import assert_row_fields, assert_sql_fragments
+from tests.observability.analytics.analytics_assertions import assert_row_fields, assert_sql_fragments
 from tests.observability.analytics.query.query_fake_driver import (
     FakeConnect,
     FakeConnection,

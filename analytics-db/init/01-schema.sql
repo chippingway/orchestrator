@@ -4,9 +4,9 @@
 -- Analytics database schema for the orchestrator.
 --
 -- This file mirrors the JSONL record shape produced by
--- `orchestrator/analytics/` (`build_record`) so a future ingestion job
--- can replay the on-disk log line-by-line into Postgres without lossy
--- reshaping. Three event kinds write today (`stage_enter`,
+-- `orchestrator/observability/analytics/sink.py` (`build_record`) so a
+-- future ingestion job can replay the on-disk log line-by-line into
+-- Postgres without lossy reshaping. Three event kinds write today (`stage_enter`,
 -- `stage_evaluation`, `agent_exit`); fields that only apply to a subset
 -- of events are nullable so any single row is valid.
 --
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS analytics_events (
     -- Source line for audit / dedup. The ingest job populates this
     -- from the JSONL source filename and the 1-indexed line number so
     -- replaying the same log twice can be detected. Line numbers shift
-    -- whenever `analytics.prune_old_records` rewrites the file, so
+    -- whenever `retention.prune_old_records` rewrites the file, so
     -- these are forensic-only -- the authoritative dedup key is
     -- `content_hash` below.
     source_path         TEXT,
@@ -76,9 +76,8 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 
     -- SHA-256 over the canonical (sort_keys=True) JSON form of the
     -- record as it appeared on the JSONL line. Stable across prune
-    -- rewrites, so repeated `analytics.sync` runs that re-read a
-    -- pruned file do not re-insert rows whose content the database
-    -- already holds. The unique index defined below combined with
+    -- rewrites, so repeated sync runs that re-read a pruned file do
+    -- not re-insert rows whose content the database already holds. The unique index defined below combined with
     -- `ON CONFLICT (content_hash) DO NOTHING` is the only dedup
     -- guarantee the sync relies on; `source_path` / `source_line`
     -- are forensic context. Nullable so pre-`content_hash` rows

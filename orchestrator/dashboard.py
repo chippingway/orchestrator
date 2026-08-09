@@ -24,8 +24,6 @@ _FACADE = bootstrap_dashboard(
 __getattr__ = _FACADE.resolve_export
 __dir__ = _FACADE.exported_dir
 main = _FACADE.main
-analytics_read = _FACADE.analytics_read
-analytics = _FACADE.analytics
 
 
 if __name__ == "__main__":

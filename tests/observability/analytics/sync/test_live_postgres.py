@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from orchestrator.observability.analytics.sync import run
-from tests.analytics_assertions import assert_row_fields
+from tests.observability.analytics.analytics_assertions import assert_row_fields
 from tests.observability.analytics.sync.sync_test_support import (
     AGENT_EXIT,
     ENCODING,

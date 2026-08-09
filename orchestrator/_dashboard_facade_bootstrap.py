@@ -41,8 +41,6 @@ class DashboardFacadeHooks(NamedTuple):
     resolve_export: Any
     exported_dir: Any
     main: Any
-    analytics_read: Any
-    analytics: Any
 
 
 def _evict_dashboard_modules() -> None:
@@ -76,6 +74,4 @@ def bootstrap_dashboard(
         resolve_export,
         exported_dir,
         resolve_export("main"),
-        resolve_export("analytics_read"),
-        resolve_export("analytics"),
     )

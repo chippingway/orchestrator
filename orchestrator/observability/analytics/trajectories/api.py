@@ -2,11 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """The trajectory sink's append entry point.
 
-What a caller outside one tracked agent run reaches, and what the flat
-analytics package forwards `append_trajectory_record` to. It takes the
-trajectory sink's own lock -- never the analytics sink's -- so the trajectory
-file's append-during-prune race is closed without the two files serializing
-against one another.
+What a caller outside one tracked agent run reaches for
+`append_trajectory_record`. It takes the trajectory sink's own lock -- never
+the analytics sink's -- so the trajectory file's append-during-prune race is
+closed without the two files serializing against one another.
 
 Which trajectory file it writes to is read off the `settings` holder inside
 the call, so a bare append and the by-age prune that rewrites the file under

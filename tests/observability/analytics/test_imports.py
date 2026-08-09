@@ -101,15 +101,10 @@ _SURFACES = MappingProxyType({
     ),
 })
 
-# The flat leaves whose responsibility these owners took over. Any survivor
-# would be a second place a knob could be parsed from or a sink pruned by.
-_VACATED_LEAVES = (
-    "orchestrator/analytics/_recording_settings.py",
-    "orchestrator/analytics/_retention.py",
-    "orchestrator/analytics/_retention_rewrite.py",
-    "orchestrator/analytics/_retention_scan.py",
-    "orchestrator/analytics/db_url.py",
-)
+# The flat tree whose responsibility the observability owners took over, whole.
+# A survivor of it would be a second place a knob could be parsed from, a sink
+# pruned by, a read issued through, or a replay started from.
+_VACATED_TREE = "orchestrator/analytics"
 
 # Every adapter that has to obtain configuration from the owner: the holder
 # that binds the parsed knobs, the append paths of both sinks and the prune
@@ -128,11 +123,6 @@ _CONFIG_ADAPTERS = (
     "orchestrator.observability.analytics.query.execution",
     "orchestrator.observability.analytics.sync.run",
 )
-
-# The compatibility package the historical spellings still resolve through. It
-# binds nothing at import and no owner here may plant it, which is what keeps
-# it retirable rather than load-bearing.
-_ANALYTICS_PACKAGE = "orchestrator.analytics"
 
 # The one owner allowed outside the observability tree, and what it reaches:
 # the default analytics sink lives under `config.LOG_DIR`, so the module that
@@ -168,11 +158,9 @@ class OwnerInventoryTest(unittest.TestCase):
         ))
         self.assertEqual(found, tuple(sorted(_OWNERS)))
 
-    def test_no_vacated_leaf_survives(self) -> None:
+    def test_the_vacated_tree_is_gone(self) -> None:
         repository_root = Path(import_module("orchestrator").__file__).parents[1]
-        for leaf in _VACATED_LEAVES:
-            with self.subTest(leaf=leaf):
-                self.assertFalse(repository_root.joinpath(leaf).exists())
+        self.assertFalse(repository_root.joinpath(_VACATED_TREE).exists())
 
 
 class PublicSurfaceTest(unittest.TestCase):
@@ -218,15 +206,6 @@ class LayeringTest(unittest.TestCase):
                         f"{owner} reaches {imported}",
                     )
 
-    def test_no_owner_plants_the_flat_package(self) -> None:
-        # The sharpest case the check above rejects, named on its own: every
-        # knob a prune reads lives on the `settings` owner beside it, so
-        # nothing here has any reason to name the historical package.
-        for owner in _OWNERS:
-            planted = _imported_orchestrator_modules(_qualified(owner))
-            with self.subTest(owner=owner):
-                self.assertNotIn(_ANALYTICS_PACKAGE, planted)
-
     def test_every_adapter_names_the_config_owner(self) -> None:
         # Configuration has one source, so an adapter that parses a knob or
         # re-reads the environment itself would be a second one.
@@ -236,15 +215,6 @@ class LayeringTest(unittest.TestCase):
                     _qualified(_CONFIG_OWNER),
                     _imported_orchestrator_modules(adapter),
                 )
-
-    def test_the_flat_package_binds_nothing(self) -> None:
-        # Naming the historical package costs an importer neither the
-        # recorders nor the process configuration behind the knobs, because
-        # every name it publishes is resolved on access.
-        planted = _imported_orchestrator_modules(_ANALYTICS_PACKAGE)
-        for owner in _OWNERS:
-            with self.subTest(owner=owner):
-                self.assertNotIn(_qualified(owner), planted)
 
 
 if __name__ == "__main__":

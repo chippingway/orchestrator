@@ -26,10 +26,10 @@ from unittest.mock import patch
 
 from orchestrator.observability.analytics.recording import events
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 
-from tests.analytics_jsonl_helpers import (
+from tests.observability.analytics.analytics_jsonl_helpers import (
     read_lines as _read_lines,
 )
 

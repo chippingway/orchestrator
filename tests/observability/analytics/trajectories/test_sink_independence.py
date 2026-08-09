@@ -14,7 +14,7 @@ from pathlib import Path
 from orchestrator.observability.analytics import sink as analytics_sink
 from orchestrator.observability.analytics.trajectories import api as trajectory_api
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 
 from tests.observability.analytics.trajectories.trajectories_test_support import (

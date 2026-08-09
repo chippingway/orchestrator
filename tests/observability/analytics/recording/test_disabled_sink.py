@@ -17,7 +17,7 @@ from unittest.mock import patch
 from orchestrator import config as orchestrator_config
 from orchestrator.observability.analytics import recording
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 
 _EVENT_VALUE = 'x'

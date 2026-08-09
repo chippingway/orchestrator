@@ -15,7 +15,7 @@ from pathlib import Path
 
 from orchestrator import trajectory_reader as reader
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 _LOG_PATH_ENV = "TRAJECTORY_LOG_PATH"
 

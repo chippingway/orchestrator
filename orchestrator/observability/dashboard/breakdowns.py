@@ -9,9 +9,8 @@ it, and everything under that -- the socket it runs on, the filters the key is
 read back as, and the empty answer an unconfigured database yields -- is
 decided by the owners it passes through rather than restated per panel.
 
-Each names the query owner that answers it rather than the `analytics.read`
-facade forwarding the same objects, so the panels stay off a hop kept for
-callers that predate those owners. Which owner that is follows the column a
+Each names the query owner that defines it, so a patch aimed at a read lands
+where the panel issues it. Which owner that is follows the column a
 read groups by: a backend comparison, a per-repository tally, and a daily
 resolved/rejected count are all day-bucketed, so they are the rollup's; a cost
 source, one run's own token split, and an hour of day are what that bucket
