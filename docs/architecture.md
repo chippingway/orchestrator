@@ -462,13 +462,14 @@ orchestrator/
     __init__.py         package marker only; home of the usage parsers, the
                         analytics configuration, recording, retention,
                         read-path, and replay owners beside them, the visual
-                        theme both Streamlit pages are drawn in, the state a
-                        run of the analytics page carries, the reads it issues
-                        under that state, the banners and headline numbers it
-                        reports above them and the figures it draws them as,
-                        and the destination the trajectory viewer's own
-                        surfaces above migrate the rest of their
-                        responsibilities to
+                        theme both Streamlit pages are drawn in, the whole of
+                        the analytics page beneath it -- the state a run
+                        carries, the reads it issues under that state, the
+                        banners and headline numbers it reports above them,
+                        the panels and figures it draws them as, and the order
+                        one render reaches all of them in -- and the
+                        destination the trajectory viewer's own surfaces above
+                        migrate the rest of their responsibilities to
     analytics/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, what
