@@ -14,10 +14,9 @@ The two answers are read at opposite times on purpose. The flag is parsed once,
 at this module's import, because an operator turns the fan-out on by restarting
 the Streamlit process rather than mid-session, and a page that re-parsed per
 render could issue one load's reads two ways. The database URL is read through
-the analytics configuration owner inside the call, on whichever analytics
-package the name resolves to, because a page entered against a re-imported one
-is answering for that package's target rather than the one this module happened
-to be imported alongside.
+the analytics configuration owner inside the call, off whichever settings
+holder the name resolves to, so a page answers for the target that holder
+carries now rather than the one this module happened to be imported alongside.
 """
 from __future__ import annotations
 

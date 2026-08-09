@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics import sink
 from orchestrator.observability.analytics.recording.models import (
     AgentExitContext,
     CodexCatalog,
@@ -31,7 +32,7 @@ def discover_codex_skills(
     discovery: Any,
 ) -> Optional[list[str]]:
     """Read Codex's offered skills when either sink needs them."""
-    settings = analytics_config.settings_on(context.analytics_package)
+    settings = analytics_config.live_settings()
     if context.cwd is None or not (settings.track_skill_triggers or settings.trajectory_log_path is not None):
         return None
     return list(discovery.discover_local_skills(context.cwd)) or None
@@ -42,7 +43,7 @@ def discover_codex_tools(
     discovery: Any,
 ) -> Optional[list[str]]:
     """Read Codex's baseline tools only for trajectory records."""
-    settings = analytics_config.settings_on(context.analytics_package)
+    settings = analytics_config.live_settings()
     if settings.trajectory_log_path is None:
         return None
     return list(discovery.discover_codex_tools()) or None
@@ -67,7 +68,7 @@ def discover_codex_catalog(context: AgentExitContext) -> CodexCatalog:
     try:
         populate_codex_catalog(context, catalog)
     except Exception:
-        context.analytics_package.log.exception(
+        sink.log.exception(
             "issue=#%d analytics: codex out-of-band discovery failed; leaving skills_available / tools empty",
             context.issue,
         )

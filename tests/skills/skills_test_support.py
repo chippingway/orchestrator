@@ -8,7 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import analytics, config
+from orchestrator import config
+from orchestrator.observability.analytics.recording import events as recording_events
 
 
 _TEST_REPO_SLUG = "geserdugarov/agent-orchestrator"
@@ -48,7 +49,7 @@ def _capture_analytics_records(
     case: unittest.TestCase,
 ) -> list[dict]:
     captured: list[dict] = []
-    patcher = patch.object(analytics, "append_record", captured.append)
+    patcher = patch.object(recording_events, "append_record", captured.append)
     patcher.start()
     case.addCleanup(patcher.stop)
     return captured

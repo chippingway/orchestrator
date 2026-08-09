@@ -9,17 +9,17 @@ part of the shape -- the per-turn array is drawn down before the steps, so a
 run with thousands of turns and no steps is bounded the same way a run with
 thousands of steps is.
 
-The settings holder arrives on the exit context rather than being resolved
-here: it is what the caps are read off and what the record envelope is built
-through, so one run's two records -- the baseline `agent_exit` and this one --
-are answered for by the same package instance the caller entered on, and a
-caps value patched around a call reaches it.
+The caps are snapshotted from the `models` owner once per record, so a value
+patched between two writes bounds the second one, and the envelope is the
+shared `sink` owner's -- the shape a trajectory record has in common with
+every other analytics record is decided in one place.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from orchestrator.observability.analytics import sink
 from orchestrator.observability.analytics.trajectories import models, sanitize
 from orchestrator.observability.usage import (
     metrics as usage_metrics,
@@ -132,7 +132,7 @@ def build_trajectory_record(
     skill set, or codex's empty per-turn array leaves its key off rather than
     storing a null.
     """
-    limits = models.limits_on(context.analytics_package)
+    limits = models.current_limits()
     headline = trajectory_headline(context, trajectory, metrics, redact, limits)
     budget = models.TrajectoryBudget(
         headline.serialized_size,
@@ -140,7 +140,7 @@ def build_trajectory_record(
     )
     turns = bounded_trajectory_turns(trajectory, budget)
     steps = bounded_trajectory_steps(trajectory, budget, redact, limits)
-    return context.analytics_package.build_record(
+    return sink.build_record(
         repo=context.repo,
         issue=context.issue,
         event="agent_trajectory",

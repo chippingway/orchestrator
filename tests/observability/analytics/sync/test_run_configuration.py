@@ -19,9 +19,9 @@ from tests.observability.analytics.sync.sync_test_support import (
     sample_record,
 )
 
-# The package the knobs are bound on and where a caller patches one, which is
+# The holder the knobs are bound on and where a caller patches one, which is
 # what `config.live_settings` resolves a fallback through.
-_ANALYTICS_PACKAGE = "orchestrator.analytics"
+_SETTINGS_HOLDER = "orchestrator.observability.analytics.settings"
 
 _LOG_PATH_SETTING = "ANALYTICS_LOG_PATH"
 
@@ -40,9 +40,9 @@ def _configured_sink(
     db_url: Optional[str],
 ) -> Iterator[None]:
     """Pin what the two omitted inputs resolve to for the body."""
-    package = import_module(_ANALYTICS_PACKAGE)
-    with patch.object(package, _LOG_PATH_SETTING, log_path):
-        with patch.object(package, _DB_URL_SETTING, db_url):
+    holder = import_module(_SETTINGS_HOLDER)
+    with patch.object(holder, _LOG_PATH_SETTING, log_path):
+        with patch.object(holder, _DB_URL_SETTING, db_url):
             yield
 
 

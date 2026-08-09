@@ -14,8 +14,11 @@ from unittest.mock import MagicMock, patch
 from orchestrator.observability.usage import skills as _usage_skills
 
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
 
+
+from orchestrator.observability.analytics import recording
+from orchestrator.observability.analytics import settings as analytics_settings
+from orchestrator.observability.analytics import sink as analytics_sink
 
 from tests.analytics_jsonl_helpers import (
     read_records as _read_records,
@@ -23,6 +26,7 @@ from tests.analytics_jsonl_helpers import (
 
 
 from tests.analytics_recording_cases import (
+    agent_exit_result as _agent_exit_result,
     claude_stdout_with_skills as _claude_stdout_with_skills,
 )
 
@@ -62,15 +66,17 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
 
     def _emit(
         self,
-        analytics,
         path,
         *,
         stdout,
         backend=_CLAUDE,
         track=True,
     ) -> list[dict]:
-        with patch.object(analytics, _ANALYTICS_LOG_PATH, path), patch.object(analytics, _TRACK_SKILL_TRIGGERS, track):
-            analytics.record_agent_exit(
+        with (
+            patch.object(analytics_settings, _ANALYTICS_LOG_PATH, path),
+            patch.object(analytics_settings, _TRACK_SKILL_TRIGGERS, track),
+        ):
+            recording.record_agent_exit(
                 repo=_REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,
                 stage=_STAGE_IMPLEMENTING,
@@ -78,14 +84,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
                 backend=backend,
                 agent_spec=_CLAUDE,
                 resume_session_id=None,
-                result=analytics.AgentResult(
-                    session_id="sess",
-                    last_message="",
-                    exit_code=0,
-                    timed_out=False,
-                    stdout=stdout,
-                    stderr="",
-                ),
+                result=_agent_exit_result(stdout),
                 duration_s=float(),
                 review_round=0,
                 retry_count=1,
@@ -94,7 +93,6 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
 
     def _record(
         self,
-        analytics,
         *,
         stdout,
         track=True,
@@ -106,11 +104,11 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
         from. `parse` optionally stubs the skill extractor.
         """
         with contextlib.ExitStack() as stack:
-            stack.enter_context(patch.object(analytics, _ANALYTICS_LOG_PATH, None))
-            stack.enter_context(patch.object(analytics, _TRACK_SKILL_TRIGGERS, track))
+            stack.enter_context(patch.object(analytics_settings, _ANALYTICS_LOG_PATH, None))
+            stack.enter_context(patch.object(analytics_settings, _TRACK_SKILL_TRIGGERS, track))
             if parse is not None:
                 stack.enter_context(patch.object(_usage_skills, "parse_agent_skills", parse))
-            return analytics.record_agent_exit(
+            return recording.record_agent_exit(
                 repo=_REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,
                 stage=_STAGE_IMPLEMENTING,
@@ -118,14 +116,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
                 backend=backend,
                 agent_spec=backend,
                 resume_session_id=None,
-                result=analytics.AgentResult(
-                    session_id="sess",
-                    last_message="",
-                    exit_code=0,
-                    timed_out=False,
-                    stdout=stdout,
-                    stderr="",
-                ),
+                result=_agent_exit_result(stdout),
                 duration_s=float(),
                 review_round=0,
                 retry_count=1,
@@ -136,9 +127,7 @@ class RecordAgentExitSkillReturnTest(_RecordAgentExitSkillSupport):
     def test_returns_triggered_list_when_switch_on(self) -> None:
         # The return value is the de-duplicated first-seen list the audit
         # emitter consumes -- here develop fires twice, review once.
-        _, analytics = _reload()
         triggered = self._record(
-            analytics,
             stdout=_claude_stdout_with_skills(
                 skills=(_DEVELOP, _DEVELOP, _REVIEW),
             ),
@@ -147,18 +136,14 @@ class RecordAgentExitSkillReturnTest(_RecordAgentExitSkillSupport):
         self.assertEqual(triggered, [_DEVELOP, _REVIEW])
 
     def test_returns_none_when_switch_off(self) -> None:
-        _, analytics = _reload()
         triggered = self._record(
-            analytics,
             stdout=_claude_stdout_with_skills(skills=(_DEVELOP,)),
             track=False,
         )
         self.assertIsNone(triggered)
 
     def test_returns_none_when_nothing_triggered(self) -> None:
-        _, analytics = _reload()
         triggered = self._record(
-            analytics,
             stdout=_claude_stdout_with_skills(skills=()),
             track=True,
         )
@@ -166,10 +151,8 @@ class RecordAgentExitSkillReturnTest(_RecordAgentExitSkillSupport):
 
     def test_returns_none_on_skill_parse_failure(self) -> None:
         # A skill-parse bug returns None (no events) but still emits baseline.
-        _, analytics = _reload()
-        with self.assertLogs(analytics.log, level="ERROR"):
+        with self.assertLogs(analytics_sink.log, level="ERROR"):
             triggered = self._record(
-                analytics,
                 stdout=_claude_stdout_with_skills(skills=(_DEVELOP,)),
                 track=True,
                 parse=MagicMock(side_effect=RuntimeError("boom")),

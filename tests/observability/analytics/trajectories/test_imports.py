@@ -19,7 +19,7 @@ _PACKAGE = "orchestrator.observability.analytics.trajectories"
 
 _CONFIG = "orchestrator.observability.analytics.config"
 
-_RECORDING = "orchestrator.observability.analytics.recording"
+_SINK = "orchestrator.observability.analytics.sink"
 
 _USAGE = "orchestrator.observability.usage"
 
@@ -60,33 +60,31 @@ _ALWAYS_PLANTED = frozenset((
 
 # What each owner may reach beyond its own siblings, declared per owner
 # because the direction is the point. The two leaves reach nothing; the
-# serializer names the parsers a run is metered by; the write adds the
-# configuration owner its opt-in gate is read through; and only the sink
-# append names the recorders, since the settings holder deciding *where* a
-# bare append lands is theirs to answer. Reaching the other way -- a record
-# builder importing the recorders that call it -- is the cycle this rejects.
+# serializer names the shared write owner for the record envelope and the
+# parsers a run is metered by; the append and the write add the configuration
+# owner the knob is read through. The recording package is deliberately absent
+# from all of them: an `agent_exit` composes this write, so a trajectory owner
+# importing the recorders that call it is the cycle this rejects.
 _REACHABLE = MappingProxyType({
-    _API_OWNER: (_CONFIG, _RECORDING, _USAGE),
+    _API_OWNER: (_CONFIG, _SINK),
     "models": (),
-    _PERSISTENCE_OWNER: (_CONFIG, _USAGE),
+    _PERSISTENCE_OWNER: (_CONFIG, _SINK, _USAGE),
     "sanitize": (),
-    "serialize": (_USAGE,),
+    "serialize": (_SINK, _USAGE),
 })
 
 # Every caller that has to obtain a trajectory owner from this package: the
-# `agent_exit` that hands one finished run's second record over, and the
-# compatibility package whose bootstrap republishes the append and the caps.
-# The by-age prune is deliberately absent -- it takes the sink lock off the
-# `io` owner that minted it, which is what keeps that object identical to the
-# one an append held across a rebuild still takes.
+# `agent_exit` that hands one finished run's second record over. The by-age
+# prune is deliberately absent -- it takes the sink lock off the `sink` owner
+# that minted it, which is what keeps that object identical to the one the
+# append here takes.
 _CALLERS = MappingProxyType({
-    f"{_RECORDING}.agent_exit": _PERSISTENCE_OWNER,
-    "orchestrator.analytics": _API_OWNER,
+    "orchestrator.observability.analytics.recording.agent_exit": _PERSISTENCE_OWNER,
 })
 
-# The package the sink's settings still live on. A write resolves it inside
-# the call, so no owner here may plant it -- that is what keeps the
-# compatibility package retirable rather than load-bearing.
+# The compatibility package the historical spellings still resolve through. It
+# binds nothing, and no owner here may plant it -- that is what keeps it
+# retirable rather than load-bearing.
 _ANALYTICS_PACKAGE = "orchestrator.analytics"
 
 
@@ -150,9 +148,8 @@ class LayeringTest(unittest.TestCase):
 
     def test_no_owner_plants_the_flat_package(self) -> None:
         # The sharpest case the check above rejects, named on its own: the
-        # settings a write reads live on that package, and binding an import
-        # of it here would cycle -- the package's own bootstrap is what
-        # imports the append owner.
+        # knobs a write reads are the `settings` owner's, resolved inside the
+        # call, so nothing here has any reason to name the historical package.
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
             with self.subTest(owner=owner):

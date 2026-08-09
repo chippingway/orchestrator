@@ -23,8 +23,13 @@ from unittest.mock import patch
 from orchestrator.observability.usage import skills as _usage_skills
 
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
 
+
+from orchestrator.observability.analytics import (
+    recording,
+    settings as analytics_settings,
+    sink as analytics_sink,
+)
 
 from tests.analytics_jsonl_helpers import (
     read_records as _read_records,
@@ -32,6 +37,7 @@ from tests.analytics_jsonl_helpers import (
 
 
 from tests.analytics_recording_cases import (
+    agent_exit_result as _agent_exit_result,
     claude_stdout_with_skills as _claude_stdout_with_skills,
 )
 
@@ -117,15 +123,17 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
 
     def _emit(
         self,
-        analytics,
         path,
         *,
         stdout,
         backend=_CLAUDE,
         track=True,
     ) -> list[dict]:
-        with patch.object(analytics, _ANALYTICS_LOG_PATH, path), patch.object(analytics, _TRACK_SKILL_TRIGGERS, track):
-            analytics.record_agent_exit(
+        with (
+            patch.object(analytics_settings, _ANALYTICS_LOG_PATH, path),
+            patch.object(analytics_settings, _TRACK_SKILL_TRIGGERS, track),
+        ):
+            recording.record_agent_exit(
                 repo=_REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,
                 stage=_STAGE_IMPLEMENTING,
@@ -133,14 +141,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
                 backend=backend,
                 agent_spec=_CLAUDE,
                 resume_session_id=None,
-                result=analytics.AgentResult(
-                    session_id="sess",
-                    last_message="",
-                    exit_code=0,
-                    timed_out=False,
-                    stdout=stdout,
-                    stderr="",
-                ),
+                result=_agent_exit_result(stdout),
                 duration_s=float(),
                 review_round=0,
                 retry_count=1,
@@ -149,7 +150,6 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
 
     def _record(
         self,
-        analytics,
         *,
         stdout,
         track=True,
@@ -161,11 +161,11 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
         from. `parse` optionally stubs the skill extractor.
         """
         with contextlib.ExitStack() as stack:
-            stack.enter_context(patch.object(analytics, _ANALYTICS_LOG_PATH, None))
-            stack.enter_context(patch.object(analytics, _TRACK_SKILL_TRIGGERS, track))
+            stack.enter_context(patch.object(analytics_settings, _ANALYTICS_LOG_PATH, None))
+            stack.enter_context(patch.object(analytics_settings, _TRACK_SKILL_TRIGGERS, track))
             if parse is not None:
                 stack.enter_context(patch.object(_usage_skills, "parse_agent_skills", parse))
-            return analytics.record_agent_exit(
+            return recording.record_agent_exit(
                 repo=_REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,
                 stage=_STAGE_IMPLEMENTING,
@@ -173,14 +173,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
                 backend=backend,
                 agent_spec=backend,
                 resume_session_id=None,
-                result=analytics.AgentResult(
-                    session_id="sess",
-                    last_message="",
-                    exit_code=0,
-                    timed_out=False,
-                    stdout=stdout,
-                    stderr="",
-                ),
+                result=_agent_exit_result(stdout),
                 duration_s=float(),
                 review_round=0,
                 retry_count=1,
@@ -191,10 +184,8 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
     def test_switch_off_drops_all_skill_fields(self) -> None:
         # Default-off: a skill-bearing stream still records usage but none
         # of the three skill keys appear -- shape-compatible with today.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             records = self._emit(
-                analytics,
                 Path(td) / _ANALYTICS_FILENAME,
                 stdout=_claude_stdout_with_skills(skills=(_DEVELOP,)),
                 track=False,
@@ -210,10 +201,8 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
         # develop fires twice and review once: the de-duplicated list keeps
         # first-seen order, the count sums every invocation, and the
         # uncaptured offered set leaves `skills_available` dropped.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             records = self._emit(
-                analytics,
                 Path(td) / _ANALYTICS_FILENAME,
                 stdout=_claude_stdout_with_skills(
                     skills=(_DEVELOP, _DEVELOP, _REVIEW),
@@ -238,17 +227,14 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
     def test_switch_on_no_triggers_matches_off_shape(self) -> None:
         # Switch on but the stream triggered nothing: all three skill keys
         # stay dropped, so the record is shape-identical to the off case.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             temp_root = Path(td)
             off = self._emit(
-                analytics,
                 temp_root / "off.jsonl",
                 stdout=_claude_stdout_with_skills(skills=(_DEVELOP,)),
                 track=False,
             )
             on_none = self._emit(
-                analytics,
                 temp_root / "on.jsonl",
                 stdout=_claude_stdout_with_skills(skills=()),
                 track=True,
@@ -260,7 +246,6 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
         # Privacy: the `Skill` tool's `args` can echo issue/user content; the
         # record carries the skill NAME but never the args payload nor the
         # raw stdout. Mirrors the usage-sink redaction contract.
-        _, analytics = _reload()
         marker = "ghp_LEAKED_SKILL_ARG_PAYLOAD_DO_NOT_STORE"
         stdout = _claude_stdout_with_skills(
             skills=(_DEVELOP,),
@@ -268,7 +253,6 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
         )
         with tempfile.TemporaryDirectory() as td:
             rec = self._emit(
-                analytics,
                 Path(td) / _ANALYTICS_FILENAME,
                 stdout=stdout,
                 track=True,
@@ -282,10 +266,8 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
         # The offered-set wiring exercised end-to-end through the real claude
         # extractor (no stub): a `system`/`init` frame carrying a `skills`
         # array lands as `skills_available`, independent of what triggered.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             records = self._emit(
-                analytics,
                 Path(td) / _ANALYTICS_FILENAME,
                 stdout=_claude_stdout_with_skills(
                     skills=(_DEVELOP,),
@@ -302,10 +284,8 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
         # Offered but nothing triggered: `skills_available` is written while
         # `skills_triggered` / `_count` stay dropped -- the asymmetry that
         # tells "offered but unused" from "never available."
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             records = self._emit(
-                analytics,
                 Path(td) / _ANALYTICS_FILENAME,
                 stdout=_claude_stdout_with_skills(
                     skills=(),
@@ -321,7 +301,6 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
     def test_parse_failure_keeps_baseline_record(self) -> None:
         # A skill-parser bug must NOT drop the usage/cost record: the inner
         # fail-open guard logs and falls through with the skill fields unset.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             with (
                 patch.object(
@@ -329,10 +308,9 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
                     "parse_agent_skills",
                     side_effect=RuntimeError("boom"),
                 ),
-                self.assertLogs(analytics.log, level="ERROR"),
+                self.assertLogs(analytics_sink.log, level="ERROR"),
             ):
                 records = self._emit(
-                    analytics,
                     Path(td) / _ANALYTICS_FILENAME,
                     stdout=_claude_stdout_with_skills(skills=(_DEVELOP,)),
                     track=True,

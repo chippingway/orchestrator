@@ -6,9 +6,9 @@ Every name here is the object an owner defines, so a caller that has always
 reached the reader through this module keeps holding what the page renders,
 what a filter narrows, and what the KPI strip is totalled from. The record half
 comes off the record facade -- and off a *freshly loaded* one, because that
-facade captures the analytics package it resolves the log path through at its
-own import, so rebuilding this module against a patched environment has to
-rebuild that capture with it. The filter and summary halves need no such world:
+facade captures the analytics settings holder it resolves the log path through
+at its own import, so rebuilding this module has to rebuild that capture with
+it. The filter and summary halves need no such world:
 they are pure over the runs they are handed, so they are bound straight off
 their owners.
 

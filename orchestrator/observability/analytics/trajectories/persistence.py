@@ -8,11 +8,11 @@ from, and the guard the entire block rides. They sit together because they are
 one decision -- the sink being off is what makes the parse never run, and the
 parse failing is what the guard exists to swallow.
 
-The settings holder arrives on the exit context: the knob that gates this and
-the append that ends it are both answered by the package instance the caller
-entered on, which is what keeps one run's two records on the same instance.
-The redactor and the logger are named inside the call, so the append path
-costs neither until the sink an operator turned on has something to write.
+The gate reads the opt-in knob off the `settings` holder inside the call, and
+the append it ends with is the `api` owner's own -- the sink is never reached
+back through the recorders that composed this write. The redactor is named
+inside the call, so the append path costs the credential owner nothing until
+the sink an operator turned on has something to write.
 """
 
 from __future__ import annotations
@@ -21,6 +21,8 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics import sink
+from orchestrator.observability.analytics.trajectories import api
 from orchestrator.observability.analytics.trajectories.serialize import (
     build_trajectory_record,
 )
@@ -83,7 +85,7 @@ def persist_trajectory_record(
     from orchestrator.config import credentials
 
     trajectory = agent_trajectory(context, codex_catalog)
-    context.analytics_package.append_trajectory_record(
+    api.append_trajectory_record(
         build_trajectory_record(
             context,
             trajectory,
@@ -120,14 +122,12 @@ def maybe_record_trajectory(
     and "Tools offered" chips match a claude run's; a non-empty stream-parsed
     set is never overridden.
     """
-    if analytics_config.settings_on(context.analytics_package).trajectory_log_path is None:
+    if analytics_config.live_settings().trajectory_log_path is None:
         return
     try:
         persist_trajectory_record(context, metrics, codex_catalog)
     except Exception:
-        from orchestrator.observability.analytics.recording import events
-
-        events.log.exception(
+        sink.log.exception(
             "issue=#%d analytics: trajectory record(%s) failed; baseline agent_exit record is unaffected",
             context.issue,
             context.backend,

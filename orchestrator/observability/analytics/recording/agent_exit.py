@@ -10,17 +10,26 @@ this composes are reached on the owners that define them; what this owner adds
 is the sequence and the value the caller gets back, which is the list the
 `skill_triggered` audit events are driven by rather than a second pass over
 stdout.
+
+The producer-facing recorder is here rather than beside its three siblings on
+``events`` because this is the only family with a sequence to own. The
+envelope and the append it ends with are the ``events`` owner's, imported at
+module scope: this composition depends on that vocabulary, and nothing under
+it depends back.
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
+from orchestrator.observability.analytics.recording import events
 from orchestrator.observability.analytics.recording.catalog import discover_codex_catalog
 from orchestrator.observability.analytics.recording.models import (
+    AGENT_EXIT_SIGNATURE,
     AgentExitContext,
     AgentExitSkillFields,
     CodexCatalog,
+    bind_agent_exit,
 )
 from orchestrator.observability.analytics.recording.skills import parse_agent_exit_skills
 from orchestrator.observability.analytics.recording.usage import parse_agent_exit_usage
@@ -36,7 +45,7 @@ def build_agent_exit_record(
     skill_fields: AgentExitSkillFields,
 ) -> dict:
     """Build the allowlisted baseline event without raw run content."""
-    return context.analytics_package.build_record(
+    return events.build_record(
         repo=context.repo,
         issue=context.issue,
         event="agent_exit",
@@ -77,13 +86,12 @@ def persist_agent_exit(
 ) -> None:
     """Write the baseline event, then the independently guarded trajectory.
 
-    The baseline append goes through the settings holder on the context, which
-    is what makes `patch.object(analytics, "append_record", ...)` intercept it.
-    The trajectory owner is named directly and reads that same holder off the
-    context it is handed, so one run's two records stay on the package instance
-    the caller entered on without the sink being reached through it.
+    The baseline append is dispatched on the `events` owner, which is what
+    makes `patch.object(events, "append_record", ...)` intercept it. The
+    trajectory owner is named directly rather than reached back through the
+    sink, so one run's two records stay independent all the way down.
     """
-    context.analytics_package.append_record(
+    events.append_record(
         build_agent_exit_record(context, metrics, skill_fields),
     )
     trajectory_persistence.maybe_record_trajectory(
@@ -93,7 +101,9 @@ def persist_agent_exit(
     )
 
 
-def record_agent_exit(context: AgentExitContext) -> Optional[list[str]]:
+def record_agent_exit(*args: Any, **kwargs: Any) -> Optional[list[str]]:
+    """Parse, persist, and return triggered skills for one completed run."""
+    context = bind_agent_exit(args, kwargs)
     metrics = parse_agent_exit_usage(context)
     if metrics is None:
         return None
@@ -101,3 +111,6 @@ def record_agent_exit(context: AgentExitContext) -> Optional[list[str]]:
     skill_fields = parse_agent_exit_skills(context, codex_catalog)
     persist_agent_exit(context, metrics, skill_fields, codex_catalog)
     return skill_fields.skills_triggered
+
+
+record_agent_exit.__signature__ = AGENT_EXIT_SIGNATURE

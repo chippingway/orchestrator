@@ -13,9 +13,9 @@ module scope. Streamlit is there because it lives in the optional `dashboard`
 group, so importing this module has to work in an install that has none of it;
 the domain owners are there because the repo root reaches `sys.path` in the
 line above, and under a script launch no `orchestrator.*` name resolves before
-that. Which analytics instance answers for the sink's knob is read at call time
-for the same reason: a page composed against a reloaded environment resolves
-the file that environment was built for.
+that. Which analytics settings holder answers for the sink's knob is resolved
+at call time for the same reason: a page composed against a reloaded
+environment resolves the file that environment was built for.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def main() -> None:
     """Draw one run of the Streamlit trajectory viewer."""
     import streamlit as st
 
-    from orchestrator import analytics
+    from orchestrator.observability.analytics import settings as analytics_settings
     from orchestrator.observability.trajectory_viewer import (
         controls,
         page_render,
@@ -41,8 +41,8 @@ def main() -> None:
     )
 
     page_setup.configure_page(st)
-    page_setup.stop_if_unconfigured(st, analytics)
-    page = page_setup.load_trajectory_page(analytics)
+    page_setup.stop_if_unconfigured(st, analytics_settings)
+    page = page_setup.load_trajectory_page(analytics_settings)
     filters = controls.render_trajectory_sidebar(st, page.options)
     page_render.render_trajectory_page(
         st,

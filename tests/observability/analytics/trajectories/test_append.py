@@ -20,6 +20,9 @@ from functools import partial
 from pathlib import Path
 
 
+from orchestrator.observability.analytics.trajectories import api as trajectory_api
+from orchestrator.observability.analytics import sink as analytics_sink
+
 from tests.analytics_reload_helpers import reload_analytics as _reload
 
 
@@ -55,9 +58,9 @@ class TrajectoryAppendTest(unittest.TestCase):
     """
 
     def test_append_writes_one_line_per_record(self) -> None:
-        with _trajectory_sink() as (path, analytics):
-            analytics.append_trajectory_record({"session_id": "a", _COUNTER_KEY: 1})
-            analytics.append_trajectory_record({"session_id": "b", _COUNTER_KEY: 2})
+        with _trajectory_sink() as path:
+            trajectory_api.append_trajectory_record({"session_id": "a", _COUNTER_KEY: 1})
+            trajectory_api.append_trajectory_record({"session_id": "b", _COUNTER_KEY: 2})
             lines = _read_lines(path)
             self.assertEqual(len(lines), 2)
             self.assertEqual(json.loads(lines[0])["session_id"], "a")
@@ -66,14 +69,14 @@ class TrajectoryAppendTest(unittest.TestCase):
     def test_creates_missing_parent_dirs(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "a" / "b" / "c" / "trajectory.jsonl"
-            _, analytics = _reload({_TRAJECTORY_LOG_PATH: str(path)})
-            analytics.append_trajectory_record({"event": "x"})
+            _reload({_TRAJECTORY_LOG_PATH: str(path)})
+            trajectory_api.append_trajectory_record({"event": "x"})
             self.assertTrue(path.exists())
 
     def test_append_is_append_only(self) -> None:
-        with _trajectory_sink() as (path, analytics):
+        with _trajectory_sink() as path:
             for index in range(5):
-                analytics.append_trajectory_record({_COUNTER_KEY: index})
+                trajectory_api.append_trajectory_record({_COUNTER_KEY: index})
             counters = [json.loads(line)[_COUNTER_KEY] for line in _read_lines(path)]
             self.assertEqual(counters, list(range(5)))
 
@@ -89,11 +92,11 @@ class TrajectoryAppendTest(unittest.TestCase):
                 encoding=_ENCODING,
             )
             path = blocker / "sub" / "trajectory.jsonl"
-            _, analytics = _reload({_TRAJECTORY_LOG_PATH: str(path)})
+            _reload({_TRAJECTORY_LOG_PATH: str(path)})
             _, log_output = _logged_call(
                 self,
-                analytics.log,
-                partial(analytics.append_trajectory_record, {"event": "x"}),
+                analytics_sink.log,
+                partial(trajectory_api.append_trajectory_record, {"event": "x"}),
             )
             self.assertFalse(path.exists())
             self.assertTrue(any("could not write" in message for message in log_output))

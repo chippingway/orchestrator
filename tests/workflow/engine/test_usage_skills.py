@@ -7,7 +7,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.agents import AgentResult
 from orchestrator.workflow.engine import usage as engine_usage
 
@@ -51,9 +51,9 @@ def _run_skill_agent(
     track: bool,
     backend: str = BACKEND_CLAUDE,
 ) -> AgentResult:
-    with patch.object(analytics, _ANALYTICS_PATH_ATTR, None), \
-            patch.object(analytics, _TRAJECTORY_PATH_ATTR, None), \
-            patch.object(analytics, _TRACK_SKILLS_ATTR, track), \
+    with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, None), \
+            patch.object(analytics_settings, _TRAJECTORY_PATH_ATTR, None), \
+            patch.object(analytics_settings, _TRACK_SKILLS_ATTR, track), \
             patch.object(_agent_runner, _RUN_AGENT_ATTR) as run_mock:
         run_mock.return_value = AgentResult(
             session_id="sess-skill",
@@ -160,7 +160,7 @@ class SkillTriggeredEventTest(unittest.TestCase):
         # second parse of stdout: a stubbed return emits exactly its names.
         gh = FakeGitHubClient()
         with (
-            patch.object(analytics, _ANALYTICS_PATH_ATTR, None),
+            patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, None),
             patch.object(
                 engine_usage.recording,
                 "record_agent_exit",

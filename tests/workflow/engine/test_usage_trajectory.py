@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import settings as analytics_settings
+from orchestrator.observability.analytics import sink as analytics_sink
 from orchestrator.agents import AgentResult
 from orchestrator.workflow.engine import usage as engine_usage
 
@@ -121,9 +122,9 @@ def _run_trajectory(
     analytics_path: Optional[Path] = None,
 ) -> AgentResult:
     gh = FakeGitHubClient()
-    with patch.object(analytics, _ANALYTICS_PATH_ATTR, analytics_path), \
-            patch.object(analytics, _TRAJECTORY_PATH_ATTR, trajectory_path), \
-            patch.object(analytics, _TRACK_SKILLS_ATTR, False), \
+    with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, analytics_path), \
+            patch.object(analytics_settings, _TRAJECTORY_PATH_ATTR, trajectory_path), \
+            patch.object(analytics_settings, _TRACK_SKILLS_ATTR, False), \
             patch.object(_agent_runner, _RUN_AGENT_ATTR) as run_mock:
         run_mock.return_value = AgentResult(
             session_id="sess-traj",
@@ -228,16 +229,16 @@ class TrajectoryRecordingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="traj-failopen-") as td:
             t_path = Path(td) / "trajectory.jsonl"
             with (
-                patch.object(analytics, _ANALYTICS_PATH_ATTR, None),
-                patch.object(analytics, _TRAJECTORY_PATH_ATTR, t_path),
-                patch.object(analytics, _TRACK_SKILLS_ATTR, True),
+                patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, None),
+                patch.object(analytics_settings, _TRAJECTORY_PATH_ATTR, t_path),
+                patch.object(analytics_settings, _TRACK_SKILLS_ATTR, True),
                 patch.object(
                     support.usage_trajectory,
                     "parse_agent_trajectory",
                     side_effect=RuntimeError("boom"),
                 ),
                 patch.object(_agent_runner, _RUN_AGENT_ATTR) as run_mock,
-                self.assertLogs(analytics.log, level="ERROR"),
+                self.assertLogs(analytics_sink.log, level="ERROR"),
             ):
                 run_mock.return_value = AgentResult(
                     session_id="sess-skill", last_message="", exit_code=0,
@@ -270,7 +271,7 @@ def _drive_trajectory_sink(
     *,
     analytics_path: Path,
 ) -> None:
-    with patch.object(analytics, _ANALYTICS_PATH_ATTR, analytics_path), \
+    with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, analytics_path), \
             patch.object(_agent_runner, _RUN_AGENT_ATTR) as run_mock:
         run_mock.return_value = AgentResult(
             session_id="sess-traj-guard",
@@ -301,7 +302,7 @@ class TrajectorySinkHermeticityTest(unittest.TestCase):
     def test_global_fixture_pins_trajectory_sink_off(self) -> None:
         # The autouse conftest fixture neutralizes any operator-exported
         # TRAJECTORY_LOG_PATH for the duration of every test.
-        self.assertIsNone(analytics.TRAJECTORY_LOG_PATH)
+        self.assertIsNone(analytics_settings.TRAJECTORY_LOG_PATH)
 
     def test_pinned_off_sink_is_not_written(self) -> None:
         with tempfile.TemporaryDirectory(prefix="traj-guard-") as td:
@@ -313,7 +314,7 @@ class TrajectorySinkHermeticityTest(unittest.TestCase):
             # import. It stays configured for the whole test so the suppressed
             # run below is gated by the off-pin, not by an ambient None that a
             # bare runner (no env var) would also exhibit.
-            with patch.object(analytics, _TRAJECTORY_PATH_ATTR, configured):
+            with patch.object(analytics_settings, _TRAJECTORY_PATH_ATTR, configured):
                 # Control: the configured sink genuinely captures the synthetic
                 # run, so the suppression asserted below is a real effect.
                 _drive_trajectory_sink(
@@ -328,7 +329,7 @@ class TrajectorySinkHermeticityTest(unittest.TestCase):
                 # write to that still-configured path. Cover both halves of
                 # "not created or appended", while the baseline agent_exit
                 # record is still produced.
-                with patch.object(analytics, _TRAJECTORY_PATH_ATTR, None):
+                with patch.object(analytics_settings, _TRAJECTORY_PATH_ATTR, None):
                     # (a) not created: an absent sink stays absent.
                     _drive_trajectory_sink(
                         FakeGitHubClient(),

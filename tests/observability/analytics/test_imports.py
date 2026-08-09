@@ -11,6 +11,7 @@ from types import MappingProxyType
 from orchestrator.observability import analytics as _package
 from tests.observability.observability_test_support import (
     _imported_orchestrator_modules,
+    _under,
 )
 
 _PACKAGE = "orchestrator.observability.analytics"
@@ -23,6 +24,10 @@ _RETENTION_REWRITE_OWNER = "retention_rewrite"
 
 _RETENTION_SCAN_OWNER = "retention_scan"
 
+_SETTINGS_OWNER = "settings"
+
+_SINK_OWNER = "sink"
+
 # The declared inventory. A new owner is a deliberate edit here and a
 # paragraph in the module map, which is what the inventory check compares the
 # directory against.
@@ -31,17 +36,32 @@ _OWNERS = (
     _RETENTION_OWNER,
     _RETENTION_REWRITE_OWNER,
     _RETENTION_SCAN_OWNER,
+    _SETTINGS_OWNER,
+    _SINK_OWNER,
+)
+
+# The names the settings owner binds, which are the whole surface it answers
+# for -- it declares values rather than callables, so they are compared
+# against its annotations instead of the defined-here sweep below.
+_KNOBS = (
+    "ANALYTICS_DB_URL",
+    "ANALYTICS_LOG_PATH",
+    "ANALYTICS_RETENTION_DAYS",
+    "TRACK_SKILL_TRIGGERS",
+    "TRAJECTORY_LOG_PATH",
+    "TRAJECTORY_RETENTION_DAYS",
 )
 
 # What each owner answers for, declared rather than discovered so a new public
 # name is a deliberate edit: these are what a caller reaches for a setting or a
 # prune, and an accidental export is a second answer to the same question.
-# Configuration is the six knobs, the whole set under the names the analytics
-# package publishes them as, the view every adapter reads one back through and
-# the two ways it is entered, and the read-path URL fallback. Retention is the
-# three entry points one caller each reaches -- the per-tick wrapper and the
-# two sinks' by-age prunes -- over a scan that decides what is expired and a
-# rewrite that swaps the file out from under it.
+# Configuration is the parse of the six knobs, the view every adapter reads
+# one back through and the two ways it is entered, and the read-path URL
+# fallback; `settings` beside it binds nothing but the parsed values. Retention
+# is the three entry points one caller each reaches -- the per-tick wrapper and
+# the two sinks' by-age prunes -- over a scan that decides what is expired and
+# a rewrite that swaps the file out from under it. The `sink` owner is what
+# both write packages share: the record envelope and the JSONL line under it.
 _SURFACES = MappingProxyType({
     _CONFIG_OWNER: (
         "Settings",
@@ -52,7 +72,6 @@ _SURFACES = MappingProxyType({
         "parse_track_skill_triggers",
         "parse_trajectory_log_path",
         "parse_trajectory_retention_days",
-        "parsed_settings",
         "resolve_db_url",
         "settings_on",
     ),
@@ -75,6 +94,11 @@ _SURFACES = MappingProxyType({
         "prune_timestamp",
         "read_kept_records",
     ),
+    _SETTINGS_OWNER: (),
+    _SINK_OWNER: (
+        "append_jsonl_record",
+        "build_record",
+    ),
 })
 
 # The flat leaves whose responsibility these owners took over. Any survivor
@@ -87,14 +111,13 @@ _VACATED_LEAVES = (
     "orchestrator/analytics/db_url.py",
 )
 
-# Every adapter that has to obtain configuration from the owner: the package
-# bootstrap that binds the parsed knobs, the append paths of both sinks and the
-# prune both are bounded by, the two skill readers that take their holder off
-# an exit context, the gate the opt-in trajectory write runs behind, the two
-# read-path owners that resolve a query's URL, and the sync request that falls
-# back to both sink knobs.
+# Every adapter that has to obtain configuration from the owner: the holder
+# that binds the parsed knobs, the append paths of both sinks and the prune
+# both are bounded by, the two skill readers, the gate the opt-in trajectory
+# write runs behind, the two read-path owners that resolve a query's URL, and
+# the sync request that falls back to both sink knobs.
 _CONFIG_ADAPTERS = (
-    "orchestrator.analytics._package_initialization",
+    "orchestrator.observability.analytics.settings",
     "orchestrator.observability.analytics.recording.events",
     "orchestrator.observability.analytics.recording.catalog",
     "orchestrator.observability.analytics.recording.skills",
@@ -106,16 +129,16 @@ _CONFIG_ADAPTERS = (
     "orchestrator.observability.analytics.sync.run",
 )
 
-# The compatibility package whose bootstrap rebuilds and republishes the prune.
-# The polling tick reaches the same owner, but names it inside the call, so an
-# import probe cannot see it -- the once-per-tick cadence is pinned beside
-# `main` instead.
-_RETENTION_CALLER = "orchestrator.analytics"
-
-# The package the sinks' settings still live on. A prune resolves it inside the
-# call, so no owner here may plant it -- that is what keeps the compatibility
-# package retirable rather than load-bearing.
+# The compatibility package the historical spellings still resolve through. It
+# binds nothing at import and no owner here may plant it, which is what keeps
+# it retirable rather than load-bearing.
 _ANALYTICS_PACKAGE = "orchestrator.analytics"
+
+# The one owner allowed outside the observability tree, and what it reaches:
+# the default analytics sink lives under `config.LOG_DIR`, so the module that
+# binds the knobs is where that dependency is paid. `live_settings` names it
+# inside the call, so no producer pays for it at import.
+_OUTSIDE_REACH = MappingProxyType({_SETTINGS_OWNER: ("orchestrator.config",)})
 
 
 def _qualified(owner: str) -> str:
@@ -160,6 +183,13 @@ class PublicSurfaceTest(unittest.TestCase):
             with self.subTest(owner=owner):
                 self.assertEqual(_defined_here(owner), surface)
 
+    def test_the_settings_owner_binds_every_knob(self) -> None:
+        # It declares values rather than callables, so what it answers for is
+        # the annotated set: a seventh knob parsed but left unbound, or one
+        # bound here and nowhere read, would show up as a difference.
+        holder = import_module(_qualified(_SETTINGS_OWNER))
+        self.assertEqual(tuple(sorted(holder.__annotations__)), _KNOBS)
+
     def test_no_surface_is_declared_twice(self) -> None:
         # The package initializer is a marker, so a name is reached on the
         # owner that defines it rather than published a second time above it.
@@ -176,21 +206,22 @@ class LayeringTest(unittest.TestCase):
 
     def test_no_owner_reaches_outside_the_package(self) -> None:
         for owner in _OWNERS:
+            allowed = _OUTSIDE_REACH.get(owner, ())
             planted = _imported_orchestrator_modules(_qualified(owner))
             for imported in planted:
                 with self.subTest(owner=owner, imported=imported):
                     self.assertTrue(
                         imported.startswith("orchestrator.observability")
                         or imported.startswith("orchestrator._package")
-                        or imported == "orchestrator",
+                        or imported == "orchestrator"
+                        or _under(imported, allowed),
                         f"{owner} reaches {imported}",
                     )
 
     def test_no_owner_plants_the_flat_package(self) -> None:
-        # The sharpest case the check above rejects, named on its own: the
-        # settings a prune reads live on that package and it is where a caller
-        # patches one, so binding an import of it here would cycle -- the
-        # package's own bootstrap is what imports these owners.
+        # The sharpest case the check above rejects, named on its own: every
+        # knob a prune reads lives on the `settings` owner beside it, so
+        # nothing here has any reason to name the historical package.
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
             with self.subTest(owner=owner):
@@ -206,11 +237,14 @@ class LayeringTest(unittest.TestCase):
                     _imported_orchestrator_modules(adapter),
                 )
 
-    def test_the_flat_package_names_the_prune_owner(self) -> None:
-        self.assertIn(
-            _qualified(_RETENTION_OWNER),
-            _imported_orchestrator_modules(_RETENTION_CALLER),
-        )
+    def test_the_flat_package_binds_nothing(self) -> None:
+        # Naming the historical package costs an importer neither the
+        # recorders nor the process configuration behind the knobs, because
+        # every name it publishes is resolved on access.
+        planted = _imported_orchestrator_modules(_ANALYTICS_PACKAGE)
+        for owner in _OWNERS:
+            with self.subTest(owner=owner):
+                self.assertNotIn(_qualified(owner), planted)
 
 
 if __name__ == "__main__":

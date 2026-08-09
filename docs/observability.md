@@ -196,12 +196,19 @@ Project-local JSONL sink for raw metric records, separate from `EVENT_LOG_PATH`.
 
 **Module layout.** The append side lives in `orchestrator/observability/analytics/recording/`, whose initializer
 publishes the six recorders a producer calls (`build_record`, `append_record`, `record_stage_enter`,
-`record_stage_evaluation`, `record_repo_skill_catalog`, `record_agent_exit`) as the `events` owner's own objects.
-Beside it are `io.py` (the locked JSONL line both sinks write through, and the one lock each of them holds),
-`models.py` (typed requests and the keyword signatures a call is bound through), and the four owners one finished
-agent run is summarized by — `usage.py`, `skills.py`, `catalog.py`, and `agent_exit.py`. Every producer names that
-package: `orchestrator/github/client.py`, `orchestrator/workflow/engine/dispatch.py`,
+`record_stage_evaluation`, `record_repo_skill_catalog`, `record_agent_exit`) as their owners' own objects: the
+analytics sink's append and the three recorders a producer calls directly are `events`, the sequenced
+`record_agent_exit` is `agent_exit`, and the envelope is the shared `sink.py` owner one directory up, republished on
+`events` because that is the import site a producer already names. Beside them are `models.py` (typed requests and the
+keyword signatures a call is bound through) and the three remaining steps one finished agent run is summarized by —
+`usage.py`, `skills.py`, and `catalog.py`. Every producer names that package:
+`orchestrator/github/client.py`, `orchestrator/workflow/engine/dispatch.py`,
 `orchestrator/workflow/engine/usage.py`, and `orchestrator/skills/catalog.py`.
+
+`events.py` is the bottom of that graph — it names `config.py`, `sink.py`, and `models.py`, and none of its siblings —
+which is what lets `agent_exit.py` own the producer-facing recorder and still reach the append through it. Each
+recorder dispatches its own `append_record` on `events`, so `patch.object(events, "append_record", ...)` is what
+intercepts an internal write.
 
 One directory up, `retention.py` publishes the three prune entry points — the polling tick's fail-open wrapper
 (`prune_with_retention_logging`) and one by-age prune per sink (`prune_old_records`,
@@ -211,16 +218,12 @@ swaps it in, and the lock held across the read and that swap). It sits beside `c
 sink's package because both sinks are pruned through it. `main._run_tick` names that owner directly.
 
 `orchestrator/analytics/__init__.py` stays an import-only compatibility facade re-exporting the same objects, including
-the three historical prune entry points. Its bootstrap reparses the six sink knobs on every package import and
-assembles a fresh recorder, trajectory-append, and retention set — the recording `events` owner, the trajectory `api`
-owner, and the `retention` owner are replaced with them — so references held across a package reload keep their
-historical isolation. The recording package above `events` is re-executed in place rather than replaced, so the one
-module object every producer imported keeps publishing the live recorders, and the facade's bindings and a patch aimed
-at the canonical module stay the same objects whichever import came first. Each sink's lock — the object its append
-and its prune must share — is minted on `recording/io.py`, which no reload rebuilds, so an append taken off its owner
-before the facade existed still serializes against the prune rather than writing into a file being rewritten under it.
-The retention scan and rewrite leaves are deliberately *not* in that rebuilt set: they read every path, window, and
-lock off the arguments the entry point hands them, so a second copy would buy nothing. The read and sync surfaces are
+the three historical prune entry points. It binds nothing at import: every historical name is resolved on access off
+the owner that defines it now, so naming the package costs an importer neither the recorders nor the process
+configuration behind the knobs, and a knob patched on the `settings` holder is what a read through the package answers
+with. Each sink's lock — the object its append and its prune must share — is minted on
+`observability/analytics/sink.py`, once per process, so an append taken directly off its owner still serializes
+against the prune rather than writing into a file being rewritten under it. The read and sync surfaces are
 separate Postgres-facing families, and neither has a responsibility left here: the whole sync has moved out, `sync.py`
 included. The column inventory both shapes meet on, the canonical encoding a content hash is taken over, the coercion
 each required field is narrowed by, the INSERT with the positional tuple that fills it, the counts a replay is read
@@ -243,20 +246,18 @@ breaking.
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
 `orchestrator/observability/analytics/config.py` — *not* in `orchestrator/config/`. That owner reads the environment
-inside the call, never at import, so every knob resolves against whatever environment the caller set up; its
-`parsed_settings` is what the `orchestrator/analytics` bootstrap binds on the package, and its `resolve_db_url` is the
-fallback a read's omitted `db_url=` resolves through. The values stay exposed as package attributes
-(`analytics.ANALYTICS_LOG_PATH`, etc.) that tests patch directly via
-`patch.object(analytics, "ANALYTICS_LOG_PATH", ...)`, and every adapter reads one back through the owner's `Settings`
-view, which reads its attribute on demand so a patch reaches the next read. The two entry points differ only in whose
-instance answers: the recorders in `recording/events.py`, the sink append in `trajectories/api.py`, the prune wrappers
-in `retention.py`, and the skill readers pass `config.settings_on` the package instance they captured at their own
-import (a package reloaded against a patched env is what its own callers drive) — `events.settings_holder` is where
-that capture is read out of `sys.modules`, and a producer that imported the recording owner with no analytics package
-behind it resolves the name inside the call instead — while the trajectory writers below the append take that instance
-off the exit context they are handed, the viewer's `trajectory_viewer/log_paths.py` takes one as an argument from the
-`_trajectory_records.py` leaf that captured it (which is what keeps two reloaded readers each on their own file), and
-the read and sync paths have nothing captured and use `config.live_settings`, which resolves the package name. The
+inside the call, never at its own import, so every knob resolves against whatever environment the caller set up, and
+its `resolve_db_url` is the fallback a read's omitted `db_url=` resolves through. Where those parsed values are
+*bound* is `observability/analytics/settings.py`: one holder per process, read once at its import, and the surface
+tests patch directly via `patch.object(analytics_settings, "ANALYTICS_LOG_PATH", ...)`. Every adapter reads one back
+through the owner's `Settings` view, which reads its attribute on demand so a patch reaches the next read. The
+recorders in `recording/events.py`, the sink append in `trajectories/api.py`, the prune wrappers in `retention.py`,
+the skill readers, the trajectory writers, and the read and sync paths all reach that holder through
+`config.live_settings`, which imports it inside the call so nothing pays for the process configuration behind it until
+a knob is actually read. `config.settings_on` answers for whichever holder a caller hands it, which is what the
+viewer's `trajectory_viewer/log_paths.py` takes as an argument from the `_trajectory_records.py` leaf that captured
+it. The historical spellings (`analytics.ANALYTICS_LOG_PATH`, etc.) still resolve, forwarded to that holder on every
+access so the two cannot disagree. The
 audit event log (`config.EVENT_LOG_PATH`) stays in `config` because `GitHubClient.emit_event` is a general-purpose
 audit surface.
 
@@ -298,7 +299,7 @@ is not valid JSON) are preserved verbatim so the prune step never silently drops
 `analytics.prune_old_records` is the same object for as long as the compatibility facade forwards it.
 
 **Append/prune serialization.** Append and prune share one process-local `threading.Lock`, minted on
-`recording/io.py` — the owner no package reload rebuilds, so every reference to `append_record` takes the object the
+`observability/analytics/sink.py` — one mint per process, so every reference to `append_record` takes the object the
 prune takes — so a concurrent `append_record` cannot land between the prune's read and its `os.replace`. Under the
 scheduler-driven dispatch, `workflow.tick` returns as soon as it has submitted per-issue callables, so scheduler
 workers may still be running — and calling `append_record` — when `main._run_tick` invokes
@@ -308,12 +309,12 @@ outside the critical section.
 
 **Retention cadence.** `main._run_tick` calls `retention.prune_with_retention_logging()` exactly once per polling
 iteration after `workflow.tick` returns for every configured repo, regardless of how many repos are configured — the
-sink is process-wide, not per-repo. It names the owner inside the call, because the analytics package rebuilds that
-owner for each instance it initializes. Right before the prune, `_run_tick` calls `scheduler.reap()` exactly once per
+sink is process-wide, not per-repo. It names the owner inside the call, so the tick's own import never pays for the
+prune graph. Right before the prune, `_run_tick` calls `scheduler.reap()` exactly once per
 polling pass so worker failure-completion records drain before the next iteration. `_dispatch_via_scheduler`
 deliberately does NOT reap. The wrapper catches exceptions and logs the `"removed N record(s)"` message so the call site
-in `main` stays a one-liner, and it delegates back through the settings holder so
-`patch.object(analytics, "prune_old_records", ...)` still intercepts. Per-tick cost is bounded: the helper reads the
+in `main` stays a one-liner, and it dispatches `prune_old_records` on its own module so
+`patch.object(retention, "prune_old_records", ...)` still intercepts. Per-tick cost is bounded: the helper reads the
 file at most once and only rewrites it when at least one record is older than the retention window.
 
 **Pinned GitHub state is unaffected.** The prune touches only the local file — no issue comment, label, or other
@@ -486,16 +487,17 @@ interleaved with the assistant / user text turns, plus the final output a run pr
 Postgres aggregation, or the dashboard.
 
 **Module layout.** The writers divide by what one record passes through: `models.py` holds the head/tail and
-whole-record caps, the view an adapter reads whichever values are in force back through, and the headline and running
+whole-record caps, the snapshot of them one record is measured against, and the headline and running
 budget a record is charged as; `sanitize.py` the leaf-by-leaf redaction and head/tail truncation; `serialize.py` the
 record's shape and the order its turn / step arrays are drawn from the budget in; `persistence.py` the opt-in gate, the
 stdout parse, the Codex backfill, and the fail-open guard around the write; and `api.py` the bare
 `append_trajectory_record` an operator or the compatibility facade reaches.
-`recording/agent_exit.py` names `persistence` directly and never the reverse; everything from `persistence` down reads
-its settings holder off the exit context it is handed, so a record answers for the package instance the caller entered
-on. The by-age prune (`prune_trajectory_records`) lives one directory up in
+`recording/agent_exit.py` names `persistence` directly and never the reverse, and no owner here names the recorders:
+the record envelope `serialize.py` builds and the channel `persistence.py` logs a failure on both come off
+`observability/analytics/sink.py` above both packages, which is what keeps that composition acyclic. Every knob is
+read off the `settings` holder inside the call. The by-age prune (`prune_trajectory_records`) lives one directory up in
 `orchestrator/observability/analytics/retention.py`, beside the analytics sink's, because the two are pruned through
-one scan and one rewrite; it and the append take the sink's dedicated lock, which is minted on `recording/io.py`
+one scan and one rewrite; it and the append take the sink's dedicated lock, which is minted on `sink.py`
 beside the analytics one — see the append / prune discipline below for why it cannot live next to the append itself.
 
 **Producer: `record_agent_exit`.** After the baseline `agent_exit` analytics record (and the opt-in skill parse) are
@@ -546,16 +548,16 @@ token row for the same run without ever being stored alongside it — the whole 
 **Redaction and truncation caps.** Every free-text field — `user_input`, `system_prompt`, each step's `content`, and
 `output` — is passed through `config.credentials.redact_secrets` (the same secret-shaped-env-value masker used on
 agent stderr) **before** truncation, so a secret straddling an elided boundary cannot survive as two halves. Each field
-is then head/tail truncated to its first `_TRAJECTORY_FIELD_HEAD` (`2000`) and last `_TRAJECTORY_FIELD_TAIL` (`2000`)
-characters — declared by `trajectories/models.py`, republished under those private names on the analytics package,
-which is where a caller shrinks one — with an `...[N chars elided]...` marker in between; the head keeps the
+is then head/tail truncated to its first `TRAJECTORY_FIELD_HEAD` (`2000`) and last `TRAJECTORY_FIELD_TAIL` (`2000`)
+characters — declared by `trajectories/models.py`, which is where a caller shrinks one, and snapshotted once per
+record — with an `...[N chars elided]...` marker in between; the head keeps the
 request/intent, the tail the
 result/answer. The whole record is additionally bounded: each step is charged its full **serialized** size — the JSON
 metadata (`kind` / `name` / `tool_id` / `turn`) plus its truncated content, not just `len(content)`, so even thousands
 of empty- or metadata-only steps still consume the budget — and the per-turn `turns` array is charged **and
 truncated** against the same budget (turns drawn down first, then steps), so a pathological claude run of thousands of
 turns with no tool calls cannot write the whole array in full and blow the budget. Once the running total crosses
-`_TRAJECTORY_RECORD_BUDGET` (`200_000`) bytes the remaining turns — then steps — are dropped and a `truncated: true`
+`TRAJECTORY_RECORD_BUDGET` (`200_000`) bytes the remaining turns — then steps — are dropped and a `truncated: true`
 flag is set; only the small fixed `run_usage` summary is always kept whole, so one pathological run (thousands of turns
 or tool calls) cannot write an unbounded line. Non-string step content (claude tool inputs are dicts; `tool_result`
 content a list) is redacted **leaf-by-leaf before** JSON serialization (`sanitize.redact_tree`) — serializing first
@@ -581,15 +583,15 @@ any other value is the explicit opt-in path. `TRAJECTORY_RETENTION_DAYS` default
 after `mkdir(parents=True, exist_ok=True)`, downgrading `OSError` to a `log.warning`; `prune_trajectory_records(*,
 now=None)` removes records older than `TRAJECTORY_RETENTION_DAYS` through a temp-file + `os.replace` rewrite, preserves
 malformed / unparseable lines verbatim, and no-ops when the sink is disabled, retention is non-positive, or the file is
-absent. Both reuse the shared append (`recording/io.py`) and prune (`retention_scan.py` / `retention_rewrite.py`)
+absent. Both reuse the shared append (`analytics/sink.py`) and prune (`retention_scan.py` / `retention_rewrite.py`)
 cores but hold a **dedicated**
 `threading.Lock`, so the trajectory file serializes its own append-vs-prune race without ever blocking against — or
 touching — `ANALYTICS_LOG_PATH`, the analytics Postgres sync, or the dashboard. That lock is minted on
-`recording/io.py`, beside the analytics sink's and for the same reason: `io.py` is loaded once per process while
-`trajectories/api.py` is rebuilt for every analytics package instance, and a caller may hold an
-`append_trajectory_record` it imported before any rebuild — a reference the rebuild never rebinds, whose own first call
-is what triggers one. A lock re-minted with the append would leave that reference serializing against nothing while the
-prune took the replacement, which is precisely the append-during-prune race the lock exists to close.
+`analytics/sink.py`, beside the analytics sink's and for the same reason: an append and the prune that rewrites the
+file under it are safe only while both hold one object, and a caller is free to hold an `append_trajectory_record` it
+took off the owner rather than call through a package. A lock minted beside the append would leave that reference
+serializing against nothing while the prune took another, which is precisely the append-during-prune race the lock
+exists to close.
 
 **No built-in rotation.** As with the audit and analytics sinks, each append reopens the file after `mkdir`; there is no
 size cap, long-lived descriptor, or compression. `prune_trajectory_records` is **not yet wired into the polling loop**,
@@ -756,13 +758,16 @@ archive file, or a custom high-water-mark shipper.
 
 Because `prune_trajectory_records()` is not called by the polling loop, drive trajectory retention explicitly when you
 want `TRAJECTORY_RETENTION_DAYS` to affect the file. The value may live in `.env` like the other non-secret knobs; it is
-parsed when the prune process imports `orchestrator.analytics`, which is why the recipe below names that package rather
-than the `observability/analytics/retention.py` owner it forwards to. The cron entry relies on `.env` for both
+parsed when the prune process first reads a knob off `observability/analytics/settings.py`, which the entry point
+below resolves inside the call. The cron entry relies on `.env` for both
 `TRAJECTORY_LOG_PATH` and `TRAJECTORY_RETENTION_DAYS`, runs the prune helper, and logs how many records were removed:
 
 ```cron
-25 0 * * * cd /path/to/agent-orchestrator && /usr/bin/flock -n -E 75 /tmp/agent-orchestrator-trajectory.lock /home/<user>/.local/bin/uv run python -c 'from orchestrator import analytics; print(f"trajectory prune removed {analytics.prune_trajectory_records()} record(s)")' >> /path/to/agent-orchestrator/logs/trajectory-prune.cron.log 2>&1
+25 0 * * * cd /path/to/agent-orchestrator && /usr/bin/flock -n -E 75 /tmp/agent-orchestrator-trajectory.lock /home/<user>/.local/bin/uv run python -c 'from orchestrator.observability.analytics import retention; print(f"trajectory prune removed {retention.prune_trajectory_records()} record(s)")' >> /path/to/agent-orchestrator/logs/trajectory-prune.cron.log 2>&1
 ```
+
+The historical `from orchestrator import analytics; analytics.prune_trajectory_records()` spelling still starts the
+same prune and is kept working for schedulers that already carry it.
 
 To make the same cron entry use a one-off retention window instead of `.env`, prefix the command with `env
 TRAJECTORY_LOG_PATH=/path/to/agent-orchestrator/logs/trajectories.jsonl TRAJECTORY_RETENTION_DAYS=30`.
@@ -770,7 +775,7 @@ TRAJECTORY_LOG_PATH=/path/to/agent-orchestrator/logs/trajectories.jsonl TRAJECTO
 Only run this prune command while the orchestrator is stopped or otherwise guaranteed not to append trajectories. The
 shared `/tmp/agent-orchestrator-trajectory.lock` serializes operator cron jobs with each other, but not with the live
 orchestrator process: the lock the append and the prune share (minted on
-`observability/analytics/recording/io.py`) is a process-local `threading.Lock`, not an interprocess file lock. An
+`observability/analytics/sink.py`) is a process-local `threading.Lock`, not an interprocess file lock. An
 external prune process can race with the live polling process and lose a record appended to
 the old inode between the prune read and `os.replace`. Schedule pruning after at least one mirror run if the remote
 fixed-path mirror should receive records before they age out locally. The prune rewrites only the trajectory JSONL
@@ -789,8 +794,8 @@ but the file on disk (no database, no `analytics.sync`).
 analogue of `orchestrator/analytics/read.py`). `_trajectory_records.py` preserves the historical record API — the
 `obj` / `seq` parse call shape included, which it binds against a declared signature and hands the owner as
 `sequence` — and is where a caller's world is bound: the log path, the banner, and the read each hand the owner the
-analytics package that leaf captured at its own import, so a reload isolates a reader and a patch on that package
-intercepts every read made through it. The record vocabulary (`constants`), the field coercion under it (`coercion`),
+analytics settings holder that leaf captured at its own import, so a patch on that holder intercepts every read made
+through it. The record vocabulary (`constants`), the field coercion under it (`coercion`),
 the immutable sub-views (`models`), the run model (`runs`), the usage and timeline/label views bound onto it
 (`usage_views`, `timeline_views`), the parse above them (`parsing`), the file read that drives it (`reading`), the
 log-path resolution beside it (`log_paths`, over `analytics/config.py`), the filter shapes, values, and run matching
@@ -800,8 +805,9 @@ drawn with (`css`, `summary_html`, `run_html`, `usage_html`, `timeline_html`); t
 model moved off and the five the HTML moved off forward every historical name to those owners' own objects, and the
 views and the record still report `orchestrator._trajectory_records` as their module. `trajectory_reader` defines
 none of it: it is the one import site the page and every historical caller reach the whole read model through,
-binding the record API off a freshly loaded `_trajectory_records` (so a reload still isolates a reader) and the
-filter and summary API off the owners, with `FilterOptions`, `RunFilterOptions`, and `TrajectorySummary` still
+binding the record API off a freshly loaded `_trajectory_records` (so a rebuilt reader carries its own capture of the
+settings holder) and the filter and summary API off the owners, with `FilterOptions`, `RunFilterOptions`, and
+`TrajectorySummary` still
 reporting `orchestrator.trajectory_reader` as their module — which is also why it imports the typing names those
 three are annotated in and uses them for nothing else: `get_type_hints` resolves a class's annotations in the globals
 of the module it names. Together they read `TRAJECTORY_LOG_PATH`, parse each `agent_trajectory`

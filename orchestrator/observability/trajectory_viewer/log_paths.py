@@ -8,11 +8,10 @@ naming the knob, the relaunch that makes it take effect, and the order the two
 happen in, instead of the empty table an operator would read as "nothing ran".
 
 The knob is read off a settings holder the caller hands in rather than off the
-analytics package name, because *which* instance is the caller's own question:
-a reader built against one import of that package resolves that import's path
-for as long as it is held, which is what keeps two reader worlds apart -- and
-patching the knob on the package a caller captured is the interception every
-read of it goes through.
+holder's own name, because *which* one is the caller's own question: a reader
+built against one import of it resolves that import's path for as long as it
+is held, and patching the knob on the holder a caller captured is the
+interception every read of it goes through.
 """
 
 from __future__ import annotations

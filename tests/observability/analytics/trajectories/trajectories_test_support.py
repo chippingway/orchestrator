@@ -18,6 +18,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
+from orchestrator.agents import AgentResult
+from orchestrator.observability.analytics import recording
+from orchestrator.observability.analytics import settings as analytics_settings
+
 from tests.analytics_reload_helpers import reload_analytics as _reload
 
 ANALYTICS_LOG_PATH = "ANALYTICS_LOG_PATH"
@@ -113,15 +117,14 @@ class TrajectoryExitCase:
 
 @contextlib.contextmanager
 def trajectory_sink(retention: str | None = None):
-    """Reload the analytics package against a temporary `trajectory.jsonl`
-    sink, yielding `(path, analytics)`.
-    """
+    """Point the trajectory knobs at a temporary `trajectory.jsonl` sink."""
     with tempfile.TemporaryDirectory() as sink_dir:
         path = Path(sink_dir) / TRAJECTORY_FILENAME
         environment = {TRAJECTORY_LOG_PATH: str(path)}
         if retention is not None:
             environment[TRAJECTORY_RETENTION_DAYS] = retention
-        yield path, _reload(environment)[1]
+        _reload(environment)
+        yield path
 
 
 class RecordAgentExitTrajectorySupport(unittest.TestCase):
@@ -130,14 +133,14 @@ class RecordAgentExitTrajectorySupport(unittest.TestCase):
     head/tail + total-size truncation caps, and never lets a trajectory
     failure drop the baseline `agent_exit` usage record."""
 
-    def _emit(self, analytics, **options):
+    def _emit(self, **options):
         case = TrajectoryExitCase(**options)
         with (
-            patch.object(analytics, ANALYTICS_LOG_PATH, case.analytics_path),
-            patch.object(analytics, TRAJECTORY_LOG_PATH, case.traj_path),
-            patch.object(analytics, TRACK_SKILL_TRIGGERS, case.track),
+            patch.object(analytics_settings, ANALYTICS_LOG_PATH, case.analytics_path),
+            patch.object(analytics_settings, TRAJECTORY_LOG_PATH, case.traj_path),
+            patch.object(analytics_settings, TRACK_SKILL_TRIGGERS, case.track),
         ):
-            return analytics.record_agent_exit(
+            return recording.record_agent_exit(
                 repo=REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,
                 stage=STAGE_IMPLEMENTING,
@@ -145,7 +148,7 @@ class RecordAgentExitTrajectorySupport(unittest.TestCase):
                 backend=case.backend,
                 agent_spec=case.backend,
                 resume_session_id=None,
-                result=analytics.AgentResult(
+                result=AgentResult(
                     session_id=SESSION_ID,
                     last_message="",
                     exit_code=0,

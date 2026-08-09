@@ -7,7 +7,7 @@ import contextlib
 from types import MappingProxyType
 from unittest.mock import patch
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.agents import runner as _agent_runner
 
 from tests.workflow_git_owners import GIT_SEAM_OWNERS
@@ -37,12 +37,12 @@ def _patch_and_run(callable_, context: _WorkflowRunContext):
     workflow_mocks = _build_workflow_mocks(context)
     with contextlib.ExitStack() as stack:
         stack.enter_context(patch.object(
-            analytics,
+            analytics_settings,
             "ANALYTICS_LOG_PATH",
             context.analytics_log_path,
         ))
         stack.enter_context(patch.object(
-            analytics,
+            analytics_settings,
             "TRAJECTORY_LOG_PATH",
             context.trajectory_log_path,
         ))

@@ -20,7 +20,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from orchestrator.observability.analytics.trajectories import models as trajectory_models
+
 
 
 from tests.analytics_jsonl_helpers import (
@@ -97,12 +98,10 @@ class RecordAgentExitTrajectoryRedactionTest(_support.RecordAgentExitTrajectoryS
         # input, the tool_result content, or the output. `redact_secrets`
         # reads the live os.environ, so set a secret-shaped var around the
         # call and assert it is masked everywhere.
-        _, analytics = _reload()
         secret = "sk-ant-DEADBEEF-secret-value-0123456789"
         with tempfile.TemporaryDirectory() as td, patch.dict(os.environ, {"ANTHROPIC_API_KEY": secret}):
             t_path = Path(td) / _TRAJECTORY_FILENAME
             self._emit(
-                analytics,
                 stdout=_claude_trajectory_stdout(
                     tool_input={_COMMAND_KEY: f"echo {secret}"},
                     tool_result=f"leaked {secret} here",
@@ -128,12 +127,10 @@ class RecordAgentExitTrajectoryRedactionTest(_support.RecordAgentExitTrajectoryS
         # unable to match the raw value -- so the secret would leak into
         # `steps[].content`. Redacting raw leaves first keeps it masked, for
         # both the dict tool_call input and the list tool_result content.
-        _, analytics = _reload()
         secret = "topsecretvalue\nwith-newline-marker-0123456789"
         with tempfile.TemporaryDirectory() as td, patch.dict(os.environ, {"MULTILINE_SECRET_KEY": secret}):
             t_path = Path(td) / _TRAJECTORY_FILENAME
             self._emit(
-                analytics,
                 stdout=_claude_trajectory_stdout(
                     tool_input={_COMMAND_KEY: f"echo {secret}"},
                     tool_result=[{_TYPE_KEY: _TEXT_KEY, _TEXT_KEY: f"saw {secret}"}],
@@ -156,23 +153,21 @@ class RecordAgentExitTrajectoryRedactionTest(_support.RecordAgentExitTrajectoryS
         # A long field is redacted then truncated to head + tail chars with
         # an elision marker, so a single huge tool output cannot bloat one
         # step. Shrink the caps so the test stays small.
-        _, analytics = _reload()
         with (
             tempfile.TemporaryDirectory() as td,
             patch.object(
-                analytics,
-                "_TRAJECTORY_FIELD_HEAD",
+                trajectory_models,
+                "TRAJECTORY_FIELD_HEAD",
                 _TRUNCATION_EDGE_CHARS,
             ),
             patch.object(
-                analytics,
-                "_TRAJECTORY_FIELD_TAIL",
+                trajectory_models,
+                "TRAJECTORY_FIELD_TAIL",
                 _TRUNCATION_EDGE_CHARS,
             ),
         ):
             t_path = Path(td) / _TRAJECTORY_FILENAME
             self._emit(
-                analytics,
                 stdout=_claude_trajectory_stdout(
                     tool_result="A" * _LONG_TEXT_CHARS,
                     final_output="done",

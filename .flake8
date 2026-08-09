@@ -41,14 +41,15 @@
 #   the parsers through the package. WPS412 is waived for that import-time
 #   logic.
 # * orchestrator/observability/analytics/recording/__init__.py is the stable
-#   analytics recording facade: it re-exports the six recorders the `events`
-#   owner defines -- the record envelope, the sink append beneath it, and one
-#   each for a stage entered, a stage evaluated, a repo's skill catalog
-#   scanned, and a tracked agent run finished -- and publishes that narrow
-#   public surface through an explicit __all__ (WPS410) so a producer appends
-#   through the package rather than reaching past it. WPS412 is waived for
-#   that import-time logic. Every other initializer under `observability/`
-#   stays a marker that binds nothing.
+#   analytics recording facade: it re-exports the six recorders a producer
+#   calls -- the record envelope and the sink append beneath it, plus one each
+#   for a stage entered, a stage evaluated, a repo's skill catalog scanned,
+#   and a tracked agent run finished, five from the `events` owner and the
+#   sequenced one from `agent_exit` -- and publishes that narrow public
+#   surface through an explicit __all__ (WPS410) so a producer appends through
+#   the package rather than reaching past it. WPS412 is waived for that
+#   import-time logic. Every other initializer under `observability/` stays a
+#   marker that binds nothing.
 #
 # orchestrator/workflow/state.py is one owner for the typed workflow state --
 # the label and control vocabularies, the transition graph keyed by them, and
@@ -220,15 +221,14 @@
 # those files.
 #
 # orchestrator/observability/analytics/config.py is one owner for everything
-# the analytics and trajectory sinks are configured by -- the six environment
-# knobs, the parse the analytics package bootstrap binds, the settings view
-# every adapter reads a knob back through (on its own captured instance or on
-# whichever one the package name resolves to), and the read-path URL
-# fallback -- so it carries 12 members past the WPS202 ceiling of 7. The
-# disable sentinels are one vocabulary across three of those knobs, and the
-# values an adapter reads back are the values these parsers produced, so
-# splitting the parse away from either half would let what "off" spells and
-# what it costs drift apart. WPS202 is waived.
+# the analytics and trajectory sinks are configured by -- the parse of the six
+# environment knobs, the settings view every adapter reads one back through
+# (on its own captured holder or on whichever the holder's name resolves to),
+# and the read-path URL fallback -- so it carries 11 members past the WPS202
+# ceiling of 7. The disable sentinels are one vocabulary across three of those
+# knobs, and the values an adapter reads back are the values these parsers
+# produced, so splitting the parse away from either half would let what "off"
+# spells and what it costs drift apart. WPS202 is waived.
 #
 # orchestrator/observability/analytics/query/rollup_reads.py is the read family
 # hub with the widest result span, so it names 16 imports past the WPS201

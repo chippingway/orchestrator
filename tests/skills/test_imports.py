@@ -71,15 +71,9 @@ _FLAT_MODULE_PATTERNS = ("_local_skills*.py", "skill_catalog*.py")
 
 _PROBE_PATH = Path("/tmp/orchestrator-skills-owner-probe")
 
-# A codex exit context with a worktree and both skill sinks on, which is what
-# makes the writer reach for discovery at all.
-_CODEX_CONTEXT = SimpleNamespace(
-    cwd=_PROBE_PATH,
-    analytics_package=SimpleNamespace(
-        TRACK_SKILL_TRIGGERS=True,
-        TRAJECTORY_LOG_PATH=_PROBE_PATH,
-    ),
-)
+# A codex exit context with a worktree, which together with both skill sinks
+# switched on is what makes the writer reach for discovery at all.
+_CODEX_CONTEXT = SimpleNamespace(cwd=_PROBE_PATH)
 
 _IMPORTED_MODULES_SCRIPT = """
 import sys
@@ -233,12 +227,20 @@ class CallSiteTest(unittest.TestCase):
             models as recording_models,
         )
 
+        from orchestrator.observability.analytics import (
+            settings as analytics_settings,
+        )
+
         owner = _OWNER_MODULES[_DISCOVERY_OWNER]
         catalog = recording_models.CodexCatalog()
         with patch.object(
             owner, "discover_local_skills", lambda _cwd: ("scanned",),
         ), patch.object(
             owner, "discover_codex_tools", lambda: ("offered",),
+        ), patch.object(
+            analytics_settings, "TRACK_SKILL_TRIGGERS", True,
+        ), patch.object(
+            analytics_settings, "TRAJECTORY_LOG_PATH", _PROBE_PATH,
         ):
             recording_catalog.populate_codex_catalog(_CODEX_CONTEXT, catalog)
         self.assertEqual(catalog.available_skills, ["scanned"])

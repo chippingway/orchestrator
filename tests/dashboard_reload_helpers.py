@@ -10,6 +10,7 @@ import sys
 from types import ModuleType
 from unittest.mock import patch
 
+from tests.analytics_reload_helpers import reload_analytics
 from tests.import_world_helpers import CONFIG_MODULE, restored_import_world
 
 
@@ -26,7 +27,6 @@ READ_MODE_OWNER = f"{DASHBOARD_OWNERS}.{READ_MODE_ATTRIBUTE}"
 _RELOAD_POP_MODULES = (
     CONFIG_MODULE,
     ANALYTICS_READ_MODULE,
-    "orchestrator.analytics",
     "orchestrator.dashboard_state",
     "orchestrator.dashboard_kpis",
     "orchestrator.dashboard_html",
@@ -74,11 +74,13 @@ def _rebuild_read_mode_owner() -> None:
 def reload_dashboard(
     environment: dict[str, str] | None = None,
 ) -> tuple[ModuleType, ModuleType]:
-    """Load analytics and every dashboard leaf against one environment.
+    """Load the analytics knobs and every dashboard leaf against one
+    environment.
 
-    The returned pair is the hermetic reload; `orchestrator.config` is put back
-    so a later test that first imports a module binding it still binds the same
-    object every earlier importer holds.
+    The returned pair is the settings holder the environment landed on and the
+    hermetic dashboard facade; `orchestrator.config` is put back so a later
+    test that first imports a module binding it still binds the same object
+    every earlier importer holds.
 
     The widget surface is named here rather than left to the facade's own
     import, and named after it. The page's composition reaches each owner
@@ -87,12 +89,12 @@ def reload_dashboard(
     imported before it would be dropped again and a caller reading one back
     off `sys.modules` would find nothing there at all.
     """
+    _, analytics = reload_analytics(environment)
     with restored_import_world():
         with patch.dict(os.environ, hermetic_environment(environment), clear=True):
             for module_name in _RELOAD_POP_MODULES:
                 sys.modules.pop(module_name, None)
             _rebuild_read_mode_owner()
-            analytics = importlib.import_module("orchestrator.analytics")
             dashboard = importlib.import_module(DASHBOARD_MODULE)
             importlib.import_module(WIDGETS_MODULE)
     return analytics, dashboard

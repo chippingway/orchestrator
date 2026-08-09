@@ -21,9 +21,9 @@ from tests.observability.analytics.sync.sync_test_support import (
 
 # The two knobs an omitted argument falls back to, on the package they are
 # bound on and where a caller patches one.
-_LOG_PATH_SETTING = "orchestrator.analytics.ANALYTICS_LOG_PATH"
+_LOG_PATH_SETTING = "orchestrator.observability.analytics.settings.ANALYTICS_LOG_PATH"
 
-_DB_URL_SETTING = "orchestrator.analytics.ANALYTICS_DB_URL"
+_DB_URL_SETTING = "orchestrator.observability.analytics.settings.ANALYTICS_DB_URL"
 
 # The service the command drives, named on the command's own module so an
 # interception aimed there is what the invocation actually runs.

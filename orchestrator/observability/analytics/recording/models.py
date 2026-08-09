@@ -43,13 +43,7 @@ class StageEvaluationRequest:
 
 @dataclass(frozen=True)
 class AgentExitContext:
-    """Inputs that describe one completed tracked agent run.
-
-    `analytics_package` is the settings holder the recorders read a knob back
-    off and dispatch their own entry points through, carried on the context so
-    every leaf downstream of the bind answers for the same instance the caller
-    entered on.
-    """
+    """Inputs that describe one completed tracked agent run."""
 
     repo: str
     issue: int
@@ -65,7 +59,6 @@ class AgentExitContext:
     fallback_model: Optional[str]
     prompt: Optional[str]
     cwd: Optional[Path]
-    analytics_package: Any = None
 
 
 @dataclass
@@ -152,7 +145,6 @@ def bind_stage_evaluation(
 def bind_agent_exit(
     positional_fields: tuple[Any, ...],
     keyword_fields: dict[str, Any],
-    analytics_package: Any = None,
 ) -> AgentExitContext:
     bound_fields = AGENT_EXIT_SIGNATURE.bind(
         *positional_fields,
@@ -162,5 +154,4 @@ def bind_agent_exit(
     bound_values = dict(bound_fields.arguments)
     bound_values["agent_result"] = bound_values.pop(RESULT_FIELD)
     bound_values[ISSUE_FIELD] = int(bound_values[ISSUE_FIELD])
-    bound_values["analytics_package"] = analytics_package
     return AgentExitContext(**bound_values)

@@ -9,7 +9,6 @@ import sys
 from types import ModuleType
 
 from orchestrator import agents as _agents
-from orchestrator import analytics as _analytics
 from orchestrator import config as _config
 from orchestrator import workflow as _workflow
 from orchestrator import github as _github
@@ -18,7 +17,6 @@ from orchestrator import scheduler as _scheduler
 os = _os
 signal = _signal
 agents = _agents
-analytics = _analytics
 config = _config
 workflow = _workflow
 GitHubClient = _github.GitHubClient
