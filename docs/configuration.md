@@ -695,9 +695,9 @@ When each setting's change takes effect:
   `TRAJECTORY_RETENTION_DAYS`, `REPO` / `REPOS` / `TARGET_REPO_ROOT` / `BASE_BRANCH` / `REMOTE_NAME`, `HITL_HANDLE`,
   `ALLOWED_ISSUE_AUTHORS` — next Python start
 - `ANALYTICS_DB_URL` — next `python -m orchestrator.observability.analytics.sync.cli` invocation, and next
-  `uv run streamlit run orchestrator/apps/analytics_dashboard.py` start (the dashboard reads it from the imported
-  analytics module, so a browser reload is not enough — relaunch Streamlit). The polling loop does not read this
-  setting.
+  `uv run streamlit run orchestrator/apps/analytics_dashboard.py` start (the value is parsed once, when the analytics
+  settings holder is first imported, so a browser reload is not enough — relaunch Streamlit). The polling loop does not
+  read this setting.
 - `DASHBOARD_PARALLEL_READS` — next `uv run streamlit run orchestrator/apps/analytics_dashboard.py` start. Parsed once
   per process, on the first render's import of the read-mode owner.
 - `MAX_PARALLEL_ISSUES_PER_REPO`, `MAX_PARALLEL_ISSUES_GLOBAL` — next Python start. Per-`REPOS` `parallel_limit`

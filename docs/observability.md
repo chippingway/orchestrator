@@ -1912,8 +1912,8 @@ as a labeled banner.
 
 - `` `ANALYTICS_DB_URL` is not configured. … `` (top-level `st.warning`, app stops) — *env* — `ANALYTICS_DB_URL`
   is unset, empty, or set to `off` / `disabled` / `none`. Set it in `.env` and **relaunch** `uv run streamlit run
-  orchestrator/apps/analytics_dashboard.py` (the dashboard reads the URL from the imported analytics module at startup,
-  so a browser reload alone will not pick up the new value).
+  orchestrator/apps/analytics_dashboard.py` (the URL is parsed once, when the analytics settings holder is first
+  imported, so a browser reload alone will not pick up the new value).
 - `Could not load analytics filter options: …` (top-level `st.error`, app stops) — *DB connectivity* — The
   dashboard could not reach Postgres at startup. Confirm `docker compose ps` shows `analytics-db` healthy, that the host
   / port / credentials in `ANALYTICS_DB_URL` match `analytics-db/.env`, and that the user can connect with `psql`.
