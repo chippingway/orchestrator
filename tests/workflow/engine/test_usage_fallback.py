@@ -6,7 +6,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.agents import AgentResult
 from orchestrator.workflow.engine import usage as engine_usage
 
@@ -75,11 +75,11 @@ class AgentAnalyticsModelFallbackTest(
     def test_codex_no_model_uses_spec_fallback(self) -> None:
         path = _analytics_path(self, "analytics-codex-fallback-")
         with patch.object(
-            analytics,
+            analytics_settings,
             _ANALYTICS_PATH_ATTR,
             path,
         ), patch.object(
-            analytics,
+            analytics_settings,
             _TRAJECTORY_PATH_ATTR,
             None,
         ), patch.object(
@@ -117,11 +117,11 @@ class AgentAnalyticsModelFallbackTest(
     def test_claude_model_ignores_spec_fallback(self) -> None:
         path = _analytics_path(self, "analytics-claude-fallback-")
         with patch.object(
-            analytics,
+            analytics_settings,
             _ANALYTICS_PATH_ATTR,
             path,
         ), patch.object(
-            analytics,
+            analytics_settings,
             _TRAJECTORY_PATH_ATTR,
             None,
         ), patch.object(

@@ -36,9 +36,10 @@ The analytics-read and dashboard subsystems expose stable lazy facades backed by
 Their implementations live in responsibility-named private leaves, while facade lookups preserve every historical
 import and object identity. Everywhere else — the workflow package included — a responsibility answers on the owner
 module that defines it and nowhere else, so a patch targets that module and there is no second site a mock could be
-left on. Where a leaf does resolve through its own package at call time it is to read a knob rather than to borrow a
-helper — the analytics settings, which `patch.object(analytics, "ANALYTICS_LOG_PATH", ...)` decides for whichever
-package the name resolves to. Each of those boundaries is named where its owner is described below.
+left on. Where a leaf does resolve a name at call time it is to read a knob rather than to borrow a helper — the
+analytics settings, which `patch.object(analytics_settings, "ANALYTICS_LOG_PATH", ...)` decides for every owner that
+reads one, because `observability/analytics/settings.py` is the single holder they all resolve through. Each of those
+boundaries is named where its owner is described below.
 
 ```
 orchestrator/
@@ -435,8 +436,9 @@ orchestrator/
       terminal.py       question-stage teardown and terminal local + remote
                         branch cleanup composed from cleanup.py
   analytics/
-    __init__.py         import-only package compatibility facade and sink bootstrap
-    _package_*.py       package initialization, immutable inventory, and hooks
+    __init__.py         import-only package compatibility facade, binding nothing
+    _package_*.py       the name-to-owner inventory and the resolver hooks that
+                        answer each historical spelling off it
     read.py             lazy read-model compatibility facade with a `.pyi` surface
     _read_*.py          the manifest and resolver hooks, plus the seven raw
                         leaves beneath `read_raw.py`, the seven rollup leaves
@@ -613,7 +615,7 @@ orchestrator/
   _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   trajectory_reader.py  historical import site for the file-backed read model,
                         forwarding to the trajectory-viewer owners
-  _trajectory_*.py      the record facade binding a caller's analytics world,
+  _trajectory_*.py      the record facade binding a caller's settings holder,
                         the reload-bootstrap leaf beside it, and the eleven
                         record/view/parse/read/filter leaves forwarding to the
                         trajectory-viewer owners
@@ -628,7 +630,7 @@ orchestrator/
                         import sites forwarding to the trajectory-viewer owners
   _trajectory_dashboard_page.py
                         historical page-setup import site, binding a caller's
-                        analytics world onto the owner behind it
+                        settings holder onto the owner behind it
   _trajectory_dashboard_*.py
                         viewer bootstrap and the one surface composing every
                         builder the page draws with
@@ -649,10 +651,16 @@ orchestrator/
                         a read is asked for, dials with, and answers with, and
                         the replay that fills the database behind it together
                         with the command that starts one
-      config.py         the six sink / database environment knobs, the parse
-                        the flat package's bootstrap binds, the `Settings`
-                        view every adapter reads one back through, and the
-                        read-path URL fallback
+      config.py         the parse of the six sink / database environment
+                        knobs, the `Settings` view every adapter reads one
+                        back through, and the read-path URL fallback
+      settings.py       those six knobs as parsed for this process: the one
+                        holder every owner reads them off and a caller
+                        patches one on
+      sink.py           what both sinks share on the way to disk: the record
+                        envelope, the locked JSONL line, the one lock each of
+                        them holds, and the channel a refused write is
+                        reported on
       retention.py      the three prune entry points: the polling tick's
                         fail-open wrapper and one by-age prune per sink
       retention_scan.py the timestamp a record is judged by and the split of
@@ -663,14 +671,13 @@ orchestrator/
       recording/        the append side of that sink
         __init__.py     stable recording surface: the six recorders a
                         producer appends through (`__all__`)
-        events.py       the record envelope, the sink append under it, and
-                        the four producer-facing recorders
-        io.py           the locked JSONL append both sinks write through,
-                        and the one lock each of them holds
+        events.py       the analytics sink's append, the three recorders a
+                        producer calls directly, and the shared envelope
+                        republished for them
         models.py       typed requests and the keyword signatures a call
                         is bound through
         agent_exit.py   the order one finished run is summarized and
-                        written in
+                        written in, and the recorder that enters it
         usage.py        token / cost parsing for that run
         skills.py       its opt-in skill fields
         catalog.py      the out-of-band Codex capabilities they fall back to
@@ -808,9 +815,9 @@ orchestrator/
                         and the exit code one run is read back as
       trajectories/     the opt-in per-run reasoning sink
         __init__.py     package marker only; callers import an owner directly
-        models.py       the head/tail and whole-record caps, the view they are
-                        read back through, and the headline and running budget
-                        one record is charged as
+        models.py       the head/tail and whole-record caps, the snapshot one
+                        record is measured against, and the headline and
+                        running budget it is charged as
         sanitize.py     leaf-by-leaf redaction and head/tail truncation
         serialize.py    the record's shape and the order its arrays are
                         charged to the budget in
@@ -1398,9 +1405,7 @@ flat module sits beside the package: a check in `tests/test_runtime_core_compat.
 module path. So `workflow/state.py` is the one module that *defines* the label vocabulary, its graph, and the write
 guard, and the two sites they answer on are that owner and the package API's re-export of five of them -- the same
 objects, which `tests/workflow/test_imports.py` pins by identity, so the graph a caller reads cannot fork. In-tree
-callers name the owner; the re-export is for callers outside the tree. The
-analytics package has its own import-only bootstrap so an explicit package reload still reparses sink settings and
-keeps stale package holders isolated.
+callers name the owner; the re-export is for callers outside the tree.
 
 Two log channels come out of this package, and each owner spells its own literally rather than deriving one from
 `__name__`: the engine and stage owners report on `orchestrator.workflow` and `workflow/state.py` on
@@ -1622,60 +1627,52 @@ package root carries none, so the owner a caller imports is the only site a pars
 
 `analytics/config.py` is the first owner under the analytics destination: the six environment knobs the two JSONL
 sinks and the Postgres surfaces are configured by, the `off` / `disabled` / `none` disable vocabulary three of them
-share, the whole set parsed under the names the flat package binds them to, the `Settings` view an adapter reads one
-back through, and the fallback a read's `db_url=None` resolves through. Every adapter obtains configuration there —
-the flat package's bootstrap, both sinks' appends and the prune beside them, the two skill readers that take their
-holder off an exit context, the two read-path owners under `analytics/query/`, the sync request, and the trajectory
-viewer's `log_paths.py`, which is handed one by the record leaf that captured it — so a knob's name appears in one
-place, and the flat package keeps no settings leaf of its own.
+share, the parse of each, the `Settings` view an adapter reads one back through, and the fallback a read's
+`db_url=None` resolves through. Every adapter obtains configuration there — the `settings` holder beside it, both
+sinks' appends and the prune beside them, the two skill readers, the two read-path owners under `analytics/query/`,
+the sync request, and the trajectory viewer's `log_paths.py`, which is handed a holder by the record leaf that
+captured it — so a knob's name appears in one place.
 
-What the flat package still owns is *which* values are in force: it binds the parsed set at import and is where a
-caller patches one, so the view reads them back off it rather than re-parsing. Which *instance* it reads is the
-adapter's own answer, and the two are not interchangeable. A recorder passes `settings_on` the package it captured at
-its own import, because a package re-imported against a patched environment is not installed under the package name
-afterwards — reaching for the name would hand its callers the process-wide values. The read path and the sync have
-nothing captured and use `live_settings`, which resolves the name behind a function-local import: binding that import
-at module scope would cycle and make the compatibility package load-bearing rather than retirable. The view reads each
-attribute on demand, so a knob patched between two reads reaches the second and a holder carrying only the knobs its
-caller touches stays usable.
+`analytics/settings.py` is where those parsed values are *bound*, and it is the sole settings holder: every knob is
+read out of the environment once, at its import, and a caller patches one there. `live_settings` resolves it behind a
+function-local import, so nothing on the append path pays for it until a record is actually written — which matters
+because this is the one owner under the analytics destination that reaches `orchestrator.config`, for the `LOG_DIR`
+the default analytics sink lives under. The `Settings` view reads each attribute on demand, so a knob patched between
+two reads reaches the second and a holder carrying only the knobs its caller touches stays usable; `settings_on`
+answers for whichever holder a caller hands it, which is how the trajectory viewer's reader keeps resolving through
+the holder its leaf captured.
+
+`analytics/sink.py` is what both write packages share on the way to disk: the `ts` / `repo` / `issue` / `event`
+envelope every record satisfies, the encoding and locking one JSONL line reaches disk under, the fail-open answer to a
+filesystem that refuses the write, and the `orchestrator.analytics` channel a refusal is reported on. It sits above
+`recording/` and `trajectories/` and imports neither, which is what keeps the recording graph free of a back edge: an
+`agent_exit` composes the trajectory write, so the trajectory writers reach the envelope and the line here rather than
+back through the recorders that called them. Both sinks' locks are minted here for a second reason — an append and the
+retention prune that rewrites the file under it are safe only while both hold one lock object, and a caller is free to
+take `append_record` (or `append_trajectory_record`) off its owner rather than call through a package. One mint per
+process is what keeps every such reference and `retention.py`'s serializing against each other. The two locks stay
+separate objects, so neither sink's writers ever block on the other's file.
 
 `analytics/recording/` is the append side of that sink, and the second publishing initializer in the tree: its
 `__all__` is the six recorders a producer calls — the `build_record` envelope, the `append_record` beneath it, and one
 each for a stage entered, a stage evaluated, a repo's skill catalog scanned, and a tracked agent run finished — bound
-once, at import, to the `events` owner's own objects. The owners under it divide by what a record costs to produce:
-`events` holds the envelope and the recorders, `io` the locked JSONL line both sinks write through, `models` the typed
-requests and the keyword signatures a call is bound through, and the four steps a finished run is summarized by are
-`usage` (tokens and cost), `skills` (the opt-in evidence), `catalog` (the out-of-band Codex capabilities either falls
-back to), and `agent_exit` (the order they compose and write in). Every producer names the package — `github/client.py`
-for the paired audit / analytics stage-enter hook, `workflow/engine/dispatch.py` for the timed handler,
-`workflow/engine/usage.py` for the tracked run, and `skills/catalog.py` for the per-tick catalog — and none of them
-imports the flat analytics package any more.
+once, at import, to the owner's own object. Five come from `events` and the sequenced one from `agent_exit`; the
+envelope is the shared `sink` owner's, republished on `events` because that is the import site a producer already
+names. The owners under it divide by what a record costs to produce: `events` holds the append that resolves the
+analytics knob and the three recorders a producer calls directly, `models` the typed requests and the keyword
+signatures a call is bound through, and the four steps a finished run is summarized by are `usage` (tokens and cost),
+`skills` (the opt-in evidence), `catalog` (the out-of-band Codex capabilities either falls back to), and `agent_exit`
+(the order they compose and write in, plus the recorder that enters it). Every producer names the package —
+`github/client.py` for the paired audit / analytics stage-enter hook, `workflow/engine/dispatch.py` for the timed
+handler, `workflow/engine/usage.py` for the tracked run, and `skills/catalog.py` for the per-tick catalog — and none of
+them imports the flat analytics package at all.
 
-They still *reach* it, at call time. It is the settings holder: `events.settings_holder` answers with the package
-instance the module was imported alongside, read out of `sys.modules` rather than imported, because binding that import
-would cycle. The analytics bootstrap replaces `events` with the rest of its implementation set, which is what gives
-each package instance its own capture — a reference held across a reload keeps recording into the instance its own
-callers patched — and dispatching `append_record` through that holder is what keeps
-`patch.object(analytics, "append_record", ...)` intercepting an internal append. A producer that imported the owner
-with no package behind it captures nothing and resolves the name inside the call instead. `agent_exit` carries that
-same instance on the exit context, so the trajectory owner it hands one run's second record to answers for the
-instance the caller entered on without reaching the package through it.
-
-`recording/__init__.py` is *re-executed in place* rather than replaced, and that asymmetry is the compatibility
-contract with the producers. A producer names the package at its own import and keeps the object it got back, which for
-an owner-first import order is an object that predates the flat package entirely; swapping it would strand that
-producer on recorders answering for an instance nobody holds and put a patch aimed at the canonical module outside its
-call path. Re-executing the initializer over the fresh `events` instead leaves one package object whose published names
-and the facade's bindings are the same objects in every import order.
-
-Both sinks' locks answer the same question one layer down, and that is why they live on `io.py` rather than beside the
-appends that take them. An append and the retention prune that rewrites the file under it are safe only while both hold
-one lock object, and a caller is free to take `append_record` — or `append_trajectory_record` — off its owner rather
-than call through the package: a reference the rebuild never rebinds, and one whose *first* call is what initializes
-the facade and triggers that rebuild. Minting each lock on the owner that is loaded once per process is what keeps
-every such reference, the facade's `_FILE_LOCK` / `_TRAJECTORY_FILE_LOCK`, and `retention.py`'s serializing against each
-other instead of drifting apart at the first reload. The two locks stay separate objects, so neither sink's writers
-ever block on the other's file.
+`events` is the bottom of that graph: it imports `config`, `sink`, and `models`, and none of its siblings. That is what
+lets `agent_exit` own the producer-facing `record_agent_exit` and still reach the append through `events` — the family
+with a sequence to run before it writes is the one that needs the composition, so it depends on the vocabulary rather
+than the reverse. Each recorder dispatches its own `append_record` on `events`, which is what makes
+`patch.object(events, "append_record", ...)` intercept an internal append, and every knob is read off the `settings`
+holder inside the call, so importing a recorder costs an importer nothing but the recorders.
 
 `analytics/retention.py` is the other side of that pair: the by-age prune both sinks are bounded by. It publishes
 three entry points, one caller each — the polling tick's fail-open wrapper, and one prune per sink — over
@@ -1683,28 +1680,28 @@ three entry points, one caller each — the polling tick's fail-open wrapper, an
 and `retention_rewrite.py` (the same-directory temp file, the `os.replace` that swaps it in, and the lock held across
 the read and that swap). Each sink brings its own path, its own retention knob, and its own lock, so an operator can
 keep the two files for different windows and neither rewrite ever blocks on the other's append; the scan and the
-rewrite are shared, so the two cannot disagree about what an expired or malformed record costs. Like
-`trajectories/api`, this owner sits *above* the recorders and is rebuilt for each package instance, because *which*
-files a bare prune rewrites is answered by the settings holder the `events` owner beside it captured. Every filesystem
-touch downgrades `OSError` to a logged no-op, and the wrapper swallows anything else, so a misconfigured sink costs a
-warning rather than a tick.
+rewrite are shared, so the two cannot disagree about what an expired or malformed record costs. *Which* files a bare
+prune rewrites is read off the `settings` holder inside the call, the same way both appends resolve where they land,
+so an operator who pruned and an operator who appended cannot disagree about which file the knob names. Every
+filesystem touch downgrades `OSError` to a logged no-op, and the wrapper swallows anything else, so a misconfigured
+sink costs a warning rather than a tick.
 
-`main._run_tick` names that owner directly, and names it inside the call for the same reason the read path resolves
-`live_settings` there: a module bound at import could be one generation behind the settings the prune has to read. The
-wrapper it calls delegates back through the settings holder, so `patch.object(analytics, "prune_old_records", ...)`
-still intercepts.
+`main._run_tick` names that owner directly, and names it inside the call so the tick's own import never pays for the
+prune graph. The wrapper it calls dispatches `prune_old_records` on this module rather than the function object it
+closed over, so `patch.object(retention, "prune_old_records", ...)` still intercepts.
 
 `analytics/trajectories/` is the opt-in per-run reasoning sink, and its owners divide by what one record passes
-through on the way to disk: `models` holds the head/tail and whole-record caps, the view they are read back through,
+through on the way to disk: `models` holds the head/tail and whole-record caps, the snapshot of them one record is
+measured against,
 and the headline and running budget a record is charged as; `sanitize` the leaf-by-leaf redaction and the head/tail
 cut; `serialize` the record's shape and the order the turn and step arrays are drawn from the budget in; `persistence`
-the opt-in gate, the parse, the Codex backfill, and the fail-open guard the whole write rides. The direction is the
-point: `recording/agent_exit` names `persistence`, never the reverse, and everything from `persistence` down reads its
-settings holder off the exit context rather than importing a package to ask. `api` is the exception and sits *above*
-the recorders — a bare `append_trajectory_record`, reached by an operator or the compatibility facade rather than by a
-tracked run, has no context to read, so it resolves the path through the same captured holder the recorders use and is
-rebuilt alongside them for each package instance. Its lock is the one exception to that rebuild — minted on `io.py`
-with the analytics sink's, for the reason above — and `retention.py`'s trajectory prune takes that same object, so the
+the opt-in gate, the parse, the Codex backfill, and the fail-open guard the whole write rides; `api` the bare
+`append_trajectory_record` an operator or the compatibility facade reaches. The direction is the point:
+`recording/agent_exit` names `persistence`, never the reverse, and no owner here names the recorders — the envelope
+`serialize` builds and the channel `persistence` logs a failure on both come off the shared `sink` owner above both
+packages, which is what keeps that composition acyclic. Every knob is read off the `settings` holder inside the call,
+so the gate, the append, and the by-age prune all resolve the same `TRAJECTORY_LOG_PATH`. The append's lock is minted
+on `sink.py` beside the analytics sink's, and `retention.py`'s trajectory prune takes that same object, so the
 trajectory file serializes its own append-versus-prune race without ever blocking against the analytics one.
 
 `analytics/query/` holds what a read is asked for, what it dials with, and what it answers with, split by what each
@@ -1859,7 +1856,7 @@ the wrong column the moment two of them disagree. Anything outside the promoted 
 column, so a record written by a newer orchestrator version loses no fields to a database that has no column for them
 yet; that blob and the promoted `models` array are the two cells a caller's `json_adapter` is applied to.
 `records` owns what one record hashes to, and that encoding is pinned rather than chosen: `sort_keys=True` with
-default separators, matching what `recording/io.py` wrote the line with, so a record round-trips through file → parse
+default separators, matching what `analytics/sink.py` wrote the line with, so a record round-trips through file → parse
 → hash without drifting off the key the INSERT deduplicates on. Its parse beside that narrows each required field to
 the type its column is declared as — a naive `ts` reads as UTC, the same reading `retention_scan.py` gives it, so a
 line from an older writer still lands — and refuses the whole record when any of the four cannot be narrowed, because
@@ -2843,11 +2840,11 @@ to looks like, so it answers empty and silently, while every other `OSError` is 
 reached through — and then answers empty too, because a page that stays up showing nothing is what an unreadable file
 should cost. `log_paths` answers which file that is, and it is the one owner here that names something outside the
 package: the trajectory knob is parsed by `analytics/config.py`, so the viewer reads the sink's own setting rather
-than a second parse of the same variable. What it names is the settings *view*, not the analytics package the parsed
-values are bound on — the holder is handed in by the caller, so importing this owner costs neither that package's
-dotenv read nor a loop back through the flat leaves, and *which* instance a read resolves against stays the caller's
-question. That is what keeps two reader worlds apart, and what makes a patch on a caller's own analytics package the
-interception every read it makes goes through. When the knob is unset — the sink is opt-in and default-off — the
+than a second parse of the same variable. What it names is the settings *view*, not the `analytics/settings.py` holder
+the parsed values are bound on — the holder is handed in by the caller, so importing this owner costs neither that
+holder's read of the process configuration nor a loop back through the flat leaves, and *which* holder a read resolves
+against stays the caller's question. That is what makes a patch on the caller's own holder the interception every read
+it makes goes through. When the knob is unset — the sink is opt-in and default-off — the
 answer is the banner naming the knob and the relaunch that lands it, rather than an empty table an operator would
 read as "nothing ran".
 
@@ -2946,7 +2943,7 @@ very objects. The four views and the record still report `orchestrator._trajecto
 the import site their API is documented at, and what a repr, a pickle, or a reader following `__module__` lands on.
 That module is also the one place a caller's world is bound: the parse keeps its historical call shape there, binding
 an `obj` / `seq` pair against a declared signature and handing the owner its own `sequence` keyword, and the log path,
-the banner, and the read each hand the owner the analytics package that leaf captured at its own import.
+the banner, and the read each hand the owner the analytics settings holder that leaf captured at its own import.
 
 Root-level `_trajectory_dashboard_style.py`, `_trajectory_dashboard_summary_html.py`,
 `_trajectory_dashboard_run_html.py`, `_trajectory_dashboard_usage_html.py`, and
@@ -2966,13 +2963,13 @@ is the site they are stamped with — which is why it imports the typing vocabul
 annotations are spelled in and uses them for nothing else, exactly as `trajectory_reader.py` does for the three it
 publishes. `_trajectory_dashboard_page.py` is the one page leaf that is not a pure forwarder: the messages and the
 chrome are the owner's own objects, but the two entry points that read the trajectory knob are its own, because the
-owner answers on the settings holder it is handed and this is what hands it one — the analytics package this leaf
-captured at its own import, the same world binding `_trajectory_records.py` does for the read.
+owner answers on the settings holder it is handed and this is what hands it one — the `analytics/settings.py` module
+this leaf captured at its own import, the same world binding `_trajectory_records.py` does for the read.
 
 `trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
 reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*
-`_trajectory_records` — that leaf captures the analytics package it resolves the log path through at its own import,
-so rebuilding the reader against a patched environment has to rebuild that capture with it — and the filter and
+`_trajectory_records` — that leaf captures the analytics settings holder it resolves the log path through at its own
+import, so rebuilding the reader has to rebuild that capture with it — and the filter and
 summary API straight off the owners, which need no world at all. The three shapes a caller holds — `FilterOptions`,
 `RunFilterOptions`, and `TrajectorySummary` — report `orchestrator.trajectory_reader` as their module for the reason
 the record views report the leaf: that is the site each was published from. Reporting it is also what makes that
@@ -2984,8 +2981,8 @@ used for nothing else.
 target, and what composes the page owners under `observability/trajectory_viewer/` into one run of the page.
 Everything it composes is imported inside `main()`, Streamlit included: the repo root only reaches `sys.path` on the
 line above, in the shim `apps/bootstrap.py` owns, so under a script launch no `orchestrator.*` name resolves before
-then — which is why importing the app costs that shim and nothing else. Which analytics instance answers for the
-sink's knob is read at call time for the same reason. `trajectory_dashboard.py` stays the launch path an operator's
+then — which is why importing the app costs that shim and nothing else. The analytics settings holder the sink's knob
+is read off is resolved at call time for the same reason. `trajectory_dashboard.py` stays the launch path an operator's
 shell history already carries, and its lazy inventory now resolves the page's own two renderings on `page_render` and
 `main` on the app, so a historical caller holds the same objects the canonical target runs.
 
@@ -2995,8 +2992,8 @@ pass draws with, the chrome, the refusal an install with no database behind it i
 narrows, and then either the notice that there is no span to pick a window from or the controls, the staged load, and
 the panels beneath. Each owner is imported inside the pass that reaches it, alongside Streamlit, pandas, and the chart
 hub in front of Plotly, for the reason the viewer's app defers its own: the repo root only reaches `sys.path` on the
-line above, so importing the app costs that shim and nothing else, and the refusal reads the analytics world it is
-entered against rather than the one the module was imported alongside. `dashboard.py` stays the launch path an
+line above, so importing the app costs that shim and nothing else, and the refusal reads the URL off the settings
+holder at call time rather than a name bound when the module was imported. `dashboard.py` stays the launch path an
 operator's shell history already carries and the lazy inventory a historical caller reaches the whole surface through,
 with `main` resolving to the app's own; `_dashboard_runtime.py` is the site the other five passes are republished
 from, forwarding each under the private spelling the facade always resolved it by.
@@ -3013,9 +3010,9 @@ inside every tracked agent run, and a binding would put the query owners and the
 parsers and the recorders are each reached through their package, so one re-exports the nine parsers and the five result
 types they return under an `__all__` and the other the six recorders — and the check that excuses them is keyed on that
 `__all__`, so a third publishing initializer is a deliberate edit rather than a silent one. What a publisher may charge
-for beyond its own owners is declared per package: recording is configured by `analytics/config.py`, meters a run
-through `usage/`, and hands that run's second record to `analytics/trajectories/`, so naming it buys those three chains
-and nothing else.
+for beyond its own owners is declared per package: recording is configured by `analytics/config.py`, writes its lines
+through `analytics/sink.py`, meters a run through `usage/`, and hands that run's second record to
+`analytics/trajectories/`, so naming it buys those four chains and nothing else.
 Nothing under the tree carries an export manifest, a resolver hook, or a `.pyi` surface — a re-export is the owner's own
 object, bound once at import rather than resolved per lookup, so the module defining a name stays where a reader finds
 it and where a patch has to land, rather than a facade answering for it — the compatibility layer this destination

@@ -409,9 +409,9 @@ an unmergeable PR.
   imported; the polling loop never reads it.
 
 `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, `ANALYTICS_DB_URL`, `TRACK_SKILL_TRIGGERS`, `TRAJECTORY_LOG_PATH`, and
-`TRAJECTORY_RETENTION_DAYS` are parsed by `orchestrator/observability/analytics/config.py` and bound as attributes of
-the `orchestrator/analytics` package on every import of it (the analytics surfaces own their own configuration rather
-than the `orchestrator/config` resolver). `EVENT_LOG_PATH` is resolved by
+`TRAJECTORY_RETENTION_DAYS` are parsed by `orchestrator/observability/analytics/config.py` and bound on
+`orchestrator/observability/analytics/settings.py`, the one holder every analytics owner reads them off (the analytics
+surfaces own their own configuration rather than the `orchestrator/config` resolver). `EVENT_LOG_PATH` is resolved by
 the `orchestrator/config` resolver and bound on the config package because the audit event log is a general-purpose
 audit surface rather than analytics-specific.
 

@@ -19,6 +19,8 @@ from tests.analytics_jsonl_helpers import (
 )
 
 
+from orchestrator.observability.analytics import retention
+
 from tests.observability.analytics import (
     retention_test_support as _support,
 )
@@ -49,10 +51,7 @@ class AnalyticsPruneSelectionTest(unittest.TestCase):
     def test_removes_old_records_keeps_recent(self) -> None:
         old_ts = _ts_days_ago(_support.OLD_RECORD_AGE_DAYS, now=_PRUNE_NOW)
         new_ts = _ts_days_ago(_support.RECENT_RECORD_AGE_DAYS, now=_PRUNE_NOW)
-        with _support.analytics_sink(_support.DEFAULT_RETENTION) as (
-            path,
-            analytics,
-        ):
+        with _support.analytics_sink(_support.DEFAULT_RETENTION) as path:
             _write_json_lines(
                 path,
                 [
@@ -61,20 +60,17 @@ class AnalyticsPruneSelectionTest(unittest.TestCase):
                     _record(old_ts, 3, "z"),
                 ],
             )
-            self.assertEqual(analytics.prune_old_records(now=_PRUNE_NOW), 2)
+            self.assertEqual(retention.prune_old_records(now=_PRUNE_NOW), 2)
             remaining = [json.loads(line) for line in _read_lines(path)]
             self.assertEqual(len(remaining), 1)
             self.assertEqual(remaining[0][_support.ISSUE_KEY], 2)
 
     def test_no_records_old_enough_does_not_rewrite(self) -> None:
         new_ts = _ts_days_ago(_support.FRESH_RECORD_AGE_DAYS, now=_PRUNE_NOW)
-        with _support.analytics_sink(_support.DEFAULT_RETENTION) as (
-            path,
-            analytics,
-        ):
+        with _support.analytics_sink(_support.DEFAULT_RETENTION) as path:
             _write_json_lines(path, [_record(new_ts, 1)])
             mtime_before = path.stat().st_mtime_ns
-            self.assertEqual(analytics.prune_old_records(now=_PRUNE_NOW), 0)
+            self.assertEqual(retention.prune_old_records(now=_PRUNE_NOW), 0)
             self.assertEqual(path.stat().st_mtime_ns, mtime_before)
 
     def test_malformed_lines_preserved(self) -> None:
@@ -82,10 +78,7 @@ class AnalyticsPruneSelectionTest(unittest.TestCase):
         # survive the prune so operators can clean up rather than having
         # the helper silently drop data it cannot interpret.
         old_ts = _ts_days_ago(_support.VERY_OLD_RECORD_AGE_DAYS, now=_PRUNE_NOW)
-        with _support.analytics_sink(_support.DEFAULT_RETENTION) as (
-            path,
-            analytics,
-        ):
+        with _support.analytics_sink(_support.DEFAULT_RETENTION) as path:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w", encoding=_support.ENCODING) as fh:
                 fh.write("this is not json\n")
@@ -94,7 +87,7 @@ class AnalyticsPruneSelectionTest(unittest.TestCase):
                 fh.write('{"event": "no-ts-field"}\n')
             # Only the parseable old record is removed; the three other
             # malformed-or-missing-ts lines survive.
-            self.assertEqual(analytics.prune_old_records(now=_PRUNE_NOW), 1)
+            self.assertEqual(retention.prune_old_records(now=_PRUNE_NOW), 1)
             kept = _read_lines(path)
             self.assertEqual(len(kept), 3)
             self.assertIn("this is not json", kept[0])
@@ -108,12 +101,9 @@ class AnalyticsPruneSelectionTest(unittest.TestCase):
             .replace(tzinfo=None)
             .isoformat(timespec="seconds")
         )
-        with _support.analytics_sink(_support.DEFAULT_RETENTION) as (
-            path,
-            analytics,
-        ):
+        with _support.analytics_sink(_support.DEFAULT_RETENTION) as path:
             _write_json_lines(path, [_record(old_naive, 1)])
-            self.assertEqual(analytics.prune_old_records(now=_PRUNE_NOW), 1)
+            self.assertEqual(retention.prune_old_records(now=_PRUNE_NOW), 1)
             self.assertEqual(_read_text(path), "")
 
 

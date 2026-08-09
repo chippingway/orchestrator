@@ -13,9 +13,9 @@ and the values a dropdown may offer are collected off the runs it returned
 rather than declared, so a filter can only offer what some run actually carried.
 
 Which file that is comes off the settings holder a caller hands in, the way
-every read of that knob here does: *which* analytics instance answers is the
-caller's own question, so a page composed against a reloaded one resolves the
-path that one was built for.
+every read of that knob here does: *which* holder answers is the caller's own
+question, so a page composed against a re-parsed one resolves the path that
+one was built for.
 
 The two empty states are worded apart because they are different facts. A file
 with no records at all is usually a sink that was switched on but never written

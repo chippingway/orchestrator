@@ -76,9 +76,9 @@ def configure_dashboard(modules: DashboardModules) -> None:
 def stop_if_dashboard_unconfigured(modules: DashboardModules) -> None:
     """Stop the script where it stands when no database answers for it."""
     # Read through the owner at call time rather than a name bound at this
-    # module's import: a page entered against a re-imported analytics world is
-    # answering for that world's target rather than the one this module
-    # happened to be imported alongside.
+    # module's import: the URL comes off the analytics settings holder, so a
+    # page answers for the target that holder carries now rather than the one
+    # this module happened to be imported alongside.
     from orchestrator.observability.dashboard import read_mode
 
     message = read_mode.db_unconfigured_message()

@@ -75,7 +75,7 @@ _STOP_ENTRY = "_stop_if_unconfigured"
 
 _LOAD_ENTRY = "_load_trajectory_page"
 
-_ANALYTICS_MODULE = "orchestrator.analytics"
+_SETTINGS_HOLDER = "orchestrator.observability.analytics.settings"
 
 _KPI_TILE = "_TrajectoryKpi"
 
@@ -409,11 +409,11 @@ class StampedPageStateLeafTest(unittest.TestCase):
 class PageWorldLeafTest(unittest.TestCase):
     """The page setup's world is bound at its leaf, not inside the owner."""
 
-    def test_each_entry_hands_over_the_package(self) -> None:
+    def test_each_entry_hands_over_the_holder(self) -> None:
         # The owner answers on the settings holder it is handed, so the leaf is
-        # what decides *which* analytics instance a page resolves its file on:
-        # the one it captured at its own import, which is what a caller patches.
-        analytics = import_module(_ANALYTICS_MODULE)
+        # what decides which one a page resolves its file on: the holder it
+        # captured at its own import, which is what a caller patches.
+        analytics = import_module(_SETTINGS_HOLDER)
         streamlit = object()
         for entry, owned, passed in (
             (_STOP_ENTRY, "stop_if_unconfigured", (streamlit,)),

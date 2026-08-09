@@ -28,7 +28,7 @@ from orchestrator.observability.analytics.sync.columns import (
 def canonical_json(record: dict) -> str:
     """Stable JSON form used for the content hash.
 
-    Must match `recording.io.append_jsonl_record`'s on-disk encoding
+    Must match `analytics.sink.append_jsonl_record`'s on-disk encoding
     (`sort_keys=True`, default separators) so a record round-trips
     through file -> parse -> hash without drift.
     """

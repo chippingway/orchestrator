@@ -21,7 +21,6 @@ log = logging.getLogger("orchestrator")
 os = _main_dependencies.os
 signal = _main_dependencies.signal
 agents = _main_dependencies.agents
-analytics = _main_dependencies.analytics
 config = _main_dependencies.current_config()
 workflow = _main_dependencies.workflow
 GitHubClient = _main_dependencies.GitHubClient

@@ -17,7 +17,9 @@ from unittest.mock import patch
 from orchestrator.observability.usage import trajectory as _usage_trajectory
 
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from orchestrator.observability.analytics import sink as analytics_sink
+from orchestrator.observability.analytics.trajectories import api as trajectory_api
+
 
 
 from tests.analytics_jsonl_helpers import (
@@ -78,7 +80,6 @@ class RecordAgentExitTrajectoryFailureTest(_support.RecordAgentExitTrajectorySup
         # logs and is swallowed, leaving the baseline `agent_exit` record AND
         # the skill-trigger return value (which drives the audit events)
         # intact.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             a_path = Path(td) / _ANALYTICS_FILENAME
             t_path = Path(td) / _TRAJECTORY_FILENAME
@@ -88,11 +89,10 @@ class RecordAgentExitTrajectoryFailureTest(_support.RecordAgentExitTrajectorySup
                     "parse_agent_trajectory",
                     side_effect=RuntimeError("boom"),
                 ),
-                self.assertLogs(analytics.log, level="ERROR"),
+                self.assertLogs(analytics_sink.log, level="ERROR"),
             ):
                 self.assertEqual(
                     self._emit(
-                        analytics,
                         stdout=_claude_stdout_with_skills(skills=(_DEVELOP,)),
                         prompt=_PROMPT_TEXT,
                         traj_path=t_path,
@@ -117,19 +117,17 @@ class RecordAgentExitTrajectoryFailureTest(_support.RecordAgentExitTrajectorySup
         # A non-OSError escaping the sink append (a programming error past
         # the inner OSError swallow) must not drop the baseline record: the
         # outer guard logs and falls through.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             a_path = Path(td) / _ANALYTICS_FILENAME
             with (
                 patch.object(
-                    analytics,
+                    trajectory_api,
                     "append_trajectory_record",
                     side_effect=RuntimeError("sink boom"),
                 ),
-                self.assertLogs(analytics.log, level="ERROR"),
+                self.assertLogs(analytics_sink.log, level="ERROR"),
             ):
                 self._emit(
-                    analytics,
                     stdout=_claude_trajectory_stdout(),
                     prompt=_PROMPT_TEXT,
                     traj_path=Path(td) / _TRAJECTORY_FILENAME,
@@ -142,11 +140,9 @@ class RecordAgentExitTrajectoryFailureTest(_support.RecordAgentExitTrajectorySup
     def test_absent_prompt_drops_user_input(self) -> None:
         # No prompt passed -> `user_input` is dropped (not stored as null),
         # while the rest of the trajectory still records.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             t_path = Path(td) / _TRAJECTORY_FILENAME
             self._emit(
-                analytics,
                 stdout=_claude_trajectory_stdout(final_output="x"),
                 prompt=None,
                 traj_path=t_path,

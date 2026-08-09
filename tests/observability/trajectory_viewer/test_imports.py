@@ -491,8 +491,9 @@ _PAGE_CHROME_CHAIN = (
 # the analytics configuration owner, which is where the knob naming the file
 # this page reads is parsed, so the viewer answers with the sink's own setting
 # rather than a second parse of the same variable -- and what it names is the
-# settings *view*, not the analytics package the parsed values are bound on,
-# which is the distinction the check below turns on. Three rendering owners
+# settings *view*, not the `settings` holder the parsed values are bound on,
+# which is the distinction the check below turns on: the holder is handed in by
+# the caller, so naming it here would decide for one. Three rendering owners
 # name the theme both Streamlit pages are drawn in: the geometry owner for the
 # font stacks a stylesheet cannot read out of a CSS variable, and the
 # formatting owner for the thousands separators a count is rendered with. Both
@@ -522,10 +523,10 @@ _EXTERNAL_CHAINS = MappingProxyType({
 })
 
 # The flat modules a historical caller still reaches this viewer through. The
-# record facade among them plants the analytics package to resolve the log
-# path, so an owner reaching back would put the sink's configuration -- and the
-# dotenv read under it -- behind a caller that only wanted to build a step. It
-# would also close a loop: those modules import these owners.
+# record facade among them captures the analytics settings holder it resolves
+# the log path through, so an owner reaching back would put the process
+# configuration behind that holder in front of a caller that only wanted to
+# build a step. It would also close a loop: those modules import these owners.
 _FLAT_PREFIX = "orchestrator._trajectory"
 
 _ANALYTICS_PACKAGE = "orchestrator.analytics"
@@ -610,10 +611,10 @@ class LayeringTest(unittest.TestCase):
     def test_no_owner_plants_the_flat_leaves(self) -> None:
         # The sharpest case the check above rejects, named on its own: those
         # leaves forward *to* these owners, and the record facade among them
-        # dials the analytics settings to resolve the log path. The
-        # configuration owner one of these may name is not that package: it
-        # parses a knob, while the package binds the parsed values, reads the
-        # dotenv behind them, and imports these owners back.
+        # captures the settings holder it resolves the log path through. The
+        # configuration owner one of these may name is neither that facade nor
+        # that holder: it parses a knob, while the holder binds the parsed
+        # values and pays for the process configuration behind them.
         for owner in _OWNERS:
             planted = _imported_orchestrator_modules(_qualified(owner))
             reached = tuple(sorted(

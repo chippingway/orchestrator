@@ -21,7 +21,8 @@ from orchestrator.observability.usage import trajectory as _usage_trajectory
 from orchestrator.observability.usage import trajectory_models as _usage_records
 
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from orchestrator.observability.analytics.trajectories import models as trajectory_models
+
 
 
 from tests.analytics_jsonl_helpers import (
@@ -69,7 +70,7 @@ _TRUNCATED_KEY = _support.TRUNCATED_KEY
 _TURNS_KEY = _support.TURNS_KEY
 
 
-_RECORD_BUDGET = "_TRAJECTORY_RECORD_BUDGET"
+_RECORD_BUDGET = "TRAJECTORY_RECORD_BUDGET"
 
 
 _DROPS_EXCESS_STEPS_OBJECT_ARGUMENT = 2000
@@ -87,7 +88,7 @@ _MANY_TURNS_COUNT = 5_000
 _METADATA_ONLY_STEP_COUNT = 10_000
 
 
-def _emit_stubbed_trajectory(test_case, analytics, trajectory) -> tuple[str, dict]:
+def _emit_stubbed_trajectory(test_case, trajectory) -> tuple[str, dict]:
     with tempfile.TemporaryDirectory() as temp_dir:
         trajectory_path = Path(temp_dir) / _TRAJECTORY_FILENAME
         with patch.object(
@@ -96,7 +97,6 @@ def _emit_stubbed_trajectory(test_case, analytics, trajectory) -> tuple[str, dic
             return_value=trajectory,
         ):
             test_case._emit(
-                analytics,
                 stdout="",
                 prompt=_PROMPT_TEXT,
                 traj_path=trajectory_path,
@@ -111,14 +111,12 @@ class RecordAgentExitTrajectoryBudgetTest(_support.RecordAgentExitTrajectorySupp
         # When the cumulative redacted content crosses the record budget the
         # remaining steps are dropped and `truncated` is set, so one runaway
         # run cannot write an unbounded JSONL line.
-        _, analytics = _reload()
         with (
             tempfile.TemporaryDirectory() as td,
-            patch.object(analytics, _RECORD_BUDGET, _DROPS_EXCESS_STEPS_OBJECT_ARGUMENT),
+            patch.object(trajectory_models, _RECORD_BUDGET, _DROPS_EXCESS_STEPS_OBJECT_ARGUMENT),
         ):
             t_path = Path(td) / _TRAJECTORY_FILENAME
             self._emit(
-                analytics,
                 stdout=_claude_multistep_stdout(
                     n_steps=_BUDGET_TOOL_PAIR_COUNT,
                     result_text="ten-chars!" * _DROPS_EXCESS_STEPS_RESULT_TEXT,
@@ -151,7 +149,6 @@ class RecordAgentExitTrajectoryBudgetTest(_support.RecordAgentExitTrajectorySupp
         # thousands of turns but no steps would otherwise write the whole
         # array in full via `build_record` and overshoot the budget by its
         # size -- the reviewer reproduced ~914 KB with zero steps kept.
-        _, analytics = _reload()
         many = _usage_records.AgentTrajectory(
             backend=_CLAUDE,
             turns=tuple(
@@ -164,12 +161,12 @@ class RecordAgentExitTrajectoryBudgetTest(_support.RecordAgentExitTrajectorySupp
                 for index in range(_MANY_TURNS_COUNT)
             ),
         )
-        raw, rec = _emit_stubbed_trajectory(self, analytics, many)
+        raw, rec = _emit_stubbed_trajectory(self, many)
         self.assertTrue(rec[_TRUNCATED_KEY])
         self.assertLess(len(rec[_TURNS_KEY]), _MANY_TURNS_COUNT)
         # The on-disk line is bounded near the budget, not the ~914 KB an
         # uncapped turns array produced.
-        self.assertLess(len(raw), getattr(analytics, _RECORD_BUDGET) * 2)
+        self.assertLess(len(raw), getattr(trajectory_models, _RECORD_BUDGET) * 2)
 
     def test_metadata_only_steps_respect_total_budget(self) -> None:
         # Regression: the budget must count each step's serialized metadata,
@@ -177,7 +174,6 @@ class RecordAgentExitTrajectoryBudgetTest(_support.RecordAgentExitTrajectorySupp
         # still ~80 bytes of `kind` / `name` / `tool_id` JSON -- would
         # otherwise produce a multi-hundred-KB record with NO `truncated`
         # flag, because the old content-length-only check never advanced.
-        _, analytics = _reload()
         many = _usage_records.AgentTrajectory(
             backend=_CLAUDE,
             steps=tuple(
@@ -190,7 +186,7 @@ class RecordAgentExitTrajectoryBudgetTest(_support.RecordAgentExitTrajectorySupp
                 for index in range(_METADATA_ONLY_STEP_COUNT)
             ),
         )
-        raw, rec = _emit_stubbed_trajectory(self, analytics, many)
+        raw, rec = _emit_stubbed_trajectory(self, many)
         self.assertTrue(rec[_TRUNCATED_KEY])
         self.assertLess(
             len(rec[_STEPS_KEY]),
@@ -198,7 +194,7 @@ class RecordAgentExitTrajectoryBudgetTest(_support.RecordAgentExitTrajectorySupp
         )
         # The on-disk line is bounded near the budget, not the ~749 KB an
         # uncapped run produced -- one step of overshoot plus the envelope.
-        self.assertLess(len(raw), getattr(analytics, _RECORD_BUDGET) * 2)
+        self.assertLess(len(raw), getattr(trajectory_models, _RECORD_BUDGET) * 2)
 
 
 if __name__ == "__main__":

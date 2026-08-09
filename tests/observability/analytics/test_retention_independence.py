@@ -21,6 +21,8 @@ from tests.analytics_jsonl_helpers import (
 )
 
 
+from orchestrator.observability.analytics import retention
+
 from tests.observability.analytics import (
     retention_test_support as _support,
 )
@@ -64,7 +66,7 @@ class SinkPruneIndependenceTest(unittest.TestCase):
             analytics, (analytics_path, trajectory_path) = _both_sinks(sink_dir)
             untouched = _read_text(analytics_path)
             self.assertEqual(
-                analytics.prune_trajectory_records(now=_PRUNE_NOW), 1,
+                retention.prune_trajectory_records(now=_PRUNE_NOW), 1,
             )
             self.assertEqual(_read_text(trajectory_path), "")
             self.assertEqual(_read_text(analytics_path), untouched)
@@ -73,7 +75,7 @@ class SinkPruneIndependenceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as sink_dir:
             analytics, (analytics_path, trajectory_path) = _both_sinks(sink_dir)
             untouched = _read_text(trajectory_path)
-            self.assertEqual(analytics.prune_old_records(now=_PRUNE_NOW), 1)
+            self.assertEqual(retention.prune_old_records(now=_PRUNE_NOW), 1)
             self.assertEqual(_read_text(analytics_path), "")
             self.assertEqual(_read_text(trajectory_path), untouched)
 

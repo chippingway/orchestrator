@@ -5,9 +5,6 @@
 import contextlib
 
 
-import json
-
-
 import os
 
 
@@ -23,22 +20,30 @@ import unittest
 from pathlib import Path
 
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 
 from tests.analytics_reload_helpers import reload_analytics as _reload
 
 
 from tests.analytics_jsonl_helpers import (
-    read_lines as _read_lines,
+    read_records as _read_records,
     write_json_lines as _write_json_lines,
     timestamp_days_ago as _ts_days_ago,
 )
 
 
+from orchestrator.observability.analytics import recording, retention
+
 from tests.observability.analytics import (
     retention_test_support as _support,
 )
+
+
+# The rewrite step's own `os`, named rather than imported: this module wants
+# the owner only as a patch target, and naming it keeps the import list under
+# the ceiling.
+_OS_REPLACE = "orchestrator.observability.analytics.retention_rewrite.os.replace"
 
 
 _APPEND_TIMEOUT = 5.0
@@ -67,8 +72,7 @@ def _record(timestamp: str, issue: int, **extras) -> dict:
 
 
 class _PruneAppendRace:
-    def __init__(self, analytics, timestamp: str) -> None:
-        self.analytics = analytics
+    def __init__(self, timestamp: str) -> None:
         self.timestamp = timestamp
         self.after_read = threading.Event()
         self.appender_done = threading.Event()
@@ -81,7 +85,7 @@ class _PruneAppendRace:
 
     def append(self) -> None:
         self.after_read.wait(timeout=_APPEND_TIMEOUT)
-        self.analytics.append_record(_record(self.timestamp, _APPENDED_ISSUE))
+        recording.append_record(_record(self.timestamp, _APPENDED_ISSUE))
         self.appender_done.set()
 
     def finish(self, thread: threading.Thread) -> None:
@@ -89,28 +93,28 @@ class _PruneAppendRace:
         thread.join(timeout=_FINISH_TIMEOUT)
 
 
-def _run_prune_race(analytics, fresh_timestamp: str) -> int:
-    race = _PruneAppendRace(analytics, fresh_timestamp)
+def _run_prune_race(fresh_timestamp: str) -> int:
+    race = _PruneAppendRace(fresh_timestamp)
     appender_thread = threading.Thread(target=race.append)
     appender_thread.start()
     with contextlib.ExitStack() as cleanup:
         cleanup.callback(race.finish, appender_thread)
-        with patch.object(analytics.os, "replace", race.replace):
-            return analytics.prune_old_records(now=_PRUNE_NOW)
+        with patch(_OS_REPLACE, race.replace):
+            return retention.prune_old_records(now=_PRUNE_NOW)
 
 
 def _issue_numbers(path: Path) -> list[int]:
-    records = [json.loads(line) for line in _read_lines(path)]
+    records = _read_records(path)
     return sorted(record[_support.ISSUE_KEY] for record in records)
 
 
-def _reloaded_against(path: Path):
-    return _reload(
+def _reloaded_against(path: Path) -> None:
+    _reload(
         {
             _support.ANALYTICS_LOG_PATH: str(path),
             _support.ANALYTICS_RETENTION_DAYS: _support.DEFAULT_RETENTION,
         }
-    )[1]
+    )
 
 
 @contextlib.contextmanager
@@ -121,9 +125,7 @@ def _reject_github_mutations(client_type, method_names: tuple[str, ...]):
                 patch.object(
                     client_type,
                     method_name,
-                    MagicMock(
-                        side_effect=AssertionError(f"prune must not call GitHubClient.{method_name}"),
-                    ),
+                    side_effect=AssertionError(f"prune must not call GitHubClient.{method_name}"),
                 )
             )
         yield
@@ -131,8 +133,8 @@ def _reject_github_mutations(client_type, method_names: tuple[str, ...]):
 
 class PruneWithRetentionLoggingTest(unittest.TestCase):
     """`prune_with_retention_logging` is the per-tick wrapper that
-    `main._run_tick` calls. It delegates to `prune_old_records` through the
-    settings holder, catches runaway exceptions so an analytics
+    `main._run_tick` calls. It dispatches `prune_old_records` on its own
+    owner, catches runaway exceptions so an analytics
     misconfiguration cannot abort the polling loop, and logs the
     removed-record count. The helper itself is local-filesystem only -- the
     prune never imports `github`, so it cannot mutate pinned GitHub state
@@ -140,27 +142,25 @@ class PruneWithRetentionLoggingTest(unittest.TestCase):
     """
 
     def test_delegates_to_prune_old_records(self) -> None:
-        _, analytics = _reload()
         with patch.object(
-            analytics,
+            retention,
             "prune_old_records",
             return_value=0,
         ) as prune:
-            analytics.prune_with_retention_logging()
+            retention.prune_with_retention_logging()
             prune.assert_called_once_with()
 
     def test_exception_is_swallowed(self) -> None:
         # A runaway error inside `prune_old_records` must not propagate
         # -- analytics is observability, never authoritative workflow
         # state, so a misconfiguration must not abort the polling loop.
-        _, analytics = _reload()
         with patch.object(
-            analytics,
+            retention,
             "prune_old_records",
             side_effect=RuntimeError("boom"),
         ):
             # No raise: the wrapper logs and swallows.
-            analytics.prune_with_retention_logging()
+            retention.prune_with_retention_logging()
 
     def test_parallel_append_survives_prune(self) -> None:
         # Under the scheduler-driven dispatch in `main._run_tick`,
@@ -196,11 +196,11 @@ class PruneWithRetentionLoggingTest(unittest.TestCase):
                     _record(fresh, 2),
                 ],
             )
-            analytics = _reloaded_against(path)
+            _reloaded_against(path)
 
             # The replace callback opens the real post-read race window while
             # the append callback contends on analytics' file lock.
-            self.assertEqual(_run_prune_race(analytics, fresh), 1)
+            self.assertEqual(_run_prune_race(fresh), 1)
             # The old record (issue=1) is gone. Both the kept record
             # (issue=2) and the concurrent append (issue=99) survive.
             self.assertEqual(_issue_numbers(path), [2, _APPENDED_ISSUE])
@@ -235,7 +235,7 @@ class PruneWithRetentionLoggingTest(unittest.TestCase):
                     ),
                 ],
             )
-            analytics = _reloaded_against(path)
+            _reloaded_against(path)
             # Patch every GitHub-mutating method on the class so the
             # prune cannot side-effect through any client instance that
             # some future refactor accidentally routes it through.
@@ -253,7 +253,7 @@ class PruneWithRetentionLoggingTest(unittest.TestCase):
                     "emit_event",
                 ),
             ):
-                self.assertEqual(analytics.prune_old_records(now=_PRUNE_NOW), 1)
+                self.assertEqual(retention.prune_old_records(now=_PRUNE_NOW), 1)
             self.assertEqual(_issue_numbers(path), [2])
 
 

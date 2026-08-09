@@ -20,8 +20,10 @@ from unittest.mock import patch
 from orchestrator.observability.usage import skills as _usage_skills
 
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
 
+
+from orchestrator.observability.analytics import recording
+from orchestrator.observability.analytics import settings as analytics_settings
 
 from tests.analytics_jsonl_helpers import (
     read_records as _read_records,
@@ -29,6 +31,7 @@ from tests.analytics_jsonl_helpers import (
 
 
 from tests.analytics_recording_cases import (
+    agent_exit_result as _agent_exit_result,
     codex_stdout_with_skills as _codex_stdout_with_skills,
 )
 
@@ -89,15 +92,17 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
 
     def _emit(
         self,
-        analytics,
         path,
         *,
         stdout,
         backend=_CLAUDE,
         track=True,
     ) -> list[dict]:
-        with patch.object(analytics, _ANALYTICS_LOG_PATH, path), patch.object(analytics, _TRACK_SKILL_TRIGGERS, track):
-            analytics.record_agent_exit(
+        with (
+            patch.object(analytics_settings, _ANALYTICS_LOG_PATH, path),
+            patch.object(analytics_settings, _TRACK_SKILL_TRIGGERS, track),
+        ):
+            recording.record_agent_exit(
                 repo=_REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,
                 stage=_STAGE_IMPLEMENTING,
@@ -105,14 +110,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
                 backend=backend,
                 agent_spec=_CLAUDE,
                 resume_session_id=None,
-                result=analytics.AgentResult(
-                    session_id="sess",
-                    last_message="",
-                    exit_code=0,
-                    timed_out=False,
-                    stdout=stdout,
-                    stderr="",
-                ),
+                result=_agent_exit_result(stdout),
                 duration_s=float(),
                 review_round=0,
                 retry_count=1,
@@ -121,7 +119,6 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
 
     def _record(
         self,
-        analytics,
         *,
         stdout,
         track=True,
@@ -133,11 +130,11 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
         from. `parse` optionally stubs the skill extractor.
         """
         with contextlib.ExitStack() as stack:
-            stack.enter_context(patch.object(analytics, _ANALYTICS_LOG_PATH, None))
-            stack.enter_context(patch.object(analytics, _TRACK_SKILL_TRIGGERS, track))
+            stack.enter_context(patch.object(analytics_settings, _ANALYTICS_LOG_PATH, None))
+            stack.enter_context(patch.object(analytics_settings, _TRACK_SKILL_TRIGGERS, track))
             if parse is not None:
                 stack.enter_context(patch.object(_usage_skills, "parse_agent_skills", parse))
-            return analytics.record_agent_exit(
+            return recording.record_agent_exit(
                 repo=_REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,
                 stage=_STAGE_IMPLEMENTING,
@@ -145,14 +142,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
                 backend=backend,
                 agent_spec=backend,
                 resume_session_id=None,
-                result=analytics.AgentResult(
-                    session_id="sess",
-                    last_message="",
-                    exit_code=0,
-                    timed_out=False,
-                    stdout=stdout,
-                    stderr="",
-                ),
+                result=_agent_exit_result(stdout),
                 duration_s=float(),
                 review_round=0,
                 retry_count=1,
@@ -166,10 +156,8 @@ class RecordAgentExitSkillEvidenceTest(_RecordAgentExitSkillSupport):
         # reference) records the load in `skills_triggered` with `inferred`
         # evidence and the reference in the separate incidental bucket -- never
         # in the triggered set or its count.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             records = self._emit(
-                analytics,
                 Path(td) / _ANALYTICS_FILENAME,
                 stdout=_codex_stdout_with_skills(
                     read=_REVIEW,
@@ -190,10 +178,8 @@ class RecordAgentExitSkillEvidenceTest(_RecordAgentExitSkillSupport):
         # triggered / evidence fields and the incidental fields: the buckets
         # are independent, so a loaded skill keeps its incidental count while
         # the trigger set still excludes the inspection.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             records = self._emit(
-                analytics,
                 Path(td) / _ANALYTICS_FILENAME,
                 stdout=_codex_stdout_with_skills(
                     read=_REVIEW,
@@ -213,10 +199,8 @@ class RecordAgentExitSkillEvidenceTest(_RecordAgentExitSkillSupport):
         # A run whose only SKILL.md reference is a `git diff` inspection records
         # the incidental bucket but leaves every triggered / evidence key
         # dropped, so the record cannot masquerade as a load.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             records = self._emit(
-                analytics,
                 Path(td) / _ANALYTICS_FILENAME,
                 stdout=_codex_stdout_with_skills(incidental=_DEVELOP),
                 backend=_CODEX,
@@ -232,9 +216,7 @@ class RecordAgentExitSkillEvidenceTest(_RecordAgentExitSkillSupport):
         # The value `record_agent_exit` returns -- the list the `skill_triggered`
         # audit emitter iterates -- carries only loaded skills, so an incidental
         # `git diff` reference never produces an audit event.
-        _, analytics = _reload()
         triggered = self._record(
-            analytics,
             stdout=_codex_stdout_with_skills(read=_REVIEW, incidental=_DEVELOP),
             track=True,
             backend=_CODEX,

@@ -31,6 +31,9 @@ from tests.analytics_jsonl_helpers import (
 )
 
 
+from orchestrator.observability.analytics import retention
+from orchestrator.observability.analytics import sink as analytics_sink
+
 from tests.observability.analytics import (
     retention_test_support as _support,
 )
@@ -80,16 +83,13 @@ class TrajectoryPruneSelectionTest(unittest.TestCase):
     def test_removes_old_records_keeps_recent(self) -> None:
         old_ts = _ts_days_ago(_support.OLD_RECORD_AGE_DAYS, now=_PRUNE_NOW)
         new_ts = _ts_days_ago(_support.RECENT_RECORD_AGE_DAYS, now=_PRUNE_NOW)
-        with _support.trajectory_sink(_support.DEFAULT_RETENTION) as (
-            path,
-            analytics,
-        ):
+        with _support.trajectory_sink(_support.DEFAULT_RETENTION) as path:
             _write_json_lines(
                 path,
                 [_record(old_ts), _record(new_ts, "2"), _record(old_ts, "3")],
             )
             self.assertEqual(
-                analytics.prune_trajectory_records(now=_PRUNE_NOW), 2,
+                retention.prune_trajectory_records(now=_PRUNE_NOW), 2,
             )
             self.assertEqual(
                 [
@@ -101,23 +101,17 @@ class TrajectoryPruneSelectionTest(unittest.TestCase):
 
     def test_no_records_old_enough_does_not_rewrite(self) -> None:
         new_ts = _ts_days_ago(_support.FRESH_RECORD_AGE_DAYS, now=_PRUNE_NOW)
-        with _support.trajectory_sink(_support.DEFAULT_RETENTION) as (
-            path,
-            analytics,
-        ):
+        with _support.trajectory_sink(_support.DEFAULT_RETENTION) as path:
             _write_json_lines(path, [_record(new_ts)])
             mtime_before = path.stat().st_mtime_ns
             self.assertEqual(
-                analytics.prune_trajectory_records(now=_PRUNE_NOW), 0,
+                retention.prune_trajectory_records(now=_PRUNE_NOW), 0,
             )
             self.assertEqual(path.stat().st_mtime_ns, mtime_before)
 
     def test_malformed_lines_preserved(self) -> None:
         old_ts = _ts_days_ago(_support.VERY_OLD_RECORD_AGE_DAYS, now=_PRUNE_NOW)
-        with _support.trajectory_sink(_support.DEFAULT_RETENTION) as (
-            path,
-            analytics,
-        ):
+        with _support.trajectory_sink(_support.DEFAULT_RETENTION) as path:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w", encoding=_support.ENCODING) as fh:
                 fh.write("this is not json\n")
@@ -125,7 +119,7 @@ class TrajectoryPruneSelectionTest(unittest.TestCase):
                 fh.write('{"ts": "not-a-date", "session_id": "2"}\n')
                 fh.write('{"session_id": "no-ts-field"}\n')
             self.assertEqual(
-                analytics.prune_trajectory_records(now=_PRUNE_NOW), 1,
+                retention.prune_trajectory_records(now=_PRUNE_NOW), 1,
             )
             kept = _read_lines(path)
             self.assertEqual(len(kept), 3)
@@ -137,13 +131,10 @@ class TrajectoryPruneSelectionTest(unittest.TestCase):
             .replace(tzinfo=None)
             .isoformat(timespec="seconds")
         )
-        with _support.trajectory_sink(_support.DEFAULT_RETENTION) as (
-            path,
-            analytics,
-        ):
+        with _support.trajectory_sink(_support.DEFAULT_RETENTION) as path:
             _write_json_lines(path, [_record(old_naive)])
             self.assertEqual(
-                analytics.prune_trajectory_records(now=_PRUNE_NOW), 1,
+                retention.prune_trajectory_records(now=_PRUNE_NOW), 1,
             )
             self.assertEqual(_read_text(path), "")
 
@@ -161,25 +152,25 @@ class TrajectoryPruneBoundaryTest(unittest.TestCase):
             if spelling is not None:
                 environment = {_support.TRAJECTORY_LOG_PATH: spelling}
             with self.subTest(sink=spelling):
-                _, analytics = _reload(environment)
-                self.assertEqual(analytics.prune_trajectory_records(), 0)
+                _reload(environment)
+                self.assertEqual(retention.prune_trajectory_records(), 0)
 
     def test_non_positive_retention_is_no_op(self) -> None:
         ancient = _ts_days_ago(_support.ANCIENT_RECORD_AGE_DAYS, now=_PRUNE_NOW)
-        for retention in _KEEP_FOREVER:
-            with self.subTest(retention=retention):
-                with _support.trajectory_sink(retention) as (path, analytics):
+        for window in _KEEP_FOREVER:
+            with self.subTest(retention=window):
+                with _support.trajectory_sink(window) as path:
                     _write_json_lines(path, [_record(ancient)])
                     self.assertEqual(
-                        analytics.prune_trajectory_records(now=_PRUNE_NOW), 0,
+                        retention.prune_trajectory_records(now=_PRUNE_NOW), 0,
                     )
                     self.assertEqual(len(_read_lines(path)), 1)
 
     def test_missing_file_returns_zero(self) -> None:
         with tempfile.TemporaryDirectory() as sink_dir:
             path = Path(sink_dir) / "absent.jsonl"
-            _, analytics = _reload({_support.TRAJECTORY_LOG_PATH: str(path)})
-            self.assertEqual(analytics.prune_trajectory_records(), 0)
+            _reload({_support.TRAJECTORY_LOG_PATH: str(path)})
+            self.assertEqual(retention.prune_trajectory_records(), 0)
             self.assertFalse(path.exists())
 
     def test_probe_oserror_becomes_warning(self) -> None:
@@ -190,7 +181,7 @@ class TrajectoryPruneBoundaryTest(unittest.TestCase):
         # warn and no-op (return 0) instead of raising.
         with tempfile.TemporaryDirectory() as sink_dir:
             path = Path(sink_dir) / ("x" * _OVERLONG_NAME_LENGTH)
-            _, analytics = _reload(
+            _reload(
                 {
                     _support.TRAJECTORY_LOG_PATH: str(path),
                     _support.TRAJECTORY_RETENTION_DAYS: _support.DEFAULT_RETENTION,
@@ -198,8 +189,8 @@ class TrajectoryPruneBoundaryTest(unittest.TestCase):
             )
             removed, log_output = _logged_call(
                 self,
-                analytics.log,
-                analytics.prune_trajectory_records,
+                analytics_sink.log,
+                retention.prune_trajectory_records,
             )
             self.assertEqual(removed, 0)
             self.assertTrue(any("prune" in message for message in log_output))

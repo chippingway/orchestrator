@@ -8,13 +8,10 @@ drawn from, and the three caps the whole thing is bounded by -- the per-field
 head and tail a single value is truncated to, and the serialized byte budget
 one record may not exceed.
 
-The caps are defaults rather than environment knobs, so they are read back off
-a *settings holder* rather than parsed: the analytics package republishes them
-as ``_TRAJECTORY_FIELD_HEAD`` / ``_TRAJECTORY_FIELD_TAIL`` /
-``_TRAJECTORY_RECORD_BUDGET``, which is where a caller shrinks one to bound a
-run it is about to record. ``limits_on`` is a view over that holder, reading
-each cap when asked, so a value patched between two records reaches the second
-one.
+The caps are defaults rather than environment knobs, so they are declared here
+rather than parsed, and this is where a caller shrinks one to bound a run it
+is about to record. ``current_limits`` reads all three at the moment a record
+is built, so a value patched between two records bounds the second one.
 """
 
 from __future__ import annotations
@@ -30,21 +27,11 @@ TRAJECTORY_RECORD_BUDGET = 200_000
 
 @dataclass(frozen=True)
 class TrajectoryLimits:
-    """The three caps as they stand on one settings holder."""
+    """The three caps one record is measured against."""
 
-    holder: Any
-
-    @property
-    def field_head(self) -> int:
-        return self.holder._TRAJECTORY_FIELD_HEAD
-
-    @property
-    def field_tail(self) -> int:
-        return self.holder._TRAJECTORY_FIELD_TAIL
-
-    @property
-    def record_budget(self) -> int:
-        return self.holder._TRAJECTORY_RECORD_BUDGET
+    field_head: int
+    field_tail: int
+    record_budget: int
 
 
 @dataclass(frozen=True)
@@ -79,6 +66,10 @@ class TrajectoryBudget:
         return False
 
 
-def limits_on(holder: Any) -> TrajectoryLimits:
-    """Read the caps in force off the settings holder a write is bound to."""
-    return TrajectoryLimits(holder)
+def current_limits() -> TrajectoryLimits:
+    """Read the caps in force at the moment one record is built."""
+    return TrajectoryLimits(
+        TRAJECTORY_FIELD_HEAD,
+        TRAJECTORY_FIELD_TAIL,
+        TRAJECTORY_RECORD_BUDGET,
+    )

@@ -11,15 +11,15 @@ vocabulary is shared -- an empty value and the sentinels `off` / `disabled` /
 spells and what it costs are settled together rather than agreeing by
 coincidence across separate leaves.
 
-Every knob is read out of the environment inside the call, never bound at
-import, so a package re-imported against a patched environment resolves to
-what that environment implies. `parsed_settings` is the whole set under the
-names the analytics package publishes them as, which is what its bootstrap
-binds, and `Settings` is how an adapter reads them back: `settings_on` for the
-package instance a recorder captured at its own import, `live_settings` for
-whichever instance the package name resolves to now. Both indirections point
-at that package for as long as patching a setting on it is the interception a
-caller makes; what they answer for is which instance is the caller's.
+Every parse reads the environment inside the call, never at this module's
+import, so a holder rebuilt against a patched environment resolves to what
+that environment implies. Where the parsed values are *bound* is the
+`settings` owner beside this one, and `Settings` is how an adapter reads them
+back: `settings_on` for the holder a caller captured at its own import,
+`live_settings` for whichever the settings module name resolves to now. Both
+indirections point at that owner for as long as patching a knob on it is the
+interception a caller makes; what they answer for is which holder is the
+caller's.
 """
 
 from __future__ import annotations
@@ -97,8 +97,8 @@ def parse_log_path() -> Optional[Path]:
 
     `config` is imported inside the call rather than bound at module import so
     the default follows whichever `orchestrator.config` is current: a test that
-    pops and re-imports the pair in lockstep to land a patched `LOG_DIR` sees
-    the patched one.
+    pops and re-imports it beside the `settings` holder to land a patched
+    `LOG_DIR` sees the patched one.
     """
     from orchestrator import config
 
@@ -177,46 +177,31 @@ def parse_trajectory_retention_days() -> int:
     return int(os.environ.get("TRAJECTORY_RETENTION_DAYS", "90"))
 
 
-def parsed_settings() -> dict[str, Any]:
-    """Parse every knob under the name the analytics package publishes it as.
-
-    One mapping rather than six calls spread across the package bootstrap, so
-    a knob cannot be parsed here and left unbound there.
-    """
-    return {
-        "ANALYTICS_LOG_PATH": parse_log_path(),
-        "ANALYTICS_RETENTION_DAYS": parse_retention_days(),
-        "ANALYTICS_DB_URL": parse_db_url(),
-        "TRACK_SKILL_TRIGGERS": parse_track_skill_triggers(),
-        "TRAJECTORY_LOG_PATH": parse_trajectory_log_path(),
-        "TRAJECTORY_RETENTION_DAYS": parse_trajectory_retention_days(),
-    }
-
-
 def settings_on(holder: Any) -> Settings:
     """Read the knobs off the settings holder a caller is bound to.
 
-    The analytics package is where the parsed values are bound and where a
+    The `settings` owner is where the parsed values are bound and where a
     caller patches one, so an adapter reads them back off it rather than
-    re-parsing or caching. *Which* instance is a caller's own question: a
-    recorder answers with the one it captured at its own import, because a
-    package re-imported against a different environment is what its own
-    callers drive, and reaching for the current instance instead would hand
-    them the process-wide one's values.
+    re-parsing or caching. *Which* holder is a caller's own question: a reader
+    built against a re-imported one answers with the instance it captured at
+    its own import, because that is the environment its own callers set up,
+    and reaching for the current holder instead would hand them the
+    process-wide values.
     """
     return Settings(holder)
 
 
 def live_settings() -> Settings:
-    """Read the knobs off whichever analytics package the name resolves to.
+    """Read the knobs off whichever settings holder the name resolves to.
 
-    What a caller with nothing captured reads through -- the read path and the
-    sync, each of which is entered on the same instance the environment was
-    patched around.
+    What a caller with nothing captured reads through -- both sinks' appends,
+    the two prunes, the read path, and the sync. The holder is imported inside
+    the call rather than bound here, so nothing pays for the process
+    configuration behind it until a knob is actually read.
     """
-    from orchestrator import analytics
+    from orchestrator.observability.analytics import settings
 
-    return settings_on(analytics)
+    return settings_on(settings)
 
 
 def resolve_db_url(db_url: Optional[str]) -> Optional[str]:

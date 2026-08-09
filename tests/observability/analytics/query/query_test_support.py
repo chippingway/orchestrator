@@ -3,8 +3,9 @@
 """What a query test sets up around a call, and how it reads the failure back.
 
 Two things every module here needs and neither owner provides: the configured
-URL an omitted `db_url=` falls back to, which is read off the analytics package
-rather than the environment, and a way to hold the raised `AnalyticsReadError`
+URL an omitted `db_url=` falls back to, which is read off the analytics
+settings holder rather than the environment, and a way to hold the raised
+`AnalyticsReadError`
 so its `__cause__` can be asserted -- the chaining is the contract, so a test
 that only checked the type would pass on a wrapper that dropped the driver
 exception.
@@ -31,7 +32,8 @@ _DB_URL_SETTING = "ANALYTICS_DB_URL"
 @contextlib.contextmanager
 def configured_db_url(url: Optional[str] = DB_URL) -> Iterator[None]:
     """Pin what an omitted `db_url=` resolves to for the body."""
-    with patch.object(import_module("orchestrator.analytics"), _DB_URL_SETTING, url):
+    holder = import_module("orchestrator.observability.analytics.settings")
+    with patch.object(holder, _DB_URL_SETTING, url):
         yield
 
 

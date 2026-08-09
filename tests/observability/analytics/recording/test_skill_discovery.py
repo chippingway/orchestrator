@@ -19,13 +19,17 @@ from pathlib import Path
 
 from unittest.mock import patch
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+
+from orchestrator.observability.analytics import (
+    recording,
+    settings as analytics_settings,
+)
 
 from tests.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
-
 from tests.analytics_recording_cases import (
+    agent_exit_result as _agent_exit_result,
     claude_stdout_with_skills as _claude_stdout_with_skills,
 )
 
@@ -135,7 +139,6 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
     set rides the stream), and a run with no worktree stays empty."""
 
     def test_agent_exit_records_discovered_skills(self) -> None:
-        _, analytics = _reload()
         with (
             tempfile.TemporaryDirectory() as td,
             patch.dict(
@@ -147,7 +150,6 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
             _mk_skill(cwd / ".agents/skills", _DEVELOP)
             _mk_skill(cwd / ".agents/skills", _REVIEW)
             base, _ = self._emit(
-                analytics,
                 backend=_CODEX,
                 cwd=cwd,
                 td=td,
@@ -161,7 +163,6 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
         self.assertNotIn(_SKILLS_TRIGGERED, rec)
 
     def test_trajectory_records_discovered_skills(self) -> None:
-        _, analytics = _reload()
         with (
             tempfile.TemporaryDirectory() as td,
             patch.dict(
@@ -172,7 +173,6 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
             cwd = Path(td) / "wt"
             _mk_skill(cwd / ".claude/skills", _REVIEW)
             _, traj = self._emit(
-                analytics,
                 backend=_CODEX,
                 cwd=cwd,
                 td=td,
@@ -190,7 +190,6 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
     def test_no_worktree_leaves_codex_available_empty(self) -> None:
         # No worktree -> no skill discovery; the offered-tools baseline needs
         # no worktree, so the trajectory record still carries `tools`.
-        _, analytics = _reload()
         with (
             tempfile.TemporaryDirectory() as td,
             patch.dict(
@@ -199,7 +198,6 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
             ),
         ):
             base, traj = self._emit(
-                analytics,
                 backend=_CODEX,
                 cwd=None,
                 td=td,
@@ -216,7 +214,6 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
         # Discovery is codex-only: a claude run in a worktree full of skill
         # dirs still takes its offered set from the stream (here: none), never
         # from the filesystem, so a stray scan can't invent a claude field.
-        _, analytics = _reload()
         with (
             tempfile.TemporaryDirectory() as td,
             patch.dict(
@@ -228,11 +225,11 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
             _mk_skill(cwd / ".agents/skills", _DEVELOP)
             a_path = Path(td) / "a.jsonl"
             with (
-                patch.object(analytics, _ANALYTICS_LOG_PATH, a_path),
-                patch.object(analytics, _TRAJECTORY_LOG_PATH, None),
-                patch.object(analytics, _TRACK_SKILL_TRIGGERS, True),
+                patch.object(analytics_settings, _ANALYTICS_LOG_PATH, a_path),
+                patch.object(analytics_settings, _TRAJECTORY_LOG_PATH, None),
+                patch.object(analytics_settings, _TRACK_SKILL_TRIGGERS, True),
             ):
-                analytics.record_agent_exit(
+                recording.record_agent_exit(
                     repo=_REPO,
                     issue=AGENT_EXIT_ISSUE_NUMBER,
                     stage=_STAGE_IMPLEMENTING,
@@ -240,13 +237,8 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
                     backend=_CLAUDE,
                     agent_spec=_CLAUDE,
                     resume_session_id=None,
-                    result=analytics.AgentResult(
-                        session_id="s",
-                        last_message="",
-                        exit_code=0,
-                        timed_out=False,
-                        stdout=_claude_stdout_with_skills(skills=()),
-                        stderr="",
+                    result=_agent_exit_result(
+                        _claude_stdout_with_skills(skills=()),
                     ),
                     duration_s=float(),
                     review_round=0,
@@ -255,7 +247,7 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
                 )
             self.assertNotIn(_SKILLS_AVAILABLE, _read_records(a_path)[0])
 
-    def _emit(self, analytics, **options) -> tuple[list[dict], list[dict]]:
+    def _emit(self, **options) -> tuple[list[dict], list[dict]]:
         case = _SkillDiscoveryCase(
             temp_dir=options.pop("td"),
             trajectory=options.pop("traj", False),
@@ -264,11 +256,11 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
         a_path = Path(case.temp_dir) / "a.jsonl"
         t_path = Path(case.temp_dir) / "t.jsonl" if case.trajectory else None
         with (
-            patch.object(analytics, _ANALYTICS_LOG_PATH, a_path),
-            patch.object(analytics, _TRAJECTORY_LOG_PATH, t_path),
-            patch.object(analytics, _TRACK_SKILL_TRIGGERS, case.track),
+            patch.object(analytics_settings, _ANALYTICS_LOG_PATH, a_path),
+            patch.object(analytics_settings, _TRAJECTORY_LOG_PATH, t_path),
+            patch.object(analytics_settings, _TRACK_SKILL_TRIGGERS, case.track),
         ):
-            analytics.record_agent_exit(
+            recording.record_agent_exit(
                 repo=_REPO,
                 issue=AGENT_EXIT_ISSUE_NUMBER,
                 stage="validating",
@@ -276,14 +268,7 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
                 backend=case.backend,
                 agent_spec=case.backend,
                 resume_session_id=None,
-                result=analytics.AgentResult(
-                    session_id="sess",
-                    last_message="",
-                    exit_code=0,
-                    timed_out=False,
-                    stdout=_codex_trajectory_stdout(),
-                    stderr="",
-                ),
+                result=_agent_exit_result(_codex_trajectory_stdout()),
                 duration_s=float(),
                 review_round=1,
                 retry_count=0,

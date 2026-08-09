@@ -72,10 +72,10 @@ def run_tick(
     else:
         fan_out_repo_ticks(clients, scheduler)
     scheduler.reap()
-    # Named inside the call, like every other collaborator here: the analytics
-    # package rebuilds this owner for each instance it initializes, so a module
-    # bound at import could be one generation behind the settings the prune has
-    # to read.
+    # Named inside the call, like every other collaborator here, so the tick's
+    # own import never pays for the prune graph. The prune reads both sink
+    # knobs off the analytics settings holder inside its own call, so nothing
+    # about the timing of this import decides which files it rewrites.
     from orchestrator.observability.analytics import retention
 
     retention.prune_with_retention_logging()

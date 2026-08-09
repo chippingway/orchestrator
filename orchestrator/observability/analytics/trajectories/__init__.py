@@ -10,15 +10,15 @@ shape those fields are assembled into and the order the variable arrays are
 drawn from the budget in (``serialize``), the gate, the parse, the Codex
 backfill, and the fail-open guard around the whole write (``persistence``),
 and the bare append a caller outside a tracked run reaches (``api``). The
-lock that append and the by-age prune both take is minted by the recording
-``io`` owner, which is loaded once per process, so it survives the rebuild
-``api`` is put through for each analytics package instance.
+lock that append and the by-age prune both take is minted by the ``sink``
+owner above this package, once per process, so the two writers of one file
+cannot end up on separate objects.
 
 Callers import the owner they need, so this initializer binds nothing. The
 write is entered from inside a tracked agent run, so it stays free of the
-query and viewer graphs that later read the sink back. Everything from
-``persistence`` down is also free of the recording package that composes it --
-an `agent_exit` reaches this owner, not the reverse -- while ``api`` sits
-above those recorders, since resolving where a bare append lands is what the
-settings holder they capture answers.
+query and viewer graphs that later read the sink back. Every owner here is
+also free of the recording package that composes it -- an ``agent_exit``
+reaches this write, not the reverse -- so the record envelope and the JSONL
+line come off ``sink`` rather than back through those recorders, and every
+knob comes off the ``settings`` holder inside the call.
 """

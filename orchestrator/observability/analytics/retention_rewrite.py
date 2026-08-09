@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
-from orchestrator.observability.analytics.recording.events import log
+from orchestrator.observability.analytics.sink import log
 from orchestrator.observability.analytics.retention_scan import (
     probe_exists,
     read_kept_records,

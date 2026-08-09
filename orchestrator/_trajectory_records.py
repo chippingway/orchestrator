@@ -7,9 +7,9 @@ because this is the import site their API is documented at. The four entry
 points below are this module's own, each for one reason. `parse_record` binds a
 caller's `obj` / `seq` against a declared signature and hands the owner its own
 `sequence` keyword. The other three are the world binding: each passes the
-analytics package this module captured at its own import to the owner that
-reads a knob off it, so a reader rebuilt against a different environment
-resolves that environment's path, and a patch on the package a caller holds
+analytics settings holder this module captured at its own import to the owner
+that reads a knob off it, so a reader rebuilt against a different environment
+resolves that environment's path, and a patch on the holder a caller holds
 reaches every read made through it.
 """
 
@@ -19,7 +19,7 @@ import inspect
 from pathlib import Path
 from typing import Any, Optional
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.observability.trajectory_viewer import constants, log_paths, parsing, reading
 from orchestrator.observability.trajectory_viewer import models as view_models
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun as TrajectoryRun
@@ -43,12 +43,12 @@ RECORD_SIGNATURE = inspect.Signature(
 
 def resolve_log_path() -> Optional[Path]:
     """Return the trajectory log path configured for this reader world."""
-    return log_paths.configured_path(analytics)
+    return log_paths.configured_path(analytics_settings)
 
 
 def log_unconfigured_message() -> Optional[str]:
     """Return the opt-in banner when the trajectory sink is disabled."""
-    return log_paths.unconfigured_message(analytics)
+    return log_paths.unconfigured_message(analytics_settings)
 
 
 def parse_record(*args: Any, **kwargs: Any) -> Optional[TrajectoryRun]:
@@ -62,7 +62,9 @@ def parse_record(*args: Any, **kwargs: Any) -> Optional[TrajectoryRun]:
 
 def read_trajectories(path: Optional[Path] = None) -> list[TrajectoryRun]:
     """Read agent-trajectory records newest first, skipping malformed lines."""
-    return reading.read_trajectories(log_paths.resolve_path(analytics, path))
+    return reading.read_trajectories(
+        log_paths.resolve_path(analytics_settings, path),
+    )
 
 
 parse_record.__signature__ = RECORD_SIGNATURE

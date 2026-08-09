@@ -10,8 +10,8 @@ two halves, and a multiline value is masked on the raw leaf before
 serialization escapes the newlines the redactor matches on.
 
 Nothing here reads a setting: the caps a value is truncated to arrive as a
-`TrajectoryLimits` view from the serializer, which is the caller that knows
-which settings holder one record is being written for.
+`TrajectoryLimits` snapshot from the serializer, which is the caller that takes
+them once per record.
 """
 
 from __future__ import annotations

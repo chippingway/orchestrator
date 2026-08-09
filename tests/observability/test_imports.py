@@ -179,14 +179,16 @@ class PackageSurfaceTest(unittest.TestCase):
         # A re-export binds the owner's own object at import rather than
         # wrapping or rebuilding it, so the module a published name reports is
         # the module that defines it -- which is where a reader looks for the
-        # source and where an interception has to be aimed.
+        # source and where an interception has to be aimed. That module is the
+        # package's own or one of the siblings it composes: the record
+        # envelope both sinks satisfy is owned above either of them.
         for package in _PUBLISHING_PACKAGES:
             initializer = import_module(package)
             for name in initializer.__all__:
                 published = getattr(initializer, name)
                 owner = import_module(published.__module__)
                 with self.subTest(package=package, name=name):
-                    self.assertTrue(owner.__name__.startswith(f"{package}."))
+                    self.assertTrue(_payable_import(package, owner.__name__))
                     self.assertIs(published, getattr(owner, name))
 
     def test_initializer_installs_no_resolver_hook(self) -> None:

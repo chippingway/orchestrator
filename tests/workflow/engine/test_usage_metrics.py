@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import patch
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import settings as analytics_settings
+from orchestrator.observability.analytics import sink as analytics_sink
 from orchestrator.agents import AgentResult
 from orchestrator.observability.usage import metrics as _usage_metrics
 from orchestrator.workflow.engine import usage as engine_usage
@@ -62,9 +63,9 @@ def _run_usage(
     extra_args: tuple[str, ...] = (),
 ) -> tuple[FakeGitHubClient, AgentResult]:
     gh = FakeGitHubClient()
-    with patch.object(analytics, _ANALYTICS_PATH_ATTR, analytics_path), \
-            patch.object(analytics, _TRAJECTORY_PATH_ATTR, None), \
-            patch.object(analytics, _TRACK_SKILLS_ATTR, track), \
+    with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, analytics_path), \
+            patch.object(analytics_settings, _TRAJECTORY_PATH_ATTR, None), \
+            patch.object(analytics_settings, _TRACK_SKILLS_ATTR, track), \
             patch.object(_agent_runner, _RUN_AGENT_ATTR) as run_mock:
         run_mock.return_value = AgentResult(
             session_id="sess-usage",
@@ -156,7 +157,7 @@ class RunUsageSurfacedTest(unittest.TestCase):
             _usage_metrics,
             "parse_agent_usage",
             side_effect=RuntimeError("boom"),
-        ), self.assertLogs(analytics.log, level="ERROR"):
+        ), self.assertLogs(analytics_sink.log, level="ERROR"):
             github, agent_result = _run_usage(
                 stdout=_claude_stdout(),
                 analytics_path=path,

@@ -1,27 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Shared fake psycopg connection / cursor and module-reload helpers
+"""Shared fake psycopg connection / cursor and settings-reparse helpers
 for the analytics read-model test suite.
 
-The `test_analytics_read*.py` modules all reload
-`orchestrator.analytics.read` against a hermetic env and drive the
-readers through an in-memory `_FakeConnection` / `_FakeCursor` pair,
-so the fakes and the `_reload` shim live here in one place.
+The `test_analytics_read*.py` modules all re-parse `ANALYTICS_DB_URL`
+against a hermetic env and drive the readers through an in-memory
+`_FakeConnection` / `_FakeCursor` pair, so the fakes and the `_reload`
+shim live here in one place.
 """
 from __future__ import annotations
 
 import importlib
-import os
-import sys
-from unittest.mock import patch
 
-from tests.import_world_helpers import CONFIG_MODULE, restored_import_world
-
-_RELOADED_MODULES = (
-    CONFIG_MODULE,
-    "orchestrator.analytics",
-    "orchestrator.analytics.read",
-)
+from tests.analytics_reload_helpers import reload_analytics
 
 # The stand-in Postgres DSN every read-model test wires into
 # `ANALYTICS_DB_URL`; only its presence matters, the fake connection
@@ -30,53 +21,23 @@ _POSTGRES_URL = "postgresql://h/db"
 _DB_URL_ENV = "ANALYTICS_DB_URL"
 
 
-def _hermetic_env(extra: dict[str, str] | None = None) -> dict[str, str]:
-    env = {
-        "ORCHESTRATOR_SKIP_DOTENV": "1",
-        "ORCHESTRATOR_TOKEN_FILE": "/tmp/agent-orchestrator-token-missing",
-    }
-    if extra:
-        env.update(extra)
-    return env
-
-
 def _reload(env: dict[str, str] | None = None):
-    """Reload `orchestrator.config`, `orchestrator.analytics`, and
-    `orchestrator.analytics.read` against the given hermetic env,
-    mirroring `test_analytics_sync`.
+    """Re-parse the analytics knobs against `env` and hand back the settings
+    holder beside the `orchestrator.analytics.read` facade.
 
-    `ANALYTICS_DB_URL` is parsed by
-    `orchestrator.observability.analytics.config` and bound on the
-    analytics package, and `analytics.read` resolves it back off that
-    package at call time, so the parent must be popped alongside
-    `read` for the test env to land. `config` is popped too so the
-    analytics package's bootstrap re-resolves it against the patched
-    env: the parse still reads `LOG_DIR` for the JSONL default, and
-    the module it read is what `analytics.config` answers with.
-
-    The returned pair is the hermetic reload; `orchestrator.config` is put back
-    so a later test that first imports a module binding it still binds the same
-    object every earlier importer holds.
+    A read resolves `ANALYTICS_DB_URL` off that holder inside the call, so
+    landing the test's env on it is all the facade needs -- the facade itself
+    forwards to owners that hold no settings of their own.
     """
-    with restored_import_world():
-        with patch.dict(os.environ, _hermetic_env(env), clear=True):
-            for module_name in _RELOADED_MODULES:
-                sys.modules.pop(module_name, None)
-            # `import_module` re-imports off `sys.modules`, so popping the
-            # entries above forces a fresh load against the patched env; a
-            # `from orchestrator import analytics` would instead rebind the
-            # stale package attribute and skip the reload.
-            analytics = importlib.import_module("orchestrator.analytics")
-            analytics_read = importlib.import_module("orchestrator.analytics.read")
-    return analytics, analytics_read
+    _, settings = reload_analytics(env)
+    return settings, importlib.import_module("orchestrator.analytics.read")
 
 
 def _reload_read(db_url: str = _POSTGRES_URL):
-    """Reload only `orchestrator.analytics.read` against `db_url`.
+    """Point `ANALYTICS_DB_URL` at `db_url` and return the read facade.
 
-    Most read-model tests never inspect the parent `analytics`
-    module, so this folds the `ANALYTICS_DB_URL` wiring behind a
-    single default and returns just the reloaded `read` module.
+    Most read-model tests never inspect the settings holder, so this folds the
+    URL wiring behind a single default.
     """
     _, analytics_read = _reload({_DB_URL_ENV: db_url})
     return analytics_read

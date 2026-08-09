@@ -27,7 +27,7 @@ _OWNER_ATTRIBUTE = "read_mode"
 
 _OWNER = f"{_PACKAGE}.{_OWNER_ATTRIBUTE}"
 
-_ANALYTICS = "orchestrator.analytics"
+_ANALYTICS_SETTINGS = "orchestrator.observability.analytics.settings"
 
 _DB_URL_ATTRIBUTE = "ANALYTICS_DB_URL"
 
@@ -219,7 +219,7 @@ class DbUnconfiguredMessageTest(unittest.TestCase):
     The knob's own vocabulary -- an unset variable, an empty value, and the
     `off` / `disabled` / `none` sentinels that collapse to no URL -- belongs to
     the analytics configuration owner, so what is read here is the answer that
-    owner already gave, off whichever analytics package the name resolves to.
+    owner already gave, off whichever settings holder the name resolves to.
     """
 
     def test_no_configured_url_is_refused(self) -> None:
@@ -241,8 +241,8 @@ class DbUnconfiguredMessageTest(unittest.TestCase):
                 self.assertIn(pointer, read_mode.UNCONFIGURED_DB_MESSAGE)
 
     def _analytics(self) -> ModuleType:
-        """The package instance the knob a page reads is bound on."""
-        return import_module(_ANALYTICS)
+        """The holder instance the knob a page reads is bound on."""
+        return import_module(_ANALYTICS_SETTINGS)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,27 @@
 
 import json
 
+from orchestrator.agents import AgentResult
+
+_SESSION_ID = "sess"
+
+
+def agent_exit_result(stdout: str, session_id: str = _SESSION_ID) -> AgentResult:
+    """One finished run's result as `record_agent_exit` is handed it.
+
+    Every recorder test drives the same shape -- a clean exit whose stdout is
+    the stream under test -- so the fields none of them vary are settled here.
+    """
+    return AgentResult(
+        session_id=session_id,
+        last_message="",
+        exit_code=0,
+        timed_out=False,
+        stdout=stdout,
+        stderr="",
+    )
+
+
 _TYPE_KEY = 'type'
 
 

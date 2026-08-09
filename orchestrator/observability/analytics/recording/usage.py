@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from orchestrator.observability.analytics import sink
 from orchestrator.observability.analytics.recording.models import AgentExitContext
 from orchestrator.observability.usage import metrics as usage_metrics
 
@@ -28,7 +29,7 @@ def parse_agent_exit_usage(
             fallback_model=context.fallback_model,
         )
     except Exception:
-        context.analytics_package.log.exception(
+        sink.log.exception(
             "issue=#%d analytics: parse_agent_usage(%s) failed; skipping record",
             context.issue,
             context.backend,

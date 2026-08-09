@@ -10,8 +10,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from orchestrator import analytics
 from orchestrator import trajectory_reader as reader
+from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.observability.trajectory_viewer import constants, log_paths
 from tests.observability.trajectory_viewer.trajectory_viewer_test_support import (
     ISSUE,
@@ -69,26 +69,26 @@ class UnconfiguredMessageTest(unittest.TestCase):
         self.assertIsNone(log_paths.unconfigured_message(_holder(_CONFIGURED)))
 
 
-class AnalyticsPackageHolderTest(unittest.TestCase):
-    """The reader's holder is the analytics package its leaf captured.
+class SettingsHolderTest(unittest.TestCase):
+    """The reader's holder is the analytics settings owner its leaf captured.
 
-    Which is what makes a patch on that package the interception every read
+    Which is what makes a patch on that holder the interception every read
     made through the reader goes through: the knob is read at call time off
     the holder rather than bound when the reader was built.
     """
 
-    def test_a_disabled_package_reads_nothing(self) -> None:
-        with patch.object(analytics, _LOG_PATH_ATTR, None):
+    def test_a_disabled_holder_reads_nothing(self) -> None:
+        with patch.object(analytics_settings, _LOG_PATH_ATTR, None):
             self.assertEqual(reader.read_trajectories(), [])
             self.assertIsNone(reader.resolve_log_path())
             self.assertIsNotNone(reader.log_unconfigured_message())
 
-    def test_a_configured_package_names_the_file_read(self) -> None:
+    def test_a_configured_holder_names_the_file_read(self) -> None:
         with tempfile.TemporaryDirectory() as work_dir:
             path = Path(work_dir) / "traj.jsonl"
             written = json.dumps(record(issue=ISSUE))
             path.write_text("{0}\n".format(written), encoding="utf-8")
-            with patch.object(analytics, _LOG_PATH_ATTR, path):
+            with patch.object(analytics_settings, _LOG_PATH_ATTR, path):
                 runs = reader.read_trajectories()
                 self.assertEqual(reader.resolve_log_path(), path)
                 self.assertIsNone(reader.log_unconfigured_message())

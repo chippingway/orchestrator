@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""What survives when a producer names the owner before the facade exists."""
+"""What a producer that names only the recorders pays for, and still writes."""
 
 import json
 import tempfile
@@ -29,25 +29,12 @@ _STRANDED_ISSUE = 12
 _EVENT_VALUE = "pr_opened"
 
 
-_RECORDERS = (
-    "append_record",
-    "build_record",
-    "record_agent_exit",
-    "record_repo_skill_catalog",
-    "record_stage_enter",
-    "record_stage_evaluation",
-)
-
-
-# The order a producer actually creates: it names the owner at its own import,
-# and nothing has named the compatibility package yet. Initializing that
-# package afterwards rebuilds the recorders for the instance it belongs to, so
-# what this pins is that the rebuild lands *on* the package object the producer
-# is holding rather than beside it -- the module a patch is aimed at, the
-# objects the facade forwards, and the lock the prune takes all have to stay
-# the producer's own.
+# The order a producer actually creates: it names the recorders at its own
+# import and nothing else. What this pins is the shape of that import -- the
+# compatibility package is never planted, and the process configuration behind
+# the sink knob is not paid for until a record is actually written -- and that
+# a record still lands afterwards.
 _OWNER_FIRST_PROBE = """
-import json
 import sys
 
 import os
@@ -55,30 +42,17 @@ os.environ["ORCHESTRATOR_SKIP_DOTENV"] = "1"
 os.environ["ANALYTICS_LOG_PATH"] = {path!r}
 
 from orchestrator.observability.analytics import recording as owner
-import orchestrator.skills.catalog as producer
 
-if "orchestrator.analytics" in sys.modules:
-    sys.exit("importing the owner planted the compatibility package")
-
-from orchestrator import analytics
-
-sink_lock = sys.modules[
-    "orchestrator.observability.analytics.recording.io"
-].ANALYTICS_FILE_LOCK
-prune_owner = sys.modules["orchestrator.observability.analytics.retention"]
 failures = []
+if "orchestrator.analytics" in sys.modules:
+    failures.append("importing the recorders planted the compatibility package")
+if "orchestrator.config" in sys.modules:
+    failures.append("importing the recorders planted the process configuration")
+
+import orchestrator.skills.catalog as producer
 
 if producer.recording is not owner:
     failures.append("the producer no longer holds the canonical package")
-if sys.modules["orchestrator.observability.analytics.recording"] is not owner:
-    failures.append("the canonical package was replaced")
-for name in {recorders!r}:
-    if getattr(analytics, name) is not getattr(owner, name):
-        failures.append("the facade stopped forwarding " + name)
-if analytics._FILE_LOCK is not sink_lock:
-    failures.append("the facade append takes a different sink lock")
-if prune_owner.ANALYTICS_FILE_LOCK is not sink_lock:
-    failures.append("the prune takes a different sink lock")
 
 # A patch aimed at the canonical owner has to reach the call the producer
 # makes, which is the whole point of it holding that object.
@@ -91,21 +65,21 @@ if len(intercepted) != 1:
     failures.append("a patch on the canonical owner missed the producer")
 del owner.record_repo_skill_catalog
 
-# Unpatched, the producer's own reference still writes through the sink the
-# facade is configured with.
+# Unpatched, the producer's own reference writes through the sink the knob
+# names -- which is what resolving the settings holder inside the call buys.
 producer.recording.record_stage_enter(
     repo={repo!r}, issue={issue!r}, stage={stage!r},
 )
+if "orchestrator.analytics" in sys.modules:
+    failures.append("writing a record planted the compatibility package")
 if failures:
     sys.exit("; ".join(failures))
 """
 
 
-# The sharper owner-first case: a caller that named the recorder itself rather
-# than the package holds a function the rebuild never rebinds. It still has to
-# serialize against the prune, which is what the probe below drives -- the
-# facade is initialized by that very function's first call, so the lock it
-# takes is decided before the prune's lock exists.
+# The sharper case: a caller that named the append itself rather than the
+# package. It still has to serialize against the prune, which is what the
+# probe below drives -- both take the lock the shared sink owner minted.
 _STRANDED_APPEND_PROBE = """
 import os
 import sys
@@ -119,20 +93,12 @@ from orchestrator.observability.analytics.recording import (
     build_record,
 )
 
-if "orchestrator.analytics" in sys.modules:
-    sys.exit("importing the owner planted the compatibility package")
-
 record = build_record(repo={repo!r}, issue={issue!r}, event={event!r})
-
-# Resolving the settings holder is what imports the compatibility package,
-# and initializing it is what rebuilds `events` underneath this function.
 append_record(record)
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import retention
 
-prune_lock = sys.modules[
-    "orchestrator.observability.analytics.retention"
-].ANALYTICS_FILE_LOCK
+prune_lock = retention.ANALYTICS_FILE_LOCK
 
 
 def _append_again():
@@ -159,17 +125,15 @@ if not appended.is_set():
 
 
 class OwnerFirstImportTest(unittest.TestCase):
-    """A producer that imported the owner first keeps a working, patchable
-    package -- and a recorder taken off it keeps the sink lock the prune
-    takes -- once the compatibility facade initializes behind it.
+    """A producer that names only the recorders keeps a working, patchable
+    package -- and an append taken off it keeps the sink lock the prune takes.
     """
 
-    def test_facade_initializes_onto_producer_package(self) -> None:
+    def test_recorders_import_clean_and_still_write(self) -> None:
         with tempfile.TemporaryDirectory() as sink_dir:
             sink = Path(sink_dir) / "a.jsonl"
             completed = _run_import_probe(_OWNER_FIRST_PROBE.format(
                 path=str(sink),
-                recorders=_RECORDERS,
                 repo=_REPO_SHORT,
                 issue=_PROBE_ISSUE,
                 stage=_STAGE_IMPLEMENTING,

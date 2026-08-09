@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator import analytics
+from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
 from orchestrator.workflow.engine import dispatch, pickup
 from orchestrator.workflow.stages.implementing import handler as implementing
@@ -64,7 +64,7 @@ def _process_hard_skipped_issue(skip_label: str) -> tuple[MagicMock, list[dict]]
         issue.labels.append(FakeLabel(skip_label))
         gh.add_issue(issue)
         handler_mock = MagicMock()
-        with patch.object(analytics, _ANALYTICS_PATH_ATTR, path), patch.object(
+        with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, path), patch.object(
             implementing,
             "_handle_implementing",
             handler_mock,
@@ -104,7 +104,7 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             gh = FakeGitHubClient()
             issue = make_issue(_SUCCESS_ISSUE, label=LABEL_IMPLEMENTING)
             gh.add_issue(issue)
-            with patch.object(analytics, _ANALYTICS_PATH_ATTR, path), \
+            with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, path), \
                  patch.object(implementing, "_handle_implementing"):
                 dispatch._process_issue(gh, _TEST_SPEC, issue)
             record = _stage_evaluations(path, _SUCCESS_ISSUE)[0]
@@ -128,7 +128,7 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             gh = FakeGitHubClient()
             issue = make_issue(_UNLABELED_ISSUE)
             gh.add_issue(issue)
-            with patch.object(analytics, _ANALYTICS_PATH_ATTR, path), \
+            with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, path), \
                  patch.object(pickup, "_handle_pickup"):
                 dispatch._process_issue(gh, _TEST_SPEC, issue)
             record = _stage_evaluations(path, _UNLABELED_ISSUE)[0]
@@ -149,7 +149,7 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             issue = make_issue(_ERROR_ISSUE, label=LABEL_VALIDATING)
             gh.add_issue(issue)
             with (
-                patch.object(analytics, _ANALYTICS_PATH_ATTR, path),
+                patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, path),
                 patch(
                     _VALIDATING_HANDLER,
                     side_effect=RuntimeError("handler blew up"),
@@ -185,7 +185,7 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
             gh = FakeGitHubClient()
             issue = make_issue(_DISABLED_SINK_ISSUE, label=LABEL_IMPLEMENTING)
             gh.add_issue(issue)
-            with patch.object(analytics, _ANALYTICS_PATH_ATTR, None), \
+            with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, None), \
                  patch.object(implementing, "_handle_implementing"):
                 dispatch._process_issue(gh, _TEST_SPEC, issue)
             self.assertFalse(sentinel.exists())
@@ -203,7 +203,7 @@ class StageEnterAnalyticsRecordTest(unittest.TestCase):
     def test_label_transition_writes_stage_enter(self) -> None:
         with tempfile.TemporaryDirectory(prefix="analytics-stage-enter-") as td:
             path = Path(td) / _ANALYTICS_FILENAME
-            with patch.object(analytics, _ANALYTICS_PATH_ATTR, path):
+            with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, path):
                 gh = FakeGitHubClient()
                 issue = make_issue(_STAGE_ENTER_ISSUE)
                 gh.add_issue(issue)
@@ -229,7 +229,7 @@ class StageEnterAnalyticsRecordTest(unittest.TestCase):
         # `stage_enter` analytics record.
         with tempfile.TemporaryDirectory(prefix="analytics-stage-none-") as td:
             path = Path(td) / _ANALYTICS_FILENAME
-            with patch.object(analytics, _ANALYTICS_PATH_ATTR, path):
+            with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, path):
                 gh = FakeGitHubClient()
                 issue = make_issue(_LABEL_CLEAR_ISSUE, label=LABEL_IMPLEMENTING)
                 gh.add_issue(issue)

@@ -1,58 +1,45 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Analytics package export and reload inventory."""
+"""Where each name this package forwards is defined."""
 
 from __future__ import annotations
 
-EXPORTED_NAMES = (
-    "ANALYTICS_DB_URL",
-    "ANALYTICS_LOG_PATH",
-    "ANALYTICS_RETENTION_DAYS",
-    "TRACK_SKILL_TRIGGERS",
-    "TRAJECTORY_LOG_PATH",
-    "TRAJECTORY_RETENTION_DAYS",
-    "append_record",
-    "append_trajectory_record",
-    "build_record",
-    "config",
-    "prune_old_records",
-    "prune_trajectory_records",
-    "prune_with_retention_logging",
-    "record_agent_exit",
-    "record_repo_skill_catalog",
-    "record_stage_enter",
-    "record_stage_evaluation",
-)
+from types import MappingProxyType
 
-RECORDING_PACKAGE = "orchestrator.observability.analytics.recording"
+_OWNERS = "orchestrator.observability.analytics"
 
-RECORDING_EVENTS_ATTRIBUTE = "events"
+_RECORDING = f"{_OWNERS}.recording"
 
-RECORDING_EVENTS = f"{RECORDING_PACKAGE}.{RECORDING_EVENTS_ATTRIBUTE}"
+_RETENTION = f"{_OWNERS}.retention"
 
-TRAJECTORY_PACKAGE = "orchestrator.observability.analytics.trajectories"
+_SETTINGS = f"{_OWNERS}.settings"
 
-TRAJECTORY_API = f"{TRAJECTORY_PACKAGE}.api"
+_TRAJECTORY_API = f"{_OWNERS}.trajectories.api"
 
-TRAJECTORY_MODELS = f"{TRAJECTORY_PACKAGE}.models"
+# One entry per historical member, pointing at the module that defines it now.
+# Resolved per access rather than bound once, so a knob patched on the
+# `settings` owner -- where every producer reads it -- is what a caller
+# reaching this package observes.
+MEMBER_OWNERS = MappingProxyType({
+    "ANALYTICS_DB_URL": _SETTINGS,
+    "ANALYTICS_LOG_PATH": _SETTINGS,
+    "ANALYTICS_RETENTION_DAYS": _SETTINGS,
+    "TRACK_SKILL_TRIGGERS": _SETTINGS,
+    "TRAJECTORY_LOG_PATH": _SETTINGS,
+    "TRAJECTORY_RETENTION_DAYS": _SETTINGS,
+    "append_record": _RECORDING,
+    "append_trajectory_record": _TRAJECTORY_API,
+    "build_record": _RECORDING,
+    "prune_old_records": _RETENTION,
+    "prune_trajectory_records": _RETENTION,
+    "prune_with_retention_logging": _RETENTION,
+    "record_agent_exit": _RECORDING,
+    "record_repo_skill_catalog": _RECORDING,
+    "record_stage_enter": _RECORDING,
+    "record_stage_evaluation": _RECORDING,
+})
 
-RETENTION = "orchestrator.observability.analytics.retention"
+# The one historical name that is a module rather than a member of one.
+MODULE_EXPORTS = MappingProxyType({"config": "orchestrator.config"})
 
-# Reloaded with the rest so each package instance gets its own recorders, its
-# own trajectory sink, and its own by-age prune. `events`, the trajectory
-# `api`, and the retention owner are the only ones listed because they are the
-# only ones carrying per-instance state -- each captures the instance it was
-# imported alongside, while everything beneath them reads the settings off the
-# request or the context it is handed. The retention scan and rewrite leaves
-# stay put for that reason, and so does `io`: re-executing it would mint a
-# second lock for an append and the rewrite to take one each of.
-# The recording package above `events` is *re-executed* rather than evicted, so
-# its module object survives: a producer imported it under its own name and
-# holds that object, and swapping it would leave the producer calling recorders
-# this package no longer publishes. The trajectories package is a marker that
-# binds nothing, so it needs no such republish.
-IMPLEMENTATION_MODULES = (
-    RECORDING_EVENTS,
-    TRAJECTORY_API,
-    RETENTION,
-)
+EXPORTED_NAMES = tuple(sorted(set(MEMBER_OWNERS) | set(MODULE_EXPORTS)))

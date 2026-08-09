@@ -3,7 +3,7 @@
 """Sink fixtures and pinned ages shared by the retention tests.
 
 Every prune test needs the same two things: a temporary JSONL file the
-analytics package is reloaded against, and a fixed "now" so a record's age is
+analytics knobs are re-parsed against, and a fixed "now" so a record's age is
 a property of the fixture rather than of when the suite ran. Both sinks are
 built the same way here so a test that pins one against the other -- the
 independence pair especially -- cannot accidentally give them different
@@ -16,7 +16,6 @@ import contextlib
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from types import ModuleType
 from typing import Iterator, Optional
 
 from tests.analytics_reload_helpers import reload_analytics as _reload
@@ -67,26 +66,25 @@ REPO_SHORT = "o/r"
 
 ENCODING = "utf-8"
 
-_SinkFixture = tuple[Path, ModuleType]
-
-
 @contextlib.contextmanager
-def analytics_sink(retention: Optional[str] = None) -> Iterator[_SinkFixture]:
-    """Reload the analytics package against a temporary `analytics.jsonl`."""
+def analytics_sink(retention: Optional[str] = None) -> Iterator[Path]:
+    """Point the analytics knobs at a temporary `analytics.jsonl`."""
     with tempfile.TemporaryDirectory() as sink_dir:
         path = Path(sink_dir) / "analytics.jsonl"
         environment = {ANALYTICS_LOG_PATH: str(path)}
         if retention is not None:
             environment[ANALYTICS_RETENTION_DAYS] = retention
-        yield path, _reload(environment)[1]
+        _reload(environment)
+        yield path
 
 
 @contextlib.contextmanager
-def trajectory_sink(retention: Optional[str] = None) -> Iterator[_SinkFixture]:
-    """Reload the analytics package against a temporary `trajectory.jsonl`."""
+def trajectory_sink(retention: Optional[str] = None) -> Iterator[Path]:
+    """Point the trajectory knobs at a temporary `trajectory.jsonl`."""
     with tempfile.TemporaryDirectory() as sink_dir:
         path = Path(sink_dir) / "trajectory.jsonl"
         environment = {TRAJECTORY_LOG_PATH: str(path)}
         if retention is not None:
             environment[TRAJECTORY_RETENTION_DAYS] = retention
-        yield path, _reload(environment)[1]
+        _reload(environment)
+        yield path

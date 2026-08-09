@@ -12,6 +12,7 @@ so a parser failure costs the skill keys rather than the baseline event.
 from __future__ import annotations
 
 from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics import sink
 from orchestrator.observability.analytics.recording.models import (
     AgentExitContext,
     AgentExitSkillFields,
@@ -63,13 +64,12 @@ def parse_agent_exit_skills(
     codex_catalog: CodexCatalog,
 ) -> AgentExitSkillFields:
     """Parse opt-in skill fields without risking the baseline event."""
-    analytics_package = context.analytics_package
-    if not analytics_config.settings_on(analytics_package).track_skill_triggers:
+    if not analytics_config.live_settings().track_skill_triggers:
         return AgentExitSkillFields()
     try:
         return read_agent_exit_skills(context, codex_catalog)
     except Exception:
-        analytics_package.log.exception(
+        sink.log.exception(
             "issue=#%d analytics: parse_agent_skills(%s) failed; emitting record without skill fields",
             context.issue,
             context.backend,

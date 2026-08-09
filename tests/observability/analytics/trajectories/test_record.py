@@ -20,7 +20,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from orchestrator.observability.analytics.trajectories import models as trajectory_models
+
 
 
 from tests.analytics_jsonl_helpers import (
@@ -209,12 +210,10 @@ class RecordAgentExitClaudeTrajectoryTest(_support.RecordAgentExitTrajectorySupp
         # Default off: a prompt is passed but, with the trajectory sink
         # disabled, no trajectory file is created and the baseline
         # `agent_exit` record never carries `user_input`.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             temp_root = Path(td)
             a_path = temp_root / _ANALYTICS_FILENAME
             self._emit(
-                analytics,
                 stdout=_claude_trajectory_stdout(),
                 prompt="please implement the feature",
                 traj_path=None,
@@ -235,12 +234,10 @@ class RecordAgentExitClaudeTrajectoryTest(_support.RecordAgentExitTrajectorySupp
         # user_input, the offered tools, the ordered steps with their
         # tool_call input / tool_result content, and the final output --
         # alongside (not replacing) the baseline `agent_exit` record.
-        analytics = _reload()[1]
         with tempfile.TemporaryDirectory() as td:
             a_path = Path(td) / _ANALYTICS_FILENAME
             t_path = Path(td) / _TRAJECTORY_FILENAME
             self._emit(
-                analytics,
                 stdout=_claude_trajectory_stdout(
                     tool_input={_COMMAND_KEY: "echo hi"},
                     tool_result="hi",
@@ -355,11 +352,9 @@ class RecordAgentExitTrajectoryTimelineTest(_support.RecordAgentExitTrajectorySu
         # aggregated_output become the tool_call / tool_result, the trailing
         # agent_message rides along as an assistant_message turn, and that
         # same last agent_message is the output.
-        _, analytics = _reload()
         with tempfile.TemporaryDirectory() as td:
             t_path = Path(td) / _TRAJECTORY_FILENAME
             self._emit(
-                analytics,
                 stdout=_codex_trajectory_stdout(),
                 prompt="codex prompt",
                 traj_path=t_path,
@@ -419,25 +414,23 @@ class RecordAgentExitTrajectoryTimelineTest(_support.RecordAgentExitTrajectorySu
         # their own steps and get the same treatment as tool payloads: stream
         # order preserved, secrets masked, over-long text head/tail truncated,
         # and `name` / `tool_id` null (text turns carry no tool metadata).
-        _, analytics = _reload()
         secret = "sk-ant-TEXTLEAK-0123456789"
         with (
             tempfile.TemporaryDirectory() as td,
             patch.dict(os.environ, {"ANTHROPIC_API_KEY": secret}),
             patch.object(
-                analytics,
-                "_TRAJECTORY_FIELD_HEAD",
+                trajectory_models,
+                "TRAJECTORY_FIELD_HEAD",
                 _TRUNCATION_EDGE_CHARS,
             ),
             patch.object(
-                analytics,
-                "_TRAJECTORY_FIELD_TAIL",
+                trajectory_models,
+                "TRAJECTORY_FIELD_TAIL",
                 _TRUNCATION_EDGE_CHARS,
             ),
         ):
             t_path = Path(td) / _TRAJECTORY_FILENAME
             self._emit(
-                analytics,
                 stdout=_text_turn_stdout(secret),
                 prompt=_PROMPT_TEXT,
                 traj_path=t_path,

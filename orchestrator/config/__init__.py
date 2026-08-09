@@ -209,12 +209,13 @@ EVENT_LOG_PATH = _RESOLVED["EVENT_LOG_PATH"]
 # (`ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`), the trajectory
 # sink and skill-trigger switch beside them, and the libpq URL for the
 # analytics Postgres service (`ANALYTICS_DB_URL`) are parsed by
-# `orchestrator.observability.analytics.config` and bound on the
-# `orchestrator.analytics` package; that owner does the parsing /
-# defaulting so consumers of `config.LOG_DIR` do not pull the analytics
-# defaults in transitively. The audit event log (`EVENT_LOG_PATH`)
-# above stays here because `GitHubClient.emit_event` is a
-# general-purpose audit surface, not analytics-specific.
+# `orchestrator.observability.analytics.config` and bound on
+# `orchestrator.observability.analytics.settings`; those owners do the
+# parsing / defaulting so consumers of `config.LOG_DIR` do not pull the
+# analytics defaults in transitively. The audit event log
+# (`EVENT_LOG_PATH`) above stays here because
+# `GitHubClient.emit_event` is a general-purpose audit surface, not
+# analytics-specific.
 
 REVIEW_TIMEOUT: int = _RESOLVED["REVIEW_TIMEOUT"]
 MAX_REVIEW_ROUNDS: int = _RESOLVED["MAX_REVIEW_ROUNDS"]
