@@ -6,11 +6,12 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.implementing import session_read as _session_read
+
 from tests.workflow.stages.implementing import retry_test_support as support
 
 DEFAULT_SESSION = support.DEFAULT_SESSION
 _agent = support._agent
-workflow = support.workflow
 
 
 class SessionLimitMessageClassifierTest(unittest.TestCase):
@@ -35,7 +36,7 @@ class SessionLimitMessageClassifierTest(unittest.TestCase):
             with self.subTest(last_message=last_message):
                 agent_result = _agent(session_id=DEFAULT_SESSION, last_message=last_message)
                 self.assertTrue(
-                    workflow._is_session_limit_message(agent_result),
+                    _session_read._is_session_limit_message(agent_result),
                     f"{last_message!r} should classify as a session limit",
                 )
 
@@ -50,6 +51,6 @@ class SessionLimitMessageClassifierTest(unittest.TestCase):
             with self.subTest(last_message=last_message):
                 agent_result = _agent(session_id=DEFAULT_SESSION, last_message=last_message)
                 self.assertFalse(
-                    workflow._is_session_limit_message(agent_result),
+                    _session_read._is_session_limit_message(agent_result),
                     f"{last_message!r} must not classify as a session limit",
                 )

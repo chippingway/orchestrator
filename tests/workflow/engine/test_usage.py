@@ -7,11 +7,13 @@ import unittest
 from dataclasses import dataclass
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.workflow.stages.validating import (
     watermarks as _validating_watermarks,
 )
+from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.validating import handler as _validating
 
 from tests.fakes import FakeGitHubClient, FakeIssue, FakePR, make_issue
 
@@ -145,7 +147,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             LABEL_IMPLEMENTING,
         )
         self._run(
-            lambda: workflow._handle_implementing(
+            lambda: _implementing._handle_implementing(
                 scenario.github,
                 _TEST_SPEC,
                 scenario.issue,
@@ -181,7 +183,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             body=f"please use token {secret_marker}",
         )
         self._run(
-            lambda: workflow._handle_implementing(
+            lambda: _implementing._handle_implementing(
                 scenario.github,
                 _TEST_SPEC,
                 scenario.issue,
@@ -235,7 +237,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             return_value=(None, None),
         ):
             self._run(
-                lambda: workflow._handle_validating(
+                lambda: _validating._handle_validating(
                     scenario.github,
                     _TEST_SPEC,
                     scenario.issue,
@@ -269,7 +271,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             LABEL_IMPLEMENTING,
         )
         self._run(
-            lambda: workflow._handle_implementing(
+            lambda: _implementing._handle_implementing(
                 scenario.github,
                 _TEST_SPEC,
                 scenario.issue,
@@ -304,7 +306,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             LABEL_IMPLEMENTING,
         )
         self._run(
-            lambda: workflow._handle_implementing(
+            lambda: _implementing._handle_implementing(
                 scenario.github,
                 _TEST_SPEC,
                 scenario.issue,
@@ -347,7 +349,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             LABEL_IMPLEMENTING,
         )
         self._run(
-            lambda: workflow._handle_implementing(
+            lambda: _implementing._handle_implementing(
                 scenario.github,
                 _TEST_SPEC,
                 scenario.issue,

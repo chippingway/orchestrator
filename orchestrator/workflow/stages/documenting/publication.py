@@ -18,8 +18,9 @@ published and whose state is already stamped.
 """
 from __future__ import annotations
 
+import logging
+
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.git import authentication as _authentication
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments, messages as _messages
@@ -28,6 +29,8 @@ from orchestrator.workflow.stages.documenting import (
     models as _models,
     parks as _parks,
 )
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _stamp_docs_verdict(

@@ -29,10 +29,11 @@ model output.
 """
 from __future__ import annotations
 
+import logging
+
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -46,6 +47,8 @@ from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
 from orchestrator.workflow.stages.validating import models as _models
 from orchestrator.workflow.stages.validating import state as _state
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _park_reviewer_no_verdict(

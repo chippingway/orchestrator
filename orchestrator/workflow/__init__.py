@@ -1,19 +1,68 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable workflow surface backed by responsibility-focused lazy leaves.
+"""The workflow package API: one polling tick, the labels, and the guard.
 
-This initializer carries the whole compatibility facade -- the lazy
-``__getattr__`` / ``__dir__`` hooks over the immutable export manifest --
-so ``orchestrator.workflow`` itself stays the import site, identity source,
-and ``patch.object`` target for every name the manifest inventories. Those
-hooks are all it binds. The ``state`` owner beside it holds the label
-vocabulary the GitHub and git layers below the engine are typed by, and
-importing a submodule runs this initializer first, so anything bound here would
-be a cost those layers pay on every import.
+What a caller outside the tree needs to drive the state machine or reason about
+it is named here explicitly and nowhere else: the per-repo tick, the two label
+vocabularies a GitHub issue carries, and the transition guard together with the
+predicate under it and the exception an illegal write raises. The five past the
+tick are the `state` owner's own objects, re-exported rather than rebuilt, so
+the graph an out-of-tree caller reads cannot fork from the one every in-tree
+caller names on that owner. Everything past this surface belongs to the owner
+that defines it -- `workflow/engine/` for the tick's collaborators,
+`workflow/stages/` for the per-label handlers -- and is reached by importing
+that owner, so a patch aimed at one lands where the call site reads it.
+
+`tick` resolves the engine inside the call. The GitHub and git layers below the
+engine import `workflow/state.py` for the label vocabulary they are typed by,
+and a submodule import runs this initializer first, so an engine import at
+module scope would route those layers straight back into the GitHub and git
+modules they are still initializing.
 """
 from __future__ import annotations
 
-from orchestrator import _workflow_exports
+from typing import TYPE_CHECKING, Optional
 
-__dir__ = _workflow_exports.exported_dir
-__getattr__ = _workflow_exports.resolve_export
+from orchestrator.workflow.state import (
+    ControlLabel,
+    IllegalTransition,
+    WorkflowLabel,
+    guard_transition,
+    is_allowed_transition,
+)
+
+if TYPE_CHECKING:
+    import threading
+
+    from orchestrator import config
+    from orchestrator.github.client import GitHubClient
+    from orchestrator.scheduler import IssueScheduler
+
+__all__ = (
+    "ControlLabel",
+    "IllegalTransition",
+    "WorkflowLabel",
+    "guard_transition",
+    "is_allowed_transition",
+    "tick",
+)
+
+
+def tick(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    *,
+    global_semaphore: Optional[threading.BoundedSemaphore] = None,
+    scheduler: Optional[IssueScheduler] = None,
+) -> None:
+    """Drive a single polling tick for one repo.
+
+    The pass order, the scheduler / in-tick split, and the per-issue isolation
+    are `workflow/engine/tick.py`; a test that has to intercept any of them
+    patches that owner.
+    """
+    from orchestrator.workflow.engine import tick as _engine_tick
+
+    _engine_tick.tick(
+        gh, spec, global_semaphore=global_semaphore, scheduler=scheduler,
+    )

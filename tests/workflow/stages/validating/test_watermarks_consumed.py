@@ -6,9 +6,10 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume
 
 from tests.fakes import (
     FakeComment,
@@ -201,7 +202,7 @@ class HandoffSkipsConsumedRepliesTest(unittest.TestCase, _PatchedWorkflowMixin):
                 _agent_runner, RUN_AGENT, lambda *args, **kwargs: _agent(),
             ),
         ):
-            resume_result = workflow._resume_developer_on_human_reply(gh, _TEST_SPEC, issue, state)
+            resume_result = _implementing_resume._resume_developer_on_human_reply(gh, _TEST_SPEC, issue, state)
 
         self.assertIsNotNone(resume_result)
         self.assertEqual(

@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Pickup behavior for unlabeled issues: legacy decompose-off shortcut to
 implementing, the `ALLOWED_ISSUE_AUTHORS` allowlist (case-insensitive
-match, empty-list disables filter), the anchors both starts publish before
-dispatching a stage in the same tick, and the facade forwarding them."""
+match, empty-list disables filter), and the anchors both starts publish before
+dispatching a stage in the same tick."""
 from __future__ import annotations
 
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import pickup
 from orchestrator.workflow.stages.decomposition import run as _decomposing
@@ -27,17 +27,6 @@ _DECOMPOSING_LABEL = "decomposing"
 _ISSUE_NUMBER = 1
 _START_DECOMPOSING = "_start_decomposing"
 _START_IMPLEMENTING = "_start_implementing"
-
-# Every name the workflow facade still has to answer for. Live issues and
-# operator scripts reach the owner through it, so a forward that stops
-# resolving is a break, not a rename.
-_FACADE_FORWARDS = (
-    "_handle_pickup",
-    "_pickup_author_allowed",
-    "_record_pickup_comment",
-    _START_DECOMPOSING,
-    _START_IMPLEMENTING,
-)
 
 
 class _StageDispatchRecorder:
@@ -69,7 +58,7 @@ class HandlePickupTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         with patch.object(config, _DECOMPOSE_CONFIG, False):
             mocks = self._run(
-                lambda: workflow._handle_pickup(gh, _TEST_SPEC, issue),
+                lambda: pickup._handle_pickup(gh, _TEST_SPEC, issue),
                 run_agent=_agent(last_message=_CLARIFICATION_MESSAGE),
                 has_new_commits=False,
             )
@@ -96,7 +85,7 @@ class HandlePickupTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         with patch.object(config, _ALLOWLIST_CONFIG, ("geserdugarov",)):
             mocks = self._run(
-                lambda: workflow._handle_pickup(gh, _TEST_SPEC, issue),
+                lambda: pickup._handle_pickup(gh, _TEST_SPEC, issue),
                 run_agent=_agent(last_message="should not run"),
                 has_new_commits=False,
             )
@@ -116,7 +105,7 @@ class HandlePickupTest(unittest.TestCase, _PatchedWorkflowMixin):
         with patch.object(config, _ALLOWLIST_CONFIG, ("alice", "bob")), \
              patch.object(config, _DECOMPOSE_CONFIG, False):
             self._run(
-                lambda: workflow._handle_pickup(gh, _TEST_SPEC, issue),
+                lambda: pickup._handle_pickup(gh, _TEST_SPEC, issue),
                 run_agent=_agent(last_message=_CLARIFICATION_MESSAGE),
                 has_new_commits=False,
             )
@@ -136,7 +125,7 @@ class HandlePickupTest(unittest.TestCase, _PatchedWorkflowMixin):
         with patch.object(config, _ALLOWLIST_CONFIG, ("alice",)), \
              patch.object(config, _DECOMPOSE_CONFIG, False):
             self._run(
-                lambda: workflow._handle_pickup(gh, _TEST_SPEC, issue),
+                lambda: pickup._handle_pickup(gh, _TEST_SPEC, issue),
                 run_agent=_agent(last_message=_CLARIFICATION_MESSAGE),
                 has_new_commits=False,
             )
@@ -154,7 +143,7 @@ class HandlePickupTest(unittest.TestCase, _PatchedWorkflowMixin):
         with patch.object(config, _ALLOWLIST_CONFIG, ()), \
              patch.object(config, _DECOMPOSE_CONFIG, False):
             self._run(
-                lambda: workflow._handle_pickup(gh, _TEST_SPEC, issue),
+                lambda: pickup._handle_pickup(gh, _TEST_SPEC, issue),
                 run_agent=_agent(last_message=_CLARIFICATION_MESSAGE),
                 has_new_commits=False,
             )
@@ -232,18 +221,6 @@ class PickupOwnerPatchTest(unittest.TestCase):
         self.assertEqual(recorder.labels, [(_ISSUE_NUMBER, label)])
         self.assertIn("pickup_comment_id", recorder.state)
         self.assertIn("user_content_hash", recorder.state)
-
-
-class PickupFacadeForwardTest(unittest.TestCase):
-    """The workflow facade resolves each name to the owner's exact object."""
-
-    def test_facade_forwards_the_owner_objects(self) -> None:
-        for forwarded_name in _FACADE_FORWARDS:
-            with self.subTest(name=forwarded_name):
-                self.assertIs(
-                    getattr(workflow, forwarded_name),
-                    getattr(pickup, forwarded_name),
-                )
 
 
 if __name__ == "__main__":

@@ -12,24 +12,26 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.github import PinnedState
 from orchestrator.observability.usage.metrics import UsageMetrics
-from orchestrator.workflow.engine import usage as engine_usage
+from orchestrator.workflow.engine import drift as _drift, usage as engine_usage
+from orchestrator.workflow.stages.implementing import resume as _resume
 
-from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import (
-    REVIEW_APPROVED_MESSAGE,
-    _PatchedWorkflowMixin,
-    _TEST_SPEC,
-    _agent,
-    _fake_worktree,
-)
+from tests import fakes, workflow_helpers
 from tests.workflow.engine.usage_accumulator_test_support import (
     _PoisonedThenFreshRun,
 )
+
+FakeGitHubClient = fakes.FakeGitHubClient
+make_issue = fakes.make_issue
+REVIEW_APPROVED_MESSAGE = workflow_helpers.REVIEW_APPROVED_MESSAGE
+_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
+_TEST_SPEC = workflow_helpers._TEST_SPEC
+_agent = workflow_helpers._agent
+_fake_worktree = workflow_helpers._fake_worktree
 
 
 _BACKEND_CLAUDE = "claude"
@@ -238,8 +240,9 @@ class DeveloperRunUsageAccumulationTest(unittest.TestCase, _PatchedWorkflowMixin
         gh.add_issue(issue)
 
         with patch.object(config, "DEV_AGENT", _BACKEND_CLAUDE):
-            self._run(
-                lambda: workflow._handle_implementing(gh, _TEST_SPEC, issue),
+            self._run_implementing(
+                gh,
+                issue,
                 run_agent=_agent(session_id="sess-fresh", last_message="done"),
                 has_new_commits=[False, True],
                 push_branch=True,
@@ -262,8 +265,9 @@ class DeveloperRunUsageAccumulationTest(unittest.TestCase, _PatchedWorkflowMixin
         gh.add_issue(issue)
 
         with patch.object(config, "DEV_AGENT", _BACKEND_CLAUDE):
-            self._run(
-                lambda: workflow._handle_implementing(gh, _TEST_SPEC, issue),
+            self._run_implementing(
+                gh,
+                issue,
                 run_agent=_agent(
                     session_id="sess-x", last_message="", interrupted=True,
                 ),
@@ -300,7 +304,7 @@ class ResumeRunUsageAccumulationTest(unittest.TestCase):
                 last_message="ok",
             ),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, "go")
+            _resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, "go")
 
         self.assertEqual(state.get(_RUNS_KEY), 1)
 
@@ -319,7 +323,7 @@ class ResumeRunUsageAccumulationTest(unittest.TestCase):
         with patch.object(
             _worktree_creation, "_ensure_worktree", _fake_worktree,
         ), patch.object(_agent_runner, "run_agent", run_recorder):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, "go")
+            _resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, "go")
 
         self.assertEqual(run_recorder.calls, ["poisoned-sess", None])
         # Both the poisoned resume and the fresh retry burned a real exit.
@@ -344,8 +348,9 @@ class ReviewerRunUsageAccumulationTest(unittest.TestCase, _PatchedWorkflowMixin)
         )
 
         with patch.object(config, "REVIEW_AGENT", "codex"):
-            self._run(
-                lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+            self._run_validating(
+                gh,
+                issue,
                 run_agent=_agent(
                     session_id="rev-sess",
                     last_message=REVIEW_APPROVED_MESSAGE,
@@ -374,12 +379,13 @@ class ReviewerRunUsageAccumulationTest(unittest.TestCase, _PatchedWorkflowMixin)
             # Seed the drift baseline so `_detect_user_content_change` does not
             # itself write pinned state on first encounter -- this test asserts
             # the handler writes NOTHING once the reviewer run is interrupted.
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
 
         with patch.object(config, "REVIEW_AGENT", "codex"):
-            self._run(
-                lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+            self._run_validating(
+                gh,
+                issue,
                 run_agent=_agent(
                     session_id="", last_message="", exit_code=1,
                     interrupted=True,

@@ -30,9 +30,9 @@ _FLAT_MODULES = (
 
 # Verification owns result classification for a worktree, so it may reach the
 # git command owner and the settings it reads. Anything above that -- the
-# workflow engine, its stage handlers, the compatibility facade over them, or
-# an application entrypoint -- would invert the dependency and let a `git
-# status` probe drag the tick loop into its import graph.
+# workflow engine, its stage handlers, or an application entrypoint -- would
+# invert the dependency and let a `git status` probe drag the tick loop into
+# its import graph.
 _ALLOWED_ROOTS = ("orchestrator.config", "orchestrator.git")
 
 _ALLOWED_MODULES = ("orchestrator", "orchestrator._package_exports")

@@ -21,6 +21,7 @@ the reviewer's stage.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
@@ -28,7 +29,6 @@ from typing import Optional, Tuple
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -39,6 +39,8 @@ from orchestrator.workflow.stages.implementing import (
     state as _state,
     worktree as _worktree,
 )
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 @dataclass(frozen=True)

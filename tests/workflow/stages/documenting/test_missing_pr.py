@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.stages.documenting import handler as _documenting
 
 from tests.fakes import (
     FakeGitHubClient,
@@ -142,7 +142,7 @@ class HandleDocumentingMissingPrNumberTest(unittest.TestCase):
         issue = make_issue(MISSING_PR_ISSUE_NUMBER, label=DOCUMENTING)
         gh.add_issue(issue)
 
-        workflow._handle_documenting(gh, _TEST_SPEC, issue)
+        _documenting._handle_documenting(gh, _TEST_SPEC, issue)
 
         state = gh.pinned_data(MISSING_PR_ISSUE_NUMBER)
         self.assertTrue(state.get(AWAITING_HUMAN))
@@ -157,7 +157,7 @@ class HandleDocumentingMissingPrNumberTest(unittest.TestCase):
         gh.add_issue(issue)
         gh.seed_state(PARKED_MISSING_PR_ISSUE_NUMBER, awaiting_human=True)
 
-        workflow._handle_documenting(gh, _TEST_SPEC, issue)
+        _documenting._handle_documenting(gh, _TEST_SPEC, issue)
 
         self.assertEqual(gh.posted_comments, [])
         self.assertEqual(gh.write_state_calls, 0)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.stages.decomposition import blocked as _blocked
 
 from tests.fakes import (
     FakeComment,
@@ -36,7 +36,7 @@ class HandleReadyTest(unittest.TestCase, _PatchedWorkflowMixin):
         gh.add_issue(issue)
 
         mocks = self._run(
-            lambda: workflow._handle_ready(gh, _TEST_SPEC, issue),
+            lambda: _blocked._handle_ready(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id=DEV_SESSION_ID,
                 last_message="implemented",
@@ -74,7 +74,7 @@ class HandleReadyTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         before = len(gh.posted_comments)
         self._run(
-            lambda: workflow._handle_ready(gh, _TEST_SPEC, issue),
+            lambda: _blocked._handle_ready(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id=DEV_SESSION_ID,
                 last_message="done",
@@ -119,7 +119,7 @@ class HandleReadyTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
 
         self._run(
-            lambda: workflow._handle_ready(gh, _TEST_SPEC, issue),
+            lambda: _blocked._handle_ready(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id=DEV_SESSION_ID,
                 last_message="done",
@@ -154,7 +154,7 @@ class HandleReadyTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
 
         self._run(
-            lambda: workflow._handle_ready(gh, _TEST_SPEC, issue),
+            lambda: _blocked._handle_ready(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id=DEV_SESSION_ID,
                 last_message="done",

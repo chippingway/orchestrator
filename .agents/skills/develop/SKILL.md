@@ -43,8 +43,8 @@ Before committing, run each of these and fix what they report:
 - `.venv/bin/python -m ruff check orchestrator tests` — recurring CI breakers:
   - **F401** (unused import): if the name is meant to be a re-export from a package facade that binds its
     surface with imports (`orchestrator/agents/`, `github/`, `scheduler/`, `observability/usage/`), alias it with
-    `... as <name>` so ruff treats it as an explicit re-export instead of dead code. The `workflow` facade needs
-    none of this: it resolves its whole inventory lazily off `_workflow_export_manifest` and binds nothing.
+    `... as <name>` so ruff treats it as an explicit re-export instead of dead code. A name the initializer
+    lists in `__all__` — how `orchestrator/workflow/` publishes its label and guard surface — is already exempt.
   - **F541** (f-string without placeholders): use a plain string.
   - **F841** (unused local).
   - **E402** (module-level import not at top of file).
@@ -56,48 +56,49 @@ Before committing, run each of these and fix what they report:
   you branched from, and only then call it out in the PR as a baseline failure with the reproduction
   steps. Otherwise fix it.
 
-## Refactoring the `workflow` facade and the stage modules
+## The `workflow` package API and the stage modules
 
-`orchestrator/workflow/__init__.py` is a compatibility surface for callers outside the tree, not a
-call path inside it. Get the boundary right:
+`orchestrator/workflow/__init__.py` is a narrow explicit API — the two label vocabularies, the
+transition guard and the predicate under it, the `IllegalTransition` an illegal write raises, and the
+per-repo `tick` — and nothing routes through it. Get the boundary right:
 
-- The facade resolves stage handlers and cross-module helpers under their original names off the
-  owner that defines each one, so a historical `patch.object(workflow, "_foo", ...)` still resolves.
-  It intercepts nothing in-tree, though: every in-repo caller names its owner, so a mock left on the
-  facade lets the real helper run.
+- The initializer binds no engine or stage module at import, and `tick` resolves the engine inside the
+  call for that reason. The GitHub and git layers import `workflow/state.py` beside it for the label
+  vocabulary they are typed by, so an engine import at module scope sends them back into the modules
+  they are still initializing — an import cycle, checked by `tests/workflow/test_imports.py`.
 - Stage modules import the owner they borrow from at module scope —
   `from orchestrator.git.worktrees import paths as _worktree_paths`,
   `from orchestrator.workflow.engine import guards as _guards` — and call through that alias. Never
-  reintroduce the `from orchestrator import workflow as _wf` call-time hop.
+  reintroduce a call-time hop through the package initializer.
 - Tests patch the owner. `tests/workflow_git_owners.py` records which git module defines each seam
-  (`GIT_SEAM_OWNERS`, `seam_patch`), `tests/workflow_patch_runner.py` resolves every hermetic mock
-  through that table plus the agent runner, and `tests/workflow_owner_boundaries.py` carries the
-  `OwnerBoundaryMixin` a `test_owner_boundaries.py` module pins a borrowed owner with — the owner mock
-  has to answer and the facade guard has to stay untouched.
+  (`GIT_SEAM_OWNERS`, `seam_patch`) and `tests/workflow_patch_context.py` installs every hermetic mock
+  on that table plus the agent runner, raising rather than falling back when a name has no owner.
 - Stage-private helpers (only used inside one stage module — e.g. `_bump_in_review_watermarks`,
   `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`) stay private to that stage
-  module. Do **not** re-export them from the facade. Re-exports are an intentional surface, not a
+  module, and nothing new joins the package API. What it publishes is an intentional surface, not a
   blanket.
+- Each owner declares its own `log = logging.getLogger("orchestrator.workflow")` with the channel spelled
+  literally (`workflow/state.py` owns `orchestrator.state_machine`). Operator filters select on those names,
+  so never derive one from `__name__`; `tests/workflow/test_imports.py` walks the package and checks it.
 - Preserve the public contract verbatim across a refactor: workflow labels, pinned-state JSON keys,
   comment marker text, watermark fields, event-emission shape. Live issues already carry these — a
   "harmless rename" is a migration, not a refactor.
 
 ## Tests
 
-- When you move a helper to a new module, move the test's patch target to that owner with it. Patching
-  through `orchestrator.workflow` is not an alternative: the facade resolves the name for callers outside the
-  tree, so a mock left there intercepts nothing an in-repo caller runs.
+- When you move a helper to a new module, move the test's patch target to that owner with it. There is no
+  second site to patch instead: the module the call site names is the only one a mock intercepts.
 - Tests mirror the runtime layout: a module under `orchestrator/<package>/` is covered by `tests/<package>/`, and
   stage-handler tests live beside their owners under `tests/workflow/stages/<stage>/`. Put a new test in the module
   that already covers the behavior's owner; add a new module only when none does, and name it after the behavior it
   protects rather than after the symbol it calls.
 - Each stage package's tests are already split into focused modules — routing, the outcomes one tick can reach, the
-  parks, drift, live pause, borrowed-owner boundaries — with the fixtures they share in a `*_test_support.py` beside
-  them. Follow the split that is there instead of growing one omnibus module, and put a stage's shared fixtures in
+  parks, drift, live pause — with the fixtures they share in a `*_test_support.py` beside them. Follow the split
+  that is there instead of growing one omnibus module, and put a stage's shared fixtures in
   its own support module rather than in a sibling stage's.
 - Each tests package carries its package-level guards (clean-process import, import-cycle / layering direction,
-  public surface, and the forwarding checks a migrated owner owes) in its own `test_imports.py`.
-- Facade-level helpers that belong to no single stage get their own focused module under `tests/workflow/`; fixtures
+  and public surface) in its own `test_imports.py`.
+- Helpers that belong to no single stage get their own focused module under `tests/workflow/`; fixtures
   shared across the flat workflow tests go in `tests/workflow_helpers.py`.
 - Prefer extending the in-memory fakes in `tests/support/github/` (reached through the
   `tests/fakes.py` bridge) over mocking PyGithub directly. New behavior should land with tests in
@@ -137,13 +138,14 @@ When you move a handler, helper, or constant, grep for the symbol across these f
 - `docs/architecture.md` — the module-by-module inventory lives here and nowhere else
 - `docs/state-machine.md`
 - `docs/workflow.md`
-- the module docstrings at the top of the facade the symbol was reached through and of the owners it moved between
+- the module docstrings at the top of the owners the symbol moved between
 
 `AGENTS.md` (and its `CLAUDE.md` symlink) is deliberately not on that list. It carries no module, owner, or test
 inventory, so a routine symbol or module move must leave it alone. Update it only when repository-wide agent
 instructions, safety rules, or documentation routing change.
 
-Be precise about what is and isn't re-exported — overstated claims like "every helper is re-exported" get flagged.
+Be precise about what a package does and does not publish — overstated claims like "every helper is re-exported"
+get flagged.
 
 ## `plans/` is working notes, not spec
 

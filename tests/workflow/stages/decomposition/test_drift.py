@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.stages.decomposition import blocked as _blocked
+from orchestrator.workflow.stages.decomposition import run as _decomposing
+from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
 
 from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comment_with_marker,
@@ -131,7 +134,7 @@ class HandleReadyRoutesBackOnHashChangeTest(
         )
 
         self._run(
-            lambda: workflow._handle_ready(gh, _TEST_SPEC, issue),
+            lambda: _blocked._handle_ready(gh, _TEST_SPEC, issue),
             run_agent=_agent(),
         )
 
@@ -175,7 +178,7 @@ class HandleReadyRoutesBackOnHashChangeTest(
             body="stable body",
         )
         gh.add_issue(issue)
-        current = workflow._compute_user_content_hash(issue, set())
+        current = _drift._compute_user_content_hash(issue, set())
         gh.seed_state(
             STABLE_READY_ISSUE_NUMBER,
             user_content_hash=current,
@@ -183,7 +186,7 @@ class HandleReadyRoutesBackOnHashChangeTest(
         )
 
         self._run(
-            lambda: workflow._handle_ready(gh, _TEST_SPEC, issue),
+            lambda: _blocked._handle_ready(gh, _TEST_SPEC, issue),
             run_agent=_agent(session_id="dev-sess", last_message="done"),
             has_new_commits=[False, True],
             push_branch=True,
@@ -215,7 +218,7 @@ class DecomposingHashChangeResetsSessionTest(
         gh, issue = _decomposing_drift_fixture()
 
         mocks = self._run(
-            lambda: workflow._handle_decomposing(gh, _TEST_SPEC, issue),
+            lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id="new-sess",
                 last_message=(
@@ -253,7 +256,7 @@ class HandleBlockedHashDriftTest(
         gh, parent = _blocked_parent_drift_fixture()
 
         self._run(
-            lambda: workflow._handle_blocked(gh, _TEST_SPEC, parent),
+            lambda: _blocked._handle_blocked(gh, _TEST_SPEC, parent),
             run_agent=_agent(),
         )
 
@@ -303,7 +306,7 @@ class HandleBlockedHashDriftTest(
         )
 
         self._run(
-            lambda: workflow._handle_blocked(gh, _TEST_SPEC, child),
+            lambda: _blocked._handle_blocked(gh, _TEST_SPEC, child),
             run_agent=_agent(),
         )
 
@@ -341,7 +344,7 @@ class HandleUmbrellaHashDriftTest(
         gh, umbrella = _umbrella_drift_fixture()
 
         self._run(
-            lambda: workflow._handle_umbrella(gh, _TEST_SPEC, umbrella),
+            lambda: _umbrella._handle_umbrella(gh, _TEST_SPEC, umbrella),
             run_agent=_agent(),
         )
 

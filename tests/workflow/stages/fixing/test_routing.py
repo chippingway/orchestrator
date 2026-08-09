@@ -26,7 +26,6 @@ _PatchedWorkflowMixin = support._PatchedWorkflowMixin
 _TEST_SPEC = support._TEST_SPEC
 make_issue = support.make_issue
 patch = support.patch
-workflow = support.workflow
 
 
 class FixingLabelDefinitionTest(unittest.TestCase, _PatchedWorkflowMixin):

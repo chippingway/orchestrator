@@ -46,7 +46,6 @@ datetime = support.datetime
 patch = support.patch
 timedelta = support.timedelta
 timezone = support.timezone
-workflow = support.workflow
 _worktree_paths = support.worktree_paths
 
 

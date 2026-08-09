@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import drift as _drift
 
 from tests.workflow.stages.implementing import fresh_test_support
 from tests.fakes import (
@@ -194,7 +194,7 @@ class HandleImplementingAwaitingHumanTest(unittest.TestCase, _PatchedWorkflowMix
             awaiting_human=True,
             last_action_comment_id=ACTION_COMMENT_ID,
             codex_session_id=LEGACY_SESSION,
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         before = gh.write_state_calls
 
@@ -273,7 +273,7 @@ class HandleImplementingInterruptedTest(unittest.TestCase, _PatchedWorkflowMixin
             last_action_comment_id=ACTION_COMMENT_ID,
             codex_session_id=LEGACY_SESSION,
             branch=f"orchestrator/geserdugarov__agent-orchestrator/issue-{INTERRUPTED_RESUME_ISSUE}",
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         before_writes = gh.write_state_calls
 
@@ -304,7 +304,7 @@ class HandleImplementingInterruptedTest(unittest.TestCase, _PatchedWorkflowMixin
         # doesn't fire -- this test asserts ZERO state writes.
         gh.seed_state(
             INTERRUPTED_SPAWN_ISSUE,
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         before_writes = gh.write_state_calls
 

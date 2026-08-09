@@ -6,8 +6,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.workflow.engine import drift as _drift
 
 from tests.fakes import (
     FakeComment,
@@ -673,7 +674,7 @@ class ValidatingDriftDefersToReviewerRecoveryTest(
         # loop on the same drift.
         self.assertEqual(
             reviewer_drift_state.get("user_content_hash"),
-            workflow._compute_user_content_hash(issue, set()),
+            _drift._compute_user_content_hash(issue, set()),
         )
 
     def _parked_reviewer_drift(self):
@@ -697,7 +698,7 @@ class ValidatingDriftDefersToReviewerRecoveryTest(
                 head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-1000",
             ),
         )
-        seed_hash = workflow._compute_user_content_hash(
+        seed_hash = _drift._compute_user_content_hash(
             make_issue(1000, body="initial body"),
             set(),
         )

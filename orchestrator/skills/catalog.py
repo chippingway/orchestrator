@@ -23,8 +23,7 @@ working tree. The whole producer is fail-open -- a missing clone, an
 unfetched ref, a git error, or a sink IO failure logs and is swallowed so
 catalog collection never disturbs the polling tick. `workflow/engine/tick.py`
 names this owner and calls `_emit_repo_skill_catalog` once per tick per spec,
-after `_refresh_base_and_worktrees` has refreshed `<remote_name>/<base_branch>`;
-the `workflow` facade keeps exporting the same object for historical callers.
+after `_refresh_base_and_worktrees` has refreshed `<remote_name>/<base_branch>`.
 """
 from __future__ import annotations
 

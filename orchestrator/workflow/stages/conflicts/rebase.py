@@ -17,10 +17,10 @@ to the agent.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.git import authentication as _authentication
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 from orchestrator.git.verification import probes as _verification_probes
@@ -28,6 +28,8 @@ from orchestrator.workflow.stages.conflicts import models as _models
 from orchestrator.workflow.stages.conflicts import publication as _publication
 from orchestrator.workflow.stages.conflicts import state as _state
 from orchestrator.workflow.stages.conflicts import transitions as _transitions
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _fetch_pr_branch(

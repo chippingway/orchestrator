@@ -24,8 +24,9 @@ recovery instead of replaying the whole transcript untracked.
 """
 from __future__ import annotations
 
+import logging
+
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.git import authentication as _authentication
 from orchestrator.git.publication import probes as _publication_probes
@@ -41,6 +42,8 @@ from orchestrator.workflow.stages.implementing import (
     resume as _dev_resume,
     session_read as _dev_session_read,
 )
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _prepare_documenting_worktree(ctx: _models._DocumentingContext, wt):

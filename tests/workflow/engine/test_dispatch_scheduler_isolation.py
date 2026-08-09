@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import tick as _tick
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.git.base_sync.sync_test_support import _patch_base_sync
@@ -66,7 +66,7 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
                 side_effect=lambda *args: _record_current_thread(worker_threads, *args),
             ),
         ):
-            workflow.tick(gh, self._spec(parallel_limit=1))
+            _tick.tick(gh, self._spec(parallel_limit=1))
 
         self.assertEqual(worker_threads, [caller_thread])
         clone.assert_not_called()
@@ -108,7 +108,7 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
         self._assert_active_refresh_skipped(gh, sched, process, refresh)
 
         with self._patched_refresh(refresh, None):
-            workflow.tick(gh, self._spec(), scheduler=sched)
+            _tick.tick(gh, self._spec(), scheduler=sched)
             self.assertEqual(refresh.sync.call_args.args[3], 7)
 
     def test_workers_use_own_clients_and_refetch(
@@ -130,7 +130,7 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
             patch_base_refresh(),
             _patch_process_issue(process),
         ):
-            workflow.tick(gh, self._spec(), scheduler=sched)
+            _tick.tick(gh, self._spec(), scheduler=sched)
             self._wait_idle(sched, REPO_SLUG)
 
         self.assertEqual(len(client_factory.clients), 1)
@@ -147,13 +147,13 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
         refresh,
     ) -> None:
         with self._patched_refresh(refresh, process):
-            workflow.tick(client, self._spec(), scheduler=scheduler)
+            _tick.tick(client, self._spec(), scheduler=scheduler)
             self.assertTrue(
                 process.starts[7].wait(timeout=EVENT_TIMEOUT_SECONDS),
                 "worker never entered _process_issue",
             )
             refresh.sync.reset_mock()
-            workflow.tick(client, self._spec(), scheduler=scheduler)
+            _tick.tick(client, self._spec(), scheduler=scheduler)
             refresh.sync.assert_not_called()
             process.releases[7].set()
         self._wait_idle(scheduler)

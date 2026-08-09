@@ -24,12 +24,12 @@ the rotation decision made above it, not of the caller that asked for a resume.
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -44,6 +44,8 @@ from orchestrator.workflow.stages.implementing import (
     session_read as _session_read,
     state as _state,
 )
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _is_poisoned_session_failure(

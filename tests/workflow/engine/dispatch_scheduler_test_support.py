@@ -8,9 +8,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.scheduler import IssueScheduler
-from orchestrator.workflow.engine import dispatch
+from orchestrator.workflow.engine import dispatch, tick as _tick
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow_helpers import (
@@ -146,7 +146,7 @@ class _BacklogDispatchFixture(_SchedulerWorkflowTest):
 
         process = self._processor(1)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
             self.assertTrue(
                 process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS),
                 f"implementing #1 was starved -- the {parked_label} issue must not occupy the only per-repo slot",

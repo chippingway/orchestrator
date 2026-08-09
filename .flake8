@@ -24,12 +24,14 @@
 #   narrow public surface through an explicit __all__ (WPS410) so
 #   `orchestrator.scheduler` stays the historical import site. WPS412 is waived
 #   for that import-time logic.
-# * orchestrator/workflow/__init__.py is the lazy workflow compatibility facade:
-#   it installs the module-level `__getattr__` / `__dir__` hooks that resolve the
-#   export manifest, so `orchestrator.workflow` stays the historical import site
-#   and patch target for the whole inventory. WPS412 is waived for that
-#   import-time logic; the `__all__` it publishes is resolved lazily through the
-#   hooks rather than assigned in the initializer, so WPS410 does not apply.
+# * orchestrator/workflow/__init__.py is the workflow package API: it
+#   re-exports five names from the `state` owner -- the two label vocabularies,
+#   the transition guard and the predicate under it, and the illegal-write
+#   exception -- and defines the per-repo `tick` entry point that resolves the
+#   engine inside the call so the GitHub and git layers importing `state`
+#   beside it never pay for the engine graph. It publishes that narrow public
+#   surface through an explicit __all__ (WPS410), and WPS412 is waived for the
+#   import-time logic.
 # * orchestrator/observability/usage/__init__.py is the stable usage-parsing
 #   facade: it re-exports the nine parsers defined across the `metrics`,
 #   `skills`, and `trajectory` owners, a per-backend trio each, plus the five
@@ -124,11 +126,15 @@
 # orchestrator/workflow/engine/terminals.py is one owner for every way an issue
 # stops being worked -- the merged, rejected, and human-closed arcs, the shared
 # context and cleanup they run through, and the two entry points the stages
-# reach them by -- so it carries 13 members past the same ceiling. The arcs
-# share one tail (terminal stamp, terminal label, usage receipt, single pinned
-# write) and differ only in what the PR's own state permits afterwards, so
-# splitting them would let two copies of that order drift apart. WPS202 is
-# waived.
+# reach them by -- so it carries 13 members past the same ceiling and names 13
+# imports past the WPS201 ceiling of 12. The arcs share one tail (terminal
+# stamp, terminal label, usage receipt, single pinned write) and differ only in
+# what the PR's own state permits afterwards, so splitting them would let two
+# copies of that order drift apart. The import list is what one arc is typed by:
+# the issue, client, and pinned state it reads and writes, the label it lands
+# on, the usage receipt it posts, the branch name and worktree teardown a dead
+# branch goes through, and the GitHub issue-state vocabulary the closed-issue
+# arc both reads and writes. WPS201 and WPS202 are waived.
 #
 # The decomposition stage owners under orchestrator/workflow/stages/ pay two
 # ceilings between them. `split.py` carries 11 members past the WPS202 ceiling
@@ -263,7 +269,7 @@ per-file-ignores =
     orchestrator/agents/__init__.py:WPS412,WPS410
     orchestrator/github/__init__.py:WPS412,WPS410
     orchestrator/scheduler/__init__.py:WPS412,WPS410
-    orchestrator/workflow/__init__.py:WPS412
+    orchestrator/workflow/__init__.py:WPS412,WPS410
     orchestrator/observability/usage/__init__.py:WPS412,WPS410
     orchestrator/observability/analytics/recording/__init__.py:WPS412,WPS410
     orchestrator/workflow/state.py:WPS202
@@ -272,7 +278,7 @@ per-file-ignores =
     orchestrator/workflow/engine/drift.py:WPS202
     orchestrator/workflow/engine/messages.py:WPS202
     orchestrator/workflow/engine/prompts.py:WPS202
-    orchestrator/workflow/engine/terminals.py:WPS202
+    orchestrator/workflow/engine/terminals.py:WPS201,WPS202
     orchestrator/workflow/engine/tick.py:WPS201,WPS202
     orchestrator/workflow/engine/usage.py:WPS201,WPS202
     orchestrator/workflow/stages/conflicts/outcomes.py:WPS201

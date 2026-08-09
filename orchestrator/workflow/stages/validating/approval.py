@@ -24,12 +24,12 @@ hop.
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.git.publication import squash as _squash
 from orchestrator.git.verification import runner as _verify_runner
 from orchestrator.git.worktrees import paths as _worktree_paths
@@ -41,6 +41,8 @@ from orchestrator.workflow.stages.validating import models as _models
 from orchestrator.workflow.stages.validating import verify as _verify
 from orchestrator.workflow.stages.validating import watermarks as _watermarks
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _seed_in_review_handoff_watermarks(

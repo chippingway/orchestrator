@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.documenting import handler as _documenting
+
 from tests import workflow_tracked_repos_test_support as support
 
 
@@ -41,7 +43,7 @@ class DocumentationSpawnTrackedReposTest(
         gh, issue = support._documentation_seed()
         with support._multi_repo():
             mocks = self._run(
-                lambda: support.workflow._handle_documenting(gh, support._TEST_SPEC, issue),
+                lambda: _documenting._handle_documenting(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id=support._DEV_SESSION_ID,
                     last_message="docs: updated README",
@@ -71,7 +73,7 @@ class DocumentationSpawnTrackedReposTest(
         )
         with support._multi_repo():
             mocks = self._run(
-                lambda: support.workflow._handle_documenting(gh, support._TEST_SPEC, issue),
+                lambda: _documenting._handle_documenting(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id=support._DEV_SESSION_ID,
                     last_message="docs: documented thing",
@@ -93,7 +95,7 @@ class DocumentationSpawnTrackedReposTest(
         gh, issue = support._documentation_seed(dev_session_id=None)
         with support._multi_repo():
             mocks = self._run(
-                lambda: support.workflow._handle_documenting(gh, support._TEST_SPEC, issue),
+                lambda: _documenting._handle_documenting(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id="fresh-sess", last_message="docs: updated README",
                 ),
@@ -112,7 +114,7 @@ class DocumentationSpawnTrackedReposTest(
         with support.patch.object(support.config, support._EXPOSE_REPOS_ATTR, True), \
              support.patch.object(support.config, support._DEFAULT_SPECS_ATTR, lambda: [support._TEST_SPEC]):
             mocks = self._run(
-                lambda: support.workflow._handle_documenting(gh, support._TEST_SPEC, issue),
+                lambda: _documenting._handle_documenting(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id=support._DEV_SESSION_ID,
                     last_message="docs: updated README",

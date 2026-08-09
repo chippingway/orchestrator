@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import drift as _drift
 
 from tests.fakes import (
     FakeComment,
@@ -161,7 +161,7 @@ class _ContinueDocumentingFixture(_DocumentingWorkflowMixin):
             dev_agent=DEV_AGENT,
             dev_session_id=DEV_SESSION,
             silent_park_count=1,
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         return gh, issue
 
@@ -183,7 +183,7 @@ class _ParkedDocumentingFixture(_DocumentingWorkflowMixin):
             last_action_comment_id=PARKED_FIXTURE_WATERMARK,
             # The seeded baseline keeps first-encounter drift persistence
             # out of tests that assert an already-parked tick writes nothing.
-            user_content_hash=workflow._compute_user_content_hash(
+            user_content_hash=_drift._compute_user_content_hash(
                 issue,
                 set(),
             ),

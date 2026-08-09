@@ -17,16 +17,18 @@ quiet.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from github.Issue import Issue
 
-from orchestrator._workflow_state import log
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 @dataclass

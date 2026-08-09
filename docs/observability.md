@@ -274,14 +274,15 @@ JSONL file is the raw foundation layer for the Postgres aggregation step.
 
 - `stage_enter` — `GitHubClient._emit_stage_enter` alongside the audit `stage_enter`; one record per workflow label
   transition; carries `stage`.
-- `stage_evaluation` — the `_process_issue` dispatcher (in `workflow/engine/dispatch.py`, also reachable as
-  `workflow._process_issue`); written by its try/except/finally wrapper; carries `stage`,
+- `stage_evaluation` — the `_process_issue` dispatcher (in `workflow/engine/dispatch.py`); written by its
+  try/except/finally wrapper; carries `stage`,
   `duration_s` (handler wall-clock), `result` (`"ok"` / `"error"`); omitted for `backlog`- / `paused`-skipped issues
   (no handler runs).
 - `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`); one record per tracked agent invocation; agent
   context + parsed token / model / cost details (see below).
 - `repo_skill_catalog` — `orchestrator.skills.catalog._emit_repo_skill_catalog`, driven once per tick per spec by the
-  tick owner (in `workflow/engine/tick.py`, reachable as `workflow.tick`); repo-level (not issue-scoped, so `issue` is
+  tick owner (in `workflow/engine/tick.py`, entered through `workflow.tick`); repo-level (not issue-scoped, so
+  `issue` is
   the sentinel `0`); carries `base_branch`, `remote_name`, `skills_available` (deduped `SKILL.md` skill names on the
   base ref), and optional `skill_paths` (name → source paths) — see below.
 

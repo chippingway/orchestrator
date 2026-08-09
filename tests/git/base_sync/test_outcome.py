@@ -7,7 +7,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-from orchestrator import workflow
+from orchestrator.git.base_sync import refresh as _base_refresh
 
 from tests.git.base_sync.refresh_test_support import (
     _SyncWorktreeWithBaseFixture,
@@ -44,7 +44,7 @@ class PrRefreshOutcomeUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
             dirty=MagicMock(return_value=[]),
             git=git_mock,
         ):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         self.assertEqual(self.gh.label_history, [])
         self.assertEqual(self.gh.posted_pr_comments, [])
 
@@ -68,7 +68,7 @@ class PrRefreshOutcomeUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
             git=git_mock,
             hardened=hardened,
         ):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         state = self.gh.pinned_data(ISSUE)
         # Existing counter (2) preserved, not reset to 0.
         self.assertEqual(state.get(KEY_CONFLICT_ROUND), 2)
@@ -91,7 +91,7 @@ class PrRefreshOutcomeUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
             dirty=MagicMock(return_value=[]),
             git=git_mock,
         ):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         self.assertEqual(self.gh.label_history, [])
         self.assertEqual(self.gh.posted_pr_comments, [])
 
@@ -106,7 +106,7 @@ class PrRefreshOutcomeUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
             dirty=MagicMock(return_value=[]),
             git=git_mock,
         ):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         self.assertEqual(self.gh.label_history, [])
         self.assertEqual(self.gh.posted_pr_comments, [])
 
@@ -121,7 +121,7 @@ class PrRefreshOutcomeUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
             dirty=MagicMock(return_value=[]),
             git=git_mock,
         ):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         self.assertEqual(self.gh.label_history, [])
         self.assertEqual(self.gh.posted_pr_comments, [])
 
@@ -154,7 +154,7 @@ class PrRefreshOutcomeUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
             head_sha=head_sha,
             git=git_mock,
         ):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         state = self.gh.pinned_data(ISSUE)
         # Watermark stayed at 100 -- the unread human comment at id=500 is
         # still ahead of it and the next in_review scan will pick it up.
@@ -178,7 +178,7 @@ class PrRefreshOutcomeUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
             dirty=MagicMock(return_value=[]),
             git=git_mock,
         ):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         # No relabel: park left intact.
         self.assertEqual(self.gh.label_history, [])
         # No PR notice posted (would have been duplicate noise on a parked

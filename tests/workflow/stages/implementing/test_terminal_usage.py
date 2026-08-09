@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.engine import terminals as _terminals
+
 from tests.workflow.stages.implementing import terminal_test_support as support
 
 FakeGitHubClient = support.FakeGitHubClient
@@ -19,7 +21,6 @@ _PatchedWorkflowMixin = support._PatchedWorkflowMixin
 _TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 make_issue = support.make_issue
-workflow = support.workflow
 
 
 class FinalizeIfIssueClosedUsageVerdictTest(unittest.TestCase, _PatchedWorkflowMixin):
@@ -51,7 +52,7 @@ class FinalizeIfIssueClosedUsageVerdictTest(unittest.TestCase, _PatchedWorkflowM
 
         self._run(
             lambda: self.assertTrue(
-                workflow._finalize_if_issue_closed(
+                _terminals._finalize_if_issue_closed(
                     gh,
                     _TEST_SPEC,
                     issue,
@@ -90,7 +91,7 @@ class FinalizeIfIssueClosedUsageVerdictTest(unittest.TestCase, _PatchedWorkflowM
 
         self._run(
             lambda: self.assertTrue(
-                workflow._finalize_if_issue_closed(
+                _terminals._finalize_if_issue_closed(
                     gh,
                     _TEST_SPEC,
                     issue,

@@ -5,7 +5,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.engine import pickup as _pickup
 
 from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comments_for_issue,
@@ -141,7 +142,7 @@ class DecompositionDisabledTest(
 
         with patch.object(config, CONFIG_DECOMPOSE, False):
             self._run(
-                lambda: workflow._handle_pickup(gh, _TEST_SPEC, issue),
+                lambda: _pickup._handle_pickup(gh, _TEST_SPEC, issue),
                 run_agent=_agent(session_id=DEV_SESSION, last_message="done"),
                 has_new_commits=[False, True],
                 push_branch=True,

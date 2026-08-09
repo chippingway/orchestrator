@@ -2,6 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Typed workflow state: the label vocabulary, its graph, and the write guard.
 
+This owner defines them and every in-tree caller names it; the package
+initializer beside it re-exports the two vocabularies, the guard and its
+predicate, and `IllegalTransition` for callers outside the tree, handing back
+these exact objects rather than rebuilding any of them.
+
 Two of the values here are a public contract that the module path must not be
 able to rename. The label members are the GitHub label strings live issues
 already carry, and the logger name is what operator log filters select on, so

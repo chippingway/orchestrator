@@ -1,6 +1,12 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Issue polling and filtering, label writes, comments, and child creation."""
+"""Issue polling and filtering, label writes, comments, and child creation.
+
+The issue-state vocabulary lives here too -- the attribute PyGithub carries it
+on and the two values it takes -- because it is the GitHub wire spelling, not a
+workflow one: every reader that asks whether an issue is still open, and every
+writer that closes one, has to spell it the way the API does.
+"""
 from __future__ import annotations
 
 from datetime import datetime
@@ -18,7 +24,9 @@ from orchestrator.workflow.state import (
     guard_transition,
 )
 
+_STATE_ATTR = "state"
 _ISSUE_STATE_OPEN = "open"
+_ISSUE_STATE_CLOSED = "closed"
 _RECORDED_EVENTS_CAP = 500
 
 

@@ -6,6 +6,10 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
+from orchestrator.workflow.stages.validating import drift_outcomes as _drift_outcomes
+
 from tests.workflow.stages.validating import (
     validating_review_test_support as review_support,
 )
@@ -13,7 +17,6 @@ from tests.workflow.stages.validating import (
 Path = review_support.Path
 patch = review_support.patch
 config = review_support.config
-workflow = review_support.workflow
 FakeComment = review_support.FakeComment
 FakeGitHubClient = review_support.FakeGitHubClient
 FakeUser = review_support.FakeUser
@@ -401,7 +404,7 @@ class ValidatingDevFixInterruptedHelperTest(
             last_message="partial output before the shutdown SIGTERM",
         )
 
-        pushed = workflow._handle_dev_fix_result(
+        pushed = _dev_fix._handle_dev_fix_result(
             helper_github,
             _TEST_SPEC,
             helper_issue,
@@ -431,7 +434,7 @@ class ValidatingDevFixInterruptedHelperTest(
             last_message="ACK: looks fine",  # partial; must NOT be honored
         )
 
-        outcome = workflow._post_user_content_change_result(
+        outcome = _drift_outcomes._post_user_content_change_result(
             helper_github,
             _TEST_SPEC,
             helper_issue,
@@ -520,7 +523,7 @@ class ValidatingInterruptedResumeHandlerTest(unittest.TestCase, _PatchedWorkflow
         # Seed a matching content hash so `_detect_user_content_change`
         # returns None (no drift, no first-call persist) and the handler
         # reaches the awaiting-human resume path cleanly.
-        prior_hash = workflow._compute_user_content_hash(interrupted_issue, set())
+        prior_hash = _drift._compute_user_content_hash(interrupted_issue, set())
         interrupted_github.seed_state(
             9,
             awaiting_human=True,

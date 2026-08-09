@@ -3,6 +3,8 @@
 """Reviewer fixtures for tracked-repository prompt tests."""
 from __future__ import annotations
 
+from orchestrator.workflow.stages.validating import handler as _validating
+
 from tests import workflow_tracked_repos_test_support as support
 
 
@@ -26,7 +28,7 @@ def _review_seed():
 def _review_prompt(case) -> str:
     github, issue = _review_seed()
     mocks = case._run(
-        lambda: support.workflow._handle_validating(
+        lambda: _validating._handle_validating(
             github,
             support._TEST_SPEC,
             issue,

@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.validating import handler as _validating
+
 from tests.workflow.stages.implementing import retry_test_support as support
 
 ACTION_COMMENT_ID = support.ACTION_COMMENT_ID
@@ -38,7 +40,6 @@ _issue_branch = support._issue_branch
 config = support.config
 make_issue = support.make_issue
 patch = support.patch
-workflow = support.workflow
 
 
 class ConfigurableBackendTest(unittest.TestCase, _PatchedWorkflowMixin):
@@ -83,7 +84,7 @@ class ConfigurableBackendTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         with patch.object(config, "REVIEW_AGENT", BACKEND_CODEX):
             mocks = self._run(
-                lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+                lambda: _validating._handle_validating(gh, _TEST_SPEC, issue),
                 run_agent=_agent(
                     session_id="rev-sess",
                     last_message=REVIEW_APPROVED_MESSAGE,
@@ -114,7 +115,7 @@ class ConfigurableBackendTest(unittest.TestCase, _PatchedWorkflowMixin):
             patch.object(config, "REVIEW_AGENT", BACKEND_CLAUDE),
         ):
             mocks = self._run(
-                lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+                lambda: _validating._handle_validating(gh, _TEST_SPEC, issue),
                 run_agent=[
                     _agent(
                         session_id="rev-sess",

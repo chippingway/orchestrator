@@ -6,6 +6,10 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume
+from orchestrator.workflow.stages.implementing import session as _implementing_session
+from orchestrator.workflow.stages.implementing import session_read as _session_read
+
 from tests.workflow.stages.implementing import retry_test_support as support
 
 IssueScenario = support.IssueScenario
@@ -30,7 +34,6 @@ _OverflowSessionFixtureMixin = support._OverflowSessionFixtureMixin
 _TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 patch = support.patch
-workflow = support.workflow
 _agent_runner = support.agent_runner
 _worktree_creation = support.worktree_creation
 
@@ -61,7 +64,7 @@ class ContextOverflowClassifierTest(
             with self.subTest(last_message=last_message):
                 agent_result = _agent(session_id="", last_message=last_message)
                 self.assertTrue(
-                    workflow._is_context_overflow_failure(BACKEND_CLAUDE, agent_result),
+                    _session_read._is_context_overflow_failure(BACKEND_CLAUDE, agent_result),
                     f"{last_message!r} should be classified context overflow",
                 )
 
@@ -73,7 +76,7 @@ class ContextOverflowClassifierTest(
             last_message="",
             stderr="API Error: prompt is too long: 210000 tokens > 200000",
         )
-        self.assertTrue(workflow._is_context_overflow_failure(BACKEND_CLAUDE, agent_result))
+        self.assertTrue(_session_read._is_context_overflow_failure(BACKEND_CLAUDE, agent_result))
 
     def test_detector_ignores_midanswer_phrase(self) -> None:
         # An agent that merely MENTIONS the phrase inside a normal answer must
@@ -82,7 +85,7 @@ class ContextOverflowClassifierTest(
             session_id=DEFAULT_SESSION,
             last_message="I split the work because the prompt is too long to handle in one pass; see the sub-issues.",
         )
-        self.assertFalse(workflow._is_context_overflow_failure(BACKEND_CLAUDE, agent_result))
+        self.assertFalse(_session_read._is_context_overflow_failure(BACKEND_CLAUDE, agent_result))
 
     def test_overflow_detector_ignores_unrelated(self) -> None:
         agent_result = _agent(
@@ -90,11 +93,11 @@ class ContextOverflowClassifierTest(
             last_message=DONE_MESSAGE,
             stderr="Error: rate limited, please retry shortly",
         )
-        self.assertFalse(workflow._is_context_overflow_failure(BACKEND_CLAUDE, agent_result))
+        self.assertFalse(_session_read._is_context_overflow_failure(BACKEND_CLAUDE, agent_result))
 
     def test_detector_only_triggers_for_claude(self) -> None:
         agent_result = _agent(session_id="", last_message=PROMPT_TOO_LONG_MESSAGE)
-        self.assertFalse(workflow._is_context_overflow_failure(BACKEND_CODEX, agent_result))
+        self.assertFalse(_session_read._is_context_overflow_failure(BACKEND_CODEX, agent_result))
 
     def test_poisoned_covers_stale_and_overflow(self) -> None:
         stale = _agent(
@@ -104,9 +107,9 @@ class ContextOverflowClassifierTest(
         )
         overflow = _agent(session_id="", last_message=PROMPT_TOO_LONG_MESSAGE)
         unrelated = _agent(session_id=DEFAULT_SESSION, last_message="a question?")
-        self.assertTrue(workflow._is_poisoned_session_failure(BACKEND_CLAUDE, stale))
-        self.assertTrue(workflow._is_poisoned_session_failure(BACKEND_CLAUDE, overflow))
-        self.assertFalse(workflow._is_poisoned_session_failure(BACKEND_CLAUDE, unrelated))
+        self.assertTrue(_implementing_session._is_poisoned_session_failure(BACKEND_CLAUDE, stale))
+        self.assertTrue(_implementing_session._is_poisoned_session_failure(BACKEND_CLAUDE, overflow))
+        self.assertFalse(_implementing_session._is_poisoned_session_failure(BACKEND_CLAUDE, unrelated))
 
 
 class ContextOverflowImmediateRetryTest(
@@ -131,7 +134,7 @@ class ContextOverflowImmediateRetryTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(scenario.github, _TEST_SPEC, scenario.issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(scenario.github, _TEST_SPEC, scenario.issue, state, RESUME_TEXT)
 
         resume_ids = [agent_call.kwargs.get(RESUME_SESSION_ID) for agent_call in run_agent.call_args_list]
         self.assertEqual(
@@ -164,7 +167,7 @@ class ContextOverflowImmediateRetryTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
 
         self.assertIsNone(state.get(KEY_DEV_SESSION_ID))
 
@@ -183,7 +186,7 @@ class ContextOverflowImmediateRetryTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            _, agent_result, _ = workflow._resume_dev_with_text(
+            _, agent_result, _ = _implementing_resume._resume_dev_with_text(
                 scenario.github,
                 _TEST_SPEC,
                 scenario.issue,
@@ -211,7 +214,7 @@ class ContextOverflowImmediateRetryTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
 
         self.assertEqual(
             [run_agent.call_args.kwargs.get(RESUME_SESSION_ID)],

@@ -6,6 +6,10 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.stages.decomposition import run as _decomposing
+from orchestrator.workflow.stages.decomposition import session as _decomposer_session
+
 from tests import implementing_full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
@@ -31,7 +35,6 @@ _FullSpecFixtureMixin = support._FullSpecFixtureMixin
 _TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 make_issue = support.make_issue
-workflow = support.workflow
 
 
 class FullSpecDecomposerPersistenceTest(
@@ -54,7 +57,7 @@ class FullSpecDecomposerPersistenceTest(
         # Manifest "single" -- simplest successful decompose path.
         manifest = 'OK\n\n```orchestrator-manifest\n{"decision": "single", "rationale": "fits one context"}\n```\n'
         mocks = self._run(
-            lambda: workflow._handle_decomposing(gh, _TEST_SPEC, issue),
+            lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, issue),
             run_agent=_agent(session_id="dec-67020", last_message=manifest),
         )
 
@@ -97,7 +100,7 @@ class FullSpecDecomposerPersistenceTest(
         )
 
         mocks = self._run(
-            lambda: workflow._handle_decomposing(gh, _TEST_SPEC, issue),
+            lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id="dec-67021",
                 last_message=('OK\n\n```orchestrator-manifest\n{"decision": "single", "rationale": "ok"}\n```\n'),
@@ -118,8 +121,8 @@ class FullSpecDecomposerPersistenceTest(
     def test_legacy_bare_decomposer_still_works(self) -> None:
         # `decomposer_agent="codex"` (no args) is the legacy pinned form;
         # it must continue to round-trip cleanly to `("codex", "codex", ())`.
-        spec, backend, args, sid = workflow._read_decomposer_session(
-            workflow.PinnedState(
+        spec, backend, args, sid = _decomposer_session._read_decomposer_session(
+            PinnedState(
                 data={DECOMPOSER_AGENT: BACKEND_CODEX, "decomposer_session_id": "sid-x"},
             )
         )

@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from typing import Optional
 
-from orchestrator import workflow
+from orchestrator.workflow.stages.decomposition import blocked as _blocked
 
 from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comments_for_issue,
@@ -95,7 +95,7 @@ def _run_blocked(
     parent: FakeIssue,
 ) -> None:
     case._run(
-        lambda: workflow._handle_blocked(gh, _TEST_SPEC, parent),
+        lambda: _blocked._handle_blocked(gh, _TEST_SPEC, parent),
         run_agent=_agent(),
     )
 

@@ -13,10 +13,11 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.github.labels import PAUSED_LABEL
+from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume
 
 from tests.fakes import (
     FakeComment,
@@ -103,7 +104,7 @@ class ImplementingLivePauseFreshSpawnTest(unittest.TestCase, _PatchedWorkflowMix
         gh.add_issue(issue)
         gh.seed_state(
             1,
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         before_writes = gh.write_state_calls
 
@@ -161,7 +162,7 @@ class ImplementingLivePauseResumeTest(unittest.TestCase, _PatchedWorkflowMixin):
             dev_agent="claude",
             dev_session_id="sess-old",
             branch=f"orchestrator/geserdugarov__agent-orchestrator/issue-{POISONED_RESUME_ISSUE}",
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         self._before_writes = gh.write_state_calls
 
@@ -199,7 +200,7 @@ class ImplementingLivePauseRecoveryTest(unittest.TestCase, _PatchedWorkflowMixin
         gh.add_issue(issue)
         gh.seed_state(
             RECOVERY_ISSUE,
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
 
         # Tick 1: fresh spawn commits, but the guard reads the paused view and
@@ -279,7 +280,7 @@ class ImplementingLivePauseRetryWindowTest(unittest.TestCase, _PatchedWorkflowMi
             ),
             patch.object(_agent_runner, "run_agent", self._run_agent),
         ):
-            _, _, paused = workflow._resume_dev_with_text(
+            _, _, paused = _implementing_resume._resume_dev_with_text(
                 gh,
                 _TEST_SPEC,
                 issue,

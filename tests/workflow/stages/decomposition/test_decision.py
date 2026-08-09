@@ -5,7 +5,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.engine import pickup as _pickup
 
 from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comment_with_marker,
@@ -122,7 +123,7 @@ class HandleDecomposingDecisionTest(
 
         with patch.object(config, CONFIG_DECOMPOSE, True):
             self._run(
-                lambda: workflow._handle_pickup(gh, _TEST_SPEC, issue),
+                lambda: _pickup._handle_pickup(gh, _TEST_SPEC, issue),
                 run_agent=_agent(session_id=DECOMPOSER_SESSION, last_message=manifest),
             )
 

@@ -1,29 +1,13 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""User-content hash and drift detection tests, and the facade forwarding
-them."""
+"""User-content hash and drift detection tests."""
 from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
 from orchestrator.workflow.engine import drift
 
 from tests.workflow.engine import drift_test_support as support
-
-
-# Every name the historical facade still has to answer for, and the facade it
-# answers on. Live issues and external operator scripts reach the owner through
-# these, so a forward that stops resolving is a break, not a rename.
-_FACADE_FORWARDS = (
-    (workflow, (
-        "_build_user_content_change_prompt",
-        "_compute_user_content_hash",
-        "_detect_user_content_change",
-        "_mark_drift_comments_consumed",
-        "_route_drift_to_decomposing",
-    )),
-)
 
 
 class ComputeUserContentHashTest(unittest.TestCase):
@@ -251,14 +235,5 @@ class DetectUserContentChangeTest(unittest.TestCase):
         self.assertIsNotNone(detected_hash)
 
 
-class DriftFacadeForwardTest(unittest.TestCase):
-    """The historical facade resolves to the owner's exact object."""
-
-    def test_facades_forward_the_owner_objects(self) -> None:
-        for facade, forwarded_names in _FACADE_FORWARDS:
-            for forwarded_name in forwarded_names:
-                with self.subTest(facade=facade.__name__, name=forwarded_name):
-                    self.assertIs(
-                        getattr(facade, forwarded_name),
-                        getattr(drift, forwarded_name),
-                    )
+if __name__ == "__main__":
+    unittest.main()

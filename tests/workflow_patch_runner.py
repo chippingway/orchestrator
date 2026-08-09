@@ -3,54 +3,17 @@
 """Stage-family adapters around the shared workflow patch context."""
 from __future__ import annotations
 
-import contextlib
 from functools import partial
-from types import MappingProxyType
-from unittest.mock import patch
 
-from orchestrator import analytics, workflow
-from orchestrator.agents import runner as _agent_runner
+from orchestrator.workflow.stages.conflicts import handler as _conflicts
+from orchestrator.workflow.stages.fixing import handler as _fixing
+from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.in_review import handler as _in_review
+from orchestrator.workflow.stages.validating import handler as _validating
 
-from tests.workflow_git_owners import GIT_SEAM_OWNERS
-from tests.workflow_patch_builders import _build_workflow_mocks
+from tests.workflow_patch_context import _patch_and_run
 from tests.workflow_patch_models import _WorkflowRunContext
 from tests.workflow_repo_values import _TEST_SPEC
-
-_RUN_AGENT = "run_agent"
-
-# Every mocked name a stage resolves off an owner rather than off the workflow
-# facade: the git seams, plus the spawn, whose owner is the one non-git module
-# in the set. A name absent here is one no stage names directly, so the facade
-# is where its mock decides the read.
-_SEAM_OWNERS = MappingProxyType({
-    **GIT_SEAM_OWNERS,
-    _RUN_AGENT: _agent_runner,
-})
-
-
-def _enter_mock(stack, attribute: str, attribute_mock) -> None:
-    """Install one mock on the module its callers resolve it off."""
-    target = _SEAM_OWNERS.get(attribute, workflow)
-    stack.enter_context(patch.object(target, attribute, attribute_mock))
-
-
-def _patch_and_run(callable_, context: _WorkflowRunContext):
-    workflow_mocks = _build_workflow_mocks(context)
-    with contextlib.ExitStack() as stack:
-        stack.enter_context(patch.object(
-            analytics,
-            "ANALYTICS_LOG_PATH",
-            context.analytics_log_path,
-        ))
-        stack.enter_context(patch.object(
-            analytics,
-            "TRAJECTORY_LOG_PATH",
-            context.trajectory_log_path,
-        ))
-        for attribute, attribute_mock in workflow_mocks.items():
-            _enter_mock(stack, attribute, attribute_mock)
-        callable_()
-    return workflow_mocks
 
 
 class _ImplementationWorkflowMixin:
@@ -64,7 +27,7 @@ class _ImplementationWorkflowMixin:
     ):
         return self._run(
             partial(
-                workflow._handle_implementing,
+                _implementing._handle_implementing,
                 github,
                 _TEST_SPEC,
                 issue,
@@ -83,7 +46,7 @@ class _ImplementationWorkflowMixin:
     ):
         return self._run(
             partial(
-                workflow._handle_fixing,
+                _fixing._handle_fixing,
                 github,
                 _TEST_SPEC,
                 issue,
@@ -104,7 +67,7 @@ class _ReviewWorkflowMixin:
     ):
         return self._run(
             partial(
-                workflow._handle_validating,
+                _validating._handle_validating,
                 github,
                 _TEST_SPEC,
                 issue,
@@ -123,7 +86,7 @@ class _ReviewWorkflowMixin:
     ):
         return self._run(
             partial(
-                workflow._handle_in_review,
+                _in_review._handle_in_review,
                 github,
                 _TEST_SPEC,
                 issue,
@@ -144,7 +107,7 @@ class _ConflictWorkflowMixin:
     ):
         return self._run(
             partial(
-                workflow._handle_resolving_conflict,
+                _conflicts._handle_resolving_conflict,
                 github,
                 _TEST_SPEC,
                 issue,

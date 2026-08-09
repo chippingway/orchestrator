@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.engine import pickup as _pickup
 
 from tests import workflow_event_emission_test_support as support
 
@@ -55,7 +56,7 @@ class StageEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMixin):
         gh.add_issue(issue)
         with patch.object(config, "DECOMPOSE", True):
             self._run(
-                lambda: workflow._handle_pickup(gh, support._TEST_SPEC, issue),
+                lambda: _pickup._handle_pickup(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(last_message="need clarification"),
                 has_new_commits=False,
             )

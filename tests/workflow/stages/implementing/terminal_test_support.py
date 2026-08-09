@@ -6,11 +6,9 @@ from __future__ import annotations
 
 from unittest import mock
 
-from orchestrator import workflow as _workflow
 from tests import fakes, workflow_helpers
 
 MagicMock = mock.MagicMock
-workflow = _workflow
 FakeGitHubClient = fakes.FakeGitHubClient
 FakePR = fakes.FakePR
 FakePRRef = fakes.FakePRRef

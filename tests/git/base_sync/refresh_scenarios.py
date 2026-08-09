@@ -7,7 +7,7 @@ from types import MappingProxyType
 from typing import Mapping
 from unittest.mock import MagicMock
 
-from orchestrator import workflow
+from orchestrator.git.base_sync import refresh as _base_refresh
 
 from tests.git.base_sync.refresh_test_support import (
     AFTER_SHA,
@@ -32,7 +32,7 @@ class _BaseSyncScenario:
 
     def run(self, fixture) -> None:
         with _patch_base_sync(**self.patches):
-            workflow._sync_worktree_with_base(
+            _base_refresh._sync_worktree_with_base(
                 fixture.gh,
                 fixture.spec,
                 fixture.wt,

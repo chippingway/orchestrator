@@ -22,13 +22,13 @@ branch this one worked on.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Optional
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import (
@@ -50,6 +50,8 @@ from orchestrator.workflow.stages.implementing import (
     session_read as _session_read,
     state as _state,
 )
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _recovered_dev_result(state: PinnedState) -> AgentResult:

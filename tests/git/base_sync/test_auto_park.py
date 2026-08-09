@@ -7,7 +7,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.git.base_sync import refresh as _base_refresh
 
 from tests.git.base_sync.refresh_scenarios import (
     _clean_rebase_scenario,
@@ -159,7 +160,7 @@ class AutoRebaseParkUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
             head_sha=head_sha,
             git=git_mock,
         ):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         # No rebase, no push, no relabel; park still in place.
         merge.assert_not_called()
         push.assert_not_called()

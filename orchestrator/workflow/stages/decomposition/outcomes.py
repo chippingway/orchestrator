@@ -18,12 +18,12 @@ not need to read subprocess noise to do it.
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -36,6 +36,8 @@ from orchestrator.workflow.stages.decomposition import manifest as _manifest
 from orchestrator.workflow.stages.decomposition import split as _split
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _park_unparsed_manifest(

@@ -15,8 +15,10 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.github.labels import PAUSED_LABEL
+from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.stages.documenting import handler as _documenting
 
 from tests.fakes import (
     FakeComment,
@@ -81,7 +83,7 @@ def _seed_parked_docs(gh: FakeGitHubClient, *, comments):
     gh.add_pr(pr)
     # The caller patches the allowlist before seeding so outsider comments
     # cannot create drift and wake a parked docs pass through another route.
-    seed_hash = workflow._compute_user_content_hash(issue, set())
+    seed_hash = _drift._compute_user_content_hash(issue, set())
     gh.seed_state(
         PARKED_DOCS_ISSUE_NUMBER,
         user_content_hash=seed_hash,
@@ -115,7 +117,7 @@ def _seed_live_pause(
     )
     github.seed_state(
         issue_number,
-        user_content_hash=workflow._compute_user_content_hash(issue, set()),
+        user_content_hash=_drift._compute_user_content_hash(issue, set()),
         dev_agent="codex",
         dev_session_id=DEV_SESSION_ID,
         pr_number=pr_number,
@@ -151,7 +153,7 @@ class DocumentingLivePauseInitialPassTest(unittest.TestCase, _PatchedWorkflowMix
             return_value=_paused_view(INITIAL_PASS_ISSUE_NUMBER),
         ):
             mocks = self._run(
-                lambda: workflow._handle_documenting(gh, _TEST_SPEC, issue),
+                lambda: _documenting._handle_documenting(gh, _TEST_SPEC, issue),
                 run_agent=_agent(
                     session_id=DEV_SESSION_ID,
                     last_message="docs: updated README",
@@ -196,7 +198,7 @@ class DocumentingLivePauseAwaitingHumanTest(unittest.TestCase, _PatchedWorkflowM
             return_value=_paused_view(FOLLOWUP_ISSUE_NUMBER),
         ):
             mocks = self._run(
-                lambda: workflow._handle_documenting(gh, _TEST_SPEC, issue),
+                lambda: _documenting._handle_documenting(gh, _TEST_SPEC, issue),
                 run_agent=_agent(
                     session_id=DEV_SESSION_ID,
                     last_message="docs: added note",
@@ -243,7 +245,7 @@ class DocumentingResumeTrustFilterTest(unittest.TestCase, _PatchedWorkflowMixin)
                 ],
             )
             mocks = self._run(
-                lambda: workflow._handle_documenting(gh, _TEST_SPEC, issue),
+                lambda: _documenting._handle_documenting(gh, _TEST_SPEC, issue),
                 run_agent=_agent(session_id=DEV_SESSION_ID, last_message="docs"),
                 head_shas=[BEFORE_SHA, AFTER_SHA],
                 branch_ahead_behind=(0, 0),
@@ -282,7 +284,7 @@ class DocumentingResumeTrustFilterTest(unittest.TestCase, _PatchedWorkflowMixin)
                 ],
             )
             mocks = self._run(
-                lambda: workflow._handle_documenting(gh, _TEST_SPEC, issue),
+                lambda: _documenting._handle_documenting(gh, _TEST_SPEC, issue),
                 run_agent=_agent(
                     session_id=DEV_SESSION_ID,
                     last_message="docs: added note",

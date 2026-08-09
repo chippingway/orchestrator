@@ -29,16 +29,19 @@ would buy nothing but a poll interval.
 """
 from __future__ import annotations
 
+import logging
+
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _pickup_author_allowed(spec: config.RepoSpec, issue: Issue) -> bool:

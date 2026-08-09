@@ -9,7 +9,8 @@ import typing
 from unittest import mock
 
 from orchestrator import config as _config
-from orchestrator import workflow as _workflow
+from orchestrator.workflow.engine import drift as _drift
+
 from tests import fakes, workflow_helpers
 
 Path = pathlib.Path
@@ -17,7 +18,6 @@ Optional = typing.Optional
 patch = mock.patch
 MagicMock = mock.MagicMock
 config = _config
-workflow = _workflow
 
 FakeComment = fakes.FakeComment
 FakeGitHubClient = fakes.FakeGitHubClient
@@ -143,7 +143,7 @@ class ContinueCommandFixtureMixin(_PatchedWorkflowMixin):
             review_round=1,
             pr_number=RESUME_PR,
             branch=_issue_branch(number),
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         return github, issue
 

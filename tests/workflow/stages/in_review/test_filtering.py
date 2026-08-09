@@ -10,7 +10,8 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.engine import comments as _comments
 
 from tests.fakes import (
     FakeComment,
@@ -284,7 +285,7 @@ class OrchestratorMarkerFeedbackFilterTest(
             issue_comments=[
                 FakeComment(
                     id=FEEDBACK_ID,
-                    body=(f":eyes: codex review requested changes\n\n{workflow._ORCH_COMMENT_MARKER}"),
+                    body=(f":eyes: codex review requested changes\n\n{_comments._ORCH_COMMENT_MARKER}"),
                     user=FakeUser(BOT_LOGIN),
                     created_at=long_ago,
                 ),
@@ -350,7 +351,7 @@ class OrchestratorMarkerFeedbackFilterTest(
         scenario = SimpleNamespace(
             github=FakeGitHubClient(),
             created_at=datetime.now(timezone.utc) - timedelta(hours=1),
-            marker=workflow._ORCH_COMMENT_MARKER,
+            marker=_comments._ORCH_COMMENT_MARKER,
             tracked_ids=list(range(TRACKED_ID_START, TRACKED_ID_STOP)),
             untracked_ids=[2001, 2002, 2003],
         )

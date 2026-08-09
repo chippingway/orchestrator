@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.stages.decomposition import blocked as _blocked
+from orchestrator.workflow.stages.decomposition import run as _decomposing
 
 from tests.workflow.stages.decomposition.decomposition_test_support import _comment_with_marker
 from tests.fakes import (
@@ -78,7 +79,7 @@ class ReadyDriftClearsStaleManifestStateTest(
         gh, parent = _ready_drift_fixture()
 
         self._run(
-            lambda: workflow._handle_ready(gh, _TEST_SPEC, parent),
+            lambda: _blocked._handle_ready(gh, _TEST_SPEC, parent),
             run_agent=_agent(),
         )
 
@@ -132,7 +133,7 @@ class DriftBeforeHalfFinishedRecoveryTest(
         gh, parent = _recovery_drift_fixture()
 
         mocks = self._run(
-            lambda: workflow._handle_decomposing(gh, _TEST_SPEC, parent),
+            lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, parent),
             run_agent=_agent(
                 session_id="new-sess",
                 last_message=(

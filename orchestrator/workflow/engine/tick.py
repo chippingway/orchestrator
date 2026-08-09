@@ -37,25 +37,28 @@ Every collaborator is named on the owner that defines it, including the two
 passes a test has to replace to drive a tick without a git remote or a clone:
 `_refresh_base_and_worktrees` on `git/base_sync/refresh.py` and the catalog
 emission on `orchestrator/skills/catalog.py`. A mock aimed at either lands on
-that owner; one left on the `orchestrator.workflow` facade would let the real
-fetch run.
+that owner; one left anywhere else would let the real fetch run. The line an
+isolated per-issue failure reports on comes from `dispatch.py` for the same
+reason: the three isolation points here would otherwise spell it three ways.
 """
 from __future__ import annotations
 
 import contextlib
+import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from orchestrator import config
-from orchestrator._workflow_state import _PROCESSING_FAILED_LOG, log
 from orchestrator.git.base_sync import refresh as _base_refresh
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.skills import catalog as _catalog
 from orchestrator.workflow.engine import dispatch as _dispatch
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 @dataclass(frozen=True)
@@ -171,7 +174,7 @@ def _run_sequential_tick(
                 _dispatch._process_issue(gh, spec, issue)
         except Exception:
             log.exception(
-                _PROCESSING_FAILED_LOG,
+                _dispatch._PROCESSING_FAILED_LOG,
                 spec.slug, issue.number,
             )
 
@@ -200,7 +203,7 @@ def _drain_family_bucket(
             )
         except Exception:
             log.exception(
-                _PROCESSING_FAILED_LOG,
+                _dispatch._PROCESSING_FAILED_LOG,
                 spec.slug, issue_number,
             )
 
@@ -263,7 +266,7 @@ def _drain_parallel_futures(
                 )
             else:
                 log.exception(
-                    _PROCESSING_FAILED_LOG, spec.slug, tag,
+                    _dispatch._PROCESSING_FAILED_LOG, spec.slug, tag,
                 )
 
 

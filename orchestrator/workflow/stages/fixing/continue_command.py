@@ -20,8 +20,9 @@ drives the dev instead of a generic continue.
 """
 from __future__ import annotations
 
+import logging
+
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.github.comments import filter_trusted
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
@@ -30,6 +31,8 @@ from orchestrator.workflow.stages.fixing import feedback as _feedback
 from orchestrator.workflow.stages.fixing import models as _models
 from orchestrator.workflow.stages.fixing import state as _state
 from orchestrator.workflow.stages.implementing import session as _dev_session
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _reconstruct_pending_fix_batch(gh, issue, pr, state) -> list:

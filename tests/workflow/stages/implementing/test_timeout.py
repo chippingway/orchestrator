@@ -15,8 +15,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.workflow.engine import drift as _drift
 
 from tests.fakes import (
     FakeComment,
@@ -68,7 +69,7 @@ def _seed_timeout_park(**overrides):
         dev_agent=RECOVERY_AGENT,
         dev_session_id=RECOVERY_SESSION,
         branch=RECOVERY_BRANCH,
-        user_content_hash=workflow._compute_user_content_hash(issue, set()),
+        user_content_hash=_drift._compute_user_content_hash(issue, set()),
     )
     state.update(overrides)
     gh.seed_state(4, **state)
@@ -231,7 +232,7 @@ class HandleImplementingTimeoutRecoveryTest(unittest.TestCase, _PatchedWorkflowM
                 dev_agent=RECOVERY_AGENT,
                 dev_session_id=RECOVERY_SESSION,
                 branch=RECOVERY_BRANCH,
-                user_content_hash=workflow._compute_user_content_hash(issue, set()),
+                user_content_hash=_drift._compute_user_content_hash(issue, set()),
             )
             with patch.object(
                 _worktree_paths,
@@ -325,7 +326,7 @@ class HandleImplementingTimeoutRecoveryTest(unittest.TestCase, _PatchedWorkflowM
             dev_agent=RECOVERY_AGENT,
             dev_session_id=RECOVERY_SESSION,
             branch=RECOVERY_BRANCH,
-            user_content_hash=workflow._compute_user_content_hash(issue, set()),
+            user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         with patch.object(_worktree_paths, WORKTREE_PATH, return_value=TEMP_WORKTREE_ROOT):
             mocks = self._run_implementing(
@@ -380,7 +381,7 @@ class HandleImplementingTimeoutRecoveryTest(unittest.TestCase, _PatchedWorkflowM
                 dev_agent=RECOVERY_AGENT,
                 dev_session_id=RECOVERY_SESSION,
                 branch="orchestrator/geserdugarov__agent-orchestrator/issue-5",
-                user_content_hash=workflow._compute_user_content_hash(issue, set()),
+                user_content_hash=_drift._compute_user_content_hash(issue, set()),
             )
             with patch.object(
                 _worktree_paths,

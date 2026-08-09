@@ -24,12 +24,12 @@ it lands in rather than like the orchestrator.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.git import authentication as _authentication
 from orchestrator.git.publication import (
@@ -45,6 +45,8 @@ from orchestrator.workflow.stages.implementing import (
     state as _state,
 )
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _format_pr_agent_message(
