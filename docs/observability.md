@@ -91,9 +91,8 @@ threaded through and the Plotly configuration each of its figures is handed (`da
 trajectory viewer's whole read model — its file
 read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
 inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
-composition one run of it is driven by (`trajectory_viewer/`), and the packages the rest of the trajectory viewer is
-migrating into; until one of its responsibilities has an owner in that tree, the module named for it below stays the
-import site. Neither page that composes those owners is one of them: both sit
+composition one run of it is driven by (`trajectory_viewer/`). Neither page that composes those owners is one of
+them: both sit
 beside the tree, at `orchestrator/apps/analytics_dashboard.py` and `orchestrator/apps/trajectory_dashboard.py`. See
 [`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
 
@@ -244,8 +243,7 @@ recorders in `recording/events.py`, the sink append in `trajectories/api.py`, th
 the skill readers, the trajectory writers, and the read and sync paths all reach that holder through
 `config.live_settings`, which imports it inside the call so nothing pays for the process configuration behind it until
 a knob is actually read. `config.settings_on` answers for whichever holder a caller hands it, which is what the
-viewer's `trajectory_viewer/log_paths.py` takes as an argument from the `_trajectory_records.py` leaf that captured
-it. The
+viewer's `trajectory_viewer/log_paths.py` takes as an argument from the page that composes it. The
 audit event log (`config.EVENT_LOG_PATH`) stays in `config` because `GitHubClient.emit_event` is a general-purpose
 audit surface.
 
@@ -773,27 +771,19 @@ analytics dashboard reads the numeric usage / cost rollup from Postgres, while t
 file **directly** — the trajectory bodies are never in Postgres — so an operator can browse trajectories with nothing
 but the file on disk (no database, no sync).
 
-**Read model (`orchestrator/trajectory_reader.py`).** A pure, import-light, Streamlit-free reader (the file-backed
-analogue of `observability/analytics/query/`). `_trajectory_records.py` preserves the historical record API — the
-`obj` / `seq` parse call shape included, which it binds against a declared signature and hands the owner as
-`sequence` — and is where a caller's world is bound: the log path, the banner, and the read each hand the owner the
-analytics settings holder that leaf captured at its own import, so a patch on that holder intercepts every read made
-through it. The record vocabulary (`constants`), the field coercion under it (`coercion`),
+**Read model (`orchestrator/observability/trajectory_viewer/`).** A pure, import-light, Streamlit-free reader (the
+file-backed analogue of `observability/analytics/query/`). The record vocabulary (`constants`), the field coercion
+under it (`coercion`),
 the immutable sub-views (`models`), the run model (`runs`), the usage and timeline/label views bound onto it
 (`usage_views`, `timeline_views`), the parse above them (`parsing`), the file read that drives it (`reading`), the
 log-path resolution beside it (`log_paths`, over `analytics/config.py`), the filter shapes, values, and run matching
 over the runs it returns (`filter_models`, `filter_values`, `filtering`), and the headline counts they are totalled
-into (`summaries`) live under `orchestrator/observability/trajectory_viewer/`, alongside the inline HTML that read is
-drawn with (`css`, `summary_html`, `run_html`, `usage_html`, `timeline_html`); the eleven root-level leaves the read
-model moved off and the five the HTML moved off forward every historical name to those owners' own objects, and the
-views and the record still report `orchestrator._trajectory_records` as their module. `trajectory_reader` defines
-none of it: it is the one import site the page and every historical caller reach the whole read model through,
-binding the record API off a freshly loaded `_trajectory_records` (so a rebuilt reader carries its own capture of the
-settings holder) and the filter and summary API off the owners, with `FilterOptions`, `RunFilterOptions`, and
-`TrajectorySummary` still
-reporting `orchestrator.trajectory_reader` as their module — which is also why it imports the typing names those
-three are annotated in and uses them for nothing else: `get_type_hints` resolves a class's annotations in the globals
-of the module it names. Together they read `TRAJECTORY_LOG_PATH`, parse each `agent_trajectory`
+into (`summaries`) all live there, alongside the inline HTML that read is
+drawn with (`css`, `summary_html`, `run_html`, `usage_html`, `timeline_html`). Each name is reached on the owner that
+defines it and reports that owner, so a patch lands where a reader finds the code. A caller's world is bound one
+level up instead: the owners that read the trajectory knob take the analytics settings holder as an argument, and the
+page hands them the one it resolves at call time, so a patch on that holder intercepts every read the page
+makes. Together they read `TRAJECTORY_LOG_PATH`, parse each `agent_trajectory`
 record into a frozen `TrajectoryRun` (with a normalised `TrajectoryStepView` per step), and expose `read_trajectories`
 (newest first by `ts`, file order as the tie-break), `filter_options`, `filter_runs` (repo / backend / agent-role /
 stage / issue / free-text-search, every filter conjunctive and an empty multi-value meaning "no constraint", plus an
@@ -815,22 +805,20 @@ there but cannot be read — anything raising an `OSError` other than `FileNotFo
 directory in the knob's place — takes the same empty result with a warning first, through the
 `orchestrator.trajectory_reader` logger. That name is spelled out literally in
 `observability/trajectory_viewer/reading.py` rather than derived from the module path, so an operator's log filter
-selects on it regardless of which module the read lives in. The records are
+keeps selecting on it however far the module holding it moves. The records are
 already redacted and truncated by the sink, so the viewer is a read-only window onto an already-sanitised file — it
 adds no redaction of its own and must be scoped (filesystem permissions, who can reach the Streamlit port) with the same
 care as the trajectory file itself.
 
 **Page (`orchestrator/apps/trajectory_dashboard.py`).** Reuses the analytics dashboard's theme (CSS variables, fonts,
 `fmt_*` formatters) so the two pages read as one family — the owners under `observability/trajectory_viewer/` name
-`dashboard/tokens.py`, `dashboard/css.py`, and `dashboard/formatting.py` directly, and the historical facade publishes
-`dashboard/theme.py`, which reads the same objects back under one name, as `theme` — and reuses `dashboard/filters.py`'s
+`dashboard/tokens.py`, `dashboard/css.py`, and `dashboard/formatting.py` directly — and reuses `dashboard/filters.py`'s
 `parse_issue_number` for the
 issue filter, so `#123` and `123` mean the same thing on both pages. Streamlit is
 imported lazily inside `main()`, alongside every owner the page composes, and the repo-root `sys.path` shim comes
-from `orchestrator/apps/bootstrap.py` (`ensure_repo_root_on_path`) — the historical launch path takes the same shim
-from `orchestrator/script_launch.py`. Importing either module (or the
+from `orchestrator/apps/bootstrap.py` (`ensure_repo_root_on_path`). Importing that module (or the
 polling tick) therefore never needs the `dashboard` group — `tests/apps/` guards the lazy-import and the
-script-launch `sys.path` shape on both of the viewer's launch paths. The layout is intentionally minimal-but-useful: a
+script-launch `sys.path` shape on the viewer's launch path. The layout is intentionally minimal-but-useful: a
 sidebar of filters (plus a *Hide synthetic fixtures*
 toggle that drives the reader's `exclude_fixtures`, off by default), a topbar + five-tile KPI strip (runs / issues /
 repos / tool calls / total cost, the last summed from `summarize`'s `total_cost_usd`), a foldable *Recorded runs*
@@ -851,18 +839,14 @@ no usage, so the row and strips are absent and it renders exactly as before. The
 in the overview table and the run-level picker (the `[fixture]` prefix rides the run option; and the detail card carries
 a notice) so the operator can tell the inherited test-suite records from real runs even with the toggle off. When the
 sink is off it renders the opt-in banner and stops; an empty file or an empty filter set renders an explanatory notice
-rather than a blank page. `orchestrator/trajectory_dashboard.py` stays the historical launch path and a lazy
-compatibility facade over it, resolving the two page renderings on `page_render` and `main` on the app.
+rather than a blank page. That app file is the only launch path the viewer has.
 The page state, setup, filters, picker, selected-run rendering, and whole-page composition are owned by
 `page_models`, `page_setup`, `controls`, `picker`, `run_render`, and `page_render` under
 `observability/trajectory_viewer/`; the five that draw take Streamlit in
 as an argument rather than importing it, so none of them puts the `dashboard` group behind an import, and
-`page_models` is plain frozen state that never sees it. The facade's bootstrap is still a flat
-`_trajectory_dashboard_*` leaf. The historical `_trajectory_dashboard_html.py` surface defines nothing and composes
-the Streamlit-free summary, run, usage, timeline, and CSS owners under `observability/trajectory_viewer/`, so every
-established HTML helper and patch point keeps its original identity without pulling Streamlit into imports. The
-`_trajectory_dashboard_page.py` leaf keeps the historical zero-argument page setup and is where a caller's analytics
-world is bound onto the owner's settings-holder argument, the same way `_trajectory_records.py` binds it for the read.
+`page_models` is plain frozen state that never sees it. `page_setup` is the one that reads the trajectory knob, off
+the analytics settings holder the app hands it, which is where a caller's world is bound for the page the same way it
+is for the read.
 
 ## Analytics database (`analytics-db/`)
 
@@ -1331,12 +1315,11 @@ usage
 figure it draws, and
 the Plotly defaults it hands that figure are that owner's own module-scope imports.
 The repo-root `sys.path` shim that lets `streamlit run` resolve the absolute `orchestrator.*` imports comes from
-`orchestrator/apps/bootstrap.py` (`ensure_repo_root_on_path`); the viewer's historical launch
-path beside it takes the same shim from the import-light `orchestrator/script_launch.py`.
+`orchestrator/apps/bootstrap.py` (`ensure_repo_root_on_path`), the one both pages take it from.
 `tests/apps/test_analytics_dashboard_launch.py` reproduces the analytics page's launch shape without
 installing Streamlit: the file executes with only its own directory on `sys.path` (Streamlit's shape, not the repo
 root's), a decoy `orchestrator` package sitting behind it on the path cannot answer for the real one, and a package
-import resolves its shim qualified — so a stray top-level `bootstrap` or `script_launch` is never probed.
+import resolves its shim qualified — so a stray top-level `bootstrap` is never probed.
 The state a run carries
 lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
@@ -1774,7 +1757,7 @@ through. `tokens.py` holds the spacing tokens, the `1480px` content max-width, a
 `PAGE_CSS` string the dashboard injects through `st.markdown(unsafe_allow_html=True)`; and `formatting.py` holds the
 `fmt_money` / `fmt_money_exact` / `fmt_tokens` / `fmt_num` formatters. `theme.py` is the sixth owner beside them and
 implements nothing: it reads all five back under one name, which is the object the analytics app hands every panel it
-draws and the name the viewer's historical facade publishes as `theme`. Every value on it is the style owner's own.
+draws. Every value on it is the style owner's own.
 `.streamlit/config.toml` mirrors the palette into Streamlit's `[theme]` and disables the `[browser]
 gatherUsageStats` POST so the launch stays local-observability-only.
 

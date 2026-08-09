@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import unittest
-from importlib import import_module
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -35,16 +34,6 @@ _OPTIONS = filter_models.FilterOptions(
     agent_roles=(AGENT_ROLE,),
     stages=(STAGE,),
 )
-
-# The site a historical caller still reaches both of these through, and the
-# spelling each one answered to there.
-_FACADE = "orchestrator.trajectory_dashboard"
-
-_PUBLISHED = (
-    ("_render_trajectory_footer", "render_trajectory_footer"),
-    ("_render_trajectory_page", "render_trajectory_page"),
-)
-
 
 def _page(*read: Any) -> page_models._TrajectoryPage:
     return page_models._TrajectoryPage(
@@ -129,18 +118,6 @@ class WholePageTest(unittest.TestCase):
         st.expander.assert_called_once()
         self.assertEqual(st.selectbox.call_count, 3)
         self.assertIn("1 of 1 recorded", _markdown(st))
-
-
-class HistoricalSpellingTest(unittest.TestCase):
-    """The page surface still answers under the names it published."""
-
-    def test_each_name_resolves_to_the_owner(self) -> None:
-        facade = import_module(_FACADE)
-        for published, owned in _PUBLISHED:
-            with self.subTest(name=published):
-                self.assertIs(
-                    getattr(facade, published), getattr(page_render, owned),
-                )
 
 
 if __name__ == "__main__":

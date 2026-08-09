@@ -10,11 +10,6 @@ where a run named one, because a record written without one is not a repository
 of its own. The money is the same care in the other direction -- a run with no
 usage summary and a run whose cost was never priced each contribute nothing,
 instead of a zero that would read as free work.
-
-``TrajectorySummary`` reports ``orchestrator.trajectory_reader`` as its module
-for the reason the two filter shapes do: that is the import site the summary is
-published from, so a repr, a pickle, and a reader following ``__module__`` all
-still land where it is documented.
 """
 
 from __future__ import annotations
@@ -23,9 +18,6 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
-
-
-ORIGIN_MODULE = "orchestrator.trajectory_reader"
 
 
 @dataclass(frozen=True)
@@ -50,6 +42,3 @@ def summarize(runs: Sequence[TrajectoryRun]) -> TrajectorySummary:
         truncated_runs=sum(1 for run in runs if run.truncated),
         total_cost_usd=sum(run.cost_usd for run in runs if run.cost_usd is not None),
     )
-
-
-TrajectorySummary.__module__ = ORIGIN_MODULE

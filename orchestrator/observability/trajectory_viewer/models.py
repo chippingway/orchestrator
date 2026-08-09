@@ -13,11 +13,6 @@ keyword a caller passes and the attribute it reads back are both ``content``,
 which is the spelling the sink writes and every historical caller uses. Binding
 the call against that signature is what keeps positional construction, keyword
 construction, and ``inspect.signature`` all reporting the one public shape.
-
-The classes report ``orchestrator._trajectory_records`` as their module for the
-same reason: that is the import site they were published from, so a repr, a
-pickle, and a reader following ``__module__`` all still land where the record
-API is documented.
 """
 
 from __future__ import annotations
@@ -34,7 +29,6 @@ NAME_FIELD = "name"
 TOOL_ID_FIELD = "tool_id"
 CONTENT_FIELD = "content"
 TURN_FIELD = "turn"
-ORIGIN_MODULE = "orchestrator._trajectory_records"
 STEP_VIEW_SIGNATURE = inspect.Signature(
     parameters=(
         inspect.Parameter(KIND_FIELD, inspect.Parameter.POSITIONAL_OR_KEYWORD),
@@ -160,9 +154,5 @@ class RunUsageView:
 
 setattr(TrajectoryStepView, CONTENT_FIELD, property(public_step_content))
 setattr(TimelineEntry, CONTENT_FIELD, property(public_entry_content))
-TrajectoryStepView.__module__ = ORIGIN_MODULE
 TrajectoryStepView.__signature__ = STEP_VIEW_SIGNATURE
-TimelineEntry.__module__ = ORIGIN_MODULE
 TimelineEntry.__signature__ = TIMELINE_ENTRY_SIGNATURE
-TurnUsageView.__module__ = ORIGIN_MODULE
-RunUsageView.__module__ = ORIGIN_MODULE

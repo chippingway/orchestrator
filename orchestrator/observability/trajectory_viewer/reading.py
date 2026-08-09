@@ -18,9 +18,8 @@ The two ways a read fails part company on purpose. A missing file is what a
 sink switched on but not yet written to looks like, so it answers empty and
 silently. Every other `OSError` is warned about first -- on the
 `orchestrator.trajectory_reader` logger, the name an operator's filter is keyed
-on, whichever module the read is reached through -- and then answers empty too,
-because a page that stays up showing nothing is what an unreadable file should
-cost.
+on -- and then answers empty too, because a page that stays up showing nothing
+is what an unreadable file should cost.
 """
 
 from __future__ import annotations
@@ -34,6 +33,9 @@ from orchestrator.observability.trajectory_viewer import parsing
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
 
+# Named as a literal rather than taken from `__name__`: an operator's level and
+# handler selection over the Streamlit log picks the read warning out by logger,
+# so the name has to stay put while the module holding it moves.
 log = logging.getLogger("orchestrator.trajectory_reader")
 
 

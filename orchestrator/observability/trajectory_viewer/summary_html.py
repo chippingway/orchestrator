@@ -29,15 +29,6 @@ from orchestrator.observability.dashboard import formatting
 from orchestrator.observability.trajectory_viewer.summaries import TrajectorySummary
 
 
-# The historical import site the tile shape is published from, so a repr and a
-# reader following `__module__` still land where it is documented. The tile
-# keeps that site's own spelling for it rather than taking this package's:
-# `__module__` and `__qualname__` together are the pair `pickle` resolves a
-# class through, so a name the stamped module does not answer to is a load
-# error rather than a cosmetic difference.
-ORIGIN_MODULE = "orchestrator._trajectory_dashboard_html"
-
-
 @dataclass(frozen=True)
 class _TrajectoryKpi:
     """One headline tile: its label, its figure, and the note under it."""
@@ -114,6 +105,3 @@ def kpi_strip_html(summary: TrajectorySummary) -> str:
     """Render the five trajectory KPI tiles."""
     cells = (trajectory_kpi_html(kpi) for kpi in trajectory_kpis(summary))
     return '<div class="orch-kpis">{0}</div>'.format("".join(cells))
-
-
-_TrajectoryKpi.__module__ = ORIGIN_MODULE
