@@ -6,7 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.stages.implementing import handler as _implementing
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow.stages.question.question_relabel_test_support import (
@@ -167,7 +168,7 @@ class QuestionRelabelToImplementingTest(
         )
 
         mocks = self._run(
-            lambda: workflow._handle_implementing(gh, _TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id="dev-sess-1",
                 last_message="implemented",
@@ -266,7 +267,7 @@ class QuestionRelabelToImplementingTest(
             last_action_comment_id=NO_COMMENT_RELABEL_WATERMARK,
         )
         mocks = self._run(
-            lambda: workflow._handle_implementing(gh, _TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, _TEST_SPEC, issue),
             run_agent=_agent(last_message="needs clarification"),
             has_new_commits=False,
         )

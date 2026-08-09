@@ -25,12 +25,12 @@ current head.
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import terminals as _terminals
@@ -41,6 +41,8 @@ from orchestrator.workflow.stages.fixing import parked as _parked
 from orchestrator.workflow.stages.fixing import resume as _resume
 from orchestrator.workflow.stages.fixing import state as _state
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _park_fixing_without_pr(gh: GitHubClient, issue: Issue, state) -> None:

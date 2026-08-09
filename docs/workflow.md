@@ -31,9 +31,10 @@ authenticated on the host before the orchestrator starts.
 
 Every stage handler lives on responsibility-named owners under `orchestrator/workflow/stages/`, which own entry
 checks, session execution, drift handling, persistence, and terminal routing (see the module map in
-[`architecture.md#top-level-layout`](architecture.md#top-level-layout)). `orchestrator.workflow` still re-exports
-every handler under its original name for callers outside the package, but no cross-stage call resolves through it;
-between owners the caller names the owner it borrows — documenting, validating, in_review, fixing, and
+[`architecture.md#top-level-layout`](architecture.md#top-level-layout)). Every handler is reached on the owner that
+defines it; `orchestrator.workflow` publishes six names and nothing else — `WorkflowLabel`, `ControlLabel`,
+`guard_transition`, `is_allowed_transition`, `IllegalTransition`, and `tick`.
+Between owners the caller names the owner it borrows — documenting, validating, in_review, fixing, and
 conflicts all
 reach the implementing dev resume, documenting, validating, and conflicts also its question / dirty-tree parks,
 documenting and validating its session read and fixing its poisoned-session drop, documenting reaches validating's
@@ -59,8 +60,10 @@ role-specific glue.
 - **Dev session reuse.** The implementer session is spawned once in `_handle_implementing` and then resumed by
   `_handle_documenting`, `_handle_validating`, `_handle_fixing`, and `_handle_resolving_conflict` whenever they need the
   dev to make a change. The locked `(backend, args)` spec is re-parsed on every resume from pinned `dev_agent` so a
-  config flip mid-flight cannot retarget the session. `_resume_dev_with_text` retains its historical call signature at
-  the facade, then binds those arguments into a typed request/context before executing the resume.
+  config flip mid-flight cannot retarget the session. `_resume_dev_with_text` on
+  `workflow/stages/implementing/resume.py` is the one module every one of those resumes goes through; it declares the
+  call signature its callers were written against, then binds those arguments into a typed request/context before
+  executing the resume.
 - **Reviewer freshness.** `_handle_validating` spawns a fresh reviewer subprocess every round with no resume, so
   `REVIEW_AGENT` changes take effect on the next validating tick. The current value is recorded in `review_agent` for
   traceability only.

@@ -8,7 +8,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.in_review import handler as _in_review
 
 from tests.workflow import pr_lifecycle_test_support as support
 
@@ -31,7 +33,7 @@ class PrLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMi
         issue = support.make_issue(support._PR_ISSUE_NUMBER, label=support.LABEL_IMPLEMENTING)
         gh.add_issue(issue)
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(session_id="sess-1", last_message="implemented"),
             # First call: recovered-worktree check (False) -> agent runs;
             # second call: post-agent _has_new_commits check (True) -> push path.
@@ -65,7 +67,7 @@ class PrLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMi
         )
         gh.existing_open_pr["orchestrator/geserdugarov__agent-orchestrator/issue-51"] = existing
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(session_id="sess-1", last_message="implemented"),
             has_new_commits=[False, True],
             push_branch=True,
@@ -80,7 +82,7 @@ class PrLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMi
         gh, issue = support._seed_in_review(pr=pr)
 
         self._run(
-            lambda: workflow._handle_in_review(gh, support._TEST_SPEC, issue),
+            lambda: _in_review._handle_in_review(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(),
         )
 
@@ -98,7 +100,7 @@ class PrLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMi
             pr=pr, extra_state={support.KEY_CONFLICT_ROUND: 2},
         )
         self._run(
-            lambda: workflow._handle_in_review(gh, support._TEST_SPEC, issue),
+            lambda: _in_review._handle_in_review(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(),
         )
         merged_event = support._only_event(gh, support.EVENT_PR_MERGED)
@@ -118,7 +120,7 @@ class PrLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMi
         pr = support._open_pr(merged=False, state=support.STATE_CLOSED)
         gh, issue = support._seed_in_review(pr=pr)
         self._run(
-            lambda: workflow._handle_in_review(gh, support._TEST_SPEC, issue),
+            lambda: _in_review._handle_in_review(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(),
         )
         closed = support._events_of(gh, support.EVENT_PR_CLOSED_WITHOUT_MERGE)
@@ -134,7 +136,7 @@ class PrLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMi
         pr = support._open_pr(approved=True, mergeable=False, check_state=support.CHECK_SUCCESS)
         gh, issue = support._seed_in_review(pr=pr)
         self._run(
-            lambda: workflow._handle_in_review(gh, support._TEST_SPEC, issue),
+            lambda: _in_review._handle_in_review(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(),
         )
         self.assertEqual(support._events_of(gh, support.EVENT_CONFLICT_ROUND), [])
@@ -166,7 +168,7 @@ class EventEmissionDisabledTest(unittest.TestCase, support._PatchedWorkflowMixin
                 )
                 gh.add_issue(issue)
                 self._run(
-                    lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+                    lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
                     run_agent=support._agent(last_message="q?"),
                     has_new_commits=False,
                 )

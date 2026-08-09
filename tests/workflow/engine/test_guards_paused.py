@@ -19,9 +19,11 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
 from orchestrator.github.labels import PAUSED_LABEL
 from orchestrator.workflow.engine import drift
+from orchestrator.workflow.stages.decomposition import run as _decomposing
+from orchestrator.workflow.stages.question import handler as _question
+from orchestrator.workflow.stages.validating import handler as _validating
 
 from tests.fakes import (
     FakeComment,
@@ -92,7 +94,7 @@ class DecomposerLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
         with patch.object(gh, _GET_ISSUE_METHOD, get_issue_mock):
             self._run(
-                lambda: workflow._handle_decomposing(gh, _TEST_SPEC, issue),
+                lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, issue),
                 run_agent=_agent(session_id="dec-sess", last_message=manifest),
             )
 
@@ -136,7 +138,7 @@ class ReviewerLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
         with patch.object(gh, _GET_ISSUE_METHOD, get_issue_mock):
             mocks = self._run(
-                lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+                lambda: _validating._handle_validating(gh, _TEST_SPEC, issue),
                 run_agent=_agent(
                     session_id="rev-sess",
                     last_message="1. Fix typo\n\nVERDICT: CHANGES_REQUESTED",
@@ -183,7 +185,7 @@ class QuestionLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
         with patch.object(gh, _GET_ISSUE_METHOD, get_issue_mock):
             mocks = self._run(
-                lambda: workflow._handle_question(gh, _TEST_SPEC, issue),
+                lambda: _question._handle_question(gh, _TEST_SPEC, issue),
                 run_agent=_agent(
                     session_id="q-sess", last_message="X lives in src/x.py:42.",
                 ),
@@ -243,7 +245,7 @@ class QuestionLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
         with patch.object(gh, _GET_ISSUE_METHOD, get_issue_mock):
             mocks = self._run(
-                lambda: workflow._handle_question(gh, _TEST_SPEC, issue),
+                lambda: _question._handle_question(gh, _TEST_SPEC, issue),
                 run_agent=_agent(session_id="q-sess-old", last_message="answer"),
             )
 

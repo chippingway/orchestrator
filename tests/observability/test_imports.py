@@ -31,9 +31,8 @@ _ROOT_PACKAGE_MODULES = frozenset((
 # Nothing observed here is on the workflow's decision path, so the dependency
 # runs one way: an application entrypoint composes these owners and no owner
 # reads one back. On the tick side that is the workflow engine, the stage
-# handlers, and the CLI and runtime loop under them, where the flat
-# `_workflow_*` inventory is the sharpest entry because resolving any name on
-# it imports the leaf that holds it. On the page side it is every `streamlit
+# handlers, and the CLI and runtime loop under them. On the page side it is
+# every `streamlit
 # run` target -- the two canonical ones under `apps`, and the historical
 # `dashboard` and `trajectory_dashboard` beside them -- and the leaves they
 # front: those are entry points in the same
@@ -44,7 +43,6 @@ _FORBIDDEN_PREFIXES = (
     "orchestrator._dashboard",
     "orchestrator._main",
     "orchestrator._trajectory_dashboard",
-    "orchestrator._workflow",
     "orchestrator.apps",
     "orchestrator.cli",
     "orchestrator.dashboard",

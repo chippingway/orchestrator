@@ -7,9 +7,12 @@ import contextlib
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
+from orchestrator.workflow.stages.decomposition import run as _decomposing
+from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume
 
 from tests import fakes as _fakes
 from tests import workflow_helpers as _helpers
@@ -86,7 +89,7 @@ def _implementer_prompt(case) -> str:
     issue = make_issue(_IMPLEMENTER_ISSUE_NUMBER, label="implementing")
     github.add_issue(issue)
     mocks = case._run(
-        lambda: workflow._handle_implementing(github, _TEST_SPEC, issue),
+        lambda: _implementing._handle_implementing(github, _TEST_SPEC, issue),
         run_agent=_agent(session_id="sess-1", last_message="done"),
         has_new_commits=[False, True],
         push_branch=True,
@@ -138,7 +141,7 @@ def _resume_prompt(github, issue, *, threshold: int) -> str:
         patch.object(_worktree_creation, "_ensure_worktree", _fake_worktree),
         patch.object(_agent_runner, _RUN_AGENT_ATTR, run_mock),
     ):
-        workflow._resume_dev_with_text(
+        _implementing_resume._resume_dev_with_text(
             github,
             _TEST_SPEC,
             issue,
@@ -153,7 +156,7 @@ def _decomposer_prompt(case) -> str:
     issue = make_issue(_DECOMPOSER_ISSUE_NUMBER, label="decomposing")
     github.add_issue(issue)
     mocks = case._run(
-        lambda: workflow._handle_decomposing(github, _TEST_SPEC, issue),
+        lambda: _decomposing._handle_decomposing(github, _TEST_SPEC, issue),
         run_agent=_agent(
             session_id="dec-1",
             last_message=_DECOMPOSITION_MANIFEST,

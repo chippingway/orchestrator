@@ -11,8 +11,6 @@ import unittest
 from pathlib import Path
 from types import MappingProxyType
 
-from orchestrator import _workflow_export_manifest
-from orchestrator import workflow as _workflow
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages import question as _package
 
@@ -59,22 +57,13 @@ def _imported_orchestrator_modules(module: str) -> set[str]:
     return set(completed.stdout.split())
 
 
-def _stage_targets() -> list:
-    """Every workflow-manifest entry that names this stage."""
-    return [
-        target for target in _workflow_export_manifest.EXPORTS
-        if "question" in target.module_name
-    ]
-
-
 class CleanProcessImportTest(unittest.TestCase):
     """The package and each owner beneath it import alone.
 
-    The owners import each other, the engine, and the worktree teardown, all of
-    which reach the workflow facade, whose hooks resolve back into this package.
-    A subprocess per module gives each a clean `sys.modules` no other test has
-    already populated, exposing an import-order cycle a facade-first suite run
-    would mask.
+    The owners import each other, the engine, and the worktree teardown, and the
+    engine's dispatcher reaches back into this package. A subprocess per module
+    gives each a clean `sys.modules` no other test has already populated,
+    exposing an import-order cycle a package-first suite run would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:
@@ -121,23 +110,6 @@ class PackageSurfaceTest(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(
                     getattr(bound, "__name__", None), f"{_PACKAGE}.{name}",
-                )
-
-
-class OwnerImportSiteTest(unittest.TestCase):
-    """The owners here are the only modules this stage's names answer on."""
-
-    def test_facade_reads_every_name_off_an_owner(self) -> None:
-        # The facade is the inventory historical callers and patches still
-        # reach this stage through, so each name it publishes has to be an
-        # owner's own object rather than one rebuilt beside them.
-        for target in _stage_targets():
-            with self.subTest(name=target.export_name):
-                owner_package, _, owner = target.module_name.rpartition(".")
-                self.assertEqual(owner_package, _PACKAGE)
-                self.assertIs(
-                    getattr(_workflow, target.export_name),
-                    getattr(_OWNER_MODULES[owner], target.target_name),
                 )
 
 

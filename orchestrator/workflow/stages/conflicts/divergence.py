@@ -18,17 +18,19 @@ when it finds it, letting one round cover both.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Optional
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.git import authentication as _authentication
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.conflicts import guards as _guards
 from orchestrator.workflow.stages.conflicts import models as _models
 from orchestrator.workflow.stages.conflicts import transitions as _transitions
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _guard_diverged_worktree(

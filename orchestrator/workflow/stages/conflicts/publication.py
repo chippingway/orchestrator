@@ -21,10 +21,10 @@ that is the only remote state the force-push may legitimately replace.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.git import authentication as _authentication
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
@@ -35,6 +35,8 @@ from orchestrator.workflow.stages.conflicts import resume as _resume
 from orchestrator.workflow.stages.conflicts import state as _state
 from orchestrator.workflow.stages.conflicts import transitions as _transitions
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _publish_clean_rebase(

@@ -22,11 +22,11 @@ from tests.workflow.engine import event_values as _events
 
 
 # The owner a tracked run's trajectory is parsed on, so a fail-open test
-# patches the module the analytics writer calls rather than a facade.
+# patches the module the analytics writer calls.
 usage_trajectory = _trajectory
 
 # The owner the tracked spawn dispatches on, for the same reason: a mock left
-# on the `workflow` facade would let the real CLI run.
+# anywhere else would let the real CLI run.
 agent_runner = _agent_runner
 
 EVENT_AGENT_EXIT = _events.EVENT_AGENT_EXIT

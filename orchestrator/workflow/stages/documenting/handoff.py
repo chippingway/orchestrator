@@ -22,13 +22,16 @@ rescan is debounced and correct on its own.
 """
 from __future__ import annotations
 
+import logging
+
 from github.Issue import Issue
 
-from orchestrator._workflow_state import log
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.validating import watermarks as _validating_watermarks
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _ratchet_in_review_watermark_for_final_docs(

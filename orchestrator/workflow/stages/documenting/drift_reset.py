@@ -19,14 +19,16 @@ new file or a new directory under `docs/` that no reviewer ever approved.
 """
 from __future__ import annotations
 
+import logging
 from contextlib import suppress
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.git import authentication as _authentication
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.documenting import models as _models, parks as _parks
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _documenting_drift_fetch(ctx: _models._DocumentingContext, wt) -> bool:

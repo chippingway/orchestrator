@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.engine import prompts as _prompts
+
 from tests.workflow.stages.implementing import retry_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
@@ -32,7 +34,6 @@ _ProactiveSessionFixtureMixin = support._ProactiveSessionFixtureMixin
 _TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 make_issue = support.make_issue
-workflow = support.workflow
 
 
 class ProactiveSessionRotationTest(
@@ -174,7 +175,7 @@ class ProactiveSessionRecoveryTest(
 
     def test_preamble_includes_requirements_branch(self) -> None:
         issue = make_issue(PREAMBLE_ISSUE, body="do the work", title="My Issue")
-        text = workflow._build_fresh_respawn_preamble(_TEST_SPEC, issue, "@alice: please add tests", [_TEST_SPEC])
+        text = _prompts._build_fresh_respawn_preamble(_TEST_SPEC, issue, "@alice: please add tests", [_TEST_SPEC])
         self.assertIn("do the work", text)
         self.assertIn("@alice: please add tests", text)
         self.assertIn("git diff", text, "must point the fresh agent at the branch")

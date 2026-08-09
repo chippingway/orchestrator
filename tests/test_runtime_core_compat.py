@@ -99,7 +99,12 @@ class GitHubStaticHelperCompatibilityTest(unittest.TestCase):
 
 
 class StateVocabularyImportSiteTest(unittest.TestCase):
-    """`workflow.state` is the only module the state vocabulary answers on."""
+    """`workflow/state.py` is the only module that defines the vocabulary.
+
+    `orchestrator.workflow` re-exports five of its names, but hands back that
+    owner's own objects; a module at the flat spelling would be a second
+    definition instead.
+    """
 
     def test_no_top_level_state_module_exists(self) -> None:
         # Anything importable here would be a second identity for the graph and

@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Both directions of the comment owner, and the facade still forwarding it.
+"""Both directions of the comment owner.
 
 The write side keeps the ledger every "is this comment ours?" scan reads: one
 bounded id list spanning both comment surfaces, plus the hidden marker that
@@ -16,7 +16,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments
 
@@ -29,21 +29,6 @@ _LEDGER_ISSUE_NUMBER = 1010
 _LEDGER_PR_NUMBER = 77
 _THREAD_ISSUE_NUMBER = 1011
 _ISSUE_BODY = "picking up"
-# Every name the historical facade still has to answer for, and the facade it
-# answers on. Live issues and external operator scripts reach the owner through
-# these, so a forward that stops resolving is a break, not a rename.
-_FACADE_FORWARDS = (
-    (workflow, (
-        "_ORCH_COMMENT_MARKER",
-        "_build_tracked_repos_context",
-        "_orchestrator_ids",
-        "_post_issue_comment",
-        "_post_pr_comment",
-        "_quote_comment_line",
-        "_recent_comments_text",
-        "_with_orch_marker",
-    )),
-)
 
 
 class OrchestratorCommentLedgerTest(unittest.TestCase):
@@ -166,19 +151,6 @@ class QuoteCommentLineTest(unittest.TestCase):
                 self.assertEqual(
                     comments._quote_comment_line(comment, label), expected,
                 )
-
-
-class CommentFacadeForwardTest(unittest.TestCase):
-    """The historical facade resolves to the owner's exact object."""
-
-    def test_facades_forward_the_owner_objects(self) -> None:
-        for facade, forwarded_names in _FACADE_FORWARDS:
-            for forwarded_name in forwarded_names:
-                with self.subTest(facade=facade.__name__, name=forwarded_name):
-                    self.assertIs(
-                        getattr(facade, forwarded_name),
-                        getattr(comments, forwarded_name),
-                    )
 
 
 if __name__ == "__main__":

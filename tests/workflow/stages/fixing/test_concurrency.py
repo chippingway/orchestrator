@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.github.pinned_state import PinnedState
+
 from tests.workflow.stages.fixing import fixing_test_support as support
 
 IssueScenario = support.IssueScenario
@@ -39,7 +41,6 @@ datetime = support.datetime
 patch = support.patch
 timedelta = support.timedelta
 timezone = support.timezone
-workflow = support.workflow
 
 
 class FixingContentHashAndConcurrencyTest(
@@ -100,7 +101,7 @@ class FixingContentHashAndConcurrencyTest(
         expected = _compute_user_content_hash(
             scenario.issue,
             _orchestrator_ids(
-                workflow.PinnedState(data=dict(self._pinned_data)),
+                PinnedState(data=dict(self._pinned_data)),
             ),
         )
         self.assertEqual(self._pinned_data.get(USER_CONTENT_HASH), expected)

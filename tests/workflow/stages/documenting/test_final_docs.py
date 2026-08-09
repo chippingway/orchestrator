@@ -6,9 +6,9 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from orchestrator import workflow
 from orchestrator.workflow.stages.documenting import handoff as _handoff
 from orchestrator.workflow.stages.validating import watermarks as _validating_watermarks
+from orchestrator.workflow.stages.in_review import handler as _in_review
 
 from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
 from tests.fakes import (
@@ -355,7 +355,7 @@ class HandleDocumentingFinalDocsHandoffTest(unittest.TestCase, _FinalDocsFixture
         if not any(label.name == IN_REVIEW for label in issue.labels):
             issue.labels = [FakeLabel(IN_REVIEW)]
         mocks_ir = self._run(
-            lambda: workflow._handle_in_review(gh, _TEST_SPEC, issue),
+            lambda: _in_review._handle_in_review(gh, _TEST_SPEC, issue),
             run_agent=_agent(),
         )
 
@@ -369,13 +369,11 @@ class HandleDocumentingFinalDocsHandoffTest(unittest.TestCase, _FinalDocsFixture
 
 
 class FinalDocsWatermarkOwnerTest(unittest.TestCase):
-    """The ratchet reuses validating's seed walk off its owner.
+    """The ratchet reuses validating's seed walk rather than its own.
 
-    The walk belongs to `workflow/stages/validating/watermarks.py`, and the
-    handoff imports it from there rather than off the `orchestrator.workflow`
-    facade. Patching the owner alone would not pin that -- an uncached facade
-    read resolves by `getattr` on the same owner -- so the facade name is
-    patched too and has to stay untouched.
+    The walk belongs to `workflow/stages/validating/watermarks.py`, and a
+    second copy of it here would let the seed the docs handoff ratchets to
+    drift from the one the review loop reads.
     """
 
     def test_ratchet_lands_on_the_validating_owner(self) -> None:
@@ -398,22 +396,13 @@ class FinalDocsWatermarkOwnerTest(unittest.TestCase):
         )
         state = gh.read_pinned_state(issue)
 
-        with (
-            patch.object(
-                workflow, LATEST_PR_COMMENT_IDS, return_value=(None, None),
-            ) as facade_guard,
-            patch.object(
-                _validating_watermarks,
-                LATEST_PR_COMMENT_IDS,
-                return_value=(SEED_WALK_ID, None),
-            ) as seed_walk,
-        ):
+        with patch.object(
+            _validating_watermarks,
+            LATEST_PR_COMMENT_IDS,
+            return_value=(SEED_WALK_ID, None),
+        ) as seed_walk:
             _handoff._ratchet_in_review_watermark_for_final_docs(gh, issue, state)
             seed_walk.assert_called_once()
-            self.assertFalse(
-                facade_guard.called,
-                "the seed walk must not be read off the workflow facade",
-            )
 
         self.assertEqual(state.get(PR_LAST_COMMENT_ID), SEED_WALK_ID)
 

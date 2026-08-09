@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from orchestrator import workflow
 from orchestrator.workflow.stages.validating import (
     watermarks as validating_watermarks,
 )
+from orchestrator.workflow.stages.validating import handler as _validating
 
 from tests import fakes as _fakes
 from tests import workflow_helpers as _helpers
@@ -92,7 +92,7 @@ def _run_verdict(case, github, issue, pull_request, last_message: str) -> None:
         return_value=(None, None),
     ):
         case._run(
-            lambda: workflow._handle_validating(github, _TEST_SPEC, issue),
+            lambda: _validating._handle_validating(github, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id="sess-review",
                 last_message=last_message,

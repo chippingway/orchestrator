@@ -12,8 +12,9 @@ description: >-
 Reject (or request fixes) if any of these are red:
 
 - `ruff check orchestrator tests`. Common offenders to look for explicitly:
-  - **F401** — unused import on the facade. If the import is intended as a re-export from
-    the `workflow` facade, it must be aliased `from X import Y as Y`. A bare import will not survive ruff.
+  - **F401** — unused import on a package initializer. If the import is intended as a re-export, it must
+    be aliased `from X import Y as Y` or listed in that initializer's `__all__`. A bare import will not
+    survive ruff.
   - **F541** — f-strings without placeholders, typically in newly-added test files.
   - **F841** — unused local in tests.
   - **E402** — import after non-import code.
@@ -40,19 +41,20 @@ For any refactor:
   CHANGES_REQUESTED), retry budgets, and stale-session detection are easy to break by accident during
   a move; verify their call paths survive intact.
 
-## Facade and module boundaries
+## Module boundaries
 
-The compatibility surface on `orchestrator/workflow/__init__.py` is load-bearing. Confirm:
+`orchestrator/workflow/__init__.py` is a narrow explicit API — the label vocabularies, the transition guard
+and the predicate under it, the illegal-write exception, and the per-repo `tick`. Confirm:
 
-- New stage helpers that another stage module reaches for are re-exported from the `workflow` facade, each
-  aliased `... as <name>`. Stage-private helpers (only used inside one stage module —
-  `_bump_in_review_watermarks`, `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`,
-  etc.) should **not** be re-exported.
-- Stage modules access cross-module helpers via `from orchestrator import workflow as _wf` **at call
-  time**, not via top-level `from orchestrator.workflow import _foo`. The late-binding pattern
-  preserves `patch.object(workflow, ...)` semantics in tests.
-- Test patches target the new module boundary after a move (or the facade alias, consistently). Flag
-  tests that still patch the old location.
+- Nothing new is published there. A helper another module reaches for is imported from the owner that
+  defines it, and a stage-private helper (used inside one stage module — `_bump_in_review_watermarks`,
+  `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`, etc.) stays private to it.
+- The initializer binds no engine or stage module at import. The GitHub and git layers import
+  `workflow/state.py` beside it, so an engine import there is an import cycle, not a convenience.
+- Stage modules import the owner they borrow from at module scope and call through that alias; flag any
+  reintroduced call-time hop through the package initializer.
+- Test patches target the module the call site names. Flag a test that patches anything else — including
+  the workflow package — since a mock left there intercepts nothing.
 
 ## Test economy and assertion quality
 
@@ -75,15 +77,17 @@ After any handler or helper move, grep the PR for stale pointers and request fix
 - `docs/architecture.md` — the module-by-module inventory lives here and nowhere else
 - `docs/state-machine.md`
 - `docs/workflow.md`
-- module docstrings at the top of the facade the symbol was reached through and of the owners it moved
-  between
+- module docstrings at the top of the owners the symbol moved between, and of the package initializers
+  above them that describe where a name answers
 
 `AGENTS.md` (and its `CLAUDE.md` symlink) is deliberately off that list, and the inverse is what to flag: it is
 loaded into every agent session and carries no module, owner, or test inventory. Reject a PR that answers a routine
 symbol or module move by editing it, or that grows an inventory back into it. It changes only when repository-wide
 agent instructions, safety rules, or documentation routing change.
 
-Treat blanket statements like "every helper is re-exported" with suspicion — verify literally against the code.
+Treat blanket statements about what a package publishes — "every helper is re-exported", "the hub answers for
+these names" — with suspicion; verify literally against the code, since an attribute that no longer exists raises
+`AttributeError` rather than reading as stale prose.
 
 ## Comment hygiene
 

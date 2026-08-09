@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.git.base_sync import refresh as _base_refresh
+
 from tests.workflow.stages.fixing import (
     fixing_routing_test_support as support,
 )
@@ -16,7 +18,6 @@ LABEL_VALIDATING = support.LABEL_VALIDATING
 MagicMock = support.MagicMock
 _FixingConflictFixtureMixin = support._FixingConflictFixtureMixin
 _patch_base_sync = support._patch_base_sync
-workflow = support.workflow
 
 
 class FixingConflictDetourTest(
@@ -38,7 +39,7 @@ class FixingConflictDetourTest(
             head_sha=MagicMock(side_effect=["before", "after"]),
             git=MagicMock(return_value=self._git_result(stdout="3\n")),
         ):
-            workflow._sync_worktree_with_base(
+            _base_refresh._sync_worktree_with_base(
                 self.gh,
                 self.spec,
                 self.wt,
@@ -65,7 +66,7 @@ class FixingConflictDetourTest(
             hardened=MagicMock(return_value=self._git_result()),
             git=MagicMock(return_value=self._git_result(stdout="3\n")),
         ):
-            workflow._sync_worktree_with_base(
+            _base_refresh._sync_worktree_with_base(
                 self.gh,
                 self.spec,
                 self.wt,

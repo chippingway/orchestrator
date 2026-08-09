@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.stages.decomposition import manifest as _decompose_manifest
 
 from tests.fakes import make_issue
 from tests.workflow_helpers import _TEST_SPEC, _manifest
@@ -21,7 +22,7 @@ class ParseManifestDecisionTest(unittest.TestCase):
             '{"decision": "single", "rationale": "small change"}',
         )
         msg = f"I think this fits.\n\n{manifest_block}"
-        decision_manifest, decision_error = workflow._parse_manifest(msg)
+        decision_manifest, decision_error = _decompose_manifest._parse_manifest(msg)
         self.assertIsNone(decision_error)
         self.assertIsNotNone(decision_manifest)
         self.assertEqual(decision_manifest[KEY_DECISION], DECISION_SINGLE)
@@ -34,42 +35,44 @@ class ParseManifestDecisionTest(unittest.TestCase):
             '{"title": "B", "body": "do B", "depends_on": [0]}'
             "]}"
         )
-        decision_manifest, decision_error = workflow._parse_manifest(_manifest(payload))
+        decision_manifest, decision_error = _decompose_manifest._parse_manifest(_manifest(payload))
         self.assertIsNone(decision_error)
         self.assertEqual(len(decision_manifest["children"]), 2)
         self.assertEqual(decision_manifest["children"][1]["depends_on"], [0])
 
     def test_no_fenced_block_returns_none_none(self) -> None:
-        decision_manifest, decision_error = workflow._parse_manifest("just a question, no fence")
+        decision_manifest, decision_error = _decompose_manifest._parse_manifest("just a question, no fence")
         self.assertIsNone(decision_manifest)
         self.assertIsNone(decision_error)
 
     def test_invalid_json_returns_error(self) -> None:
-        decision_manifest, decision_error = workflow._parse_manifest(_manifest("{not json"))
+        decision_manifest, decision_error = _decompose_manifest._parse_manifest(_manifest("{not json"))
         self.assertIsNone(decision_manifest)
         self.assertIn("invalid JSON", decision_error)
 
     def test_unknown_decision_rejected(self) -> None:
-        decision_manifest, decision_error = workflow._parse_manifest(_manifest('{"decision": "maybe"}'))
+        decision_manifest, decision_error = _decompose_manifest._parse_manifest(_manifest('{"decision": "maybe"}'))
         self.assertIsNone(decision_manifest)
         self.assertIn(KEY_DECISION, decision_error)
 
     def test_split_with_empty_children_rejected(self) -> None:
-        decision_manifest, decision_error = workflow._parse_manifest(_manifest('{"decision": "split", "children": []}'))
+        decision_manifest, decision_error = _decompose_manifest._parse_manifest(
+            _manifest('{"decision": "split", "children": []}'),
+        )
         self.assertIsNone(decision_manifest)
         self.assertIn("non-empty", decision_error)
 
 
 class ParseManifestChildValidationTest(unittest.TestCase):
     def test_child_missing_title_rejected(self) -> None:
-        child_manifest, child_error = workflow._parse_manifest(
+        child_manifest, child_error = _decompose_manifest._parse_manifest(
             _manifest('{"decision": "split", "children": [{"body": "no title here"}]}')
         )
         self.assertIsNone(child_manifest)
         self.assertIn("title or body", child_error)
 
     def test_self_dependency_rejected(self) -> None:
-        child_manifest, child_error = workflow._parse_manifest(
+        child_manifest, child_error = _decompose_manifest._parse_manifest(
             _manifest('{"decision": "split", "children": [{"title": "X", "body": "x", "depends_on": [0]}]}')
         )
         self.assertIsNone(child_manifest)
@@ -77,7 +80,7 @@ class ParseManifestChildValidationTest(unittest.TestCase):
 
     def test_dep_cycle_rejected(self) -> None:
         # 0 -> 1 -> 0
-        child_manifest, child_error = workflow._parse_manifest(
+        child_manifest, child_error = _decompose_manifest._parse_manifest(
             _manifest(
                 '{"decision": "split", "children": ['
                 '{"title": "A", "body": "a", "depends_on": [1]},'
@@ -92,7 +95,7 @@ class ParseManifestChildValidationTest(unittest.TestCase):
         children = ",".join(
             f'{{"title": "T{child_index}", "body": "b{child_index}"}}' for child_index in range(EXCESSIVE_CHILD_COUNT)
         )
-        child_manifest, child_error = workflow._parse_manifest(
+        child_manifest, child_error = _decompose_manifest._parse_manifest(
             _manifest(f'{{"decision": "split", "children": [{children}]}}')
         )
         self.assertIsNone(child_manifest)
@@ -106,14 +109,14 @@ class ParseManifestChildValidationTest(unittest.TestCase):
         # `expected_children_count` has been persisted, forcing the
         # half-finished-recovery path instead of the clean
         # invalid-child_manifest HITL/resume loop.
-        child_manifest, child_error = workflow._parse_manifest(
+        child_manifest, child_error = _decompose_manifest._parse_manifest(
             _manifest('{"decision": "split", "children": [{"title": 42, "body": "x"}]}')
         )
         self.assertIsNone(child_manifest)
         self.assertIn("title or body", child_error)
 
     def test_non_string_body_rejected(self) -> None:
-        child_manifest, child_error = workflow._parse_manifest(
+        child_manifest, child_error = _decompose_manifest._parse_manifest(
             _manifest('{"decision": "split", "children": [{"title": "x", "body": ["a", "b"]}]}')
         )
         self.assertIsNone(child_manifest)
@@ -133,7 +136,7 @@ class ParseManifestEnvelopeTest(unittest.TestCase):
             '{"decision": "split", "rationale": "real", "children": [{"title": "A", "body": "do A", "depends_on": []}]}'
         )
         msg = f"Here is the schema:\n\n{sample}\n\nMy answer:\n\n{real}"
-        envelope_manifest, envelope_error = workflow._parse_manifest(msg)
+        envelope_manifest, envelope_error = _decompose_manifest._parse_manifest(msg)
         self.assertIsNone(envelope_manifest)
         self.assertIn("exactly one", envelope_error)
         self.assertIn("found 2", envelope_error)
@@ -145,7 +148,7 @@ class ParseManifestEnvelopeTest(unittest.TestCase):
         # either way, surface to the human rather than silently act.
         manifest_block = _manifest('{"decision": "single"}')
         msg = f"{manifest_block}\n\nP.S. hope this works"
-        envelope_manifest, envelope_error = workflow._parse_manifest(msg)
+        envelope_manifest, envelope_error = _decompose_manifest._parse_manifest(msg)
         self.assertIsNone(envelope_manifest)
         self.assertIn("final block", envelope_error)
 
@@ -155,7 +158,7 @@ class ParseManifestEnvelopeTest(unittest.TestCase):
         # content" guard.
         manifest_block = _manifest('{"decision": "single"}')
         msg = f"{manifest_block}\n\n   \n"
-        envelope_manifest, envelope_error = workflow._parse_manifest(msg)
+        envelope_manifest, envelope_error = _decompose_manifest._parse_manifest(msg)
         self.assertIsNone(envelope_error)
         self.assertEqual(envelope_manifest[KEY_DECISION], DECISION_SINGLE)
 
@@ -169,7 +172,7 @@ class ParseManifestEnvelopeTest(unittest.TestCase):
         # HITL/resume loop catches the typo.
         for raw in ("0", "false", '""', "0.0"):
             with self.subTest(raw=raw):
-                envelope_manifest, envelope_error = workflow._parse_manifest(
+                envelope_manifest, envelope_error = _decompose_manifest._parse_manifest(
                     _manifest(
                         '{"decision": "split", "children": ['
                         '{"title": "A", "body": "a"},'
@@ -188,21 +191,21 @@ class ParseManifestOptionsTest(unittest.TestCase):
         # value is a contract violation. This locks in the forgiving
         # behavior so a future tighten-up doesn't accidentally start
         # rejecting `"depends_on": null`.
-        options_manifest, options_error = workflow._parse_manifest(
+        options_manifest, options_error = _decompose_manifest._parse_manifest(
             _manifest('{"decision": "split", "children": [{"title": "A", "body": "a", "depends_on": null}]}')
         )
         self.assertIsNone(options_error)
         self.assertIsNotNone(options_manifest)
 
     def test_umbrella_flag_accepted(self) -> None:
-        options_manifest, options_error = workflow._parse_manifest(
+        options_manifest, options_error = _decompose_manifest._parse_manifest(
             _manifest('{"decision": "split", "umbrella": true, "children": [{"title": "A", "body": "a"}]}')
         )
         self.assertIsNone(options_error)
         self.assertTrue(options_manifest.get("umbrella"))
 
     def test_umbrella_default_missing(self) -> None:
-        options_manifest, options_error = workflow._parse_manifest(
+        options_manifest, options_error = _decompose_manifest._parse_manifest(
             _manifest('{"decision": "split", "children": [{"title": "A", "body": "a"}]}')
         )
         self.assertIsNone(options_error)
@@ -212,7 +215,7 @@ class ParseManifestOptionsTest(unittest.TestCase):
         # A typo like `"umbrella": "yes"` would be silently treated as
         # truthy if we coerced; reject so the standard invalid-options_manifest
         # HITL/resume loop catches it instead of mislabeling the parent.
-        options_manifest, options_error = workflow._parse_manifest(
+        options_manifest, options_error = _decompose_manifest._parse_manifest(
             _manifest('{"decision": "split", "umbrella": "yes", "children": [{"title": "A", "body": "a"}]}')
         )
         self.assertIsNone(options_manifest)
@@ -226,18 +229,18 @@ class ParseManifestOptionsTest(unittest.TestCase):
         # human for a self-inflicted reason. Round-trip the example
         # through the same parser the orchestrator runs on agent
         # output to keep the prompt and parser in lockstep.
-        prompt = workflow._build_decompose_prompt(
+        prompt = _prompts._build_decompose_prompt(
             _TEST_SPEC,
             make_issue(1, title="example", body="some body"),
             "",
             [_TEST_SPEC],
         )
-        manifest_match = workflow._MANIFEST_RE.search(prompt)
+        manifest_match = _decompose_manifest._MANIFEST_RE.search(prompt)
         self.assertIsNotNone(
             manifest_match,
             "prompt must contain a fenced example",
         )
-        options_manifest, options_error = workflow._parse_manifest(manifest_match.group(0))
+        options_manifest, options_error = _decompose_manifest._parse_manifest(manifest_match.group(0))
         self.assertIsNone(options_error, f"displayed example failed to parse: {options_error}")
         self.assertIsNotNone(options_manifest)
 
@@ -249,7 +252,7 @@ class BuildSingleDecisionCommentTest(unittest.TestCase):
     """
 
     def test_renders_rationale_files_and_notes(self) -> None:
-        comment = workflow._build_single_decision_comment(
+        comment = _prompts._build_single_decision_comment(
             {
                 KEY_DECISION: DECISION_SINGLE,
                 KEY_RATIONALE: "one small change",
@@ -268,7 +271,7 @@ class BuildSingleDecisionCommentTest(unittest.TestCase):
         self.assertIn("Bump the default and cover it in fakes.", comment)
 
     def test_omits_absent_optional_sections(self) -> None:
-        comment = workflow._build_single_decision_comment(
+        comment = _prompts._build_single_decision_comment(
             {
                 KEY_DECISION: DECISION_SINGLE,
                 KEY_RATIONALE: "trivial",
@@ -282,13 +285,13 @@ class BuildSingleDecisionCommentTest(unittest.TestCase):
     def test_missing_rationale_uses_placeholder(self) -> None:
         # `_parse_manifest` does not validate single-branch fields, so a
         # non-string / absent rationale must not crash rendering.
-        comment = workflow._build_single_decision_comment({KEY_DECISION: DECISION_SINGLE, KEY_RATIONALE: [1, 2, 3]})
+        comment = _prompts._build_single_decision_comment({KEY_DECISION: DECISION_SINGLE, KEY_RATIONALE: [1, 2, 3]})
         self.assertIn("(no rationale provided)", comment)
 
     def test_drops_malformed_files_and_notes(self) -> None:
         # Non-list files, non-string entries, and non-string notes are
         # sanitized away rather than rendered or raised on.
-        comment = workflow._build_single_decision_comment(
+        comment = _prompts._build_single_decision_comment(
             {
                 KEY_DECISION: DECISION_SINGLE,
                 KEY_RATIONALE: "ok",
@@ -303,7 +306,7 @@ class BuildSingleDecisionCommentTest(unittest.TestCase):
         self.assertNotIn("**Implementation notes:**", comment)
 
     def test_non_list_affected_files_omits_section(self) -> None:
-        comment = workflow._build_single_decision_comment(
+        comment = _prompts._build_single_decision_comment(
             {
                 KEY_DECISION: DECISION_SINGLE,
                 KEY_RATIONALE: "ok",

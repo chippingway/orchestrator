@@ -16,7 +16,8 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.engine import dispatch as _dispatch
 
 from tests.fakes import (
     FakeComment,
@@ -165,7 +166,7 @@ class InReviewRoutesFreshFeedbackToFixingTest(
 
         with patch.object(config, "IN_REVIEW_DEBOUNCE_SECONDS", REVIEW_DEBOUNCE_SECONDS):
             mocks = self._run(
-                lambda: workflow._process_issue(gh, _TEST_SPEC, issue),
+                lambda: _dispatch._process_issue(gh, _TEST_SPEC, issue),
                 run_agent=_agent(),
             )
 

@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The agent-message contract, and the facade still forwarding it.
+"""The agent-message contract.
 
 Three behaviors carry the weight here. Agent stderr is redacted before it is
 trimmed, so a secret straddling either budget cannot survive as a partial
@@ -15,7 +15,6 @@ import os
 import unittest
 from unittest.mock import patch
 
-from orchestrator import workflow
 from orchestrator.agents import AgentResult
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import messages
@@ -28,27 +27,6 @@ _REDACTION_MARKER = "***"
 _CONTINUE_COMMAND = "/orchestrator continue"
 _REFUSAL_ISSUE_NUMBER = 1011
 _WATERMARK_KEY = "last_action_comment_id"
-# Every name the historical facade still has to answer for, and the facade it
-# answers on. Live issues and external operator scripts reach the owner through
-# these, so a forward that stops resolving is a break, not a rename.
-_FACADE_FORWARDS = (
-    (workflow, (
-        "_CONTINUE_PARK_REASONS",
-        "_STDERR_TAIL_BUDGET",
-        "_as_blockquote",
-        "_continue_command_action",
-        "_drift_ack_reason",
-        "_format_stderr_diagnostics",
-        "_is_bare_orchestrator_continue",
-        "_parse_documentation_verdict",
-        "_parse_orchestrator_continue",
-        "_parse_review_verdict",
-        "_refuse_parked_continue",
-        "_stderr_log_tail",
-    )),
-)
-
-
 def _agent_result(stderr: str) -> AgentResult:
     return AgentResult(
         session_id=_AGENT_SESSION_ID, last_message="", exit_code=1,
@@ -256,19 +234,6 @@ class RefuseParkedContinueTest(unittest.TestCase):
         self.assertIn("needs your actual", posted_body)
         # Past BOTH the command and the refusal itself.
         self.assertEqual(state.get(_WATERMARK_KEY), gh.latest_comment_id(issue))
-
-
-class MessageFacadeForwardTest(unittest.TestCase):
-    """The historical facade resolves to the owner's exact object."""
-
-    def test_facades_forward_the_owner_objects(self) -> None:
-        for facade, forwarded_names in _FACADE_FORWARDS:
-            for forwarded_name in forwarded_names:
-                with self.subTest(facade=facade.__name__, name=forwarded_name):
-                    self.assertIs(
-                        getattr(facade, forwarded_name),
-                        getattr(messages, forwarded_name),
-                    )
 
 
 if __name__ == "__main__":

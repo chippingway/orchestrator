@@ -6,7 +6,8 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.engine import comments as _comments
 
 from tests.fakes import (
     FakeComment,
@@ -51,7 +52,7 @@ PR_LAST_COMMENT_ID = "pr_last_comment_id"
 DEBOUNCE_SETTING = "IN_REVIEW_DEBOUNCE_SECONDS"
 RUN_AGENT = "run_agent"
 LONG_AGO = datetime.now(timezone.utc) - timedelta(hours=1)
-ORCHESTRATOR_MARKER = workflow._ORCH_COMMENT_MARKER
+ORCHESTRATOR_MARKER = _comments._ORCH_COMMENT_MARKER
 
 
 class HandoffWithoutPickupIdLegacyStateTest(unittest.TestCase, _PatchedWorkflowMixin):

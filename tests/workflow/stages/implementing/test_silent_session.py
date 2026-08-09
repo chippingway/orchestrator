@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume
+from orchestrator.workflow.stages.implementing import state as _implementing_state
+
 from tests.workflow.stages.implementing import retry_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
@@ -31,7 +34,6 @@ _TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 make_issue = support.make_issue
 patch = support.patch
-workflow = support.workflow
 _agent_runner = support.agent_runner
 _worktree_creation = support.worktree_creation
 
@@ -60,7 +62,7 @@ class SilentSessionResumeFallbackTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
 
         self.assertEqual(
             run_agent.call_args.kwargs.get(RESUME_SESSION_ID),
@@ -77,7 +79,7 @@ class SilentSessionResumeFallbackTest(
         # `resume_session_id=None`, persist the new session id from the
         # result, and reset the silent-park streak so the new session
         # starts with a clean budget.
-        threshold = workflow._SILENT_PARKS_BEFORE_FRESH_SESSION
+        threshold = _implementing_state._SILENT_PARKS_BEFORE_FRESH_SESSION
         gh, issue = self._seeded_issue(silent_park_count=threshold)
         state = gh.read_pinned_state(issue)
 
@@ -87,7 +89,7 @@ class SilentSessionResumeFallbackTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
 
         self.assertIsNone(
             run_agent.call_args.kwargs.get(RESUME_SESSION_ID),
@@ -107,7 +109,7 @@ class SilentSessionResumeFallbackTest(
         # be removed from pinned state. Otherwise `_read_dev_session` on
         # the next tick returns the dead session and the resume loop
         # re-poisons itself.
-        threshold = workflow._SILENT_PARKS_BEFORE_FRESH_SESSION
+        threshold = _implementing_state._SILENT_PARKS_BEFORE_FRESH_SESSION
         gh, issue = self._seeded_issue(silent_park_count=threshold)
         state = gh.read_pinned_state(issue)
 
@@ -119,7 +121,7 @@ class SilentSessionResumeFallbackTest(
                 lambda *args, **kwargs: _agent(session_id="", last_message=""),
             ),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
 
         self.assertIsNone(
             state.get(KEY_DEV_SESSION_ID),
@@ -132,7 +134,7 @@ class SilentSessionResumeFallbackTest(
         # next tick's `_read_dev_session` falls through the new keys
         # (because `dev_session_id` is None) and resurrects the poisoned
         # legacy id.
-        threshold = workflow._SILENT_PARKS_BEFORE_FRESH_SESSION
+        threshold = _implementing_state._SILENT_PARKS_BEFORE_FRESH_SESSION
         gh = FakeGitHubClient()
         issue = make_issue(LEGACY_FRESH_SESSION_ISSUE, label=LABEL_IMPLEMENTING)
         gh.add_issue(issue)
@@ -150,7 +152,7 @@ class SilentSessionResumeFallbackTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
 
         # Backend stays locked to codex (legacy).
         self.assertEqual(run_agent.call_args.args[0], BACKEND_CODEX)

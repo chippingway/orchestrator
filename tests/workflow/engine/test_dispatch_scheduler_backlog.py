@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from orchestrator import workflow
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
+from orchestrator.workflow.engine import tick as _tick
 
 from tests.workflow.engine.dispatch_scheduler_workers import patch_base_refresh
 
@@ -59,7 +59,7 @@ class BacklogDispatchFilterTest(_BacklogDispatchFixture):
                 side_effect=process,
             ),
         ):
-            workflow.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
             self.assertTrue(
                 process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS),
                 FANOUT_START_TIMEOUT_MESSAGE,

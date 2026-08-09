@@ -26,8 +26,8 @@ _OWNER_MODULES = MappingProxyType({
     owner: import_module(f"{_PACKAGE}.{owner}") for owner in _OWNERS
 })
 
-# The divergence probe, named once because it recurs in the owner surface
-# below and in the facade slice under it.
+# The divergence probe, named once because it recurs across the owner surface
+# below.
 _AHEAD_BEHIND = "_branch_ahead_behind"
 
 # What each owner defines: the whole publication surface, split by the module a
@@ -93,21 +93,6 @@ _FOREIGN_LOOKUPS = tuple(
     for name, owner in _OWNER_OF.items()
     for sibling in _OWNERS
     if sibling != owner
-)
-
-# The one aggregate facade above the package, and the slice of these names it
-# answers for: seven. Every other name is the owner's alone, so this is the
-# whole set of second sites one of them can be patched at.
-_FACADE = "orchestrator.workflow"
-
-_FACADE_PUBLISHED = (
-    _AHEAD_BEHIND,
-    "_first_commit_subject",
-    "_infer_subject_prefix",
-    "_is_conventional_subject",
-    "_is_prefixed_subject",
-    "_pr_title_from_commit_or_issue",
-    "_squash_and_force_push",
 )
 
 # Every flat spelling a publication helper could be reached through beside the
@@ -176,10 +161,9 @@ class PackageSurfaceTest(unittest.TestCase):
 class OwnerBoundaryTest(unittest.TestCase):
     """No facade of this domain's own, and no sibling, answers for a name.
 
-    The workflow facade still answers for the slice below, so a caller reading
-    a name there is patched there; what this class holds to is that nothing in
-    the package's own layer, and no second aggregate above it, becomes a
-    further site the same name resolves at.
+    Each name answers on the owner that defines it, so what this class holds to
+    is that nothing in the package's own layer, and no aggregate above it,
+    becomes a second site the same name resolves at.
     """
 
     def test_no_flat_module_sits_beside_the_package(self) -> None:
@@ -217,29 +201,6 @@ class OwnerBoundaryTest(unittest.TestCase):
         for owner, names in _DEFINED_CALLABLES.items():
             with self.subTest(owner=owner):
                 self.assertEqual(_defined_here(owner), tuple(sorted(names)))
-
-
-class AggregateFacadeTest(unittest.TestCase):
-    """The facade above answers for its declared slice and nothing more."""
-
-    def test_the_facade_answers_for_its_slice_alone(self) -> None:
-        # The facade hands back the owner's own object and caches it, so
-        # patching there and patching the owner are two interceptions rather
-        # than one -- which makes which names it carries the boundary a caller
-        # has to be read against.
-        for name in _OWNER_OF:
-            with self.subTest(name=name):
-                self._assert_facade_answer(name)
-
-    def _assert_facade_answer(self, name: str) -> None:
-        facade = import_module(_FACADE)
-        owned = getattr(_OWNER_MODULES[_OWNER_OF[name]], name)
-        if name in _FACADE_PUBLISHED:
-            self.assertIs(getattr(facade, name), owned)
-        else:
-            # `log` is the case identity has to decide: the facade publishes a
-            # logger of its own under that name, and it is not this one.
-            self.assertIsNot(getattr(facade, name, None), owned)
 
 
 class LoggerChannelTest(unittest.TestCase):

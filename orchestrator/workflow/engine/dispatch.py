@@ -55,6 +55,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import importlib
+import logging
 import time
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -63,18 +64,23 @@ from typing import Mapping, Optional
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import (
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.issues import (
     _ISSUE_STATE_CLOSED,
     _ISSUE_STATE_OPEN,
-    _PROCESSING_FAILED_LOG,
     _STATE_ATTR,
-    log,
 )
-from orchestrator.github.client import GitHubClient
 from orchestrator.observability.analytics import recording
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
+
+# Every isolated per-issue failure reports through one line so an operator
+# grepping a tick's log sees the same shape whether the issue was dispatched
+# sequentially, refetched on a worker, or drained from the family bucket.
+_PROCESSING_FAILED_LOG = "repo=%s issue=#%s processing failed"
 
 _FAMILY_AWARE_LABELS = frozenset((
     WorkflowLabel.DECOMPOSING, WorkflowLabel.BLOCKED, WorkflowLabel.UMBRELLA,
@@ -110,17 +116,6 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
         f"{_CONFLICTS_PACKAGE}.handler", "_handle_resolving_conflict",
     ),
     "question": (f"{_QUESTION_PACKAGE}.handler", "_handle_question"),
-})
-
-# The label -> handler-name half of the table above, kept as its own mapping
-# because that is the shape the workflow facade publishes and callers outside
-# the package read. The targets table itself stays owner-private: the facade's
-# inventory is the historical surface, not a mirror of this module. Derived
-# rather than spelled out so a stage added to the targets cannot be missing
-# from the view.
-_ISSUE_HANDLER_NAMES: Mapping[Optional[str], str] = MappingProxyType({
-    label: handler_name
-    for label, (_module_name, handler_name) in _STAGE_HANDLER_TARGETS.items()
 })
 
 

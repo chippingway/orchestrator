@@ -10,7 +10,6 @@ import pathlib
 from unittest import mock
 
 from orchestrator import config as _config
-from orchestrator import workflow as _workflow
 from orchestrator.git.worktrees import paths as _git_worktree_paths
 from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
 from orchestrator.workflow.stages.fixing import (
@@ -28,7 +27,6 @@ timezone = datetime_module.timezone
 Path = pathlib.Path
 MagicMock = mock.MagicMock
 patch = mock.patch
-workflow = _workflow
 worktree_paths = _git_worktree_paths
 
 FakeComment = fakes.FakeComment
@@ -47,8 +45,7 @@ _PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
 _agent = workflow_helpers._agent
 
 # The dev-fix disposition is a validating owner the fixing resume imports
-# directly, so a test that has to wrap it patches the owner rather than the
-# workflow facade.
+# directly, so a test that has to wrap it patches that owner.
 dev_fix = _dev_fix
 
 _clear_pending_fix_bookmarks = _bookmarks._clear_pending_fix_bookmarks

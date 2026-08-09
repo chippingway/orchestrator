@@ -14,10 +14,11 @@ manifest it no longer describes.
 """
 from __future__ import annotations
 
+import logging
+
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
@@ -27,6 +28,8 @@ from orchestrator.workflow.stages.decomposition import activation as _activation
 from orchestrator.workflow.stages.decomposition import parents as _parents
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _handle_empty_umbrella(

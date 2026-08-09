@@ -264,7 +264,8 @@ The security posture:
   nothing secret-shaped to redact because nothing secret is included by construction.
 - **Write-containment is unchanged.** The orchestrator pushes only the *current* issue's branch from the current
   worktree, via an explicit `HEAD:refs/heads/<branch>` refspec under the hardened git envelope
-  ([`architecture.md#push-path`](architecture.md#push-path-workflow_push_branch)). If a misled agent edits a sibling
+  ([`architecture.md#push-path`](architecture.md#push-path-gitauthentication_push_branch)). If a misled agent edits a
+  sibling
   checkout, nothing the orchestrator does publishes it — it surfaces as a dirty foreign tree, never as a PR. The
   block's framing also states every listed path is read-only.
 - **Prompt-injection blast radius.** Untrusted issue / comment text could now point an agent at a named sibling path,

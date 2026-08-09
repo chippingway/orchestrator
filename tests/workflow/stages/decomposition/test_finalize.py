@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.stages.decomposition import blocked as _blocked
+from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
 
 from tests.fakes import (
     FakeGitHubClient,
@@ -86,7 +87,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
 
         self._run(
-            lambda: workflow._handle_blocked(gh, _TEST_SPEC, parent),
+            lambda: _blocked._handle_blocked(gh, _TEST_SPEC, parent),
             run_agent=_agent(),
         )
 
@@ -126,7 +127,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
 
         self._run(
-            lambda: workflow._handle_umbrella(gh, _TEST_SPEC, parent),
+            lambda: _umbrella._handle_umbrella(gh, _TEST_SPEC, parent),
             run_agent=_agent(),
         )
 
@@ -167,7 +168,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
         gh.seed_state(UNMERGED_PARENT_NUMBER, children=[UNMERGED_CHILD_NUMBER])
 
         self._run(
-            lambda: workflow._handle_blocked(gh, _TEST_SPEC, parent),
+            lambda: _blocked._handle_blocked(gh, _TEST_SPEC, parent),
             run_agent=_agent(),
         )
 

@@ -6,7 +6,7 @@ import logging
 import time
 from pathlib import Path
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import tick as _tick
 
 from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow_helpers import (
@@ -40,7 +40,7 @@ RELABELLED_FANOUT_ISSUE_NUMBER = 50
 
 
 def _assert_drain_stalls(test_case, client, scheduler, process) -> None:
-    workflow.tick(client, test_case._spec(), scheduler=scheduler)
+    _tick.tick(client, test_case._spec(), scheduler=scheduler)
     test_case.assertTrue(
         process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS),
         "drain did not enter the first family-aware issue",
@@ -48,7 +48,7 @@ def _assert_drain_stalls(test_case, client, scheduler, process) -> None:
     time.sleep(0.1)
     test_case.assertFalse(process.starts[2].is_set())
     test_case.assertEqual(process.maximum_in_flight, 1)
-    workflow.tick(client, test_case._spec(), scheduler=scheduler)
+    _tick.tick(client, test_case._spec(), scheduler=scheduler)
     time.sleep(0.1)
     test_case.assertFalse(process.starts[2].is_set())
     test_case.assertEqual(process.maximum_in_flight, 1)
@@ -70,7 +70,7 @@ def _assert_drain_complete(test_case, scheduler, process) -> None:
 
 
 def _start_sequential_pair(test_case, client, scheduler, process) -> int:
-    workflow.tick(client, test_case._spec(), scheduler=scheduler)
+    _tick.tick(client, test_case._spec(), scheduler=scheduler)
     started_first = _wait_for_first_started(process.starts)
     test_case.assertIsNotNone(started_first)
     time.sleep(0.1)
@@ -130,14 +130,14 @@ class FamilyBucketRoutingTest(_SchedulerWorkflowTest):
 
         process = self._processor(1, 2)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(), scheduler=sched)
+            _tick.tick(gh, self._spec(), scheduler=sched)
             self.assertTrue(process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS))
 
             with self.assertLogs(
                 "orchestrator.workflow",
                 level=logging.INFO,
             ) as logs:
-                workflow.tick(gh, self._spec(), scheduler=sched)
+                _tick.tick(gh, self._spec(), scheduler=sched)
                 log_output = logs.output
             self.assertTrue(
                 any("family bucket" in message and "not submitted" in message for message in log_output),
@@ -158,7 +158,7 @@ class FamilyBucketRoutingTest(_SchedulerWorkflowTest):
 
         process = self._processor(FAMILY_ISSUE_NUMBER)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(), scheduler=sched)
+            _tick.tick(gh, self._spec(), scheduler=sched)
             self.assertTrue(
                 process.starts[FAMILY_ISSUE_NUMBER].wait(
                     timeout=EVENT_TIMEOUT_SECONDS,
@@ -216,7 +216,7 @@ class FamilyBucketRoutingTest(_SchedulerWorkflowTest):
             patch_base_refresh(),
             _patch_process_issue(side_effect=process),
         ):
-            workflow.tick(gh, self._spec(), scheduler=sched)
+            _tick.tick(gh, self._spec(), scheduler=sched)
             self.assertTrue(
                 _wait_for_log(logs, "already in flight", "#50"),
                 logs.output,

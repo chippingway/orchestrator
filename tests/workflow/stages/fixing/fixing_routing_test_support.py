@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 from unittest import mock
 
-from orchestrator import config, workflow as workflow
+from orchestrator import config
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.validating import (
     recovery as _validating_recovery,
@@ -240,8 +240,7 @@ class _FixingWorktreeDriftFixtureMixin:
                 )
             )
             # The parked dispatch imports the recovery attempt from the
-            # validating owner, so the mock has to land there rather than on
-            # the workflow facade.
+            # validating owner, so the mock has to land there.
             stack.enter_context(
                 patch.object(
                     _validating_recovery,

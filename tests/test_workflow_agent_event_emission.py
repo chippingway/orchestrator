@@ -6,10 +6,12 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.workflow.stages.validating import (
     watermarks as _validating_watermarks,
 )
+from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.validating import handler as _validating
 
 from tests import workflow_event_emission_test_support as support
 
@@ -30,7 +32,7 @@ class AgentLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflo
         issue = support.make_issue(1, label=support.LABEL_IMPLEMENTING)
         gh.add_issue(issue)
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(session_id="sess-dev", last_message="q?"),
             has_new_commits=False,
         )
@@ -106,7 +108,7 @@ class AgentLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflo
             return_value=(None, None),
         ):
             self._run(
-                lambda: workflow._handle_validating(gh, support._TEST_SPEC, issue),
+                lambda: _validating._handle_validating(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id="sess-review",
                     last_message=support.REVIEW_APPROVED_MESSAGE,
@@ -160,7 +162,7 @@ class AgentLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflo
             dev_agent="codex", dev_session_id="sess-resume",
         )
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(session_id="sess-resume", last_message="q?"),
             has_new_commits=False,
         )
@@ -174,7 +176,7 @@ class AgentLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflo
         issue = support.make_issue(4, label=support.LABEL_IMPLEMENTING)
         gh.add_issue(issue)
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(timed_out=True, last_message=""),
             has_new_commits=False,
             # before_sha == after_sha: the timeout produced no new commit, so

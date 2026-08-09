@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume
+from orchestrator.workflow.stages.implementing import session_read as _session_read
+
 from tests.workflow.stages.implementing import retry_test_support as support
 
 IssueScenario = support.IssueScenario
@@ -30,7 +33,6 @@ _StaleSessionFixtureMixin = support._StaleSessionFixtureMixin
 _TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 patch = support.patch
-workflow = support.workflow
 _agent_runner = support.agent_runner
 _worktree_creation = support.worktree_creation
 
@@ -59,7 +61,7 @@ class StaleSessionClassifierTest(unittest.TestCase, _StaleSessionFixtureMixin):
             with self.subTest(stderr=stderr):
                 agent_result = _agent(session_id="", last_message="", stderr=stderr)
                 self.assertTrue(
-                    workflow._is_stale_session_failure(BACKEND_CLAUDE, agent_result),
+                    _session_read._is_stale_session_failure(BACKEND_CLAUDE, agent_result),
                     f"{stderr!r} should be classified stale-session",
                 )
 
@@ -69,7 +71,7 @@ class StaleSessionClassifierTest(unittest.TestCase, _StaleSessionFixtureMixin):
             last_message="",
             stderr="Error: rate limited, please retry shortly",
         )
-        self.assertFalse(workflow._is_stale_session_failure(BACKEND_CLAUDE, agent_result))
+        self.assertFalse(_session_read._is_stale_session_failure(BACKEND_CLAUDE, agent_result))
 
     def test_marker_detector_only_triggers_for_claude(self) -> None:
         # Codex has no analogous stable marker today; the detector must
@@ -79,7 +81,7 @@ class StaleSessionClassifierTest(unittest.TestCase, _StaleSessionFixtureMixin):
             last_message="",
             stderr="No conversation found with session ID: xyz",
         )
-        self.assertFalse(workflow._is_stale_session_failure(BACKEND_CODEX, agent_result))
+        self.assertFalse(_session_read._is_stale_session_failure(BACKEND_CODEX, agent_result))
 
 
 class StaleSessionImmediateRetryTest(
@@ -110,7 +112,7 @@ class StaleSessionImmediateRetryTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(scenario.github, _TEST_SPEC, scenario.issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(scenario.github, _TEST_SPEC, scenario.issue, state, RESUME_TEXT)
 
         resume_ids = [agent_call.kwargs.get(RESUME_SESSION_ID) for agent_call in run_agent.call_args_list]
         self.assertEqual(
@@ -147,7 +149,7 @@ class StaleSessionImmediateRetryTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
 
         self.assertIsNone(
             state.get(KEY_DEV_SESSION_ID),
@@ -172,7 +174,7 @@ class StaleSessionImmediateRetryTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            _, agent_result, _ = workflow._resume_dev_with_text(
+            _, agent_result, _ = _implementing_resume._resume_dev_with_text(
                 scenario.github,
                 _TEST_SPEC,
                 scenario.issue,
@@ -209,7 +211,7 @@ class StaleSessionImmediateRetryTest(
             patch.object(_worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, RESUME_TEXT)
 
         self.assertEqual(
             [run_agent.call_args.kwargs.get(RESUME_SESSION_ID)],

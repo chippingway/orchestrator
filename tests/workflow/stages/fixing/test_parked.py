@@ -34,7 +34,7 @@ _FixingFixtureMixin = support._FixingFixtureMixin
 _agent = support._agent
 config = support.config
 patch = support.patch
-workflow = support.workflow
+worktree_paths = support.worktree_paths
 
 
 class FixingParkIsolationTest(unittest.TestCase, _FixingFixtureMixin):
@@ -71,7 +71,7 @@ class FixingParkIsolationTest(unittest.TestCase, _FixingFixtureMixin):
 
         with (
             patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS),
-            patch.object(workflow, WORKTREE_PATH, return_value=TEMP_ROOT),
+            patch.object(worktree_paths, WORKTREE_PATH, return_value=TEMP_ROOT),
         ):
             mocks = self._run_fixing(
                 gh,
@@ -123,7 +123,7 @@ class FixingParkIsolationTest(unittest.TestCase, _FixingFixtureMixin):
 
         with (
             patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS),
-            patch.object(workflow, WORKTREE_PATH, return_value=TEMP_ROOT),
+            patch.object(worktree_paths, WORKTREE_PATH, return_value=TEMP_ROOT),
         ):
             mocks = self._run_fixing(
                 gh,
@@ -166,7 +166,7 @@ class FixingParkIsolationTest(unittest.TestCase, _FixingFixtureMixin):
 
         with (
             patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS),
-            patch.object(workflow, WORKTREE_PATH, return_value=TEMP_ROOT),
+            patch.object(worktree_paths, WORKTREE_PATH, return_value=TEMP_ROOT),
         ):
             mocks = self._run_fixing(
                 gh,

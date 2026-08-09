@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.decomposition import run as _decomposing
+
 from tests import implementing_full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
@@ -36,7 +38,6 @@ _FullSpecFixtureMixin = support._FullSpecFixtureMixin
 _TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 make_issue = support.make_issue
-workflow = support.workflow
 
 
 def _assert_recorded_codex_call(
@@ -193,7 +194,7 @@ class FullSpecDecomposerNoSessionTest(
         # The spec must still land in pinned state so a later config
         # flip cannot retarget the awaiting-human resume.
         self._run(
-            lambda: workflow._handle_decomposing(gh, _TEST_SPEC, issue),
+            lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, issue),
             run_agent=_agent(session_id="", last_message="please clarify"),
         )
 
@@ -223,7 +224,7 @@ class FullSpecDecomposerNoSessionTest(
             )
         )
         self._run(
-            lambda: workflow._handle_decomposing(gh, _TEST_SPEC, issue),
+            lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id="",
                 last_message="please clarify scope",
@@ -251,7 +252,7 @@ class FullSpecDecomposerNoSessionTest(
             self.addCleanup(config_patch.stop)
 
         mocks = self._run(
-            lambda: workflow._handle_decomposing(gh, _TEST_SPEC, issue),
+            lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id="dec-67033",
                 last_message=(

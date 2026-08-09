@@ -22,16 +22,18 @@ holding that snapshot for however long the agent ran.
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from github.Issue import Issue
 
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _ignore_if_interrupted(issue: Issue, agent_result: AgentResult) -> bool:

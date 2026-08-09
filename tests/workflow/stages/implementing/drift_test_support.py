@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import drift as _drift
 from tests import fakes, implementing_fixing_test_cases, workflow_helpers
 
 FakeComment = fakes.FakeComment
@@ -64,7 +64,7 @@ def _seed_parked_implementing(
     )
     issue.comments.append(command)
     gh.add_issue(issue)
-    content_hash = workflow._compute_user_content_hash(issue, set()) if drift_neutral else STALE_CONTENT_HASH
+    content_hash = _drift._compute_user_content_hash(issue, set()) if drift_neutral else STALE_CONTENT_HASH
     gh.seed_state(
         number,
         user_content_hash=content_hash,

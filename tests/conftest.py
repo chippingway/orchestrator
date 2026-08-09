@@ -3,7 +3,8 @@
 """Pytest fixtures shared by the whole test suite.
 
 The only fixture here disables the analytics sinks for every test.
-`workflow._run_agent_tracked` reads `analytics.ANALYTICS_LOG_PATH` at
+`_run_agent_tracked` on `workflow/engine/usage.py` reads
+`analytics.ANALYTICS_LOG_PATH` at
 call time and appends a record per tracked agent run; the analytics
 module's default points at `<LOG_DIR>/analytics.jsonl` under the repo
 root, so any test that drives a stage handler (directly or via the

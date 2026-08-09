@@ -11,11 +11,7 @@ from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 from unittest.mock import patch
 
-from orchestrator import (
-    _workflow_export_manifest,
-    skills as _package,
-    workflow as _workflow,
-)
+from orchestrator import skills as _package
 
 
 _PACKAGE = "orchestrator.skills"
@@ -37,11 +33,10 @@ _OWNER_MODULES = MappingProxyType({
 
 _EMIT_CATALOG = "_emit_repo_skill_catalog"
 
-# What a live caller reaches each owner for: the per-tick producer the workflow
-# facade still exports, and the two per-run codex collectors. `__module__` is
-# what holds them here, so the offered-tools baseline `discover_codex_tools`
-# answers with -- a plain tuple carrying no stamp -- is pinned by
-# `tests/skills/test_discovery.py` instead.
+# What a live caller reaches each owner for: the per-tick catalog producer and
+# the two per-run codex collectors. `__module__` is what holds them here, so the
+# offered-tools baseline `discover_codex_tools` answers with -- a plain tuple
+# carrying no stamp -- is pinned by `tests/skills/test_discovery.py` instead.
 _OWNED_CALLABLES = MappingProxyType({
     _CATALOG_OWNER: (_EMIT_CATALOG,),
     _DISCOVERY_OWNER: ("discover_codex_tools", "discover_local_skills"),
@@ -53,12 +48,10 @@ _TICK = "orchestrator.workflow.engine.tick"
 
 # A catalog is observation the tick drives, never state a handler consults, so
 # no owner may read the workflow engine, a stage, or an application entrypoint
-# back. The flat `_workflow_*` inventory is the sharpest entry: resolving any
-# name on it imports the leaf that holds it.
+# back.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.__main__",
     "orchestrator._main",
-    "orchestrator._workflow",
     "orchestrator.cli",
     "orchestrator.main",
     "orchestrator.workflow",
@@ -188,8 +181,8 @@ class PackageSurfaceTest(unittest.TestCase):
 
     def test_no_surface_or_resolver_declared(self) -> None:
         # Callers name an owner, so there is nothing here to publish and no
-        # lazy inventory to rebuild -- a hook or an `__all__` would be the
-        # facade this destination replaces.
+        # lazy inventory to rebuild -- a hook or an `__all__` would make this
+        # initializer a second site the same names answer at.
         self.assertNotIn("__all__", _package.__dict__)
         for hook in _RESOLVER_HOOKS:
             with self.subTest(hook=hook):
@@ -224,26 +217,12 @@ class CallSiteTest(unittest.TestCase):
     """Both live producers resolve through the owner they drive."""
 
     def test_the_tick_names_the_catalog_owner(self) -> None:
-        # The per-tick pass is reached on its owner rather than as a facade
-        # attribute, so that is where a test intercepting it has to patch --
-        # and the tick pays for that owner at import.
+        # The per-tick pass is reached on the module that defines it, so that
+        # is where a test intercepting it has to patch -- and the tick pays for
+        # that owner at import.
         self.assertIn(
             _OWNER_MODULES[_CATALOG_OWNER].__name__,
             _imported_orchestrator_modules(_TICK),
-        )
-
-    def test_the_workflow_facade_exports_the_owner(self) -> None:
-        # The historical export outlives the call site that used to resolve
-        # through it, and it answers with the owner's own object.
-        owner = _OWNER_MODULES[_CATALOG_OWNER]
-        targets = [
-            target.module_name
-            for target in _workflow_export_manifest.EXPORTS
-            if target.export_name == _EMIT_CATALOG
-        ]
-        self.assertEqual(targets, [owner.__name__])
-        self.assertIs(
-            getattr(_workflow, _EMIT_CATALOG), getattr(owner, _EMIT_CATALOG),
         )
 
     def test_codex_backfill_reads_the_owner(self) -> None:

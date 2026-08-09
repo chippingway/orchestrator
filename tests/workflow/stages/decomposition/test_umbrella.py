@@ -6,7 +6,6 @@ import unittest
 from typing import Optional
 from unittest.mock import patch
 
-from orchestrator import workflow
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
 
@@ -85,7 +84,7 @@ def _run_umbrella(
     parent: FakeIssue,
 ) -> None:
     case._run(
-        lambda: workflow._handle_umbrella(gh, _TEST_SPEC, parent),
+        lambda: _umbrella._handle_umbrella(gh, _TEST_SPEC, parent),
         run_agent=_agent(),
     )
 

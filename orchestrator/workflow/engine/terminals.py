@@ -36,24 +36,26 @@ later drift or watermark tick reads it as orchestrator-authored.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator._workflow_state import (
-    _ISSUE_STATE_CLOSED,
-    _ISSUE_STATE_OPEN,
-    _STATE_ATTR,
-    log,
-)
 from orchestrator.git.worktrees import terminal as _worktree_terminal
 from orchestrator.git.worktrees.paths import _resolve_branch_name
 from orchestrator.github.client import GitHubClient
+from orchestrator.github.issues import (
+    _ISSUE_STATE_CLOSED,
+    _ISSUE_STATE_OPEN,
+    _STATE_ATTR,
+)
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _finalize_if_pr_merged(

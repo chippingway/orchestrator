@@ -23,8 +23,9 @@ right tree on disk.
 """
 from __future__ import annotations
 
+import logging
+
 from orchestrator import config
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import creation as _worktree_creation
@@ -35,6 +36,8 @@ from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.question import models as _models
 from orchestrator.workflow.stages.question import run as _run
 from orchestrator.workflow.stages.question import state as _state
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _assess_question_outcome(

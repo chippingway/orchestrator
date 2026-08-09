@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.fixing import handler as _fixing
+
 from tests.workflow.stages.fixing import (
     fixing_routing_test_support as support,
 )
@@ -24,7 +26,6 @@ SILENT_PARK_ISSUE = support.SILENT_PARK_ISSUE
 UNPUSHED_REBASE_ISSUE = support.UNPUSHED_REBASE_ISSUE
 _FixingWorktreeDriftFixtureMixin = support._FixingWorktreeDriftFixtureMixin
 _TEST_SPEC = support._TEST_SPEC
-workflow = support.workflow
 
 
 class FixingWorktreeDriftRoutingTest(
@@ -37,7 +38,7 @@ class FixingWorktreeDriftRoutingTest(
         gh = FakeGitHubClient()
         self._seed_parked_fixing(gh, BEHIND_BASE_ISSUE)
         with self._drift_patches(2):
-            workflow._handle_fixing(gh, _TEST_SPEC, gh.get_issue(BEHIND_BASE_ISSUE))
+            _fixing._handle_fixing(gh, _TEST_SPEC, gh.get_issue(BEHIND_BASE_ISSUE))
         self._assert_routed(gh, BEHIND_BASE_ISSUE)
         self.recover.assert_called_once()
 
@@ -48,7 +49,7 @@ class FixingWorktreeDriftRoutingTest(
         gh = FakeGitHubClient()
         self._seed_parked_fixing(gh, UNPUSHED_REBASE_ISSUE)
         with self._drift_patches(0, local_head="079210cabc"):
-            workflow._handle_fixing(gh, _TEST_SPEC, gh.get_issue(UNPUSHED_REBASE_ISSUE))
+            _fixing._handle_fixing(gh, _TEST_SPEC, gh.get_issue(UNPUSHED_REBASE_ISSUE))
         self._assert_routed(gh, UNPUSHED_REBASE_ISSUE)
 
     def test_stuck_push_failed_in_sync_stays_parked(self) -> None:
@@ -58,7 +59,7 @@ class FixingWorktreeDriftRoutingTest(
         gh = FakeGitHubClient()
         self._seed_parked_fixing(gh, IN_SYNC_ISSUE)
         with self._drift_patches(0, local_head=DRIFT_PR_HEAD):
-            workflow._handle_fixing(gh, _TEST_SPEC, gh.get_issue(IN_SYNC_ISSUE))
+            _fixing._handle_fixing(gh, _TEST_SPEC, gh.get_issue(IN_SYNC_ISSUE))
 
         self.assertNotIn((IN_SYNC_ISSUE, LABEL_RESOLVING_CONFLICT), gh.label_history)
         self.assertTrue(gh.pinned_data(IN_SYNC_ISSUE).get(KEY_AWAITING_HUMAN))
@@ -70,7 +71,7 @@ class FixingWorktreeDriftRoutingTest(
         gh = FakeGitHubClient()
         self._seed_parked_fixing(gh, DIRTY_WORKTREE_ISSUE)
         with self._drift_patches(5, dirty=("src/x.py",)):
-            workflow._handle_fixing(gh, _TEST_SPEC, gh.get_issue(DIRTY_WORKTREE_ISSUE))
+            _fixing._handle_fixing(gh, _TEST_SPEC, gh.get_issue(DIRTY_WORKTREE_ISSUE))
 
         self.assertNotIn((DIRTY_WORKTREE_ISSUE, LABEL_RESOLVING_CONFLICT), gh.label_history)
         self.assertTrue(gh.pinned_data(DIRTY_WORKTREE_ISSUE).get(KEY_AWAITING_HUMAN))
@@ -82,7 +83,7 @@ class FixingWorktreeDriftRoutingTest(
         gh = FakeGitHubClient()
         self._seed_parked_fixing(gh, QUESTION_PARK_ISSUE, park_reason=None)
         with self._drift_patches(7):
-            workflow._handle_fixing(gh, _TEST_SPEC, gh.get_issue(QUESTION_PARK_ISSUE))
+            _fixing._handle_fixing(gh, _TEST_SPEC, gh.get_issue(QUESTION_PARK_ISSUE))
 
         self.assertNotIn((QUESTION_PARK_ISSUE, LABEL_RESOLVING_CONFLICT), gh.label_history)
         self.assertTrue(gh.pinned_data(QUESTION_PARK_ISSUE).get(KEY_AWAITING_HUMAN))
@@ -100,7 +101,7 @@ class FixingWorktreeDriftRoutingTest(
             pending_fix_at=PENDING_FIX_AT,
         )
         with self._drift_patches(4):
-            workflow._handle_fixing(gh, _TEST_SPEC, gh.get_issue(REVIEW_TRANSIENT_ISSUE))
+            _fixing._handle_fixing(gh, _TEST_SPEC, gh.get_issue(REVIEW_TRANSIENT_ISSUE))
 
         self.assertNotIn((REVIEW_TRANSIENT_ISSUE, LABEL_RESOLVING_CONFLICT), gh.label_history)
         self.assertTrue(gh.pinned_data(REVIEW_TRANSIENT_ISSUE).get(KEY_AWAITING_HUMAN))
@@ -114,7 +115,7 @@ class FixingWorktreeDriftRoutingTest(
         gh = FakeGitHubClient()
         self._seed_parked_fixing(gh, SILENT_PARK_ISSUE, park_reason="agent_silent")
         with self._drift_patches(3):
-            workflow._handle_fixing(gh, _TEST_SPEC, gh.get_issue(SILENT_PARK_ISSUE))
+            _fixing._handle_fixing(gh, _TEST_SPEC, gh.get_issue(SILENT_PARK_ISSUE))
 
         self.assertNotIn((SILENT_PARK_ISSUE, LABEL_RESOLVING_CONFLICT), gh.label_history)
         self.assertTrue(gh.pinned_data(SILENT_PARK_ISSUE).get(KEY_AWAITING_HUMAN))

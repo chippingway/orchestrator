@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.stages.implementing import session_read as _session_read
+
 from tests import implementing_full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
@@ -17,13 +20,12 @@ CODEX_SPEC = support.CODEX_SPEC
 DEV_AGENT_KEY = support.DEV_AGENT_KEY
 DEV_SESSION_ID = support.DEV_SESSION_ID
 _FullSpecFixtureMixin = support._FullSpecFixtureMixin
-workflow = support.workflow
 
 
 class FullSpecSessionReaderTest(unittest.TestCase, _FullSpecFixtureMixin):
     def test_read_dev_session_round_trips_full_spec(self) -> None:
-        spec, backend, args, sid = workflow._read_dev_session(
-            workflow.PinnedState(
+        spec, backend, args, sid = _session_read._read_dev_session(
+            PinnedState(
                 data={
                     DEV_AGENT_KEY: CODEX_SPEC,
                     DEV_SESSION_ID: "sid-y",
@@ -45,8 +47,8 @@ class FullSpecSessionReaderTest(unittest.TestCase, _FullSpecFixtureMixin):
                 CLAUDE_ARGS,
             )
         )
-        spec, backend, args, sid = workflow._read_dev_session(
-            workflow.PinnedState(
+        spec, backend, args, sid = _session_read._read_dev_session(
+            PinnedState(
                 data={"codex_session_id": "legacy-sid"},
             )
         )
@@ -63,7 +65,7 @@ class FullSpecSessionReaderTest(unittest.TestCase, _FullSpecFixtureMixin):
                 CLAUDE_ARGS,
             )
         )
-        spec, backend, args, sid = workflow._read_dev_session(workflow.PinnedState())
+        spec, backend, args, sid = _session_read._read_dev_session(PinnedState())
         self.assertEqual(spec, CLAUDE_SPEC)
         self.assertEqual(backend, BACKEND_CLAUDE)
         self.assertEqual(args, CLAUDE_ARGS)

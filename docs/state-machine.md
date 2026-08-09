@@ -57,7 +57,8 @@ Three non-workflow **control labels** modify behavior without occupying the work
 ### Typed states and the transition guard
 
 The label vocabulary is defined once in [`orchestrator/workflow/state.py`](../orchestrator/workflow/state.py), which
-every caller imports directly:
+every caller inside the tree imports directly — `orchestrator.workflow` re-exports the same objects for callers
+outside it:
 `WorkflowLabel` (a `StrEnum`) is the single source of truth for workflow states, and `ControlLabel` holds the modifiers
 above. Because `StrEnum` members *are* their wire strings, GitHub labels and pinned-state JSON are unchanged — the
 enum just gives the names one authoritative definition.
@@ -110,7 +111,8 @@ and dispatches per-issue handlers through a long-lived `IssueScheduler` capped b
 [`architecture.md#per-tick-flow-workflowtick`](architecture.md#per-tick-flow-workflowtick) for the multi-repo dispatch
 and scheduler lifecycle.
 
-One repo's pass is owned by `workflow/engine/tick.py` (`workflow.tick` resolves to it) and runs four things in a fixed
+One repo's pass is owned by `workflow/engine/tick.py` (`workflow.tick` is the entry point into it) and runs four
+things in a fixed
 order: the base refresh below, then the community-contribution PR sweep and the repo skill-catalog emission, then
 either the scheduler handoff or the in-tick sequential / bounded-parallel loop. The refresh goes first because the two
 passes after it read what its fetch left behind, and it is the only one whose failure the tick catches — the sweep and

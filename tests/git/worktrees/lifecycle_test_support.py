@@ -143,8 +143,8 @@ def _worktree_fixture(**recorder_options) -> Iterator[_WorktreeFixture]:
     """Point the worktrees root at a temp dir and fake the git plumbing.
 
     The owners bind `git.commands` and `git.authentication` directly, so a
-    test that has to intercept what they run patches those owners rather
-    than a facade. `WORKTREES_DIR` moves so `Path.exists()` answers for
+    test that has to intercept what they run patches those owners.
+    `WORKTREES_DIR` moves so `Path.exists()` answers for
     real -- the reuse decision turns on it.
     """
     recorder = _GitRecorder(**recorder_options)

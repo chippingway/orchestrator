@@ -16,8 +16,8 @@ import unittest
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
-from orchestrator import workflow
 from orchestrator.github.labels import PAUSED_LABEL
+from orchestrator.workflow.engine import drift as _drift
 
 from tests.fakes import (
     FakeComment,
@@ -85,7 +85,7 @@ class _ValidatingPauseFixtureMixin(_PatchedWorkflowMixin):
             ),
         )
         state = {
-            "user_content_hash": workflow._compute_user_content_hash(
+            "user_content_hash": _drift._compute_user_content_hash(
                 issue,
                 set(),
             ),

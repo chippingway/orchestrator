@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from orchestrator import workflow
+from orchestrator.workflow.stages.decomposition import run as _decomposing
 
 from tests.fakes import (
     FakeGitHubClient,
@@ -89,7 +89,7 @@ IMPLEMENTED_MESSAGE = "implemented"
 class _DecomposingWorkflowMixin(_PatchedWorkflowMixin):
     def _run_decomposing(self, gh, issue, **run_options):
         return self._run(
-            lambda: workflow._handle_decomposing(gh, _TEST_SPEC, issue),
+            lambda: _decomposing._handle_decomposing(gh, _TEST_SPEC, issue),
             **run_options,
         )
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.question import handler as _question
+
 from tests import workflow_tracked_repos_test_support as support
 
 
@@ -26,7 +28,7 @@ class QuestionSpawnTrackedReposTest(
         gh.add_issue(issue)
         with support._multi_repo():
             mocks = self._run(
-                lambda: support.workflow._handle_question(gh, support._TEST_SPEC, issue),
+                lambda: _question._handle_question(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id="q-1", last_message="X lives in src/x.py.",
                 ),
@@ -49,7 +51,7 @@ class QuestionSpawnTrackedReposTest(
         with support.patch.object(support.config, support._EXPOSE_REPOS_ATTR, True), \
              support.patch.object(support.config, support._DEFAULT_SPECS_ATTR, lambda: [support._TEST_SPEC]):
             mocks = self._run(
-                lambda: support.workflow._handle_question(gh, support._TEST_SPEC, issue),
+                lambda: _question._handle_question(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id="q-1", last_message="X lives in src/x.py.",
                 ),
@@ -86,7 +88,7 @@ class QuestionSpawnTrackedReposTest(
         )
         with support._multi_repo():
             mocks = self._run(
-                lambda: support.workflow._handle_question(gh, support._TEST_SPEC, issue),
+                lambda: _question._handle_question(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id="q-fresh", last_message="X lives in src/x.py.",
                 ),
@@ -129,7 +131,7 @@ class QuestionSpawnTrackedReposTest(
         )
         with support._multi_repo():
             mocks = self._run(
-                lambda: support.workflow._handle_question(gh, support._TEST_SPEC, issue),
+                lambda: _question._handle_question(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(session_id="q-live", last_message="answer"),
             )
         prompt = support._prompt_of(mocks[support._RUN_AGENT_ATTR])

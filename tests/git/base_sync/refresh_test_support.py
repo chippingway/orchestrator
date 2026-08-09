@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.git.base_sync import refresh as _base_refresh
 
 from tests.fakes import (
     FakeComment,
@@ -251,7 +252,7 @@ class _CrashRecoveryVerificationFixture(_SyncWorktreeWithBaseFixture):
             ),
         }
         with _patch_base_sync(**mocks):
-            workflow._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
+            _base_refresh._sync_worktree_with_base(self.gh, self.spec, self.wt, ISSUE)
         return mocks["hardened"], mocks["push"], mocks[REBASE_COMMAND]
 
     def _assert_recovery_unverified_reset_and_park(self, hardened_mock, push_mock, merge_mock) -> None:

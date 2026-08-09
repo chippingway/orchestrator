@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator import workflow
+from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.in_review import handler as _in_review
+from orchestrator.workflow.stages.validating import handler as _validating
 
 from tests.workflow.engine import drift_test_support as support
 
@@ -41,7 +43,7 @@ class DriftNonAckResponseParksTest(
         )
 
         self._run(
-            lambda: workflow._handle_validating(gh, support._TEST_SPEC, issue),
+            lambda: _validating._handle_validating(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(
                 session_id=support.DEV_SESSION,
                 last_message=(
@@ -94,7 +96,7 @@ class DriftNonAckResponseParksTest(
         )
 
         self._run(
-            lambda: workflow._handle_in_review(gh, support._TEST_SPEC, issue),
+            lambda: _in_review._handle_in_review(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(
                 session_id=support.DEV_SESSION,
                 last_message=(
@@ -145,7 +147,7 @@ class DriftNonAckResponseParksTest(
         )
 
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(
                 session_id=support.DEV_SESSION,
                 last_message=(

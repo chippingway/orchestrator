@@ -70,7 +70,6 @@ _PatchedWorkflowMixin = support._PatchedWorkflowMixin
 _agent = support._agent
 make_issue = support.make_issue
 posted_comment_contains = support.posted_comment_contains
-workflow = support.workflow
 
 
 class _ContinueCommandFixtureMixin(_PatchedWorkflowMixin):

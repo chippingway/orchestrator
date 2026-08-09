@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from orchestrator import workflow
+from orchestrator.workflow.engine import tick as _tick
 
 from tests.fakes import FakeGitHubClient, make_issue
 from tests.workflow_helpers import (
@@ -62,7 +62,7 @@ class UmbrellaCapExemptionTest(_SchedulerWorkflowTest):
 
         process = self._processor(1, 2)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
             self.assertTrue(
                 process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS),
                 FANOUT_START_TIMEOUT_MESSAGE,
@@ -86,7 +86,7 @@ class UmbrellaCapExemptionTest(_SchedulerWorkflowTest):
 
         process = self._processor(1)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(), scheduler=sched)
+            _tick.tick(gh, self._spec(), scheduler=sched)
             self.assertTrue(process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS))
             self.assertEqual(sched.active_count(), 0)
             self.assertEqual(sched.active_count(REPO_SLUG), 0)
@@ -111,7 +111,7 @@ class UmbrellaCapExemptionTest(_SchedulerWorkflowTest):
 
         process = self._processor(1, 2, 3)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
             self.assertTrue(process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS))
             time.sleep(0.1)
             self.assertFalse(
@@ -139,7 +139,7 @@ class UmbrellaCapExemptionTest(_SchedulerWorkflowTest):
 
         process = self._processor(1, 2)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
             self.assertTrue(
                 process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS),
                 FANOUT_START_TIMEOUT_MESSAGE,
@@ -164,7 +164,7 @@ class UmbrellaCapExemptionTest(_SchedulerWorkflowTest):
 
         process = self._processor(1)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(), scheduler=sched)
+            _tick.tick(gh, self._spec(), scheduler=sched)
             self.assertTrue(process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS))
             self.assertEqual(sched.active_count(), 0)
             self.assertEqual(sched.active_count(REPO_SLUG), 0)
@@ -189,7 +189,7 @@ class UmbrellaCapExemptionTest(_SchedulerWorkflowTest):
 
         process = self._processor(1, 2, 3)
         with self._route_through(process):
-            workflow.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
             self.assertIsNotNone(_wait_for_first_started(process.starts))
             time.sleep(0.1)
             self.assertFalse(

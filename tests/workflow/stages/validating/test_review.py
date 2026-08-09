@@ -13,7 +13,6 @@ MagicMock = review_support.MagicMock
 Path = review_support.Path
 patch = review_support.patch
 config = review_support.config
-workflow = review_support.workflow
 FakeComment = review_support.FakeComment
 FakeGitHubClient = review_support.FakeGitHubClient
 FakeUser = review_support.FakeUser

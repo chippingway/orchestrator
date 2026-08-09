@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.stages.validating import handler as _validating
+
 from tests import implementing_full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
@@ -28,7 +31,6 @@ _TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 _issue_branch = support._issue_branch
 make_issue = support.make_issue
-workflow = support.workflow
 
 
 class FullSpecReviewerPersistenceTest(
@@ -57,7 +59,7 @@ class FullSpecReviewerPersistenceTest(
         )
 
         mocks = self._run(
-            lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+            lambda: _validating._handle_validating(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id="rev-67010",
                 last_message=REVIEW_APPROVED_MESSAGE,
@@ -93,7 +95,7 @@ class FullSpecReviewerPersistenceTest(
         self._enter(self._patch_review_config(BACKEND_CLAUDE, BACKEND_CLAUDE, ()))
 
         self._run(
-            lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+            lambda: _validating._handle_validating(gh, _TEST_SPEC, issue),
             run_agent=_agent(
                 session_id="rev-67011",
                 last_message=REVIEW_APPROVED_MESSAGE,
@@ -127,7 +129,7 @@ class FullSpecReviewerPersistenceTest(
         self._dev_fix = _agent(session_id="dev-67012", last_message="fixed")
 
         self._run(
-            lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+            lambda: _validating._handle_validating(gh, _TEST_SPEC, issue),
             run_agent=[self._review, self._dev_fix],
             dirty_files=(),
             push_branch=True,
@@ -145,7 +147,7 @@ class FullSpecReviewerPersistenceTest(
         # "a separate codex session" before the fix, which is wrong when
         # claude is the dev backend. Build the prompt directly and
         # assert it reflects the dev backend.
-        prompt = workflow._build_review_prompt(
+        prompt = _prompts._build_review_prompt(
             _TEST_SPEC,
             make_issue(REVIEW_PROMPT_ISSUE),
             "",

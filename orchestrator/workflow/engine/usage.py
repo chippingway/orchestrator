@@ -13,8 +13,8 @@ already the field the record carries and the skill event repeats.
 
 The spawn itself is named on `orchestrator/agents/runner.py`, the owner that
 defines it. That call is the seam the stage tests replace to drive a handler
-without a CLI, so a mock has to land on the runner owner; one left on the
-`orchestrator.workflow` facade beside it would let a real CLI run.
+without a CLI, so a mock has to land on the runner owner; one left anywhere
+else would let a real CLI run.
 
 Everything after the spawn is fail-open. The record and the trajectory write
 behind it ride guards inside `recording.record_agent_exit`, and the skill
@@ -39,6 +39,7 @@ lets two ticks' stamps compare as plain strings.
 """
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -47,13 +48,14 @@ from typing import Any, Optional
 
 from github.Issue import Issue
 
-from orchestrator._workflow_state import log
 from orchestrator.agents import AgentResult, runner as _agent_runner
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.observability.analytics import recording
 from orchestrator.observability.usage.metrics import UsageMetrics
 from orchestrator.workflow.engine import comments as _comments
+
+log = logging.getLogger("orchestrator.workflow")
 
 
 def _now_iso() -> str:

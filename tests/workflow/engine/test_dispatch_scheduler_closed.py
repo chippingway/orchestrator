@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from orchestrator import workflow
 from orchestrator.workflow.engine import dispatch
+from orchestrator.workflow.engine import tick as _tick
 
 from tests.workflow.engine.dispatch_scheduler_workers import patch_base_refresh
 
@@ -68,7 +68,7 @@ class ClosedFanoutCapExemptionTest(_SchedulerWorkflowTest):
                 side_effect=process,
             ),
         ):
-            workflow.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
             self.assertTrue(
                 process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS),
                 "open validating #1 did not start",
@@ -97,7 +97,7 @@ class ClosedFanoutCapExemptionTest(_SchedulerWorkflowTest):
                 side_effect=process,
             ),
         ):
-            workflow.tick(gh, self._spec(parallel_limit=4), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=4), scheduler=sched)
             self.assertTrue(process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS))
             self.assertEqual(sched.active_count(), 0)
             self.assertEqual(sched.active_count(REPO_SLUG), 0)
@@ -120,7 +120,7 @@ class ClosedFanoutCapExemptionTest(_SchedulerWorkflowTest):
                 side_effect=process,
             ),
         ):
-            workflow.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
+            _tick.tick(gh, self._spec(parallel_limit=1), scheduler=sched)
             self.assertTrue(process.starts[1].wait(timeout=EVENT_TIMEOUT_SECONDS))
             self.assertFalse(
                 process.starts[2].wait(timeout=1.0),

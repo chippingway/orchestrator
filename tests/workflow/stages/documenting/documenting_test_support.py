@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-from orchestrator import workflow
+from orchestrator.workflow.stages.documenting import handler as _documenting
 
 from tests.fakes import (
     FakeGitHubClient,
@@ -140,7 +140,7 @@ def _branch(issue_number: int) -> str:
 class _DocumentingWorkflowMixin(_PatchedWorkflowMixin):
     def _run_documenting(self, gh, issue, **run_options):
         return self._run(
-            lambda: workflow._handle_documenting(gh, _TEST_SPEC, issue),
+            lambda: _documenting._handle_documenting(gh, _TEST_SPEC, issue),
             **run_options,
         )
 

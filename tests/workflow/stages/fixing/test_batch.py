@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.engine import prompts as _prompts
+
 from tests.workflow.stages.fixing import fixing_test_support as support
 
 ADVANCED_PR_COMMENT_WATERMARK = support.ADVANCED_PR_COMMENT_WATERMARK
@@ -47,7 +49,6 @@ _reconstruct_pending_fix_batch = support._reconstruct_pending_fix_batch
 config = support.config
 make_issue = support.make_issue
 patch = support.patch
-workflow = support.workflow
 
 
 class _PendingFixBatchFixtureMixin:
@@ -177,7 +178,7 @@ class ReconstructPendingFixBatchTest(
         self.assertNotIn(BATCH_SUMMARY_NOISE_ID, ids)
         # The reconstructed batch is directly consumable by the dev-resume
         # prompt builder -- the whole point of rebuilding it.
-        self._prompt = workflow._build_pr_comment_followup(self._batch)
+        self._prompt = _prompts._build_pr_comment_followup(self._batch)
         for body in ("issue thread ask", "pr conv ask", "inline ask one", "inline ask two", "please address"):
             self.assertIn(body, self._prompt)
 
@@ -266,6 +267,6 @@ class ReconstructPendingFixBatchTest(
             [feedback_item.id for feedback_item in batch],
             [BATCH_ISSUE_ID],
         )
-        self._prompt = workflow._build_pr_comment_followup(batch)
+        self._prompt = _prompts._build_pr_comment_followup(batch)
         self.assertIn("trusted issue ask", self._prompt)
         self.assertNotIn(malicious_url, self._prompt)

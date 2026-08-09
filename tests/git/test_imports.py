@@ -49,7 +49,7 @@ _FLAT_MODULES = (
 _ROOT_LOCK = "_target_root_lock"
 
 # The initializer binds nothing, so each name answers on the owner that defines
-# it and on the workflow facade above the package, never on the package itself.
+# it, never on the package itself.
 _OWNER_ONLY_NAMES = (
     "TargetRootLockRegistry",
     "_TARGET_ROOT_LOCKS",
@@ -62,11 +62,10 @@ _OWNER_ONLY_NAMES = (
     "_unsafe_local_transport_config",
 )
 
-# The plumbing names the workflow facade above the package leaves out, paired
-# with the owner that defines them: the no-prompt environment every git call is
-# spawned with and the whole per-target-root lock surface. Naming them keeps
-# the boundary between an owner's own definitions and the slice a hub carries
-# asserted rather than assumed.
+# The plumbing no caller outside the package reaches for, paired with the owner
+# that defines it: the no-prompt environment every git call is spawned with and
+# the whole per-target-root lock surface. Naming them keeps each owner's own
+# definitions asserted rather than assumed.
 _OWNER_DEFINED = (
     ("_GIT_NO_PROMPT_ENV", commands),
     ("_TARGET_ROOT_LOCKS", locks),
@@ -133,9 +132,9 @@ class OwnerImportSiteTest(unittest.TestCase):
 
     def test_no_inventory_targets_an_absent_spelling(self) -> None:
         # Nothing resolves at either spelling, so an inventory naming one is a
-        # dead target that stays quiet until whichever caller reads that one
-        # name off the facade runs. Scanning every inventory in the package is
-        # what surfaces it before then.
+        # dead target that stays quiet until whichever caller reads that name
+        # runs. Scanning every inventory in the package is what surfaces it
+        # before then.
         for inventory_name in inventory_modules(_PACKAGE):
             inventory = import_module(inventory_name)
             targets = {target.module_name for target in inventory.EXPORTS}

@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator import workflow
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.git.worktrees import recovery as _worktree_recovery
+from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.question import handler as _question
 
 from tests.fakes import FakeComment, FakeGitHubClient, make_issue
 from tests.workflow_helpers import (
@@ -248,7 +249,7 @@ class _QuestionConversation:
 class _QuestionWorkflowMixin(_PatchedWorkflowMixin):
     def _run_question(self, gh, issue, **run_options):
         return self._run(
-            lambda: workflow._handle_question(gh, _TEST_SPEC, issue),
+            lambda: _question._handle_question(gh, _TEST_SPEC, issue),
             **run_options,
         )
 
@@ -282,7 +283,7 @@ class _ImplementingStageCall:
                     return_value=self._unpushed_branch,
                 ),
             ):
-                workflow._handle_implementing(self._gh, _TEST_SPEC, self._issue)
+                _implementing._handle_implementing(self._gh, _TEST_SPEC, self._issue)
             return
         with worktree_patch:
-            workflow._handle_implementing(self._gh, _TEST_SPEC, self._issue)
+            _implementing._handle_implementing(self._gh, _TEST_SPEC, self._issue)

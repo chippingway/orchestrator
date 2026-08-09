@@ -6,7 +6,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
+from orchestrator.workflow.stages.implementing import handler as _implementing
+from orchestrator.workflow.stages.validating import handler as _validating
 
 from tests.workflow import pr_lifecycle_test_support as support
 
@@ -56,7 +58,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
         issue = support.make_issue(6, label=support.LABEL_IMPLEMENTING)
         gh.add_issue(issue)
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(last_message="please clarify the scope"),
             has_new_commits=False,
         )
@@ -69,7 +71,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
         issue = support.make_issue(7, label=support.LABEL_IMPLEMENTING)
         gh.add_issue(issue)
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(last_message="", exit_code=1),
             has_new_commits=False,
         )
@@ -95,7 +97,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
             return_value=(None, None),
         ):
             self._run(
-                lambda: workflow._handle_validating(gh, support._TEST_SPEC, issue),
+                lambda: _validating._handle_validating(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(timed_out=True, last_message=""),
                 head_shas=[pr.head.sha],
             )
@@ -125,7 +127,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
         )
         gh.add_pr(pr)
         self._run(
-            lambda: workflow._handle_validating(gh, support._TEST_SPEC, issue),
+            lambda: _validating._handle_validating(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(last_message="should not run"),
         )
         park = support._only_event(gh, support.EVENT_PARK_AWAITING_HUMAN)
@@ -141,7 +143,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
         issue = support.make_issue(support._PUSH_FAILED_ISSUE_NUMBER, label=support.LABEL_IMPLEMENTING)
         gh.add_issue(issue)
         self._run(
-            lambda: workflow._handle_implementing(gh, support._TEST_SPEC, issue),
+            lambda: _implementing._handle_implementing(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(session_id="sess-x", last_message="done"),
             has_new_commits=True,
             push_branch=False,  # simulate push failure
@@ -169,7 +171,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
             return_value=(None, None),
         ):
             self._run(
-                lambda: workflow._handle_validating(gh, support._TEST_SPEC, issue),
+                lambda: _validating._handle_validating(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id="sess-r", last_message="ok\n\nVERDICT: APPROVED",
                 ),

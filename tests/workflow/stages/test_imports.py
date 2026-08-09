@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import importlib
 import pkgutil
 import subprocess
 import sys
@@ -12,13 +11,12 @@ import unittest
 from importlib.util import find_spec
 from pathlib import Path
 
-from orchestrator import workflow as _workflow
 from orchestrator.workflow import stages as _stages
 from orchestrator.workflow.engine import dispatch as _dispatch
 
 _PACKAGE = "orchestrator.workflow.stages"
 
-_FACADE = "orchestrator.workflow"
+_WORKFLOW_PACKAGE = "orchestrator.workflow"
 
 # The flat spelling a second import site for any of these stages would take.
 _FLAT_PACKAGE = "orchestrator.stages"
@@ -28,12 +26,6 @@ import sys
 import {module}
 print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 """
-
-# One handler and the owner it lives on, so resolving it on the facade proves
-# the historical route into a stage is still wired.
-_PROBE_HANDLER = "_handle_fixing"
-
-_PROBE_OWNER = f"{_PACKAGE}.fixing.handler"
 
 
 def _imported_orchestrator_modules(module: str) -> set[str]:
@@ -55,11 +47,11 @@ def _stage_packages() -> list[str]:
 class CleanProcessImportTest(unittest.TestCase):
     """The package imports standalone in a fresh interpreter.
 
-    Importing it runs the workflow initializer above it first, and that
-    initializer installs hooks whose targets import `orchestrator.workflow`
-    back. A subprocess gives the package a clean `sys.modules` no other test
-    has already populated, exposing an import-order cycle a facade-first suite
-    run would mask.
+    Importing it runs the workflow initializer above it first, and the stage
+    owners beneath it import the engine, which imports this package back. A
+    subprocess gives the package a clean `sys.modules` no other test has
+    already populated, exposing an import-order cycle a package-first suite run
+    would mask.
     """
 
     def test_package_imports_standalone(self) -> None:
@@ -73,7 +65,7 @@ class CleanProcessImportTest(unittest.TestCase):
 
 
 class LayeringTest(unittest.TestCase):
-    """The package costs the facade above it and nothing else."""
+    """The package costs the workflow initializer above it and nothing else."""
 
     def test_import_reaches_no_handler_or_subsystem(self) -> None:
         # This is where a stage arrives, so a binding in the initializer is the
@@ -83,14 +75,14 @@ class LayeringTest(unittest.TestCase):
         # the ones that only want a different stage.
         self.assertEqual(
             _imported_orchestrator_modules(_PACKAGE),
-            _imported_orchestrator_modules(_FACADE) | {_PACKAGE},
+            _imported_orchestrator_modules(_WORKFLOW_PACKAGE) | {_PACKAGE},
         )
 
 
 class PackageSurfaceTest(unittest.TestCase):
     """The initializer is a package marker that owns no names."""
 
-    def test_package_sits_under_the_workflow_facade(self) -> None:
+    def test_package_sits_under_the_workflow_package(self) -> None:
         self.assertEqual(_stages.__name__, _PACKAGE)
         self.assertTrue(hasattr(_stages, "__path__"))
         initializer = Path(_stages.__file__)
@@ -110,17 +102,6 @@ class PackageSurfaceTest(unittest.TestCase):
                 self.assertEqual(
                     getattr(bound, "__name__", None), f"{_PACKAGE}.{name}",
                 )
-
-    def test_facade_reaches_the_handler_owner(self) -> None:
-        # The workflow facade is the route a historical caller and its patches
-        # take to a handler, so it has to keep answering with the object the
-        # owner under this package holds rather than one rebuilt beside it.
-        self.assertIs(
-            getattr(_workflow, _PROBE_HANDLER),
-            getattr(importlib.import_module(_PROBE_OWNER), _PROBE_HANDLER),
-        )
-        self.assertIs(_workflow.stages, _stages)
-        self.assertIn("stages", _workflow.__dir__())
 
 
 class OwnerTreeImportSiteTest(unittest.TestCase):

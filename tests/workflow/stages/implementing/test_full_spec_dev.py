@@ -6,6 +6,10 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume
+from orchestrator.workflow.stages.implementing import state as _implementing_state
+from orchestrator.workflow.stages.validating import handler as _validating
+
 from tests import implementing_full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
@@ -45,7 +49,6 @@ _agent = support._agent
 _issue_branch = support._issue_branch
 make_issue = support.make_issue
 patch = support.patch
-workflow = support.workflow
 _agent_runner = support.agent_runner
 _worktree_creation = support.worktree_creation
 
@@ -112,7 +115,7 @@ class FullSpecDevPersistenceTest(unittest.TestCase, _FullSpecFixtureMixin):
         dev_fix = _agent(session_id="dev-67002", last_message="fixed")
 
         self._mocks = self._run(
-            lambda: workflow._handle_validating(gh, _TEST_SPEC, issue),
+            lambda: _validating._handle_validating(gh, _TEST_SPEC, issue),
             run_agent=[review, dev_fix],
             dirty_files=(),
             push_branch=True,
@@ -231,7 +234,7 @@ class FullSpecDevPersistenceTest(unittest.TestCase, _FullSpecFixtureMixin):
             POISONED_DROP_ISSUE,
             dev_agent=CODEX_SPEC,
             dev_session_id="poisoned-67005",
-            silent_park_count=workflow._SILENT_PARKS_BEFORE_FRESH_SESSION,
+            silent_park_count=_implementing_state._SILENT_PARKS_BEFORE_FRESH_SESSION,
         )
         state = gh.read_pinned_state(issue)
 
@@ -241,7 +244,7 @@ class FullSpecDevPersistenceTest(unittest.TestCase, _FullSpecFixtureMixin):
             patch.object(_worktree_creation, "_ensure_worktree", lambda spec, issue_number, **_: _FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, "go")
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, "go")
 
         call = run_agent.call_args
         self.assertEqual(call.args[0], BACKEND_CODEX)
@@ -263,7 +266,7 @@ class FullSpecDevPersistenceTest(unittest.TestCase, _FullSpecFixtureMixin):
         gh.seed_state(
             POISONED_LEGACY_ISSUE,
             codex_session_id="poisoned-legacy-67006",
-            silent_park_count=workflow._SILENT_PARKS_BEFORE_FRESH_SESSION,
+            silent_park_count=_implementing_state._SILENT_PARKS_BEFORE_FRESH_SESSION,
         )
         state = gh.read_pinned_state(issue)
 
@@ -286,7 +289,7 @@ class FullSpecDevPersistenceTest(unittest.TestCase, _FullSpecFixtureMixin):
             patch.object(_worktree_creation, "_ensure_worktree", lambda spec, issue_number, **_: _FAKE_WT),
             patch.object(_agent_runner, RUN_AGENT, run_agent),
         ):
-            workflow._resume_dev_with_text(gh, _TEST_SPEC, issue, state, "go")
+            _implementing_resume._resume_dev_with_text(gh, _TEST_SPEC, issue, state, "go")
 
         # Backend stays locked to codex (the legacy implicit spec).
         call = run_agent.call_args

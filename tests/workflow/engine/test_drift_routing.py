@@ -7,8 +7,12 @@ import unittest
 
 from unittest.mock import patch
 
-from orchestrator import config, workflow
+from orchestrator import config
 from orchestrator.workflow.engine import comments, drift
+from orchestrator.workflow.engine import pickup as _pickup
+from orchestrator.workflow.stages.decomposition import blocked as _blocked
+from orchestrator.workflow.stages.in_review import handler as _in_review
+from orchestrator.workflow.stages.validating import handler as _validating
 
 from tests.workflow.engine import drift_test_support as support
 
@@ -23,7 +27,7 @@ class HandlePickupInitializesUserContentHashTest(
 
         with patch.object(config, "DECOMPOSE", False):
             self._run(
-                lambda: workflow._handle_pickup(gh, support._TEST_SPEC, issue),
+                lambda: _pickup._handle_pickup(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(last_message="q"),
                 has_new_commits=False,
             )
@@ -46,7 +50,7 @@ class HandlePickupInitializesUserContentHashTest(
 
         with patch.object(config, "DECOMPOSE", True):
             self._run(
-                lambda: workflow._handle_pickup(gh, support._TEST_SPEC, issue),
+                lambda: _pickup._handle_pickup(gh, support._TEST_SPEC, issue),
                 run_agent=support._agent(
                     session_id="dec-sess",
                     last_message=(
@@ -114,7 +118,7 @@ class FirstTimeHashSeedingIsDurableTest(
         # Tick: no new comments and no hash baseline. Park branch
         # returns early without writing state.
         self._run(
-            lambda: workflow._handle_validating(gh, support._TEST_SPEC, issue),
+            lambda: _validating._handle_validating(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(),
         )
 
@@ -141,7 +145,7 @@ class FirstTimeHashSeedingIsDurableTest(
         )
 
         self._run(
-            lambda: workflow._handle_blocked(gh, support._TEST_SPEC, child),
+            lambda: _blocked._handle_blocked(gh, support._TEST_SPEC, child),
             run_agent=support._agent(),
         )
 
@@ -181,7 +185,7 @@ class NoCommitAckDoesNotParkTest(
         )
 
         self._run(
-            lambda: workflow._handle_validating(gh, support._TEST_SPEC, issue),
+            lambda: _validating._handle_validating(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(
                 session_id=support.DEV_SESSION,
                 last_message=(
@@ -237,7 +241,7 @@ class NoCommitAckDoesNotParkTest(
         )
 
         self._run(
-            lambda: workflow._handle_in_review(gh, support._TEST_SPEC, issue),
+            lambda: _in_review._handle_in_review(gh, support._TEST_SPEC, issue),
             run_agent=support._agent(
                 session_id=support.DEV_SESSION,
                 last_message="ACK: no additional code change needed",
