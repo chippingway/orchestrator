@@ -493,6 +493,16 @@ and publishes that narrow public surface through an explicit `__all__` (`WPS410`
 from stay private to `service`, so the facade carries no private re-exports. `WPS412` is waived for that import-time
 logic.
 
+The workflow package adds another: `orchestrator/workflow/__init__.py` (`WPS412`, `WPS410`) is the package API. It
+re-exports five names from the `state` owner beside it — the `WorkflowLabel` / `ControlLabel` vocabularies, the
+`guard_transition` write guard and the `is_allowed_transition` predicate under it, and the `IllegalTransition` an
+illegal write raises — and defines the per-repo `tick` entry point, publishing all six through an explicit `__all__`
+(`WPS410`). `tick` resolves `workflow/engine/tick.py` inside the call rather than binding it at module scope: the
+GitHub and git layers import `workflow/state.py` beside this initializer for the label vocabulary they are typed by,
+and a submodule import runs the initializer first, so an engine import here would route them back into the modules
+they are still initializing. `WPS412` is waived for that import-time logic. The remaining scopes are the two
+`observability/` initializers — the usage parsers and the analytics recorders — waived on the same grounds.
+
 `orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
 comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8
 methods past the ceiling of 7. Splitting the merge-side mutations out would hand the composed client two mixins for

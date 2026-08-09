@@ -114,8 +114,7 @@ orchestrator/
                         `ControlLabel` vocabularies, strict label coercion, the
                         declared transition graph, and the transition guard
     engine/
-      __init__.py       package marker only; reserved for the remaining
-                        shared-helper owners
+      __init__.py       package marker only; callers import an owner directly
       comments.py       the orchestrator marker and capped id ledger both
                         comment posters write, the trusted-author thread read
                         every prompt quotes, the paragraph break that read and
