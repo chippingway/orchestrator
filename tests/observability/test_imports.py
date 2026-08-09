@@ -31,21 +31,16 @@ _ROOT_PACKAGE_MODULES = frozenset((
 # Nothing observed here is on the workflow's decision path, so the dependency
 # runs one way: an application entrypoint composes these owners and no owner
 # reads one back. On the tick side that is the workflow engine, the stage
-# handlers, and the CLI and runtime loop under them. On the page side it is
-# every `streamlit
-# run` target -- the two canonical ones under `apps`, and the historical
-# `trajectory_dashboard` beside them -- and the leaves it
-# fronts: those are entry points in the same
+# handlers, and the CLI and runtime loop under them. On the page side it is the
+# two `streamlit run` targets under `apps`: those are entry points in the same
 # sense `main` is, they are what a migrated owner is composed *by*, and reading
 # one back would drag Streamlit and Plotly in behind it.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.__main__",
     "orchestrator._main",
-    "orchestrator._trajectory_dashboard",
     "orchestrator.apps",
     "orchestrator.cli",
     "orchestrator.main",
-    "orchestrator.trajectory_dashboard",
     "orchestrator.workflow",
 )
 

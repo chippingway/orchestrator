@@ -7,14 +7,12 @@ project-local analytics sink and everything downstream of it (``analytics``),
 the provider-payload parser that turns one finished agent run into tokens and
 cost (``usage``), the Streamlit page rendered over the operator's Postgres
 target (``dashboard``), and the file-backed trajectory viewer beside it
-(``trajectory_viewer``). Each arrives under its own subpackage. ``analytics``,
-``usage``, and ``dashboard`` are here whole -- every knob, recorder, prune,
-read, replay, trajectory write, panel, chart, and theme value is reached on an
-owner beneath this tree and nowhere else, and the analytics page's
-``streamlit run`` target under ``apps`` composes those owners directly. The
-flat ``trajectory_dashboard`` and ``trajectory_reader`` modules beside them,
-and the leaves under both, stay the import site every historical caller names
-for whatever responsibility does not have an owner here yet.
+(``trajectory_viewer``). Each arrives under its own subpackage, and all four
+are here whole -- every knob, recorder, prune, read, replay, trajectory write,
+panel, chart, theme value, record model, filter, and markup builder is reached
+on an owner beneath this tree and nowhere else. Nothing of either page is left
+beside it: both ``streamlit run`` targets under ``apps`` compose these owners
+directly, so there is no flat module for a caller to reach one through.
 
 Callers import the owner they need, so an initializer here binds nothing
 unless the surface it fronts is what a caller asks for by name -- ``usage``

@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Direct-script launch shapes for the trajectory viewer's two entry paths."""
+"""Direct-script launch shape for the trajectory viewer's entry path."""
 from __future__ import annotations
 
 import runpy
@@ -24,30 +24,20 @@ _ORCH_PREFIX = f"{_ORCH}."
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# The two files a launcher may be pointed at: the canonical app, and the path
-# an operator's shell history and bookmarks already carry.
-_SCRIPTS = (
-    (_ORCH, "apps", "trajectory_dashboard.py"),
-    (_ORCH, "trajectory_dashboard.py"),
-)
+# The file a launcher is pointed at, kept as a one-entry inventory because the
+# cases below are written against a launch shape rather than one path.
+_SCRIPTS = ((_ORCH, "apps", "trajectory_dashboard.py"),)
 
-_LAUNCH_MODULES = (f"{_ORCH}.apps.trajectory_dashboard", f"{_ORCH}.trajectory_dashboard")
+_LAUNCH_MODULES = (f"{_ORCH}.apps.trajectory_dashboard",)
 
 # What the shim exists for: a name under the package that resolves only once
 # the repo root is on `sys.path`, and that a decoy parent cannot answer for.
 _COMPOSED = f"{_ORCH}.observability.trajectory_viewer.page_render"
 
-# The bare names an entry path may reach its shim through under a script
-# launch. Neither may be probed on the package path, where a stray copy of
-# either would shadow the real helper.
-_BARE_HELPERS = ("bootstrap", "script_launch")
-
-_SHIM_MODULES = frozenset((
-    *_LAUNCH_MODULES,
-    *_BARE_HELPERS,
-    f"{_ORCH}.apps.bootstrap",
-    f"{_ORCH}.script_launch",
-))
+# The bare name the entry path may reach its shim through under a script
+# launch. It may not be probed on the package path, where a stray copy of it
+# would shadow the real helper.
+_BARE_HELPERS = ("bootstrap",)
 
 _STRAY_HELPER = "raise RuntimeError('a stray helper must not be imported')\n"
 
@@ -57,13 +47,8 @@ def _is_launch_world(name: str) -> bool:
     return name == _ORCH or name.startswith(_ORCH_PREFIX) or name in _BARE_HELPERS
 
 
-def _is_shim_module(name: str) -> bool:
-    """Whether a loaded module is one a package import resolves its shim by."""
-    return name in _SHIM_MODULES
-
-
 class ScriptPathLaunchTest(unittest.TestCase):
-    """Guard `streamlit run` on either file.
+    """Guard `streamlit run` on the page's file.
 
     Streamlit executes the file as a top-level script via `runpy` with only
     the *script's* directory on `sys.path` (not the repo root), so a naked
@@ -121,16 +106,16 @@ class StrayHelperShadowTest(unittest.TestCase):
     """A package import resolves its shim qualified, never by bare name."""
 
     def test_a_stray_helper_stays_unimported(self) -> None:
-        # An unrelated top-level `bootstrap` or `script_launch` earlier on
-        # `sys.path` would otherwise shadow the real helper or fail the import
-        # outright, so neither bare name may be probed on the package path.
+        # An unrelated top-level `bootstrap` earlier on `sys.path` would
+        # otherwise shadow the real helper or fail the import outright, so no
+        # bare name may be probed on the package path.
         for module_name in _LAUNCH_MODULES:
             with self.subTest(module=module_name):
                 self._imported_past_the_strays(module_name)
 
     def _imported_past_the_strays(self, module_name: str) -> None:
-        """Import one entry path with both bare names booby-trapped."""
-        with _launch_sandbox(_is_shim_module):
+        """Import one entry path with every bare name booby-trapped."""
+        with _launch_sandbox(_is_launch_world):
             with tempfile.TemporaryDirectory() as stray_dir:
                 for helper in _BARE_HELPERS:
                     # A stray that detonates on import, so a bare probe fails
@@ -138,7 +123,7 @@ class StrayHelperShadowTest(unittest.TestCase):
                     stray = Path(stray_dir) / f"{helper}.py"
                     stray.write_text(_STRAY_HELPER)
                 sys.path.insert(0, stray_dir)
-                _drop_modules(_is_shim_module)
+                _drop_modules(_is_launch_world)
                 self.assertTrue(hasattr(import_module(module_name), "main"))
                 for helper in _BARE_HELPERS:
                     self.assertNotIn(helper, sys.modules)

@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Inventory, import cost, and forwarding checks for the entrypoints."""
+"""Inventory and import-cost checks for the entrypoints."""
 from __future__ import annotations
 
 import subprocess
@@ -26,12 +26,6 @@ _APPS = (_ANALYTICS_APP, _TRAJECTORY_APP)
 # in the package's own map, which is what the inventory check compares the
 # directory against.
 _MODULES = (_BOOTSTRAP, *_APPS)
-
-# The app paired with the launch path an operator's shell history already
-# carries, kept beside it because both have to answer for the same page.
-_LAUNCH_PAIRS = (
-    (_TRAJECTORY_APP, f"{_ORCHESTRATOR}.trajectory_dashboard"),
-)
 
 # What `import orchestrator` alone plants, so the cost check can hold each app
 # to its own chain and nothing besides.
@@ -108,22 +102,11 @@ class AppImportCostTest(unittest.TestCase):
                 )
 
     def test_no_path_costs_the_dashboard_group(self) -> None:
-        for module in (*_APPS, *(legacy for _, legacy in _LAUNCH_PAIRS)):
-            planted = _planted(module)
+        for app in _APPS:
+            planted = _planted(app)
             for dependency in _DASHBOARD_GROUP:
-                with self.subTest(module=module, dependency=dependency):
+                with self.subTest(app=app, dependency=dependency):
                     self.assertNotIn(dependency, planted)
-
-
-class LegacyForwardingTest(unittest.TestCase):
-    """The historical launch path hands back the app's own composition."""
-
-    def test_each_facade_main_is_its_app_s_own(self) -> None:
-        for app, legacy in _LAUNCH_PAIRS:
-            with self.subTest(app=app):
-                self.assertIs(
-                    import_module(legacy).main, import_module(app).main,
-                )
 
 
 if __name__ == "__main__":

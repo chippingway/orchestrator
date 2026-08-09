@@ -66,6 +66,3 @@ class TrajectoryRun:
     detail_label = timeline_views.detail_label
     label = timeline_views.label
     _turn_map = cached_property(timeline_views.turn_map)
-
-
-TrajectoryRun.__module__ = "orchestrator._trajectory_records"

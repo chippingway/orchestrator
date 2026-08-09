@@ -13,20 +13,12 @@ once for the whole read rather than once per run.
 ``FilterOptions`` is the other direction: the distinct values a page may offer,
 collected off the runs it already read rather than declared, so a dropdown only
 ever holds a value some run actually carries.
-
-The two a caller holds report ``orchestrator.trajectory_reader`` as their
-module: that is the import site the filter API is published from, so a repr, a
-pickle, and a reader following ``__module__`` all still land where it is
-documented.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional, Sequence, TypedDict
-
-
-ORIGIN_MODULE = "orchestrator.trajectory_reader"
 
 
 class RunFilterOptionFields(TypedDict, total=False):
@@ -71,7 +63,3 @@ class RunFilterOptions:
     issue: Optional[int] = None
     query: Optional[str] = None
     exclude_fixtures: bool = False
-
-
-FilterOptions.__module__ = ORIGIN_MODULE
-RunFilterOptions.__module__ = ORIGIN_MODULE

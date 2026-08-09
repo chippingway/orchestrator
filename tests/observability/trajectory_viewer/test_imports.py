@@ -101,13 +101,9 @@ _OWNERS = (
 # reads `__module__`, which only a class or a function carries -- `constants` is
 # seven strings, `css` one, `usage_html`'s separator another, and
 # `timeline_html`'s badge vocabulary a mapping proxy beside a type alias -- and
-# because a shape published under a historical import site is stamped with it:
-# the record on `runs`, the four frozen views on `models`, the two request
-# shapes a caller holds on `filter_models`, the summary on `summaries`, the KPI
-# tile on `summary_html`, and the two page shapes on `page_models` -- which are
-# private besides, so that owner reports nothing at all. That stamp is the
-# identity `test_forwarding` and the reader surface check pin; what is left
-# visible here is everything else.
+# because two shapes are private to the page that carries them: the KPI tile on
+# `summary_html`, and the two page shapes on `page_models`, which is why that
+# owner reports nothing at all.
 _SURFACES = MappingProxyType({
     _COERCION_OWNER: (
         "as_list",
@@ -125,7 +121,9 @@ _SURFACES = MappingProxyType({
     ),
     _CSS_OWNER: (),
     _FILTER_MODELS_OWNER: (
+        "FilterOptions",
         "RunFilterOptionFields",
+        "RunFilterOptions",
         "RunFilters",
     ),
     _FILTER_VALUES_OWNER: (
@@ -149,6 +147,10 @@ _SURFACES = MappingProxyType({
         "unconfigured_message",
     ),
     _MODELS_OWNER: (
+        "RunUsageView",
+        "TimelineEntry",
+        "TrajectoryStepView",
+        "TurnUsageView",
         "public_entry_content",
         "public_step_content",
     ),
@@ -199,8 +201,8 @@ _SURFACES = MappingProxyType({
         "render_timeline",
         "render_timeline_entry",
     ),
-    _RUNS_OWNER: (),
-    _SUMMARIES_OWNER: ("summarize",),
+    _RUNS_OWNER: ("TrajectoryRun",),
+    _SUMMARIES_OWNER: ("TrajectorySummary", "summarize"),
     _SUMMARY_HTML_OWNER: (
         "card_header_html",
         "fmt_cost_usd",
@@ -522,14 +524,6 @@ _EXTERNAL_CHAINS = MappingProxyType({
     _USAGE_HTML_OWNER: _FORMATTING_CHAIN,
 })
 
-# The flat modules a historical caller still reaches this viewer through. The
-# record facade among them captures the analytics settings holder it resolves
-# the log path through, so an owner reaching back would put the process
-# configuration behind that holder in front of a caller that only wanted to
-# build a step. It would also close a loop: those modules import these owners.
-_FLAT_PREFIX = "orchestrator._trajectory"
-
-
 def _qualified(owner: str) -> str:
     return f"{_PACKAGE}.{owner}"
 
@@ -605,21 +599,6 @@ class LayeringTest(unittest.TestCase):
                 self.assertEqual(
                     tuple(sorted(outside)), _EXTERNAL_CHAINS.get(owner, ()),
                 )
-
-    def test_no_owner_plants_the_flat_leaves(self) -> None:
-        # The sharpest case the check above rejects, named on its own: those
-        # leaves forward *to* these owners, and the record facade among them
-        # captures the settings holder it resolves the log path through. The
-        # configuration owner one of these may name is neither that facade nor
-        # that holder: it parses a knob, while the holder binds the parsed
-        # values and pays for the process configuration behind them.
-        for owner in _OWNERS:
-            planted = _imported_orchestrator_modules(_qualified(owner))
-            reached = tuple(sorted(
-                name for name in planted if name.startswith(_FLAT_PREFIX)
-            ))
-            with self.subTest(owner=owner):
-                self.assertEqual(reached, ())
 
 
 if __name__ == "__main__":

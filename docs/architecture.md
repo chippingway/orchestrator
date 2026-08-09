@@ -32,14 +32,10 @@ designed around that assumption.
 
 ## Top-level layout
 
-The trajectory viewer's historical launch path exposes a lazy facade backed by an immutable export manifest, and a
-lookup hands back the owner's own object rather than a copy of it, so a name the manifest declares is the same object
-whichever import site reaches it. What the manifest declares is the whole of what the facade answers for — a spelling
-retired with the responsibility behind it is not on it.
-Everywhere else — the workflow package and the whole analytics tree included — a responsibility answers on the owner
-module that defines it and nowhere else, so a patch targets that module and there is no second site a mock could be
-left on. Where a leaf does resolve a name at call time it is to read a knob rather than to borrow a helper — the
-analytics settings, which `patch.object(analytics_settings, "ANALYTICS_LOG_PATH", ...)` decides for every owner that
+A responsibility answers on the owner module that defines it and nowhere else — the workflow package, the whole
+analytics tree, and both Streamlit pages included — so a patch targets that module and there is no second site a mock
+could be left on. Where a leaf does resolve a name at call time it is to read a knob rather than to borrow a helper —
+the analytics settings, which `patch.object(analytics_settings, "ANALYTICS_LOG_PATH", ...)` decides for every owner that
 reads one, because `observability/analytics/settings.py` is the single holder they all resolve through. Each of those
 boundaries is named where its owner is described below.
 
@@ -437,27 +433,6 @@ orchestrator/
       recovery.py       candidate-branch discovery and unpushed-commit probes
       terminal.py       question-stage teardown and terminal local + remote
                         branch cleanup composed from cleanup.py
-  trajectory_reader.py  historical import site for the file-backed read model,
-                        forwarding to the trajectory-viewer owners
-  _trajectory_*.py      the record facade binding a caller's settings holder,
-                        the reload-bootstrap leaf beside it, and the eleven
-                        record/view/parse/read/filter leaves forwarding to the
-                        trajectory-viewer owners
-  trajectory_dashboard.py
-                        historical Streamlit launch path and lazy compatibility
-                        facade over the canonical app under apps/
-  _trajectory_dashboard_style.py / _trajectory_dashboard_summary_html.py / _trajectory_dashboard_run_html.py
-  _trajectory_dashboard_usage_html.py / _trajectory_dashboard_timeline_html.py
-  _trajectory_dashboard_models.py / _trajectory_dashboard_filters.py
-  _trajectory_dashboard_picker.py / _trajectory_dashboard_run_render.py
-                        historical HTML, page-state, control, and run-card
-                        import sites forwarding to the trajectory-viewer owners
-  _trajectory_dashboard_page.py
-                        historical page-setup import site, binding a caller's
-                        settings holder onto the owner behind it
-  _trajectory_dashboard_*.py
-                        viewer bootstrap and the one surface composing every
-                        builder the page draws with
   observability/
     __init__.py         package marker only; home of the usage parsers, the
                         analytics configuration, recording, retention,
@@ -467,9 +442,10 @@ orchestrator/
                         carries, the reads it issues under that state, the
                         banners and headline numbers it reports above them,
                         the panels and figures it draws them as, and the order
-                        one render reaches all of them in -- and the
-                        destination the trajectory viewer's own surfaces above
-                        migrate the rest of their responsibilities to
+                        one render reaches all of them in -- and the whole of
+                        the trajectory viewer beside it: the file-backed read
+                        model, the filters over it, and every builder its page
+                        is drawn from
     analytics/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, what
@@ -1004,9 +980,9 @@ orchestrator/
       coercion.py       the narrowing every untyped record field passes
                         through, so an older or hand-edited line costs a
                         smaller row rather than a failed read
-      models.py         the four frozen views a record is read back as, their
-                        declared constructor signatures, and the historical
-                        module identity they are published under
+      models.py         the four frozen views a record is read back as and the
+                        declared constructor signatures two of them are built
+                        through
       runs.py           the run record itself, with the views below bound onto
                         it as properties and its cached per-turn index
       usage_views.py    a run's step and tool-call tallies, its model, cost,
@@ -1051,7 +1027,7 @@ orchestrator/
                         above
       page_models.py    the two frozen shapes one run of the page carries --
                         the file as it was read, and what the controls
-                        answered -- under the identity they are published with
+                        answered
       page_setup.py     what a run settles first: the two stylesheets, the
                         opt-in refusal, and the one pass over the file
       controls.py       the sidebar an operator narrows a read with, and the
@@ -1083,9 +1059,7 @@ orchestrator/
                         `catalog.py` reads back
 ```
 
-`trajectory_dashboard.py` resolves that inventory lazily and caches each answer on the facade, but the
-resolved object is the implementation object's exact identity, so a direct import and a
-`patch.object` call both reach the one object its owner defines. Nothing under `git/publication/` answers that way: the
+Nothing under `git/publication/` sits behind a facade: the
 divergence probe, the first-commit-subject read, the two subject-shape predicates, the two title helpers, and the
 squash entry point are each reached on the owner that defines them, `git.publication.probes`, `.titles`, or `.squash`.
 No facade of the publication domain's own sits beside `git/publication/`, and two checks in
@@ -1455,8 +1429,8 @@ sinks and the Postgres surfaces are configured by, the `off` / `disabled` / `non
 share, the parse of each, the `Settings` view an adapter reads one back through, and the fallback a read's
 `db_url=None` resolves through. Every adapter obtains configuration there — the `settings` holder beside it, both
 sinks' appends and the prune beside them, the two skill readers, the two read-path owners under `analytics/query/`,
-the sync request, and the trajectory viewer's `log_paths.py`, which is handed a holder by the record leaf that
-captured it — so a knob's name appears in one place.
+the sync request, and the trajectory viewer's `log_paths.py`, which is handed a holder by the page that composes it —
+so a knob's name appears in one place.
 
 `analytics/settings.py` is where those parsed values are *bound*, and it is the sole settings holder: every knob is
 read out of the environment once, at its import, and a caller patches one there. `live_settings` resolves it behind a
@@ -1464,8 +1438,8 @@ function-local import, so nothing on the append path pays for it until a record 
 because this is the one owner under the analytics destination that reaches `orchestrator.config`, for the `LOG_DIR`
 the default analytics sink lives under. The `Settings` view reads each attribute on demand, so a knob patched between
 two reads reaches the second and a holder carrying only the knobs its caller touches stays usable; `settings_on`
-answers for whichever holder a caller hands it, which is how the trajectory viewer's reader keeps resolving through
-the holder its leaf captured.
+answers for whichever holder a caller hands it, which is how the trajectory viewer resolves its file on the holder its
+page passes down.
 
 `analytics/sink.py` is what both write packages share on the way to disk: the `ts` / `repo` / `issue` / `event`
 envelope every record satisfies, the encoding and locking one JSONL line reaches disk under, the fail-open answer to a
@@ -1724,8 +1698,8 @@ bar label are too narrow to skip. None of the five imports Plotly or Streamlit, 
 load without pulling the optional `dashboard` group into its own import surface.
 `theme.py` is the sixth, and it defines nothing: the panel owners take a theme as a parameter rather than importing
 one, so a page needs a single object carrying every value they name, and this one reads all five owners back under
-one name. The analytics app's `load_dashboard_modules` hands it to the renderers beneath it and the trajectory
-viewer's export manifest publishes it as `theme`, each getting the style owners' own objects rather than copies. No
+one name. The analytics app's `load_dashboard_modules` hands it to the renderers beneath it, getting the style
+owners' own objects rather than copies. No
 chart module is among its callers: every family reads its hues off the palette owner directly, so a color reaches a
 figure without a hop through the composed handle.
 
@@ -2450,7 +2424,7 @@ every figure the page draws: no section is handed a chart handle as a parameter 
 why the shape a render is threaded on carries none — the caller's Streamlit, pandas, and theme travel on it, and the
 figures are the owners' own.
 
-`trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
+`trajectory_viewer/` is the fourth destination, and it holds the whole of the file-backed page: the
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
 and what a page narrows and totals those runs into — the inline HTML that read is drawn as: the stylesheet, the
 banner and tiles a whole read is summarized in, the three renderings one run is identified by, what it cost, and the
@@ -2479,8 +2453,7 @@ vintages both render as, the cohort label a run is picked by and the issue-prefi
 tells — where a stepless record is judged on the prompt and session tells alone, because "every step is a `Skill` call"
 is vacuously true of no steps and would hide a real run from an operator who turned the toggle on. Both view owners
 name the record only under `TYPE_CHECKING`, which is what keeps the dependency one-way: the record imports them, and
-importing any owner here costs nothing outside the package — not the analytics settings, and not the flat leaves that
-forward to it.
+importing any owner here costs nothing outside the package, the analytics settings holder included.
 
 `parsing` is what turns a decoded line into one of those records, and it sits above the whole package: it names the
 coercion, the vocabulary, the views, and the record, and nothing here names it back. Two decisions are made there and
@@ -2498,13 +2471,14 @@ skipped, and what is left comes back newest first with the position each line wa
 timestamps are second-precision, and the file is append-only, so the record appended later is the more recent one. The
 two ways the read itself fails part company on purpose: a missing file is what a sink switched on but not yet written
 to looks like, so it answers empty and silently, while every other `OSError` is warned about first — on the
-`orchestrator.trajectory_reader` logger, the name an operator's filter is keyed on, whichever module the read is
-reached through — and then answers empty too, because a page that stays up showing nothing is what an unreadable file
+`orchestrator.trajectory_reader` logger, spelled literally rather than taken from `__name__` because an operator's
+filter is keyed on that name and it has to stay put while the module holding it moves — and then answers empty too,
+because a page that stays up showing nothing is what an unreadable file
 should cost. `log_paths` answers which file that is, and it is the one owner here that names something outside the
 package: the trajectory knob is parsed by `analytics/config.py`, so the viewer reads the sink's own setting rather
 than a second parse of the same variable. What it names is the settings *view*, not the `analytics/settings.py` holder
-the parsed values are bound on — the holder is handed in by the caller, so importing this owner costs neither that
-holder's read of the process configuration nor a loop back through the flat leaves, and *which* holder a read resolves
+the parsed values are bound on — the holder is handed in by the caller, so importing this owner costs nothing of that
+holder's read of the process configuration, and *which* holder a read resolves
 against stays the caller's question. That is what makes a patch on the caller's own holder the interception every read
 it makes goes through. When the knob is unset — the sink is opt-in and default-off — the
 answer is the banner naming the knob and the relaunch that lands it, rather than an empty table an operator would
@@ -2563,19 +2537,16 @@ strip belongs above: a turn spans several entries, so the strip is drawn once at
 index, and the later entries of that turn — along with the turn inputs carrying no index at all — are paired with
 nothing, which is exactly what the strip's own copy promises an operator. Everything a caller passes into any of them
 is escaped first, because a page writes these with `unsafe_allow_html=True` and every value in them is record text the
-viewer does not own. The one shape published from the page's HTML surface, the KPI tile, reports
-`orchestrator._trajectory_dashboard_html` and stamps itself — under that site's own `_TrajectoryKpi` spelling rather
-than this package's naming, because `__module__` and `__qualname__` together are the pair `pickle` resolves a class
-through, so a stamp naming a module that answers to some other name is a load error rather than a cosmetic
-difference. The builders beside it report their owner, because a function's module is the owner that defines it.
+viewer does not own. The KPI tile the strip is drawn from is private to `summary_html`, the owner that defines it, and
+every shape and builder here reports that owner — nothing under this package spoofs a module it does not live in.
 
 The six page owners sit above both halves, and none of them imports Streamlit either: the five that draw take it in
 as an argument, the way a run and a settings holder are handed in, so drawing a page costs nothing at import and every
 control is testable without it.
 `page_models` holds the two frozen shapes one run carries — the file as it was read and what the controls then
 answered — kept apart because different halves of the run answer them, with the total a property rather than a stored
-field so a page cannot claim a count its own runs disagree with. Both report `orchestrator._trajectory_dashboard_models`
-and keep that site's own underscore spelling, for the same `pickle` reason the KPI tile does. `page_setup` is what a
+field so a page cannot claim a count its own runs disagree with. Both are private to that owner, since only the page
+above them builds one. `page_setup` is what a
 run settles before anything is drawn: the shared stylesheet then this page's, in the order their cascade depends on;
 the opt-in banner an unconfigured sink is *stopped* with rather than fallen through from; and the one pass over the
 file the whole page is then built off, with the dropdown values collected from what was read rather than declared.
@@ -2596,57 +2567,14 @@ returns rather than sections: a file that held no records at all stops at the em
 zeroes over an empty table reads as "nothing ran" when the answer is "nothing was ever written here", while a read the
 filters then emptied stops after the tiles, because those counts are what say the narrowing is what dropped the runs.
 
-Root-level `_trajectory_constants.py`, `_trajectory_record_values.py`, `_trajectory_view_models.py`,
-`_trajectory_run_model.py`, `_trajectory_run_views.py`, `_trajectory_run_timeline.py`,
-`_trajectory_record_parse.py`, `_trajectory_file_read.py`, `_trajectory_filter_models.py`,
-`_trajectory_filter_values.py`, and `_trajectory_filter_match.py` define nothing now and forward each historical name
-to the owner's own object — which they have to, because the functions the record binds its properties to are those
-very objects. The four views and the record still report `orchestrator._trajectory_records` as their module: that is
-the import site their API is documented at, and what a repr, a pickle, or a reader following `__module__` lands on.
-That module is also the one place a caller's world is bound: the parse keeps its historical call shape there, binding
-an `obj` / `seq` pair against a declared signature and handing the owner its own `sequence` keyword, and the log path,
-the banner, and the read each hand the owner the analytics settings holder that leaf captured at its own import.
-
-Root-level `_trajectory_dashboard_style.py`, `_trajectory_dashboard_summary_html.py`,
-`_trajectory_dashboard_run_html.py`, `_trajectory_dashboard_usage_html.py`, and
-`_trajectory_dashboard_timeline_html.py` forward the same way, and respell as they do it: each builder is private to
-the leaf a caller reached it through and public on the owner that defines it, while the two run labels, the stylesheet
-string, the usage separator, the badge vocabulary, the entry-and-strip pair alias, and the stamped tile keep the
-spelling they were published under. That mix is why every name is declared as a pair rather than derived from one.
-`_trajectory_dashboard_html.py` names those owners directly and defines nothing of its own: it is the one HTML surface
-the page reaches every builder through, and the only identity it still carries is the KPI tile's, stamped there by the
-owner the shape is defined in.
-
-Root-level `_trajectory_dashboard_filters.py`, `_trajectory_dashboard_picker.py`, and
-`_trajectory_dashboard_run_render.py` forward the same way and respell as they do it, each control and each row of the
-card private to the leaf a caller reached it through and public on the owner that defines it.
-`_trajectory_dashboard_models.py` defines neither of the two shapes it publishes and still reports both, because that
-is the site they are stamped with — which is why it imports the typing vocabulary and the two record shapes their
-annotations are spelled in and uses them for nothing else, exactly as `trajectory_reader.py` does for the three it
-publishes. `_trajectory_dashboard_page.py` is the one page leaf that is not a pure forwarder: the messages and the
-chrome are the owner's own objects, but the two entry points that read the trajectory knob are its own, because the
-owner answers on the settings holder it is handed and this is what hands it one — the `analytics/settings.py` module
-this leaf captured at its own import, the same world binding `_trajectory_records.py` does for the read.
-
-`trajectory_reader.py` is what is left above both halves: the one import site the page and every historical caller
-reach the whole read model through, defining none of it. It binds the record API off a *freshly loaded*
-`_trajectory_records` — that leaf captures the analytics settings holder it resolves the log path through at its own
-import, so rebuilding the reader has to rebuild that capture with it — and the filter and
-summary API straight off the owners, which need no world at all. The three shapes a caller holds — `FilterOptions`,
-`RunFilterOptions`, and `TrajectorySummary` — report `orchestrator.trajectory_reader` as their module for the reason
-the record views report the leaf: that is the site each was published from. Reporting it is also what makes that
-module the place their annotations are read back from, because `get_type_hints` resolves a class's annotations in the
-globals of the module it names — which is why the typing vocabulary the three are spelled in is imported there and
-used for nothing else.
-
-`orchestrator/apps/trajectory_dashboard.py` sits above all of it, outside this tree: the canonical `streamlit run`
-target, and what composes the page owners under `observability/trajectory_viewer/` into one run of the page.
+`orchestrator/apps/trajectory_dashboard.py` sits above all of it, outside this tree: the only `streamlit run`
+target the viewer has, and what composes the page owners under `observability/trajectory_viewer/` into one run of the
+page.
 Everything it composes is imported inside `main()`, Streamlit included: the repo root only reaches `sys.path` on the
 line above, in the shim `apps/bootstrap.py` owns, so under a script launch no `orchestrator.*` name resolves before
 then — which is why importing the app costs that shim and nothing else. The analytics settings holder the sink's knob
-is read off is resolved at call time for the same reason. `trajectory_dashboard.py` stays the launch path an operator's
-shell history already carries, and its lazy inventory now resolves the page's own two renderings on `page_render` and
-`main` on the app, so a historical caller holds the same objects the canonical target runs.
+is read off is resolved at call time for the same reason, and handing it down is the one place a caller's world is
+bound: `page_setup` and `log_paths` beneath it answer on whichever holder arrives rather than on one they captured.
 
 `orchestrator/apps/analytics_dashboard.py` sits the same way above `observability/dashboard/`: the canonical
 `streamlit run` target, and what composes those owners into one run of the analytics page — the three handles every
@@ -2655,14 +2583,12 @@ narrows, and then either the notice that there is no span to pick a window from 
 the panels beneath. Each owner is imported inside the pass that reaches it, alongside Streamlit and pandas,
 for the reason the viewer's app defers its own: the repo root only reaches `sys.path` on the
 line above, so importing the app costs that shim and nothing else, and the refusal reads the URL off the settings
-holder at call time rather than a name bound when the module was imported. It is the only launch path the analytics
-page has: no root-level module answers for it any more.
+holder at call time rather than a name bound when the module was imported.
 
-The trajectory viewer is the only subsystem with root-level sites left: its launch facade, the read-model facade
-beside it, and the leaves under both stay the import path a historical caller names until the responsibility each
-fronts has an owner here. Neither the analytics tree nor the analytics page has one — every
-read, recorder, prune, trajectory write, replay, panel, chart, and theme value is reached on the owner under
-`observability/` that defines it.
+Neither page has a root-level site left, and neither does anything under them: every
+read, recorder, prune, trajectory write, replay, panel, chart, theme value, record model, filter, and markup builder
+is reached on the owner under `observability/` that defines it, and each `streamlit run` target under `apps/` is the
+one launch path its page has.
 
 Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own subjects
 off disk so a new owner is covered the day it appears. An initializer binds nothing unless the surface it fronts is what
@@ -2679,9 +2605,8 @@ Nothing under the tree carries an export manifest, a resolver hook, or a `.pyi` 
 object, bound once at import rather than resolved per lookup, so the module defining a name stays where a reader finds
 it and where a patch has to land, rather than a facade answering for it — the compatibility layer this destination
 exists to retire. Nothing observed is on the workflow's decision path, so no module may import the workflow engine, a
-stage, or an application entrypoint — the CLI and the runtime loop on one side, and on the other every `streamlit run`
-target: the two canonical ones under `apps/`, the historical `trajectory_dashboard.py` beside
-them, and the leaves it fronts; the dependency runs one way, and an
+stage, or an application entrypoint — the CLI and the runtime loop on one side, and the two `streamlit run` targets
+under `apps/` on the other; the dependency runs one way, and an
 entrypoint composes these owners rather than the reverse. And Streamlit and Plotly stay function-local: they live in the
 optional `dashboard` dependency group, so every module has to import cleanly with both blocked outright *and* with no
 attempt on either recorded — a module-scope import that swallows its own `ImportError` is still a load in the install
@@ -3078,7 +3003,7 @@ trajectories — each carrying a denormalized run-level token-usage / cost summa
 breakdown) alongside the step timeline — and an operator-deployed Postgres aggregation target (with a Streamlit
 dashboard and the `orchestrator/observability/usage/` parser that feeds it). The trajectory sink has its own separate
 Streamlit page — the file-backed trajectory viewer (`orchestrator/apps/trajectory_dashboard.py` over the pure
-read model under `orchestrator/observability/trajectory_viewer/`, reached at `orchestrator/trajectory_reader.py`),
+read model under `orchestrator/observability/trajectory_viewer/`),
 which reads the JSONL directly (usage and cost included) and needs no Postgres.
 None of them feed back into dispatch: workflow correctness keys off the pinned state JSON and the workflow label, so
 every surface is observation-only and safe to truncate, rotate, or delete. That is also why all four migrate into

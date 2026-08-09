@@ -39,10 +39,10 @@ _LAUNCH_MODULES = (f"{_ORCH}.apps.analytics_dashboard",)
 # the repo root is on `sys.path`, and that a decoy parent cannot answer for.
 _COMPOSED = f"{_ORCH}.observability.dashboard.page_pipeline"
 
-# The bare names the entry path may reach its shim through under a script
-# launch. Neither may be probed on the package path, where a stray copy of
-# either would shadow the real helper.
-_BARE_HELPERS = ("bootstrap", "script_launch")
+# The bare name the entry path may reach its shim through under a script
+# launch. It may not be probed on the package path, where a stray copy of it
+# would shadow the real helper.
+_BARE_HELPERS = ("bootstrap",)
 
 _STRAY_HELPER = "raise RuntimeError('a stray helper must not be imported')\n"
 
@@ -133,9 +133,9 @@ class StrayHelperShadowTest(unittest.TestCase):
     """A package import resolves its shim qualified, never by bare name."""
 
     def test_a_stray_helper_stays_unimported(self) -> None:
-        # An unrelated top-level `bootstrap` or `script_launch` earlier on
-        # `sys.path` would otherwise shadow the real helper or fail the import
-        # outright, so no bare name may be probed on the package path.
+        # An unrelated top-level `bootstrap` earlier on `sys.path` would
+        # otherwise shadow the real helper or fail the import outright, so no
+        # bare name may be probed on the package path.
         for module_name in _LAUNCH_MODULES:
             with self.subTest(module=module_name):
                 self._imported_past_the_strays(module_name)
