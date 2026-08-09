@@ -500,8 +500,8 @@ def _dispatch_via_scheduler(
     Requester chain (PyGithub is not documented thread-safe).
 
     Completion reaping is the polling loop's job, not this function's.
-    ``main._run_tick`` calls ``scheduler.reap()`` exactly once after
-    every configured repo's tick returns, which is the cadence surfaced
+    ``runtime.ticks.run_tick`` calls ``scheduler.reap()`` exactly once
+    after every configured repo's tick returns, which is the cadence surfaced
     to operators and documented in ``docs/observability.md`` ("one reap
     per polling pass"). Reaping here as well would multiply that to N+1
     reaps per pass under ``REPOS``.

@@ -215,7 +215,7 @@ One directory up, `retention.py` publishes the three prune entry points — the 
 `prune_trajectory_records`) — over `retention_scan.py` (the timestamp a record is judged by, and the split of a file
 into kept lines and a removed count) and `retention_rewrite.py` (the same-directory temp file, the `os.replace` that
 swaps it in, and the lock held across the read and that swap). It sits beside `config.py` rather than inside either
-sink's package because both sinks are pruned through it. `main._run_tick` names that owner directly.
+sink's package because both sinks are pruned through it. `runtime/ticks.py`'s `run_tick` names that owner directly.
 
 Each sink's lock — the object its append and its prune must share — is minted on
 `observability/analytics/sink.py`, once per process, so an append taken directly off its owner still serializes
@@ -286,18 +286,18 @@ is not valid JSON) are preserved verbatim so the prune step never silently drops
 `observability/analytics/sink.py` — one mint per process, so every reference to `append_record` takes the object the
 prune takes — so a concurrent `append_record` cannot land between the prune's read and its `os.replace`. Under the
 scheduler-driven dispatch, `workflow.tick` returns as soon as it has submitted per-issue callables, so scheduler
-workers may still be running — and calling `append_record` — when `main._run_tick` invokes
+workers may still be running — and calling `append_record` — when `runtime.ticks.run_tick` invokes
 `prune_with_retention_logging()`. Without the lock, an append that opened the old inode after the prune's read but
 before the replace would be silently lost. The lock is held only around the filesystem ops; JSON serialization happens
 outside the critical section.
 
-**Retention cadence.** `main._run_tick` calls `retention.prune_with_retention_logging()` exactly once per polling
-iteration after `workflow.tick` returns for every configured repo, regardless of how many repos are configured — the
-sink is process-wide, not per-repo. It names the owner inside the call, so the tick's own import never pays for the
-prune graph. Right before the prune, `_run_tick` calls `scheduler.reap()` exactly once per
-polling pass so worker failure-completion records drain before the next iteration. `_dispatch_via_scheduler`
-deliberately does NOT reap. The wrapper catches exceptions and logs the `"removed N record(s)"` message so the call site
-in `main` stays a one-liner, and it dispatches `prune_old_records` on its own module so
+**Retention cadence.** `runtime.ticks.run_tick` calls `retention.prune_with_retention_logging()` exactly once per
+polling iteration after `workflow.tick` returns for every configured repo, regardless of how many repos are
+configured — the sink is process-wide, not per-repo. It names the owner inside the call, so the tick's own import never
+pays for the prune graph. Right before the prune, `run_tick` calls `scheduler.reap()` exactly once per polling pass so
+worker failure-completion records drain before the next iteration. `_dispatch_via_scheduler` deliberately does NOT
+reap. The wrapper catches exceptions and logs the `"removed N record(s)"` message so the call site in the tick stays a
+one-liner, and it dispatches `prune_old_records` on its own module so
 `patch.object(retention, "prune_old_records", ...)` still intercepts. Per-tick cost is bounded: the helper reads the
 file at most once and only rewrites it when at least one record is older than the retention window.
 
@@ -496,8 +496,8 @@ without a re-parse. The whole block rides its **own** inner fail-open `try/excep
 failure logs (`log.exception`) and is swallowed, so it can never drop the baseline `agent_exit` usage / cost record or
 the `skill_triggered` audit events, all of which were already produced before it runs. With the sink off (the default)
 the block is a no-op before any parse work — the prompt is never read into a record and the `agent_exit` shape is
-byte-for-byte unchanged. `main._run_tick` does not yet call `prune_trajectory_records`, so trajectory retention stays
-operator-driven for now.
+byte-for-byte unchanged. `runtime.ticks.run_tick` does not yet call `prune_trajectory_records`, so trajectory
+retention stays operator-driven for now.
 
 **Record shape.** One `agent_trajectory` record per tracked run carries the standard envelope (`ts`, `repo`, `issue`,
 `event`, `stage`) plus correlation context (`agent_role`, `backend`, `session_id`, `review_round`, `retry_count`) and
@@ -1948,9 +1948,9 @@ its own fail-open guard.
 
 ## Summary of "what runs when"
 
-- `retention.prune_with_retention_logging` (function call) — trigger: end of each `main._run_tick` after every
+- `retention.prune_with_retention_logging` (function call) — trigger: end of each `runtime.ticks.run_tick` after every
   configured repo drains; cadence: once per tick (process-wide, not per-repo); no-op when the sink is disabled or
   `ANALYTICS_RETENTION_DAYS <= 0`.
-- `scheduler.reap` (method call) — trigger: end of each `main._run_tick` after every configured repo drains,
+- `scheduler.reap` (method call) — trigger: end of each `runtime.ticks.run_tick` after every configured repo drains,
   immediately before the analytics prune; cadence: exactly once per polling pass regardless of repo count; nonblocking
   drain of any worker completions since the last poll. `_dispatch_via_scheduler` deliberately does NOT call `reap`.

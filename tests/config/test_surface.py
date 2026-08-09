@@ -68,8 +68,8 @@ class PublicSurfaceTest(unittest.TestCase):
             self.assertTrue(hasattr(self._config, name), name)
 
     def test_repo_root_is_exported(self) -> None:
-        # `_main_self_update` reads `config.REPO_ROOT` at runtime, so it has to
-        # stay part of the exported surface.
+        # `runtime.self_update` reads `config.REPO_ROOT` at runtime, so it has
+        # to stay part of the exported surface.
         self.assertIn("REPO_ROOT", self._config.__all__)
 
     def test_all_lists_only_public_names(self) -> None:

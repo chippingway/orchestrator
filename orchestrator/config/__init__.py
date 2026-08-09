@@ -188,9 +188,10 @@ CLOSED_ISSUE_SWEEP_EVERY_N_TICKS: int = _RESOLVED["CLOSED_ISSUE_SWEEP_EVERY_N_TI
 # kill of both `run.sh` and python.
 SHUTDOWN_GRACE_SECONDS: int = _RESOLVED["SHUTDOWN_GRACE_SECONDS"]
 
-# Persistent log location. main.py attaches a FileHandler here in addition to
-# the existing stderr stream, so post-mortems don't depend on the terminal
-# `run.sh` was started in. Already covered by the `*.log` .gitignore rule.
+# Persistent log location. `runtime/logs.py` attaches a FileHandler here in
+# addition to the existing stderr stream, so post-mortems don't depend on the
+# terminal `run.sh` was started in. Already covered by the `*.log` .gitignore
+# rule.
 LOG_DIR: Path = _RESOLVED["LOG_DIR"]
 
 # Optional JSONL sink for structured audit events. When set, `GitHubClient`

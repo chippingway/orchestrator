@@ -58,7 +58,7 @@ _SUBPROCESS_OWNERS = (
 _FORBIDDEN_PREFIXES = (
     "orchestrator.cli",
     "orchestrator.git.base_sync",
-    "orchestrator.main",
+    "orchestrator.runtime",
     "orchestrator.workflow",
 )
 

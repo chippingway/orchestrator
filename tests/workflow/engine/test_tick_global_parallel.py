@@ -30,8 +30,9 @@ class TickGlobalSchedulingTest(unittest.TestCase):
         process.assert_not_called()
 
     def test_global_semaphore_clamps_concurrency(self) -> None:
-        # The `global_semaphore` parameter is the host-wide ceiling threaded
-        # in by `main._run_tick`. It must clamp concurrent `_process_issue`
+        # The `global_semaphore` parameter is the host-wide ceiling on the
+        # in-tick path (the shared scheduler `runtime.ticks.run_tick` supplies
+        # owns that cap instead). It must clamp concurrent `_process_issue`
         # calls regardless of how high `spec.parallel_limit` was
         # configured: a spec with parallel_limit=4 plus a semaphore sized
         # 2 must never have more than 2 issues in flight at once, even
@@ -145,7 +146,7 @@ class TickGlobalSchedulingTest(unittest.TestCase):
             patch.object(dispatch, support.PROCESS_ISSUE, side_effect=recorder),
         ):
             # The enumeration failure is not caught inside `tick` (it lives
-            # at the per-repo boundary in `main._run_tick`), but the issues
+            # at the per-repo boundary in `runtime.ticks.tick_one_repo`), but the issues
             # yielded BEFORE the raise must still have been processed.
             with self.assertRaises(RuntimeError):
                 tick.tick(gh, support._spec(parallel_limit=1))

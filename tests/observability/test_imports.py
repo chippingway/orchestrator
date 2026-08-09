@@ -33,14 +33,13 @@ _ROOT_PACKAGE_MODULES = frozenset((
 # reads one back. On the tick side that is the workflow engine, the stage
 # handlers, and the CLI and runtime loop under them. On the page side it is the
 # two `streamlit run` targets under `apps`: those are entry points in the same
-# sense `main` is, they are what a migrated owner is composed *by*, and reading
-# one back would drag Streamlit and Plotly in behind it.
+# sense the polling runtime is, they are what a migrated owner is composed
+# *by*, and reading one back would drag Streamlit and Plotly in behind it.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.__main__",
-    "orchestrator._main",
     "orchestrator.apps",
     "orchestrator.cli",
-    "orchestrator.main",
+    "orchestrator.runtime",
     "orchestrator.workflow",
 )
 

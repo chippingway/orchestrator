@@ -49,7 +49,8 @@ _OWNER_ONLY_NAMES = (
 # both ask, so it has to stay reachable without either of them: the stage tree
 # and the process entrypoint.
 _FORBIDDEN_PREFIXES = (
-    "orchestrator.main",
+    "orchestrator.cli",
+    "orchestrator.runtime",
     "orchestrator.workflow.stages",
 )
 

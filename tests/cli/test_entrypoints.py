@@ -12,19 +12,17 @@ import unittest
 from importlib import import_module
 from pathlib import Path
 from typing import Optional
-from unittest.mock import call, patch
 
 from orchestrator import cli
 
 _LaunchForm = tuple[str, Optional[list[str]]]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PACKAGE = "orchestrator"
-_RUNTIME_MODULE = "orchestrator.main"
+_MODULE_LAUNCH = f"{_PACKAGE}.__main__"
 _CONSOLE_SCRIPT = "agent-orchestrator"
 _ENTRY_POINT = "orchestrator.cli:main"
 _HELP_FLAG = "--help"
 _ONCE_FLAG = "--once"
-_RUNTIME_EXIT_CODE = 7
 _HELP_TIMEOUT_SECONDS = 60
 _MISSING_SCRIPT_REASON = f"{_CONSOLE_SCRIPT} is not installed; run `uv sync`"
 
@@ -41,7 +39,6 @@ def _launch_forms() -> tuple[_LaunchForm, ...]:
     return (
         (_CONSOLE_SCRIPT, [console_script] if console_script else None),
         (f"python -m {_PACKAGE}", [sys.executable, "-m", _PACKAGE]),
-        (f"python -m {_RUNTIME_MODULE}", [sys.executable, "-m", _RUNTIME_MODULE]),
     )
 
 
@@ -59,31 +56,16 @@ def _run_help(command: list[str]) -> subprocess.CompletedProcess:
     )
 
 
-class CliDelegationTest(unittest.TestCase):
-    """`orchestrator.cli.main` is the console-script target and forwards
-    both its argv and the runtime's exit code unchanged. It resolves
-    `orchestrator.main.main` at call time, so the polling loop keeps a
-    single process-wide patch surface.
+class EntryPointTargetTest(unittest.TestCase):
+    """Both launch forms name the one composition point.
+
+    The `agent-orchestrator` console script is the canonical launch command,
+    so its declared target has to keep resolving to the CLI's `main` even when
+    the project is not installed into the environment; `python -m orchestrator`
+    is the form `run.sh` starts and reaches the same function.
     """
 
-    def test_delegates_argv_and_exit_code_to_runtime(self) -> None:
-        runtime = import_module(_RUNTIME_MODULE)
-
-        with patch.object(runtime, "main", return_value=_RUNTIME_EXIT_CODE) as runtime_main:
-            exit_codes = [cli.main([_ONCE_FLAG]), cli.main()]
-            forwarded_argv = list(runtime_main.call_args_list)
-
-        self.assertEqual(exit_codes, [_RUNTIME_EXIT_CODE, _RUNTIME_EXIT_CODE])
-        self.assertEqual(forwarded_argv, [call([_ONCE_FLAG]), call(None)])
-
-
-class ConsoleScriptRegistrationTest(unittest.TestCase):
-    """The `agent-orchestrator` console script is the canonical launch
-    command, so its declared target has to keep resolving to the CLI's
-    `main` even when the project is not installed into the environment.
-    """
-
-    def test_declared_target_resolves_to_cli_main(self) -> None:
+    def test_declared_console_target_is_cli_main(self) -> None:
         manifest = tomllib.loads(
             (_REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
         )
@@ -96,12 +78,12 @@ class ConsoleScriptRegistrationTest(unittest.TestCase):
             cli.main,
         )
 
+    def test_module_launch_form_runs_the_same_main(self) -> None:
+        self.assertIs(import_module(_MODULE_LAUNCH).main, cli.main)
+
 
 class LaunchFormHelpTest(unittest.TestCase):
-    """Every supported launch form reaches the same argument parser: the
-    console script, the package module form, and the retained
-    `orchestrator.main` module form.
-    """
+    """Every supported launch form reaches the same argument parser."""
 
     def test_launch_forms_print_usage(self) -> None:
         for form_name, command in _launch_forms():
