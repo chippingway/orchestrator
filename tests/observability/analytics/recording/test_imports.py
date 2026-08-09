@@ -59,33 +59,17 @@ _PUBLISHED = tuple(sorted(_PUBLISHED_OWNERS))
 
 _SINK = "orchestrator.observability.analytics.sink"
 
-# The flat leaves whose responsibility these owners took over. Any survivor
-# would be a second place a record could be built or a sink line written.
-_VACATED_LEAVES = (
-    "orchestrator/analytics/_recording.py",
-    "orchestrator/analytics/_recording_agent_exit.py",
-    "orchestrator/analytics/_recording_catalog.py",
-    "orchestrator/analytics/_recording_dependencies.py",
-    "orchestrator/analytics/_recording_io.py",
-    "orchestrator/analytics/_recording_models.py",
-    "orchestrator/analytics/_recording_skills.py",
-    "orchestrator/analytics/_recording_usage.py",
-)
-
 # Every module that appends an analytics record, paired with nothing else it
 # needs: the client's paired audit / analytics stage-enter hook, the dispatch
 # that times one handler, the tracked agent run, and the per-tick skill
-# catalog. Each is checked to reach the owner *and* not the flat analytics
-# package -- nothing on the write path resolves anything through it any more,
-# which is what makes it retirable rather than load-bearing.
+# catalog. Each is checked to reach the owner that defines the recorder it
+# calls, so the write path has one place a record is built.
 _PRODUCERS = (
     "orchestrator.github.client",
     "orchestrator.workflow.engine.dispatch",
     "orchestrator.workflow.engine.usage",
     "orchestrator.skills.catalog",
 )
-
-_ANALYTICS_PACKAGE = "orchestrator.analytics"
 
 # What an owner here is allowed to reach: its siblings, the configuration
 # owner every knob is read through, the shared sink owner the envelope and the
@@ -110,7 +94,7 @@ def _qualified(owner: str) -> str:
 
 
 class OwnerInventoryTest(unittest.TestCase):
-    """The declared owners are the ones on disk, and nothing is left behind."""
+    """The declared owners are the ones on disk."""
 
     def test_declared_owners_are_the_ones_on_disk(self) -> None:
         directory = Path(_package.__file__).parent
@@ -120,12 +104,6 @@ class OwnerInventoryTest(unittest.TestCase):
             if module_path.stem != "__init__"
         ))
         self.assertEqual(found, tuple(sorted(_OWNERS)))
-
-    def test_no_vacated_leaf_survives(self) -> None:
-        repository_root = Path(import_module("orchestrator").__file__).parents[1]
-        for leaf in _VACATED_LEAVES:
-            with self.subTest(leaf=leaf):
-                self.assertFalse(repository_root.joinpath(leaf).exists())
 
 
 class PublicSurfaceTest(unittest.TestCase):
@@ -187,7 +165,6 @@ class LayeringTest(unittest.TestCase):
             planted = _imported_orchestrator_modules(producer)
             with self.subTest(producer=producer):
                 self.assertIn(_PACKAGE, planted)
-                self.assertNotIn(_ANALYTICS_PACKAGE, planted)
 
 
 if __name__ == "__main__":

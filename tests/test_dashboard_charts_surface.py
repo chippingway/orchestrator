@@ -20,26 +20,32 @@ import unittest
 from pathlib import Path
 
 
+_QUERY_OWNERS = "orchestrator.observability.analytics.query"
+
+
 def _load_chart_dependencies():
     charts = importlib.import_module("orchestrator.dashboard_charts")
     theme_module = importlib.import_module("orchestrator.dashboard_theme")
-    read_module = importlib.import_module("orchestrator.analytics.read")
-    return charts, theme_module, read_module
+    return charts, theme_module
 
 
 try:
-    dashboard_charts, theme, _analytics_read = _load_chart_dependencies()
+    dashboard_charts, theme = _load_chart_dependencies()
 except ModuleNotFoundError:
     HAS_PLOTLY = False
     dashboard_charts = None  # type: ignore[assignment]
 else:
     HAS_PLOTLY = True
-    HourlyHeatmapPoint = _analytics_read.HourlyHeatmapPoint
-    RepoBreakdownRow = _analytics_read.RepoBreakdownRow
-    ReviewRoundBucketRow = _analytics_read.ReviewRoundBucketRow
-    StageBreakdown = _analytics_read.StageBreakdown
-    ThroughputDayRow = _analytics_read.ThroughputDayRow
-    TimeSeriesPoint = _analytics_read.TimeSeriesPoint
+    _activity_models = importlib.import_module(f"{_QUERY_OWNERS}.activity_models")
+    _cost_models = importlib.import_module(f"{_QUERY_OWNERS}.cost_models")
+    _overview_models = importlib.import_module(f"{_QUERY_OWNERS}.overview_models")
+    _run_models = importlib.import_module(f"{_QUERY_OWNERS}.run_models")
+    HourlyHeatmapPoint = _activity_models.HourlyHeatmapPoint
+    RepoBreakdownRow = _cost_models.RepoBreakdownRow
+    ReviewRoundBucketRow = _cost_models.ReviewRoundBucketRow
+    StageBreakdown = _run_models.StageBreakdown
+    ThroughputDayRow = _activity_models.ThroughputDayRow
+    TimeSeriesPoint = _overview_models.TimeSeriesPoint
 
 
 _SKIP_REASON = "plotly not installed -- run `uv sync --group dashboard`"

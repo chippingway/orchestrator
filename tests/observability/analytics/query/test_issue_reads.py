@@ -11,7 +11,7 @@ from orchestrator.observability.analytics.query.raw_reads import (
     get_issue_events,
     get_issues,
 )
-from tests.analytics_assertions import assert_row_fields, assert_sql_fragments
+from tests.observability.analytics.analytics_assertions import assert_row_fields, assert_sql_fragments
 from tests.observability.analytics.query.query_fake_driver import (
     FakeConnect,
     FakeConnection,
@@ -35,6 +35,10 @@ _REPO_B = "owner/b"
 _ISSUE = 7
 
 _GROUP_BY_PAIR = "GROUP BY repo, issue"
+
+_BASE_SCAN = "FROM analytics_events"
+
+_ROLLUP_SCAN = "FROM analytics_daily_rollup"
 
 # The cap the issue table defaults to, and the one a caller overrides it with.
 _DEFAULT_LIMIT = 100
@@ -312,6 +316,35 @@ class IssueEventsTest(unittest.TestCase):
                         ),
                         [],
                     )
+
+
+class EventsTableScanTest(unittest.TestCase):
+    """Both reads stay on the events table rather than the rollup.
+
+    The aggregate carries MIN/MAX `ts`, `latest_stage`, and the review-round
+    and retry maxima, and the trace addresses individual rows; the day bucket
+    threw all of that away, so a read moved onto it would be asking for
+    columns it does not carry.
+    """
+
+    def test_neither_read_migrates_to_the_rollup(self) -> None:
+        reads = (
+            ("issues", lambda connect: get_issues(connect=connect)),
+            (
+                "issue_events",
+                lambda connect: get_issue_events(
+                    repo=_REPO, issue=_ISSUE, connect=connect,
+                ),
+            ),
+        )
+        for name, read in reads:
+            with self.subTest(read=name):
+                conn = FakeConnection()
+                with configured_db_url():
+                    read(conn.as_connect)
+                scan_sql, _ = conn.executed[0]
+                self.assertIn(_BASE_SCAN, scan_sql)
+                self.assertNotIn(_ROLLUP_SCAN, scan_sql)
 
 
 if __name__ == "__main__":

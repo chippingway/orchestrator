@@ -42,12 +42,12 @@ _MODULES = (
 
 # What importing the package must leave out of `sys.modules`: the dispatcher,
 # the tick loop, the stage-handler tree, the git and GitHub subsystems those
-# reach, and the analytics and config packages behind them.
+# reach, the analytics recorders under them, and the config package behind those.
 _DEFERRED_MODULES = (
-    "orchestrator.analytics",
     "orchestrator.config",
     "orchestrator.git",
     "orchestrator.github",
+    "orchestrator.observability.analytics.recording",
     "orchestrator.workflow.engine",
     "orchestrator.workflow.engine.dispatch",
     _TICK_OWNER,

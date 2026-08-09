@@ -9,9 +9,8 @@ it, and everything under that -- the socket it runs on, the filters the key is
 read back as, and the empty answer an unconfigured database yields -- is
 decided by the owners it passes through rather than restated per section.
 
-Each names the query owner that answers it rather than the `analytics.read`
-facade forwarding the same objects, so these sections stay off a hop kept for
-callers that predate those owners. Which owner that is follows what a read is
+Each names the query owner that defines it, so a patch aimed at a read lands
+where the section issues it. Which owner that is follows what a read is
 answered off: four are day-bucketed and the rollup family's, the review-round
 split is what that bucket threw a column away for and the breakdown family's,
 and the newest agent runs and the per-issue spend rows are scanned off the raw

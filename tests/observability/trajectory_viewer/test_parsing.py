@@ -6,7 +6,7 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.observability.trajectory_viewer import parsing
-from tests.analytics_assertions import assert_row_fields
+from tests.observability.analytics.analytics_assertions import assert_row_fields
 from tests.observability.trajectory_viewer.trajectory_viewer_test_support import (
     ISSUE,
     TOOL_BASH,

@@ -11,7 +11,7 @@ import unittest
 from datetime import timedelta
 
 
-from tests.analytics_jsonl_helpers import (
+from tests.observability.analytics.analytics_jsonl_helpers import (
     read_text as _read_text,
     read_lines as _read_lines,
     write_json_lines as _write_json_lines,

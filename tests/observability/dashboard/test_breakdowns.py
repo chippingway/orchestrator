@@ -113,9 +113,9 @@ class PanelReadOwnerTest(unittest.TestCase):
     """Each panel read issues its own query owner's read under the page's key."""
 
     def test_each_read_names_its_query_owner(self) -> None:
-        # The `analytics.read` facade forwards these same six objects, so a
-        # read reaching through it would pass every behavioral check while
-        # keeping a compatibility hop load-bearing for the page.
+        # Identity, not behavior: a read bound to a copy of the owner's
+        # function would answer every panel correctly and still leave a patch
+        # aimed at that owner intercepting nothing.
         for read, getter, key_arguments in _PANEL_READS:
             with self.subTest(read=read.__name__):
                 issued = self._issued(read, key_arguments)

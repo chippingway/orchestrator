@@ -10,14 +10,13 @@ import sys
 from types import ModuleType
 from unittest.mock import patch
 
-from tests.analytics_reload_helpers import reload_analytics
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics
 from tests.import_world_helpers import CONFIG_MODULE, restored_import_world
 
 
 SKIP_DOTENV_ENV = "ORCHESTRATOR_SKIP_DOTENV"
 TOKEN_FILE_ENV = "ORCHESTRATOR_TOKEN_FILE"
 MISSING_TOKEN_FILE = "/tmp/agent-orchestrator-token-missing"
-ANALYTICS_READ_MODULE = "orchestrator.analytics.read"
 DASHBOARD_MODULE = "orchestrator.dashboard"
 WIDGETS_MODULE = "orchestrator.dashboard_widgets"
 THEME_MODULE = "orchestrator.dashboard_theme"
@@ -26,7 +25,6 @@ READ_MODE_ATTRIBUTE = "read_mode"
 READ_MODE_OWNER = f"{DASHBOARD_OWNERS}.{READ_MODE_ATTRIBUTE}"
 _RELOAD_POP_MODULES = (
     CONFIG_MODULE,
-    ANALYTICS_READ_MODULE,
     "orchestrator.dashboard_state",
     "orchestrator.dashboard_kpis",
     "orchestrator.dashboard_html",
@@ -98,11 +96,6 @@ def reload_dashboard(
             dashboard = importlib.import_module(DASHBOARD_MODULE)
             importlib.import_module(WIDGETS_MODULE)
     return analytics, dashboard
-
-
-def load_analytics_read() -> ModuleType:
-    """Return the analytics read facade bound to the current import world."""
-    return importlib.import_module(ANALYTICS_READ_MODULE)
 
 
 def load_dashboard_theme() -> ModuleType:

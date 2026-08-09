@@ -7,7 +7,7 @@ import unittest
 from datetime import datetime, timezone
 
 from orchestrator.observability.analytics.query.raw_reads import get_recent_agent_exits
-from tests.analytics_assertions import assert_row_fields
+from tests.observability.analytics.analytics_assertions import assert_row_fields
 from tests.observability.analytics.query.query_fake_driver import (
     FakeConnect,
     FakeConnection,
@@ -15,6 +15,10 @@ from tests.observability.analytics.query.query_fake_driver import (
 from tests.observability.analytics.query.query_test_support import configured_db_url
 
 _AGENT_EXIT = "agent_exit"
+
+_BASE_SCAN = "FROM analytics_events"
+
+_ROLLUP_SCAN = "FROM analytics_daily_rollup"
 
 _STAGE_ENTER = "stage_enter"
 
@@ -134,6 +138,17 @@ class RecentAgentExitsTest(unittest.TestCase):
             bindings,
             (_AGENT_EXIT, _WINDOW_START, _WINDOW_END, _REPO, _LIMIT),
         )
+
+    def test_the_scan_stays_on_the_events_table(self) -> None:
+        # Per-row `ts` precision, `review_round`, and `retry_count` are what
+        # the day bucket threw away, so a read moved onto the rollup would be
+        # asking it for columns it does not carry.
+        conn = FakeConnection()
+        with configured_db_url():
+            get_recent_agent_exits(connect=conn.as_connect)
+        scan_sql, _ = conn.executed[0]
+        self.assertIn(_BASE_SCAN, scan_sql)
+        self.assertNotIn(_ROLLUP_SCAN, scan_sql)
 
     def test_a_kept_agent_exit_still_queries(self) -> None:
         conn = FakeConnection()

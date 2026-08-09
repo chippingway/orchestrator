@@ -12,7 +12,7 @@ from orchestrator.observability.analytics.query.breakdown_reads import (
     get_cost_coverage,
     get_review_round_breakdown,
 )
-from tests.analytics_assertions import (
+from tests.observability.analytics.analytics_assertions import (
     assert_column_values,
     assert_row_fields,
     assert_sql_fragments,

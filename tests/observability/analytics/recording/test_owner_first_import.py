@@ -31,9 +31,8 @@ _EVENT_VALUE = "pr_opened"
 
 # The order a producer actually creates: it names the recorders at its own
 # import and nothing else. What this pins is the shape of that import -- the
-# compatibility package is never planted, and the process configuration behind
-# the sink knob is not paid for until a record is actually written -- and that
-# a record still lands afterwards.
+# process configuration behind the sink knob is not paid for until a record is
+# actually written -- and that a record still lands afterwards.
 _OWNER_FIRST_PROBE = """
 import sys
 
@@ -44,8 +43,6 @@ os.environ["ANALYTICS_LOG_PATH"] = {path!r}
 from orchestrator.observability.analytics import recording as owner
 
 failures = []
-if "orchestrator.analytics" in sys.modules:
-    failures.append("importing the recorders planted the compatibility package")
 if "orchestrator.config" in sys.modules:
     failures.append("importing the recorders planted the process configuration")
 
@@ -70,8 +67,6 @@ del owner.record_repo_skill_catalog
 producer.recording.record_stage_enter(
     repo={repo!r}, issue={issue!r}, stage={stage!r},
 )
-if "orchestrator.analytics" in sys.modules:
-    failures.append("writing a record planted the compatibility package")
 if failures:
     sys.exit("; ".join(failures))
 """

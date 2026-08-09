@@ -32,9 +32,11 @@ designed around that assumption.
 
 ## Top-level layout
 
-The analytics-read and dashboard subsystems expose stable lazy facades backed by immutable export manifests.
-Their implementations live in responsibility-named private leaves, while facade lookups preserve every historical
-import and object identity. Everywhere else — the workflow package included — a responsibility answers on the owner
+The dashboard subsystem exposes a stable lazy facade backed by an immutable export manifest. Its implementation lives
+in responsibility-named private leaves, and a lookup hands back the owner's own object rather than a copy of it, so a
+name the manifest declares is the same object whichever import site reaches it. What the manifest declares is the whole
+of what the facade answers for — a spelling retired with the responsibility behind it is not on it.
+Everywhere else — the workflow package and the whole analytics tree included — a responsibility answers on the owner
 module that defines it and nowhere else, so a patch targets that module and there is no second site a mock could be
 left on. Where a leaf does resolve a name at call time it is to read a knob rather than to borrow a helper — the
 analytics settings, which `patch.object(analytics_settings, "ANALYTICS_LOG_PATH", ...)` decides for every owner that
@@ -435,25 +437,6 @@ orchestrator/
       recovery.py       candidate-branch discovery and unpushed-commit probes
       terminal.py       question-stage teardown and terminal local + remote
                         branch cleanup composed from cleanup.py
-  analytics/
-    __init__.py         import-only package compatibility facade, binding nothing
-    _package_*.py       the name-to-owner inventory and the resolver hooks that
-                        answer each historical spelling off it
-    read.py             lazy read-model compatibility facade with a `.pyi` surface
-    _read_*.py          the manifest and resolver hooks, plus the seven raw
-                        leaves beneath `read_raw.py`, the seven rollup leaves
-                        beneath `read_rollup.py`, and the nine breakdown and
-                        skill leaves beneath `read_dashboard.py`, which forward
-                        to the query owners
-    read_dashboard.py   historical import site for the four breakdown and
-                        three skill reads that moved
-    predicates.py / _predicate_*.py / read_request*.py / read_models*.py / read_raw.py / read_rollup.py
-                        historical filter, request-model, keyword-binding,
-                        result-model, raw-read, and rollup-read import sites
-                        forwarding to the query owners
-    sync.py             historical `-m` target and import site for the sync
-                        command, forwarding to the sync owners
-    _sync_*.py          the nine leaves forwarding to the sync owners
   dashboard.py          historical Streamlit launch path and lazy compatibility
                         facade over the canonical app under apps/
   _dashboard_runtime.py historical import site for the entrypoint and the five
@@ -1256,14 +1239,13 @@ orchestrator/
                         `catalog.py` reads back
 ```
 
-`analytics.read` and `dashboard.py` publish explicit sorted `__all__`
-inventories, `.pyi` surfaces, and immutable target registries. Resolution is lazy and cached on the facade, but the
-resolved object is the implementation object's exact identity. Existing direct imports, wildcard imports, and
-`patch.object` calls therefore keep working. Nothing under `git/publication/` answers that way: the divergence
-probe, the first-commit-subject read, the two subject-shape predicates, the two title helpers, and the squash entry
-point are each reached on the owner that defines them, `git.publication.probes`, `.titles`, or `.squash`. No facade
-of the publication domain's own sits
-beside `git/publication/`, and two checks in
+`dashboard.py` publishes an explicit sorted `__all__`
+inventory, a `.pyi` surface, and an immutable target registry. Resolution is lazy and cached on the facade, but the
+resolved object is the implementation object's exact identity, so a direct import, a wildcard import, and a
+`patch.object` call all reach the one object its owner defines. Nothing under `git/publication/` answers that way: the
+divergence probe, the first-commit-subject read, the two subject-shape predicates, the two title helpers, and the
+squash entry point are each reached on the owner that defines them, `git.publication.probes`, `.titles`, or `.squash`.
+No facade of the publication domain's own sits beside `git/publication/`, and two checks in
 `tests/git/publication/test_imports.py` assert that none does and that no aggregate over the git domains sits above
 the package either, so every publication name answers on its owner alone -- the conventional-commit pattern and the
 recent-base-subject read, the plan and the preparation it comes from, the whole rewrite half, and the parsing and
@@ -1471,7 +1453,7 @@ spawn itself is named on `agents/runner.py`, the owner that defines it, and that
 replace to drive a handler without a CLI, so `patch.object(agents.runner, "run_agent", ...)` is what intercepts it --
 a mock left anywhere else would let a real CLI run. Everything after the spawn is fail-open — the record
 and trajectory guards live inside
-`analytics.record_agent_exit`, the skill emission carries its own here — because none of it is worth a run whose
+`recording.record_agent_exit`, the skill emission carries its own here — because none of it is worth a run whose
 audit pair already fired; an exception out of the spawn is the deliberate exception and propagates.
 
 `workflow/engine/drift.py` is bound the same way. It owns what the orchestrator treats as the human's requirements —
@@ -1664,8 +1646,7 @@ signatures a call is bound through, and the four steps a finished run is summari
 `skills` (the opt-in evidence), `catalog` (the out-of-band Codex capabilities either falls back to), and `agent_exit`
 (the order they compose and write in, plus the recorder that enters it). Every producer names the package —
 `github/client.py` for the paired audit / analytics stage-enter hook, `workflow/engine/dispatch.py` for the timed
-handler, `workflow/engine/usage.py` for the tracked run, and `skills/catalog.py` for the per-tick catalog — and none of
-them imports the flat analytics package at all.
+handler, `workflow/engine/usage.py` for the tracked run, and `skills/catalog.py` for the per-tick catalog.
 
 `events` is the bottom of that graph: it imports `config`, `sink`, and `models`, and none of its siblings. That is what
 lets `agent_exit` own the producer-facing `record_agent_exit` and still reach the append through `events` — the family
@@ -1696,7 +1677,7 @@ measured against,
 and the headline and running budget a record is charged as; `sanitize` the leaf-by-leaf redaction and the head/tail
 cut; `serialize` the record's shape and the order the turn and step arrays are drawn from the budget in; `persistence`
 the opt-in gate, the parse, the Codex backfill, and the fail-open guard the whole write rides; `api` the bare
-`append_trajectory_record` an operator or the compatibility facade reaches. The direction is the point:
+`append_trajectory_record` an operator reaches. The direction is the point:
 `recording/agent_exit` names `persistence`, never the reverse, and no owner here names the recorders — the envelope
 `serialize` builds and the channel `persistence` logs a failure on both come off the shared `sink` owner above both
 packages, which is what keeps that composition acyclic. Every knob is read off the `settings` holder inside the call,
@@ -1833,20 +1814,11 @@ evicts it before re-raising. Reuse is the point, so a normal exit leaves the con
 `close_thread_local_connection` is what drains it. `execution` decides whose connection one SELECT runs on: a
 caller-owned `conn=` is used as-is and never closed, because its lifetime belongs to the `analytics_connection` scope
 that opened it, while a query without one opens and closes its own descriptor in a `finally`. Both connection paths
-resolve an omitted `db_url=` through `config.resolve_db_url`, and every caller that has an owner names it: the
-nine dashboard panel-read adapters name the query owners that answer them rather than the facade. Nothing under
-`orchestrator/analytics/` implements a read any more, so what is left there forwards — the `analytics.read` facade
-answers the historical connection names, including the underscored ones, with their own objects, and the result classes
-too, so a row unpacked off the facade is the class the read family constructed, and all four families of reads
-themselves. On the input side `predicates.py`, the three `_predicate_*` leaves, and `read_request*.py` do the same; on
-the result side the five `read_models_*` family modules do; and on the read side `read_raw.py` with its seven `_read_*`
-leaves, `read_rollup.py` with its seven, and `read_dashboard.py` with its nine, under the private projection,
-fragment, condition, and coercion names each published while it owned them. Each of those flat modules names an owner
-itself and defines nothing, and the hub above each group sits beside its leaves rather than on top of them:
-`predicates.py`, `read_models.py`, `read_raw.py`, and `read_rollup.py` republish everything the leaves beneath them do,
-`read_dashboard.py` the subset it published while it owned the two families, and the query rows are the one group no
-hub ever published — they were reached on `_read_query_rows.py` then and are still reached there. Whichever module a
-historical caller imported hands back the owner's object rather than a copy of it.
+resolve an omitted `db_url=` through `config.resolve_db_url`, and every caller names the owner that answers it: the
+sixteen dashboard read adapters — seven headline and lifecycle, six comparison, three skill — name the query owners
+their reads are defined on, and the dashboard facade's export manifest names the four result-model owners the seven
+rows it publishes come from, so a row a historical caller unpacks off it is the class the read family constructed and
+`isinstance` holds against either import site.
 
 `analytics/sync/` is the other Postgres-facing family, and everything a replay does — down to the command that starts
 one — now lives there. `columns` owns the inventory both shapes meet on — the four fields a
@@ -1899,13 +1871,6 @@ is process-wide and would take every other formatter in the process with it. The
 module rather than bound into the call that drives it, so a substitute installed there is what the command runs —
 which is how the operator-facing failure path is covered without a database.
 
-Nothing under `orchestrator/analytics/` implements the sync any more. `sync.py` stays the historical `-m` target and
-import site — an operator's scheduled `python -m orchestrator.analytics.sync` still starts a replay — and, like the
-nine leaves beside it (`_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, the `_sync_rows.py` hub
-that grouped them, and `_sync_models.py`, `_sync_redaction.py`, `_sync_database.py`, `_sync_ingest.py`, and
-`_sync_run.py`), defines nothing and forwards each historical name, private spelling included, to the owner's own
-object.
-
 `dashboard/` is the destination for the Streamlit analytics page, and the theme both pages are drawn in is the first
 thing to arrive there. It divides by what a value is: `palette.py` holds the chrome and semantic colors plus the seven
 maps that pin a dimension value — an event kind, a stage, a cost source, a token type, a backend, an agent role, a
@@ -1917,9 +1882,9 @@ bar label are too narrow to skip. None of the five imports Plotly or Streamlit, 
 load without pulling the optional `dashboard` group into its own import surface.
 Root-level `dashboard_theme.py` stays the historical import site — the analytics app's `load_dashboard_modules`, which
 hands the module itself to the renderers beneath it, and the trajectory viewer's export manifest both still spell
-`from orchestrator import dashboard_theme as theme` — and, like the sync leaves, defines nothing and forwards each
-name to the owner's own object. No chart module is among them any more: every family reads its hues off the palette
-owner directly, so a color reaches a figure without a root-level hop.
+`from orchestrator import dashboard_theme as theme` — and defines nothing, forwarding each name to the owner's own
+object. No chart module is among them any more: every family reads its hues off the palette owner directly, so a color
+reaches a figure without a root-level hop.
 
 The state one run of that page carries sits beside the theme. `windows.py` owns the half-open UTC window every read is
 bounded by, the presets that name one, and the clamp that keeps a preset inside the data extent — the label, the day
@@ -2046,9 +2011,7 @@ evaluation leaves an annotation as text, and `get_type_hints` resolves that text
 class names.
 
 What that wave is made of arrives with the panels each reader is drawn for. Each is a window a page already decided,
-so the whole of an adapter is the query owner's read it names beside the binding that issues it — and naming that
-owner rather than the `analytics.read` facade in front of it is what keeps the page off a hop kept for callers that
-predate them.
+so the whole of an adapter is the query owner's read it names beside the binding that issues it.
 
 `rollups.py` holds the seven a headline or lifecycle section is built from: the window totals every tile is reduced
 from, the previous window they are compared against, the daily activity cells, the per-stage table, the newest agent
@@ -2998,9 +2961,10 @@ operator's shell history already carries and the lazy inventory a historical cal
 with `main` resolving to the app's own; `_dashboard_runtime.py` is the site the other five passes are republished
 from, forwarding each under the private spelling the facade always resolved it by.
 
-Every other responsibility of those four surfaces is still where it was: `orchestrator/analytics/`, the rest of
-`dashboard*.py`, and `trajectory_dashboard.py` stay the import site every historical caller names until the one it
-needs has an owner here.
+Every other responsibility of those four surfaces is still where it was: the rest of `dashboard*.py` and
+`trajectory_dashboard.py` stay the import site every historical caller names until the one it needs has an owner here.
+The analytics tree has no such site left — every read, recorder, prune, trajectory write, and replay is reached on the
+owner under `observability/analytics/` that defines it.
 
 Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own subjects
 off disk so a new owner is covered the day it appears. An initializer binds nothing unless the surface it fronts is what
@@ -3328,7 +3292,7 @@ misuse fails loudly. Both runners return a unified
 (default `False`) flags a run the runner observed exiting on SIGTERM/SIGKILL — the shape the orchestrator's
 shutdown sweep (`terminate_all_running`) produces when it kills an in-flight agent group — and is distinct
 from `timed_out` (the orchestrator's own `AGENT_TIMEOUT` firing). `usage` (default `None`) is the parsed
-`UsageMetrics` -- the one on `observability/usage/metrics.py` -- that `analytics.record_agent_exit` attaches during a
+`UsageMetrics` -- the one on `observability/usage/metrics.py` -- that `recording.record_agent_exit` attaches during a
 tracked run so callers can read token / cost metrics off the result without re-parsing stdout; it stays `None` for a
 result that never flowed through
 `_run_agent_tracked` or whose usage parse failed (fail-open). The developer (implementing), reviewer

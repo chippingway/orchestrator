@@ -23,10 +23,10 @@ from pathlib import Path
 from orchestrator.observability.analytics.trajectories import api as trajectory_api
 from orchestrator.observability.analytics import sink as analytics_sink
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 
-from tests.analytics_jsonl_helpers import (
+from tests.observability.analytics.analytics_jsonl_helpers import (
     read_lines as _read_lines,
 )
 

@@ -426,16 +426,6 @@ _SURFACES = MappingProxyType({
     ),
 })
 
-# The flat leaves whose responsibility these owners took over. Any survivor
-# would be a second connection cache, or a second answer to what a driver
-# failure costs. The flat modules that do survive are checked separately: they
-# define nothing, and the forwarding check holds them to the owner's objects.
-_VACATED_LEAVES = (
-    "orchestrator/analytics/_connection_cache.py",
-    "orchestrator/analytics/connection.py",
-    "orchestrator/analytics/query.py",
-)
-
 # What an owner here may reach: its siblings and the configuration owner both
 # connection paths resolve an omitted `db_url=` through.
 _REACHABLE_PREFIXES = (
@@ -456,13 +446,6 @@ _PACKAGE_CHAIN = frozenset((
     _PACKAGE,
 ))
 
-# The package the settings a read resolves against still live on. Both
-# connection paths reach them inside the call, through the configuration
-# owner, so no owner here may plant it -- binding that import is what would
-# make the compatibility package load-bearing rather than retirable.
-_ANALYTICS_PACKAGE = "orchestrator.analytics"
-
-
 def _qualified(owner: str) -> str:
     return f"{_PACKAGE}.{owner}"
 
@@ -479,7 +462,7 @@ def _defined_here(owner: str) -> tuple[str, ...]:
 
 
 class OwnerInventoryTest(unittest.TestCase):
-    """The declared owners are the ones on disk, and nothing is left behind."""
+    """The declared owners are the ones on disk."""
 
     def test_declared_owners_are_the_ones_on_disk(self) -> None:
         directory = Path(_package.__file__).parent
@@ -489,12 +472,6 @@ class OwnerInventoryTest(unittest.TestCase):
             if module_path.stem != "__init__"
         ))
         self.assertEqual(found, tuple(sorted(_OWNERS)))
-
-    def test_no_vacated_leaf_survives(self) -> None:
-        repository_root = Path(import_module("orchestrator").__file__).parents[1]
-        for leaf in _VACATED_LEAVES:
-            with self.subTest(leaf=leaf):
-                self.assertFalse(repository_root.joinpath(leaf).exists())
 
 
 class PublicSurfaceTest(unittest.TestCase):
@@ -529,12 +506,6 @@ class LayeringTest(unittest.TestCase):
                         or imported == "orchestrator",
                         f"{owner} reaches {imported}",
                     )
-
-    def test_no_owner_plants_the_flat_package(self) -> None:
-        for owner in _OWNERS:
-            planted = _imported_orchestrator_modules(_qualified(owner))
-            with self.subTest(owner=owner):
-                self.assertNotIn(_ANALYTICS_PACKAGE, planted)
 
 
 class ResultModelImportCostTest(unittest.TestCase):

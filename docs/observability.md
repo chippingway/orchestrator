@@ -9,9 +9,9 @@ time.
   `GitHubClient.emit_event`.
 - **Analytics sink** (`ANALYTICS_LOG_PATH`) — project-local JSONL of raw metric records. The recorders that append it
   are owned by `orchestrator/observability/analytics/recording/` and the by-age prune that bounds it by
-  `orchestrator/observability/analytics/retention.py`; the read models are still entered through the
-  `orchestrator/analytics/` package, though the reads themselves — and the whole sync, the command that starts one
-  included — are owned beside them under `orchestrator/observability/analytics/`.
+  `orchestrator/observability/analytics/retention.py`; the read models live beside them under
+  `orchestrator/observability/analytics/query/`, and the whole sync — the command that starts one included — under
+  `orchestrator/observability/analytics/sync/`.
 - **Trajectory sink** (`TRAJECTORY_LOG_PATH`) — opt-in, default-off JSONL sink for per-run agent reasoning
   trajectories, a sibling sink whose writers live in `orchestrator/observability/analytics/trajectories/` and whose
   by-age prune is the same `retention.py` owner, reading its own knobs. `record_agent_exit` is its
@@ -217,31 +217,19 @@ into kept lines and a removed count) and `retention_rewrite.py` (the same-direct
 swaps it in, and the lock held across the read and that swap). It sits beside `config.py` rather than inside either
 sink's package because both sinks are pruned through it. `main._run_tick` names that owner directly.
 
-`orchestrator/analytics/__init__.py` stays an import-only compatibility facade re-exporting the same objects, including
-the three historical prune entry points. It binds nothing at import: every historical name is resolved on access off
-the owner that defines it now, so naming the package costs an importer neither the recorders nor the process
-configuration behind the knobs, and a knob patched on the `settings` holder is what a read through the package answers
-with. Each sink's lock — the object its append and its prune must share — is minted on
+Each sink's lock — the object its append and its prune must share — is minted on
 `observability/analytics/sink.py`, once per process, so an append taken directly off its owner still serializes
-against the prune rather than writing into a file being rewritten under it. The read and sync surfaces are
-separate Postgres-facing families, and neither has a responsibility left here: the whole sync has moved out, `sync.py`
-included. The column inventory both shapes meet on, the canonical encoding a content hash is taken over, the coercion
-each required field is narrowed by, the INSERT with the positional tuple that fills it, the counts a replay is read
-back as, the batched ingestion and its two dedup filters, the connection lifecycle and rollup refresh around them, the
-URL redaction, `sync_jsonl_to_postgres` itself, and the command that drives it — arguments, UTC-pinned logging, exit
-code, and stdout summary — all belong to `observability/analytics/sync/`. The filters a read is asked
-for, the binding of its keyword call, the connection lifecycle, the query execution, the frozen models a read answers
-with, the six reads that stay on the events table, the seven that scan the daily rollup above it, the four whose
-grouping key that rollup threw away, and the three answered from a run's `extras` blob all belong to
-`observability/analytics/query/`. What is left here is forwarding: `analytics.read` is a manifest-backed lazy facade,
-and `predicates.py`, `_predicate_*.py`, `read_request*.py`, `read_models*.py`, `read_raw.py`, `read_rollup.py`,
-`read_dashboard.py`, and the seven raw, seven rollup, and nine breakdown-and-skill `_read_*.py` leaves define nothing
-of their own — each binds the owner's object under the name a historical caller imported. `sync.py` and the nine
-leaves `_sync_row_schema.py`, `_sync_row_parse.py`, `_sync_row_mapping.py`, the `_sync_rows.py` hub that grouped them,
-and `_sync_models.py`, `_sync_redaction.py`, `_sync_database.py`, `_sync_ingest.py`, and `_sync_run.py` forward the
-same way, under the private spellings each published while it owned them — `sync.py` additionally stays a working `-m`
-target, so an operator's scheduled `python -m orchestrator.analytics.sync` reaches the command owner rather than
-breaking.
+against the prune rather than writing into a file being rewritten under it. The read and sync surfaces are two more
+Postgres-facing families under the same destination. The column inventory both shapes meet on, the canonical encoding
+a content hash is taken over, the coercion each required field is narrowed by, the INSERT with the positional tuple
+that fills it, the counts a replay is read back as, the batched ingestion and its two dedup filters, the connection
+lifecycle and rollup refresh around them, the URL redaction, `sync_jsonl_to_postgres` itself, and the command that
+drives it — arguments, UTC-pinned logging, exit code, and stdout summary — all belong to
+`observability/analytics/sync/`. The filters a read is asked for, the binding of its keyword call, the connection
+lifecycle, the query execution, the frozen models a read answers with, the six reads that stay on the events table,
+the seven that scan the daily rollup above it, the four whose grouping key that rollup threw away, and the three
+answered from a run's `extras` blob all belong to `observability/analytics/query/`. Every caller names the owner it
+needs directly; there is no package in front of them to resolve a name through.
 
 **Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
 trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
@@ -256,8 +244,7 @@ the skill readers, the trajectory writers, and the read and sync paths all reach
 `config.live_settings`, which imports it inside the call so nothing pays for the process configuration behind it until
 a knob is actually read. `config.settings_on` answers for whichever holder a caller hands it, which is what the
 viewer's `trajectory_viewer/log_paths.py` takes as an argument from the `_trajectory_records.py` leaf that captured
-it. The historical spellings (`analytics.ANALYTICS_LOG_PATH`, etc.) still resolve, forwarded to that holder on every
-access so the two cannot disagree. The
+it. The
 audit event log (`config.EVENT_LOG_PATH`) stays in `config` because `GitHubClient.emit_event` is a general-purpose
 audit surface.
 
@@ -289,14 +276,12 @@ JSONL file is the raw foundation layer for the Postgres aggregation step.
 
 **Append.** `recording.append_record(record)` reopens the file in append mode for every record after
 `path.parent.mkdir(parents=True, exist_ok=True)`. An `OSError` is caught and downgraded to a `log.warning`.
-`analytics.append_record` is the same object for as long as the compatibility facade forwards it.
 
 **Retention pruning.** `retention.prune_old_records(*, now=None)` reads the file and removes records whose `ts` is older
 than `ANALYTICS_RETENTION_DAYS`. No-op (returns `0`) when the sink is disabled, retention is non-positive, or the file
 does not exist. The rewrite goes through a temp file in the sink's own directory followed by `os.replace` so a crash
 mid-prune cannot truncate the analytics file. Records with a missing / non-string / unparseable `ts` (and any line that
 is not valid JSON) are preserved verbatim so the prune step never silently drops data it cannot interpret.
-`analytics.prune_old_records` is the same object for as long as the compatibility facade forwards it.
 
 **Append/prune serialization.** Append and prune share one process-local `threading.Lock`, minted on
 `observability/analytics/sink.py` — one mint per process, so every reference to `append_record` takes the object the
@@ -379,7 +364,7 @@ panel), which counts, for each `(repo, role, backend, skill)` cell, how many log
 available and how many loaded it — an incidental `SKILL.md` reference stays a separate diagnostic column and never
 raises the rate. The invocation-level views (`get_skill_trigger_rates` and `get_skill_trigger_matrix`) sit
 beneath it as a clearly named invocation-level diagnostic — see the
-[read model](#read-model-orchestratoranalyticsreadpy) and
+[read model](#read-model-orchestratorobservabilityanalyticsquery) and
 [dashboard](#dashboard-orchestratorappsanalytics_dashboardpy) sections
 below. All are pure read-side additions over `extras JSONB` with no schema change. See
 [Session-aware skill adoption](#session-aware-skill-adoption) for the four evidence forms and the per-session adoption
@@ -454,8 +439,8 @@ rate. Of these three the adoption table renders only `Invocation loads` (`load_r
 used for ordering and context, not a displayed column. A pre-window load counts toward `adopted` but toward none of
 the three, since all three are window-scoped. The collapsed invocation-level diagnostic beneath the adoption table
 (`get_skill_trigger_rates` / `get_skill_trigger_matrix`) reports the same per-run granularity across roles / backends
-and per-skill cohorts. See the [read model](#read-model-orchestratoranalyticsreadpy) for the exact query shapes and the
-[dashboard](#dashboard-orchestratorappsanalytics_dashboardpy) for the rendered columns.
+and per-skill cohorts. See the [read model](#read-model-orchestratorobservabilityanalyticsquery) for the exact query
+shapes and the [dashboard](#dashboard-orchestratorappsanalytics_dashboardpy) for the rendered columns.
 
 ### `repo_skill_catalog` records
 
@@ -491,7 +476,7 @@ whole-record caps, the snapshot of them one record is measured against, and the 
 budget a record is charged as; `sanitize.py` the leaf-by-leaf redaction and head/tail truncation; `serialize.py` the
 record's shape and the order its turn / step arrays are drawn from the budget in; `persistence.py` the opt-in gate, the
 stdout parse, the Codex backfill, and the fail-open guard around the write; and `api.py` the bare
-`append_trajectory_record` an operator or the compatibility facade reaches.
+`append_trajectory_record` an operator reaches.
 `recording/agent_exit.py` names `persistence` directly and never the reverse, and no owner here names the recorders:
 the record envelope `serialize.py` builds and the channel `persistence.py` logs a failure on both come off
 `observability/analytics/sink.py` above both packages, which is what keeps that composition acyclic. Every knob is
@@ -600,7 +585,7 @@ operator-managed — pair `TRAJECTORY_LOG_PATH` with `logrotate` (or equivalent)
 path, create/rename or `copytruncate` rotation is safe between writes.
 
 **Local filesystem only.** A trajectory record is never written to `ANALYTICS_LOG_PATH`, never replayed into Postgres by
-`analytics.sync` (the sync only reads `ANALYTICS_LOG_PATH`), and never surfaced in the **analytics** dashboard
+the sync (which only reads `ANALYTICS_LOG_PATH`), and never surfaced in the **analytics** dashboard
 (`orchestrator/apps/analytics_dashboard.py`), which renders only the Postgres rollup. The sink is one JSONL file on
 local disk; the
 only reader is the dedicated trajectory viewer below, which reads that file straight off disk.
@@ -766,9 +751,6 @@ below resolves inside the call. The cron entry relies on `.env` for both
 25 0 * * * cd /path/to/agent-orchestrator && /usr/bin/flock -n -E 75 /tmp/agent-orchestrator-trajectory.lock /home/<user>/.local/bin/uv run python -c 'from orchestrator.observability.analytics import retention; print(f"trajectory prune removed {retention.prune_trajectory_records()} record(s)")' >> /path/to/agent-orchestrator/logs/trajectory-prune.cron.log 2>&1
 ```
 
-The historical `from orchestrator import analytics; analytics.prune_trajectory_records()` spelling still starts the
-same prune and is kept working for schedulers that already carry it.
-
 To make the same cron entry use a one-off retention window instead of `.env`, prefix the command with `env
 TRAJECTORY_LOG_PATH=/path/to/agent-orchestrator/logs/trajectories.jsonl TRAJECTORY_RETENTION_DAYS=30`.
 
@@ -788,10 +770,10 @@ A deliberately **separate** Streamlit page from the analytics dashboard, launche
 orchestrator/apps/trajectory_dashboard.py`, opt-in `dashboard` group). The two pages stay apart on purpose: the
 analytics dashboard reads the numeric usage / cost rollup from Postgres, while the viewer reads the JSONL trajectory
 file **directly** — the trajectory bodies are never in Postgres — so an operator can browse trajectories with nothing
-but the file on disk (no database, no `analytics.sync`).
+but the file on disk (no database, no sync).
 
 **Read model (`orchestrator/trajectory_reader.py`).** A pure, import-light, Streamlit-free reader (the file-backed
-analogue of `orchestrator/analytics/read.py`). `_trajectory_records.py` preserves the historical record API — the
+analogue of `observability/analytics/query/`). `_trajectory_records.py` preserves the historical record API — the
 `obj` / `seq` parse call shape included, which it binds against a declared signature and hands the owner as
 `sequence` — and is where a caller's world is bound: the log path, the banner, and the read each hand the owner the
 analytics settings holder that leaf captured at its own import, so a patch on that holder intercepts every read made
@@ -965,9 +947,6 @@ uv run python -m orchestrator.observability.analytics.sync.cli   # uses configur
 uv run python -m orchestrator.observability.analytics.sync.cli --log-path /path/to/rotated.jsonl --db-url postgresql://other/db
 ```
 
-`python -m orchestrator.analytics.sync` still starts the same run and is kept working for schedulers that already
-spell it that way, but it is a temporary forwarder — new cron entries and scripts should name the module above.
-
 **Batched inserts.** Reads `ANALYTICS_LOG_PATH` line by line, accumulates validated row tuples into a buffer sized by
 `sync/ingest.py`'s `BATCH_SIZE` (default 500), and flushes each full batch via `cur.executemany("INSERT ... ON CONFLICT
 (content_hash) DO NOTHING", batch)`. A multi-thousand-record replay pays one Postgres round-trip per batch instead of
@@ -1013,9 +992,8 @@ record or build a row with no psycopg installed. `models.py` owns `SyncResult` a
 `database.py` the lazily imported driver plus the quiet rollback / close and the rollup refresh, `redaction.py` the
 credential stripping, `run.py` the resolved request, the no-op gate, the transaction shape, and
 `sync_jsonl_to_postgres` itself, and `cli.py` the arguments, the UTC-pinned logging, the stdout summary, and the exit
-code. `orchestrator/analytics/sync.py` and the nine flat `_sync_*.py` leaves implement none of it: they are forwarders
-answering the historical names — private spellings included — with those owners' own objects, and `sync.py` keeps
-working as an `-m` target on top of that.
+code. Nothing above them answers for a replay: `cli.py` is the module `python -m` names, and a caller that drives
+a run itself names `run.py`.
 
 ### Operator feedback
 
@@ -1060,26 +1038,20 @@ For an unattended deployment, drive the sync from `cron`. A typical entry runs h
 - `>> ...analytics-sync.cron.log 2>&1` keeps stdout and stderr in the project log area instead of routing failures to
   local `mail`.
 
-### Read model (`orchestrator/analytics/read.py`)
+### Read model (`orchestrator/observability/analytics/query/`)
 
 Thin, testable data-access layer over `analytics_events`, the `analytics_agent_runs` view, and the
 `analytics_daily_rollup` materialized view. The dashboard's window-bounded aggregates read from the rollup; per-row
-drill-downs and widgets the rollup cannot reconstruct exactly stay on the base table or the agent-run view. The module
-is Streamlit-free so the read path can be wired into any UI.
+drill-downs and widgets the rollup cannot reconstruct exactly stay on the base table or the agent-run view. Nothing
+here imports Streamlit, so the read path can be wired into any UI.
 
-`read.py` is a manifest-backed lazy facade with a complete `read.pyi`; it owns no query helpers and preserves the exact
-historical object identity, wildcard surface, and `from` imports. The raw, rollup, breakdown, and skill reads are
-owned by `raw_reads.py`, `rollup_reads.py`, `breakdown_reads.py`, and `skill_reads.py` with the projection owners
-beside them under `observability/analytics/query/`, and the frozen result models every family returns by the five
-result-family owners there; `read_raw.py` with the seven raw `_read_*` leaves beneath it, `read_rollup.py` with the
-seven rollup `_read_*` leaves beneath it, `read_dashboard.py` with the nine breakdown and skill `_read_*` leaves
-beneath it, and `read_models.py` with the `read_models_*` modules beside it, forward the historical names to those
-owners' own functions and classes. In-repository callers name an owner rather than that forwarding: the three
-skill-panel adapters in `observability/dashboard/skills.py` reach `skill_reads.py` directly, the six comparison-panel
-adapters in `observability/dashboard/breakdowns.py` reach `rollup_reads.py` and `breakdown_reads.py` the same way, and
-the seven headline and lifecycle adapters in `observability/dashboard/rollups.py` reach those two plus `raw_reads.py`
-and the `SORT_BY_COST` spelling `issue_summaries.py` declares, so `analytics.read` stays a compatibility surface for
-those sixteen rather than a hop the page depends on.
+The raw, rollup, breakdown, and skill reads are owned by `raw_reads.py`, `rollup_reads.py`, `breakdown_reads.py`, and
+`skill_reads.py`, with one projection owner per read beside them and the frozen result models every family returns by
+the five result-family owners there. Each caller names the owner its read is defined on: the three skill-panel
+adapters in `observability/dashboard/skills.py` reach `skill_reads.py` directly, the six comparison-panel adapters in
+`observability/dashboard/breakdowns.py` reach `rollup_reads.py` and `breakdown_reads.py` the same way, and the seven
+headline and lifecycle adapters in `observability/dashboard/rollups.py` reach those two plus `raw_reads.py` and the
+`SORT_BY_COST` spelling `issue_summaries.py` declares.
 
 The shared call boundary is a `ReadRequest` composed of `ReadFilters`, `ReadConnection`, and `ReadOptions`, declared by
 `observability/analytics/query/request_models.py`. Its sibling `requests.py` binds every historical keyword signature
@@ -1322,9 +1294,11 @@ date leaves, the page-controls one, the widget-pipeline one, and the drill-down 
 owners the filter bar, the
 band above the panels, the two-wave render, and the per-issue trace live
 on.
-Historical `dashboard.<name>` imports, wildcard exports, and object identity are unchanged — every alias still
-resolves to the one object its owner defines. Where a patch has to land is a separate question, and it follows the
-call path rather than the alias, which now runs entirely through `observability/dashboard/`: the page reaches the
+Every `dashboard.<name>` the manifest declares — wildcard exports included — resolves to the one object its owner
+defines. The two analytics module handles the facade once carried are not among them: a read is reached on the query
+owner that defines it, and the seven result models the manifest still publishes come off the four model owners beside
+them. Where a patch has to land is a separate question, and it follows the call path rather than the alias, which now
+runs entirely through `observability/dashboard/`: the page reaches the
 controls it opens on, the staged plan, the wave dispatch, and the render passes those drive on the owners that hold
 them, so a test intercepts them with
 `patch.object(page_controls | read_plan | dispatch | page_pipeline | chart_sections | page_sections, ...)`. The
@@ -1636,7 +1610,7 @@ repo, events, stages, issue)`, so a filter change invalidates every cached query
 builds those wrappers under `WIDGET_CACHE_TTL_SECONDS = 60` (1 min), so a window nobody changes goes back to Postgres
 on the first rerun after that minute rather than on every widget interaction. `get_data_extent` and
 `get_filter_options` carry no filter inputs and live in argument-less wrappers under the longer
-`STATIC_METADATA_TTL_SECONDS = 300` (5 min) TTL so the sidebar / topbar only re-hit Postgres when `analytics.sync`
+`STATIC_METADATA_TTL_SECONDS = 300` (5 min) TTL so the sidebar / topbar only re-hit Postgres when a sync run
 ingests new events.
 
 **Two-wave loading.** The 16 widget reads are staged into two waves by `dashboard/read_plan.py`:
@@ -1718,7 +1692,8 @@ stays inert (GitHub issue numbers are not unique across repos).
 
 **Parallel read fan-out.** Setting `DASHBOARD_PARALLEL_READS=on` (or `1` / `true` / `yes`, case-insensitive) flips the
 16 widget reads from sequential to a `ThreadPoolExecutor` capped at eight workers. Each worker opens its own
-thread-local psycopg connection via `analytics.read.analytics_connection()` — `psycopg.Connection` is not thread-safe,
+thread-local psycopg connection via `query/connection_cache.py`'s `analytics_connection()` — `psycopg.Connection` is
+not thread-safe,
 so sharing one socket across workers would corrupt the wire protocol. `dashboard/dispatch.py` emits a single INFO log
 line on every dashboard load — `dashboard.load: total=X.Xs reads=16 parallel=true|false` on a full render, or
 `reads=6` when the empty-window short-circuit skips the second wave — so the two paths can be A/B'd with `grep

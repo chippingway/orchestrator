@@ -13,8 +13,8 @@ The three sit under one owner because they are answered by one family. A skill
 name, the set a repository offered, and the count one run loaded are all
 recorded inside an `agent_exit` row's `extras`, which the day-bucketed rollup
 does not carry, so `skill_reads.py` scans the events table for all three.
-Naming that owner rather than the `analytics.read` facade forwarding the same
-objects is what keeps these panels off a hop kept for callers that predate it.
+Naming that owner is what puts a patch aimed at one of the three where these
+panels issue it.
 
 None of the three carries a filter of its own: what a page narrows a skill
 panel by is the window and the selections every other read shares, so the key

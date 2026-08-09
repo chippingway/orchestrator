@@ -24,12 +24,12 @@ from orchestrator.observability.analytics.trajectories import models as trajecto
 
 
 
-from tests.analytics_jsonl_helpers import (
+from tests.observability.analytics.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
 
 
-from tests.analytics_trajectory_cases import (
+from tests.observability.analytics.analytics_trajectory_cases import (
     CLAUDE_TRAJECTORY_INPUT_TOKENS,
     CLAUDE_TRAJECTORY_OUTPUT_TOKENS,
     CODEX_TRAJECTORY_INPUT_TOKENS,

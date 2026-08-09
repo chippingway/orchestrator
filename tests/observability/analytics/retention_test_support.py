@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, Optional
 
-from tests.analytics_reload_helpers import reload_analytics as _reload
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 ANALYTICS_LOG_PATH = "ANALYTICS_LOG_PATH"
 

@@ -10,19 +10,28 @@ def _identity_exports(*names: str) -> tuple[tuple[str, str], ...]:
     return tuple(zip(names, names))
 
 
+# The seven result models a historical caller unpacked off this facade come
+# from the query owner that defines each, so a row read back here is the class
+# the read family constructed and `isinstance` holds against either import site.
 EXPORTS = (
-    *export_group("orchestrator.analytics", (("analytics", None),)),
-    *export_group("orchestrator.analytics.read", (("analytics_read", None),)),
     *export_group(
-        "orchestrator.analytics.read",
+        "orchestrator.observability.analytics.query.cost_models",
+        _identity_exports("CostCoverageRow"),
+    ),
+    *export_group(
+        "orchestrator.observability.analytics.query.overview_models",
+        _identity_exports("DataExtent", "Summary"),
+    ),
+    *export_group(
+        "orchestrator.observability.analytics.query.run_models",
+        _identity_exports("IssueSummaryRow"),
+    ),
+    *export_group(
+        "orchestrator.observability.analytics.query.skill_models",
         _identity_exports(
-            "CostCoverageRow",
-            "DataExtent",
-            "IssueSummaryRow",
             "SkillAdoptionRow",
             "SkillTriggerMatrixRow",
             "SkillTriggerRateRow",
-            "Summary",
         ),
     ),
     *export_group(

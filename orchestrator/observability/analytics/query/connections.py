@@ -51,7 +51,7 @@ def _psycopg() -> Any:
         import psycopg
     except ImportError as error:
         raise AnalyticsReadError(
-            "psycopg is required for analytics.read; run `uv sync --locked` to install it"
+            "psycopg is required for the analytics reads; run `uv sync --locked` to install it"
         ) from error
     return psycopg
 
@@ -66,7 +66,7 @@ def _connect(db_url: str, **connect_kwargs: Any) -> Any:
 
 
 def default_connect(db_url: str) -> Any:
-    """Open the socket one query owns, mirroring `analytics.sync`'s factory."""
+    """Open the socket one query owns, mirroring the sync's own factory."""
     return _connect(db_url)
 
 
@@ -122,4 +122,4 @@ def close_quietly(conn: Any) -> None:
     try:
         conn.close()
     except Exception:
-        log.exception("analytics.read: connection close failed")
+        log.exception("analytics read: connection close failed")

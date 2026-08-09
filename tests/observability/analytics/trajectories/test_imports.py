@@ -38,17 +38,6 @@ _OWNERS = (
     "serialize",
 )
 
-# The flat leaves whose responsibility these owners took over. Any survivor
-# would be a second place a trajectory record could be built or written.
-_VACATED_LEAVES = (
-    "orchestrator/analytics/_trajectories.py",
-    "orchestrator/analytics/_trajectory_dependencies.py",
-    "orchestrator/analytics/_trajectory_models.py",
-    "orchestrator/analytics/_trajectory_persistence.py",
-    "orchestrator/analytics/_trajectory_sanitize.py",
-    "orchestrator/analytics/_trajectory_serialize.py",
-)
-
 # What an import of any owner here costs before it names anything: the root
 # package and the chain down to this one.
 _ALWAYS_PLANTED = frozenset((
@@ -82,11 +71,6 @@ _CALLERS = MappingProxyType({
     "orchestrator.observability.analytics.recording.agent_exit": _PERSISTENCE_OWNER,
 })
 
-# The compatibility package the historical spellings still resolve through. It
-# binds nothing, and no owner here may plant it -- that is what keeps it
-# retirable rather than load-bearing.
-_ANALYTICS_PACKAGE = "orchestrator.analytics"
-
 
 def _qualified(owner: str) -> str:
     return f"{_PACKAGE}.{owner}"
@@ -104,7 +88,7 @@ def _reaches_beyond(owner: str) -> tuple[str, ...]:
 
 
 class OwnerInventoryTest(unittest.TestCase):
-    """The declared owners are the ones on disk, and nothing is left behind."""
+    """The declared owners are the ones on disk."""
 
     def test_declared_owners_are_the_ones_on_disk(self) -> None:
         directory = Path(_package.__file__).parent
@@ -114,12 +98,6 @@ class OwnerInventoryTest(unittest.TestCase):
             if module_path.stem != "__init__"
         ))
         self.assertEqual(found, tuple(sorted(_OWNERS)))
-
-    def test_no_vacated_leaf_survives(self) -> None:
-        repository_root = Path(import_module("orchestrator").__file__).parents[1]
-        for leaf in _VACATED_LEAVES:
-            with self.subTest(leaf=leaf):
-                self.assertFalse(repository_root.joinpath(leaf).exists())
 
 
 class PublicSurfaceTest(unittest.TestCase):
@@ -145,15 +123,6 @@ class LayeringTest(unittest.TestCase):
         for owner in _OWNERS:
             with self.subTest(owner=owner):
                 self.assertEqual(_reaches_beyond(owner), ())
-
-    def test_no_owner_plants_the_flat_package(self) -> None:
-        # The sharpest case the check above rejects, named on its own: the
-        # knobs a write reads are the `settings` owner's, resolved inside the
-        # call, so nothing here has any reason to name the historical package.
-        for owner in _OWNERS:
-            planted = _imported_orchestrator_modules(_qualified(owner))
-            with self.subTest(owner=owner):
-                self.assertNotIn(_ANALYTICS_PACKAGE, planted)
 
     def test_every_caller_names_the_owner(self) -> None:
         for caller, owner in _CALLERS.items():
