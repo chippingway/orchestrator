@@ -15,11 +15,10 @@ rather than keyword rows, because it is the only card drawn from four reads at
 once and a repo list and a throughput series passed positionally are two
 arguments nothing would catch swapped.
 
-Each panel is named on its own owner rather than resolved off the flat facade
-at call time, so a test intercepting a section patches the module that draws
-it. Streamlit, pandas, and the theme are the caller's, carried in the modules
-shape, and every figure below reaches Plotly inside its own call, so importing
-this owner costs neither dependency.
+Each panel is named on its own owner, so a test intercepting a section patches
+the module that draws it. Streamlit, pandas, and the theme are the caller's,
+carried in the modules shape, and every figure below reaches Plotly inside its
+own call, so importing this owner costs neither dependency.
 """
 from __future__ import annotations
 

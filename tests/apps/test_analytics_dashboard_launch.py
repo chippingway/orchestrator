@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Direct-script launch shapes for the analytics page's two entry paths."""
+"""Direct-script launch shape for the analytics page's entry path."""
 from __future__ import annotations
 
 import os
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Optional
 from unittest.mock import patch
 
-from tests.dashboard_reload_helpers import (
+from tests.observability.dashboard.reload_helpers import (
     hermetic_environment as _hermetic_env,
 )
 from tests.script_launch_helpers import (
@@ -29,37 +29,34 @@ _ORCH_PREFIX = f"{_ORCH}."
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# The two files a launcher may be pointed at: the canonical app, and the path
-# an operator's shell history and bookmarks already carry.
-_SCRIPTS = (
-    (_ORCH, "apps", "analytics_dashboard.py"),
-    (_ORCH, "dashboard.py"),
-)
+# The file a launcher is pointed at, kept as a one-entry inventory because the
+# cases below are written against a launch shape rather than one path.
+_SCRIPTS = ((_ORCH, "apps", "analytics_dashboard.py"),)
 
-_LAUNCH_MODULES = (f"{_ORCH}.apps.analytics_dashboard", f"{_ORCH}.dashboard")
+_LAUNCH_MODULES = (f"{_ORCH}.apps.analytics_dashboard",)
 
 # What the shim exists for: a name under the package that resolves only once
 # the repo root is on `sys.path`, and that a decoy parent cannot answer for.
 _COMPOSED = f"{_ORCH}.observability.dashboard.page_pipeline"
 
-# The bare names an entry path may reach its shim or its hooks through under a
-# script launch. None may be probed on the package path, where a stray copy of
-# any of them would shadow the real helper.
-_BARE_HELPERS = ("_dashboard_facade_bootstrap", "bootstrap", "script_launch")
+# The bare names the entry path may reach its shim through under a script
+# launch. Neither may be probed on the package path, where a stray copy of
+# either would shadow the real helper.
+_BARE_HELPERS = ("bootstrap", "script_launch")
 
 _STRAY_HELPER = "raise RuntimeError('a stray helper must not be imported')\n"
 
-# The group neither entry path may cost at import, and the chart hub in front
-# of Plotly that reaching either one lazily is what keeps out.
+# The group the entry path may not cost at import, and the chart owners in
+# front of Plotly that reaching them lazily is what keeps out.
 _DASHBOARD_GROUP = ("pandas", "plotly", "streamlit")
 
-_CHART_HUB = f"{_ORCH}.dashboard_charts"
+_CHARTS = f"{_ORCH}.observability.dashboard.charts"
 
 
 def _is_launch_world(name: str) -> bool:
     """Whether a loaded module belongs to the world one launch rebuilds.
 
-    The parent packages are in it, not only the entry paths: a rebuilt app is
+    The parent packages are in it, not only the entry path: a rebuilt app is
     bound as an attribute of whichever `orchestrator.apps` object is current
     when it is imported, so restoring the entry alone would leave that
     attribute answering with the throwaway one for the rest of the session.
@@ -78,7 +75,7 @@ def _is_dependency_world(name: str) -> bool:
 
 
 class ScriptPathLaunchTest(unittest.TestCase):
-    """Guard `streamlit run` on either file.
+    """Guard `streamlit run` on the page's file.
 
     Streamlit executes the file as a top-level script via `runpy` with only
     the *script's* directory on `sys.path` (not the repo root), so a naked
@@ -136,10 +133,9 @@ class StrayHelperShadowTest(unittest.TestCase):
     """A package import resolves its shim qualified, never by bare name."""
 
     def test_a_stray_helper_stays_unimported(self) -> None:
-        # An unrelated top-level `bootstrap`, `script_launch`, or facade
-        # bootstrap earlier on `sys.path` would otherwise shadow the real
-        # helper or fail the import outright, so no bare name may be probed on
-        # the package path.
+        # An unrelated top-level `bootstrap` or `script_launch` earlier on
+        # `sys.path` would otherwise shadow the real helper or fail the import
+        # outright, so no bare name may be probed on the package path.
         for module_name in _LAUNCH_MODULES:
             with self.subTest(module=module_name):
                 self._imported_past_the_strays(module_name)
@@ -161,15 +157,15 @@ class StrayHelperShadowTest(unittest.TestCase):
 
 
 class LazyDependencyTest(unittest.TestCase):
-    """Naming either entry path costs neither the group nor the chart hub.
+    """Naming the entry path costs neither the group nor the chart owners.
 
     The polling tick loads `orchestrator.*` modules at process start, so an
-    entry path that imported Streamlit -- or Plotly through the chart hub --
-    at module scope would put the opt-in `dashboard` group behind every
+    entry path that imported Streamlit -- or a chart owner, and Plotly behind
+    it -- at module scope would put the opt-in `dashboard` group behind every
     orchestrator deployment. Composing inside the passes is that boundary.
     """
 
-    def test_neither_path_costs_the_dashboard_group(self) -> None:
+    def test_the_path_costs_no_dashboard_group(self) -> None:
         for module_name in _LAUNCH_MODULES:
             with self.subTest(module=module_name):
                 self._imported_hermetically(module_name)
@@ -180,7 +176,7 @@ class LazyDependencyTest(unittest.TestCase):
             with patch.dict(os.environ, _hermetic_env(), clear=True):
                 _drop_modules(_is_dependency_world)
                 import_module(module_name)
-                for absent in (*_DASHBOARD_GROUP, _CHART_HUB):
+                for absent in (*_DASHBOARD_GROUP, _CHARTS):
                     self.assertNotIn(absent, sys.modules)
 
 

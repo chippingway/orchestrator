@@ -7,11 +7,12 @@
 # Streamlit auto-loads `.streamlit/config.toml` from the working
 # directory when `streamlit run orchestrator/apps/analytics_dashboard.py`
 # is launched from the repo root. The `[theme]` values mirror the tokens exposed
-# from `orchestrator/dashboard_theme.py` so Plotly figures (which
-# render through the theme module) share a palette with the surrounding
-# Streamlit chrome. Anything custom that the Plotly figures need lives
-# in `dashboard_theme.py`; this file only configures the surfaces that
-# Streamlit itself owns.
+# from `orchestrator/observability/dashboard/palette.py` so Plotly
+# figures (which read their hues off that owner) share a palette with
+# the surrounding Streamlit chrome. Anything custom that the Plotly
+# figures need lives with the style owners under
+# `orchestrator/observability/dashboard/`; this file only configures
+# the surfaces that Streamlit itself owns.
 
 [theme]
 base = "light"

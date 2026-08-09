@@ -15,8 +15,8 @@ cards, then these. Splitting the page's order across two calls is what lets a
 caller draw either half against a stand-in, and keeping the pair here is what
 keeps the order itself in one readable place.
 
-Each section is named on its own owner rather than resolved off the flat facade
-at call time, so a test intercepting one patches the module that draws it.
+Each section is named on its own owner, so a test intercepting one patches the
+module that draws it.
 Streamlit, pandas, and the theme are the caller's, carried in the modules
 shape, so importing this owner needs neither optional dependency.
 """

@@ -5,27 +5,24 @@
 from __future__ import annotations
 
 import os
-import sys
 import unittest
-from collections.abc import Iterator
-from contextlib import contextmanager
 from importlib import import_module
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
-from orchestrator.observability.dashboard import date_filter, read_mode, windows
-from tests.dashboard_reload_helpers import reload_dashboard
+from orchestrator.observability.dashboard import (
+    date_filter,
+    page_controls,
+    page_models,
+    read_mode,
+    windows,
+)
 from tests.observability.dashboard import (
     dashboard_test_support as fixtures,
     page_controls_test_support as fakes,
+    reload_helpers,
 )
 
-
-_PACKAGE = "orchestrator.observability.dashboard"
-
-_OWNER_ATTRIBUTE = "read_mode"
-
-_OWNER = f"{_PACKAGE}.{_OWNER_ATTRIBUTE}"
 
 _ANALYTICS_SETTINGS = "orchestrator.observability.analytics.settings"
 
@@ -67,27 +64,24 @@ _STAGED_OPTIONS = SimpleNamespace(repos=(), events=(), stages=())
 _BAR_ATTRIBUTE = "render_date_filter_bar"
 
 
-@contextmanager
-def _owner_imported_under(environment: dict[str, str]) -> Iterator[ModuleType]:
-    """Re-import the owner against `environment`, then put this world's back.
+def _staged_reads(page: fakes.FakeStreamlit):
+    """Stage one page load against the current knob, issuing no read.
 
-    The flag is bound while the owner imports, so an environment case is a
-    re-import rather than a patched attribute -- and the entering module is
-    reinstated under both names a later importer resolves it by, the
-    `sys.modules` entry and the attribute on the package it hangs off, because
-    every historical import site binds this owner's objects once and would
-    otherwise be split across two copies of it.
+    The controls are drawn against a stand-in Streamlit and the bar is answered
+    for, so what comes back is the plan alone -- which is where the flag the
+    world under test set has to have landed.
     """
-    package = import_module(_PACKAGE)
-    entering = import_module(_OWNER)
-    try:
-        with patch.dict(os.environ, environment, clear=True):
-            sys.modules.pop(_OWNER, None)
-            package.__dict__.pop(_OWNER_ATTRIBUTE, None)
-            yield import_module(_OWNER)
-    finally:
-        sys.modules[_OWNER] = entering
-        package.__dict__[_OWNER_ATTRIBUTE] = entering
+    with patch.object(
+        date_filter,
+        _BAR_ATTRIBUTE,
+        side_effect=fakes.BarAnswer(page, _STAGED_WINDOW),
+    ):
+        prepared = page_controls.prepare_dashboard_page(
+            page_models.DashboardModules(st=page, pd=None, theme=None),
+            _STAGED_EXTENT,
+            _STAGED_OPTIONS,
+        )
+    return prepared.reads
 
 
 class ParseParallelReadsFlagTest(unittest.TestCase):
@@ -130,12 +124,20 @@ class ParseParallelReadsFlagTest(unittest.TestCase):
 
 
 class DashboardParallelReadsTest(unittest.TestCase):
-    """The flag every page load of one process is issued under."""
+    """The flag every page load of one process is issued under.
+
+    What this owner reports and what a load actually runs are asserted apart,
+    because they reach the flag by different routes: the owner reads its own
+    global, while the staged plan comes from the sibling owner that bound this
+    module once, at its own import, and is not rebuilt with it. A re-parse that
+    replaced this module rather than re-running it in place would satisfy the
+    first and leave the second issuing the world before it.
+    """
 
     def test_the_import_binds_what_was_asked_for(self) -> None:
         for spelling, expected in ((_ENABLED, True), ("", False)):
             with self.subTest(spelling=spelling):
-                with _owner_imported_under(
+                with reload_helpers.read_mode_reloaded_under(
                     {_PARALLEL_READS_ENV: spelling},
                 ) as owner:
                     self.assertIs(owner.DASHBOARD_PARALLEL_READS, expected)
@@ -143,74 +145,26 @@ class DashboardParallelReadsTest(unittest.TestCase):
                         owner.dashboard_parallel_reads_enabled(), expected,
                     )
 
-    def test_a_later_env_change_does_not_move_it(self) -> None:
-        # An operator turns the fan-out on by restarting the Streamlit process,
-        # so what a load reads is what the import decided: re-parsing per
-        # render could issue one page's reads two different ways.
-        with _owner_imported_under({}) as owner:
-            with patch.dict(os.environ, {_PARALLEL_READS_ENV: _ENABLED}):
-                self.assertFalse(owner.dashboard_parallel_reads_enabled())
-
-
-class ReloadedPageFlagTest(unittest.TestCase):
-    """The page answers with the flag the world it was built in decided.
-
-    The lazy facade and the state hub in front of this owner publish the flag
-    rather than re-deriving it, so a dashboard loaded against one environment
-    has to issue its reads the way that environment asked for -- which is also
-    what keeps a knob parsed at import testable at all. What the facade reports
-    and what a load actually runs are asserted apart, because they reach this
-    owner by different routes: the facade through the flat sites a reload
-    rebuilds, and the staged plan through the sibling owner that bound this
-    module once and is not rebuilt with them. A reload that replaced this
-    module rather than re-running it in place would satisfy the first and leave
-    the second issuing the world before it.
-    """
-
-    def test_the_facade_reads_the_reloaded_world(self) -> None:
-        for spelling, expected in ((_ENABLED, True), ("", False)):
-            with self.subTest(spelling=spelling):
-                _, dashboard = reload_dashboard(
-                    {_PARALLEL_READS_ENV: spelling},
-                )
-                self.assertIs(
-                    dashboard.dashboard_parallel_reads_enabled(), expected,
-                )
-                self.assertIs(dashboard.DASHBOARD_PARALLEL_READS, expected)
-
     def test_the_staged_load_is_issued_that_way(self) -> None:
         # The plan a page carries between its two waves is what the fan-out is
         # actually driven off, so it is the reading an operator's `parallel=`
         # log line and the threads behind it come from.
         for spelling, expected in ((_ENABLED, True), ("", False)):
             with self.subTest(spelling=spelling):
-                _, dashboard = reload_dashboard(
+                with reload_helpers.read_mode_reloaded_under(
                     {_PARALLEL_READS_ENV: spelling},
-                )
+                ):
+                    staged = _staged_reads(fakes.FakeStreamlit())
 
-                self.assertIs(self._staged(dashboard).parallel, expected)
+                self.assertIs(staged.parallel, expected)
 
-    def _staged(self, dashboard: ModuleType):
-        """Stage one load through the reloaded facade, issuing no read.
-
-        The controls are drawn against a stand-in Streamlit and the bar is
-        answered for, so what comes back is the plan alone -- which is where
-        the flag this world set has to have landed.
-        """
-        page = fakes.FakeStreamlit()
-        with patch.object(
-            date_filter,
-            _BAR_ATTRIBUTE,
-            side_effect=fakes.BarAnswer(page, _STAGED_WINDOW),
-        ):
-            prepared = dashboard._prepare_dashboard_page(
-                dashboard._DashboardModules(
-                    st=page, pd=None, charts=None, theme=None,
-                ),
-                _STAGED_EXTENT,
-                _STAGED_OPTIONS,
-            )
-        return prepared.reads
+    def test_a_later_env_change_does_not_move_it(self) -> None:
+        # An operator turns the fan-out on by restarting the Streamlit process,
+        # so what a load reads is what the import decided: re-parsing per
+        # render could issue one page's reads two different ways.
+        with reload_helpers.read_mode_reloaded_under({}) as owner:
+            with patch.dict(os.environ, {_PARALLEL_READS_ENV: _ENABLED}):
+                self.assertFalse(owner.dashboard_parallel_reads_enabled())
 
 
 class DbUnconfiguredMessageTest(unittest.TestCase):

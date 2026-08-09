@@ -123,7 +123,7 @@ class _PageStreamlit:
 
 def _modules(st: Any) -> page_models.DashboardModules:
     return page_models.DashboardModules(
-        st=st, pd=None, charts=None, theme=_THEME,
+        st=st, pd=None, theme=_THEME,
     )
 
 

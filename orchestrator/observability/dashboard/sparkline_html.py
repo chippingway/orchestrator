@@ -20,7 +20,7 @@ lines up.
 The keyword surface a caller reaches this through -- `values`, `color`, `w`,
 and `h` -- is bound as an explicit signature rather than spelled out as
 parameters, because two of those names are shorter than a parameter may be
-spelled here and the historical site still answers a call that names them. The
+spelled here and a call naming them is still answered. The
 renderer underneath takes one request object, so what a caller passes is
 bound, applied, and rendered without either spelling constraining the other.
 """

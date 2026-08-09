@@ -161,7 +161,6 @@ def _render(
         # A frame here is the row list it was built from, so a case reads the
         # projected columns off what the page was handed.
         pd=SimpleNamespace(DataFrame=list),
-        charts=None,
         theme=None,
     )
     filters = page_models.DashboardFilters(

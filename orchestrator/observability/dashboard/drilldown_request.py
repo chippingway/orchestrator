@@ -16,8 +16,8 @@ descriptions of one call. Binding also keeps the shape strict -- an unknown
 keyword or a missing one raises here rather than reaching the render as a
 half-filled request.
 
-The chart and theme handles are the two a drill-down has no use for: it draws
-no figure and paints no card, so it is handed the modules shape with both left
+The theme handle is the one a drill-down has no use for: it draws no figure and
+paints no card, so it is handed the modules shape with that slot left
 unanswered rather than a fifth shape of its own.
 """
 from __future__ import annotations
@@ -47,7 +47,6 @@ def render_drilldown(*args: Any, **kwargs: Any) -> None:
     modules = page_models.DashboardModules(
         st=request.st,
         pd=request.pd,
-        charts=None,
         theme=None,
     )
     filters = page_models.DashboardFilters(

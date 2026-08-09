@@ -118,7 +118,6 @@ def render_panel() -> tuple[ReliabilityStreamlit, RecordingCharts]:
     modules = page_models.DashboardModules(
         st=page,
         pd=None,
-        charts=None,
         theme=SimpleNamespace(fmt_num=marked_number),
     )
     with (

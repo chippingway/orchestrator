@@ -11,11 +11,11 @@ its own copy would be a page whose chart and whose table report different
 windows under one filter line.
 
 ``DashboardModules`` is the one shape that is not a reading. Nothing under this
-package imports Streamlit, pandas, Plotly, or the theme -- they live in the
-optional ``dashboard`` group -- so a render is handed the caller's own handles
-instead, and carrying the four together is what keeps that true through a
-pipeline several calls deep rather than re-threading four parameters at each
-hop.
+package imports Streamlit or pandas -- they live in the optional ``dashboard``
+group -- and the theme is a parameter every panel takes rather than an import,
+so a render is handed the caller's own handles instead, and carrying the three
+together is what keeps that true through a pipeline several calls deep rather
+than re-threading three parameters at each hop.
 
 ``DashboardFilters`` is the one with readings derived rather than stored.
 ``issue`` answers nothing until a repository is picked, because GitHub issue
@@ -59,7 +59,6 @@ from orchestrator.observability.dashboard import read_plan, windows
 class DashboardModules:
     st: Any
     pd: Any
-    charts: Any
     theme: Any
 
 

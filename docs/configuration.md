@@ -455,10 +455,8 @@ Postgres or Streamlit, so deferring or disabling the dashboard never affects wor
    Streamlit prints a `http://localhost:8501` URL. The dashboard is independent of the polling tick and can be killed
    and relaunched without affecting workflow progress. Re-run step 4 to pick up new records.
 
-   `orchestrator/apps/analytics_dashboard.py` is the application entrypoint to name in shell history, scripts, and
-   service units. `orchestrator/dashboard.py` still starts the same page, but only as temporary compatibility for
-   commands and bookmarks that already carry it — it is not the recommended launch path, so point new invocations at
-   the app above.
+   `orchestrator/apps/analytics_dashboard.py` is the only entrypoint the page has, and the one to name in shell
+   history, scripts, and service units.
 
 See [`observability.md#analytics-database`](observability.md#analytics-database-analytics-db) for the schema, sync
 internals, read-model split, dashboard layout, and the in-app empty / error banners.

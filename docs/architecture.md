@@ -32,10 +32,10 @@ designed around that assumption.
 
 ## Top-level layout
 
-The dashboard subsystem exposes a stable lazy facade backed by an immutable export manifest. Its implementation lives
-in responsibility-named private leaves, and a lookup hands back the owner's own object rather than a copy of it, so a
-name the manifest declares is the same object whichever import site reaches it. What the manifest declares is the whole
-of what the facade answers for — a spelling retired with the responsibility behind it is not on it.
+The trajectory viewer's historical launch path exposes a lazy facade backed by an immutable export manifest, and a
+lookup hands back the owner's own object rather than a copy of it, so a name the manifest declares is the same object
+whichever import site reaches it. What the manifest declares is the whole of what the facade answers for — a spelling
+retired with the responsibility behind it is not on it.
 Everywhere else — the workflow package and the whole analytics tree included — a responsibility answers on the owner
 module that defines it and nowhere else, so a patch targets that module and there is no second site a mock could be
 left on. Where a leaf does resolve a name at call time it is to read a knob rather than to borrow a helper — the
@@ -437,165 +437,6 @@ orchestrator/
       recovery.py       candidate-branch discovery and unpushed-commit probes
       terminal.py       question-stage teardown and terminal local + remote
                         branch cleanup composed from cleanup.py
-  dashboard.py          historical Streamlit launch path and lazy compatibility
-                        facade over the canonical app under apps/
-  _dashboard_runtime.py historical import site for the entrypoint and the five
-                        passes one run of the page is drawn by, forwarding to
-                        that app
-  dashboard_theme.py    historical import site for the shared visual theme,
-                        forwarding to the dashboard owners
-  dashboard_state.py    stable state hub reading the window, filter, read-mode,
-                        and fan-out owners under observability/dashboard/
-  dashboard_kpis.py     historical import site for the headline KPI arithmetic
-                        and the banners above it, forwarding to those owners
-  dashboard_kpi_strip.py
-                        stable KPI-strip surface, forwarding the per-day series
-                        and the tiles assembled over them to those owners
-  _dashboard_kpi_series.py / _dashboard_kpi_values.py
-                        historical import sites for those series and tiles,
-                        forwarding to the same owners
-  dashboard_cards.py    stable card surface, forwarding the header, banner
-                        stack, and reliability strip to the card-markup owner
-                        and the efficiency card and coverage bar to the two
-                        card owners beside it
-  dashboard_charts_base.py
-                        historical import site for the primitives every chart
-                        family is drawn out of, forwarding to the charts owner;
-                        no module in the tree reads them off it any more
-  dashboard_charts_heatmap.py
-                        historical import site for the weekday-by-hour activity
-                        grid, forwarding to the charts owner that builds it
-  dashboard_charts_throughput.py
-                        historical import site for the per-day resolved-issue
-                        strip, forwarding to the charts owner that builds it
-  dashboard_charts_usage.py
-                        stable usage-chart surface, forwarding the two public
-                        builders and the shaping beneath them to the charts
-                        owners
-  dashboard_charts_cost.py
-                        stable cost-chart surface, forwarding the four public
-                        builders and the shaping beneath them to the charts
-                        owners
-  _dashboard_cost_layout.py / _dashboard_cost_horizontal.py
-  _dashboard_cost_repo.py / _dashboard_cost_stage.py
-  _dashboard_cost_review.py
-                        historical import sites for the frame the horizontal
-                        cost families are drawn in, the generic spend ranking,
-                        the per-repository adapter drawn through it, the
-                        per-stage cache split, and the per-review-round one,
-                        forwarding to the charts owners
-  dashboard_*.py        stable component, read, chart, and widget hubs
-  _dashboard_windows.py / _dashboard_filter_state.py / _dashboard_state_constants.py
-  _dashboard_read_mode.py / _dashboard_read_core.py / _dashboard_read_plan.py
-  _dashboard_read_dispatch.py
-                        historical state, read, read-plan, and load-dispatch
-                        import sites forwarding to those owners
-  _dashboard_date_widgets.py / _dashboard_date_range.py
-                        historical import sites for the row the date filter is
-                        laid out in and the bar a window is picked in,
-                        forwarding to the two date owners
-  _dashboard_page_controls.py
-                        historical import site for the sidebar a run is
-                        narrowed in and the load those choices open,
-                        forwarding to page_controls.py
-  _dashboard_read_rollups.py / _dashboard_read_breakdowns.py / _dashboard_read_skills.py
-                        historical import sites for the seven headline and
-                        lifecycle reads, the six comparison-panel ones, and the
-                        three skill-panel ones, forwarding to those owners
-  _dashboard_usage_models.py / _dashboard_usage_data.py
-                        historical import sites for the shapes a usage chart is
-                        drawn from and the per-day rollups behind them,
-                        forwarding to the charts owners
-  _dashboard_usage_axis.py / _dashboard_usage_traces.py
-                        historical import sites for the usage chart's aligned
-                        axes and the traces stacked under them, forwarding to
-                        the charts owners
-  _dashboard_usage_chart.py
-                        historical import site for the hero usage figure and
-                        the backend-day stub beside it, forwarding to the
-                        charts owner that builds them
-  _dashboard_card_headers.py
-                        historical import site for the card header, insight
-                        banners, and reliability tiles, forwarding to the
-                        card-markup owner
-  _dashboard_backend_card.py / _dashboard_coverage_card.py
-                        historical import sites for the per-backend efficiency
-                        card and the cost-attribution coverage bar, forwarding
-                        to the two card owners that build them
-  _dashboard_table_html.py
-                        historical import site for the compact table the
-                        hand-rolled panels are drawn as, forwarding to the
-                        table-markup owner
-  _dashboard_issue_table.py
-                        historical import site for the most-expensive-issues
-                        panel drawn in that table, forwarding to the
-                        issue-table owner
-  _dashboard_skill_trigger_table.py
-                        historical import site for the aggregate
-                        skill-trigger panel beside it, forwarding to the
-                        skill-trigger-table owner
-  _dashboard_sparkline_data.py / _dashboard_sparkline_html.py
-                        historical import sites for the line under a KPI tile
-                        and the SVG it is written as, forwarding to the two
-                        sparkline owners
-  _dashboard_summary_html.py
-                        historical import site for the topbar, filter meta,
-                        delta pill, and KPI strip, forwarding to the
-                        chrome-markup owner
-  _dashboard_adoption_columns.py / _dashboard_adoption_sort.py
-  _dashboard_adoption_headers.py / _dashboard_adoption_rows.py
-  _dashboard_adoption_render.py
-                        historical import sites for the per-session adoption
-                        table, forwarding to the five skill-adoption owners
-                        that hold its columns, ordering, header row, row
-                        projection, and panel
-  dashboard_skill_adoption.py
-                        stable surface in front of those five, publishing
-                        every historical spelling and defining none of them
-  _dashboard_matrix_columns.py / _dashboard_matrix_sort.py
-  _dashboard_matrix_headers.py / _dashboard_matrix_rows.py
-  _dashboard_matrix_render.py
-                        historical import sites for the invocation-level
-                        trigger matrix, forwarding to the five skill-matrix
-                        owners that hold its columns, ordering, header row,
-                        row projection, and panel
-  dashboard_skill_matrix.py
-                        stable surface in front of those five, publishing
-                        every historical spelling and defining none of them
-  _dashboard_widget_skills.py
-                        historical import site for the two skill cards -- the
-                        adoption one and the trigger-rate one beside it --
-                        forwarding to the two skill-panel owners
-  _dashboard_widget_runs.py
-                        historical import site for the run listing at the foot
-                        of the page and the per-issue trace beneath it,
-                        forwarding to the recent-runs and drill-down owners
-  _dashboard_drilldown.py
-                        historical import site for that trace's typed request
-                        and call adapter, forwarding to the drill-down-request
-                        owner
-  _dashboard_widget_costs.py
-                        historical import site for the two cost-comparison
-                        sections, the repository-spend and reliability pair
-                        beneath them, and the activity card that closes the
-                        run, forwarding to the four panel owners
-  _dashboard_widget_usage.py
-                        historical import site for the hero spend and
-                        token-usage card, its stack toggle, and the per-day
-                        totals behind it, forwarding to the usage-panel owner
-  _dashboard_widget_models.py
-                        historical import site for the seven shapes one page
-                        render is threaded through, forwarding to
-                        page_models.py
-  _dashboard_widget_states.py
-                        historical import site for the two states a page
-                        leaves through and the line it signs off with,
-                        forwarding to page_states.py
-  _dashboard_widget_pipeline.py
-                        historical import site for the two-wave render above
-                        all of those sections, forwarding to page_pipeline.py,
-                        chart_sections.py, and page_sections.py
-  _dashboard_*.py       bootstrap/hooks plus focused render, query, and chart leaves
   trajectory_reader.py  historical import site for the file-backed read model,
                         forwarding to the trajectory-viewer owners
   _trajectory_*.py      the record facade binding a caller's settings holder,
@@ -625,9 +466,9 @@ orchestrator/
                         run of the analytics page carries, the reads it issues
                         under that state, the banners and headline numbers it
                         reports above them and the figures it draws them as,
-                        and the destination the
-                        observation-only surfaces above migrate the rest of
-                        their responsibilities to
+                        and the destination the trajectory viewer's own
+                        surfaces above migrate the rest of their
+                        responsibilities to
     analytics/
       __init__.py       package marker only; home of the sink configuration,
                         its append side, the by-age prune that bounds it, what
@@ -827,7 +668,8 @@ orchestrator/
                         the step / turn / trajectory records they return
       trajectory_*.py   claude block, stream, and turn plus codex rebuild
     dashboard/          the Streamlit analytics page: the visual theme both
-                        pages are drawn in, the state one run of it carries
+                        pages are drawn in and the one name a page hands it
+                        down under, the state one run of it carries
                         and the bar its window is picked in,
                         the two waves its load is staged into, the fan-out
                         each is issued through and the dispatch that drives
@@ -848,9 +690,8 @@ orchestrator/
                         runs beneath them, and the two
                         that are markup rather than a figure, the figures the
                         rest are drawn as and the defaults every one of them
-                        is handed, the shapes a whole render is threaded
-                        through, and the
-                        destination for what is left
+                        is handed, and the shapes a whole render is threaded
+                        through
       __init__.py       package marker only; callers import an owner directly
       palette.py        the page chrome and semantic colors, the seven maps
                         pinning a dimension value to a hue, and the ordered
@@ -866,6 +707,8 @@ orchestrator/
       formatting.py     the compact money, token, and count renderings a KPI
                         tile, an axis tick, and a bar label are narrow enough
                         to need
+      theme.py          the five owners above read back under one name, which
+                        is the theme object a page hands every panel it draws
       tables.py         the compact table the hand-rolled panels are drawn as:
                         the stylesheet each scopes to itself, the header and
                         body they are assembled from, and the bar width, short
@@ -1239,10 +1082,9 @@ orchestrator/
                         `catalog.py` reads back
 ```
 
-`dashboard.py` publishes an explicit sorted `__all__`
-inventory, a `.pyi` surface, and an immutable target registry. Resolution is lazy and cached on the facade, but the
-resolved object is the implementation object's exact identity, so a direct import, a wildcard import, and a
-`patch.object` call all reach the one object its owner defines. Nothing under `git/publication/` answers that way: the
+`trajectory_dashboard.py` resolves that inventory lazily and caches each answer on the facade, but the
+resolved object is the implementation object's exact identity, so a direct import and a
+`patch.object` call both reach the one object its owner defines. Nothing under `git/publication/` answers that way: the
 divergence probe, the first-commit-subject read, the two subject-shape predicates, the two title helpers, and the
 squash entry point are each reached on the owner that defines them, `git.publication.probes`, `.titles`, or `.squash`.
 No facade of the publication domain's own sits beside `git/publication/`, and two checks in
@@ -1816,9 +1658,8 @@ caller-owned `conn=` is used as-is and never closed, because its lifetime belong
 that opened it, while a query without one opens and closes its own descriptor in a `finally`. Both connection paths
 resolve an omitted `db_url=` through `config.resolve_db_url`, and every caller names the owner that answers it: the
 sixteen dashboard read adapters — seven headline and lifecycle, six comparison, three skill — name the query owners
-their reads are defined on, and the dashboard facade's export manifest names the four result-model owners the seven
-rows it publishes come from, so a row a historical caller unpacks off it is the class the read family constructed and
-`isinstance` holds against either import site.
+their reads are defined on, and each panel drawn from one of those reads names the model owner the row it is typed
+against is defined on, so a row a page unpacks is the class the read family constructed.
 
 `analytics/sync/` is the other Postgres-facing family, and everything a replay does — down to the command that starts
 one — now lives there. `columns` owns the inventory both shapes meet on — the four fields a
@@ -1880,11 +1721,12 @@ page injects out of both token owners rather than restating a hue or a radius, w
 charts inside it from drifting apart; and `formatting.py` holds the compact renderings a KPI tile, an axis tick, and a
 bar label are too narrow to skip. None of the five imports Plotly or Streamlit, so a caller can read a color at module
 load without pulling the optional `dashboard` group into its own import surface.
-Root-level `dashboard_theme.py` stays the historical import site — the analytics app's `load_dashboard_modules`, which
-hands the module itself to the renderers beneath it, and the trajectory viewer's export manifest both still spell
-`from orchestrator import dashboard_theme as theme` — and defines nothing, forwarding each name to the owner's own
-object. No chart module is among them any more: every family reads its hues off the palette owner directly, so a color
-reaches a figure without a root-level hop.
+`theme.py` is the sixth, and it defines nothing: the panel owners take a theme as a parameter rather than importing
+one, so a page needs a single object carrying every value they name, and this one reads all five owners back under
+one name. The analytics app's `load_dashboard_modules` hands it to the renderers beneath it and the trajectory
+viewer's export manifest publishes it as `theme`, each getting the style owners' own objects rather than copies. No
+chart module is among its callers: every family reads its hues off the palette owner directly, so a color reaches a
+figure without a hop through the composed handle.
 
 The state one run of that page carries sits beside the theme. `windows.py` owns the half-open UTC window every read is
 bounded by, the presets that name one, and the clamp that keeps a preset inside the data extent — the label, the day
@@ -1975,8 +1817,8 @@ under those — all three off the first wave, while the panels beneath are still
 one branch a load can end on: a window whose first wave reported no event at all has nothing for the panels to draw,
 so the chrome is written, the empty-window notice takes over, and reporting nothing back is what the dispatch above
 short-circuits the second wave on. That makes the return value a short circuit rather than only a result, which is why
-it is `None` rather than an empty strip. Every sibling it draws with is named on the owner that holds it rather than
-resolved off the flat facade at call time, so a page and a fix under one of those owners land on the same object.
+it is `None` rather than an empty strip. Every sibling it draws with is named on the owner that holds it, so a page
+and a fix under one of those owners land on the same object.
 
 `chart_sections.py` and `page_sections.py` are the order every panel below that strip is reached in once the second
 wave answers. Each panel is its own owner; what these two decide is which comes first, and that order is the page's
@@ -1996,9 +1838,10 @@ script on every widget interaction, so a render is one pass with nothing kept be
 shapes are what that pass threads from the controls at the top of the page down to the last table on it. Frozen is the
 point: a section is handed the window, the filters, and the reads the sections beside it were handed, so a panel that
 could narrow its own copy is a page whose chart and whose table report different windows under one filter line. The
-module handles travel as one of those shapes rather than four parameters because nothing under `dashboard/` imports
-Streamlit, pandas, Plotly, or the theme — a render is handed the caller's own, and carrying them together is what
-keeps that true through a pipeline several calls deep. The filter shape is the one with readings derived rather than
+module handles travel as one of those shapes rather than three parameters because nothing under `dashboard/` imports
+Streamlit or pandas and every panel takes its theme as a parameter — a render is handed the caller's own, and carrying
+them together is what keeps that true through a pipeline several calls deep. The filter shape is the one with
+readings derived rather than
 stored, and both are decisions rather than conveniences: the issue scope answers nothing until a repository is picked,
 because GitHub issue numbers repeat across repositories and a number typed while every repo is selected would open a
 drill-down over unrelated runs, and the window span is measured in whole days and floored at one, since it is what
@@ -2275,8 +2118,9 @@ seven keyword arguments it was written with. Both spellings meet here, so the se
 state every panel beside it is handed and nothing on the page carries the older vocabulary. Those keywords are bound
 through a declared signature that is also what the adapter reports, which keeps the historical shape one thing rather
 than three descriptions of the same call — and binding is what makes it strict, so an unknown or missing keyword
-raises here instead of reaching the render as a half-filled request. The chart and theme handles are the two a
-drill-down has no use for, so it is handed the modules shape with both left unanswered rather than a shape of its own.
+raises here instead of reaching the render as a half-filled request. The theme handle is the one a
+drill-down has no use for, so it is handed the modules shape with that slot left unanswered rather than a shape of its
+own.
 
 `page_states.py` is what is drawn where none of those panels can be. Two of its three renders are dead ends, and they
 are dead ends of different kinds. A database nobody has ingested into has no extent to pick a window from, so there
@@ -2536,11 +2380,11 @@ with an empty mapping; no panel calls it, since the per-backend stack takes its 
 parameter. Besides the four owners beneath it and the placeholder above them, this owner names the two read models its
 signatures are typed against — `analytics/query/overview_models.py` for the series a figure is built from and
 `analytics/query/cost_models.py` for the rows the stub is handed — and Plotly, inside the one call that builds the
-figure. That is what leaves the whole usage path clear of the optional group: no module from
-`dashboard_charts_usage.py` down through the flat sites to these five owners names Plotly at module scope, and neither
+figure. That is what leaves the whole usage path clear of the optional group: none of these five owners names Plotly
+at module scope, and neither
 does the `usage_panel.py` card that names this owner directly — which is the route the page itself takes — so every
 surface the hero figure is reached through imports in the default install. Nothing on the cost, heatmap, or
-throughput paths names it at load either, so no flat chart module pulls it in — nor do the `stage_cost_panel.py`,
+throughput paths names it at load either — nor do the `stage_cost_panel.py`,
 `reliability_panel.py`, and `activity_panel.py` cards that name five of those owners directly, the way the hero card
 names the usage one.
 
@@ -2601,155 +2445,9 @@ for the figure inside them: the hero card names `charts/usage.py`, the paired li
 beside the card markup it is headed by and the Plotly
 configuration it hands that figure, so a panel is the card and the figure together rather than two halves a caller
 pairs up, and none is titled, drawn, or configured out of a different owner than the panels beside it use. That is
-every figure the page draws: no section is handed the chart hub as a parameter and calls a builder off it. The page
-state still carries the handle — bound by the runtime that assembles that shape, and left `None` by the drill-down
-path that assembles the same shape without one — because those seven shapes are a frozen contract the whole pipeline
-is threaded through, not because a panel reads a builder off it.
-
-`dashboard_state.py` stays the hub the page and the lazy facade in front of it read that state off, `dashboard_reads.py`
-the hub the whole read inventory is resolved through, and the ten flat leaves beneath them —
-`_dashboard_windows.py`, `_dashboard_filter_state.py`, `_dashboard_state_constants.py`, `_dashboard_read_mode.py`,
-`_dashboard_read_core.py`, `_dashboard_read_plan.py`, `_dashboard_read_dispatch.py`, `_dashboard_read_rollups.py`,
-`_dashboard_read_breakdowns.py`, and `_dashboard_read_skills.py` — define nothing and forward each historical name to
-the owner's own object. The read hub defines nothing of its own either, so nothing there rewrites a defining module.
-`_dashboard_date_widgets.py` and `_dashboard_date_range.py` are two more beside them, the first forwarding the five
-slots the filter bar is laid out across, the label and the preset radio drawn in the first two of them, and the
-position that radio reopens at, and the second the window a preset opens the pickers on, the pair those pickers hand
-back, and the bar assembling all of it — each under the private spellings the page always imported them by. The page
-pipeline reaches the bar on the owner rather than through that leaf, so a test intercepting it patches `date_filter`.
-`_dashboard_page_controls.py` is a third beside those two, forwarding the selections the sidebar answers with and the
-render that draws it, the offset a run is displayed in, the normalization those selections go through, the controls
-the whole band is read back as, and the staged plan beneath it to `page_controls.py` — under the private spellings the
-page always imported them by, and reached by nothing on the live path either, since the runtime prepares its page on
-the owner.
-`dashboard_kpis.py` is the same kind of site beside them, forwarding the four KPI names and the banner names above
-them to the two owners that hold each. `dashboard_kpi_strip.py` is the hub the lazy facade resolves the strip
-through, and `_dashboard_kpi_series.py` and `_dashboard_kpi_values.py` the two leaves beneath it: the
-two token totals, the throughput pair, and the three per-day lines are the series owner's objects, and the inputs, the
-window scalars, the entry keys, the four tiles, and the build itself the strip owner's, all under the private
-spellings a caller reached them by. That hub stamps no defining module of its own, so a name reached through it
-reports the owner that holds it — and nothing on the live path builds a strip through it either, since the render pass
-that assembles the four tiles names `kpi_strip.py`. `_dashboard_card_headers.py`, `_dashboard_backend_card.py`, and
-`_dashboard_coverage_card.py` are three more, forwarding the header, the banner stack, and the reliability strip to
-the markup owner, the efficiency card and the readings behind it to the backend-card owner, and the coverage bar and
-its segments to the coverage-card owner, each under its own public spellings. `dashboard_cards.py` stays the surface
-in front of the three, publishing all thirteen names under the private spellings the page always imported them by, and
-claims none of them: the `__module__` stamp mutates the function, so a name claimed here would move an owner's own
-object off the owner that defines it. Nothing on the live path reaches it any more either — the banner stack the page
-opens with was the last card a render resolved through this surface, and the pass drawing it names `card_html.py`.
-`_dashboard_table_html.py` is another, forwarding the stylesheet, header, and
-assembly the hand-rolled panels are drawn by, and the bar width, short repository name, missing count, and unpriced
-amount a cell reports, under the private spellings they were always imported by. `_dashboard_issue_table.py` is the
-one beside it, forwarding the column set and panel rules under the public spellings they were always imported by and
-the row view, the reduction into it, the two cell readings, the row, and the ranking under their private ones.
-`_dashboard_skill_trigger_table.py` is the third, forwarding its own column set, panel rules, and unknown-category
-label under the public spellings they were always imported by and the cohort row and the panel under their private
-ones. `_dashboard_sparkline_data.py` and `_dashboard_sparkline_html.py` are two more beside them, the first
-forwarding the span floor, the anchoring a window is projected through, the height and step one day is placed by, and
-the projection itself under the private spellings they were always imported by — with the path pair among them
-reaching the rendering owner that builds it — and the second the default box under its public spellings and the
-request, the two paths, the point rounding, the renderer, and the bound keyword surface under their private ones.
-`_dashboard_summary_html.py` is the sixth, forwarding the banner, the filter line, the pill, the strip, the plural
-suffix the first two count their repos and days by, the tone and arrow a move is painted from, the request the banner
-is described by, and the two bound keyword surfaces under the private spellings they were always imported by.
-`dashboard_html.py` is the
-surface in front of all six, publishing those seven table names, the issues panel's eight, the skill panel's
-five, the sparkline's twelve, and the chrome's five — the topbar, filter meta, delta pill, KPI strip, and that plural
-suffix — and defining nothing of its
-own, so a panel and
-the owner cannot be drawn by two different tables, or one window's line scaled two ways, or one tile's move annotated
-two ways. The columns, rules, and label among those names take a leading underscore the leaves spell bare.
-`_dashboard_adoption_columns.py`, `_dashboard_adoption_sort.py`, `_dashboard_adoption_headers.py`,
-`_dashboard_adoption_rows.py`, and `_dashboard_adoption_render.py` are five more beside them, forwarding the adoption
-table's column vocabulary and query parameters, its parse and two orders, its header row, its row projection, and its
-panel and empty notice to the five owners that hold each. `dashboard_skill_adoption.py` is the surface in front of
-those five, publishing all twenty-three names under the spellings a page always imported them by — the column model, the
-column set, the numeric keys, the sort keys, the header state, the row view, and the panel rules under a leading
-underscore the leaves spell bare — and defining none of them.
-`_dashboard_matrix_columns.py`, `_dashboard_matrix_sort.py`, `_dashboard_matrix_headers.py`,
-`_dashboard_matrix_rows.py`, and `_dashboard_matrix_render.py` are five more beside them, forwarding the trigger
-matrix's column vocabulary and query parameters, its parse and two orders, its header row, its row projection, and
-its panel and empty notice to the five owners that hold each. `dashboard_skill_matrix.py` is the surface in front of
-those five, publishing all twenty-one names under the spellings a page always imported them by — the column model,
-the column set, the numeric keys, the sort keys, the header state, the row view, and the panel rules under a leading
-underscore the leaves spell bare — and defining none of them, so a click an operator makes and the order the owners
-run cannot come apart. `_dashboard_widget_skills.py` is the first of the seven widget-side sites beside those two,
-forwarding the adoption
-card, the caption under it, the invocation fold, the trigger-rate card, and its own fold to the two panel owners under
-the private spellings the page always imported them by, plus the notice the second of them answers an empty window
-with, under its own public one. `_dashboard_widget_runs.py` is the second, forwarding the run listing, the notice a
-window with no `agent_exit` row renders, and the per-issue trace beneath that listing to the recent-runs and
-drill-down owners under the spellings the page always imported them by. `_dashboard_widget_costs.py` is the third: the
-paired lifecycle bars,
-the height both are pinned to and the row and base measurement behind it, the ranked issues beside the backend cards,
-the notice those cards answer a window with no run with, the repository spend beside the run-health tiles, and the
-activity grid beneath all three are the four panel owners' objects — the notice under
-its own public spelling and the rest under the private ones the page always imported them by — and it defines none of
-them.
-`_dashboard_widget_models.py` is the fourth, forwarding the seven
-shapes a render is threaded through to the page-state owner under the private spellings the pipeline always imported
-them by, and `_dashboard_widget_usage.py` the fifth, forwarding the hero card, the label
-and index its stack toggle offers a mode by, and the per-day per-backend totals behind that stack to the usage-panel
-owner. `_dashboard_widget_states.py` is the sixth, forwarding the startup state a database nobody has ingested into
-is answered with, the notice a window matching no row renders, and the footer a page that did draw closes on to
-`page_states.py` — the three renders under the private spellings the page always imported them by, the two messages
-the first two say it in under their public ones. `_dashboard_widget_pipeline.py` is the seventh, forwarding the two
-slots the chrome is written into, the banners raised between them, the pass drawing all three off the first wave, and
-the staged load that pass runs inside to `page_pipeline.py`, the five figure cards to `chart_sections.py`, and the
-four panels beneath them together with the call the whole wave is drawn by to `page_sections.py` — all seven under the
-private spellings the page always imported them by.
-`_dashboard_drilldown.py` sits beside those seven under no hub at all, forwarding the typed request and the
-adapter the facade exports that trace's historical call shape from. The
-widget hub above all seven republishes those thirty-nine and the Plotly configuration it reads straight off the
-render-config owner, and claims none of them, so it defines nothing of its own either — the `__module__` stamp a claim
-used to be made with mutates the object, and a claim there would
-move an owner's own render, measurement, or shape off the owner that defines it.
-`dashboard_charts_base.py` is one too: the placeholder, the three
-label helpers, the list reversal, the panel height and legend, and the two bar-sizing constants behind that height
-are the charts owner's objects under the private spellings they were always imported by. Every chart family now names
-that owner directly, so nothing in the tree reads them off this site; it stays for the callers outside it that do.
-`dashboard_charts_heatmap.py` is the same site for the grid family — `hour_weekday_heatmap` under its own name, and the
-cells, weekday labels, hour span, and layout beneath it under theirs — so `dashboard_charts.hour_weekday_heatmap` keeps
-resolving to the figure the owner builds. `dashboard_charts_throughput.py` is that site for the strip —
-`done_per_day_bars` under its own name, and the calendar, series, and pinned height beneath it under theirs.
-`_dashboard_cost_layout.py`, `_dashboard_cost_horizontal.py`, `_dashboard_cost_repo.py`,
-`_dashboard_cost_stage.py`, and `_dashboard_cost_review.py` are five more beside them, forwarding the panel margin,
-the layout and trace models with the two helpers that apply them, the ranking's four columns, sort key, default
-height, pinned signature, and builder, the per-repository adapter with the short name its bars are labelled by, the
-per-stage split's seven columns, sort key, full-price fallback, lightening factor and hex base, and builder, and the
-per-review-round split's eight columns, round order and labels, row heights, two role totals, traces, and builder.
-`dashboard_charts_cost.py` is the surface in front of those five, publishing the four builders under their own names
-and the shaping beneath them under the private spellings it always did, and implementing nothing — so, like the
-heatmap, throughput, and usage sites, it rewrites no defining module at all. Nothing anywhere in the tree does any
-more: the stamp mutates the object, so claiming a name a dashboard owner defines would rewrite the owner's own
-function.
-`_dashboard_usage_models.py` and `_dashboard_usage_data.py` are the same kind of site one family down, and the fifteen
-names they publish are split across the two shaping owners: the per-day table's alias, the four band names, the mode
-beside them, and the three helpers that zero a bucket, roll the series up into one, and total a day's tokens are
-`usage_bands.py`'s objects, while the two frozen shapes and the four helpers that lay the day axis out, complete the
-days only the per-backend read saw, name the backends, and total a stack are `usage_series.py`'s.
-`_dashboard_usage_axis.py` and `_dashboard_usage_traces.py` are the same kind of site above them: the step count and
-pinned height, the rounding, and the layout are `usage_axis.py`'s objects, and the window shaping, the five trace
-builders, and the layout key a trace's color is set under are `usage_traces.py`'s. `_dashboard_usage_chart.py` is the
-last of the five, holding the hero figure and the backend-day stub under the names `usage.py` defines them by, and
-`dashboard_charts_usage.py` is the stable surface in front of all of them — the two builders under their own names,
-the twenty-four spellings beneath them under the private ones a caller has always read off it, each reached through
-the leaf named for it, and nothing defined there, so `dashboard_charts.usage_over_time` resolves to the figure the
-owner builds. The trigger
-rates are reached through the breakdown leaf and the other two skill reads through the leaf named for them, because
-that is where a caller has always spelled each. The private
-`_TRUTHY`, `_extent_dates`, `_parse_parallel_reads_flag`, and `_fan_out_reads` spellings the state hub publishes, and
-the `DEFAULT_RECENT_AGENT_EXITS` cap, the `LOADING_INDICATOR_MESSAGE` a load's spinner is opened with, the `log` its
-timing line is emitted on, and the
-`_scoped_read`, `_filter_list`, `_read_filter_kwargs`, `_read_filtered`,
-`_read_data_extent`, `_read_filter_options`, `_read_static_metadata`, `_read_summary`, `_read_prev_kpi`,
-`_read_time_series`, `_read_stage_breakdown`, `_read_recent_agent_exits`, `_read_top_cost_issues`,
-`_read_review_round`, `_read_backend_efficiency`, `_read_repo_breakdown`, `_read_cost_coverage`,
-`_read_hourly_heatmap`, `_read_throughput`, `_read_backend_daily_tokens`, `_read_skill_trigger_rates`,
-`_read_skill_trigger_matrix`, `_read_skill_adoption`, `_DashboardReadPlan`, `_ReaderTask`, `_widget_task`,
-`_first_wave_readers`, `_second_wave_readers`, `_widget_readers`, `_build_read_keys`, `_ReadResults`,
-`_dispatch_reads`, `_log_dashboard_load`, and `_run_read_waves` spellings the read hub publishes, resolve to those
-same objects.
+every figure the page draws: no section is handed a chart handle as a parameter and calls a builder off it, which is
+why the shape a render is threaded on carries none — the caller's Streamlit, pandas, and theme travel on it, and the
+figures are the owners' own.
 
 `trajectory_viewer/` is the fourth destination opening. What has arrived is the whole of the file-backed page's
 read model — which file it opens, how a line in it is read, what that line is read back as, what a run then reports,
@@ -2950,21 +2648,20 @@ shell history already carries, and its lazy inventory now resolves the page's ow
 `main` on the app, so a historical caller holds the same objects the canonical target runs.
 
 `orchestrator/apps/analytics_dashboard.py` sits the same way above `observability/dashboard/`: the canonical
-`streamlit run` target, and what composes those owners into one run of the analytics page — the four handles every
+`streamlit run` target, and what composes those owners into one run of the analytics page — the three handles every
 pass draws with, the chrome, the refusal an install with no database behind it is stopped by, the two reads no filter
 narrows, and then either the notice that there is no span to pick a window from or the controls, the staged load, and
-the panels beneath. Each owner is imported inside the pass that reaches it, alongside Streamlit, pandas, and the chart
-hub in front of Plotly, for the reason the viewer's app defers its own: the repo root only reaches `sys.path` on the
+the panels beneath. Each owner is imported inside the pass that reaches it, alongside Streamlit and pandas,
+for the reason the viewer's app defers its own: the repo root only reaches `sys.path` on the
 line above, so importing the app costs that shim and nothing else, and the refusal reads the URL off the settings
-holder at call time rather than a name bound when the module was imported. `dashboard.py` stays the launch path an
-operator's shell history already carries and the lazy inventory a historical caller reaches the whole surface through,
-with `main` resolving to the app's own; `_dashboard_runtime.py` is the site the other five passes are republished
-from, forwarding each under the private spelling the facade always resolved it by.
+holder at call time rather than a name bound when the module was imported. It is the only launch path the analytics
+page has: no root-level module answers for it any more.
 
-Every other responsibility of those four surfaces is still where it was: the rest of `dashboard*.py` and
-`trajectory_dashboard.py` stay the import site every historical caller names until the one it needs has an owner here.
-The analytics tree has no such site left — every read, recorder, prune, trajectory write, and replay is reached on the
-owner under `observability/analytics/` that defines it.
+The trajectory viewer is the only subsystem with root-level sites left: its launch facade, the read-model facade
+beside it, and the leaves under both stay the import path a historical caller names until the responsibility each
+fronts has an owner here. Neither the analytics tree nor the analytics page has one — every
+read, recorder, prune, trajectory write, replay, panel, chart, and theme value is reached on the owner under
+`observability/` that defines it.
 
 Four rules hold for whatever lands there, each with a check under `tests/observability/` that discovers its own subjects
 off disk so a new owner is covered the day it appears. An initializer binds nothing unless the surface it fronts is what
@@ -2982,8 +2679,8 @@ object, bound once at import rather than resolved per lookup, so the module defi
 it and where a patch has to land, rather than a facade answering for it — the compatibility layer this destination
 exists to retire. Nothing observed is on the workflow's decision path, so no module may import the workflow engine, a
 stage, or an application entrypoint — the CLI and the runtime loop on one side, and on the other every `streamlit run`
-target: the two canonical ones under `apps/`, the historical `dashboard.py` and `trajectory_dashboard.py` beside
-them, and the leaves they front; the dependency runs one way, and an
+target: the two canonical ones under `apps/`, the historical `trajectory_dashboard.py` beside
+them, and the leaves it fronts; the dependency runs one way, and an
 entrypoint composes these owners rather than the reverse. And Streamlit and Plotly stay function-local: they live in the
 optional `dashboard` dependency group, so every module has to import cleanly with both blocked outright *and* with no
 attempt on either recorded — a module-scope import that swallows its own `ImportError` is still a load in the install

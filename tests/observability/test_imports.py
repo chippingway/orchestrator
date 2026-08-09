@@ -34,18 +34,16 @@ _ROOT_PACKAGE_MODULES = frozenset((
 # handlers, and the CLI and runtime loop under them. On the page side it is
 # every `streamlit
 # run` target -- the two canonical ones under `apps`, and the historical
-# `dashboard` and `trajectory_dashboard` beside them -- and the leaves they
-# front: those are entry points in the same
+# `trajectory_dashboard` beside them -- and the leaves it
+# fronts: those are entry points in the same
 # sense `main` is, they are what a migrated owner is composed *by*, and reading
 # one back would drag Streamlit and Plotly in behind it.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.__main__",
-    "orchestrator._dashboard",
     "orchestrator._main",
     "orchestrator._trajectory_dashboard",
     "orchestrator.apps",
     "orchestrator.cli",
-    "orchestrator.dashboard",
     "orchestrator.main",
     "orchestrator.trajectory_dashboard",
     "orchestrator.workflow",

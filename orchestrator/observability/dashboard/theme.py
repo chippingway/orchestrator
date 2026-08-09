@@ -1,22 +1,20 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Historical import site for the visual theme the dashboards share.
+"""The one theme object a page hands every panel it draws.
 
-`from orchestrator import dashboard_theme as theme` is how the analytics page
-and the trajectory viewer's historical surface beside it reach one palette, one
-set of geometry and type tokens, the Plotly layout assembled from both, the
-page stylesheet, and the compact number formatters -- the chart families name
-those owners themselves. Every one of these names is the owner's own object,
-re-exported here rather than rebuilt, so `theme.ACCENT` and the owner's
-`ACCENT` are the same value and a chart drawn through either lands on the same
-grid.
+The panel owners take the theme as a parameter rather than importing one, so
+that a section can be rendered against a marking stand-in and so that no owner
+under this package binds a page's chrome at import. Something still has to
+compose the object they are handed, and this is it: the five style owners --
+the palette, the geometry and type tokens, the Plotly layout assembled from
+both, the page stylesheet, and the compact formatters -- read back through one
+name, so `theme.ACCENT` and the palette's own `ACCENT` are the same value and a
+card tinted through either lands on the same hue.
 
-This module implements nothing and imports neither Plotly nor Streamlit. The
-analytics page reaches it inside `load_dashboard_modules`, beside pandas and
-the chart hub, so an ordinary import of either of that page's launch paths
-carries none of it. Staying free of both is what keeps the site reachable from
-anywhere else: it is a compatibility surface, so a caller may name it at module
-load in an install carrying no optional `dashboard` group at all.
+Every name here is the owner's own object, re-exported rather than rebuilt.
+This module implements nothing and imports neither Plotly nor Streamlit, so a
+caller may name it at module load in an install carrying none of the optional
+`dashboard` group.
 """
 from __future__ import annotations
 

@@ -16,10 +16,10 @@ window with nothing behind it never becomes a figure at all: the shared
 placeholder answers it instead, at the same pinned height, so an empty hero
 panel keeps the slot the drawn one would have taken.
 
-`backend_per_day` is the stub beside it. No panel calls it -- the per-backend
-stack takes its rows through `usage_over_time`'s own parameter -- but it is
-one of the two names the chart hub publishes for this family, so it answers
-with an empty mapping rather than disappearing out from under an importer.
+`backend_per_day` is the stub beside it, answering with an empty mapping. No
+panel calls it: the per-backend stack takes its rows through
+`usage_over_time`'s own parameter, so what this owner publishes under that name
+is the shape a per-backend daily aggregate would be read back in.
 
 Plotly lives in the optional `dashboard` dependency group, so it is imported
 inside the call that builds the figure: importing this owner has to work in
