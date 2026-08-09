@@ -47,13 +47,12 @@ _OWNED_CALLABLES = MappingProxyType({
 _TICK = "orchestrator.workflow.engine.tick"
 
 # A catalog is observation the tick drives, never state a handler consults, so
-# no owner may read the workflow engine, a stage, or an application entrypoint
-# back.
+# no owner may read the workflow engine, a stage, the polling runtime, or an
+# application entrypoint back.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.__main__",
-    "orchestrator._main",
     "orchestrator.cli",
-    "orchestrator.main",
+    "orchestrator.runtime",
     "orchestrator.workflow",
 )
 

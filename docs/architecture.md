@@ -43,13 +43,25 @@ boundaries is named where its owner is described below.
 orchestrator/
   __init__.py           lazy package/version compatibility surface;
   _package_exports.py   owns root-package export resolution and caching
-  cli.py                `agent-orchestrator` console-script entry point,
-                        delegating to the `main.py` runtime
+  cli.py                `agent-orchestrator` console-script entry point and
+                        the polling process's composition point
   __main__.py           `python -m orchestrator` launch form over `cli.main`;
                         the target `run.sh` launches
-  main.py               stable entry-point and test-patch facade
-  _main_*.py            CLI/setup, tick fan-out, loop/drain, logging,
-                        self-update probes, and shutdown/watchdog leaves
+  runtime/              the polling process's own owners
+    __init__.py         package marker only; the composition names an owner
+    state.py            the mutable state one run carries, and the
+                        shell-style code a signal stop exits with
+    logs.py             the stderr and rotating-file destinations a run
+                        settles before its first client
+    startup.py          the options a run is started with, one client per
+                        configured repo, and the scheduler every tick shares
+    ticks.py            one pass over the configured repos: the per-repo
+                        tick, the fan-out, and the reap / prune drains
+    loop.py             one-shot vs recurring polling, the interruptible
+                        wait, and the guaranteed scheduler drain
+    self_update.py      the git probes behind the self-restart guard
+    shutdown.py         the signal handler, the bounded-drain watchdog, and
+                        the forced exit it ends at
   config/
     __init__.py         stable configuration surface; binds each resolver
                         result as a module attribute (reload / patch target)
@@ -1386,10 +1398,9 @@ retries. Either way each issue is wrapped in its own try/except, and the family 
 task so it holds a single worker slot and leaves the other `limit - 1` free for fanout. It reaches `dispatch.py` for
 the partition, the per-worker refetch, and both dispatch routes, so a patch aimed at a sweep helper or an execution
 mode targets `orchestrator.workflow.engine.tick`. The package API's own `tick` is a thin entry point that resolves
-this owner inside the call, and it is what the per-repo `workflow.tick(...)` in `_main_ticks.py` drives. Both
-passes a test has
-to replace to drive a tick without a git remote or a clone are named on their own owners: the base refresh on
-`git/base_sync/refresh.py` and the catalog emission on `orchestrator/skills/catalog.py`, so
+this owner inside the call, and it is what the per-repo `workflow.tick(...)` in `runtime/ticks.py` drives. Both
+passes a test has to replace to drive a tick without a git remote or a clone are named on their own owners: the base
+refresh on `git/base_sync/refresh.py` and the catalog emission on `orchestrator/skills/catalog.py`, so
 `patch.object(refresh, "_refresh_base_and_worktrees", ...)` and
 `patch.object(catalog, "_emit_repo_skill_catalog", ...)` are what intercept them.
 
@@ -1397,6 +1408,27 @@ Stage-private helpers stay private to the stage that owns them (`_bump_in_review
 `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`). A helper more than one stage reaches for
 stays on the owner that defines it, and the borrower names that owner: fixing's quiet window imports
 `_comment_created_at` from `in_review/watermarks.py`, so that module is where a patch aimed at it lands.
+
+`orchestrator/runtime/` holds the polling process itself, one owner per thing a run is made of, and
+`orchestrator/cli.py` above them is where they are composed. `state.py` is what makes that split possible: the values
+the signal handler, the watchdog thread, the per-repo tick workers, and the loop all read and write travel as one
+`RuntimeState` the composition creates and passes in, so no owner reads a process-wide module attribute back and two
+runs in one interpreter never share one. `logs.py` settles the stderr and rotating-file destinations before the first
+client is built; `startup.py` parses the two options, connects one client per configured spec and ensures its labels
+once, and builds the single `IssueScheduler` every tick shares; `ticks.py` owns one pass — the per-repo tick, the
+fan-out across a `ThreadPoolExecutor` when more than one repo is configured, and the completion reap and analytics
+prune that end it; `loop.py` decides whether a run is one pass or many, waits a second at a time so a signal is
+honoured inside the interval rather than at the end of it, and guarantees the drain around the body; `self_update.py`
+owns the git probes behind the self-restart guard; and `shutdown.py` owns the handler both stop signals are routed
+into, the daemon watchdog that bounds the drain, and the forced exit it ends at. `cli.main` creates the state and
+hands it to each owner in the order a startup depends on — logging, then the handlers, then the clients, then the
+scheduler it publishes on the state before the first tick can hand it work — and returns whichever answer came first,
+a restart the loop asked for or the signal that stopped the run. The initializer binds nothing and no owner names the
+composition, so a test patches the owner that defines a collaborator and injects the state it wants a run driven on.
+Three checks under `tests/runtime/` hold that: the owners on disk are the ones the map above declares, importing one
+plants neither the CLI nor an app, and nothing answers at the flat spellings this package replaces — a second copy of
+the loop, the signal handling, or the state a live deployment runs on would be free to drift from these owners
+silently and invisible to a patch aimed at one.
 
 `orchestrator/skills/` holds the two ways this orchestrator answers "which skills are in play". `catalog.py`
 enumerates what a target repo *offers* on its base ref — the `git ls-tree` read whose deduped names and preserved
@@ -1484,9 +1516,9 @@ so an operator who pruned and an operator who appended cannot disagree about whi
 filesystem touch downgrades `OSError` to a logged no-op, and the wrapper swallows anything else, so a misconfigured
 sink costs a warning rather than a tick.
 
-`main._run_tick` names that owner directly, and names it inside the call so the tick's own import never pays for the
-prune graph. The wrapper it calls dispatches `prune_old_records` on this module rather than the function object it
-closed over, so `patch.object(retention, "prune_old_records", ...)` still intercepts.
+`runtime/ticks.py`'s `run_tick` names that owner directly, and names it inside the call so the tick's own import never
+pays for the prune graph. The wrapper it calls dispatches `prune_old_records` on this module rather than the function
+object it closed over, so `patch.object(retention, "prune_old_records", ...)` still intercepts.
 
 `analytics/trajectories/` is the opt-in per-run reasoning sink, and its owners divide by what one record passes
 through on the way to disk: `models` holds the head/tail and whole-record caps, the snapshot of them one record is
@@ -2632,8 +2664,9 @@ self-exit and be restarted with new code.
 
 - **Trigger**: started manually (or by a wrapper). Optional `--once` for a single tick.
 - **Tick cadence**: every `POLL_INTERVAL` seconds (default 60).
-- **Self-restart guard** (`main._self_modifying_merge_happened`): each tick fetches `origin/<ORCHESTRATOR_BASE_BRANCH>`
-  (default `main`); if it advanced past the process's startup SHA *and* the new commits touch `orchestrator/`, the loop
+- **Self-restart guard** (`runtime.self_update.self_modifying_merge_happened`): each tick fetches
+  `origin/<ORCHESTRATOR_BASE_BRANCH>` (default `main`); if it advanced past the process's startup SHA *and* the new
+  commits touch `orchestrator/`, the loop
   exits 0 so the wrapper can re-exec the new code. The branch is decoupled from `BASE_BRANCH` so a target repo with a
   different default branch does not interfere with self-update detection.
 - **Self-update resilience** (`run.sh self_update`): before each launch — at startup and after every
@@ -2658,8 +2691,8 @@ The coding agent runs as a **transient child subprocess**, not a daemon — spaw
 ## Per-tick flow (`workflow.tick`)
 
 Each tick the polling loop fans `workflow.tick(gh, spec, scheduler=...)` out across **every configured repo** via
-`main._run_tick`: single-repo deployments stay in-thread, multi-repo deployments use a `ThreadPoolExecutor` sized to the
-repo count. A single long-lived `IssueScheduler` (global cap `MAX_PARALLEL_ISSUES_GLOBAL`, per-repo cap
+`runtime.ticks.run_tick`: single-repo deployments stay in-thread, multi-repo deployments use a `ThreadPoolExecutor`
+sized to the repo count. A single long-lived `IssueScheduler` (global cap `MAX_PARALLEL_ISSUES_GLOBAL`, per-repo cap
 `MAX_PARALLEL_ISSUES_PER_REPO`) is shared across all `tick` calls.
 
 One repo's pass is owned by `workflow/engine/tick.py` — the base refresh, the community-contribution PR sweep, the
@@ -3016,7 +3049,7 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
 
 ## Summary of "what runs when"
 
-- **`main` polling loop** — long-lived Python process. Trigger: manual start (or wrapper). Cadence: every
+- **`cli.main` polling loop** — long-lived Python process. Trigger: manual start (or wrapper). Cadence: every
   `POLL_INTERVAL`s.
 - **`workflow.tick(gh, spec)`** — function call. Trigger: each loop iteration. Cadence: once per tick per configured
   `RepoSpec`; multi-repo fans out across a `ThreadPoolExecutor`, single-repo stays in-thread.
@@ -3065,14 +3098,14 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
    ┌────────────────────────────────┴─────────────────────────────────────┐
    │  orchestrator process  (python -m orchestrator)                      │
    │  ───────────────────────────────────────────────────                 │
-   │   main.py                                                            │
+   │   cli.main over orchestrator/runtime/                                │
    │     startup: build per-spec [(spec, GitHubClient), ...] from         │
    │              config.default_repo_specs(); ensure_workflow_labels;    │
    │              build one shared IssueScheduler(global_cap, per_repo)   │
    │     loop every POLL_INTERVAL s:                                      │
    │       1. self-restart check (origin/<ORCHESTRATOR_BASE_BRANCH>       │
    │          moved & touches orchestrator/?)                             │
-   │       2. _run_tick(clients, scheduler):                              │
+   │       2. run_tick(state, clients, scheduler):                        │
    │            N == 1 → in-thread workflow.tick(gh, spec, scheduler)     │
    │            N  > 1 → ThreadPoolExecutor fans workflow.tick across     │
    │                     one worker thread per repo                       │

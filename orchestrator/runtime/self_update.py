@@ -1,21 +1,25 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Git probes for detecting self-modifying upstream merges."""
+"""Git probes for detecting self-modifying upstream merges.
+
+The base branch probed here is the orchestrator's own
+(`ORCHESTRATOR_BASE_BRANCH`), not the target repository's, so a target whose
+default branch differs never reads as the orchestrator having been updated.
+Only a forward move that touched `orchestrator/` counts: anything else the
+loop keeps polling through.
+"""
 from __future__ import annotations
 
 import subprocess
-import sys
-from types import ModuleType
 from typing import Optional
 
+from orchestrator import config
 
-def _main_module() -> ModuleType:
-    return sys.modules["orchestrator.main"]
+_RUNTIME_SOURCE_PREFIX = "orchestrator/"
 
 
 def git(*args: str) -> subprocess.CompletedProcess:
     """Run a captured git command against the orchestrator checkout."""
-    config = _main_module().config
     return subprocess.run(
         ["git", *args],
         cwd=str(config.REPO_ROOT),
@@ -36,7 +40,6 @@ def own_head_sha() -> Optional[str]:
 
 def self_modifying_merge_happened(start_sha: str) -> bool:
     """Detect a forward upstream move that touched runtime source files."""
-    config = _main_module().config
     git("fetch", "--quiet", "origin", config.ORCHESTRATOR_BASE_BRANCH)
     current_sha = git(
         "rev-parse",
@@ -58,6 +61,6 @@ def self_modifying_merge_happened(start_sha: str) -> bool:
         current_sha,
     ).stdout
     return any(
-        changed_path.startswith("orchestrator/")
+        changed_path.startswith(_RUNTIME_SOURCE_PREFIX)
         for changed_path in changed_paths.splitlines()
     )

@@ -86,7 +86,7 @@ _ALLOWED_ROOTS = (
 # of this check.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.cli",
-    "orchestrator.main",
+    "orchestrator.runtime",
     "orchestrator.workflow",
 )
 

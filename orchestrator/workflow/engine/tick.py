@@ -329,8 +329,10 @@ def tick(
     `_process_issue` call so workers from different repo ticks running
     concurrently contend on the same semaphore. None falls back to a
     no-op context manager so direct test invocations of `tick(gh, spec)`
-    keep working unchanged; production code threads the shared semaphore
-    in from `main._run_tick` so the cap is actually enforced.
+    keep working unchanged. It bounds the in-tick path only:
+    `runtime.ticks.run_tick` always supplies the shared scheduler
+    instead, so on the production path the cross-repo cap is the
+    scheduler's `global_cap`.
 
     `scheduler`, when supplied, takes over per-issue dispatch entirely.
     The polling pass still refreshes base/worktrees and enumerates

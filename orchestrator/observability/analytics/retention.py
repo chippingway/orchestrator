@@ -36,7 +36,8 @@ from orchestrator.observability.analytics.retention_rewrite import (
 
 def prune_with_retention_logging() -> None:
     """Drop analytics records past `ANALYTICS_RETENTION_DAYS` and log the
-    outcome. Intended for the per-tick caller in `main._run_tick`.
+    outcome. Intended for the once-per-pass caller in
+    `runtime.ticks.run_tick`.
 
     A no-op when the sink is disabled or retention is non-positive (the
     documented "keep raw data indefinitely" knob); `prune_old_records`

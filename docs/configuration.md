@@ -263,9 +263,9 @@ separators.
 
 Each polling tick advances issues concurrently along two axes:
 
-- **Across repos.** When `REPOS` lists more than one entry, `main._run_tick` fans the per-repo `workflow.tick(gh, spec)`
-  calls out across a `ThreadPoolExecutor` (one worker per repo). The legacy single-repo mode (`REPOS` unset) stays
-  in-thread.
+- **Across repos.** When `REPOS` lists more than one entry, `runtime.ticks.run_tick` fans the per-repo
+  `workflow.tick(gh, spec)` calls out across a `ThreadPoolExecutor` (one worker per repo). The legacy single-repo mode
+  (`REPOS` unset) stays in-thread.
 - **Within a repo.** Per-issue handlers are dispatched to a long-lived `IssueScheduler`. Fan-out issues (`ready` /
   `implementing` / `documenting` / `validating` / `in_review` / `fixing` / `resolving_conflict`) are submitted one
   callable per issue. Family-aware issues (`decomposing` / `blocked` / `umbrella` / unlabeled pickup) are folded into
@@ -315,7 +315,7 @@ agent. The skip is conditional on active state.
 restart) so any in-flight workers complete cleanly. The signal handler also calls `scheduler.shutdown(wait=False)`
 synchronously the instant the signal lands, so the submit path is closed mid-tick.
 
-`main._run_tick` calls `scheduler.reap()` exactly once per polling pass (right before
+`runtime.ticks.run_tick` calls `scheduler.reap()` exactly once per polling pass (right before
 `retention.prune_with_retention_logging()`) so worker failure-completion records drain before the next iteration.
 `_dispatch_via_scheduler` deliberately does NOT reap.
 
@@ -326,9 +326,9 @@ error.
 
 - `WORKTREES_DIR` — default `../wt-orchestrator`. where per-issue git worktrees are created; layout is
   `WORKTREES_DIR/<owner>__<name>/issue-N`
-- `LOG_DIR` — default `<REPO_ROOT>/logs`. directory `main.py` attaches its `FileHandler` under (`orchestrator.log`,
-  rotated ~10 MiB × 5). Also the default parent for `ANALYTICS_LOG_PATH` (`LOG_DIR/analytics.jsonl`). Already covered
-  by the `*.log` `.gitignore` rule.
+- `LOG_DIR` — default `<REPO_ROOT>/logs`. directory `runtime/logs.py` attaches its `FileHandler` under
+  (`orchestrator.log`, rotated ~10 MiB × 5). Also the default parent for `ANALYTICS_LOG_PATH`
+  (`LOG_DIR/analytics.jsonl`). Already covered by the `*.log` `.gitignore` rule.
 - `AGENT_GIT_NAME` — default `agent-orchestrator`. `GIT_AUTHOR_NAME`/`GIT_COMMITTER_NAME` injected into agent spawns
 - `AGENT_GIT_EMAIL` — default `agent-orchestrator@users.noreply.github.com`. `GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_EMAIL`
   injected into agent spawns
@@ -536,9 +536,6 @@ dependency.
   loop. A second Ctrl+C terminates immediately.
 - `python -m orchestrator --once` — single tick then exit. Useful for tests and debugging.
 - `python -m orchestrator --log-level DEBUG` — verbose logs.
-
-`python -m orchestrator.main` still starts the same loop and is kept working for shell history and wrapper scripts
-that already name it.
 
 On first start the orchestrator creates the workflow labels and the `backlog` / `paused` / `community_contribution`
 control labels on the repo, then begins polling open issues every `POLL_INTERVAL` seconds.

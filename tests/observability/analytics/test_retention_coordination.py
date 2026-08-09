@@ -132,8 +132,8 @@ def _reject_github_mutations(client_type, method_names: tuple[str, ...]):
 
 
 class PruneWithRetentionLoggingTest(unittest.TestCase):
-    """`prune_with_retention_logging` is the per-tick wrapper that
-    `main._run_tick` calls. It dispatches `prune_old_records` on its own
+    """`prune_with_retention_logging` is the end-of-pass wrapper that
+    `runtime.ticks.run_tick` calls. It dispatches `prune_old_records` on its own
     owner, catches runaway exceptions so an analytics
     misconfiguration cannot abort the polling loop, and logs the
     removed-record count. The helper itself is local-filesystem only -- the
@@ -163,7 +163,7 @@ class PruneWithRetentionLoggingTest(unittest.TestCase):
             retention.prune_with_retention_logging()
 
     def test_parallel_append_survives_prune(self) -> None:
-        # Under the scheduler-driven dispatch in `main._run_tick`,
+        # Under the scheduler-driven dispatch `runtime.ticks.run_tick` drives,
         # `workflow.tick` returns as soon as the per-issue callables have
         # been submitted to the scheduler, so the retention prune can run
         # while scheduler workers are still calling `append_record()`.
