@@ -506,10 +506,12 @@ root package. It declares the distribution version and the explicit `__all__` na
 `import orchestrator` costs that module and no owner behind it. Both names are module-level metadata (`WPS410`) and
 both assignments read as logic in an initializer (`WPS412`), so each rule is waived there.
 
-Those eight are the whole publishing set: every other initializer in the tree binds nothing but the submodules an
-import plants, and `tests/repository/test_package_exports.py` compares the packages carrying an `__all__` against that
-list, so a ninth publisher is a deliberate edit here and a scope in [`../.flake8`](../.flake8) rather than a silent
-widening of what a package answers for.
+Those eight are the whole publishing set: every other initializer in the tree imports nothing at all, so naming one of
+those packages loads no owner behind it and the submodules that show up on it are what other modules' imports planted.
+`tests/repository/test_package_exports.py` reads each initializer's source for that half — an eager sibling import is
+invisible in the namespace, which holds the same submodule either way — and compares the packages carrying an `__all__`
+against the list above, so a ninth publisher is a deliberate edit here and a scope in [`../.flake8`](../.flake8) rather
+than a silent widening of what a package answers for.
 
 `orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
 comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8
