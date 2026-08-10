@@ -86,8 +86,8 @@ class ResolvingConflictRecoveryPushTest(unittest.TestCase, _ResolvingConflictMix
         # push hands straight back to `validating`; the single docs
         # pass is deferred to the post-approval hop.
         _assert_completed_round(self, gh)
-        self.assertIn((CONFLICT_ISSUE, "validating"), gh.label_history)
-        self.assertNotIn((CONFLICT_ISSUE, "documenting"), gh.label_history)
+        self.assertIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), gh.label_history)
 
     def test_unpushed_recovery_push_failure_parks(self) -> None:
         # Recovery push fails (e.g. force-with-lease lease miss because
@@ -108,7 +108,7 @@ class ResolvingConflictRecoveryPushTest(unittest.TestCase, _ResolvingConflictMix
         mocks["_push_branch"].assert_called_once()
         merge_mock.assert_not_called()
         self.assertTrue(gh.pinned_data(CONFLICT_ISSUE).get("awaiting_human"))
-        self.assertNotIn((CONFLICT_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
 
     def test_stale_base_falls_through_to_rebase(self) -> None:
         # The `fixing` drift router
@@ -167,8 +167,8 @@ class ResolvingConflictRecoveryPushTest(unittest.TestCase, _ResolvingConflictMix
         # `base_rebased_clean`, not the fast-path `recovered_push`.
         _assert_combined_round_event(self, gh)
         # Hand back to validating after the rebase landed.
-        self.assertIn((CONFLICT_ISSUE, "validating"), gh.label_history)
-        self.assertNotIn((CONFLICT_ISSUE, "documenting"), gh.label_history)
+        self.assertIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), gh.label_history)
 
 
 if __name__ == "__main__":

@@ -262,7 +262,7 @@ class NoCommitAckDoesNotParkTest(
         )
         # And NOT through documenting -- no commit landed.
         self.assertNotIn(
-            (support._IN_REVIEW_ACK_ISSUE_NUMBER, "documenting"),
+            (support._IN_REVIEW_ACK_ISSUE_NUMBER, "workflow:documenting"),
             gh.label_history,
         )
         # review_round reset so the validating cap counts fresh rounds.

@@ -39,7 +39,7 @@ def _assert_body_drift_outcome(test_case, github, prompt) -> None:
     test_case.assertIn(UPDATED_REQUIREMENTS, prompt)
     test_case.assertIn("Updated issue", prompt)
     test_case.assertNotIn(
-        (DRIFT_RESUME_ISSUE, "decomposing"),
+        (DRIFT_RESUME_ISSUE, "workflow:decomposing"),
         github.label_history,
     )
     test_case.assertIn(
@@ -47,7 +47,7 @@ def _assert_body_drift_outcome(test_case, github, prompt) -> None:
         github.label_history,
     )
     test_case.assertNotIn(
-        (DRIFT_RESUME_ISSUE, "documenting"),
+        (DRIFT_RESUME_ISSUE, "workflow:documenting"),
         github.label_history,
     )
     state = github.pinned_data(DRIFT_RESUME_ISSUE)

@@ -1,8 +1,8 @@
 # Workflow state machine
 
 This file documents the label-based state machine that drives every GitHub issue from pickup to terminal. It is split
-out of [`architecture.md`](architecture.md), which keeps the high-level overview, module map, and process / agent / push
-/ event-log details.
+out of [`architecture.md`](architecture.md), which keeps the high-level overview, module map, and process / agent /
+push / event-log details.
 
 The sections below cover:
 
@@ -28,25 +28,25 @@ Three non-workflow **control labels** modify behavior without occupying the work
   back to the state machine on the next tick.
 - `paused` is the same hard skip as `backlog` at every point (dispatch, scheduler routing, `_process_issue`, and base
   sync), differing only in intent: `backlog` is a "not yet" hold on a fresh issue, `paused` freezes an already
-  in-flight one without discarding its state. Removing it resumes processing on the next tick. Because those skip points
-  read the issue's labels at tick start, every stage that runs an agent additionally re-checks a freshly fetched issue
-  right after the run returns (`_paused_during_agent_run`, alongside each stage's `interrupted` short-circuit —
-  both live on the `workflow/engine/guards.py` owner the stage leaves import directly): the
-  dev-agent stages that resume committed work (`implementing`, `in_review`, `fixing`, `resolving_conflict`, the
-  `validating` drift / awaiting-human / reviewer-change dev resumes, and the `documenting` initial and follow-up docs
-  passes) and the read-only agent stages (the decomposer run in `decomposing`, fresh spawn and awaiting-human resume;
-  the reviewer run in `validating`; and the question run, fresh spawn and awaiting-human resume) all consult it. A
-  `paused` applied mid-run stops before a PR opens, the label flips, a HITL park or ACK comment posts, a docs push
-  lands, usage counters fold, child issues are created, watermarks advance, or pinned state advances, so a dev stage's
-  committed work stays on the branch and republishes through the normal recovered-worktree / stranded-fix path once the
-  label is removed, while the read-only decomposer / reviewer / question runs simply re-run from durable state on the
-  next tick. Because `paused` is a plain control label, removing it is the entire resume protocol — the next poll
-  picks the issue back up from durable state; there is no un-pause command. This is distinct from `/orchestrator
-  continue` (§ `_handle_fixing` `_handle_continue_command`, plus the shared implementing / documenting handling), which
-  retries only specific `awaiting_human` session-failure parked *retry* flows: pausing is never a `park_reason`, so a
-  continue command is not an un-pause and does not clear
-  `paused`. It is unrelated to un-pausing, but not exempt from it — the hard skip fires in `_process_issue` before any
-  handler, so a continue comment posted on a paused issue is deferred with everything else until the label is removed.
+  in-flight one without discarding its state. Removing it resumes processing on the next tick. Because those skip
+  points read the issue's labels at tick start, every stage that runs an agent additionally re-checks a freshly
+  fetched issue right after the run returns (`_paused_during_agent_run`, alongside each stage's `interrupted`
+  short-circuit — both live on the `workflow/engine/guards.py` owner the stage leaves import directly): the dev-agent
+  stages that resume committed work (`implementing`, `in_review`, `fixing`, `resolving_conflict`, the `validating`
+  drift / awaiting-human / reviewer-change dev resumes, and the `documenting` initial and follow-up docs passes) and
+  the read-only agent stages (the decomposer run in `decomposing`, fresh spawn and awaiting-human resume; the reviewer
+  run in `validating`; and the question run, fresh spawn and awaiting-human resume) all consult it. A `paused` applied
+  mid-run stops before a PR opens, the label flips, a HITL park or ACK comment posts, a docs push lands, usage
+  counters fold, child issues are created, watermarks advance, or pinned state advances, so a dev stage's committed
+  work stays on the branch and republishes through the normal recovered-worktree / stranded-fix path once the label is
+  removed, while the read-only decomposer / reviewer / question runs simply re-run from durable state on the next
+  tick. Because `paused` is a plain control label, removing it is the entire resume protocol — the next poll picks the
+  issue back up from durable state; there is no un-pause command. This is distinct from `/orchestrator continue` (§
+  `_handle_fixing` `_handle_continue_command`, plus the shared implementing / documenting handling), which retries
+  only specific `awaiting_human` session-failure parked *retry* flows: pausing is never a `park_reason`, so a continue
+  command is not an un-pause and does not clear `paused`. It is unrelated to un-pausing, but not exempt from it — the
+  hard skip fires in `_process_issue` before any handler, so a continue comment posted on a paused issue is deferred
+  with everything else until the label is removed.
 - `community_contribution` is applied by the per-tick open-PR sweep (on the `workflow/engine/tick.py` owner, which
   drives it before per-issue dispatch) when `ALLOWED_ISSUE_AUTHORS` is configured: any open PR whose author is not in
   the allowlist is labeled and `HITL_HANDLE` is @-mentioned once per PR. Bot-authored PRs
@@ -58,10 +58,18 @@ Three non-workflow **control labels** modify behavior without occupying the work
 
 The label vocabulary is defined once in [`orchestrator/workflow/state.py`](../orchestrator/workflow/state.py), which
 every caller inside the tree imports directly — `orchestrator.workflow` re-exports the same objects for callers
-outside it:
-`WorkflowLabel` (a `StrEnum`) is the single source of truth for workflow states, and `ControlLabel` holds the modifiers
-above. Because `StrEnum` members *are* their wire strings, GitHub labels and pinned-state JSON are unchanged — the
-enum just gives the names one authoritative definition.
+outside it: `WorkflowLabel` (a `StrEnum`) is the single source of truth for workflow states, and `ControlLabel` holds
+the modifiers above. Because `StrEnum` members *are* their wire strings, a member is the GitHub label verbatim — the
+enum just gives the names one authoritative definition.  The states the orchestrator drives itself are namespaced
+`workflow:<tag>` so a repository's own labels cannot collide with them; `in_review`, `question`, `done`, `rejected`,
+and every `ControlLabel` keep their bare spelling because a human applies or reads those directly. The namespace stops
+at the GitHub boundary — the *stage* identifier is the bare tag, and that is what analytics rows, audit event
+payloads, agent-session attribution, and the pinned-state JSON record. `stage_name` on the same owner strips the
+prefix for those sinks.  Migration off the pre-namespace vocabulary
+runs in two places. `ensure_workflow_labels` renames the bare label rather than creating a second one, which carries
+every issue holding it across in one edit — including the closed and parked ones no polling pass revisits. And
+`label_for_name` accepts either spelling, so on a repository the rename could not reach (an under-scoped PAT, a human
+re-adding the old label) an issue still routes and is rewritten to the namespaced spelling by its next label write.
 
 Two guards run at `GitHubClient.set_workflow_label` (the single label-write chokepoint; `create_child_issue` bypasses
 `set_workflow_label` and shares only the typo guard for its direct write, coercing each child label through
@@ -80,24 +88,27 @@ Two guards run at `GitHubClient.set_workflow_label` (the single label-write chok
 edges declared per-target. Operator relabels via the GitHub UI bypass both guards, so the guard never fights a human.
 
 - _(none)_ — Open issue not yet picked up by the orchestrator.
-- `decomposing` — The decomposer is deciding whether the issue is single-context or should become child issues.
-- `ready` — The issue is decomposed and has no unresolved blockers.
-- `blocked` — The issue is waiting on child issues or dependency edges.
-- `umbrella` — Parent issue with no implementation of its own; closes to `done` when all children resolve.
-- `implementing` — The dev agent is producing commits in a per-issue worktree. A clean result advances to `validating`.
-- `documenting` — The single docs pass on the existing PR worktree, reached only via the final-docs handoff in
-  `_handle_validating`'s approval branch (after verify + squash). Advances to `in_review` after a pushed docs commit OR
-  an explicit `DOCS: NO_CHANGE` verdict.
-- `validating` — The reviewer agent is checking the diff; on `VERDICT: APPROVED` the local verify gate runs
-  `VERIFY_COMMANDS` before the squash + `documenting` handoff. `CHANGES_REQUESTED` relabels to `fixing` before the dev
-  spawn.
+- `workflow:decomposing` — The decomposer is deciding whether the issue is single-context or should become child
+  issues.
+- `workflow:ready` — The issue is decomposed and has no unresolved blockers.
+- `workflow:blocked` — The issue is waiting on child issues or dependency edges.
+- `workflow:umbrella` — Parent issue with no implementation of its own; closes to `done` when all children resolve.
+- `workflow:implementing` — The dev agent is producing commits in a per-issue worktree. A clean result advances to
+  `workflow:validating`.
+- `workflow:documenting` — The single docs pass on the existing PR worktree, reached only via the final-docs handoff
+  in `_handle_validating`'s approval branch (after verify + squash). Advances to `in_review` after a pushed docs
+  commit OR an explicit `DOCS: NO_CHANGE` verdict.
+- `workflow:validating` — The reviewer agent is checking the diff; on `VERDICT: APPROVED` the local verify gate runs
+  `VERIFY_COMMANDS` before the squash + `workflow:documenting` handoff. `CHANGES_REQUESTED` relabels to
+  `workflow:fixing` before the dev spawn.
 - `in_review` — A PR is open and ready for human review. The orchestrator never merges from here — humans drive the
   merge. A mergeable PR whose current head completed the reviewer-approved final-docs handoff (or carries a real GitHub
   APPROVED review), with no standing human CHANGES_REQUESTED on that head, earns a one-shot HITL ping per head SHA.
-- `fixing` — The dev fix-loop is active. Entered on unread in-review feedback OR a `CHANGES_REQUESTED` verdict. A
-  successful fix bounces directly back to `validating` so the reviewer re-approves.
-- `resolving_conflict` — The orchestrator is resolving a rebase conflict on a PR branch against `<remote>/<base>`.
-  Reached only when the per-tick base-sync rebase actually leaves conflicted files, or via an operator relabel.
+- `workflow:fixing` — The dev fix-loop is active. Entered on unread in-review feedback OR a `CHANGES_REQUESTED`
+  verdict. A successful fix bounces directly back to `workflow:validating` so the reviewer re-approves.
+- `workflow:resolving_conflict` — The orchestrator is resolving a rebase conflict on a PR branch against
+  `<remote>/<base>`. Reached only when the per-tick base-sync rebase actually leaves conflicted files, or via an
+  operator relabel.
 - `question` — Operator-applied read-only Q&A label: the decomposer agent answers in the per-issue worktree and waits
   on a human reply or close. No PR is opened.
 - `done` — Terminal success; PR merged, umbrella resolved, or a `question` issue closed.
@@ -121,18 +132,19 @@ per tick on either path.
 
 The dispatch loop classifies each pollable issue by workflow label before submitting it:
 
-- **Family-aware labels** (`decomposing`, `blocked`, `umbrella`, unlabeled pickup) read and write cross-issue state
-  (parent ↔ child). They are folded into one bucket per repo that drains sequentially on a single worker thread, so
-  parent / child handlers cannot race. A bucket whose every label is in `_CAP_EXEMPT_FAMILY_LABELS` (`blocked` or
-  `umbrella` — pure label / dep-graph walks) runs on a dedicated executor and does not consume a
-  `MAX_PARALLEL_ISSUES_*` slot, so a `blocked` parent waiting on children cannot deadlock those children.
-- **Fan-out labels** (`ready`, `implementing`, `documenting`, `validating`, `in_review`, `fixing`, `resolving_conflict`,
-  and the operator-applied `question`) only touch their own state and worktree. They run concurrently up to the per-repo
-  and global caps. A **closed** fan-out issue (a merged-PR or closed-question issue still carrying its sweep label,
-  surfaced by the closed-issue sweep) is submitted `cap_exempt=True`: its handler only runs a terminal finalization
-  (flip to `done` / `rejected` + branch cleanup) with no agent spawn, so it must not be starved behind active agent work
-  — otherwise under `parallel_limit=1` a merged-PR issue sits closed-but-labeled for many ticks while a sibling
-  `validating` / `documenting` agent holds the only slot.
+- **Family-aware labels** (`workflow:decomposing`, `workflow:blocked`, `workflow:umbrella`, unlabeled pickup) read and
+  write cross-issue state (parent ↔ child). They are folded into one bucket per repo that drains sequentially on a
+  single worker thread, so parent / child handlers cannot race. A bucket whose every label is in
+  `_CAP_EXEMPT_FAMILY_LABELS` (`workflow:blocked` or `workflow:umbrella` — pure label / dep-graph walks) runs on a
+  dedicated executor and does not consume a `MAX_PARALLEL_ISSUES_*` slot, so a blocked parent waiting on children
+  cannot deadlock those children.
+- **Fan-out labels** (`workflow:ready`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`,
+  `in_review`, `workflow:fixing`, `workflow:resolving_conflict`, and the operator-applied `question`) only touch their
+  own state and worktree. They run concurrently up to the per-repo and global caps. A **closed** fan-out issue (a
+  merged-PR or closed-question issue still carrying its sweep label, surfaced by the closed-issue sweep) is submitted
+  `cap_exempt=True`: its handler only runs a terminal finalization (flip to `done` / `rejected` + branch cleanup) with
+  no agent spawn, so it must not be starved behind active agent work — otherwise under `parallel_limit=1` a merged-PR
+  issue sits closed-but-labeled for many ticks while a sibling reviewer or docs agent holds the only slot.
 
 The duplicate-active gate keys on `(repo_slug, issue_number)`: an in-flight handler that straddles polling passes is
 reported active to the next poll's submit, which is rejected as `duplicate_active`. The pre-tick base-refresh skips any
@@ -153,11 +165,11 @@ Two paths depending on whether a PR exists:
 
 - **Pre-PR worktrees** get a clean-tree `git rebase <remote>/<base>` directly — no remote to push, so the local branch
   stays linear without publishing a rewrite.
-- **PR-having worktrees** in `validating` / `documenting` / `in_review` / `fixing` go through
-  `_sync_pr_worktree_to_base`. A clean rebase pushes (force-with-lease pinned to the pre-rebase SHA so a foreign update
-  rejects rather than being clobbered), resets `review_round`, posts a PR notice, and relabels to `validating` so the
-  reviewer re-runs against the rewritten head. Only when the rebase actually leaves conflicted files does the helper
-  relabel to `resolving_conflict`.
+- **PR-having worktrees** in `workflow:validating` / `workflow:documenting` / `in_review` / `workflow:fixing` go
+  through `_sync_pr_worktree_to_base`. A clean rebase pushes (force-with-lease pinned to the pre-rebase SHA so a
+  foreign update rejects rather than being clobbered), resets `review_round`, posts a PR notice, and relabels to
+  `workflow:validating` so the reviewer re-runs against the rewritten head. Only when the rebase actually leaves
+  conflicted files does the helper relabel to `workflow:resolving_conflict`.
 
 The `question` label skips both paths unconditionally — its handler tears down its own
 worktree, and merging base into a question worktree would either accrete commits on a read-only branch or mask an
@@ -177,20 +189,23 @@ a PR the next handler would finalize. A `gh.get_pr` failure is treated as "leave
 
 ### Pollable issues and finalization
 
-`gh.list_pollable_issues()` yields all open non-PR issues plus closed non-PR issues still labeled with one of the seven
-sweep labels: `implementing`, `documenting`, `validating`, `in_review`, `fixing`, `resolving_conflict`, `question`. The
-closed-issue sweep makes external manual merges and operator closes finalize cleanly:
-
-- Closed `in_review` / `fixing` / `resolving_conflict` — a human-merged PR with a `Resolves #N` footer auto-closes the
-  issue before the orchestrator can flip the label.
-- Closed `implementing` / `documenting` / `validating` — the same external-merge race when the human merges before
-  reaching `in_review`. Each handler's entry-time `_finalize_if_pr_merged` flips to `done` instead of stranding the
-  issue.
+`gh.list_pollable_issues()` yields all open non-PR issues plus closed non-PR issues still labeled with one of the
+seven sweep labels: `workflow:implementing`, `workflow:documenting`, `workflow:validating`, `in_review`,
+`workflow:fixing`, `workflow:resolving_conflict`, `question`. Each is queried under its pre-namespace spelling too,
+because a closed issue is the one case no other pass revisits: on a repository whose labels the bootstrap could not
+rename, the bare label is all that is left to find it by. Both queries feed one seen-number set, so an issue carrying
+both spellings is yielded once. The closed-issue sweep makes external manual merges and operator closes finalize
+cleanly:
+- Closed `in_review` / `workflow:fixing` / `workflow:resolving_conflict` — a human-merged PR with a `Resolves #N`
+  footer auto-closes the issue before the orchestrator can flip the label.
+- Closed `workflow:implementing` / `workflow:documenting` / `workflow:validating` — the same external-merge race when
+  the human merges before reaching `in_review`. Each handler's entry-time `_finalize_if_pr_merged` flips to `done`
+  instead of stranding the issue.
 - Closed `question` — a human closing the issue is the terminal signal `_handle_question` consumes to finalize to
   `done`.
 
-Pre-PR labels (`decomposing` / `blocked` / `umbrella` / `ready`) are not swept closed — a closed issue at those stages
-is a hard human stop until an operator relabels.
+Pre-PR labels (`workflow:decomposing` / `workflow:blocked` / `workflow:umbrella` / `workflow:ready`) are not swept
+closed — a closed issue at those stages is a hard human stop until an operator relabels.
 
 The closed-issue sweep issues one closed-issue query per sweep label per repo, every tick — a fixed request cost that
 drives GitHub primary-rate-limit exhaustion on multi-repo hosts. `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` (default `1`)
@@ -233,7 +248,7 @@ into a few groups:
 - **Final-docs handoff.** `docs_checked_sha` + `docs_verdict` (`updated` / `no_change`) set by `_handle_documenting`'s
   success exits. `ready_ping_sha` records the head the in_review handler already posted a `:bell:` HITL ping for.
   `docs_drift_unwind_pending` is set while `_handle_documenting`'s drift block is reconciling and cleared only on the
-  relabel back to `validating`.
+  relabel back to `workflow:validating`.
 - **Fix routing.** `pending_fix_at` + per-namespace `pending_fix_issue_max_id` / `pending_fix_review_max_id` /
   `pending_fix_review_summary_max_id` recorded by the `in_review → fixing` route, plus the full
   `pending_fix_issue_ids` / `pending_fix_review_ids` / `pending_fix_review_summary_ids` batch lists. They are hints, not
@@ -283,14 +298,15 @@ it round-trips to `spec="codex"` with no args so an older orchestrator's pin kee
 
 ## Stage handlers
 
-### `_handle_pickup` (no label → `decomposing` or `implementing`)
+### `_handle_pickup` (no label → `workflow:decomposing` or `workflow:implementing`)
 - **Trigger**: open issue with no workflow label.
 - **Input**: issue title/body/comments; `config.DECOMPOSE` (default on); `config.ALLOWED_ISSUE_AUTHORS` (default empty
   → allow all).
-- **Action**: when `ALLOWED_ISSUE_AUTHORS` is set, an issue authored by anyone outside the list is silently skipped (log
-  only); otherwise post a "picking this up" comment, anchor `pickup_comment_id`, snapshot `user_content_hash` over title
-  + body + non-orchestrator comments, then route to `decomposing` (`DECOMPOSE=on`) or `implementing` (`DECOMPOSE=off`)
-  and run that stage's handler in the same tick, so an unlabeled issue's first tick ends inside its second stage.
+- **Action**: when `ALLOWED_ISSUE_AUTHORS` is set, an issue authored by anyone outside the list is silently skipped
+  (log only); otherwise post a "picking this up" comment, anchor `pickup_comment_id`, snapshot `user_content_hash`
+  over title + body + non-orchestrator comments, then route to `workflow:decomposing` (`DECOMPOSE=on`) or
+  `workflow:implementing` (`DECOMPOSE=off`) and run that stage's handler in the same tick, so an unlabeled issue's
+  first tick ends inside its second stage.
 
 The allowlist, both routes, and the order they publish the comment, hash, label, and pinned state in all live in
 `workflow/engine/pickup.py`; the same-tick handler call is a call-time import of the chosen stage's owner under
@@ -305,9 +321,9 @@ human-authored *issue-thread* comment body (PR-conversation comments are not in 
 below, and the routes a detected drift is handed to all live in `workflow/engine/drift.py`.
 
 `_handle_in_review` is the exception in ordering: it runs the four-surface fresh-feedback ID scan FIRST and routes any
-unread human comment past those watermarks to `fixing`, so the drift check that follows reacts only to changes the ID
-scan didn't catch (title/body edits, and edits to existing issue-thread comments whose ids are already below the
-watermark).
+unread human comment past those watermarks to `workflow:fixing`, so the drift check that follows reacts only to
+changes the ID scan didn't catch (title/body edits, and edits to existing issue-thread comments whose ids are already
+below the watermark).
 
 `_handle_fixing` and `_handle_question` deliberately skip the drift check. `_handle_fixing` refreshes
 `user_content_hash` itself once it has consumed the PR-side feedback; `_handle_question` runs its own conversation flow.
@@ -323,23 +339,23 @@ Non-human content is filtered six ways:
   requirements content, so it must not shift the hash and route the nudge through drift handling instead of the stage's
   intentional session-limit retry (a comment carrying the command *alongside* genuine guidance is not bare, so it still
   shifts the hash);
-- untrusted authors via `github.comments.is_trusted_author` when `ALLOWED_ISSUE_AUTHORS` is set (opt-in; empty allowlist
-  trusts everyone), so an outsider's comment cannot shift the hash and re-trigger drift on a public repo. The same trust
-  helpers filter the conversation text fed to agent prompts: `_recent_comments_text` (implement / review /
-  documentation / decompose / question / drift-resume); the awaiting-human resume paths that quote new replies
-  directly (`filter_trusted` in the implementing, validating, decomposing, documenting, resolving_conflict, and
-  question resumes) plus the auto-rebase-park retry-unpark in `_sync_pr_worktree_to_base`; and the four-surface
-  PR-feedback scans driving the `in_review` -> `fixing` route, the fixing dev-resume, and the `/orchestrator continue`
-  batch replay (`filter_trusted` in `_scan_fresh_pr_feedback`, the drift-resume PR-conversation block,
+- untrusted authors via `github.comments.is_trusted_author` when `ALLOWED_ISSUE_AUTHORS` is set (opt-in; empty
+  allowlist trusts everyone), so an outsider's comment cannot shift the hash and re-trigger drift on a public repo.
+  The same trust helpers filter the conversation text fed to agent prompts: `_recent_comments_text` (implement /
+  review / documentation / decompose / question / drift-resume); the awaiting-human resume paths that quote new
+  replies directly (`filter_trusted` in the implementing, validating, decomposing, documenting, resolving_conflict,
+  and question resumes) plus the auto-rebase-park retry-unpark in `_sync_pr_worktree_to_base`; and the four-surface
+  PR-feedback scans driving the `in_review` -> `workflow:fixing` route, the fixing dev-resume, and the `/orchestrator
+  continue` batch replay (`filter_trusted` in `_scan_fresh_pr_feedback`, the drift-resume PR-conversation block,
   `_rescan_fixing_feedback`, and `_reconstruct_pending_fix_batch`). On every awaiting-human resume — and the
   auto-rebase retry-unpark — the filter runs on the whole `comments_after` batch up front, so it gates the non-empty
-  check, the quoted follow-up, the consumed-watermark advance, and — in `validating` — the `/orchestrator
+  check, the quoted follow-up, the consumed-watermark advance, and — in `workflow:validating` — the `/orchestrator
   add-review-rounds` review-cap command and the reviewer-respawn nudge; an untrusted comment resumes none of those
   sessions and does not advance the watermark (it is re-filtered on each later tick, never marked consumed). An
   untrusted comment therefore neither shifts the drift hash, sets a pending-fix bookmark, routes `in_review` to
-  `fixing`, resumes an awaiting-human decomposer / developer / reviewer / question / documenting session, retries a
-  parked auto-rebase, satisfies the `/orchestrator add-review-rounds` review-cap command, nor reaches any agent
-  prompt.
+  `workflow:fixing`, resumes an awaiting-human decomposer / developer / reviewer / question / documenting session,
+  retries a parked auto-rebase, satisfies the `/orchestrator add-review-rounds` review-cap command, nor reaches any
+  agent prompt.
 
 `_detect_user_content_change` durably persists the baseline on its FIRST encounter via `gh.write_pinned_state`, so an
 early-return tick cannot silently absorb a later edit as the new baseline. It also carries a **legacy-hash
@@ -350,20 +366,20 @@ reproduces the stored baseline the delta is purely the algorithm change, so it p
 drift — a bare continue outstanding at deploy time cannot fire one false "issue body/content changed" route. On drift
 the action depends on lifecycle position:
 
-- **`decomposing`** — handled inline at the top of `_handle_decomposing`: drop `decomposer_session_id`, wipe
-  `children` / `dep_graph` / `expected_children_count` / `umbrella`, clear park flags, post a
-  `:pencil2: issue content changed` notice, then fall through in the same tick so the decomposer re-spawns against the
-  updated body.
-- **`ready` / `blocked` / `umbrella`** (no implementation has started) — route back to `decomposing` via
-  `_route_drift_to_decomposing`: same state-wipe + notice, plus a label flip to `decomposing`. `decomposer_agent` is
-  preserved across this transition so a mid-flight `DECOMPOSE_AGENT` env flip cannot retarget an in-flight issue. Any
-  previously-tracked children are listed in the notice as ORPHANED — the orchestrator no longer tracks them, so the
-  operator must close any that no longer apply.
-- **`implementing` / `validating` / `in_review` / `resolving_conflict`** (a dev session exists and possibly a PR) —
-  post a `:pencil2: issue body changed; resuming dev session` notice (on the issue for implementing/validating, on the
-  PR for in_review/resolving_conflict), advance `last_action_comment_id` past every visible comment, resume the locked
-  dev session with `_build_user_content_change_prompt`, and route the result through `_post_user_content_change_result`.
-- **`documenting`** — route back to `validating` (no docs spawn) — see the handler section below.
+- **`workflow:decomposing`** — handled inline at the top of `_handle_decomposing`: drop `decomposer_session_id`, wipe
+  `children` / `dep_graph` / `expected_children_count` / `umbrella`, clear park flags, post a `:pencil2: issue content
+  changed` notice, then fall through in the same tick so the decomposer re-spawns against the updated body.
+- **`workflow:ready` / `workflow:blocked` / `workflow:umbrella`** (no implementation has started) — route back to
+  `workflow:decomposing` via `_route_drift_to_decomposing`: same state-wipe + notice, plus a label flip to
+  `workflow:decomposing`. `decomposer_agent` is preserved across this transition so a mid-flight `DECOMPOSE_AGENT` env
+  flip cannot retarget an in-flight issue. Any previously-tracked children are listed in the notice as ORPHANED — the
+  orchestrator no longer tracks them, so the operator must close any that no longer apply.
+- **`workflow:implementing` / `workflow:validating` / `in_review` / `workflow:resolving_conflict`** (a dev session
+  exists and possibly a PR) — post a `:pencil2: issue body changed; resuming dev session` notice (on the issue for
+  implementing/validating, on the PR for in_review/resolving_conflict), advance `last_action_comment_id` past every
+  visible comment, resume the locked dev session with `_build_user_content_change_prompt`, and route the result
+  through `_post_user_content_change_result`.
+- **`workflow:documenting`** — route back to `workflow:validating` (no docs spawn) — see the handler section below.
 
 Result routing in `_post_user_content_change_result`:
 
@@ -371,8 +387,8 @@ Result routing in `_post_user_content_change_result`:
   without posting, parking, or pushing) and the drift callers in turn bail WITHOUT writing pinned state (in_review /
   resolving_conflict guard ahead of the helper via `_ignore_if_interrupted`), so the killed run leaves durable state
   untouched for the next process to retry;
-- a clean pushed fix hands straight back to `validating` from every stage that runs the drift resume; from
-  `implementing` the drift path runs `_on_commits` to open/push the PR;
+- a clean pushed fix hands straight back to `workflow:validating` from every stage that runs the drift resume; from
+  `workflow:implementing` the drift path runs `_on_commits` to open/push the PR;
 - a no-commit reply whose clean HEAD is strictly ahead of the remote PR branch (a fix a prior parked / interrupted run
   committed but never pushed) is published through the push tail and counted as a pushed fix (`_stranded_fix_unpushed`),
   ahead of the ack check;
@@ -383,28 +399,29 @@ Result routing in `_post_user_content_change_result`:
 Per-stage specifics:
 
 - For **`in_review`** drift, both the "pushed" and "ack" outcomes reset `review_round` (a drift invalidates the prior
-  approval) and bounce directly back to `validating`. The drift block also captures unread PR-conversation comments past
-  `pr_last_comment_id` BEFORE posting its notice so the shared id space doesn't silently swallow a PR comment.
-- For **`resolving_conflict`** drift, ONLY the "pushed" outcome relabels back to `validating` (with `review_round=0`,
-  `conflict_round` bumped). Ack and parked outcomes stay on `resolving_conflict` — the rebase work is still
-  unfinished. An `interrupted` resume (shutdown sweep killed the run mid-flight) short-circuits BEFORE
-  `_post_user_content_change_result` and returns WITHOUT writing pinned state, so the refreshed `user_content_hash` /
-  consumed-comment changes are discarded and the next process re-detects and re-runs the drift resume (the caller guards
-  via `_ignore_if_interrupted` ahead of the helper; the shared helper also self-guards on interrupted as a backstop,
-  returning `"parked"`). A mid-run `paused` / `backlog` (`pause_guard=True`) short-circuits the same way, right after
-  the interrupted check.
-- For **`implementing`** drift, the resume runs only when `dev_session_id` is recorded. With recovered unpushed commits
-  but no session the handler parks (the commits were authored against the pre-drift body). With no session, no recovered
-  commits, and `awaiting_human=True`, park flags are cleared so the fresh-spawn branch fires this tick against the
-  updated body.
-- For **`validating`** drift, the handler defers to the awaiting-human branch when `park_reason` is reviewer-side
-  (`reviewer_timeout` / `reviewer_failed`): a "retry" reply after a reviewer failure must re-spawn the reviewer, not the
-  dev. The new baseline is still persisted so the next tick doesn't loop.
+  approval) and bounce directly back to `workflow:validating`. The drift block also captures unread PR-conversation
+  comments past `pr_last_comment_id` BEFORE posting its notice so the shared id space doesn't silently swallow a PR
+  comment.
+- For **`workflow:resolving_conflict`** drift, ONLY the "pushed" outcome relabels back to `workflow:validating` (with
+  `review_round=0`, `conflict_round` bumped). Ack and parked outcomes stay on `workflow:resolving_conflict` — the
+  rebase work is still unfinished. An `interrupted` resume (shutdown sweep killed the run mid-flight) short-circuits
+  BEFORE `_post_user_content_change_result` and returns WITHOUT writing pinned state, so the refreshed
+  `user_content_hash` / consumed-comment changes are discarded and the next process re-detects and re-runs the drift
+  resume (the caller guards via `_ignore_if_interrupted` ahead of the helper; the shared helper also self-guards on
+  interrupted as a backstop, returning `"parked"`). A mid-run `paused` / `backlog` (`pause_guard=True`) short-circuits
+  the same way, right after the interrupted check.
+- For **`workflow:implementing`** drift, the resume runs only when `dev_session_id` is recorded. With recovered
+  unpushed commits but no session the handler parks (the commits were authored against the pre-drift body). With no
+  session, no recovered commits, and `awaiting_human=True`, park flags are cleared so the fresh-spawn branch fires
+  this tick against the updated body.
+- For **`workflow:validating`** drift, the handler defers to the awaiting-human branch when `park_reason` is
+  reviewer-side (`reviewer_timeout` / `reviewer_failed`): a "retry" reply after a reviewer failure must re-spawn the
+  reviewer, not the dev. The new baseline is still persisted so the next tick doesn't loop.
 
 The hash is re-persisted on every reaction so a single edit triggers exactly one re-route, not a loop.
 
-### `_handle_decomposing` (label `decomposing`)
-- **Trigger**: each tick while the label is `decomposing`.
+### `_handle_decomposing` (label `workflow:decomposing`)
+- **Trigger**: each tick while the label is `workflow:decomposing`.
 - **Input**: issue + comments + pinned state (`decomposer_agent` / `decomposer_session_id`, retry-budget keys,
   `children`, `dep_graph`, `expected_children_count`, `umbrella`).
 - **Internal flow**:
@@ -412,10 +429,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   2. **Half-finished decomposition recovery.** If `expected_children_count` is set OR `children` is non-empty (a prior
      tick crashed mid-split), the handler cannot safely respawn the decomposer. When `expected_children_count` is set
      and `len(children) < expected_children_count`, park with `decomposition_crash`. Otherwise repair any child whose
-     pinned `parent_number` was never seeded, then finalize to `umbrella` (when the flag is true) or `blocked`.
+     pinned `parent_number` was never seeded, then finalize to `workflow:umbrella` (when the flag is true) or
+     `workflow:blocked`.
   3. **DECOMPOSE kill switch.** If `config.DECOMPOSE` is off when this handler runs, clear decomposer-side park flags,
-     ratchet `last_action_comment_id` past every visible comment, flip the label to `implementing`, and fall into
-     `_handle_implementing`. Step 2 runs first so orphan children are not abandoned.
+     ratchet `last_action_comment_id` past every visible comment, flip the label to `workflow:implementing`, and fall
+     into `_handle_implementing`. Step 2 runs first so orphan children are not abandoned.
   4. **Awaiting-human resume OR fresh spawn.** Resume on a new comment; otherwise gate on the per-issue retry budget
      (shared with `implementing`), ensure a read-only worktree, resolve the spec via `_read_decomposer_session`, persist
      `decomposer_agent` BEFORE invoking `run_agent`, and spawn the decomposer. A mid-run `paused` / `backlog` re-check
@@ -430,21 +448,24 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      - no fenced block → treat as a question; park.
      - `decision == "single"` → post the collected-context comment (rationale plus the manifest's optional
        `affected_files` / `notes`, built by `_build_single_decision_comment`) so the implementer inherits the
-       decomposer's groundwork via `_recent_comments_text`; label `ready`, stamp `decomposed_at`.
-     - `decision == "split"` → for each child call `gh.create_child_issue(...)` with label `blocked` (the child's only
-       birth label) and seed the child's pinned state with `parent_number`; persist `children` / `dep_graph` /
-       `umbrella` on the parent; activate no-dep children by flipping `blocked` → `ready` (best-effort, since
-       `_handle_blocked` / `_handle_umbrella` also treats no-dep children as deps-satisfied).
-- **Output**: parent → `ready` / `blocked` / `umbrella` / `implementing`, OR a HITL park.
-
-### `_handle_ready` (label `ready` → `implementing`)
-- **Trigger**: each tick while the label is `ready`. Reached by a `single`-decision parent or a freshly-created child.
+       decomposer's groundwork via `_recent_comments_text`; label `workflow:ready`, stamp `decomposed_at`.
+     - `decision == "split"` → for each child call `gh.create_child_issue(...)` with label `workflow:blocked` (the
+       child's only birth label) and seed the child's pinned state with `parent_number`; persist `children` /
+       `dep_graph` / `umbrella` on the parent; activate no-dep children by flipping `workflow:blocked` →
+       `workflow:ready` (best-effort, since `_handle_blocked` / `_handle_umbrella` also treats no-dep children as
+       deps-satisfied).
+- **Output**: parent → `workflow:ready` / `workflow:blocked` / `workflow:umbrella` / `workflow:implementing`, OR a
+  HITL park.
+### `_handle_ready` (label `workflow:ready` → `workflow:implementing`)
+- **Trigger**: each tick while the label is `workflow:ready`. Reached by a `single`-decision parent or a
+  freshly-created child.
 - **Action**: post the pickup comment if needed, bump `last_action_comment_id` to the latest visible comment id (so
-  comments posted while the issue sat in `decomposing` / `blocked` are marked consumed before the implementer reads them
-  at spawn), flip to `implementing`, fall through into `_handle_implementing` on the same tick.
+  comments posted while the issue sat in `workflow:decomposing` / `workflow:blocked` are marked consumed before the
+  implementer reads them at spawn), flip to `workflow:implementing`, fall through into `_handle_implementing` on the
+  same tick.
 
-### `_handle_blocked` (label `blocked`)
-- **Trigger**: each tick while the label is `blocked`.
+### `_handle_blocked` (label `workflow:blocked`)
+- **Trigger**: each tick while the label is `workflow:blocked`.
 - **Input**: pinned `children` (parent only), optional `dep_graph`, `parent_number` (child only — seeded at
   child-creation time).
 - **Internal flow**:
@@ -455,15 +476,15 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   5. Any child closed but its label is not `done` / `rejected` / `in_review` → retry `_finalize_if_pr_merged` (covers
      an externally-merged child whose own handler has not yet finalized) before falling through to the manually-closed
      park.
-  6. Every child `done` → flip parent → `ready`.
-  7. Walk children: any `blocked` child whose recorded dependencies are all `done` gets relabeled `ready`. A child with
-     no recorded deps is also flipped (vacuous all-done over an empty list).
-- **Output**: parent → `ready` (all done), OR a sibling unblocked, OR a HITL park, OR a no-op for a child still
-  waiting on its dependencies.
+  6. Every child `done` → flip parent → `workflow:ready`.
+  7. Walk children: any `workflow:blocked` child whose recorded dependencies are all `done` gets relabeled
+     `workflow:ready`. A child with no recorded deps is also flipped (vacuous all-done over an empty list).
+- **Output**: parent → `workflow:ready` (all done), OR a sibling unblocked, OR a HITL park, OR a no-op for a child
+  still waiting on its dependencies.
 
-### `_handle_umbrella` (label `umbrella`)
-- **Trigger**: each tick while the label is `umbrella` (only ever a parent — set by the decomposer when the manifest's
-  `umbrella` boolean is true).
+### `_handle_umbrella` (label `workflow:umbrella`)
+- **Trigger**: each tick while the label is `workflow:umbrella` (only ever a parent — set by the decomposer when the
+  manifest's `umbrella` boolean is true).
 - **Input**: pinned `children` and optional `dep_graph` on the parent.
 - **Internal flow**: mirrors `_handle_blocked` for the rejected / manually-closed checks and dep-graph walk. The only
   difference is the all-done terminal: when every child reaches `done`, post a checkmark comment, stamp
@@ -471,8 +492,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   parks.
 - **Output**: terminal `done`, OR a sibling unblocked, OR a HITL park, OR a no-op.
 
-### `_handle_implementing` (label `implementing`)
-- **Trigger**: each tick while the label is `implementing`.
+### `_handle_implementing` (label `workflow:implementing`)
+- **Trigger**: each tick while the label is `workflow:implementing`.
 - **Input**: issue + comments + pinned state.
 - **Internal flow**:
   0. **External-merge / closed-issue short-circuit.** `_finalize_if_pr_merged` flips a merged PR to `done`
@@ -531,19 +552,18 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        `processes.terminate_process_group` (SIGKILLs surviving descendants after the leader exits) so a build grandchild
        cannot keep committing into the worktree after the timeout is recorded.
      - new commits + clean tree → `_on_commits`: push branch, open PR (or reuse an existing open one), comment
-       `:sparkles: PR opened: #N`, then set label `validating` (the docs pass runs only as the final-docs handoff after
-       approval). Persists `pr_number` / `branch` and resets `review_round=0` and `retry_count=0` via
+       `:sparkles: PR opened: #N`, then set label `workflow:validating` (the docs pass runs only as the final-docs
+       handoff after approval). Persists `pr_number` / `branch` and resets `review_round=0` and `retry_count=0` via
        `_reset_implementing_counters`.
      - new commits + dirty files → `_on_dirty_worktree`: park; refuse to publish a partial branch.
      - no new commits → `_on_question`: post the agent's last message as a HITL question, park.
-- **Output**: pushed branch + open PR + label moved to `validating`, OR a HITL park.
-
-### `_handle_documenting` (label `documenting`)
-- **Trigger**: each tick while the label is `documenting`. Set only by the **final-docs handoff** in
-  `_handle_validating`'s approval branch (after verify + squash); the docs pass runs exactly once per reviewer-approval
-  handoff, between approval and `in_review`. A PR may visit `documenting` more than once: if PR feedback bounces the
-  issue to `fixing` and the dev pushes a fix, the next approval triggers another final-docs pass. Also runs on
-  closed-`documenting` issues so an externally-merged PR finalizes to `done`.
+- **Output**: pushed branch + open PR + label moved to `workflow:validating`, OR a HITL park.
+### `_handle_documenting` (label `workflow:documenting`)
+- **Trigger**: each tick while the label is `workflow:documenting`. Set only by the **final-docs handoff** in
+  `_handle_validating`'s approval branch (after verify + squash); the docs pass runs exactly once per
+  reviewer-approval handoff, between approval and `in_review`. A PR may visit `workflow:documenting` more than once:
+  if PR feedback bounces the issue to `workflow:fixing` and the dev pushes a fix, the next approval triggers another
+  final-docs pass. Also runs on closed-`workflow:documenting` issues so an externally-merged PR finalizes to `done`.
 - **Input**: pinned `pr_number`, `branch`, `dev_agent` / `dev_session_id` (the docs pass reuses the locked dev spec —
   there is no separate `documenting_agent`), plus `docs_checked_sha` / `docs_verdict` / `silent_park_count`.
 - **Internal flow**:
@@ -556,15 +576,15 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      below stays silent (no spurious `routing back to validating`) and the retry reruns the FULL docs pass through the
      awaiting-human resume (step 7). The parser + classifier are shared with `_handle_implementing` / `_handle_fixing`;
      documenting has no preserved feedback batch, so only the refusal needs interception here.
-  3. **User-content drift → relabel back to `validating`** without spawning the docs agent. A title/body edit (or
-     fresh human comment) during the final-docs hop invalidates the prior approval, so the reviewer must re-evaluate
-     before any docs work can land. Housekeeping: post a `:pencil2: routing back to validating` notice, advance
-     `last_action_comment_id`, refresh `user_content_hash`, clear park flags, reset `review_round=0`. Reconcile the PR
-     worktree (fetch, then probe ahead/behind; on `ahead > 0`, `behind > 0`, or dirty files run
-     `git reset --hard <remote>/<branch>` + `git clean -fd`) so no docs work authored against the pre-drift requirements
-     survives. `docs_drift_unwind_pending` is set while the cleanup is in progress and cleared only on the relabel back
-     to `validating`, so an operator unpark on a parked cleanup re-enters the drift block instead of falling through to
-     a docs spawn.
+  3. **User-content drift → relabel back to `workflow:validating`** without spawning the docs agent. A title/body edit
+     (or fresh human comment) during the final-docs hop invalidates the prior approval, so the reviewer must
+     re-evaluate before any docs work can land. Housekeeping: post a `:pencil2: routing back to validating` notice,
+     advance `last_action_comment_id`, refresh `user_content_hash`, clear park flags, reset `review_round=0`.
+     Reconcile the PR worktree (fetch, then probe ahead/behind; on `ahead > 0`, `behind > 0`, or dirty files run `git
+     reset --hard <remote>/<branch>` + `git clean -fd`) so no docs work authored against the pre-drift requirements
+     survives. `docs_drift_unwind_pending` is set while the cleanup is in progress and cleared only on the relabel
+     back to `workflow:validating`, so an operator unpark on a parked cleanup re-enters the drift block instead of
+     falling through to a docs spawn.
   4. Awaiting-human + no new comment → early return BEFORE the fetch so a transient `fetch_failed` / `diverged_branch`
      doesn't re-post its park every tick.
   5. Ensure the PR worktree (`_ensure_pr_worktree`, restored from `<remote>/<branch>` so the dev's commits are intact)
@@ -599,33 +619,33 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      - no commit + `DOCS: NO_CHANGE` verdict: when `ahead > 0` push the recovered commit and advance; otherwise persist
        `docs_verdict="no_change"`, post `:books: no docs changes required.`, advance without pushing.
      - no commit + unknown verdict → `_on_question`: park.
-- **Output**: label moved to `in_review` (success), OR `validating` (drift unwind), OR terminal `done` / `rejected`
-  (short-circuit), OR a HITL park.
+- **Output**: label moved to `in_review` (success), OR `workflow:validating` (drift unwind), OR terminal `done` /
+  `rejected` (short-circuit), OR a HITL park.
 
 The docs pass is deliberately a thin dev-session rerun on the existing PR worktree rather than a separate role: there is
 no `documenting_agent` pin and no separate retry budget. The dev session resumes on its locked `(backend, args)` spec,
 so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
 
-### `_handle_validating` (label `validating`)
-- **Trigger**: each tick while label is `validating`. Set by `_handle_implementing` after `_on_commits` opens the PR, by
-  `_handle_documenting`'s drift unwind, and by `_handle_fixing` / `_handle_in_review` / `_handle_resolving_conflict` on
-  their pushed exits.
+### `_handle_validating` (label `workflow:validating`)
+- **Trigger**: each tick while label is `workflow:validating`. Set by `_handle_implementing` after `_on_commits` opens
+  the PR, by `_handle_documenting`'s drift unwind, and by `_handle_fixing` / `_handle_in_review` /
+  `_handle_resolving_conflict` on their pushed exits.
 - **Input**: PR #, branch, `dev_agent` / `dev_session_id`, `review_round`.
 - **Internal flow**:
   0. **External-merge / closed-issue short-circuit** (same chain as implementing / documenting). The reviewer is not
      spawned on either short-circuit.
   1. Awaiting-human path: resume on the dev's locked spec; on a successful pushed fix, bump `review_round` and stay on
-     `validating`. Exception: on a `review_cap` park the human reply does NOT wake the dev — the operator must post
-     `/orchestrator add-review-rounds N` on its own line (honored only from an allowlisted author when
+     `workflow:validating`. Exception: on a `review_cap` park the human reply does NOT wake the dev — the operator
+     must post `/orchestrator add-review-rounds N` on its own line (honored only from an allowlisted author when
      `ALLOWED_ISSUE_AUTHORS` is set — an outsider's command is filtered out before the parse), which resets
-     `review_round` to `MAX_REVIEW_ROUNDS - N`, clears the park, and falls through to spawn the reviewer this same tick.
-     A second exception: a bare `/orchestrator continue` on a session-failure dev park (`agent_silent` /
+     `review_round` to `MAX_REVIEW_ROUNDS - N`, clears the park, and falls through to spawn the reviewer this same
+     tick. A second exception: a bare `/orchestrator continue` on a session-failure dev park (`agent_silent` /
      `agent_timeout`) is intercepted (`_continue_command_action`) and retries the dev on the neutral
      `_CONTINUE_RETRY_PROMPT` — NOT the literal command, which the dev has no context for — while
      `_handle_dev_fix_result` still publishes any stranded commit; a bare continue on a park needing a real answer
-     refuses (`_refuse_parked_continue`) and stays parked. A command carrying real guidance, or a normal reply, resumes
-     the dev on that text as before. (Shared with `implementing` / `documenting` / `resolving_conflict`; see the
-     drift-detection section for the bare-continue hash exclusion.)
+     refuses (`_refuse_parked_continue`) and stays parked. A command carrying real guidance, or a normal reply,
+     resumes the dev on that text as before. (Shared with `implementing` / `documenting` / `resolving_conflict`; see
+     the drift-detection section for the bare-continue hash exclusion.)
   2. If `review_round >= MAX_REVIEW_ROUNDS` (default 3), park (`review_cap`). The park comment surfaces the
      `/orchestrator add-review-rounds N` escape hatch.
   3. Otherwise persist `config.REVIEW_AGENT_SPEC` to `review_agent` (traceability only — the reviewer is spawned fresh
@@ -634,38 +654,40 @@ so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
      reviewer returns short-circuits BEFORE the usage fold, session record, verdict parse, verify gate, squash, or
      relabel, so the next tick re-spawns a fresh reviewer from durable state.
   4. Parse the last `VERDICT:` marker (`_parse_review_verdict`):
-     - **approved** → in order: (1) run the local verify gate
-       (`_run_verify_commands(wt, config.VERIFY_COMMANDS, config.VERIFY_TIMEOUT)`); a non-ok result parks via
-       `_park_verify_failure` with a typed `park_reason` (`verify_failed` / `verify_timeout` / `verify_dirty` /
-       `verify_head_changed`) and the approval / squash / handoff do NOT fire (see
+     - **approved** → in order: (1) run the local verify gate (`_run_verify_commands(wt, config.VERIFY_COMMANDS,
+       config.VERIFY_TIMEOUT)`); a non-ok result parks via `_park_verify_failure` with a typed `park_reason`
+       (`verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`) and the approval / squash /
+       handoff do NOT fire (see
        [`configuration.md#local-verification-gate`](configuration.md#local-verification-gate)); (2) post
        `:white_check_mark: codex review approved.`; (3) when `SQUASH_ON_APPROVAL` is on (default), call
        `_squash_and_force_push` (subject reuses the first commit when it carries a reusable `<prefix>:` form —
        Conventional **or** repo-local such as `event:`/`career:` — otherwise `<inferred-prefix>: <issue title>`, where
        the prefix is inferred from recent base-branch history via `_infer_subject_prefix` and falls back to
        `fix:`/`feat:` only when no repo-local prefix dominates; pushed with `--force-with-lease`). On squash /
-       force-push failure, park awaiting human and stay on `validating` so the original commits remain for manual
-       triage. (4) On success, if `squashed_count > 1` post `:package: squashed N commits to 1`, seed the in_review
-       watermarks (inside the `gh.get_pr()` try so a snapshot failure leaves them untouched), then relabel to
-       `documenting`.
+       force-push failure, park awaiting human and stay on `workflow:validating` so the original commits remain for
+       manual triage. (4) On success, if `squashed_count > 1` post `:package: squashed N commits to 1`, seed the
+       in_review watermarks (inside the `gh.get_pr()` try so a snapshot failure leaves them untouched), then relabel
+       to `workflow:documenting`.
      - **unknown** (no marker) → park.
-     - **changes_requested** → post the feedback to the PR, then flip the label to `fixing` BEFORE spawning the dev so
-       the active job is observably "fixing reviewer-requested changes". Resume the dev with the fix prompt; on a new
-       commit + clean tree push, bump `review_round`, and flip back to `validating`. A no-commit run that finds a
-       stranded unpushed fix on a clean HEAD (see `_handle_fixing` step 8) publishes it the same way. The dev spawn
-       records `stage="fixing"` for analytics. On any park (timeout, no-commit, dirty, push-fail) the label STAYS
-       `fixing` with `awaiting_human=True` and `_handle_fixing` owns the awaiting-human cycle thereafter. An
-       `interrupted` dev resume is ignored: the handler returns WITHOUT writing the post-spawn state (no resume-budget
-       charge, no watermark, no park), so the pre-spawn `fixing` flip stands and the next tick re-runs the cycle; any
-       commit the killed run left is republished later via the stranded-fix tail, not this run.
-  5. `paused` / `backlog` applied mid-run → each of the three dev resumes (the drift resume, the awaiting-human resume,
-     and the CHANGES_REQUESTED fix resume) re-checks a FRESHLY fetched issue via `_paused_during_agent_run`. On a hit
-     the handler returns WITHOUT running its result handler (`_post_user_content_change_result` /
+     - **changes_requested** → post the feedback to the PR, then flip the label to `workflow:fixing` BEFORE spawning
+       the dev so the active job is observably "fixing reviewer-requested changes". Resume the dev with the fix
+       prompt; on a new commit + clean tree push, bump `review_round`, and flip back to `workflow:validating`. A
+       no-commit run that finds a stranded unpushed fix on a clean HEAD (see `_handle_fixing` step 8) publishes it the
+       same way. The dev spawn records `stage="fixing"` for analytics. On any park (timeout, no-commit, dirty,
+       push-fail) the label STAYS `workflow:fixing` with `awaiting_human=True` and `_handle_fixing` owns the
+       awaiting-human cycle thereafter. An `interrupted` dev resume is ignored: the handler returns WITHOUT writing
+       the post-spawn state (no resume-budget charge, no watermark, no park), so the pre-spawn `workflow:fixing` flip
+       stands and the next tick re-runs the cycle; any commit the killed run left is republished later via the
+       stranded-fix tail, not this run.
+  5. `paused` / `backlog` applied mid-run → each of the three dev resumes (the drift resume, the awaiting-human
+     resume, and the CHANGES_REQUESTED fix resume) re-checks a FRESHLY fetched issue via `_paused_during_agent_run`.
+     On a hit the handler returns WITHOUT running its result handler (`_post_user_content_change_result` /
      `_handle_dev_fix_result`), so no comment posts, no push, no `review_round` bump, no relabel, and no pinned-state
-     write. The committed work stays on the branch; the CHANGES_REQUESTED path leaves the pre-spawn `fixing` flip
-     standing and `_handle_fixing` owns the resume once the label is removed.
-- **Output**: label moved to `documenting` (approval after verify + squash) OR `fixing` (CHANGES_REQUESTED) OR no label
-  change with `review_round` bumped (awaiting-human resume, drift, transient-park recovery push) OR a HITL park.
+     write. The committed work stays on the branch; the CHANGES_REQUESTED path leaves the pre-spawn `workflow:fixing`
+     flip standing and `_handle_fixing` owns the resume once the label is removed.
+- **Output**: label moved to `workflow:documenting` (approval after verify + squash) OR `workflow:fixing`
+  (CHANGES_REQUESTED) OR no label change with `review_round` bumped (awaiting-human resume, drift, transient-park
+  recovery push) OR a HITL park.
 
 ### `_handle_in_review` (label `in_review`)
 - **Trigger**: each tick while label is `in_review`. Set by `_handle_documenting` on the final-docs hop. Also runs on
@@ -685,24 +707,25 @@ so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
      - `open` BUT the issue was closed manually → set label `rejected` WITHOUT branch cleanup so the operator can
        salvage the still-open PR.
      - `open` with an open issue → fall through.
-  3. **Fresh PR feedback (including any human CI-fix request) → route to `fixing`.** Read four sources independently,
-     one per id namespace: issue thread, PR conversation (shares IssueComment id space), inline review comments, PR
-     review summaries (filtered to non-empty `CHANGES_REQUESTED` / `COMMENTED`). If any source is newer than its
-     watermark, record `pending_fix_at` + per-namespace `pending_fix_*_max_id` bookmarks (and the full
-     `pending_fix_*_ids` batch lists) and flip to `fixing`. The handler does NOT honor `IN_REVIEW_DEBOUNCE_SECONDS` here
-     or spawn the dev — `fixing` owns debouncing, the dev resume, and the DIRECT bounce back to `validating`.
-     Watermarks are NOT advanced on this route so `fixing` can re-discover the triggering comments.
-  4. **User-content drift → relabel back to `validating`.** Reached when no fresh PR-side ID surfaced a comment but
-     `_detect_user_content_change` still reports a hash change (a title/body edit, or an edit to an existing
-     issue-thread comment whose id is already below the watermark). Capture unread PR-conversation comments past
-     `pr_last_comment_id` BEFORE posting the notice (the shared id space could otherwise leap past one). Resume the
-     locked dev session with `_build_user_content_change_prompt` (quoting issue body + recent comments + the captured
-     PR-conversation comments). Both successful outcomes — pushed fix AND `ACK: <reason>` no-commit reply — reset
-     `review_round=0` and bounce directly back to `validating`. A no-commit response without the `ACK:` marker parks via
-     `_on_question`. An `interrupted` resume short-circuits via `_ignore_if_interrupted` BEFORE
+  3. **Fresh PR feedback (including any human CI-fix request) → route to `workflow:fixing`.** Read four sources
+     independently, one per id namespace: issue thread, PR conversation (shares IssueComment id space), inline review
+     comments, PR review summaries (filtered to non-empty `CHANGES_REQUESTED` / `COMMENTED`). If any source is newer
+     than its watermark, record `pending_fix_at` + per-namespace `pending_fix_*_max_id` bookmarks (and the full
+     `pending_fix_*_ids` batch lists) and flip to `workflow:fixing`. The handler does NOT honor
+     `IN_REVIEW_DEBOUNCE_SECONDS` here or spawn the dev — `fixing` owns debouncing, the dev resume, and the DIRECT
+     bounce back to `workflow:validating`. Watermarks are NOT advanced on this route so `fixing` can re-discover the
+     triggering comments.
+  4. **User-content drift → relabel back to `workflow:validating`.** Reached when no fresh PR-side ID surfaced a
+     comment but `_detect_user_content_change` still reports a hash change (a title/body edit, or an edit to an
+     existing issue-thread comment whose id is already below the watermark). Capture unread PR-conversation comments
+     past `pr_last_comment_id` BEFORE posting the notice (the shared id space could otherwise leap past one). Resume
+     the locked dev session with `_build_user_content_change_prompt` (quoting issue body + recent comments + the
+     captured PR-conversation comments). Both successful outcomes — pushed fix AND `ACK: <reason>` no-commit reply —
+     reset `review_round=0` and bounce directly back to `workflow:validating`. A no-commit response without the `ACK:`
+     marker parks via `_on_question`. An `interrupted` resume short-circuits via `_ignore_if_interrupted` BEFORE
      `_post_user_content_change_result` and the watermark bump, returning WITHOUT writing pinned state so the drift
-     stays unconsumed for the next process to retry. A mid-run `paused` / `backlog` (`pause_guard=True`) short-circuits
-     the same way, right after the interrupted check.
+     stays unconsumed for the next process to retry. A mid-run `paused` / `backlog` (`pause_guard=True`)
+     short-circuits the same way, right after the interrupted check.
   5. **Manual-merge HITL path** (only reached with no fresh PR feedback AND no drift):
      - `pr_is_mergeable` is `None` → try next tick.
      - `False` → park with `unmergeable`; HITL ping mentioning every `HITL_HANDLE`, bump watermarks past the park
@@ -717,16 +740,16 @@ so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
        include a concurrent human comment).
   6. Every park inside this handler bumps the watermarks past the orchestrator's own park comment, so the next tick does
      not see it as fresh PR feedback.
-- **Output**: label moved to `done` / `rejected` (terminal), OR `fixing` (fresh PR feedback), OR `validating` (drift;
-  pushed fix OR ACK no-commit; both reset `review_round=0`), OR a HITL park (unmergeable, missing pr_number,
-  drift-resume failure), OR a HITL ping (no relabel), OR a no-op tick.
+- **Output**: label moved to `done` / `rejected` (terminal), OR `workflow:fixing` (fresh PR feedback), OR
+  `workflow:validating` (drift; pushed fix OR ACK no-commit; both reset `review_round=0`), OR a HITL park
+  (unmergeable, missing pr_number, drift-resume failure), OR a HITL ping (no relabel), OR a no-op tick.
 
 `_park_awaiting_human` posts on the issue (not the PR) so the HITL ping appears alongside the rest of orchestrator
-state. The PR comment that triggers a route to `fixing` is the human signal; awaiting-human is reserved for
+state. The PR comment that triggers a route to `workflow:fixing` is the human signal; awaiting-human is reserved for
 *unrecoverable* states (unmergeable / missing pr_number).
 
-### `_handle_fixing` (label `fixing`)
-- **Trigger**: each tick while label is `fixing`. Two routes set this label:
+### `_handle_fixing` (label `workflow:fixing`)
+- **Trigger**: each tick while label is `workflow:fixing`. Two routes set this label:
   - `_handle_in_review` when fresh PR feedback (any of the four surfaces, including a human CI-fix request) arrives —
     records `pending_fix_at` + per-namespace `pending_fix_*_max_id` bookmarks and the full `pending_fix_*_ids` batch
     lists.
@@ -735,7 +758,7 @@ state. The PR comment that triggers a route to `fixing` is the human signal; awa
     lone replay anchor. The dev runs inline and on a pushed fix validating flips the label back itself (clearing the
     anchor). Only the parked outcomes leave the fixing handler to own the awaiting-human cycle.
 
-  Also runs on closed-`fixing` issues so an externally-merged PR finalizes to `done`.
+  Also runs on closed-`workflow:fixing` issues so an externally-merged PR finalizes to `done`.
 - **Input**: pinned `pr_number`, `branch`, `dev_agent` / `dev_session_id`, `pending_fix_at` + per-namespace bookmarks
   (in_review route only), the three in_review watermarks (left behind so the rescan can re-discover the triggering
   feedback), `IN_REVIEW_DEBOUNCE_SECONDS`.
@@ -769,9 +792,9 @@ state. The PR comment that triggers a route to `fixing` is the human signal; awa
      Otherwise, when the rescan finds nothing new, branch on `park_reason` AND the route discriminator `pending_fix_at`:
      - **Transient reason** (`push_failed` / `agent_timeout` / `reviewer_timeout` / `reviewer_failed` — the
        `_VALIDATING_TRANSIENT_PARK_REASONS` set) **and `pending_fix_at` unset (validating route)** → call
-       `_try_recover_validating_transient_park`. On `cleared` or `pushed`, clear park, clear `pending_fix_*`, flip back
-       to `validating` (the helper bumps `review_round` on `pushed`). This closes the loop for `_handle_validating`'s
-       CHANGES_REQUESTED route. On `stuck`, fall through to the worktree-drift check below.
+       `_try_recover_validating_transient_park`. On `cleared` or `pushed`, clear park, clear `pending_fix_*`, flip
+       back to `workflow:validating` (the helper bumps `review_round` on `pushed`). This closes the loop for
+       `_handle_validating`'s CHANGES_REQUESTED route. On `stuck`, fall through to the worktree-drift check below.
      - **Any other awaiting-human shape** (transient reason on the in_review route, non-transient reason like a real
        agent question, dirty-worktree park, or silent-crash park) → return silently and keep waiting for a human
        reply. We cannot distinguish "agent has a real question" from "agent reported nothing to change" by inspection
@@ -779,11 +802,11 @@ state. The PR comment that triggers a route to `fixing` is the human signal; awa
        HITL contract.
 
      **Worktree-drift dead-lock breaker** (`_reconcile_parked_fixing`). Reached only from the
-     stuck-validating-route-transient branch above: the self-recovery could not clear the condition, and the underlying
-     cause may be a base advance that landed mid-park (the per-tick base sync deliberately stands down on every
-     `awaiting_human` park — `_sync_pr_worktree_to_base` returns at its `awaiting_human` gate — so nobody else will
-     sync this worktree). On a clean worktree the breaker routes to `resolving_conflict`
-     — seeding `conflict_round` when absent, clearing the park, posting a PR notice, emitting `conflict_round`
+     stuck-validating-route-transient branch above: the self-recovery could not clear the condition, and the
+     underlying cause may be a base advance that landed mid-park (the per-tick base sync deliberately stands down on
+     every `awaiting_human` park — `_sync_pr_worktree_to_base` returns at its `awaiting_human` gate — so nobody else
+     will sync this worktree). On a clean worktree the breaker routes to `workflow:resolving_conflict` — seeding
+     `conflict_round` when absent, clearing the park, posting a PR notice, emitting `conflict_round`
      `action="entered"` (`stage="fixing"`) — in either of two shapes, both reconciled by the conflict handler, which
      owns rebasing AND publishing a PR branch:
        - **behind `<remote>/<base>`** (a local `rev-list HEAD..<remote>/<base>`) → needs a rebase;
@@ -796,7 +819,7 @@ state. The PR comment that triggers a route to `fixing` is the human signal; awa
      issue at dispatch so the breaker never runs. The `pending_fix_*` bookmarks and in_review watermarks are left
      untouched so the eventual in_review re-entry still re-discovers the feedback.
   6. If no unread feedback at all (watermarks already cover the bookmarks), clear `pending_fix_*` and bounce back to
-     `validating`.
+     `workflow:validating`.
   7. **Quiet window**: compute the newest `created_at` (or `submitted_at` for review summaries); if younger than
      `IN_REVIEW_DEBOUNCE_SECONDS`, return.
   8. **Resume**: build a `_build_pr_comment_followup` prompt over ALL unread surfaces, resume the locked dev via
@@ -821,18 +844,19 @@ state. The PR comment that triggers a route to `fixing` is the human signal; awa
      that landed mid-handler survives to the next tick.
   10. **On a pushed fix**: clear `pending_fix_*`, adjust `review_round` per the route discriminator (in_review route
       resets to 0 — the previous approval was for the prior head; validating route bumps by 1 — same review cycle),
-      flip DIRECTLY back to `validating`. Docs do not run on this exit.
-- **Output**: terminal `done` / `rejected`, OR label flipped to `validating` (pushed fix OR no-new-feedback bounce), OR
-  label flipped to `resolving_conflict` (stuck validating-route transient park while the worktree is out of sync with
-  the PR — behind base or an unpushed local rebase), OR label flipped to `in_review` (in_review route, ACK fast path
-  on this tick only), OR a HITL park, OR a no-op (quiet-window wait, missing-PR park already set).
+      flip DIRECTLY back to `workflow:validating`. Docs do not run on this exit.
+- **Output**: terminal `done` / `rejected`, OR label flipped to `workflow:validating` (pushed fix OR no-new-feedback
+  bounce), OR label flipped to `workflow:resolving_conflict` (stuck validating-route transient park while the worktree
+  is out of sync with the PR — behind base or an unpushed local rebase), OR label flipped to `in_review` (in_review
+  route, ACK fast path on this tick only), OR a HITL park, OR a no-op (quiet-window wait, missing-PR park already
+  set).
 
-### `_handle_resolving_conflict` (label `resolving_conflict`)
-- **Trigger**: each tick while label is `resolving_conflict` (set by an operator relabel, by
+### `_handle_resolving_conflict` (label `workflow:resolving_conflict`)
+- **Trigger**: each tick while label is `workflow:resolving_conflict` (set by an operator relabel, by
   `_refresh_base_and_worktrees` when the auto rebase actually left conflicted files — a merely-behind-base PR rebase +
-  push lands directly on `validating` — or by `_handle_fixing`'s worktree-drift dead-lock breaker when a
-  validating-route transient `fixing` park whose self-recovery returned `"stuck"` is found out of sync with the PR
-  head). Also runs on closed-`resolving_conflict` issues for terminal handling.
+  push lands directly on `workflow:validating` — or by `_handle_fixing`'s worktree-drift dead-lock breaker when a
+  validating-route transient `workflow:fixing` park whose self-recovery returned `"stuck"` is found out of sync with
+  the PR head). Also runs on closed-`workflow:resolving_conflict` issues for terminal handling.
 - **Input**: pinned `pr_number`, `branch`, `dev_agent` / `dev_session_id`, `conflict_round`. `MAX_CONFLICT_ROUNDS` from
   config.
 - **Internal flow**:
@@ -851,7 +875,7 @@ state. The PR comment that triggers a route to `fixing` is the human signal; awa
      `_CONTINUE_RETRY_PROMPT` instead of the literal command, a park needing a real answer refuses, and an auto-rebase
      park is left to the refresh retry-unpark (`_continue_command_action` / `_refuse_parked_continue`).
   5. **Cap check**: if `conflict_round >= MAX_CONFLICT_ROUNDS`, park. Escape: (a) operator relabels off
-     `resolving_conflict`, or (b) a new issue comment unparks via the resume branch.
+     `workflow:resolving_conflict`, or (b) a new issue comment unparks via the resume branch.
   6. Ensure the PR worktree via `_ensure_pr_worktree` (restores from `<remote>/<branch>`, NOT base —
      `_ensure_worktree` would discard the PR's commits).
   7. Refresh `<remote>/<branch>` over `_authed_fetch` so a stale local ref doesn't mis-classify a "remote moved"
@@ -869,29 +893,29 @@ state. The PR comment that triggers a route to `fixing` is the human signal; awa
        design. If either guard fails (not on base, or an unrecognized head that might carry a direct push), keep the
        `diverged_branch` park.
      - `ahead > 0` (recovered unpushed commits, or the already-rebased fall-through above) → dirty-tree check, then
-       push the recovered work (force-with-lease against the live remote head) and flip to `validating` with
+       push the recovered work (force-with-lease against the live remote head) and flip to `workflow:validating` with
        `review_round=0`, `conflict_round += 1`.
      - `(0, 0)` → fall through.
   9. Refresh `<remote>/<base>` and run `git rebase <remote>/<base>` under `_git_hardened` (drops global / system config,
      disables hooks / fsmonitor / credential helpers / commit signing / autostash — the agent owns the worktree and
      could otherwise plant a hook to execute attacker code mid-rebase).
   10. **Clean rebase succeeded**: dirty-tree check first. If HEAD did not move (already up-to-date), skip the push and
-      flip to `validating` (`review_round=0`, `conflict_round += 1`). Counting no-ops against the cap surfaces a
-      perpetually-unmergeable-due-to-branch-protection PR within `MAX_CONFLICT_ROUNDS` ticks. If HEAD moved,
-      force-with-lease push and flip to `validating`.
+      flip to `workflow:validating` (`review_round=0`, `conflict_round += 1`). Counting no-ops against the cap
+      surfaces a perpetually-unmergeable-due-to-branch-protection PR within `MAX_CONFLICT_ROUNDS` ticks. If HEAD
+      moved, force-with-lease push and flip to `workflow:validating`.
   11. **Conflicted rebase**: build a conflict-resolution prompt via `_build_conflict_resolution_prompt`, resume the dev
       with it (`pause_guard=True`), then run `_post_conflict_resolution_result`.
   12. `_post_conflict_resolution_result`: `interrupted` (shutdown sweep killed the run mid-flight) → ignore the
       partial result and return WITHOUT writing pinned state, leaving durable state retryable (this is the one branch
       that does not write; it precedes all others); timeout / unfinished rebase / no commit / dirty / push fail →
-      park; success → force-with-lease push, increment `conflict_round`, reset `review_round=0`, flip to `validating`.
-      Fresh-rebase pushes pin the lease to the pre-rebase PR head; awaiting-human resume pushes use `_push_branch`'s
-      live `ls-remote` lease fallback because `before_sha` may be an intermediate SHA. On BOTH resume paths (fresh
-      conflict and awaiting-human), a mid-run `paused` / `backlog` returns in the handler BEFORE
-      `_post_conflict_resolution_result` runs, so the resolved commit stays on the branch and no push / relabel / write
-      happens until the label is removed.
-- **Output**: label moved to `validating` (any pushed resolution OR no-op rebase), OR no label change (drift ACK /
-  `_on_question` park: rebase still unfinished), OR `done` / `rejected` (terminal), OR a HITL park.
+      park; success → force-with-lease push, increment `conflict_round`, reset `review_round=0`, flip to
+      `workflow:validating`. Fresh-rebase pushes pin the lease to the pre-rebase PR head; awaiting-human resume pushes
+      use `_push_branch`'s live `ls-remote` lease fallback because `before_sha` may be an intermediate SHA. On BOTH
+      resume paths (fresh conflict and awaiting-human), a mid-run `paused` / `backlog` returns in the handler BEFORE
+      `_post_conflict_resolution_result` runs, so the resolved commit stays on the branch and no push / relabel /
+      write happens until the label is removed.
+- **Output**: label moved to `workflow:validating` (any pushed resolution OR no-op rebase), OR no label change (drift
+  ACK / `_on_question` park: rebase still unfinished), OR `done` / `rejected` (terminal), OR a HITL park.
 
 The rebase path deliberately rewrites the PR branch to keep history linear after other issue PRs land. Every pushed
 rebase resets `review_round`, so the reviewer must re-approve the rewritten head before the in_review ready-ping gate
@@ -926,11 +950,11 @@ can fire.
 
   The `_question_run_cleanup` context manager runs `_cleanup_question_worktree` unless one of the three unsafe-park
   branches set `keep_worktree=True`.
-- **Cross-stage interaction (relabel to `implementing`).** `_handle_implementing` carries an explicit guard: when it
-  inherits `awaiting_human=True` + a `park_reason` starting with `question_`, it inspects the worktree AND the local
-  branch. A clean worktree + clean branch drops the question-stage park flags, ratchets `last_action_comment_id` past
-  the question agent's answer, and falls through to fresh dev-spawn. A dirty worktree OR a branch with commits beyond
-  `<remote>/<base>` re-parks with `question_unsafe_relabel`.
+- **Cross-stage interaction (relabel to `workflow:implementing`).** `_handle_implementing` carries an explicit guard:
+  when it inherits `awaiting_human=True` + a `park_reason` starting with `question_`, it inspects the worktree AND the
+  local branch. A clean worktree + clean branch drops the question-stage park flags, ratchets `last_action_comment_id`
+  past the question agent's answer, and falls through to fresh dev-spawn. A dirty worktree OR a branch with commits
+  beyond `<remote>/<base>` re-parks with `question_unsafe_relabel`.
 - **Output**: an issue comment with the answer / follow-up question + a HITL park, OR a terminal flip to `done` on a
   manual close, OR a no-op tick.
 
@@ -941,105 +965,119 @@ because session state lives in pinned state, not in the worktree.
 ## State transition (label lifecycle)
 
 ```
+   Legend: a node is the workflow label the issue carries. `in_review`,
+   `question`, `done`, and `rejected` are unprefixed; every state the
+   orchestrator drives itself is namespaced `workflow:<tag>`. Route,
+   handler, and manifest names below are the bare tag, not a label.
+
    Forward (single-task happy path):
-     (none) ──► decomposing ──► ready ──► implementing ──► validating
-                ──► documenting (final-docs handoff)
-                ──► in_review ──► done | rejected
+     (none) ──► workflow:decomposing ──► workflow:ready
+            ──► workflow:implementing ──► workflow:validating
+            ──► workflow:documenting (final-docs handoff)
+            ──► in_review ──► done | rejected
 
    Decompose:
-     decision='single' ─► label=ready  (parent itself implements)
-     decision='split'  ─► create children, parent=blocked
-                          (or umbrella when manifest umbrella=true);
-                          child[i] = ready if no deps else blocked
+     decision='single' ─► label=workflow:ready  (parent itself implements)
+     decision='split'  ─► create children, parent=workflow:blocked
+                          (or workflow:umbrella when manifest umbrella=true);
+                          child[i] = workflow:ready if no deps
+                                     else workflow:blocked
      manifest invalid / question / timeout ─► park HITL
 
    Validating fix loop:
-     validating --(CHANGES_REQUESTED)──► label=fixing (pre-spawn flip;
-       dev runs with stage="fixing")
-         ──► pushed fix: ++review_round, label=validating
+     workflow:validating --(CHANGES_REQUESTED)──► label=workflow:fixing
+       (pre-spawn flip; dev runs with stage="fixing")
+         ──► pushed fix: ++review_round, label=workflow:validating
          ──► park (timeout / no-commit / dirty / push fail):
-              label stays =fixing, awaiting_human=True; the fixing
-              handler owns the awaiting-human cycle and on a human-
-              reply pushed fix BUMPS review_round (validating route)
-              or RESETS it to 0 (in_review route) — discriminator is
-              `pending_fix_at`
-     validating --(awaiting-human resume / drift / transient-recovery push)──►
-       ++review_round, label stays =validating
-     validating --(APPROVED, verify ok, squash ok)──►
-       label=documenting (final-docs) ──► in_review
+              label stays workflow:fixing, awaiting_human=True; the
+              fixing handler owns the awaiting-human cycle and on a
+              human-reply pushed fix BUMPS review_round (validating
+              route) or RESETS it to 0 (in_review route) —
+              discriminator is `pending_fix_at`
+     workflow:validating --(awaiting-human resume / drift / transient-
+       recovery push)──► ++review_round, label stays workflow:validating
+     workflow:validating --(APPROVED, verify ok, squash ok)──►
+       label=workflow:documenting (final-docs) ──► in_review
      MAX_REVIEW_ROUNDS exhausted ─► park HITL
-     squash failure ─► park HITL on validating, no relabel
+     squash failure ─► park HITL on workflow:validating, no relabel
 
    in_review (orchestrator never merges; merged arc always external):
      pr merged externally               ─► done (close + cleanup)
      pr closed unmerged                 ─► rejected (close + cleanup)
      issue closed manually, PR open     ─► rejected (no branch cleanup;
                                             operator may salvage)
-     fresh PR feedback on any of the    ─► label=fixing (record
+     fresh PR feedback on any of the    ─► label=workflow:fixing (record
        four comment surfaces                pending_fix_at + bookmarks,
                                             clear stale park; no debounce
                                             wait, no dev spawn here)
-     user-content drift (pushed or ACK) ─► validating (review_round=0;
-                                            no docs hop)
+     user-content drift (pushed or ACK) ─► workflow:validating
+                                            (review_round=0; no docs hop)
      mergeable + final-docs-complete or ─► HITL ping (no relabel,
        GitHub-approved current head        awaiting_human stays false)
        + no human CHANGES_REQUESTED
        + head SHA not yet pinged
      unmergeable                        ─► park (unmergeable); a
                                             subsequent human comment
-                                            routes to fixing
+                                            routes to workflow:fixing
 
-   fixing (terminals mirror in_review; merged arc always external):
+   workflow:fixing (terminals mirror in_review; merged arc always external):
      pr merged externally / closed unmerged ─► done / rejected
      Otherwise rescan the three in_review watermarks across all four
      surfaces; if awaiting_human with no new feedback, branch on
      park_reason + pending_fix_at. For a stuck validating-route
      transient park (`_VALIDATING_TRANSIENT_PARK_REASONS` with
      pending_fix_at unset, _try_recover_validating_transient_park
-     returns "stuck"), route to resolving_conflict when the clean
-     worktree is out of sync with the PR -- behind base, OR
+     returns "stuck"), route to workflow:resolving_conflict when the
+     clean worktree is out of sync with the PR -- behind base, OR
      already on base but local HEAD != the live pr.head.sha (an
      unpushed local rebase) -- the dead-lock breaker base sync can't
      reach while parked. Every other awaiting-human shape (real agent
      question / dirty park / silent-crash / in_review-route transient)
      stays parked silently to preserve HITL. If no unread feedback at
-     all, clear pending_fix_* and bounce to validating; otherwise
-     honour IN_REVIEW_DEBOUNCE_SECONDS. Past the window, resume the
-     dev with a `_build_pr_comment_followup` prompt and apply the
-     validating fix-loop disposition. Watermarks advance ONLY to the
+     all, clear pending_fix_* and bounce to workflow:validating;
+     otherwise honour IN_REVIEW_DEBOUNCE_SECONDS. Past the window,
+     resume the dev with a `_build_pr_comment_followup` prompt and apply
+     the validating fix-loop disposition. Watermarks advance ONLY to the
      max id fed to the dev. On a pushed fix, adjust review_round per
-     pending_fix_at (in_review->fixing reset to 0; validating->fixing
-     bump by 1) and flip directly to validating. Docs do not run on
-     this exit.
+     pending_fix_at (in_review->fixing route resets to 0; validating->
+     fixing route bumps by 1) and flip directly to workflow:validating.
+     Docs do not run on this exit.
 
-   resolving_conflict (operator relabel, base-sync flow on actual
-       rebase conflicts, or the fixing worktree-drift breaker; capped
-       by MAX_CONFLICT_ROUNDS):
-     clean rebase, HEAD moved      ─► push, validating (++conflict_round)
-     base up-to-date no-op         ─► validating (++conflict_round, no push)
-     conflicts ─► dev resumes      ─► push, validating (++conflict_round)
-     ahead-of-remote recovered     ─► push, validating (++conflict_round)
-     already-rebased, behind stale ─► force-publish, validating
+   workflow:resolving_conflict (operator relabel, base-sync flow on
+       actual rebase conflicts, or the fixing worktree-drift breaker;
+       capped by MAX_CONFLICT_ROUNDS):
+     clean rebase, HEAD moved      ─► push, workflow:validating
+                                      (++conflict_round)
+     base up-to-date no-op         ─► workflow:validating
+                                      (++conflict_round, no push)
+     conflicts ─► dev resumes      ─► push, workflow:validating
+                                      (++conflict_round)
+     ahead-of-remote recovered     ─► push, workflow:validating
+                                      (++conflict_round)
+     already-rebased, behind stale ─► force-publish, workflow:validating
        orchestrator-produced head     (++conflict_round); else
                                       diverged_branch park
-     awaiting-human resume push    ─► push, validating (++conflict_round)
-     drift pushed fix              ─► validating
+     awaiting-human resume push    ─► push, workflow:validating
+                                      (++conflict_round)
+     drift pushed fix              ─► workflow:validating
      drift ACK / drift _on_question park ─► no relabel; rebase still
                                             unfinished, next tick
-                                            re-enters resolving_conflict
+                                            re-enters the same label
      conflict_round >= MAX_CONFLICT_ROUNDS ─► park awaiting human
      pr merged externally / closed unmerged ─► done / rejected (terminal)
 
-   blocked (per tick):
-     all children = done       ─► parent=ready
+   workflow:blocked (per tick):
+     all children = done       ─► parent=workflow:ready
      any child = rejected      ─► park HITL on parent
-     dep_graph walk: any blocked child with all deps=done ─► child=ready
+     dep_graph walk: any workflow:blocked child with all deps=done
+                               ─► child=workflow:ready
 
-   umbrella (per tick):
+   workflow:umbrella (per tick):
      all children = done       ─► parent=done, issue closed
                                   (no implementation)
      any child = rejected      ─► park HITL on parent
-     dep_graph walk: any blocked child with all deps=done ─► child=ready
+     dep_graph walk: any workflow:blocked child with all deps=done
+                               ─► child=workflow:ready
 
    question (operator-applied; no automatic in/out transitions):
      fresh spawn          ─► DECOMPOSE_AGENT runs read-only in issue-N
@@ -1055,7 +1093,7 @@ because session state lives in pinned state, not in the worktree.
      issue closed         ─► label=done, stamp question_closed_at,
                              cleanup (terminal)
      relabel to           ─► implementing's guard: clean worktree AND
-       implementing         branch ─► drop question park, resume dev;
+       workflow:implementing  branch ─► drop question park, resume dev;
                              dirty or branch has commits ─► park
                              (question_unsafe_relabel)
 

@@ -57,10 +57,12 @@ def _park_fixing_without_pr(gh: GitHubClient, issue: Issue, state) -> None:
         return
     _guards._park_awaiting_human(
         gh, issue, state,
-        f"{config.HITL_MENTIONS} `fixing` without a pinned "
+        # The two names the human has to type into GitHub are the labels
+        # verbatim; the prose before them names the stage.
+        f"{config.HITL_MENTIONS} `{WorkflowLabel.FIXING}` without a pinned "
         "`pr_number`; manual relabeling suspected. Set the workflow "
-        "label back to `in_review` (or `validating`) after attaching "
-        "a PR.",
+        f"label back to `{WorkflowLabel.IN_REVIEW}` (or "
+        f"`{WorkflowLabel.VALIDATING}`) after attaching a PR.",
         reason="missing_pr_number",
     )
     gh.write_pinned_state(issue, state)

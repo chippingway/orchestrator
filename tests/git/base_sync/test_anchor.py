@@ -33,7 +33,7 @@ BEFORE_SHA = "before-sha"
 AFTER_SHA = "after-sha"
 REBASED_SHA = "rebased-sha"
 
-LABEL_RESOLVING_CONFLICT = "resolving_conflict"
+LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
 
 # Awaiting-human park reasons the auto-rebase flow writes.
 PARK_PUSH_FAILED = "auto_base_rebase_push_failed"

@@ -34,7 +34,7 @@ from tests.workflow.fixtures import (
     _agent,
 )
 
-LABEL_DOCUMENTING = "documenting"
+LABEL_DOCUMENTING = "workflow:documenting"
 DEV_SESSION_ID = "dev-sess"
 BEFORE_SHA = "before-sha"
 AFTER_SHA = "after-sha"

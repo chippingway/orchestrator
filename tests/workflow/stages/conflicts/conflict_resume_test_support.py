@@ -15,7 +15,7 @@ CONFLICT_ROUND = "conflict_round"
 LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 RUN_AGENT = "run_agent"
 PUSH_BRANCH = "_push_branch"
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 DEV_SESSION = "dev-sess"
 
 
@@ -40,7 +40,7 @@ def assert_stale_agent_calls(test_case, run_agent, patched) -> None:
 
 def assert_stale_state(test_case, github) -> None:
     test_case.assertIn((CONFLICT_ISSUE, LABEL_VALIDATING), github.label_history)
-    test_case.assertNotIn((CONFLICT_ISSUE, "documenting"), github.label_history)
+    test_case.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), github.label_history)
     state = github.pinned_data(CONFLICT_ISSUE)
     test_case.assertFalse(
         state.get(AWAITING_HUMAN),

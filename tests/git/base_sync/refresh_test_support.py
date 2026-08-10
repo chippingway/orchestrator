@@ -46,10 +46,10 @@ CONFLICT_PR_HEAD_SHA = "cafef00dcafef00d"
 
 # Workflow labels the refresh routes between.
 LABEL_IN_REVIEW = "in_review"
-LABEL_VALIDATING = "validating"
-LABEL_RESOLVING_CONFLICT = "resolving_conflict"
-LABEL_DOCUMENTING = "documenting"
-LABEL_IMPLEMENTING = "implementing"
+LABEL_VALIDATING = "workflow:validating"
+LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
+LABEL_DOCUMENTING = "workflow:documenting"
+LABEL_IMPLEMENTING = "workflow:implementing"
 
 # Audit event names emitted by the base-sync flow.
 EVENT_BASE_REBASED = "base_rebased"

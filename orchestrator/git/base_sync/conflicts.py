@@ -23,7 +23,7 @@ from orchestrator.git.base_sync.state import (
     _REVIEW_ROUND,
     log,
 )
-from orchestrator.workflow.state import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 _CONFLICT_ROUTE_SIGNATURE = inspect.Signature((
     inspect.Parameter("gh", inspect.Parameter.POSITIONAL_OR_KEYWORD),
@@ -55,7 +55,7 @@ def _post_conflict_route_notice(context: _ConflictRouteContext) -> None:
             f"`{base_ref}` and the auto "
             f"rebase left {len(context.conflicted_files)} conflicted file(s); "
             "orchestrator is attempting auto-resolution via the dev "
-            "agent (label: `resolving_conflict`).",
+            f"agent (label: `{WorkflowLabel.RESOLVING_CONFLICT}`).",
         )
     except Exception:
         log.exception(
@@ -69,7 +69,7 @@ def _emit_conflict_route_event(context: _ConflictRouteContext) -> None:
     context.gh.emit_event(
         _CONFLICT_ROUND,
         issue_number=context.issue.number,
-        stage=context.label,
+        stage=stage_name(context.label),
         pr_number=context.pr_number,
         sha=context.pr_head_sha or None,
         action="entered",

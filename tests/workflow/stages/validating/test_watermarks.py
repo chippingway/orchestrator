@@ -34,9 +34,9 @@ PR_OPEN_COMMENT_ID = 901
 HUMAN_FEEDBACK_ID = 950
 PRE_PICKUP_COMMENT_ID = 850
 REVIEW_DEBOUNCE_SECONDS = 600
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 LABEL_IN_REVIEW = "in_review"
-LABEL_FIXING = "fixing"
+LABEL_FIXING = "workflow:fixing"
 PICKUP_MESSAGE = ":robot: orchestrator picking this up."
 BOT_LOGIN = "orchestrator"
 HUMAN_LOGIN = "alice"
@@ -123,7 +123,7 @@ class ValidatingHandoffPreservesHumanFeedbackTest(
         # Validating's approval flips through `documenting` first (the
         # final-docs hop); the watermark must already be seeded past the
         # human's pre-handoff PR comment by the time the docs pass runs.
-        self.assertIn((HUMAN_FEEDBACK_ISSUE, "documenting"), gh.label_history)
+        self.assertIn((HUMAN_FEEDBACK_ISSUE, "workflow:documenting"), gh.label_history)
         watermark = gh.pinned_data(HUMAN_FEEDBACK_ISSUE).get(PR_LAST_COMMENT_ID)
         self.assertIsNotNone(watermark)
         self.assertLess(

@@ -5,16 +5,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from orchestrator.github.issues import CLOSED_SWEEP_LABELS
+from orchestrator.workflow.state import label_for_name
 
-_CLOSED_SWEEP_LABELS = frozenset((
-    "implementing",
-    "documenting",
-    "validating",
-    "in_review",
-    "fixing",
-    "resolving_conflict",
-    "question",
-))
+
+_CLOSED_SWEEP_LABELS = frozenset(CLOSED_SWEEP_LABELS)
 
 
 def _copy_issue_comments(issue: Any) -> list[Any]:
@@ -22,7 +17,16 @@ def _copy_issue_comments(issue: Any) -> list[Any]:
 
 
 def _has_closed_sweep_label(issue: Any) -> bool:
-    return any(label.name in _CLOSED_SWEEP_LABELS for label in issue.labels)
+    """Whether a closed issue is one the real sweep would still surface.
+
+    Matched by the member each label name resolves to, so a pre-namespace
+    spelling counts -- the real sweep queries both spellings for exactly the
+    issues no other pass would revisit.
+    """
+    return any(
+        label_for_name(label.name) in _CLOSED_SWEEP_LABELS
+        for label in issue.labels
+    )
 
 
 def _review_has_feedback(review: Any) -> bool:

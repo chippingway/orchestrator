@@ -16,9 +16,9 @@ from tests.git.base_sync.sync_test_support import _patch_base_sync
 
 LABEL_IN_REVIEW = "in_review"
 
-LABEL_IMPLEMENTING = "implementing"
+LABEL_IMPLEMENTING = "workflow:implementing"
 
-LABEL_RESOLVING_CONFLICT = "resolving_conflict"
+LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
 
 THREE_BEHIND_STDOUT = "3\n"
 

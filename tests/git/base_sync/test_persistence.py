@@ -313,7 +313,7 @@ class RouteRecoveredRebaseTest(unittest.TestCase):
 
         self.assertTrue(routed)
         self.assertIn(
-            (fixtures.ISSUE, "validating"), context.gh.label_history,
+            (fixtures.ISSUE, "workflow:validating"), context.gh.label_history,
         )
         # The relabel precedes the write, so a tick that dies between them
         # leaves the anchor pinned and the next tick redoes this recovery.

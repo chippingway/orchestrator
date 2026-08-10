@@ -39,6 +39,7 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.stages.implementing import state as _state
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _handle_stale_question_park(
@@ -144,7 +145,7 @@ def _park_unsafe_question_relabel(
 ) -> None:
     _guards._park_awaiting_human(
         gh, issue, state,
-        f"{config.HITL_MENTIONS} relabeled to `implementing`, "
+        f"{config.HITL_MENTIONS} relabeled to `{WorkflowLabel.IMPLEMENTING}`, "
         f"but the prior question-stage park (`{park_reason}`) left "
         f"{hazard.trigger}. The question agent must be read-only, so the "
         "orchestrator refuses to push that work as a dev implementation. "

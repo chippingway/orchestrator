@@ -65,7 +65,7 @@ def _usage(**overrides) -> UsageMetrics:
 
 def _resume_seed():
     gh = FakeGitHubClient()
-    issue = make_issue(_RESUME_ISSUE_NUMBER, label="resolving_conflict")
+    issue = make_issue(_RESUME_ISSUE_NUMBER, label="workflow:resolving_conflict")
     gh.add_issue(issue)
     return gh, issue
 
@@ -234,7 +234,7 @@ class DeveloperRunUsageAccumulationTest(unittest.TestCase, _PatchedWorkflowMixin
 
     def test_fresh_spawn_persists_one_run(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(_DEVELOPER_ISSUE_NUMBER, label="implementing")
+        issue = make_issue(_DEVELOPER_ISSUE_NUMBER, label="workflow:implementing")
         gh.add_issue(issue)
 
         with patch.object(config, "DEV_AGENT", _BACKEND_CLAUDE):
@@ -258,7 +258,7 @@ class DeveloperRunUsageAccumulationTest(unittest.TestCase, _PatchedWorkflowMixin
         gh = FakeGitHubClient()
         issue = make_issue(
             _INTERRUPTED_DEVELOPER_ISSUE_NUMBER,
-            label="implementing",
+            label="workflow:implementing",
         )
         gh.add_issue(issue)
 
@@ -334,7 +334,7 @@ class ReviewerRunUsageAccumulationTest(unittest.TestCase, _PatchedWorkflowMixin)
 
     def test_reviewer_run_persists_one_run(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(_REVIEWER_ISSUE_NUMBER, label="validating")
+        issue = make_issue(_REVIEWER_ISSUE_NUMBER, label="workflow:validating")
         gh.add_issue(issue)
         gh.seed_state(
             _REVIEWER_ISSUE_NUMBER,
@@ -364,7 +364,7 @@ class ReviewerRunUsageAccumulationTest(unittest.TestCase, _PatchedWorkflowMixin)
         gh = FakeGitHubClient()
         issue = make_issue(
             _INTERRUPTED_REVIEWER_ISSUE_NUMBER,
-            label="validating",
+            label="workflow:validating",
         )
         gh.add_issue(issue)
         gh.seed_state(

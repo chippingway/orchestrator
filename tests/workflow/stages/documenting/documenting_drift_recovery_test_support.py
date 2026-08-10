@@ -13,8 +13,8 @@ from tests.workflow.stages.documenting.documenting_drift_test_support import (
 from tests.workflow.stages.documenting.documenting_test_support import _branch
 from tests.support.fakes import make_issue
 
-DOCUMENTING = "documenting"
-VALIDATING = "validating"
+DOCUMENTING = "workflow:documenting"
+VALIDATING = "workflow:validating"
 IN_REVIEW = "in_review"
 ORIGINAL_BODY = "original body"
 DEV_AGENT = "codex"

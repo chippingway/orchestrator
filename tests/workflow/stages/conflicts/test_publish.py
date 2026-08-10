@@ -28,7 +28,7 @@ PUBLISH_PR_HEAD = "stalehead00"
 
 
 def _assert_diverged_park(test_case, gh) -> None:
-    test_case.assertNotIn((PUBLISH_ISSUE, "validating"), gh.label_history)
+    test_case.assertNotIn((PUBLISH_ISSUE, "workflow:validating"), gh.label_history)
     test_case.assertTrue(gh.pinned_data(PUBLISH_ISSUE).get("awaiting_human"))
     parks = [
         event
@@ -41,7 +41,7 @@ def _assert_diverged_park(test_case, gh) -> None:
 class _PublishFixtureMixin(_PatchedWorkflowMixin):
     def _seed(self):
         gh = FakeGitHubClient()
-        issue = make_issue(PUBLISH_ISSUE, label="resolving_conflict")
+        issue = make_issue(PUBLISH_ISSUE, label="workflow:resolving_conflict")
         gh.add_issue(issue)
         pr = FakePR(
             number=PUBLISH_PR,
@@ -110,7 +110,7 @@ class ResolvingConflictPublishesAlreadyRebasedTest(
         gh, issue, _ = self._seed()
         mocks = self._run_diverged(gh, issue, on_base=True, recognized=True)
         # Force-published over the stale PR head -> validating, no park.
-        self.assertIn((PUBLISH_ISSUE, "validating"), gh.label_history)
+        self.assertIn((PUBLISH_ISSUE, "workflow:validating"), gh.label_history)
         state = gh.pinned_data(PUBLISH_ISSUE)
         self.assertFalse(state.get("awaiting_human"))
         self.assertNotEqual(state.get("park_reason"), "diverged_branch")

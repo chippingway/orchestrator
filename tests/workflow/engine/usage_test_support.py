@@ -13,6 +13,7 @@ from tests.workflow import (
     patch_runner as _runner,
     repo_values as _repo,
     stage_labels as _labels,
+    stage_names as _stages,
     state_values as _roles,
     value_helpers as _value_helpers,
     verdict_values as _verdicts,
@@ -43,6 +44,8 @@ LABEL_IMPLEMENTING = _labels.LABEL_IMPLEMENTING
 LABEL_VALIDATING = _labels.LABEL_VALIDATING
 ROLE_DEVELOPER = _roles.ROLE_DEVELOPER
 ROLE_REVIEWER = _roles.ROLE_REVIEWER
+STAGE_IMPLEMENTING = _stages.STAGE_IMPLEMENTING
+STAGE_VALIDATING = _stages.STAGE_VALIDATING
 _analytics_records = _value_helpers._analytics_records
 REVIEW_APPROVED_MESSAGE = _verdicts.REVIEW_APPROVED_MESSAGE
 _PatchedWorkflowMixin = _runner._PatchedWorkflowMixin

@@ -31,7 +31,7 @@ HUMAN_LOGIN = "alice"
 BEFORE_HEAD = "beforehead"
 MERGED_HEAD = "merged"
 PUSH_BRANCH = "_push_branch"
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 DEV_SESSION = "dev-sess"
 
 
@@ -156,7 +156,7 @@ class ResolvingConflictAwaitingHumanResumeTest(unittest.TestCase, _ResolvingConf
         )
         _assert_successful_resume_state(self, gh)
         self.assertIn((CONFLICT_ISSUE, LABEL_VALIDATING), gh.label_history)
-        self.assertNotIn((CONFLICT_ISSUE, "documenting"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), gh.label_history)
 
     def test_resume_filters_untrusted_reply(self) -> None:
         # With `ALLOWED_ISSUE_AUTHORS` set, an outsider reply on a parked

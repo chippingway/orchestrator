@@ -7,14 +7,18 @@ from dataclasses import dataclass
 
 from orchestrator.github import PinnedState
 from orchestrator.workflow.engine import terminals
+from orchestrator.workflow.state import stage_name
 
 from tests.support import fakes as _fakes
-from tests.workflow import other_labels as _other_labels
-from tests.workflow import patch_models as _patch_models
-from tests.workflow import patch_runner as _patch_runner
-from tests.workflow import repo_values as _repo
-from tests.workflow import stage_labels as _stage_labels
-from tests.workflow import value_helpers as _value_helpers
+from tests.workflow import (
+    other_labels as _other_labels,
+    patch_models as _patch_models,
+    patch_runner as _patch_runner,
+    repo_values as _repo,
+    stage_labels as _stage_labels,
+    stage_names as _stage_names,
+    value_helpers as _value_helpers,
+)
 from tests.workflow.engine import event_values as _events
 
 
@@ -25,6 +29,9 @@ LABEL_REJECTED = _other_labels.LABEL_REJECTED
 LABEL_RESOLVING_CONFLICT = _other_labels.LABEL_RESOLVING_CONFLICT
 LABEL_FIXING = _stage_labels.LABEL_FIXING
 LABEL_IN_REVIEW = _stage_labels.LABEL_IN_REVIEW
+STAGE_FIXING = _stage_names.STAGE_FIXING
+STAGE_IN_REVIEW = _stage_names.STAGE_IN_REVIEW
+STAGE_RESOLVING_CONFLICT = _stage_names.STAGE_RESOLVING_CONFLICT
 STATE_CLOSED = _repo.STATE_CLOSED
 STATE_OPEN = _repo.STATE_OPEN
 _TEST_SPEC = _repo._TEST_SPEC
@@ -84,7 +91,7 @@ class _DrainScenario:
     pr_number: int
     merged: bool
     pr_state: str
-    stage: str
+    label: str
     issue_closed: bool = False
     sha: str = DEFAULT_HEAD_SHA
 
@@ -107,7 +114,7 @@ class _DrainTerminalCall:
             self._context.issue,
             self._context.state,
             self._context.pr,
-            stage=self._context.stage,
+            stage=stage_name(self._context.stage),
         )
 
 
@@ -116,7 +123,7 @@ def _seed_terminal(
     **state_values,
 ) -> _DrainContext:
     github = FakeGitHubClient()
-    issue = make_issue(scenario.issue_number, label=scenario.stage)
+    issue = make_issue(scenario.issue_number, label=scenario.label)
     issue.closed = scenario.issue_closed
     github.add_issue(issue)
     pull_request = FakePR(
@@ -133,7 +140,7 @@ def _seed_terminal(
         scenario.pr_number,
         **state_values,
     )
-    return _DrainContext(github, issue, state, pull_request, scenario.stage)
+    return _DrainContext(github, issue, state, pull_request, scenario.label)
 
 
 class _DrainTestMixin(_PatchedWorkflowMixin):

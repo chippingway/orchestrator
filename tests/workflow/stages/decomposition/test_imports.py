@@ -13,6 +13,7 @@ from types import MappingProxyType
 
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages import decomposition as _package
+from orchestrator.workflow.state import WorkflowLabel
 
 _PACKAGE = "orchestrator.workflow.stages.decomposition"
 
@@ -52,10 +53,10 @@ print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 
 # The label -> owner pairs the dispatcher routes a decomposed issue through.
 _DISPATCHED_HANDLERS = (
-    ("decomposing", "run", "_handle_decomposing"),
-    ("ready", _BLOCKED, "_handle_ready"),
-    (_BLOCKED, _BLOCKED, "_handle_blocked"),
-    ("umbrella", "umbrella", "_handle_umbrella"),
+    (WorkflowLabel.DECOMPOSING, "run", "_handle_decomposing"),
+    (WorkflowLabel.READY, _BLOCKED, "_handle_ready"),
+    (WorkflowLabel.BLOCKED, _BLOCKED, "_handle_blocked"),
+    (WorkflowLabel.UMBRELLA, "umbrella", "_handle_umbrella"),
 )
 
 

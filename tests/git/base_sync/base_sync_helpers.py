@@ -28,6 +28,8 @@ BRANCH = "orchestrator/acme__widget/issue-7"
 
 LABEL = "in_review"
 
+VALIDATING = "workflow:validating"
+
 PRE_REBASE_SHA = "before-sha"
 
 RECOVERED_SHA = "rebased-sha"

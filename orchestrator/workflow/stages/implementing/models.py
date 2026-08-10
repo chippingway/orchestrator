@@ -29,6 +29,8 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
+from orchestrator.workflow import state as _workflow_state
+from orchestrator.workflow.stages.implementing import state as _state
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,23 @@ class _DevResumeRequest:
     resume_args: tuple
     option_fields: dict
     stage: Optional[str]
+
+    @property
+    def resolved_stage(self) -> str:
+        """Name the stage every record this run emits is attributed to.
+
+        An explicit override wins: the caller that passes one relabeled the
+        issue and then resumed on the SAME ``Issue`` object, whose cached
+        labels PyGithub does not refresh, so the label read would report the
+        stage the run just left. Otherwise the label the issue carries names
+        it -- by its bare tag, which is what the audit, analytics, and
+        trajectory records have always keyed on.
+        """
+        return (
+            self.stage
+            or _workflow_state.stage_name(self.gh.workflow_label(self.issue))
+            or _state._IMPLEMENTING_STAGE
+        )
 
 
 @dataclass(frozen=True)

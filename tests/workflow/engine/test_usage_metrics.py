@@ -22,7 +22,7 @@ BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX
 EVENT_AGENT_EXIT = support.EVENT_AGENT_EXIT
 EVENT_SKILL_TRIGGERED = support.EVENT_SKILL_TRIGGERED
-LABEL_IMPLEMENTING = support.LABEL_IMPLEMENTING
+STAGE_IMPLEMENTING = support.STAGE_IMPLEMENTING
 ROLE_DEVELOPER = support.ROLE_DEVELOPER
 _ANALYTICS_FILENAME = support._ANALYTICS_FILENAME
 _ANALYTICS_PATH_ATTR = support._ANALYTICS_PATH_ATTR
@@ -78,7 +78,7 @@ def _run_usage(
         tracked_result = engine_usage._run_agent_tracked(
             gh, _USAGE_HELPER_ISSUE_NUMBER,
             agent_role=ROLE_DEVELOPER,
-            stage=LABEL_IMPLEMENTING,
+            stage=STAGE_IMPLEMENTING,
             backend=backend,
             prompt=_IGNORED_PROMPT,
             cwd=_FAKE_WT,

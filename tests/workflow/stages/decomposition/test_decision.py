@@ -25,6 +25,7 @@ from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_READY,
     LABEL_UMBRELLA,
+    STAGE_DECOMPOSING,
     _TEST_SPEC,
 )
 from tests.workflow.fixtures import (
@@ -135,7 +136,7 @@ class HandleDecomposingDecisionTest(
         )
         self.assertIn((PICKUP_ISSUE_NUMBER, LABEL_READY), gh.label_history)
         self.assertIn(
-            LABEL_DECOMPOSING,
+            STAGE_DECOMPOSING,
             "\n".join(_comments_for_issue(gh, PICKUP_ISSUE_NUMBER)),
         )
 

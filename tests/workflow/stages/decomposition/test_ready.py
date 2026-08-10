@@ -18,7 +18,7 @@ from tests.workflow.fixtures import (
     _agent,
 )
 
-LABEL_READY = "ready"
+LABEL_READY = "workflow:ready"
 DEV_SESSION_ID = "dev-sess"
 FIRST_READY_ISSUE_NUMBER = 20
 SEEDED_PICKUP_ISSUE_NUMBER = 21
@@ -49,7 +49,7 @@ class HandleReadyTest(unittest.TestCase, _PatchedWorkflowMixin):
         # and a PR opened.
         self.assertEqual(
             gh.label_history[0],
-            (FIRST_READY_ISSUE_NUMBER, "implementing"),
+            (FIRST_READY_ISSUE_NUMBER, "workflow:implementing"),
         )
         mocks["run_agent"].assert_called_once()
         self.assertEqual(len(gh.opened_prs), 1)

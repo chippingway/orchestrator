@@ -44,7 +44,7 @@ class PrLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMi
         opened = support._events_of(gh, support.EVENT_PR_OPENED)
         self.assertEqual(len(opened), 1)
         event = opened[0]
-        self.assertEqual(event[support.KEY_STAGE], support.LABEL_IMPLEMENTING)
+        self.assertEqual(event[support.KEY_STAGE], support.STAGE_IMPLEMENTING)
         self.assertEqual(event["issue"], support._PR_ISSUE_NUMBER)
         self.assertEqual(event[support.KEY_PR_NUMBER], gh.opened_prs[0].number)
         self.assertEqual(event["branch"], "orchestrator/geserdugarov__agent-orchestrator/issue-50")

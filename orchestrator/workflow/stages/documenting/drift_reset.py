@@ -27,6 +27,7 @@ from orchestrator.git import authentication as _authentication
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.documenting import models as _models, parks as _parks
+from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -54,7 +55,8 @@ def _documenting_drift_fetch(ctx: _models._DocumentingContext, wt) -> bool:
             ctx,
             f"{config.HITL_MENTIONS} `git fetch "
             f"{spec.remote_name} {branch}` failed while routing "
-            "documenting drift back to `validating`; the local "
+            f"documenting drift back to `{WorkflowLabel.VALIDATING}`; the "
+            "local "
             "worktree may carry an unpushed docs commit against "
             "the OLD body -- see orchestrator logs.",
             "fetch_failed",
@@ -98,7 +100,8 @@ def _documenting_drift_probe(ctx: _models._DocumentingContext, wt):
         ctx,
         f"{config.HITL_MENTIONS} could not probe local vs. "
         f"`{spec.remote_name}/{branch}` while routing "
-        "documenting drift back to `validating`; the local "
+        f"documenting drift back to `{WorkflowLabel.VALIDATING}`; the "
+        "local "
         "worktree may carry an unpushed docs commit against "
         "the OLD body -- see orchestrator logs.",
         "worktree_reset_failed",
@@ -132,7 +135,7 @@ def _documenting_drift_hard_reset(ctx: _models._DocumentingContext, wt) -> bool:
             f"{config.HITL_MENTIONS} `git reset --hard "
             f"{spec.remote_name}/{branch}` failed while "
             "routing documenting drift back to "
-            "`validating`; the local worktree still "
+            f"`{WorkflowLabel.VALIDATING}`; the local worktree still "
             "carries docs work against the OLD body -- "
             "see orchestrator logs.",
             "worktree_reset_failed",
@@ -150,7 +153,7 @@ def _documenting_drift_hard_reset(ctx: _models._DocumentingContext, wt) -> bool:
             ctx,
             f"{config.HITL_MENTIONS} `git clean -fd` "
             "failed while routing documenting drift back "
-            "to `validating`; the local worktree may "
+            f"to `{WorkflowLabel.VALIDATING}`; the local worktree may "
             "still carry untracked docs files against "
             "the OLD body -- see orchestrator logs.",
             "worktree_reset_failed",

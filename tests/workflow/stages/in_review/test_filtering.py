@@ -210,7 +210,7 @@ class SameAccountHumanFeedbackTest(unittest.TestCase, _DebouncedInReviewMixin):
         long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         issue = make_issue(
             HANDOFF_ISSUE,
-            label="validating",
+            label="workflow:validating",
             comments=[
                 FakeComment(
                     id=PICKUP_COMMENT_ID,

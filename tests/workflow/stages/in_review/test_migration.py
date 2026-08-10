@@ -148,7 +148,7 @@ class LegacyInReviewWatermarkSeedTest(
         # summary all sitting visible: the migration seeded each watermark
         # past the latest visible id on its surface.
         mocks[RUN_AGENT].assert_not_called()
-        self.assertNotIn((LEGACY_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((LEGACY_ISSUE, "workflow:validating"), gh.label_history)
         # Watermarks were persisted so subsequent ticks see only newer ids.
         state = gh.pinned_data(LEGACY_ISSUE)
         self.assertGreaterEqual(state.get("pr_last_comment_id"), LATER_COMMENT_ID)
@@ -264,7 +264,7 @@ class LegacyMigrationPersistsEmptyWatermarksTest(
         # here; the fixing handler owns that step).
         mocks[RUN_AGENT].assert_not_called()
         self.assertEqual(gh.merge_calls, [])
-        self.assertIn((EMPTY_WATERMARK_ISSUE, "fixing"), gh.label_history)
+        self.assertIn((EMPTY_WATERMARK_ISSUE, "workflow:fixing"), gh.label_history)
         self.assertEqual(
             gh.pinned_data(EMPTY_WATERMARK_ISSUE).get("pending_fix_review_max_id"),
             FIRST_INLINE_REVIEW_ID,
@@ -316,7 +316,7 @@ class LegacyMigrationPersistsEmptyWatermarksTest(
 
         mocks[RUN_AGENT].assert_not_called()
         self.assertEqual(gh.merge_calls, [])
-        self.assertIn((EMPTY_WATERMARK_ISSUE, "fixing"), gh.label_history)
+        self.assertIn((EMPTY_WATERMARK_ISSUE, "workflow:fixing"), gh.label_history)
         self.assertEqual(
             gh.pinned_data(EMPTY_WATERMARK_ISSUE).get("pending_fix_review_summary_max_id"),
             FIRST_REVIEW_SUMMARY_ID,
@@ -401,7 +401,7 @@ class ZeroWatermarkSurvivesFallbackTest(unittest.TestCase, _PatchedWorkflowMixin
         self.assertEqual(gh.merge_calls, [])
         self.assertNotIn((ZERO_WATERMARK_ISSUE, "done"), gh.label_history)
         mocks[RUN_AGENT].assert_not_called()
-        self.assertIn((ZERO_WATERMARK_ISSUE, "fixing"), gh.label_history)
+        self.assertIn((ZERO_WATERMARK_ISSUE, "workflow:fixing"), gh.label_history)
         self.assertEqual(
             gh.pinned_data(ZERO_WATERMARK_ISSUE).get(
                 "pending_fix_issue_max_id",

@@ -39,7 +39,8 @@ def _handle_empty_umbrella(
         return
     _guards._park_awaiting_human(
         gh, issue, state,
-        f"{config.HITL_MENTIONS} `umbrella` without recorded children; "
+        f"{config.HITL_MENTIONS} `{WorkflowLabel.UMBRELLA}` without "
+        "recorded children; "
         "manual relabel suspected.",
         reason="umbrella_no_children",
     )

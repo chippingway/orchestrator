@@ -42,9 +42,9 @@ PR_OPEN_AFTER_RESUME_ID = 930
 LATEST_REPLY_ID = 921
 UNREAD_PR_COMMENT_ID = 915
 REVIEW_DEBOUNCE_SECONDS = 600
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 LABEL_IN_REVIEW = "in_review"
-LABEL_FIXING = "fixing"
+LABEL_FIXING = "workflow:fixing"
 PICKUP_MESSAGE = ":robot: orchestrator picking this up."
 BOT_LOGIN = "orchestrator"
 HUMAN_LOGIN = "alice"
@@ -176,7 +176,7 @@ class HandoffSkipsConsumedRepliesTest(unittest.TestCase, _PatchedWorkflowMixin):
         gh = FakeGitHubClient()
         issue = make_issue(
             RESUME_WATERMARK_ISSUE,
-            label="implementing",
+            label="workflow:implementing",
             comments=[
                 FakeComment(id=PARK_COMMENT_ID, body="park", user=FakeUser(BOT_LOGIN)),
                 FakeComment(id=CONSUMED_REPLY_ID, body="use sqlite", user=FakeUser(HUMAN_LOGIN)),
@@ -323,7 +323,7 @@ class HandoffConsumedThroughIssueThreadOnlyTest(unittest.TestCase, _PatchedWorkf
             run_agent=_agent(last_message=REVIEW_APPROVED_MESSAGE),
             head_shas=(REVIEWED_SHA,),
         )
-        self.assertIn((ISSUE_THREAD_ISSUE, "documenting"), gh.label_history)
+        self.assertIn((ISSUE_THREAD_ISSUE, "workflow:documenting"), gh.label_history)
         watermark = gh.pinned_data(ISSUE_THREAD_ISSUE).get(PR_LAST_COMMENT_ID)
         self.assertIsNotNone(watermark)
         self.assertLess(

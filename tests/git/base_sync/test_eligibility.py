@@ -20,11 +20,11 @@ RECOVER = "_recover_pending_auto_base_rebase"
 DIRTY_FILES = "_worktree_dirty_files"
 
 # Every label the refresh drives a PR-having worktree through.
-DETOUR_LABELS = ("validating", "documenting", "in_review", "fixing")
+DETOUR_LABELS = ("workflow:validating", "workflow:documenting", "in_review", "workflow:fixing")
 
 # A label the refresh leaves alone: `resolving_conflict` runs its own handler
 # on the same tick, and the pre-PR stages have no pushed head to rebase.
-IGNORED_LABEL = "resolving_conflict"
+IGNORED_LABEL = "workflow:resolving_conflict"
 
 PARK_PUSH_FAILED = "auto_base_rebase_push_failed"
 

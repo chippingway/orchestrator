@@ -22,7 +22,7 @@ BEFORE_SHA = "before-sha"
 REBASED_SHA = "rebased-sha"
 NEW_REBASED_SHA = "new-rebased-sha"
 
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 
 PARK_PUSH_FAILED = "auto_base_rebase_push_failed"
 

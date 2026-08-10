@@ -53,7 +53,7 @@ from orchestrator.github.issues import (
 )
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.state import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -96,7 +96,7 @@ def _finalize_if_pr_merged(
             issue=issue,
             state=state,
             pr=pr,
-            stage=gh.workflow_label(issue),
+            stage=stage_name(gh.workflow_label(issue)),
         ),
         close_error="could not close after detecting external merge",
         close_if_open_only=True,
@@ -338,7 +338,8 @@ def _finalize_if_issue_closed(
     if linked_pr.defer:
         return True
     context = _ReviewTerminalContext(
-        gh, spec, issue, state, linked_pr.pr, gh.workflow_label(issue),
+        gh, spec, issue, state, linked_pr.pr,
+        stage_name(gh.workflow_label(issue)),
     )
     _finalize_closed_issue_with_open_pr(context)
     if linked_pr.pr is not None and gh.pr_state(linked_pr.pr) == _ISSUE_STATE_CLOSED:

@@ -1,9 +1,9 @@
 # Observability
 
-The orchestrator emits three independent JSONL sinks plus an optional Postgres aggregation target. None are read by the
-polling tick — workflow correctness keys off the pinned `<!--orchestrator-state ...-->` JSON comment on the issue (and
-the workflow label). Every observability surface here is observation-only and safe to truncate, rotate, or delete at any
-time.
+The orchestrator emits three independent JSONL sinks plus an optional Postgres aggregation target. None are read by
+the polling tick — workflow correctness keys off the pinned `<!--orchestrator-state ...-->` JSON comment on the issue
+(and the workflow label). Every observability surface here is observation-only and safe to truncate, rotate, or delete
+at any time.
 
 - **Audit event log** (`EVENT_LOG_PATH`) — opt-in JSONL audit of workflow events, written through
   `GitHubClient.emit_event`.
@@ -145,15 +145,15 @@ file is the durable record.
 - `conflict_round` — `_route_pr_worktree_to_resolving_conflict` emits `action="entered"` only when the refresh-time
   rebase actually leaves conflicted files (a merely-behind-base clean rebase no longer emits this);
   `_reconcile_parked_fixing` also emits `action="entered"` (with `stage="fixing"`) when a stuck validating-route
-  transient `fixing` park is routed to `resolving_conflict` because its worktree is out of sync with the PR head (behind
-  base, or an unpushed local rebase); every increment site (`_emit_conflict_round_incremented`) emits
-  `action="incremented"` with `outcome`; extras: `pr_number`, `conflict_round`, `review_round`, `retry_count`, `outcome`
-  (for increments), `sha`.
+  transient `workflow:fixing` park is routed to `workflow:resolving_conflict` because its worktree is out of sync with
+  the PR head (behind base, or an unpushed local rebase); every increment site (`_emit_conflict_round_incremented`)
+  emits `action="incremented"` with `outcome`; extras: `pr_number`, `conflict_round`, `review_round`, `retry_count`,
+  `outcome` (for increments), `sha`.
 - `base_rebased` — `_sync_pr_worktree_to_base` after a clean refresh-time rebase + push that routes the issue from
-  `validating` / `documenting` / `in_review` / `fixing` back to `validating`; also `_recover_pending_auto_base_rebase`
-  when a crashed prior tick is finalized; extras: `pr_number`, `sha` (new head), `method` ∈ {`auto_clean_rebase`,
-  `crash_recovery_pushed`, `crash_recovery_relabel_only`}, `review_round` (post-reset, so 0), `retry_count`; `stage`
-  reflects the workflow label at the start of the rebase.
+  `workflow:validating` / `workflow:documenting` / `in_review` / `workflow:fixing` back to `workflow:validating`; also
+  `_recover_pending_auto_base_rebase` when a crashed prior tick is finalized; extras: `pr_number`, `sha` (new head),
+  `method` ∈ {`auto_clean_rebase`, `crash_recovery_pushed`, `crash_recovery_relabel_only`}, `review_round`
+  (post-reset, so 0), `retry_count`; `stage` reflects the workflow label at the start of the rebase.
 
 **`agent_spawn` / `agent_exit` extras.** On top of the shared fields:
 

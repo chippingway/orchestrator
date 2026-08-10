@@ -66,12 +66,13 @@ Add a branch-protection rule for `main` (and any release branch) at `Settings �
   ([`architecture.md`](architecture.md)).
 - **Require status checks to pass before merging** — list the checks in [Required checks](#required-checks).
 - **Require branches to be up to date before merging** — keeps the per-tick base-sync auto rebase +
-  [`resolving_conflict`](state-machine.md#_handle_resolving_conflict-label-resolving_conflict) (for actual rebase
-  conflicts) flow honest.
+  [`workflow:resolving_conflict`](state-machine.md#_handle_resolving_conflict-label-workflowresolving_conflict) (for
+  actual rebase conflicts) flow honest.
 - **Do not allow force pushes.**
 - **Do not allow deletions.**
-- **Restrict who can push** to `main`. The restriction applies to every protected-branch update including PR merges (see
-  [GitHub docs](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)).
+- **Restrict who can push** to `main`. The restriction applies to every protected-branch update including PR merges
+  (see [GitHub
+  docs](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)).
   The allowlist is the small named set of maintainers permitted to merge or push break-glass fixes. The orchestrator's
   personal access token does **not** belong here — granting it direct-push access would only widen blast radius if the
   token leaked.
@@ -164,12 +165,12 @@ from `origin/<base>`.
 
 Every PR opened by the orchestrator is AI-generated, so the policy is the workflow's normal path, not an extra step:
 
-- **Independent reviewer agent.** The `validating` stage spawns a fresh reviewer against `git diff origin/<base>...HEAD`
-  ([`state-machine.md#_handle_validating-label-validating`](state-machine.md#_handle_validating-label-validating)). It
-  uses a different agent role from the implementer (`REVIEW_AGENT` vs. `DEV_AGENT`) and starts with no shared session
-  state.
+- **Independent reviewer agent.** The `validating` stage spawns a fresh reviewer against `git diff
+  origin/<base>...HEAD`
+  ([`state-machine.md#_handle_validating`](state-machine.md#_handle_validating-label-workflowvalidating)). It uses a
+  different agent role from the implementer (`REVIEW_AGENT` vs. `DEV_AGENT`) and starts with no shared session state.
 - **Local verify gate.** When the reviewer says `APPROVED`, the orchestrator runs `VERIFY_COMMANDS` in the per-issue
-  worktree before relabeling to `documenting`
+  worktree before relabeling to `workflow:documenting`
   ([`configuration.md#local-verification-gate`](configuration.md#local-verification-gate)). Set
   `VERIFY_COMMANDS=python3 -m pytest -q;ruff check .` (or your project equivalent) so an AI-produced regression is
   caught locally before the PR is advertised to humans for merge.
@@ -200,12 +201,12 @@ The security posture:
   private-repo deployment expects. The boundary exists only once an operator lists the trusted logins, so enabling it is
   a deliberate act, not a silent behavior change.
 - **Visible, not deleted.** An untrusted comment stays on the GitHub thread for humans to read; the orchestrator never
-  hides, edits, or deletes it. What changes is only its *use as workflow input* — it is omitted from agent
-  prompts, the `user_content_hash` drift signal, every awaiting-human resume signal (including the base-sync
-  auto-rebase retry-unpark and the `/orchestrator add-review-rounds` review-cap command), and the `in_review` /
-  `fixing` PR-feedback loop. So an outsider on a public repo cannot inject instructions into an agent, resume a
-  parked session, retry a parked rebase, route `in_review` to `fixing`, or shift the drift hash, while the audit
-  trail of what they said stays intact.
+  hides, edits, or deletes it. What changes is only its *use as workflow input* — it is omitted from agent prompts,
+  the `user_content_hash` drift signal, every awaiting-human resume signal (including the base-sync auto-rebase
+  retry-unpark and the `/orchestrator add-review-rounds` review-cap command), and the `in_review` / `fixing`
+  PR-feedback loop. So an outsider on a public repo cannot inject instructions into an agent, resume a parked session,
+  retry a parked rebase, route `in_review` to `workflow:fixing`, or shift the drift hash, while the audit trail of
+  what they said stays intact.
 - **Filtering is fail-safe.** A comment whose author failed to load (empty login) is untrusted. On the awaiting-human
   resume paths (and the auto-rebase retry-unpark) the filter runs on the whole comment batch up front, so an untrusted
   comment there never advances the consumed-watermark nor is marked read — it is re-filtered on each later tick

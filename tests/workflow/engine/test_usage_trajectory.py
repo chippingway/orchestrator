@@ -22,7 +22,7 @@ EVENT_AGENT_EXIT = support.EVENT_AGENT_EXIT
 EVENT_AGENT_TRAJECTORY = support.EVENT_AGENT_TRAJECTORY
 EVENT_SKILL_TRIGGERED = support.EVENT_SKILL_TRIGGERED
 FakeGitHubClient = support.FakeGitHubClient
-LABEL_IMPLEMENTING = support.LABEL_IMPLEMENTING
+STAGE_IMPLEMENTING = support.STAGE_IMPLEMENTING
 ROLE_DEVELOPER = support.ROLE_DEVELOPER
 _AGENT_ROLE_KEY = support._AGENT_ROLE_KEY
 _ANALYTICS_FILENAME = support._ANALYTICS_FILENAME
@@ -96,7 +96,7 @@ def _assert_trajectory_record(
 ) -> None:
     case.assertEqual(record[_EVENT_KEY], EVENT_AGENT_TRAJECTORY)
     case.assertEqual(record["issue"], _TRAJECTORY_ISSUE_NUMBER)
-    case.assertEqual(record[_STAGE_KEY], LABEL_IMPLEMENTING)
+    case.assertEqual(record[_STAGE_KEY], STAGE_IMPLEMENTING)
     case.assertEqual(record[_AGENT_ROLE_KEY], ROLE_DEVELOPER)
     case.assertEqual(record["user_input"], _TRAJECTORY_PROMPT)
     case.assertEqual(record["output"], "implemented")
@@ -137,7 +137,7 @@ def _run_trajectory(
         return engine_usage._run_agent_tracked(
             gh, _TRAJECTORY_ISSUE_NUMBER,
             agent_role=ROLE_DEVELOPER,
-            stage=LABEL_IMPLEMENTING,
+            stage=STAGE_IMPLEMENTING,
             backend=BACKEND_CLAUDE,
             prompt=prompt,
             cwd=_FAKE_WT,
@@ -168,7 +168,7 @@ class TrajectoryRecordingTest(unittest.TestCase):
             engine_usage._run_agent_tracked(
                 gh, _PROMPT_FORWARDING_ISSUE_NUMBER,
                 agent_role=ROLE_DEVELOPER,
-                stage=LABEL_IMPLEMENTING,
+                stage=STAGE_IMPLEMENTING,
                 backend=BACKEND_CLAUDE,
                 prompt="PROMPT-MARKER-XYZ",
                 cwd=_FAKE_WT,
@@ -249,7 +249,7 @@ class TrajectoryRecordingTest(unittest.TestCase):
                 engine_usage._run_agent_tracked(
                     gh, _TRAJECTORY_FAILURE_ISSUE_NUMBER,
                     agent_role=ROLE_DEVELOPER,
-                    stage=LABEL_IMPLEMENTING,
+                    stage=STAGE_IMPLEMENTING,
                     backend=BACKEND_CLAUDE,
                     prompt="p",
                     cwd=_FAKE_WT,
@@ -286,7 +286,7 @@ def _drive_trajectory_sink(
         engine_usage._run_agent_tracked(
             gh, _TRAJECTORY_SINK_ISSUE_NUMBER,
             agent_role=ROLE_DEVELOPER,
-            stage=LABEL_IMPLEMENTING,
+            stage=STAGE_IMPLEMENTING,
             backend=BACKEND_CLAUDE,
             prompt=_TRAJECTORY_PROMPT,
             cwd=_FAKE_WT,

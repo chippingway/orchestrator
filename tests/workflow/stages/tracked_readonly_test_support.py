@@ -12,7 +12,7 @@ def _review_seed():
     github = support.FakeGitHubClient()
     issue = support.make_issue(
         support._REVIEW_ISSUE_NUMBER,
-        label="validating",
+        label="workflow:validating",
     )
     github.add_issue(issue)
     github.seed_state(

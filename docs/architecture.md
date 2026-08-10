@@ -240,7 +240,8 @@ orchestrator/
                         the terminals, the missing-`pr_number` guard, the
                         parked-no-input fast path, and the refused bare continue
         drift.py        a body edit mid-hop: the dropped approval, the unwind
-                        sentinel, and the relabel back to `validating`
+                        sentinel, and the relabel back to
+                        `workflow:validating`
         drift_reset.py  the fetch / probe / hard-reset + clean that puts the
                         worktree back on the PR head, and the parks each failure
                         earns
@@ -273,7 +274,7 @@ orchestrator/
         drift.py        the `resolving_conflict` reroute a stuck validating-route
                         park earns when its worktree has fallen behind base
         resume.py       the quiet window, the dev run, the ACK fast path, and
-                        the `validating` relabel a pushed fix earns
+                        the `workflow:validating` relabel a pushed fix earns
         models.py       the frozen records the owners hand each other
         state.py        the pinned-state keys they share
       implementing/
@@ -314,7 +315,7 @@ orchestrator/
                         orchestrator / untrusted-author filters, and the park
                         that stays silent for the base-sync retry loop
         fixing_route.py the pending-fix bookmarks, the hash refresh, and the
-                        `fixing` relabel
+                        `workflow:fixing` relabel
         drift.py        a body edit on an open PR: the unread PR conversation
                         captured first, the dev resume, and the `validating`
                         return both outcomes earn
@@ -350,7 +351,8 @@ orchestrator/
         watermarks.py   the seed walk past leading orchestrator comments and the
                         ratchet that never regresses one
         requested_changes.py
-                        the PR feedback and `fixing`-labeled dev fix, plus the
+                        the PR feedback and `workflow:fixing`-labeled dev fix,
+                        plus the
                         no-VERDICT park
         dev_fix.py      what a finished dev fix leaves behind: the stranded
                         commit probe, the push, and the round bump
@@ -1331,14 +1333,14 @@ one SHA-256 over the issue title, body, and the comments a human actually wrote 
 keep it from moving on content nobody wrote: the pinned-state comment, the hidden marker every posted comment carries,
 the legacy ids from before that marker existed, third-party bots, authors outside `ALLOWED_ISSUE_AUTHORS`, and a bare
 `/orchestrator continue`. The routes a real move is handed to sit with the hash because they are the only reason it is
-computed: a mid-implementation drift resumes the locked dev session with the updated title, body, and thread quoted and
-then advances `last_action_comment_id` past everything it quoted, so the next validating→in_review handoff does not
-replay those comments as fresh PR feedback; a pre-implementation drift instead clears the manifest state, names the
-children it stops tracking in a notice, and flips the label back to `decomposing`. It reaches `comments.py` for the
-id ledger and the thread text, `messages.py` for the blockquote and the bare-continue test, and `prompts.py` for the
-two shared notes, and every stage leaf that hashes, detects, resumes, or reroutes imports the owner. So a patch that
-has to intercept a hash, a drift detection, the resume prompt or its watermark bump, or the decomposition reroute
-targets `orchestrator.workflow.engine.drift`. No flat module sits beside the package: a check in
+computed: a mid-implementation drift resumes the locked dev session with the updated title, body, and thread quoted
+and then advances `last_action_comment_id` past everything it quoted, so the next validating→in_review handoff does
+not replay those comments as fresh PR feedback; a pre-implementation drift instead clears the manifest state, names
+the children it stops tracking in a notice, and flips the label back to `workflow:decomposing`. It reaches
+`comments.py` for the id ledger and the thread text, `messages.py` for the blockquote and the bare-continue test, and
+`prompts.py` for the two shared notes, and every stage leaf that hashes, detects, resumes, or reroutes imports the
+owner. So a patch that has to intercept a hash, a drift detection, the resume prompt or its watermark bump, or the
+decomposition reroute targets `orchestrator.workflow.engine.drift`. No flat module sits beside the package: a check in
 `tests/workflow/test_imports.py` asserts nothing resolves at the drift module paths, so the owner is the one import
 site the hash, its filters, and the two routes answer on.
 
@@ -1378,50 +1380,50 @@ would point that edge back at itself — which also makes the stage module the t
 has to intercept the dispatch. Each start names the owner its handler lives on, so that patch target is the same one
 `_STAGE_HANDLER_TARGETS` names.
 
-`workflow/engine/terminals.py` is bound the same way. It owns how an issue stops being worked. Three conditions
-end one — the linked PR merged (`done`), the linked PR closed unmerged (`rejected`), and a human closed the issue
-while its PR is still open (`rejected` too) — and what they share is the tail rather than the condition: a terminal
-stamp (`merged_at` / `closed_without_merge_at`), a terminal label, the cumulative usage receipt, and one
+`workflow/engine/terminals.py` is bound the same way. It owns how an issue stops being worked. Three conditions end
+one — the linked PR merged (`done`), the linked PR closed unmerged (`rejected`), and a human closed the issue while
+its PR is still open (`rejected` too) — and what they share is the tail rather than the condition: a terminal stamp
+(`merged_at` / `closed_without_merge_at`), a terminal label, the cumulative usage receipt, and one
 `write_pinned_state`, in that order, so the receipt's comment id rides the state the stamp is written with. Branch
-cleanup sits outside that tail on purpose: it runs on the two arcs where the PR is gone and the branch is dead
-weight, and is withheld on the open-PR arc — along with its `pr_closed_without_merge` emit — so an operator can
-still reopen or salvage what the closed issue left behind. The two entry points differ only in who fetched the PR:
+cleanup sits outside that tail on purpose: it runs on the two arcs where the PR is gone and the branch is dead weight,
+and is withheld on the open-PR arc — along with its `pr_closed_without_merge` emit — so an operator can still reopen
+or salvage what the closed issue left behind. The two entry points differ only in who fetched the PR:
 `_drain_review_pr_terminals` takes one the caller already holds (`in_review`, `fixing`, `resolving_conflict`, with
 `pr=None` a deliberate no-op so fixing's own fetch failure passes through), while `_finalize_if_pr_merged` and
-`_finalize_if_issue_closed` fetch their own at handler entry for `implementing`, `documenting`, `validating`, and
-the umbrella / blocked child aggregation — which is why each owns its fetch-failure answer, the merged check
-leaving the issue alone and the closed-issue check deferring the tick so a transient failure cannot label a
-merged-PR issue `rejected`. Its own helpers call each other in-module and reach `usage.py` for the stamp and the
-receipt and `git.worktrees` for the branch name and the cleanup, and every stage leaf that drains or finalizes a
-terminal imports the owner, so a patch that has to intercept an arc, a drain, or an entry-time finalize targets
-`orchestrator.workflow.engine.terminals`. The issue-state vocabulary the closed-issue arc reads and writes --
-the attribute PyGithub carries it on and its open / closed values -- is named on `github/issues.py`, the owner of
-the GitHub wire spelling, which `dispatch.py` reads its own closed-issue probe off too.
+`_finalize_if_issue_closed` fetch their own at handler entry for `implementing`, `documenting`, `validating`, and the
+umbrella / blocked child aggregation — which is why each owns its fetch-failure answer, the merged check leaving the
+issue alone and the closed-issue check deferring the tick so a transient failure cannot label a merged-PR issue
+`rejected`. Its own helpers call each other in-module and reach `usage.py` for the stamp and the receipt and
+`git.worktrees` for the branch name and the cleanup, and every stage leaf that drains or finalizes a terminal imports
+the owner, so a patch that has to intercept an arc, a drain, or an entry-time finalize targets
+`orchestrator.workflow.engine.terminals`. The issue-state vocabulary the closed-issue arc reads and writes -- the
+attribute PyGithub carries it on and its open / closed values -- is named on `github/issues.py`, the owner of the
+GitHub wire spelling, which `dispatch.py` reads its own closed-issue probe off too.
 
 `workflow/engine/dispatch.py` is bound the same way. It owns everything between "the repo has open issues" and "one
 `_handle_<stage>` is running", and the pieces sit together because each is only safe given the one before it. The
-`backlog` / `paused` filter runs twice on purpose — once in `_classify_pollable_issue` so a parked issue never
-reaches the partition, and once in `_process_issue` so a directly dispatched one is still refused — and the early
-drop is not an optimization: a parked issue carries no workflow label, so leaving it in would fold it into the
-family bucket, flip that bucket cap-counted, and reserve the only per-repo slot under the default
-`parallel_limit=1`. The partition itself is the concurrency contract: the cross-issue writers (`decomposing` /
-`blocked` / `umbrella` and the unlabeled-pickup `None`) collect into one bucket that drains sequentially, everything
-else fans out, and a label read that raises is answered `(False, None)` so the unreadable issue lands in the
-serialized bucket where `_process_issue`'s own per-issue exception isolation can pick up a sustained failure. Cap
-exemption is what keeps that serialization from deadlocking — a bucket whose every label is a no-agent handler
+`backlog` / `paused` filter runs twice on purpose — once in `_classify_pollable_issue` so a parked issue never reaches
+the partition, and once in `_process_issue` so a directly dispatched one is still refused — and the early drop is not
+an optimization: a parked issue carries no workflow label, so leaving it in would fold it into the family bucket, flip
+that bucket cap-counted, and reserve the only per-repo slot under the default `parallel_limit=1`. The partition itself
+is the concurrency contract: the cross-issue writers (`workflow:decomposing` / `workflow:blocked` /
+`workflow:umbrella` and the unlabeled-pickup `None`) collect into one bucket that drains sequentially, everything else
+fans out, and a label read that raises is answered `(False, None)` so the unreadable issue lands in the serialized
+bucket where `_process_issue`'s own per-issue exception isolation can pick up a sustained failure. Cap exemption is
+what keeps that serialization from deadlocking — a bucket whose every label is a no-agent handler
 (`_CAP_EXEMPT_FAMILY_LABELS`) and a closed fan-out issue whose handler is a terminal finalize both skip the per-repo
 and global caps. Only issue numbers cross a thread boundary; `_refetch_and_process` mints a per-worker client and
 refetches against it, because PyGithub's `Issue` and the `Requester` chain behind it are not documented thread-safe.
 Its own helpers call each other in-module, and each handler is reached through a call-time import of the module
-`_STAGE_HANDLER_TARGETS` pairs with its label — eleven of the twelve entries name conflicts, decomposition, documenting,
-fixing, implementing, question, validating, and in_review owners under `workflow/stages/`, and the twelfth names the
-`pickup` sibling an unlabeled issue starts on. The import is
-deferred because the stage tree imports this subpackage, so binding one at module scope would point that edge back at
-itself; the lookup stays an attribute read on whichever module the table names, and every stage is named by the owner
-its handler lives on. That makes the owning module the target for a patch that has to intercept a
-dispatched handler, and this owner the target for one aimed at the partition, the cap-exemption probe, the timed
-dispatch, or a scheduler submit. It also owns the one log line every isolated per-issue failure reports on, which
-`workflow/engine/tick.py` reads off it so a tick's three isolation points cannot spell the same failure three ways.
+`_STAGE_HANDLER_TARGETS` pairs with its label — eleven of the twelve entries name conflicts, decomposition,
+documenting, fixing, implementing, question, validating, and in_review owners under `workflow/stages/`, and the
+twelfth names the `pickup` sibling an unlabeled issue starts on. The import is deferred because the stage tree imports
+this subpackage, so binding one at module scope would point that edge back at itself; the lookup stays an attribute
+read on whichever module the table names, and every stage is named by the owner its handler lives on. That makes the
+owning module the target for a patch that has to intercept a dispatched handler, and this owner the target for one
+aimed at the partition, the cap-exemption probe, the timed dispatch, or a scheduler submit. It also owns the one log
+line every isolated per-issue failure reports on, which `workflow/engine/tick.py` reads off it so a tick's three
+isolation points cannot spell the same failure three ways.
 
 `workflow/engine/tick.py` is bound the same way, and closes the subpackage. It owns one repo's polling pass, which is
 four things in one order. The base refresh runs first because everything after it reads what that fetch left behind —
@@ -2695,12 +2697,18 @@ that has the package — which is what keeps the data an owner shapes testable i
 
 ## Workflow labels
 
-An issue should have at most one workflow label at a time. The set is `decomposing`, `ready`, `blocked`, `umbrella`,
-`implementing`, `documenting`, `validating`, `in_review`, `fixing`, `resolving_conflict`, `question`, and the two
-terminals `done` / `rejected`. The orchestrator also creates three non-workflow control labels: `backlog` and `paused`
-each make per-tick handlers skip the issue entirely (`backlog` is a "not yet" hold on a fresh issue, `paused` freezes
-an in-flight one), and `community_contribution` is applied by the per-tick open-PR sweep to PRs from non-bot authors
-outside `ALLOWED_ISSUE_AUTHORS` so a human reviews them.
+An issue should have at most one workflow label at a time. The set is `workflow:decomposing`, `workflow:ready`,
+`workflow:blocked`, `workflow:umbrella`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`,
+`in_review`, `workflow:fixing`, `workflow:resolving_conflict`, `question`, and the two terminals `done` / `rejected`.
+The `workflow:` prefix marks the states the orchestrator drives itself, so a repository's own vocabulary cannot
+collide with them; the four a human also applies or reads on their own keep the bare spelling. The orchestrator also
+creates three non-workflow control labels: `backlog` and `paused` each make per-tick handlers skip the issue entirely
+(`backlog` is a "not yet" hold on a fresh issue, `paused` freezes an in-flight one), and `community_contribution` is
+applied by the per-tick open-PR sweep to PRs from non-bot authors outside `ALLOWED_ISSUE_AUTHORS` so a human reviews
+them.  The namespace is a GitHub label spelling and stops at that boundary: the *stage* an issue is in is still named
+by the bare tag under the label, which is what analytics rows, audit event payloads, agent-session attribution, and
+the pinned-state JSON have always recorded. `workflow/state.py` owns both directions — `stage_name` strips the prefix
+for those sinks, and `label_for_name` resolves either spelling back to its member.
 
 Label names are part of the public contract because live GitHub issues already carry them. For the meaning of each
 label, the control-label semantics, and the per-stage transitions they trigger, see
@@ -2748,22 +2756,22 @@ One repo's pass is owned by `workflow/engine/tick.py` — the base refresh, the 
 skill-catalog emission, and then either the scheduler handoff or the in-tick sequential / bounded-parallel loop, in
 that order (see [the owner's paragraph](#top-level-layout) above for why each step depends on the one before it).
 
-The dispatch loop classifies each issue as family-aware (`decomposing` / `blocked` / `umbrella` / unlabeled — parent
-↔ child writes) or fan-out (everything else). Fan-out submits go one callable per issue. Every family-aware issue this
-tick is folded into ONE bucket submit per repo that drains them sequentially on a single executor worker so a stale
-child cannot starve the parent umbrella issue. When every family-aware issue in the bucket runs a no-agent handler
-(`blocked` or `umbrella`), the bucket is cap-exempt and runs on a dedicated executor pool so a pure label / dep-graph
-walk cannot be blocked by ordinary implementation work. A bucket containing `decomposing` or unlabeled pickup stays
-cap-counted.
+The dispatch loop classifies each issue as family-aware (`workflow:decomposing` / `workflow:blocked` /
+`workflow:umbrella` / unlabeled — parent ↔ child writes) or fan-out (everything else). Fan-out submits go one callable
+per issue. Every family-aware issue this tick is folded into ONE bucket submit per repo that drains them sequentially
+on a single executor worker so a stale child cannot starve the parent umbrella issue. When every family-aware issue in
+the bucket runs a no-agent handler (`workflow:blocked` or `workflow:umbrella`), the bucket is cap-exempt and runs on a
+dedicated executor pool so a pure label / dep-graph walk cannot be blocked by ordinary implementation work. A bucket
+containing `workflow:decomposing` or unlabeled pickup stays cap-counted.
 
 Per-issue durable state lives in a single **pinned comment** on the issue (`<!--orchestrator-state {...json...}-->`).
 The orchestrator process is stateless; the label and the pinned JSON are the entire dispatch input.
 
 For the full per-tick sequence (eligible-issue enumeration, family vs. fan-out partitioning, the pre-PR rebase /
-PR-having clean-rebase + push (with `resolving_conflict` reached on actual rebase conflicts, plus the `fixing`
-worktree-drift dead-lock breaker that hands a stuck validating-route transient fix-loop to `resolving_conflict` when the
-worktree is behind base or carries an unpushed rebase), the `question` skip, the per-tick
-external-merge sweeps, and the complete pinned-state JSON schema), see
+PR-having clean-rebase + push (with `workflow:resolving_conflict` reached on actual rebase conflicts, plus the
+`fixing` worktree-drift dead-lock breaker that hands a stuck validating-route transient fix-loop to
+`workflow:resolving_conflict` when the worktree is behind base or carries an unpushed rebase), the `question` skip,
+the per-tick external-merge sweeps, and the complete pinned-state JSON schema), see
 [`state-machine.md#per-tick-flow-workflowtick`](state-machine.md#per-tick-flow-workflowtick).
 
 ## Stage handlers
@@ -2781,30 +2789,29 @@ answers for a stage beside them, so a name a stage owns has one module to resolv
 only interception a caller can need. Two checks in `tests/workflow/stages/test_imports.py` hold that line for every
 stage at once: `orchestrator.stages` resolves to nothing the interpreter would find, and every label in
 `_STAGE_HANDLER_TARGETS` names an owner inside a stage subpackage here — so a stage arriving later is covered without
-anyone adding it there. Dispatch names the owners too: `_STAGE_HANDLER_TARGETS` names the module a handler lives on, and
-so does the same-tick start in `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has to
-land on the owner. Like `workflow/engine/`, this package and each stage subpackage inside it bind nothing in their
+anyone adding it there. Dispatch names the owners too: `_STAGE_HANDLER_TARGETS` names the module a handler lives on,
+and so does the same-tick start in `workflow/engine/pickup.py`, so a patch meant to intercept a dispatched handler has
+to land on the owner. Like `workflow/engine/`, this package and each stage subpackage inside it bind nothing in their
 initializers -- the dispatcher resolves one handler per issue, so an eager binding there would charge that import for
 every other stage's leaves and for the worktree and GitHub subsystems they reach.
 
-The decomposition owners bind their collaborators directly. `manifest` calls `validation` for the split rules,
-`run` calls `session`, `recovery`, and `outcomes` for the order a tick asks them in, `outcomes` calls `manifest` and
+The decomposition owners bind their collaborators directly. `manifest` calls `validation` for the split rules, `run`
+calls `session`, `recovery`, and `outcomes` for the order a tick asks them in, `outcomes` calls `manifest` and
 `split`, `blocked` and `umbrella` both call `parents` for the child scan and `activation` for the dep-graph walk, and
 every owner that writes to GitHub reaches `workflow/engine/` for the comment poster, the run guards, the prompts, and
 the usage counters. `state`, `models`, `manifest`, and `validation` deliberately reach nothing — the keys, the
 carriers, and the whole parse are decidable without a client, which is why the manifest rules can be exercised without
-one. So a patch that has to intercept the manifest parse, a child scan, or the split writer targets the owner
-module. What the stage does not own it names on the owner that does: `models`, `run`, and `session` reach
+one. So a patch that has to intercept the manifest parse, a child scan, or the split writer targets the owner module.
+What the stage does not own it names on the owner that does: `models`, `run`, and `session` reach
 `git.worktrees.decomposition` for the scratch checkout's path, creation, and removal, `run` reaches
 `git.worktrees.creation` and `git.verification.probes` for the read-only commit and dirty probes, and `run`,
 `blocked`, and `session` reach `stages/implementing/` for the handler a `single` verdict routes to and the retry
-budget a fresh spawn consumes — so a mock for any of those lands on the owner.
-No flat module sits beside these owners: the `orchestrator.stages` check in
-`tests/workflow/stages/test_imports.py` covers this stage too, so the manifest parse, the child scan, the split writer,
-and all four dispatched handlers are each answered on an owner alone. `_MAX_CHILDREN` runs the other way: the cap
-lives with the
-validator that rejects past it and `workflow/engine/prompts.py` reads it back, so the bound the decomposer is told and
-the bound it is judged against cannot drift apart.
+budget a fresh spawn consumes — so a mock for any of those lands on the owner. No flat module sits beside these
+owners: the `orchestrator.stages` check in `tests/workflow/stages/test_imports.py` covers this stage too, so the
+manifest parse, the child scan, the split writer, and all four dispatched handlers are each answered on an owner
+alone. `_MAX_CHILDREN` runs the other way: the cap lives with the validator that rejects past it and
+`workflow/engine/prompts.py` reads it back, so the bound the decomposer is told and the bound it is judged against
+cannot drift apart.
 
 The implementing owners bind their collaborators the same way, and they divide along the decisions one tick makes
 rather than the code it runs. `handler` holds the order those decisions are asked in and calls `question_relabel` and
@@ -2879,22 +2886,22 @@ The in_review owners divide by the four answers one tick can reach, and `handler
 the contract rather than a style choice. `feedback` runs before `drift`: `user_content_hash` covers every human
 issue-thread comment as well as the body, so asking drift first would resume the dev over a review comment that should
 have been bookmarked and handed to `fixing`. `feedback` routes through `fixing_route` for the flip, and the bookmarks
-it writes are deliberately not watermarks — the fixing handler re-reads the same comments to build its prompt.
-`drift` reads the PR conversation before the ratchet can leap past it, resumes the dev, and hands both outcomes back to
-`validating` with `review_round` reset. `merge_gate` is last and never merges: an unmergeable PR parks for a human
-(no `resolving_conflict` route from this stage) and a mergeable, approved, unvetoed head earns one HITL ping per head
-SHA. `models` and `state` reach nothing at all and `watermarks` reaches no further than the client it is handed, so
-the carriers, the wire key, and both the ratchet and the legacy seed are decidable without a worktree or an agent. So a
-patch that has to intercept the scan, the route, the resume, or the ping targets the owner module.
-This stage owns no dev machinery either: the resume comes from `workflow/stages/implementing/` and the body-edit
+it writes are deliberately not watermarks — the fixing handler re-reads the same comments to build its prompt. `drift`
+reads the PR conversation before the ratchet can leap past it, resumes the dev, and hands both outcomes back to
+`workflow:validating` with `review_round` reset. `merge_gate` is last and never merges: an unmergeable PR parks for a
+human (no `workflow:resolving_conflict` route from this stage) and a mergeable, approved, unvetoed head earns one HITL
+ping per head SHA. `models` and `state` reach nothing at all and `watermarks` reaches no further than the client it is
+handed, so the carriers, the wire key, and both the ratchet and the legacy seed are decidable without a worktree or an
+agent. So a patch that has to intercept the scan, the route, the resume, or the ping targets the owner module. This
+stage owns no dev machinery either: the resume comes from `workflow/stages/implementing/` and the body-edit
 disposition from `workflow/stages/validating/drift_outcomes.py`, so a patch on one of those lands on the owner. The
 helpers it does not own are named the same way — the worktree names from `git/worktrees/paths.py`, the checkout from
 `git/worktrees/creation.py`, the HEAD read from `git/verification/probes.py`, and base-sync's
 `_AUTO_REBASE_PARK_REASONS` from `git/base_sync/state.py`, which is what tells a park the rebase loop owns from one
 this stage may answer. No flat module sits beside these owners: the `orchestrator.stages` check in
-`tests/workflow/stages/test_imports.py` covers this stage too, so the feedback scan, the fixing route, the drift resume,
-and the merge ping are each answered on an owner alone. `_comment_created_at` is the one name a sibling borrows, and
-its one cross-package caller — fixing's quiet window — names `watermarks` itself.
+`tests/workflow/stages/test_imports.py` covers this stage too, so the feedback scan, the fixing route, the drift
+resume, and the merge ping are each answered on an owner alone. `_comment_created_at` is the one name a sibling
+borrows, and its one cross-package caller — fixing's quiet window — names `watermarks` itself.
 
 The fixing owners divide by what one tick has to settle, and two of them exist as a pair because the batch that starts
 the loop is not the batch that ends it. `feedback` scans forward from the three in_review watermarks; `bookmarks`
@@ -2910,20 +2917,19 @@ only on the validating route, because `review_round` accounting and watermark ad
 `pending_fix_at` is what tells them apart. `drift` is the exit from a stuck validating-route transient park whose
 worktree has fallen behind base, and it exists because the per-tick base sync stands down on every park, so nobody
 else will rebase it. `resume` owns the quiet window, the run, the interruption and live-pause refusals that write
-nothing, the ACK fast path, and the `validating` relabel a pushed fix earns. `models`, `state`, and `bookmarks` reach
-no further than the client they are handed, so the carriers, the wire keys, and the whole reconstruction are decidable
-without a worktree or an agent. So a patch that has to intercept the rescan, the replay, the parked dispatch, the
-reroute, or the run targets the owner module. This stage owns no dev machinery either: the resume and the
-poisoned-session drop come from `workflow/stages/implementing/`, the dev-fix disposition, the stranded-fix probe, and
-the transient-park recovery from `workflow/stages/validating/`, and the comment timestamp the quiet window measures
-from `workflow/stages/in_review/watermarks.py` — so a patch on any of those lands on the owner. The git it runs on is
-named the same way — the worktree path and the branch resolver off `git/worktrees/paths.py`, the creator off
-`creation`, the HEAD and dirty reads off `git/verification/probes.py`, the plain runner behind the behind-base probe
-off `git/commands.py`, and `_AUTO_REBASE_PARK_REASONS` off `git/base_sync/state.py`.
-No flat module sits beside these owners: the
-`orchestrator.stages` check in `tests/workflow/stages/test_imports.py` covers this stage too, so the pending-fix
-bookmarks, the review-round counter, and the park reasons are each answered on an owner alone, `_handle_fixing`
-included.
+nothing, the ACK fast path, and the `workflow:validating` relabel a pushed fix earns. `models`, `state`, and
+`bookmarks` reach no further than the client they are handed, so the carriers, the wire keys, and the whole
+reconstruction are decidable without a worktree or an agent. So a patch that has to intercept the rescan, the replay,
+the parked dispatch, the reroute, or the run targets the owner module. This stage owns no dev machinery either: the
+resume and the poisoned-session drop come from `workflow/stages/implementing/`, the dev-fix disposition, the
+stranded-fix probe, and the transient-park recovery from `workflow/stages/validating/`, and the comment timestamp the
+quiet window measures from `workflow/stages/in_review/watermarks.py` — so a patch on any of those lands on the owner.
+The git it runs on is named the same way — the worktree path and the branch resolver off `git/worktrees/paths.py`, the
+creator off `creation`, the HEAD and dirty reads off `git/verification/probes.py`, the plain runner behind the
+behind-base probe off `git/commands.py`, and `_AUTO_REBASE_PARK_REASONS` off `git/base_sync/state.py`. No flat module
+sits beside these owners: the `orchestrator.stages` check in `tests/workflow/stages/test_imports.py` covers this stage
+too, so the pending-fix bookmarks, the review-round counter, and the park reasons are each answered on an owner alone,
+`_handle_fixing` included.
 
 The conflicts owners divide by what one tick has to establish before the rebase may run and by what it does with the
 result, and `handler` holds the order: the pinned `pr_number` (without one the label can only have come from a manual
@@ -2976,13 +2982,13 @@ read-only contract is decided by, so a mock for either has to land there. No fla
 each answered on an owner alone, `_handle_question` included.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
-an out-of-band human edit re-routes the issue back to `decomposing` (when no dev session exists yet), resumes the locked
-dev session with the updated body (implementing, validating, in_review, resolving_conflict), or unwinds back to
-`validating` without resuming dev (documenting). Both halves of that hook sit on the `workflow/engine/drift.py` owner
-the stage leaves import directly, so a patch aimed at the hook targets that owner.
-`_handle_fixing` and `_handle_question` deliberately skip the drift
-hook — see [`state-machine.md#user-content-drift-detection`](state-machine.md#user-content-drift-detection) for the
-per-handler routing.
+an out-of-band human edit re-routes the issue back to `workflow:decomposing` (when no dev session exists yet), resumes
+the locked dev session with the updated body (implementing, validating, in_review, resolving_conflict), or unwinds
+back to `workflow:validating` without resuming dev (documenting). Both halves of that hook sit on the
+`workflow/engine/drift.py` owner the stage leaves import directly, so a patch aimed at the hook targets that owner.
+`_handle_fixing` and `_handle_question` deliberately skip the drift hook — see
+[`state-machine.md#user-content-drift-detection`](state-machine.md#user-content-drift-detection) for the per-handler
+routing.
 
 For per-stage internal flow — pickup, drift handling, decomposing, ready, blocked, umbrella, implementing,
 documenting, validating, in_review, fixing, resolving_conflict, question — see
@@ -3103,13 +3109,13 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
 - **`workflow.tick(gh, spec)`** — function call. Trigger: each loop iteration. Cadence: once per tick per configured
   `RepoSpec`; multi-repo fans out across a `ThreadPoolExecutor`, single-repo stays in-thread.
 - **`_refresh_base_and_worktrees(gh, spec)`** — function call. Trigger: start of each `workflow.tick`. Cadence: once
-  per tick per repo: one `git fetch <spec.remote_name> <spec.base_branch>`, then per-worktree dispatch (pre-PR worktrees
-  rebase directly; PR-having worktrees behind base are rebased + pushed in the refresh itself via
-  `_sync_pr_worktree_to_base` and routed to `validating` on success, with `resolving_conflict` reached when the auto
-  rebase actually leaves conflicted files).
+  per tick per repo: one `git fetch <spec.remote_name> <spec.base_branch>`, then per-worktree dispatch (pre-PR
+  worktrees rebase directly; PR-having worktrees behind base are rebased + pushed in the refresh itself via
+  `_sync_pr_worktree_to_base` and routed to `workflow:validating` on success, with `workflow:resolving_conflict`
+  reached when the auto rebase actually leaves conflicted files).
 - **`_handle_*` per issue** — function call. Trigger: issue's workflow label. Cadence: once per tick per open issue;
   concurrent up to `spec.parallel_limit` per repo and `MAX_PARALLEL_ISSUES_GLOBAL` across all repos. No-agent family
-  buckets (`blocked` / `umbrella`) are cap-exempt.
+  buckets (`workflow:blocked` / `workflow:umbrella`) are cap-exempt.
 - **decomposer agent (`DECOMPOSE_AGENT`)** — subprocess (fresh or resumed). Trigger: `_handle_decomposing` (retry
   budget OK) or HITL resume. Cadence: one shot per tick when needed.
 - **implementer agent (`DEV_AGENT`)** — subprocess. Trigger: `_handle_implementing` (no commits yet, retry budget OK)
@@ -3117,13 +3123,13 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
 - **reviewer agent (`REVIEW_AGENT`)** — subprocess (fresh session). Trigger: `_handle_validating`, round < max.
   Cadence: one shot per tick.
 - **dev-fix agent** — subprocess (resumed dev session). Trigger: reviewer says CHANGES_REQUESTED (dispatched from
-  `_handle_validating` after the relabel to `fixing`), or fresh in_review PR feedback (dispatched from `_handle_fixing`
-  after the quiet window) — both run with `stage="fixing"` and bounce back to `validating` for re-review. Cadence: one
-  shot per tick.
-- **`_handle_resolving_conflict`** — function call. Trigger: issue label `resolving_conflict` (operator relabel,
-  refresh-time conflicted rebase, or the `fixing` worktree-drift dead-lock breaker when a stuck validating-route
-  transient fix-loop is out of sync with the PR head — behind base or an unpushed local rebase); also fires on
-  closed-`resolving_conflict` issues from the polling sweep. Cadence: once per tick per such issue.
+  `_handle_validating` after the relabel to `workflow:fixing`), or fresh in_review PR feedback (dispatched from
+  `_handle_fixing` after the quiet window) — both run with `stage="fixing"` and bounce back to `workflow:validating`
+  for re-review. Cadence: one shot per tick.
+- **`_handle_resolving_conflict`** — function call. Trigger: issue label `workflow:resolving_conflict` (operator
+  relabel, refresh-time conflicted rebase, or the `fixing` worktree-drift dead-lock breaker when a stuck
+  validating-route transient fix-loop is out of sync with the PR head — behind base or an unpushed local rebase); also
+  fires on closed-`workflow:resolving_conflict` issues from the polling sweep. Cadence: once per tick per such issue.
 - **dev-conflict agent** — subprocess (resumed dev session). Trigger: `_handle_resolving_conflict` and `git rebase`
   left conflicts. Cadence: one shot per tick.
 - **`_handle_question`** — function call. Trigger: issue label `question` OR closed-`question` issue from the polling
@@ -3172,8 +3178,8 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
    │     classify each pollable issue and submit to scheduler:            │
    │       family-aware (decomposing/blocked/umbrella/unlabeled) →        │
    │         ONE bucket submit per repo that drains sequentially          │
-   │         (cap-exempt when every family issue is `blocked` or          │
-   │         `umbrella`)                                                  │
+   │         (cap-exempt when every family issue is                       │
+   │         `workflow:blocked` or `workflow:umbrella`)                   │
    │       fan-out (everything else) →                                    │
    │         one submit per issue, concurrent up to per-repo / global     │
    │         caps                                                         │

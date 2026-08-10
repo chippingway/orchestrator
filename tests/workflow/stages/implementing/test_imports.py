@@ -13,6 +13,7 @@ from types import MappingProxyType
 
 from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
 from orchestrator.workflow.stages import implementing as _package
+from orchestrator.workflow.state import WorkflowLabel
 
 _PACKAGE = "orchestrator.workflow.stages.implementing"
 
@@ -132,7 +133,7 @@ class DispatchTargetTest(unittest.TestCase):
         # that is where a patch has to land to intercept one.
         owner = _OWNER_MODULES[_HANDLER_OWNER]
         self.assertEqual(
-            _dispatch._STAGE_HANDLER_TARGETS["implementing"],
+            _dispatch._STAGE_HANDLER_TARGETS[WorkflowLabel.IMPLEMENTING],
             (owner.__name__, _HANDLE_IMPLEMENTING),
         )
         self.assertTrue(hasattr(owner, _HANDLE_IMPLEMENTING))

@@ -16,9 +16,10 @@ from tests.workflow.fixtures import (
 
 
 # --- Workflow labels this stage routes between --------------------------
-DOCUMENTING = "documenting"
+DOCUMENTING = "workflow:documenting"
+IMPLEMENTING = "workflow:implementing"
 IN_REVIEW = "in_review"
-VALIDATING = "validating"
+VALIDATING = "workflow:validating"
 
 # --- Dev agent identity pinned into per-issue state ---------------------
 DEV_AGENT = "codex"
@@ -146,7 +147,7 @@ class HandleDocumentingMissingPrNumberTest(unittest.TestCase):
 
         state = gh.pinned_data(MISSING_PR_ISSUE_NUMBER)
         self.assertTrue(state.get(AWAITING_HUMAN))
-        self.assertIn("documenting", gh.posted_comments[-1][1])
+        self.assertIn(IMPLEMENTING, gh.posted_comments[-1][1])
         # Label is not flipped -- the operator decides whether to
         # relabel back or leave it.
         self.assertEqual(gh.label_history, [])

@@ -22,6 +22,7 @@ from orchestrator.git.base_sync.state import (
     _REASON_AUTO_BASE_REBASE_PUSH_FAILED,
     log,
 )
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _already_published_recovery_notice(
@@ -38,14 +39,14 @@ def _already_published_recovery_notice(
     if context.behind == 0:
         return (
             notice
-            + f" Routing `{context.label}` -> `validating` so the "
-            "reviewer re-runs against the rewritten branch."
+            + f" Routing `{context.label}` -> `{WorkflowLabel.VALIDATING}`"
+            " so the reviewer re-runs against the rewritten branch."
         )
     return (
         notice
         + f" Base advanced again by {context.behind} commit(s)"
-        " since the interrupted rebase; rebasing once "
-        "more before routing to `validating`."
+        " since the interrupted rebase; rebasing once more before "
+        f"routing to `{WorkflowLabel.VALIDATING}`."
     )
 
 
@@ -61,12 +62,15 @@ def _pushed_recovery_notice(
         f"`{short_head}`."
     )
     if context.behind == 0:
-        return f"{notice} Routing `{context.label}` -> `validating`."
+        return (
+            f"{notice} Routing `{context.label}` -> "
+            f"`{WorkflowLabel.VALIDATING}`."
+        )
     return (
         notice
         + f" Base advanced again by {context.behind} commit(s) "
-        "since the interrupted rebase; rebasing once more "
-        "before routing to `validating`."
+        "since the interrupted rebase; rebasing once more before "
+        f"routing to `{WorkflowLabel.VALIDATING}`."
     )
 
 

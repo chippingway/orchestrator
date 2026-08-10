@@ -25,7 +25,7 @@ class ReviewVerdictEventEmissionTest(unittest.TestCase, support._PatchedWorkflow
         support._run_verdict(self, gh, issue, pr, last)
         verdict = support._only_event(gh, support.EVENT_REVIEW_VERDICT)
         self.assertEqual(verdict[support.KEY_VERDICT], support.VERDICT_APPROVED)
-        self.assertEqual(verdict[support.KEY_STAGE], support.LABEL_VALIDATING)
+        self.assertEqual(verdict[support.KEY_STAGE], support.STAGE_VALIDATING)
         self.assertEqual(verdict[support.KEY_REVIEW_ROUND], 0)
         self.assertEqual(verdict[support.KEY_PR_NUMBER], support._VERDICT_PR_NUMBER)
         self.assertEqual(verdict["session_id"], "sess-review")
@@ -63,7 +63,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
             has_new_commits=False,
         )
         park = support._only_event(gh, support.EVENT_PARK_AWAITING_HUMAN)
-        self.assertEqual(park[support.KEY_STAGE], support.LABEL_IMPLEMENTING)
+        self.assertEqual(park[support.KEY_STAGE], support.STAGE_IMPLEMENTING)
         self.assertEqual(park[support.KEY_REASON], "agent_question")
 
     def test_agent_silent_park_carries_reason(self) -> None:
@@ -102,7 +102,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
                 head_shas=[pr.head.sha],
             )
         park = support._only_event(gh, support.EVENT_PARK_AWAITING_HUMAN)
-        self.assertEqual(park[support.KEY_STAGE], support.LABEL_VALIDATING)
+        self.assertEqual(park[support.KEY_STAGE], support.STAGE_VALIDATING)
         self.assertEqual(park[support.KEY_REASON], "reviewer_timeout")
 
     def test_review_cap_park_has_reason(self) -> None:
@@ -131,7 +131,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
             run_agent=support._agent(last_message="should not run"),
         )
         park = support._only_event(gh, support.EVENT_PARK_AWAITING_HUMAN)
-        self.assertEqual(park[support.KEY_STAGE], support.LABEL_VALIDATING)
+        self.assertEqual(park[support.KEY_STAGE], support.STAGE_VALIDATING)
         self.assertEqual(park[support.KEY_REASON], "review_cap")
 
     def test_push_failed_in_on_commits_carries_reason(self) -> None:
@@ -149,7 +149,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
             push_branch=False,  # simulate push failure
         )
         park = support._only_event(gh, support.EVENT_PARK_AWAITING_HUMAN)
-        self.assertEqual(park[support.KEY_STAGE], support.LABEL_IMPLEMENTING)
+        self.assertEqual(park[support.KEY_STAGE], support.STAGE_IMPLEMENTING)
         self.assertEqual(park[support.KEY_REASON], "push_failed")
 
     def test_no_park_event_when_run_does_not_park(self) -> None:

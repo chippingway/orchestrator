@@ -44,7 +44,7 @@ class BacklogLabelSkipsProcessingTest(unittest.TestCase):
 
     def test_in_flight_issue_skips_dispatch(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(_IN_FLIGHT_BACKLOG_ISSUE, label="implementing")
+        issue = make_issue(_IN_FLIGHT_BACKLOG_ISSUE, label="workflow:implementing")
         issue.labels.append(FakeLabel(BACKLOG_LABEL))
         gh.add_issue(issue)
 

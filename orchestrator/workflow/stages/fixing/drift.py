@@ -105,11 +105,12 @@ def _post_fixing_conflict_notice(
     try:
         _comments._post_pr_comment(
             ctx.gh, pr_number, ctx.state,
-            f":mag: PR worktree is out of sync ({drift_reason}) and the `fixing` "
-            "fix-loop is parked on a stuck transient condition that the "
-            "self-recovery could not clear. Routing `fixing` -> "
-            "`resolving_conflict` to reconcile the branch before the next "
-            "reviewer round.",
+            f":mag: PR worktree is out of sync ({drift_reason}) and the "
+            f"`{WorkflowLabel.FIXING}` fix-loop is parked on a stuck transient "
+            "condition that the self-recovery could not clear. Routing "
+            f"`{WorkflowLabel.FIXING}` -> "
+            f"`{WorkflowLabel.RESOLVING_CONFLICT}` to reconcile the branch "
+            "before the next reviewer round.",
         )
     except Exception:
         log.exception(

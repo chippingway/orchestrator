@@ -30,7 +30,7 @@ class StageEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMixin):
         self.assertEqual(len(gh.recorded_events), 1)
         event = gh.recorded_events[0]
         self.assertEqual(event[support._EVENT_KEY], support.EVENT_STAGE_ENTER)
-        self.assertEqual(event[support._STAGE_KEY], support.LABEL_IMPLEMENTING)
+        self.assertEqual(event[support._STAGE_KEY], support.STAGE_IMPLEMENTING)
         self.assertEqual(event["issue"], 1)
         self.assertEqual(event["repo"], support.TEST_REPO_SLUG)
         self.assertIn("ts", event)
@@ -64,7 +64,7 @@ class StageEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMixin):
             event[support._STAGE_KEY] for event in gh.recorded_events
             if event[support._EVENT_KEY] == support.EVENT_STAGE_ENTER
         ]
-        self.assertIn(support.LABEL_DECOMPOSING, stages)
+        self.assertIn(support.STAGE_DECOMPOSING, stages)
 
     def test_event_log_writes_one_object_per_line(self) -> None:
         # End-to-end: a configured EVENT_LOG_PATH receives one parseable
@@ -82,9 +82,9 @@ class StageEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMixin):
                 timezone.utc,
             )
             for stage in (
-                support.LABEL_IMPLEMENTING,
-                support.LABEL_VALIDATING,
-                support.LABEL_DOCUMENTING,
+                support.STAGE_IMPLEMENTING,
+                support.STAGE_VALIDATING,
+                support.STAGE_DOCUMENTING,
             )
         ]
         self.assertEqual(

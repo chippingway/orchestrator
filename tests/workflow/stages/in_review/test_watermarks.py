@@ -98,7 +98,7 @@ class InReviewParkWatermarkTest(unittest.TestCase, _PatchedWorkflowMixin):
         mocks["run_agent"].assert_not_called()
         # No additional comments posted (no second park, no fixing route).
         self.assertEqual(len(gh.posted_comments), comments_after_park)
-        self.assertNotIn((PARK_ISSUE, "fixing"), gh.label_history)
+        self.assertNotIn((PARK_ISSUE, "workflow:fixing"), gh.label_history)
 
 
 class _SplitWatermarkFixtureMixin(_PatchedWorkflowMixin):
@@ -155,8 +155,8 @@ class InReviewSplitWatermarkTest(
         )
 
         mocks["run_agent"].assert_not_called()
-        self.assertIn((SPLIT_WATERMARK_ISSUE, "fixing"), gh.label_history)
-        self.assertNotIn((SPLIT_WATERMARK_ISSUE, "validating"), gh.label_history)
+        self.assertIn((SPLIT_WATERMARK_ISSUE, "workflow:fixing"), gh.label_history)
+        self.assertNotIn((SPLIT_WATERMARK_ISSUE, "workflow:validating"), gh.label_history)
         state = gh.pinned_data(SPLIT_WATERMARK_ISSUE)
         # Bookmark recorded but the inline-review watermark stays where it
         # was -- the fixing handler needs the triggering comment.
@@ -195,5 +195,5 @@ class InReviewSplitWatermarkTest(
         # The inline comment surfaces and routes to fixing even though
         # id=5 < pr_last_comment_id=1000.
         mocks["run_agent"].assert_not_called()
-        self.assertIn((SPLIT_WATERMARK_ISSUE, "fixing"), gh.label_history)
+        self.assertIn((SPLIT_WATERMARK_ISSUE, "workflow:fixing"), gh.label_history)
         self.assertEqual(gh.pinned_data(SPLIT_WATERMARK_ISSUE).get("pending_fix_review_max_id"), 5)

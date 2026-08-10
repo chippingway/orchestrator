@@ -3,9 +3,9 @@
 """Routing and terminal workflow labels shared by stage tests."""
 
 
-LABEL_BLOCKED = "blocked"
+LABEL_BLOCKED = "workflow:blocked"
 LABEL_DONE = "done"
-LABEL_READY = "ready"
+LABEL_READY = "workflow:ready"
 LABEL_REJECTED = "rejected"
-LABEL_RESOLVING_CONFLICT = "resolving_conflict"
-LABEL_UMBRELLA = "umbrella"
+LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
+LABEL_UMBRELLA = "workflow:umbrella"

@@ -22,7 +22,7 @@ class ConflictIncludedInPollableIssuesTest(unittest.TestCase):
         gh = FakeGitHubClient()
         # Close an issue still labeled `resolving_conflict` (mirrors
         # GitHub auto-closing via `Resolves #N` after a human merge).
-        issue = make_issue(CONFLICT_ISSUE, label="resolving_conflict")
+        issue = make_issue(CONFLICT_ISSUE, label="workflow:resolving_conflict")
         issue.closed = True
         gh.add_issue(issue)
 

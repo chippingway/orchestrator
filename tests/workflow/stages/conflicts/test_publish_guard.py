@@ -25,7 +25,7 @@ def _pr(sha):
 
 def _state_for(issue_number: int, **state_fields):
     github = FakeGitHubClient()
-    issue = make_issue(issue_number, label="resolving_conflict")
+    issue = make_issue(issue_number, label="workflow:resolving_conflict")
     github.add_issue(issue)
     github.seed_state(issue_number, **state_fields)
     return github.read_pinned_state(issue)

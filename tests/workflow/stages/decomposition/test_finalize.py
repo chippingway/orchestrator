@@ -66,7 +66,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
 
     def test_blocked_recovers_child_with_merged_pr(self) -> None:
         gh = FakeGitHubClient()
-        parent = make_issue(BLOCKED_PARENT_NUMBER, label="blocked")
+        parent = make_issue(BLOCKED_PARENT_NUMBER, label="workflow:blocked")
         gh.add_issue(parent)
         done_child = make_issue(BLOCKED_DONE_CHILD_NUMBER, label=LABEL_DONE)
         done_child.closed = True
@@ -78,7 +78,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
         _seed_child_with_merged_pr(
             gh,
             number=BLOCKED_MERGED_CHILD_NUMBER,
-            label="validating",
+            label="workflow:validating",
             pr_number=BLOCKED_MERGED_PR_NUMBER,
         )
         gh.seed_state(
@@ -97,7 +97,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
         self.assertIn("merged_at", gh.pinned_data(BLOCKED_MERGED_CHILD_NUMBER))
         # Parent flipped to ready because every child is now `done`.
-        self.assertIn((BLOCKED_PARENT_NUMBER, "ready"), gh.label_history)
+        self.assertIn((BLOCKED_PARENT_NUMBER, "workflow:ready"), gh.label_history)
         # No manual-close park comment posted.
         self.assertFalse(
             any(
@@ -109,7 +109,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
 
     def test_umbrella_recovers_child_with_merged_pr(self) -> None:
         gh = FakeGitHubClient()
-        parent = make_issue(UMBRELLA_PARENT_NUMBER, label="umbrella")
+        parent = make_issue(UMBRELLA_PARENT_NUMBER, label="workflow:umbrella")
         gh.add_issue(parent)
         done_child = make_issue(UMBRELLA_DONE_CHILD_NUMBER, label=LABEL_DONE)
         done_child.closed = True
@@ -117,7 +117,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
         _seed_child_with_merged_pr(
             gh,
             number=UMBRELLA_MERGED_CHILD_NUMBER,
-            label="implementing",
+            label="workflow:implementing",
             pr_number=UMBRELLA_MERGED_PR_NUMBER,
         )
         gh.seed_state(
@@ -151,9 +151,9 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
         # the finalize helper must NOT flip the child to `done`. The
         # original manually-closed park still fires.
         gh = FakeGitHubClient()
-        parent = make_issue(UNMERGED_PARENT_NUMBER, label="blocked")
+        parent = make_issue(UNMERGED_PARENT_NUMBER, label="workflow:blocked")
         gh.add_issue(parent)
-        closed_child = make_issue(UNMERGED_CHILD_NUMBER, label="validating")
+        closed_child = make_issue(UNMERGED_CHILD_NUMBER, label="workflow:validating")
         closed_child.closed = True
         gh.add_issue(closed_child)
         pr = FakePR(

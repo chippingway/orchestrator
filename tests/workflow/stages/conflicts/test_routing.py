@@ -20,7 +20,7 @@ class HandleResolvingConflictDispatchTest(unittest.TestCase):
 
     def test_dispatcher_routes_conflict_handler(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(CONFLICT_ISSUE, label="resolving_conflict")
+        issue = make_issue(CONFLICT_ISSUE, label="workflow:resolving_conflict")
         gh.add_issue(issue)
 
         conflict_handler = MagicMock()

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from tests.support.fakes import FakeComment, FakeGitHubClient, FakeIssue, make_issue
 
-LABEL_BLOCKED = "blocked"
+LABEL_BLOCKED = "workflow:blocked"
 
 
 @dataclass(frozen=True)

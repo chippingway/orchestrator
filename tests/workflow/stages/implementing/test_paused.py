@@ -234,7 +234,7 @@ class ImplementingLivePauseRecoveryTest(unittest.TestCase, _PatchedWorkflowMixin
 
         mocks["run_agent"].assert_not_called()
         self.assertEqual(len(gh.opened_prs), 1)
-        self.assertIn((RECOVERY_ISSUE, "validating"), gh.label_history)
+        self.assertIn((RECOVERY_ISSUE, "workflow:validating"), gh.label_history)
 
 
 class ImplementingLivePauseRetryWindowTest(unittest.TestCase, _PatchedWorkflowMixin):

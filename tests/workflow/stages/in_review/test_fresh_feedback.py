@@ -338,7 +338,7 @@ class InReviewRoutesFreshFeedbackToFixingTest(
 
         # Contract: no dev spawn, no flip to `validating`.
         mocks["run_agent"].assert_not_called()
-        self.assertNotIn((DRIFT_FEEDBACK_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((DRIFT_FEEDBACK_ISSUE, "workflow:validating"), gh.label_history)
         # The issue routed to `fixing` and recorded the triggering
         # bookmark.
         self.assertIn((DRIFT_FEEDBACK_ISSUE, LABEL_FIXING), gh.label_history)

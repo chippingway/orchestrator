@@ -325,7 +325,7 @@ class FreshFeedbackBothSurfacesTest(
         # with a bookmark covering BOTH surfaces (max across the
         # IssueComment id space).
         mocks[RUN_AGENT].assert_not_called()
-        self.assertIn((BOTH_SURFACES_ISSUE, "fixing"), gh.label_history)
+        self.assertIn((BOTH_SURFACES_ISSUE, "workflow:fixing"), gh.label_history)
         state = gh.pinned_data(BOTH_SURFACES_ISSUE)
         self.assertEqual(state.get("pending_fix_issue_max_id"), ISSUE_FEEDBACK_ID)
         # Watermark stays at the seeded value so the future real fix
@@ -372,7 +372,7 @@ class FreshFeedbackBothSurfacesTest(
         )
 
         mocks[RUN_AGENT].assert_not_called()
-        self.assertIn((HIGH_PR_FEEDBACK_ISSUE, "fixing"), gh.label_history)
+        self.assertIn((HIGH_PR_FEEDBACK_ISSUE, "workflow:fixing"), gh.label_history)
         state = gh.pinned_data(HIGH_PR_FEEDBACK_ISSUE)
         self.assertEqual(state.get("pending_fix_issue_max_id"), HIGH_PR_FEEDBACK_ID)
 
@@ -435,7 +435,7 @@ class InReviewDriftPromptTrustFilterTest(
         # The drift path ran (not the fixing route): the dev resumed and the
         # pushed fix bounced back to validating.
         mocks[RUN_AGENT].assert_called_once()
-        self.assertNotIn((UNTRUSTED_DRIFT_ISSUE, "fixing"), gh.label_history)
+        self.assertNotIn((UNTRUSTED_DRIFT_ISSUE, "workflow:fixing"), gh.label_history)
         self.assertIn((UNTRUSTED_DRIFT_ISSUE, LABEL_VALIDATING), gh.label_history)
         # The outsider's URL never reached the resume prompt.
         prompt = mocks[RUN_AGENT].call_args.args[1]

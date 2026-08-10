@@ -73,7 +73,7 @@ from orchestrator.github.issues import (
 from orchestrator.observability.analytics import recording
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.scheduler import IssueScheduler
-from orchestrator.workflow.state import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -87,7 +87,7 @@ _FAMILY_AWARE_LABELS = frozenset((
 ))
 
 _CAP_EXEMPT_FAMILY_LABELS = frozenset((
-    "blocked", "umbrella",
+    WorkflowLabel.BLOCKED, WorkflowLabel.UMBRELLA,
 ))
 
 _FAMILY_BUCKET_ISSUE: int = 0
@@ -101,21 +101,26 @@ _IN_REVIEW_PACKAGE = "orchestrator.workflow.stages.in_review"
 _QUESTION_PACKAGE = "orchestrator.workflow.stages.question"
 _VALIDATING_PACKAGE = "orchestrator.workflow.stages.validating"
 
+_TERMINAL_LABELS = (WorkflowLabel.DONE, WorkflowLabel.REJECTED)
+
+# Keyed by the member rather than the label string so the table cannot drift
+# from the vocabulary it routes: a relabeled state is a lookup miss here, and a
+# lookup miss is an issue nobody handles.
 _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyType({
     None: ("orchestrator.workflow.engine.pickup", "_handle_pickup"),
-    "decomposing": (f"{_DECOMPOSITION_PACKAGE}.run", "_handle_decomposing"),
-    "ready": (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_ready"),
-    "blocked": (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_blocked"),
-    "umbrella": (f"{_DECOMPOSITION_PACKAGE}.umbrella", "_handle_umbrella"),
-    "implementing": (f"{_IMPLEMENTING_PACKAGE}.handler", "_handle_implementing"),
-    "documenting": (f"{_DOCUMENTING_PACKAGE}.handler", "_handle_documenting"),
-    "validating": (f"{_VALIDATING_PACKAGE}.handler", "_handle_validating"),
-    "in_review": (f"{_IN_REVIEW_PACKAGE}.handler", "_handle_in_review"),
-    "fixing": (f"{_FIXING_PACKAGE}.handler", "_handle_fixing"),
-    "resolving_conflict": (
+    WorkflowLabel.DECOMPOSING: (f"{_DECOMPOSITION_PACKAGE}.run", "_handle_decomposing"),
+    WorkflowLabel.READY: (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_ready"),
+    WorkflowLabel.BLOCKED: (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_blocked"),
+    WorkflowLabel.UMBRELLA: (f"{_DECOMPOSITION_PACKAGE}.umbrella", "_handle_umbrella"),
+    WorkflowLabel.IMPLEMENTING: (f"{_IMPLEMENTING_PACKAGE}.handler", "_handle_implementing"),
+    WorkflowLabel.DOCUMENTING: (f"{_DOCUMENTING_PACKAGE}.handler", "_handle_documenting"),
+    WorkflowLabel.VALIDATING: (f"{_VALIDATING_PACKAGE}.handler", "_handle_validating"),
+    WorkflowLabel.IN_REVIEW: (f"{_IN_REVIEW_PACKAGE}.handler", "_handle_in_review"),
+    WorkflowLabel.FIXING: (f"{_FIXING_PACKAGE}.handler", "_handle_fixing"),
+    WorkflowLabel.RESOLVING_CONFLICT: (
         f"{_CONFLICTS_PACKAGE}.handler", "_handle_resolving_conflict",
     ),
-    "question": (f"{_QUESTION_PACKAGE}.handler", "_handle_question"),
+    WorkflowLabel.QUESTION: (f"{_QUESTION_PACKAGE}.handler", "_handle_question"),
 })
 
 
@@ -137,7 +142,7 @@ def _route_issue_to_handler(
         module_name, handler_name = target
         issue_handler = getattr(importlib.import_module(module_name), handler_name)
         issue_handler(gh, spec, issue)
-    elif label not in ("done", "rejected"):
+    elif label not in _TERMINAL_LABELS:
         log.warning(
             "repo=%s issue=#%s label=%r not implemented yet; leaving alone",
             spec.slug, issue.number, label,
@@ -180,7 +185,7 @@ def _process_issue(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> Non
         recording.record_stage_evaluation(
             repo=getattr(gh, "_repo_slug", None) or "",
             issue=issue.number,
-            stage=label,
+            stage=stage_name(label),
             duration_s=duration_s,
             result=evaluation_result,
         )

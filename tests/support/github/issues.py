@@ -7,13 +7,15 @@ from typing import Any, Iterable, Optional
 
 from orchestrator import config
 from orchestrator.github import events as _events
-from orchestrator.github.labels import WORKFLOW_LABELS
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER, PinnedState
 from orchestrator.observability.analytics import recording
 from orchestrator.workflow.state import (
     WorkflowLabel,
     coerce_workflow_label,
     guard_transition,
+    issue_workflow_label,
+    replaced_label_names,
+    stage_name,
 )
 
 from tests.support.github.model_helpers import _has_closed_sweep_label
@@ -29,10 +31,7 @@ def _workflow_label(
     issue: Optional[FakeIssue] = None,
 ) -> Optional[WorkflowLabel]:
     target_issue = issue or owner_or_issue
-    for label in target_issue.labels:
-        if label.name in WORKFLOW_LABELS:
-            return WorkflowLabel(label.name)
-    return None
+    return issue_workflow_label(label.name for label in target_issue.labels)
 
 
 def _set_workflow_label(
@@ -47,10 +46,9 @@ def _set_workflow_label(
             resolved_label,
             config.WORKFLOW_TRANSITION_GUARD,
         )
+    replaced = replaced_label_names(label.name for label in issue.labels)
     retained = [
-        label
-        for label in issue.labels
-        if label.name not in WORKFLOW_LABELS
+        label for label in issue.labels if label.name not in replaced
     ]
     if resolved_label:
         retained.append(FakeLabel(resolved_label))
@@ -61,12 +59,12 @@ def _set_workflow_label(
         client.emit_event(
             "stage_enter",
             issue_number=issue.number,
-            stage=resolved_label,
+            stage=stage_name(resolved_label),
         )
         recording.record_stage_enter(
             repo=client._repo_slug,
             issue=issue.number,
-            stage=resolved_label,
+            stage=stage_name(resolved_label),
         )
 
 

@@ -34,9 +34,9 @@ from tests.workflow.stages.documenting.documenting_scenario_test_support import 
     _FinalDocsFixture,
 )
 
-DOCUMENTING = "documenting"
+DOCUMENTING = "workflow:documenting"
 IN_REVIEW = "in_review"
-VALIDATING = "validating"
+VALIDATING = "workflow:validating"
 
 # --- Dev agent identity pinned into per-issue state ---------------------
 DEV_AGENT = "codex"
@@ -361,7 +361,7 @@ class HandleDocumentingFinalDocsHandoffTest(unittest.TestCase, _FinalDocsFixture
 
         mocks_ir[RUN_AGENT].assert_not_called()
         self.assertNotIn(
-            (709, "fixing"),
+            (709, "workflow:fixing"),
             gh.label_history,
             "in_review must not bounce to `fixing` over a human reply "
             "the documenting awaiting-human resume already consumed",

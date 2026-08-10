@@ -38,7 +38,7 @@ MAX_CONFLICT_ROUNDS_SETTING = "MAX_CONFLICT_ROUNDS"
 
 def _seed_fetch_case():
     github = FakeGitHubClient()
-    issue = make_issue(FETCH_ISSUE, label="resolving_conflict")
+    issue = make_issue(FETCH_ISSUE, label="workflow:resolving_conflict")
     github.add_issue(issue)
     github.add_pr(
         FakePR(
@@ -157,8 +157,8 @@ class ResolvingConflictCleanRebaseTest(unittest.TestCase, _ResolvingConflictMixi
             self.issue_branch,
             force_with_lease="beforehead",
         )
-        self.assertIn((CONFLICT_ISSUE, "validating"), gh.label_history)
-        self.assertNotIn((CONFLICT_ISSUE, "documenting"), gh.label_history)
+        self.assertIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), gh.label_history)
         state = _clean_state(gh)
         self.assertEqual(state.get("review_round"), 0)
         self.assertEqual(state.get(CONFLICT_ROUND), 1)
@@ -187,8 +187,8 @@ class ResolvingConflictCleanRebaseTest(unittest.TestCase, _ResolvingConflictMixi
         mocks[RUN_AGENT].assert_not_called()
         # Nothing to push when base hasn't moved relative to the branch.
         mocks["_push_branch"].assert_not_called()
-        self.assertIn((CONFLICT_ISSUE, "validating"), gh.label_history)
-        self.assertNotIn((CONFLICT_ISSUE, "documenting"), gh.label_history)
+        self.assertIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), gh.label_history)
         state = _clean_state(gh)
         self.assertEqual(state.get("review_round"), 0)
         self.assertEqual(state.get(CONFLICT_ROUND), 1)
@@ -237,7 +237,7 @@ class ResolvingConflictCleanRebaseTest(unittest.TestCase, _ResolvingConflictMixi
         state = _clean_state(gh)
         self.assertTrue(state.get("awaiting_human"))
         # Label stays on `resolving_conflict` -- no flip.
-        self.assertNotIn((CONFLICT_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
         self.assertNotIn((CONFLICT_ISSUE, "done"), gh.label_history)
         self.assertIn(MAX_CONFLICT_ROUNDS_SETTING, gh.posted_comments[-1][1])
 
@@ -321,7 +321,7 @@ class ResolvingConflictTerminalRoutingTest(
 
     def test_no_pr_number_parks(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(MISSING_PR_ISSUE, label="resolving_conflict")
+        issue = make_issue(MISSING_PR_ISSUE, label="workflow:resolving_conflict")
         gh.add_issue(issue)
         gh.seed_state(MISSING_PR_ISSUE)
 

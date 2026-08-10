@@ -83,8 +83,8 @@ class InReviewLivePauseDriftTest(unittest.TestCase, _PatchedWorkflowMixin):
         mocks["_push_branch"].assert_not_called()
         # Nothing persisted, no relabel: the drift stays unconsumed.
         self.assertEqual(gh.write_state_calls, before_writes)
-        self.assertNotIn((ISSUE, "validating"), gh.label_history)
-        self.assertNotIn((ISSUE, "documenting"), gh.label_history)
+        self.assertNotIn((ISSUE, "workflow:validating"), gh.label_history)
+        self.assertNotIn((ISSUE, "workflow:documenting"), gh.label_history)
         self.assert_pause_state(gh)
 
 

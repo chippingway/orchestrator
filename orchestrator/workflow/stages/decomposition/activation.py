@@ -47,7 +47,7 @@ class _ChildActivation:
 
     def consider(self, idx: int, child_number) -> None:
         number = int(child_number)
-        if self.scan.labels.get(number) != "blocked":
+        if self.scan.labels.get(number) != WorkflowLabel.BLOCKED:
             return
         pending = self._pending_dependencies(idx)
         if pending:

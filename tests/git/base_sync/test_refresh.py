@@ -18,7 +18,7 @@ from tests.git.base_sync.sync_test_support import _git_result, _patch_base_sync
 ISSUE = 7
 SLUG = "acme/widget"
 BASE_BRANCH = "main"
-LABEL_IMPLEMENTING = "implementing"
+LABEL_IMPLEMENTING = "workflow:implementing"
 
 # Multi-remote spec exercised by the per-spec authed-fetch regression.
 PRIVATE_SLUG = "acme/widget-private"

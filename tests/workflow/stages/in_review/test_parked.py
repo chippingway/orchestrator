@@ -351,7 +351,7 @@ class StaleParkReasonClearedOnFixingRouteTest(unittest.TestCase, _PatchedWorkflo
             )
 
         mocks[RUN_AGENT].assert_not_called()
-        self.assertIn((STALE_PARK_ISSUE, "fixing"), gh.label_history)
+        self.assertIn((STALE_PARK_ISSUE, "workflow:fixing"), gh.label_history)
         state = gh.pinned_data(STALE_PARK_ISSUE)
         self.assertFalse(
             state.get("awaiting_human"),

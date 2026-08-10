@@ -30,7 +30,7 @@ from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 
 
-_IMPLEMENTING_LABEL = "implementing"
+_IMPLEMENTING_LABEL = "workflow:implementing"
 _PAUSED_IN_FLIGHT_ISSUE = 752
 _PAUSED_UNLABELED_ISSUE = 751
 _RESUMED_ISSUE = 753

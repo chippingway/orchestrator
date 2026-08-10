@@ -40,7 +40,7 @@ HUMAN_REPLY_ID = 5000
 ACTION_WATERMARK = 4000
 CHANGES_REQUESTED_ISSUE = 82
 CHANGES_REQUESTED_PR = 820
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 DEV_SESSION = "dev-sess"
 REVIEW_ROUND = "review_round"
 
@@ -178,7 +178,7 @@ class _ValidatingPauseFixtureMixin(_PatchedWorkflowMixin):
     def _assert_fix_paused(self, github, mocks, before_writes: int) -> None:
         self.assertEqual(mocks["run_agent"].call_count, 2)
         self.assertIn(
-            (CHANGES_REQUESTED_ISSUE, "fixing"),
+            (CHANGES_REQUESTED_ISSUE, "workflow:fixing"),
             github.label_history,
         )
         self.assertNotIn(

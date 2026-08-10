@@ -22,6 +22,8 @@ LABEL_DOCUMENTING = review_support.LABEL_DOCUMENTING
 LABEL_FIXING = review_support.LABEL_FIXING
 LABEL_IN_REVIEW = review_support.LABEL_IN_REVIEW
 LABEL_VALIDATING = review_support.LABEL_VALIDATING
+STAGE_FIXING = review_support.STAGE_FIXING
+STAGE_VALIDATING = review_support.STAGE_VALIDATING
 REVIEW_APPROVED_MESSAGE = review_support.REVIEW_APPROVED_MESSAGE
 REVIEW_CHANGES_REQUESTED_MESSAGE = review_support.REVIEW_CHANGES_REQUESTED_MESSAGE
 ROLE_DEVELOPER = review_support.ROLE_DEVELOPER
@@ -120,7 +122,7 @@ class HandleValidatingFreshReviewTest(
         self.assertEqual(gh.pinned_data(5).get(REVIEW_ROUND), 1)
         # The dev-fix subphase runs under the `fixing` label so the active
         # job is observably "fixing reviewer-requested changes" rather
-        # than "validating". On a successful pushed fix the handler flips
+        # than "workflow:validating". On a successful pushed fix the handler flips
         # back to `validating` so the reviewer re-evaluates the new head
         # on the next tick. No documenting hop -- the docs pass only runs
         # as the final-docs handoff after approval.
@@ -469,8 +471,8 @@ class HandleValidatingFixLoopRoutingTest(
         spawns_by_role = {
             event[AGENT_ROLE]: event for event in route_github.recorded_events if event[EVENT_NAME] == EVENT_AGENT_SPAWN
         }
-        self.assertEqual(spawns_by_role[ROLE_REVIEWER]["stage"], LABEL_VALIDATING)
-        self.assertEqual(spawns_by_role[ROLE_DEVELOPER]["stage"], LABEL_FIXING)
+        self.assertEqual(spawns_by_role[ROLE_REVIEWER]["stage"], STAGE_VALIDATING)
+        self.assertEqual(spawns_by_role[ROLE_DEVELOPER]["stage"], STAGE_FIXING)
 
     def test_interrupted_fix_skips_write_and_push(self) -> None:
         # A shutdown-killed CHANGES_REQUESTED dev resume is ignored: the

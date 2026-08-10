@@ -16,7 +16,7 @@ from tests.workflow.engine import usage_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX
-LABEL_IMPLEMENTING = support.LABEL_IMPLEMENTING
+STAGE_IMPLEMENTING = support.STAGE_IMPLEMENTING
 ROLE_DEVELOPER = support.ROLE_DEVELOPER
 _ANALYTICS_FILENAME = support._ANALYTICS_FILENAME
 _ANALYTICS_PATH_ATTR = support._ANALYTICS_PATH_ATTR
@@ -99,7 +99,7 @@ class AgentAnalyticsModelFallbackTest(
                 github,
                 _CODEX_FALLBACK_ISSUE_NUMBER,
                 agent_role=ROLE_DEVELOPER,
-                stage=LABEL_IMPLEMENTING,
+                stage=STAGE_IMPLEMENTING,
                 backend=BACKEND_CODEX,
                 prompt=_IGNORED_PROMPT,
                 cwd=_FAKE_WT,
@@ -141,7 +141,7 @@ class AgentAnalyticsModelFallbackTest(
                 github,
                 _CLAUDE_FALLBACK_ISSUE_NUMBER,
                 agent_role=ROLE_DEVELOPER,
-                stage=LABEL_IMPLEMENTING,
+                stage=STAGE_IMPLEMENTING,
                 backend=BACKEND_CLAUDE,
                 prompt=_IGNORED_PROMPT,
                 cwd=_FAKE_WT,

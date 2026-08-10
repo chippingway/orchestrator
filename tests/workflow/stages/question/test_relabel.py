@@ -187,7 +187,7 @@ class QuestionRelabelToImplementingTest(
         self.assertIn("You are the implementer", spawn_call.args[1])
 
         self.assertEqual(len(gh.opened_prs), 1)
-        self.assertIn((issue.number, "validating"), gh.label_history)
+        self.assertIn((issue.number, "workflow:validating"), gh.label_history)
 
         pinned_data = gh.pinned_data(issue.number)
         self.assertFalse(pinned_data.get(KEY_AWAITING_HUMAN))
@@ -240,7 +240,7 @@ class QuestionRelabelToImplementingTest(
         # which now hands off straight to `validating` (no pre-review
         # docs hop).
         self.assertIn(
-            (fixture.issue.number, "validating"),
+            (fixture.issue.number, "workflow:validating"),
             fixture.github.label_history,
         )
         pinned_data = fixture.github.pinned_data(fixture.issue.number)
