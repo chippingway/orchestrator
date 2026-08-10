@@ -102,19 +102,18 @@ session lock, and full examples.
   issues from those authors, and the per-tick sweep labels open PRs from anyone outside the list with
   `community_contribution` and @-mentions `HITL_HANDLE` once per PR (bot-authored PRs such as Dependabot are excluded
   via `user.type == "Bot"`). When set it additionally becomes a comment trust boundary: comments from authors outside
-  the list stay visible on GitHub but are dropped from the
-  conversation text fed to every agent prompt (implement / review / documentation / decompose / question / conflict,
-  the awaiting-human resumes, and the `in_review` / `fixing` PR-feedback loop), from the base-sync auto-rebase
-  retry-unpark signal, and from the `user_content_hash` drift signal, so an outsider on a public repo cannot inject
-  workflow-driving instructions into an agent, resume an awaiting-human session, retry a parked auto-rebase, reset the
-  review-round cap via `/orchestrator add-review-rounds`, route `in_review` to `fixing` (or set its pending-fix
-  bookmark), or shift the hash to re-trigger drift. Login comparison is
-  case-insensitive; an empty allowlist trusts every author (legacy single-user behavior), so on these prompt / resume /
-  PR-feedback surfaces a Bot/App login is gated like any other author — excluded only once the allowlist is populated
-  and its login is not on it. A separate `user.type == "Bot"` structural check, independent of the allowlist, covers
-  the `user_content_hash` drift hash and the community-contribution PR sweep. See
-  [`state-machine.md`](state-machine.md#user-content-drift-detection) for the full drift-hash filter list and
-  [`security.md`](security.md#comment-trust-boundary-allowed_issue_authors) for the trust-boundary rationale
+  the list stay visible on GitHub but are dropped from the conversation text fed to every agent prompt (implement /
+  review / documentation / decompose / question / conflict, the awaiting-human resumes, and the `in_review` / `fixing`
+  PR-feedback loop), from the base-sync auto-rebase retry-unpark signal, and from the `user_content_hash` drift
+  signal, so an outsider on a public repo cannot inject workflow-driving instructions into an agent, resume an
+  awaiting-human session, retry a parked auto-rebase, reset the review-round cap via `/orchestrator
+  add-review-rounds`, route `in_review` to `workflow:fixing` (or set its pending-fix bookmark), or shift the hash to
+  re-trigger drift. Login comparison is case-insensitive; an empty allowlist trusts every author (legacy single-user
+  behavior), so on these prompt / resume / PR-feedback surfaces a Bot/App login is gated like any other author —
+  excluded only once the allowlist is populated and its login is not on it. A separate `user.type == "Bot"` structural
+  check, independent of the allowlist, covers the `user_content_hash` drift hash and the community-contribution PR
+  sweep. See [`state-machine.md`](state-machine.md#user-content-drift-detection) for the full drift-hash filter list
+  and [`security.md`](security.md#comment-trust-boundary-allowed_issue_authors) for the trust-boundary rationale
 
 ## Cadence and budgets
 
@@ -188,8 +187,8 @@ Check current consumption with `curl -H "Authorization: Bearer $TOKEN" https://a
 
 When the reviewer agent emits `VERDICT: APPROVED`, `_handle_validating` runs the configured `VERIFY_COMMANDS` in the
 per-issue worktree **before** posting the approval comment, squashing, seeding watermarks, or relabeling to
-`documenting`. A clean run advances the issue as usual; any failure parks the issue on `validating` with
-`awaiting_human=True` and a typed `park_reason`, so an operator can fix the breakage and resume.
+`workflow:documenting`. A clean run advances the issue as usual; any failure parks the issue on `workflow:validating`
+with `awaiting_human=True` and a typed `park_reason`, so an operator can fix the breakage and resume.
 
 The verify gate is the first gate after the reviewer agent — it catches regressions locally so an obviously-broken
 branch never reaches `in_review`. GitHub CI still runs against the PR; the human merging the PR is the consumer of CI's
@@ -266,18 +265,19 @@ Each polling tick advances issues concurrently along two axes:
 - **Across repos.** When `REPOS` lists more than one entry, `runtime.ticks.run_tick` fans the per-repo
   `workflow.tick(gh, spec)` calls out across a `ThreadPoolExecutor` (one worker per repo). The legacy single-repo mode
   (`REPOS` unset) stays in-thread.
-- **Within a repo.** Per-issue handlers are dispatched to a long-lived `IssueScheduler`. Fan-out issues (`ready` /
-  `implementing` / `documenting` / `validating` / `in_review` / `fixing` / `resolving_conflict`) are submitted one
-  callable per issue. Family-aware issues (`decomposing` / `blocked` / `umbrella` / unlabeled pickup) are folded into
-  ONE bucket submit per repo that drains them sequentially.
+- **Within a repo.** Per-issue handlers are dispatched to a long-lived `IssueScheduler`. Fan-out issues
+  (`workflow:ready` / `workflow:implementing` / `workflow:documenting` / `workflow:validating` / `in_review` /
+  `workflow:fixing` / `workflow:resolving_conflict`) are submitted one callable per issue. Family-aware issues
+  (`workflow:decomposing` / `workflow:blocked` / `workflow:umbrella` / unlabeled pickup) are folded into ONE bucket
+  submit per repo that drains them sequentially.
 
 The two caps below are the levers:
 
 - `MAX_PARALLEL_ISSUES_PER_REPO` — default `1`. per-repo cap on concurrent in-flight per-issue handlers. Each `REPOS`
   entry can override via its fifth pipe-separated field. Must be a positive integer.
 - `MAX_PARALLEL_ISSUES_GLOBAL` — default `3`. global cap across all configured repos. Must be a positive integer;
-  raise only with the CPU / memory headroom to run that many agent CLIs at once. No-agent family buckets (`blocked` /
-  `umbrella`) are cap-exempt and run on a dedicated executor.
+  raise only with the CPU / memory headroom to run that many agent CLIs at once. No-agent family buckets
+  (`workflow:blocked` / `workflow:umbrella`) are cap-exempt and run on a dedicated executor.
 - `WORKFLOW_TRANSITION_GUARD` — default `warn`. governs the workflow-label transition-legality check in
   `set_workflow_label` against the declared `ALLOWED_TRANSITIONS` table (see
   [`state-machine.md`](state-machine.md#typed-states-and-the-transition-guard)). `warn` logs an illegal transition and
@@ -293,19 +293,21 @@ tick (and retried next pass) when:
 - the global or per-repo cap is reached,
 - another family worker on the same repo is already in flight (family mutex).
 
-**No-agent bucket exemption.** When every family-aware issue in this tick's bucket runs a no-agent handler — `blocked`
-or `umbrella`, both pure label / dep-graph walks — the dispatcher submits the bucket as cap-exempt: it does not
-consume cap slots and runs on a dedicated executor pool. This keeps a cheap-polling parent from being starved by
-ordinary implementation work; in particular a `blocked` parent waiting on its own children would otherwise deadlock
-those children for the only per-repo slot under the default `parallel_limit=1`. The family mutex still applies. A bucket
-containing `decomposing` (spawns the decomposer agent) or an unlabeled-pickup issue stays cap-counted.
+**No-agent bucket exemption.** When every family-aware issue in this tick's bucket runs a no-agent handler —
+`workflow:blocked` or `workflow:umbrella`, both pure label / dep-graph walks — the dispatcher submits the bucket as
+cap-exempt: it does not consume cap slots and runs on a dedicated executor pool. This keeps a cheap-polling parent
+from being starved by ordinary implementation work; in particular a blocked parent waiting on its own children would
+otherwise deadlock those children for the only per-repo slot under the default `parallel_limit=1`. The family mutex
+still applies. A bucket containing `workflow:decomposing` (spawns the decomposer agent) or an unlabeled-pickup issue
+stays cap-counted.
 
 **Family vs fan-out labels:**
 
-- **Family-aware** (`decomposing`, `blocked`, `umbrella`, unlabeled): read and write cross-issue state (parent ↔
-  child) and must never run two at a time on the same repo.
-- **Fan-out** (`ready`, `implementing`, `documenting`, `validating`, `in_review`, `fixing`, `resolving_conflict`,
-  `question`): only touch per-issue state; fan out concurrently up to the caps.
+- **Family-aware** (`workflow:decomposing`, `workflow:blocked`, `workflow:umbrella`, unlabeled): read and write
+  cross-issue state (parent ↔ child) and must never run two at a time on the same repo.
+- **Fan-out** (`workflow:ready`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`, `in_review`,
+  `workflow:fixing`, `workflow:resolving_conflict`, `question`): only touch per-issue state; fan out concurrently up
+  to the caps.
 
 The pre-tick base refresh (`_refresh_base_and_worktrees`) is scheduler-aware: per-issue worktrees whose handler is
 currently in flight are skipped this tick, so a base advance cannot rebase a pre-PR worktree under a still-running
@@ -336,13 +338,13 @@ error.
 ## In-review behavior
 
 The orchestrator is permanently manual-merge-only: humans click Merge. `_handle_in_review` routes fresh PR feedback to
-`fixing`, pings the HITL handles once per head SHA when the PR is mergeable and the current head completed the
-reviewer-approved final-docs handoff (or carries a real GitHub APPROVED review), and parks awaiting human attention for
-an unmergeable PR.
+`workflow:fixing`, pings the HITL handles once per head SHA when the PR is mergeable and the current head completed
+the reviewer-approved final-docs handoff (or carries a real GitHub APPROVED review), and parks awaiting human
+attention for an unmergeable PR.
 
 - `IN_REVIEW_DEBOUNCE_SECONDS` — default `600`. quiet window the `fixing` stage honours before resuming the dev on PR
-  feedback. Newer comments arriving while already labeled `fixing` reset the window. `_handle_in_review` itself routes
-  fresh feedback to `fixing` immediately and does NOT apply the debounce.
+  feedback. Newer comments arriving while already labeled `workflow:fixing` reset the window. `_handle_in_review`
+  itself routes fresh feedback to the fixing loop immediately and does NOT apply the debounce.
 
 ## Observability
 
@@ -729,16 +731,15 @@ When each setting's change takes effect:
 - `backlog` — Apply to an issue (typically at creation) to keep the orchestrator from picking it up. The dispatcher
   skips the issue entirely while the label is present; remove the label to release the issue for processing.
 - `paused` — Same hard skip as `backlog`, but intended for an already in-flight issue: apply it to freeze processing
-  (no handler runs, no worktree is rebased, no PR-stage relabel) without discarding the issue's state, and remove it to
-  resume where it left off. Removing the label is the whole resume action, honored on the next poll; there is no
+  (no handler runs, no worktree is rebased, no PR-stage relabel) without discarding the issue's state, and remove it
+  to resume where it left off. Removing the label is the whole resume action, honored on the next poll; there is no
   un-pause command, and `/orchestrator continue` is unrelated — it retries a specific `awaiting_human` session-failure
-  park (`agent_silent` / `agent_timeout`) across the dev stages (`implementing`, `documenting`, `validating`, `fixing`,
-  `resolving_conflict`), not a `paused` hold. Applying `paused` while a developer agent is mid-run also takes effect:
-  every stage that resumes
-  a dev agent (`implementing`, `validating`, `documenting`, `in_review`, `fixing`, `resolving_conflict`) re-reads the
-  label after the run returns, before any post-agent side effect, and discards the result rather than pushing, opening a
-  PR, relabeling, advancing watermarks, or posting comments, so the committed work stays on the branch and republishes
-  once the label is removed.
+  park (`agent_silent` / `agent_timeout`) across the dev stages (`implementing`, `documenting`, `validating`,
+  `fixing`, `resolving_conflict`), not a `paused` hold. Applying `paused` while a developer agent is mid-run also
+  takes effect: every stage that resumes a dev agent (`implementing`, `validating`, `documenting`, `in_review`,
+  `fixing`, `resolving_conflict`) re-reads the label after the run returns, before any post-agent side effect, and
+  discards the result rather than pushing, opening a PR, relabeling, advancing watermarks, or posting comments, so the
+  committed work stays on the branch and republishes once the label is removed.
 - `community_contribution` — Applied automatically (not by an operator) by the per-tick open-PR sweep when
   `ALLOWED_ISSUE_AUTHORS` is set: any open PR whose author is outside the allowlist is labeled and `HITL_HANDLE` is
   @-mentioned once per PR so a human reviews the community-submitted work. Bot authors (Dependabot, Renovate, CI bots)

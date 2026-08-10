@@ -76,7 +76,10 @@ class RecoveryNoticeTest(unittest.TestCase):
                 )
                 self.assertIn(f"#{fixtures.PR_NUMBER}", notice)
                 self.assertIn(SHORT_LOCAL, notice)
-                self.assertIn(f"`{fixtures.LABEL}` -> `validating`", notice)
+                self.assertIn(
+                    f"`{fixtures.LABEL}` -> `{fixtures.VALIDATING}`",
+                    notice,
+                )
                 self.assertNotIn(REBASE_AGAIN_PHRASE, notice)
 
     def test_lagging_head_announces_another_rebase(self) -> None:

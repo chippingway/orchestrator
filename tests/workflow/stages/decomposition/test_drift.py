@@ -25,7 +25,7 @@ from tests.workflow.fixtures import (
     _agent,
 )
 
-LABEL_DECOMPOSING = "decomposing"
+LABEL_DECOMPOSING = "workflow:decomposing"
 LABEL_DONE = "done"
 KEY_USER_CONTENT_HASH = "user_content_hash"
 STALE_USER_CONTENT_HASH = "stale-hash"
@@ -76,11 +76,11 @@ def _blocked_parent_drift_fixture():
     github = FakeGitHubClient()
     parent = make_issue(
         BLOCKED_PARENT_NUMBER,
-        label="blocked",
+        label="workflow:blocked",
         body="updated parent body",
     )
     github.add_issue(parent)
-    github.add_issue(make_issue(BLOCKED_PARENT_CHILD_NUMBER, label="implementing"))
+    github.add_issue(make_issue(BLOCKED_PARENT_CHILD_NUMBER, label="workflow:implementing"))
     github.seed_state(
         BLOCKED_PARENT_NUMBER,
         children=[BLOCKED_PARENT_CHILD_NUMBER],
@@ -94,7 +94,7 @@ def _umbrella_drift_fixture():
     github = FakeGitHubClient()
     umbrella = make_issue(
         UMBRELLA_NUMBER,
-        label="umbrella",
+        label="workflow:umbrella",
         body="updated umbrella body",
     )
     github.add_issue(umbrella)
@@ -121,7 +121,7 @@ class HandleReadyRoutesBackOnHashChangeTest(
         gh = FakeGitHubClient()
         issue = make_issue(
             READY_DRIFT_ISSUE_NUMBER,
-            label="ready",
+            label="workflow:ready",
             body="updated body",
         )
         gh.add_issue(issue)
@@ -174,7 +174,7 @@ class HandleReadyRoutesBackOnHashChangeTest(
         gh = FakeGitHubClient()
         issue = make_issue(
             STABLE_READY_ISSUE_NUMBER,
-            label="ready",
+            label="workflow:ready",
             body="stable body",
         )
         gh.add_issue(issue)
@@ -194,7 +194,7 @@ class HandleReadyRoutesBackOnHashChangeTest(
 
         # Falls through to the normal `ready` -> `implementing` flow.
         self.assertIn(
-            (STABLE_READY_ISSUE_NUMBER, "implementing"),
+            (STABLE_READY_ISSUE_NUMBER, "workflow:implementing"),
             gh.label_history,
         )
         self.assertNotIn(
@@ -295,7 +295,7 @@ class HandleBlockedHashDriftTest(
         gh = FakeGitHubClient()
         child = make_issue(
             BLOCKED_CHILD_NUMBER,
-            label="blocked",
+            label="workflow:blocked",
             body="updated child body",
         )
         gh.add_issue(child)

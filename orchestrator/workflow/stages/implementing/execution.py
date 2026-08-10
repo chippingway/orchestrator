@@ -65,11 +65,6 @@ class _DevResumeContext:
         options = _models._DevResumeOptions.from_fields(request.option_fields)
         worktree = _worktree._ensure_resume_worktree(request.spec, request.issue, state)
         plan = _session._resolve_dev_session_for_resume(request.issue, state)
-        # An explicit `stage` wins over the label read off `issue`: a caller
-        # that just relabeled the issue (validating -> fixing on
-        # CHANGES_REQUESTED) holds an `Issue` whose cached `labels` PyGithub
-        # did not refresh after `set_labels`, so `gh.workflow_label(issue)`
-        # would still report the pre-flip stage and misattribute the run.
         return cls(
             gh=request.gh,
             spec=request.spec,
@@ -79,11 +74,7 @@ class _DevResumeContext:
             options=options,
             worktree=worktree,
             plan=plan,
-            stage=(
-                request.stage
-                or request.gh.workflow_label(request.issue)
-                or _state._IMPLEMENTING_STAGE
-            ),
+            stage=request.resolved_stage,
         )
 
     def execute(self) -> Tuple[Path, AgentResult, bool]:

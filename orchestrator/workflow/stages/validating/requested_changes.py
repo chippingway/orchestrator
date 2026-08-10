@@ -46,7 +46,7 @@ from orchestrator.workflow.stages.implementing import resume as _dev_resume
 from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
 from orchestrator.workflow.stages.validating import models as _models
 from orchestrator.workflow.stages.validating import state as _state
-from orchestrator.workflow.state import WorkflowLabel
+from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -134,7 +134,7 @@ def _run_requested_fix(context: _models._RequestedChanges) -> _models._AwaitingD
         context.issue,
         context.state,
         _prompts._build_fix_prompt(context.decision.feedback),
-        stage=WorkflowLabel.FIXING,
+        stage=stage_name(WorkflowLabel.FIXING),
         pause_guard=True,
     )
     context.state.set("last_agent_action_at", _usage._now_iso())

@@ -185,7 +185,7 @@ class RecoveryRouteTest(unittest.TestCase):
         self.assertIs(route.call_args.args[1], moved)
 
     def _relabelled(self, context):
-        return dataclasses.replace(context, label="implementing")
+        return dataclasses.replace(context, label="workflow:implementing")
 
 
 class RecoveryComparisonTest(unittest.TestCase):

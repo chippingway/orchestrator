@@ -53,7 +53,7 @@ class _TransientParkFixtureMixin(_PatchedWorkflowMixin):
         # `last_action_comment_id` is well above any existing comment id, so
         # `comments_after` returns []. This mirrors the post-park watermark
         # set by `_park_awaiting_human` (it bumps to the latest comment id).
-        issue = make_issue(VALIDATING_ISSUE, label="validating")
+        issue = make_issue(VALIDATING_ISSUE, label="workflow:validating")
         gh.add_issue(issue)
         seed = dict(
             pr_number=VALIDATING_PR,
@@ -80,7 +80,7 @@ class _TransientParkFixtureMixin(_PatchedWorkflowMixin):
     def _assert_stays_validating(self, github) -> None:
         self.assertEqual(github.label_history, [])
         self.assertNotIn(
-            (VALIDATING_ISSUE, "documenting"),
+            (VALIDATING_ISSUE, "workflow:documenting"),
             github.label_history,
         )
         self.assertNotIn(
@@ -456,7 +456,7 @@ class ValidatingDevParkRecoveryTest(
         self.assertIsNone(developer_state.get("pre_dev_fix_sha"))
         # Stays on `validating` (no documenting hop) so the reviewer
         # re-evaluates the recovered head on the next tick.
-        self.assertNotIn((VALIDATING_ISSUE, "documenting"), developer_gh.label_history)
+        self.assertNotIn((VALIDATING_ISSUE, "workflow:documenting"), developer_gh.label_history)
 
     def test_timeout_push_error_stays_parked(
         self,
@@ -586,7 +586,7 @@ class HandleValidatingResumeOnHashChangeTest(
         # the new diff next tick. The docs pass only runs as the
         # final-docs handoff after a fresh approval.
         body_drift_gh = FakeGitHubClient()
-        issue = make_issue(BODY_DRIFT_ISSUE, label="validating", body="updated criteria")
+        issue = make_issue(BODY_DRIFT_ISSUE, label="workflow:validating", body="updated criteria")
         body_drift_gh.add_issue(issue)
         pr = FakePR(number=BODY_DRIFT_PR, head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-70")
         body_drift_gh.add_pr(pr)
@@ -613,7 +613,7 @@ class HandleValidatingResumeOnHashChangeTest(
         # Stays on `validating`: no documenting hop, and the reviewer
         # has NOT been spawned this tick (the only run_agent call was
         # the dev resume).
-        self.assertNotIn((BODY_DRIFT_ISSUE, "documenting"), body_drift_gh.label_history)
+        self.assertNotIn((BODY_DRIFT_ISSUE, "workflow:documenting"), body_drift_gh.label_history)
         self.assertNotIn((BODY_DRIFT_ISSUE, "in_review"), body_drift_gh.label_history)
         # Notice posted on the issue thread.
         self.assertTrue(
@@ -681,7 +681,7 @@ class ValidatingDriftDefersToReviewerRecoveryTest(
         reviewer_drift_gh = FakeGitHubClient()
         issue = make_issue(
             1000,
-            label="validating",
+            label="workflow:validating",
             body="initial body",
         )
         issue.comments.append(

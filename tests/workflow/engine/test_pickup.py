@@ -22,8 +22,8 @@ from tests.workflow.fixtures import _PatchedWorkflowMixin, _TEST_SPEC, _agent
 _DECOMPOSE_CONFIG = "DECOMPOSE"
 _ALLOWLIST_CONFIG = "ALLOWED_ISSUE_AUTHORS"
 _CLARIFICATION_MESSAGE = "need clarification"
-_IMPLEMENTING_LABEL = "implementing"
-_DECOMPOSING_LABEL = "decomposing"
+_IMPLEMENTING_LABEL = "workflow:implementing"
+_DECOMPOSING_LABEL = "workflow:decomposing"
 _ISSUE_NUMBER = 1
 _START_DECOMPOSING = "_start_decomposing"
 _START_IMPLEMENTING = "_start_implementing"

@@ -37,9 +37,9 @@ ISSUE = 7
 CONFLICT_PR_HEAD_SHA = "cafef00dcafef00d"
 
 # Workflow labels the publication routes between.
-LABEL_VALIDATING = "validating"
-LABEL_RESOLVING_CONFLICT = "resolving_conflict"
-LABEL_DOCUMENTING = "documenting"
+LABEL_VALIDATING = "workflow:validating"
+LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
+LABEL_DOCUMENTING = "workflow:documenting"
 
 THREE_BEHIND_STDOUT = "3\n"
 

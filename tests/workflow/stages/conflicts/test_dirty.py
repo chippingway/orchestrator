@@ -18,7 +18,7 @@ from tests.workflow.fixtures import (
 CONFLICT_ISSUE = 200
 PUSH_BRANCH = "_push_branch"
 AWAITING_HUMAN = "awaiting_human"
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 
 
 class ResolvingConflictDirtyParkingTest(unittest.TestCase, _ResolvingConflictMixin):

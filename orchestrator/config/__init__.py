@@ -251,9 +251,9 @@ HITL_MENTIONS: str = _RESOLVED["HITL_MENTIONS"]
 # On these surfaces a Bot/App login is gated like any other author, kept
 # out only once the allowlist is populated; a separate `user.type ==
 # "Bot"` structural check covers the drift hash and community-PR sweep.
-# Pickup itself still fires only on unlabeled issues: a
-# maintainer who manually labels an outsider's issue (e.g. `implementing`)
-# drives it to completion.
+# Pickup itself still fires only on unlabeled issues: a maintainer who
+# manually labels an outsider's issue (e.g. `workflow:implementing`) drives it
+# to completion.
 ALLOWED_ISSUE_AUTHORS: tuple[str, ...] = _RESOLVED["ALLOWED_ISSUE_AUTHORS"]
 CODEX_BIN: str = _RESOLVED["CODEX_BIN"]
 CLAUDE_BIN: str = _RESOLVED["CLAUDE_BIN"]

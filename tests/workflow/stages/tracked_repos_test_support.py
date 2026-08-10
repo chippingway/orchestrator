@@ -86,7 +86,7 @@ def _prompt_of(run_agent_mock) -> str:
 
 def _implementer_prompt(case) -> str:
     github = FakeGitHubClient()
-    issue = make_issue(_IMPLEMENTER_ISSUE_NUMBER, label="implementing")
+    issue = make_issue(_IMPLEMENTER_ISSUE_NUMBER, label="workflow:implementing")
     github.add_issue(issue)
     mocks = case._run(
         lambda: _implementing._handle_implementing(github, _TEST_SPEC, issue),
@@ -99,7 +99,7 @@ def _implementer_prompt(case) -> str:
 
 def _documentation_seed(**state):
     github = FakeGitHubClient()
-    issue = make_issue(_DOCUMENTATION_ISSUE_NUMBER, label="documenting")
+    issue = make_issue(_DOCUMENTATION_ISSUE_NUMBER, label="workflow:documenting")
     github.add_issue(issue)
     defaults = dict(
         pr_number=_DOCUMENTATION_PR_NUMBER,
@@ -153,7 +153,7 @@ def _resume_prompt(github, issue, *, threshold: int) -> str:
 
 def _decomposer_prompt(case) -> str:
     github = FakeGitHubClient()
-    issue = make_issue(_DECOMPOSER_ISSUE_NUMBER, label="decomposing")
+    issue = make_issue(_DECOMPOSER_ISSUE_NUMBER, label="workflow:decomposing")
     github.add_issue(issue)
     mocks = case._run(
         lambda: _decomposing._handle_decomposing(github, _TEST_SPEC, issue),

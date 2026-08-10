@@ -11,31 +11,40 @@ Two of the values here are a public contract that the module path must not be
 able to rename. The label members are the GitHub label strings live issues
 already carry, and the logger name is what operator log filters select on, so
 both are spelled out literally rather than derived from where this owner sits.
+
+The states the orchestrator drives itself are namespaced `workflow:<tag>` so a
+repository's own vocabulary cannot collide with them; the states a human also
+applies or reads on their own (`in_review`, `question`, `done`, `rejected`)
+keep their bare spelling. `stage_name` strips the namespace back off, because
+the tag -- not the label -- is what analytics rows, audit events, and agent
+sessions have always recorded, and `label_for_name` accepts a bare tag as well
+so an issue labeled before the namespace still resolves to its member.
 """
 from __future__ import annotations
 
 import logging
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Any, Mapping, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 log = logging.getLogger("orchestrator.state_machine")
 _MISSING_LABEL = object()
+_LABEL_NAMESPACE = "workflow:"
 
 
 class WorkflowLabel(StrEnum):
     """Workflow states whose values are the GitHub label strings."""
 
-    DECOMPOSING = "decomposing"
-    READY = "ready"
-    BLOCKED = "blocked"
-    UMBRELLA = "umbrella"
-    IMPLEMENTING = "implementing"
-    VALIDATING = "validating"
-    DOCUMENTING = "documenting"
+    DECOMPOSING = "workflow:decomposing"
+    READY = "workflow:ready"
+    BLOCKED = "workflow:blocked"
+    UMBRELLA = "workflow:umbrella"
+    IMPLEMENTING = "workflow:implementing"
+    VALIDATING = "workflow:validating"
+    DOCUMENTING = "workflow:documenting"
     IN_REVIEW = "in_review"
-    FIXING = "fixing"
-    RESOLVING_CONFLICT = "resolving_conflict"
+    FIXING = "workflow:fixing"
+    RESOLVING_CONFLICT = "workflow:resolving_conflict"
     QUESTION = "question"
     DONE = "done"
     REJECTED = "rejected"
@@ -137,18 +146,114 @@ _INTERRUPT_SOURCES: Mapping[
 })
 
 
+def stage_name(label: Optional[str | WorkflowLabel]) -> Optional[str]:
+    """Return the bare tag a workflow label names its state by.
+
+    Analytics rows, audit event payloads, and the stage an agent session is
+    attributed to are their own compatibility contract, independent of how the
+    label is spelled on GitHub, so each of those sinks is handed the tag rather
+    than the label carrying it.
+    """
+    if label is None:
+        return None
+    return str(label).removeprefix(_LABEL_NAMESPACE)
+
+
+def legacy_label_name(label: str | WorkflowLabel) -> Optional[str]:
+    """Return the pre-namespace spelling of a label, or None if it has none."""
+    bare_tag = stage_name(label)
+    return None if bare_tag == str(label) else bare_tag
+
+
+def _canonical_label_names() -> Mapping[str, WorkflowLabel]:
+    """Map each label the orchestrator writes to its member."""
+    return MappingProxyType({str(member): member for member in WorkflowLabel})
+
+
+def _legacy_label_names() -> Mapping[str, WorkflowLabel]:
+    """Map each pre-namespace spelling to the member that replaced it."""
+    return MappingProxyType({
+        legacy_name: member
+        for member in WorkflowLabel
+        for legacy_name in (legacy_label_name(member),)
+        if legacy_name is not None
+    })
+
+
+CANONICAL_LABELS = _canonical_label_names()
+LEGACY_LABELS = _legacy_label_names()
+
+
+def label_for_name(label_name: str | WorkflowLabel) -> Optional[WorkflowLabel]:
+    """Return the workflow member a GitHub label denotes, or None if it is not one.
+
+    Both spellings resolve, so an issue still carrying the pre-namespace label
+    keeps routing. Which of the two an issue is actually IN, when it carries
+    one of each, is `issue_workflow_label`'s question -- not this one's.
+    """
+    wanted_name = str(label_name)
+    return CANONICAL_LABELS.get(wanted_name) or LEGACY_LABELS.get(wanted_name)
+
+
+def issue_workflow_label(
+    label_names: Iterable[str],
+) -> Optional[WorkflowLabel]:
+    """Return the workflow state one issue's labels put it in.
+
+    A namespaced label outranks a pre-namespace one no matter which order
+    GitHub lists them in. The orchestrator only ever writes the namespaced
+    spelling and strips the rest as it goes, so a bare tag sitting beside one
+    is never the current state: it is a leftover the migration has not reached,
+    or a name the repository uses for something of its own. Reading it as the
+    state would route the issue to the wrong handler.
+    """
+    names = list(label_names)
+    for lookup in (CANONICAL_LABELS, LEGACY_LABELS):
+        for name in names:
+            resolved_label = lookup.get(name)
+            if resolved_label is not None:
+                return resolved_label
+    return None
+
+
+def replaced_label_names(label_names: Iterable[str]) -> frozenset[str]:
+    """Return the labels a workflow-label write on this issue replaces.
+
+    Always the namespaced ones -- those are the orchestrator's own. A bare tag
+    joins them when it names a state being replaced anyway: either because the
+    namespaced spelling of that same state is on the issue beside it (one
+    state, two spellings, and the migration exists to end that), or because
+    the issue carries no namespaced label at all and the bare one is therefore
+    its pre-migration state.
+
+    What survives is a bare tag naming some OTHER state than the one being
+    replaced, on an issue that already has its state namespaced. Nothing the
+    orchestrator wrote could have left that behind, so it belongs to the
+    repository and is not this write's to delete.
+    """
+    names = list(label_names)
+    canonical = {name for name in names if name in CANONICAL_LABELS}
+    if not canonical:
+        return frozenset(name for name in names if name in LEGACY_LABELS)
+    replaced_states = {CANONICAL_LABELS[name] for name in canonical}
+    return frozenset(canonical | {
+        name for name in names
+        if LEGACY_LABELS.get(name) in replaced_states
+    })
+
+
 def coerce_label_name(label_name: str | WorkflowLabel) -> WorkflowLabel:
     """Return the workflow member for a wire label or raise ``ValueError``."""
-    try:
-        return WorkflowLabel(label_name)
-    except ValueError:
+    resolved_label = label_for_name(label_name)
+    if resolved_label is None:
         valid_labels = ", ".join(
             repr(str(member)) for member in WorkflowLabel
         )
         raise ValueError(
             f"{label_name!r} is not a valid workflow label; "
             f"expected one of: {valid_labels}",
-        ) from None
+        )
+    return resolved_label
 
 
 def coerce_workflow_label(

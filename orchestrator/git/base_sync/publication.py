@@ -26,6 +26,7 @@ from orchestrator.git.base_sync.state import (
 )
 from orchestrator.git.verification import probes
 from orchestrator.git.worktrees import paths
+from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 
 def _post_auto_rebase_notice(
@@ -47,8 +48,8 @@ def _post_auto_rebase_notice(
             f":mag: PR was {context.behind} commit(s) behind "
             f"`{spec.remote_name}/{spec.base_branch}`; "
             "orchestrator auto-rebased the branch and re-pushed it. "
-            f"Routing `{context.label}` -> `validating` so the reviewer "
-            f"re-runs against the new head (`{after_short}`).",
+            f"Routing `{context.label}` -> `{WorkflowLabel.VALIDATING}` so "
+            f"the reviewer re-runs against the new head (`{after_short}`).",
         )
     except Exception:
         log.exception(
@@ -66,7 +67,7 @@ def _emit_auto_rebase_event(
     context.gh.emit_event(
         "base_rebased",
         issue_number=context.issue.number,
-        stage=context.label,
+        stage=stage_name(context.label),
         pr_number=context.pr_number,
         sha=after_sha,
         method="auto_clean_rebase",
@@ -94,7 +95,7 @@ def _finalize_auto_rebase(
         context.label,
     )
     _emit_auto_rebase_event(context, after_sha)
-    context.gh.set_workflow_label(context.issue, "validating")
+    context.gh.set_workflow_label(context.issue, WorkflowLabel.VALIDATING)
     context.gh.write_pinned_state(context.issue, context.state)
 
 

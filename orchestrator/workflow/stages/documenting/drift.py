@@ -45,7 +45,7 @@ def _announce_documenting_drift(
     _comments._post_issue_comment(
         ctx.gh, ctx.issue, ctx.state,
         ":pencil2: issue body changed; routing back to "
-        "`validating` so the reviewer re-evaluates the "
+        f"`{WorkflowLabel.VALIDATING}` so the reviewer re-evaluates the "
         "updated requirements.",
     )
     _engine_drift._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)

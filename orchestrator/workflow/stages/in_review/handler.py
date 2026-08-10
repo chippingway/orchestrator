@@ -32,6 +32,7 @@ from orchestrator.workflow.stages.in_review import drift as _drift
 from orchestrator.workflow.stages.in_review import feedback as _feedback
 from orchestrator.workflow.stages.in_review import merge_gate as _merge_gate
 from orchestrator.workflow.stages.in_review import models as _models
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _park_missing_pr_number(
@@ -44,9 +45,12 @@ def _park_missing_pr_number(
         return
     _guards._park_awaiting_human(
         gh, issue, state,
+        # The two names the human has to type into GitHub are the labels
+        # verbatim; the prose before them names the stage.
         f"{config.HITL_MENTIONS} `in_review` without a pinned `pr_number`; "
         "manual relabeling suspected. Set the workflow label back to "
-        "`validating` (or `implementing`) after fixing.",
+        f"`{WorkflowLabel.VALIDATING}` (or `{WorkflowLabel.IMPLEMENTING}`) "
+        "after fixing.",
         reason="missing_pr_number",
     )
     gh.write_pinned_state(issue, state)

@@ -23,7 +23,7 @@ def _seed_drift_case(issue_number: int, pr_number: int):
     github = FakeGitHubClient()
     issue = make_issue(
         issue_number,
-        label="resolving_conflict",
+        label="workflow:resolving_conflict",
         body="updated body",
     )
     github.add_issue(issue)
@@ -45,7 +45,7 @@ def _assert_interrupted_drift_state(test_case, github) -> None:
     test_case.assertEqual(state.get("user_content_hash"), "stale-hash")
     test_case.assertFalse(state.get("awaiting_human"))
     test_case.assertEqual(state.get("conflict_round"), 0)
-    test_case.assertNotIn((INTERRUPTED_ISSUE, "validating"), github.label_history)
+    test_case.assertNotIn((INTERRUPTED_ISSUE, "workflow:validating"), github.label_history)
     test_case.assertFalse(
         any(
             "agent needs your input" in body or "existing work" in body or "timed out" in body
@@ -80,8 +80,8 @@ class HandleResolvingConflictHashDriftTest(
 
         # Pushed drift fix -> hand straight back to `validating`; the
         # single docs pass is deferred to the post-approval hop.
-        self.assertIn((DRIFT_ISSUE, "validating"), gh.label_history)
-        self.assertNotIn((DRIFT_ISSUE, "documenting"), gh.label_history)
+        self.assertIn((DRIFT_ISSUE, "workflow:validating"), gh.label_history)
+        self.assertNotIn((DRIFT_ISSUE, "workflow:documenting"), gh.label_history)
         # Notice posted on the PR.
         self.assertTrue(
             any(

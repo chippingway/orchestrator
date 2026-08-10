@@ -26,7 +26,7 @@ REVIEWED_SHA = "cafe1234"
 CHECKS_SUCCESS = "success"
 RUN_AGENT = "run_agent"
 HUMAN_LOGIN = "alice"
-LABEL_FIXING = "fixing"
+LABEL_FIXING = "workflow:fixing"
 DEBOUNCE_SETTING = "IN_REVIEW_DEBOUNCE_SECONDS"
 REVIEW_DEBOUNCE_SECONDS = 600
 
@@ -96,7 +96,7 @@ class InReviewPRReviewSummaryTest(
 
         mocks[RUN_AGENT].assert_not_called()
         self.assertIn((REVIEW_SUMMARY_ISSUE, LABEL_FIXING), github.label_history)
-        self.assertNotIn((REVIEW_SUMMARY_ISSUE, "validating"), github.label_history)
+        self.assertNotIn((REVIEW_SUMMARY_ISSUE, "workflow:validating"), github.label_history)
         self.assertEqual(github.merge_calls, [])
         state = github.pinned_data(REVIEW_SUMMARY_ISSUE)
         self.assertEqual(state.get("pending_fix_review_summary_max_id"), CHANGE_REQUEST_REVIEW_ID)

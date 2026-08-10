@@ -41,8 +41,8 @@ from tests.workflow.fixtures import (
 
 
 _GET_ISSUE_METHOD = "get_issue"
-_DECOMPOSING_LABEL = "decomposing"
-_VALIDATING_LABEL = "validating"
+_DECOMPOSING_LABEL = "workflow:decomposing"
+_VALIDATING_LABEL = "workflow:validating"
 _QUESTION_LABEL = "question"
 _DECOMPOSER_ISSUE_NUMBER = 310
 _REVIEWER_ISSUE_NUMBER = 300

@@ -40,6 +40,7 @@ from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine.comments import _SECTION_SEP
 from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
+from orchestrator.workflow.state import WorkflowLabel
 
 _MAX_FILES_SHOWN = 20
 
@@ -313,7 +314,8 @@ def _build_question_prompt(
         "If you need more information from the human before you can "
         "answer, end your message with a single, focused follow-up "
         "question. Otherwise end with a clear answer that the human can "
-        "act on (close the issue, relabel it to `implementing`, etc.)."
+        "act on (close the issue, relabel it to "
+        f"`{WorkflowLabel.IMPLEMENTING}`, etc.)."
     )
 
 

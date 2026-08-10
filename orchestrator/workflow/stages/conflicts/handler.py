@@ -34,6 +34,7 @@ from orchestrator.workflow.stages.conflicts import models as _models
 from orchestrator.workflow.stages.conflicts import resume as _resume
 from orchestrator.workflow.stages.conflicts import routing as _routing
 from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _handle_resolving_conflict(
@@ -109,8 +110,11 @@ def _park_conflict_missing_pr_number(ctx: _models._ConflictContext) -> None:
         return
     _transitions._park_conflict(
         ctx,
-        f"{config.HITL_MENTIONS} `resolving_conflict` without a pinned "
+        # The name the human has to type into GitHub is the label verbatim;
+        # the prose before it names the stage.
+        f"{config.HITL_MENTIONS} `{WorkflowLabel.RESOLVING_CONFLICT}` "
+        "without a pinned "
         "`pr_number`; manual relabeling suspected. Set the workflow "
-        "label back to `validating` after fixing.",
+        f"label back to `{WorkflowLabel.VALIDATING}` after fixing.",
         reason="missing_pr_number",
     )

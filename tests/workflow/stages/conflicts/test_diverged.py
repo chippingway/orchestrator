@@ -43,7 +43,7 @@ class ResolvingConflictStaleDivergedTest(unittest.TestCase, _ResolvingConflictMi
         mocks["_push_branch"].assert_not_called()
         mocks["run_agent"].assert_not_called()
         self.assertTrue(gh.pinned_data(CONFLICT_ISSUE).get("awaiting_human"))
-        self.assertNotIn((CONFLICT_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
         last_comment = gh.posted_comments[-1][1]
         self.assertIn("stale or diverged", last_comment)
 
@@ -66,7 +66,7 @@ class ResolvingConflictStaleDivergedTest(unittest.TestCase, _ResolvingConflictMi
         mocks["_push_branch"].assert_not_called()
         state = gh.pinned_data(CONFLICT_ISSUE)
         self.assertTrue(state.get("awaiting_human"))
-        self.assertNotIn((CONFLICT_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
 
 
 if __name__ == "__main__":

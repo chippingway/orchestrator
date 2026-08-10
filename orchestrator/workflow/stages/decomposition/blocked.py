@@ -94,7 +94,8 @@ def _handle_empty_blocked_parent(
         return
     _guards._park_awaiting_human(
         gh, issue, state,
-        f"{config.HITL_MENTIONS} `blocked` without recorded children; "
+        f"{config.HITL_MENTIONS} `{WorkflowLabel.BLOCKED}` without "
+        "recorded children; "
         "manual relabel suspected.",
         reason="blocked_no_children",
     )

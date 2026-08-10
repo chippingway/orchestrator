@@ -29,7 +29,7 @@ AWAITING_HUMAN = "awaiting_human"
 
 
 def _paused_view(number: int) -> object:
-    view = make_issue(number, label="resolving_conflict")
+    view = make_issue(number, label="workflow:resolving_conflict")
     view.labels.append(FakeLabel(PAUSED_LABEL))
     return view
 
@@ -95,7 +95,7 @@ class ResolvingConflictLivePauseTest(unittest.TestCase, _ResolvingConflictMixin)
         merge_mock.assert_called_once()  # the rebase ran and conflicted
         mocks["_push_branch"].assert_not_called()
         self.assertEqual(gh.write_state_calls, before_writes)
-        self.assertNotIn((CONFLICT_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
         _assert_fresh_pause_state(self, gh)
         _assert_no_park_comment(self, gh)
 
@@ -146,7 +146,7 @@ class ResolvingConflictLivePauseTest(unittest.TestCase, _ResolvingConflictMixin)
         merge_mock.assert_not_called()
         mocks["_push_branch"].assert_not_called()
         self.assertEqual(gh.write_state_calls, before_writes)
-        self.assertNotIn((CONFLICT_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
         _assert_resume_pause_state(self, gh)
 
     def test_drift_pause_blocks_relabel(self) -> None:
@@ -176,7 +176,7 @@ class ResolvingConflictLivePauseTest(unittest.TestCase, _ResolvingConflictMixin)
         merge_mock.assert_not_called()  # drift returns before the base rebase
         mocks["_push_branch"].assert_not_called()
         self.assertEqual(gh.write_state_calls, before_writes)
-        self.assertNotIn((CONFLICT_ISSUE, "validating"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
         _assert_drift_pause_state(self, gh)
 
 

@@ -32,7 +32,7 @@ PICKUP_COMMENT_ID = 900
 PR_OPEN_COMMENT_ID = 901
 REVIEW_DEBOUNCE_SECONDS = 600
 SQUASH_ON_APPROVAL = "SQUASH_ON_APPROVAL"
-LABEL_DOCUMENTING = "documenting"
+LABEL_DOCUMENTING = "workflow:documenting"
 
 
 class _SquashApprovalFixtureMixin(_PatchedWorkflowMixin):
@@ -41,7 +41,7 @@ class _SquashApprovalFixtureMixin(_PatchedWorkflowMixin):
         long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         issue = make_issue(
             APPROVAL_ISSUE,
-            label="validating",
+            label="workflow:validating",
             title="add a feature",
             comments=[
                 FakeComment(

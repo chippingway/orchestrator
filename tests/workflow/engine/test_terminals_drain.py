@@ -44,7 +44,7 @@ class DrainReviewPrTerminalTest(unittest.TestCase, support._DrainTestMixin):
                 event["review_round"],
             ),
             (
-                support.LABEL_FIXING,
+                support.STAGE_FIXING,
                 support._MERGED_PR_NUMBER,
                 support.MERGE_METHOD_EXTERNAL,
                 support.DEFAULT_HEAD_SHA,
@@ -93,7 +93,7 @@ class DrainReviewPrTerminalTest(unittest.TestCase, support._DrainTestMixin):
                 event[support._CONFLICT_ROUND_KEY],
             ),
             (
-                support.LABEL_RESOLVING_CONFLICT,
+                support.STAGE_RESOLVING_CONFLICT,
                 support._CLOSED_PR_NUMBER,
                 "dead0001",
                 3,
@@ -134,7 +134,7 @@ class DrainReviewPrTerminalTest(unittest.TestCase, support._DrainTestMixin):
         mocks = self._run(
             lambda: self.assertTrue(
                 support.terminals._drain_review_pr_terminals(
-                    gh, support._TEST_SPEC, issue, state, pr, stage=support.LABEL_IN_REVIEW,
+                    gh, support._TEST_SPEC, issue, state, pr, stage=support.STAGE_IN_REVIEW,
                 )
             ),
             run_agent=support._agent(),

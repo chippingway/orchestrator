@@ -15,6 +15,7 @@ from tests.workflow import patch_models as _patch_models
 from tests.workflow import patch_runner as _patch_runner
 from tests.workflow import repo_values as _repo_values
 from tests.workflow import stage_labels as _stage_labels
+from tests.workflow import stage_names as _stage_names
 from tests.workflow import state_values as _state_values
 from tests.workflow import value_helpers as _value_helpers
 from tests.workflow import verdict_values as _verdict_values
@@ -43,6 +44,15 @@ LABEL_IMPLEMENTING = _stage_labels.LABEL_IMPLEMENTING
 LABEL_IN_REVIEW = _stage_labels.LABEL_IN_REVIEW
 LABEL_QUESTION = _stage_labels.LABEL_QUESTION
 LABEL_VALIDATING = _stage_labels.LABEL_VALIDATING
+
+STAGE_DECOMPOSING = _stage_names.STAGE_DECOMPOSING
+STAGE_DOCUMENTING = _stage_names.STAGE_DOCUMENTING
+STAGE_FIXING = _stage_names.STAGE_FIXING
+STAGE_IMPLEMENTING = _stage_names.STAGE_IMPLEMENTING
+STAGE_IN_REVIEW = _stage_names.STAGE_IN_REVIEW
+STAGE_QUESTION = _stage_names.STAGE_QUESTION
+STAGE_RESOLVING_CONFLICT = _stage_names.STAGE_RESOLVING_CONFLICT
+STAGE_VALIDATING = _stage_names.STAGE_VALIDATING
 
 BACKEND_CLAUDE = _repo_values.BACKEND_CLAUDE
 BACKEND_CODEX = _repo_values.BACKEND_CODEX

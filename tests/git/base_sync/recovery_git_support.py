@@ -39,7 +39,7 @@ REMOTE_NAME = "origin"
 
 LABEL = "in_review"
 
-VALIDATING = "validating"
+VALIDATING = "workflow:validating"
 
 GIT = "git"
 

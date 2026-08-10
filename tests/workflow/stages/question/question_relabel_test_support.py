@@ -7,7 +7,7 @@ from pathlib import Path
 
 from tests.support.fakes import FakeGitHubClient, FakeIssue, make_issue
 
-LABEL_IMPLEMENTING = "implementing"
+LABEL_IMPLEMENTING = "workflow:implementing"
 
 
 @dataclass(frozen=True)

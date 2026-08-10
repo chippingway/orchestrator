@@ -46,7 +46,7 @@ class HandleValidatingExternalMergeTest(unittest.TestCase, _PatchedWorkflowMixin
 
     def test_external_merge_finalizes_to_done(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(MERGED_ISSUE, label="validating")
+        issue = make_issue(MERGED_ISSUE, label="workflow:validating")
         gh.add_issue(issue)
         pr = FakePR(
             number=MERGED_PR,
@@ -94,7 +94,7 @@ class HandleValidatingClosedIssueTest(unittest.TestCase, _PatchedWorkflowMixin):
 
     def test_open_pr_marks_closed_issue_rejected(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(CLOSED_ISSUE, label="validating")
+        issue = make_issue(CLOSED_ISSUE, label="workflow:validating")
         issue.closed = True
         gh.add_issue(issue)
         pr = FakePR(
@@ -132,7 +132,7 @@ class _ApprovalHandoffFixtureMixin(_PatchedWorkflowMixin):
         gh = FakeGitHubClient()
         issue = make_issue(
             APPROVAL_ISSUE,
-            label="validating",
+            label="workflow:validating",
             comments=[
                 FakeComment(
                     id=PICKUP_COMMENT_ID,
@@ -186,7 +186,7 @@ class ApprovalThroughDocumentingTest(
             )
 
         # Label hop: validating -> documenting (NOT directly in_review).
-        self.assertIn((APPROVAL_ISSUE, "documenting"), gh.label_history)
+        self.assertIn((APPROVAL_ISSUE, "workflow:documenting"), gh.label_history)
         self.assertNotIn((APPROVAL_ISSUE, "in_review"), gh.label_history)
         state = gh.pinned_data(APPROVAL_ISSUE)
         # Watermark, approval and squash comments all seeded before the
@@ -227,7 +227,7 @@ class ApprovalThroughDocumentingTest(
         state = gh.pinned_data(APPROVAL_ISSUE)
         self.assertTrue(state.get("awaiting_human"))
         self.assertEqual(state.get("park_reason"), "verify_failed")
-        self.assertNotIn((APPROVAL_ISSUE, "documenting"), gh.label_history)
+        self.assertNotIn((APPROVAL_ISSUE, "workflow:documenting"), gh.label_history)
         self.assertNotIn((APPROVAL_ISSUE, "in_review"), gh.label_history)
 
     def test_squash_failure_keeps_validating(self) -> None:
@@ -255,5 +255,5 @@ class ApprovalThroughDocumentingTest(
                 for _, body in gh.posted_comments
             )
         )
-        self.assertNotIn((APPROVAL_ISSUE, "documenting"), gh.label_history)
+        self.assertNotIn((APPROVAL_ISSUE, "workflow:documenting"), gh.label_history)
         self.assertNotIn((APPROVAL_ISSUE, "in_review"), gh.label_history)

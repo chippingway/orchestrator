@@ -35,6 +35,7 @@ from orchestrator.workflow.stages.implementing import (
     session_read as _session_read,
     state as _state,
 )
+from orchestrator.workflow.state import stage_name
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -151,7 +152,7 @@ def _on_question(
     gh.emit_event(
         "park_awaiting_human",
         issue_number=issue.number,
-        stage=gh.workflow_label(issue),
+        stage=stage_name(gh.workflow_label(issue)),
         reason=park_reason,
     )
 
@@ -184,7 +185,7 @@ def _on_dirty_worktree(
     gh.emit_event(
         "park_awaiting_human",
         issue_number=issue.number,
-        stage=gh.workflow_label(issue),
+        stage=stage_name(gh.workflow_label(issue)),
         reason="dirty_worktree",
         dirty_files=len(dirty),
     )

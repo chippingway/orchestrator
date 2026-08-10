@@ -27,8 +27,9 @@ from tests.workflow.fixtures import (
 )
 
 
-_VALIDATING_LABEL = "validating"
-_IMPLEMENTING_LABEL = "implementing"
+_VALIDATING_LABEL = "workflow:validating"
+_IMPLEMENTING_LABEL = "workflow:implementing"
+_IMPLEMENTING_STAGE = "implementing"
 _STATE_CLOSED = "closed"
 _PR_HEAD_SHA = "cafe1234"
 _CLEANUP_MOCK_KEY = "_cleanup_terminal_branch"
@@ -198,14 +199,14 @@ class FinalizeMergedPrTest(unittest.TestCase, _PatchedWorkflowMixin):
             _OPEN_ISSUE_MERGED_NUMBER,
             branch=_issue_branch(_OPEN_ISSUE_MERGED_NUMBER),
         )
-        # An `external`-merge audit event is emitted with the
-        # entry-stage label.
+        # An `external`-merge audit event is emitted, naming the entry
+        # stage the issue was swept from.
         merged_event = next(
             event for event in gh.recorded_events
             if event["event"] == EVENT_PR_MERGED
         )
         self.assertEqual(merged_event.get("merge_method"), "external")
-        self.assertEqual(merged_event.get("stage"), _IMPLEMENTING_LABEL)
+        self.assertEqual(merged_event.get("stage"), _IMPLEMENTING_STAGE)
 
     def test_merged_pr_finalizes_closed_issue(self) -> None:
         # An externally-merged PR with `Resolves #N` auto-closes the issue

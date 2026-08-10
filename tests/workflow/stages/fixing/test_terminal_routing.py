@@ -28,6 +28,7 @@ KEY_AWAITING_HUMAN = support.KEY_AWAITING_HUMAN
 LABEL_DONE = support.LABEL_DONE
 LABEL_FIXING = support.LABEL_FIXING
 LABEL_IMPLEMENTING = support.LABEL_IMPLEMENTING
+LABEL_IN_REVIEW = support.LABEL_IN_REVIEW
 LABEL_REJECTED = support.LABEL_REJECTED
 MERGED_ISSUE = support.MERGED_ISSUE
 MERGED_PR = support.MERGED_PR
@@ -78,7 +79,7 @@ class FixingTerminalRoutingTest(unittest.TestCase, _PatchedWorkflowMixin):
         self.assertEqual(len(gh.posted_comments), 1)
         issue_number, body = gh.posted_comments[0]
         self.assertEqual(issue_number, MISSING_PR_ISSUE)
-        self.assertIn(LABEL_FIXING, body)
+        self.assertIn(LABEL_IN_REVIEW, body)
         self.assertIn("pr_number", body)
         _assert_missing_pr_park_event(self, gh)
 

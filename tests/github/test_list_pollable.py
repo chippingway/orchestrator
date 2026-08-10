@@ -11,10 +11,32 @@ from orchestrator import config
 from tests.support.fakes import FakeGitHubClient, make_issue
 
 
-_IMPLEMENTING_LABEL = "implementing"
+_IMPLEMENTING_LABEL = "workflow:implementing"
 _CLOSED_IMPLEMENTING_ISSUE = 301
 _CLOSED_DOCUMENTING_ISSUE = 302
 _CLOSED_VALIDATING_ISSUE = 303
+_CLOSED_LEGACY_IMPLEMENTING_ISSUE = 311
+_CLOSED_LEGACY_FIXING_ISSUE = 312
+_CLOSED_LEGACY_CONFLICT_ISSUE = 313
+
+# One closed issue per swept spelling: three namespaced, three pre-namespace.
+_CLOSED_SWEEP_CASES = (
+    (_CLOSED_IMPLEMENTING_ISSUE, _IMPLEMENTING_LABEL),
+    (_CLOSED_DOCUMENTING_ISSUE, "workflow:documenting"),
+    (_CLOSED_VALIDATING_ISSUE, "workflow:validating"),
+    (_CLOSED_LEGACY_IMPLEMENTING_ISSUE, "implementing"),
+    (_CLOSED_LEGACY_FIXING_ISSUE, "fixing"),
+    (_CLOSED_LEGACY_CONFLICT_ISSUE, "resolving_conflict"),
+)
+
+
+def _swept_numbers(issue_number: int, label: str) -> list[int]:
+    """Poll a repository holding one closed issue under the given label."""
+    gh = FakeGitHubClient()
+    closed = make_issue(issue_number, label=label)
+    closed.closed = True
+    gh.add_issue(closed)
+    return [issue.number for issue in gh.list_pollable_issues()]
 
 
 class ListPollableIssuesTest(unittest.TestCase):
@@ -25,7 +47,7 @@ class ListPollableIssuesTest(unittest.TestCase):
     def test_open_only_when_no_in_review_closed(self) -> None:
         gh = FakeGitHubClient()
         gh.add_issue(make_issue(1, label=_IMPLEMENTING_LABEL))
-        gh.add_issue(make_issue(2, label="validating"))
+        gh.add_issue(make_issue(2, label="workflow:validating"))
         out = list(gh.list_pollable_issues())
         self.assertEqual({issue.number for issue in out}, {1, 2})
 
@@ -63,34 +85,19 @@ class ListPollableIssuesTest(unittest.TestCase):
 
 
 class ListPollableIssuesClosedSweepTest(unittest.TestCase):
-    """A closed issue parked at `implementing` / `documenting` / `validating`
-    must still be yielded: the per-handler `_finalize_if_pr_merged` check
-    cannot fire unless the sweep hands the dispatcher the issue.
+    """A closed issue parked mid-flight must still be yielded: the per-handler
+    `_finalize_if_pr_merged` check cannot fire unless the sweep hands the
+    dispatcher the issue.
+
+    Either label spelling counts. A closed issue is the one case no other pass
+    revisits, so on a repository whose labels the bootstrap could not rename,
+    the pre-namespace spelling is the only thing left to find it by.
     """
 
-    def test_closed_implementing_is_yielded(self) -> None:
-        gh = FakeGitHubClient()
-        closed = make_issue(_CLOSED_IMPLEMENTING_ISSUE, label=_IMPLEMENTING_LABEL)
-        closed.closed = True
-        gh.add_issue(closed)
-        yielded = [issue.number for issue in gh.list_pollable_issues()]
-        self.assertIn(_CLOSED_IMPLEMENTING_ISSUE, yielded)
-
-    def test_closed_documenting_is_yielded(self) -> None:
-        gh = FakeGitHubClient()
-        closed = make_issue(_CLOSED_DOCUMENTING_ISSUE, label="documenting")
-        closed.closed = True
-        gh.add_issue(closed)
-        yielded = [issue.number for issue in gh.list_pollable_issues()]
-        self.assertIn(_CLOSED_DOCUMENTING_ISSUE, yielded)
-
-    def test_closed_validating_is_yielded(self) -> None:
-        gh = FakeGitHubClient()
-        closed = make_issue(_CLOSED_VALIDATING_ISSUE, label="validating")
-        closed.closed = True
-        gh.add_issue(closed)
-        yielded = [issue.number for issue in gh.list_pollable_issues()]
-        self.assertIn(_CLOSED_VALIDATING_ISSUE, yielded)
+    def test_yielded_under_either_spelling(self) -> None:
+        for issue_number, label in _CLOSED_SWEEP_CASES:
+            with self.subTest(label=label):
+                self.assertIn(issue_number, _swept_numbers(issue_number, label))
 
 
 class ClosedSweepCadenceTest(unittest.TestCase):
@@ -130,7 +137,7 @@ class ClosedSweepCadenceTest(unittest.TestCase):
     def test_throttle_never_drops_open_issues(self) -> None:
         gh = FakeGitHubClient()
         gh.add_issue(make_issue(1, label=_IMPLEMENTING_LABEL))
-        gh.add_issue(make_issue(2, label="validating"))
+        gh.add_issue(make_issue(2, label="workflow:validating"))
         with patch.object(config, "CLOSED_ISSUE_SWEEP_EVERY_N_TICKS", 5):
             for _ in range(5):
                 out = {issue.number for issue in gh.list_pollable_issues()}

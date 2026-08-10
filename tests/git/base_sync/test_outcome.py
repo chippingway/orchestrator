@@ -21,7 +21,7 @@ ISSUE = 7
 BEFORE_SHA = "before-sha"
 AFTER_SHA = "after-sha"
 
-LABEL_RESOLVING_CONFLICT = "resolving_conflict"
+LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
 
 # Pinned-state field keys read back from `gh.pinned_data(...)`.
 KEY_CONFLICT_ROUND = "conflict_round"

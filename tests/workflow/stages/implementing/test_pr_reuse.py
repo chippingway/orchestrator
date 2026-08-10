@@ -50,7 +50,7 @@ class OnCommitsPRReuseTest(unittest.TestCase, _PatchedWorkflowMixin):
         self.assertFalse(
             posted_comment_contains(gh, ":sparkles: PR opened"),
         )
-        self.assertIn((4, "validating"), gh.label_history)
+        self.assertIn((4, "workflow:validating"), gh.label_history)
         self.assertEqual(gh.pinned_data(4).get("pr_number"), EXISTING_PR_NUMBER)
 
     def test_legacy_branch_anchors_lookup_and_push(self) -> None:

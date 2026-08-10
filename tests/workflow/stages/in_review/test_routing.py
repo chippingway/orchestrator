@@ -45,7 +45,7 @@ READY_PING_SHA = "ready_ping_sha"
 AWAITING_HUMAN = "awaiting_human"
 PR_LAST_COMMENT_ID = "pr_last_comment_id"
 HUMAN_LOGIN = "alice"
-LABEL_FIXING = "fixing"
+LABEL_FIXING = "workflow:fixing"
 DEBOUNCE_SETTING = "IN_REVIEW_DEBOUNCE_SECONDS"
 
 
@@ -407,7 +407,7 @@ class InReviewFeedbackRoutingTest(
         feedback_patches[RUN_AGENT].assert_not_called()
         self.assertEqual(feedback_github.merge_calls, [])
         # Must NOT route to resolving_conflict.
-        self.assertNotIn((ROUTING_ISSUE, "resolving_conflict"), feedback_github.label_history)
+        self.assertNotIn((ROUTING_ISSUE, "workflow:resolving_conflict"), feedback_github.label_history)
         state = feedback_github.pinned_data(ROUTING_ISSUE)
         self.assertTrue(state.get(AWAITING_HUMAN))
         self.assertEqual(state.get("park_reason"), "unmergeable")
@@ -507,7 +507,7 @@ class InReviewFeedbackRoutingTest(
         feedback_patches[RUN_AGENT].assert_not_called()
         feedback_patches["_push_branch"].assert_not_called()
         self.assertIn((ROUTING_ISSUE, LABEL_FIXING), feedback_github.label_history)
-        self.assertNotIn((ROUTING_ISSUE, "validating"), feedback_github.label_history)
+        self.assertNotIn((ROUTING_ISSUE, "workflow:validating"), feedback_github.label_history)
         state = feedback_github.pinned_data(ROUTING_ISSUE)
         self.assertIn("pending_fix_at", state)
         self.assertEqual(state.get("pending_fix_issue_max_id"), FEEDBACK_COMMENT_ID)

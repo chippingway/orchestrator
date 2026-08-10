@@ -35,7 +35,7 @@ class DrainReviewPrReceiptTest(unittest.TestCase, support._DrainTestMixin):
             drain_result.context.gh.label_history,
         )
         self.assertTrue(drain_result.context.issue.closed)
-        self.assertEqual(event[support._STAGE_KEY], support.LABEL_FIXING)
+        self.assertEqual(event[support._STAGE_KEY], support.STAGE_FIXING)
 
     def test_each_terminal_posts_usage_verdict(self) -> None:
         # All three terminal arcs -- merged -> done, closed -> rejected, and
@@ -43,5 +43,5 @@ class DrainReviewPrReceiptTest(unittest.TestCase, support._DrainTestMixin):
         # cumulative usage verdict as a tracked comment posted BEFORE the
         # arc's `write_pinned_state`, so its id rides the persisted state.
         for scenario in support.RECEIPT_SCENARIOS:
-            with self.subTest(stage=scenario.stage):
+            with self.subTest(label=scenario.label):
                 self._assert_usage_receipt(scenario)

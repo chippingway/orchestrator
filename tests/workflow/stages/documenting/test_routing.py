@@ -20,7 +20,8 @@ from orchestrator.workflow.stages.validating import handler as _validating
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 
-LABEL_DOCUMENTING = "documenting"
+LABEL_DOCUMENTING = "workflow:documenting"
+STAGE_DOCUMENTING = "documenting"
 ROUTING_ISSUE_NUMBER = 901
 MISSING_PR_ISSUE_NUMBER = 902
 PARKED_MISSING_PR_ISSUE_NUMBER = 903
@@ -78,8 +79,8 @@ class DocumentingLabelRegistrationTest(unittest.TestCase):
         positions = tuple(
             names.index(label)
             for label in (
-                "implementing",
-                "validating",
+                "workflow:implementing",
+                "workflow:validating",
                 LABEL_DOCUMENTING,
                 "in_review",
             )
@@ -138,7 +139,7 @@ class DocumentingLabelRoutingTest(unittest.TestCase):
         self.assertEqual(len(gh.posted_comments), 1)
         issue_number, body = gh.posted_comments[0]
         self.assertEqual(issue_number, MISSING_PR_ISSUE_NUMBER)
-        self.assertIn(LABEL_DOCUMENTING, body)
+        self.assertIn(STAGE_DOCUMENTING, body)
         self.assertTrue(gh.pinned_data(MISSING_PR_ISSUE_NUMBER).get("awaiting_human"))
         # The label is NOT flipped: parking surfaces the situation but
         # leaves the operator in control of the next move.

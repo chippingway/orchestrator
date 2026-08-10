@@ -26,6 +26,8 @@ LABEL_VALIDATING = support.LABEL_VALIDATING
 REVIEW_APPROVED_MESSAGE = support.REVIEW_APPROVED_MESSAGE
 ROLE_DEVELOPER = support.ROLE_DEVELOPER
 ROLE_REVIEWER = support.ROLE_REVIEWER
+STAGE_IMPLEMENTING = support.STAGE_IMPLEMENTING
+STAGE_VALIDATING = support.STAGE_VALIDATING
 TEST_BASE_BRANCH = support.TEST_BASE_BRANCH
 TEST_REPO_SLUG = support.TEST_REPO_SLUG
 _AGENT_ROLE_KEY = support._AGENT_ROLE_KEY
@@ -82,7 +84,7 @@ def _assert_record_context(
         record["issue"],
         _IMPLEMENTING_ANALYTICS_ISSUE_NUMBER,
     )
-    case.assertEqual(record[_STAGE_KEY], LABEL_IMPLEMENTING)
+    case.assertEqual(record[_STAGE_KEY], STAGE_IMPLEMENTING)
     case.assertEqual(record[_AGENT_ROLE_KEY], ROLE_DEVELOPER)
     case.assertEqual(record["backend"], config.DEV_AGENT)
     case.assertEqual(record["agent_spec"], config.DEV_AGENT_SPEC)
@@ -122,7 +124,7 @@ def _assert_reviewer_record(
     case: unittest.TestCase,
     record: dict,
 ) -> None:
-    case.assertEqual(record[_STAGE_KEY], LABEL_VALIDATING)
+    case.assertEqual(record[_STAGE_KEY], STAGE_VALIDATING)
     case.assertEqual(record["backend"], config.REVIEW_AGENT)
     case.assertEqual(record["agent_spec"], config.REVIEW_AGENT_SPEC)
     case.assertEqual(record["review_round"], 2)

@@ -18,9 +18,9 @@ def assert_pr_routing(test_case, scenario) -> None:
             f":sparkles: PR opened: #{opened_pr.number}",
         ),
     )
-    test_case.assertIn((1, "validating"), github.label_history)
+    test_case.assertIn((1, "workflow:validating"), github.label_history)
     test_case.assertNotIn((1, "in_review"), github.label_history)
-    test_case.assertNotIn((1, "documenting"), github.label_history)
+    test_case.assertNotIn((1, "workflow:documenting"), github.label_history)
 
 
 def assert_pr_state(test_case, scenario) -> None:

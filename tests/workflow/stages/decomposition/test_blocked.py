@@ -23,10 +23,10 @@ from tests.workflow.fixtures import (
     _agent,
 )
 
-LABEL_BLOCKED = "blocked"
+LABEL_BLOCKED = "workflow:blocked"
 LABEL_DONE = "done"
-LABEL_IMPLEMENTING = "implementing"
-LABEL_READY = "ready"
+LABEL_IMPLEMENTING = "workflow:implementing"
+LABEL_READY = "workflow:ready"
 KEY_AWAITING_HUMAN = "awaiting_human"
 ALL_DONE_PARENT_NUMBER = 30
 IN_PROGRESS_PARENT_NUMBER = 31

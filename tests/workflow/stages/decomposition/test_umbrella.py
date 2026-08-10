@@ -25,9 +25,9 @@ from tests.workflow.fixtures import (
     _agent,
 )
 
-UMBRELLA = "umbrella"
+UMBRELLA = "workflow:umbrella"
 LABEL_DONE = "done"
-LABEL_IMPLEMENTING = "implementing"
+LABEL_IMPLEMENTING = "workflow:implementing"
 DISPATCH_ISSUE_NUMBER = 60
 ALL_DONE_PARENT_NUMBER = 61
 IN_PROGRESS_PARENT_NUMBER = 62
@@ -269,7 +269,7 @@ class HandleUmbrellaChildStateTest(unittest.TestCase, _PatchedWorkflowMixin):
         # umbrella's children can still depend on each other.
         gh, parent, children = _seed_umbrella_with_children(
             parent_number=DEPENDENCY_PARENT_NUMBER,
-            child_labels=[LABEL_DONE, "blocked"],
+            child_labels=[LABEL_DONE, "workflow:blocked"],
             dep_graph={"1": [0]},
         )
 
@@ -277,7 +277,7 @@ class HandleUmbrellaChildStateTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         self.assertEqual(
             _labels_for_issue(gh, children[1].number),
-            ["ready"],
+            ["workflow:ready"],
         )
         self.assertNotIn(
             (DEPENDENCY_PARENT_NUMBER, LABEL_DONE),
@@ -294,7 +294,7 @@ class HandleUmbrellaChildStateTest(unittest.TestCase, _PatchedWorkflowMixin):
         # (depends on [0]) stays held.
         gh, parent, children = _seed_umbrella_with_children(
             parent_number=HELD_DEPENDENCY_PARENT_NUMBER,
-            child_labels=[LABEL_IMPLEMENTING, "blocked"],
+            child_labels=[LABEL_IMPLEMENTING, "workflow:blocked"],
             dep_graph={"1": [0]},
         )
 
@@ -314,7 +314,7 @@ class HandleUmbrellaChildStateTest(unittest.TestCase, _PatchedWorkflowMixin):
             ),
             log_lines,
         )
-        self.assertNotIn((children[1].number, "ready"), gh.label_history)
+        self.assertNotIn((children[1].number, "workflow:ready"), gh.label_history)
         self.assertFalse(parent.closed)
 
     def test_no_held_children_emits_no_log(self) -> None:

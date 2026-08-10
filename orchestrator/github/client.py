@@ -25,6 +25,21 @@ from orchestrator.observability.analytics import recording
 
 log = logging.getLogger("orchestrator.github")
 
+# The one status that answers "this repository does not have that label".
+# Anything else -- 403 on an exhausted rate limit, a 5xx -- says only that the
+# question could not be asked, so the sweep has to ask it again.
+_HTTP_NOT_FOUND = 404
+
+# How many closed-issue sweeps a confirmed-absent label is taken at its word.
+# Counted in sweeps rather than seconds because the cost being throttled is one
+# request per sweep -- and counted off `_closed_sweeps`, which advances only
+# when a sweep actually runs, so `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` stretches
+# the window in wall-clock terms instead of eroding it. Long enough that a
+# migrated repository is not re-asking for a label nobody has on every pass,
+# short enough that a human re-adding one by hand is picked up without a
+# restart -- the absence is throttled, never final.
+_ABSENT_LABEL_RETRY_SWEEPS = 20
+
 
 class GitHubClient(
     GitHubReviewMixin,
@@ -69,7 +84,9 @@ class GitHubClient(
         )
         self.recorded_events: list[dict] = []
         self._label_cache: dict[str, Label] = {}
+        self._absent_after_sweep: dict[str, int] = {}
         self._pollable_calls = 0
+        self._closed_sweeps = 0
 
     def _for_worker_thread(self) -> "GitHubClient":
         """Build a fresh requester/repository pair for one worker thread."""
@@ -79,25 +96,64 @@ class GitHubClient(
             bot_login=self._bot_login,
         )
 
-    def _cached_label(self, name: str) -> Optional[Label]:
-        """Resolve and cache a label, while leaving failures retryable."""
+    def _cached_label(
+        self, name: str, *, throttle_absent: bool = False,
+    ) -> Optional[Label]:
+        """Resolve and cache a label, while leaving failures retryable.
+
+        Every failure is retried eventually; the only question is how soon.
+        Retrying on the very next call is the default, because a label the
+        bootstrap could not create is one a human may add at any moment.
+        ``throttle_absent`` widens that to `_ABSENT_LABEL_RETRY_SWEEPS`
+        closed-issue sweeps for one case: a 404 on a pre-namespace spelling
+        the sweep asks for beside the namespaced one. Most repositories will
+        never have that label again, so asking every sweep is a request spent
+        on a certain miss -- but a human or an older integration can still
+        re-apply one, so the window expires rather than closing.
+
+        The throttle is a 404 only. A 403 is what this client sees when the
+        primary rate limit is exhausted, and standing down on it would strand
+        exactly the closed legacy-labeled issues the second query exists to
+        reach.
+        """
         cached_label = self._label_cache.get(name)
         if cached_label is not None:
             return cached_label
+        if self._absent_after_sweep.get(name, 0) > self._closed_sweeps:
+            return None
         try:
             label_object = self.repo.get_label(name)
         except GithubException as error:
-            log.warning(
-                "could not look up %r label for closed-issue sweep "
-                "(HTTP %s); skipping. Externally-merged %s issues will "
-                "not finalize to `done` until the label exists.",
-                name,
-                error.status,
-                name,
-            )
+            self._report_label_lookup_failure(name, error, throttle_absent)
             return None
+        self._absent_after_sweep.pop(name, None)
         self._label_cache[name] = label_object
         return label_object
+
+    def _report_label_lookup_failure(
+        self, name: str, error: GithubException, throttle_absent: bool,
+    ) -> None:
+        """Report a label the sweep could not resolve, and when to re-ask."""
+        if throttle_absent and error.status == _HTTP_NOT_FOUND:
+            self._absent_after_sweep[name] = (
+                self._closed_sweeps + _ABSENT_LABEL_RETRY_SWEEPS
+            )
+            log.info(
+                "no %r label on this repository; the closed-issue sweep will "
+                "not ask again for %d sweeps. Nothing is stranded unless "
+                "issues still carry it.",
+                name,
+                _ABSENT_LABEL_RETRY_SWEEPS,
+            )
+            return
+        log.warning(
+            "could not look up %r label for closed-issue sweep "
+            "(HTTP %s); skipping. Externally-merged %s issues will "
+            "not finalize to `done` until the label exists.",
+            name,
+            error.status,
+            name,
+        )
 
     def _emit_stage_enter(self, issue: Issue, stage: str) -> None:
         """Record matching audit and analytics stage-enter events."""

@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 from orchestrator.workflow.engine import dispatch
 
 _ISSUE_NUMBER = 17
-_READY_LABEL = "ready"
+_READY_LABEL = "workflow:ready"
 
 
 class StageHandlerLookupTest(unittest.TestCase):

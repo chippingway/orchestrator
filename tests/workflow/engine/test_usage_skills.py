@@ -19,8 +19,8 @@ BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX
 EVENT_AGENT_EXIT = support.EVENT_AGENT_EXIT
 EVENT_AGENT_SPAWN = support.EVENT_AGENT_SPAWN
-LABEL_IMPLEMENTING = support.LABEL_IMPLEMENTING
-LABEL_VALIDATING = support.LABEL_VALIDATING
+STAGE_IMPLEMENTING = support.STAGE_IMPLEMENTING
+STAGE_VALIDATING = support.STAGE_VALIDATING
 ROLE_DEVELOPER = support.ROLE_DEVELOPER
 ROLE_REVIEWER = support.ROLE_REVIEWER
 _AGENT_ROLE_KEY = support._AGENT_ROLE_KEY
@@ -66,7 +66,7 @@ def _run_skill_agent(
         return engine_usage._run_agent_tracked(
             gh, _SKILL_AGENT_ISSUE_NUMBER,
             agent_role=ROLE_DEVELOPER,
-            stage=LABEL_IMPLEMENTING,
+            stage=STAGE_IMPLEMENTING,
             backend=backend,
             prompt=_IGNORED_PROMPT,
             cwd=_FAKE_WT,
@@ -101,7 +101,7 @@ class SkillTriggeredEventTest(unittest.TestCase):
         for event in events:
             self.assertEqual(event["agent"], BACKEND_CLAUDE)
             self.assertEqual(event[_AGENT_ROLE_KEY], ROLE_DEVELOPER)
-            self.assertEqual(event[_STAGE_KEY], LABEL_IMPLEMENTING)
+            self.assertEqual(event[_STAGE_KEY], STAGE_IMPLEMENTING)
             self.assertEqual(event["review_round"], 2)
             self.assertEqual(event["retry_count"], 1)
         # The baseline audit lifecycle events still fire alongside.
@@ -175,7 +175,7 @@ class SkillTriggeredEventTest(unittest.TestCase):
             engine_usage._run_agent_tracked(
                 gh, _SKILL_REUSE_ISSUE_NUMBER,
                 agent_role=ROLE_REVIEWER,
-                stage=LABEL_VALIDATING,
+                stage=STAGE_VALIDATING,
                 backend=BACKEND_CODEX,
                 prompt=_IGNORED_PROMPT,
                 cwd=_FAKE_WT,

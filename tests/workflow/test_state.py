@@ -22,7 +22,7 @@ from orchestrator.workflow.state import (
 from tests.support.fakes import FakeGitHubClient, make_issue
 
 
-_VALIDATING_LABEL = "validating"
+_VALIDATING_LABEL = "workflow:validating"
 _LABEL_WRITE_PATTERN = re.compile(
     r"set_workflow_label\([^)]*?WorkflowLabel\.([A-Z_]+)",
 )
@@ -48,12 +48,12 @@ class WorkflowLabelEnumTest(unittest.TestCase):
 
     def test_json_serializes_as_plain_string(self) -> None:
         payload = {"label": WorkflowLabel.BLOCKED}
-        self.assertEqual(json.dumps(payload), '{"label": "blocked"}')
+        self.assertEqual(json.dumps(payload), '{"label": "workflow:blocked"}')
 
     def test_frozenset_membership_both_directions(self) -> None:
         # Plain string against an enum-valued set, and enum against a
         # string-seeded set -- both must hold (hash/eq match str).
-        self.assertIn("blocked", _dispatch._FAMILY_AWARE_LABELS)
+        self.assertIn("workflow:blocked", _dispatch._FAMILY_AWARE_LABELS)
         self.assertIn(WorkflowLabel.BLOCKED, _dispatch._FAMILY_AWARE_LABELS)
         self.assertIn(
             _VALIDATING_LABEL, _base_sync_state._PR_REFRESH_DETOUR_LABELS,
@@ -137,23 +137,23 @@ class LabelWriteTypoGuardTest(unittest.TestCase):
 
     def test_set_workflow_label_rejects_typo(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(1, label="implementing")
+        issue = make_issue(1, label="workflow:implementing")
         gh.add_issue(issue)
         with self.assertRaises(ValueError):
             gh.set_workflow_label(issue, "vaildating")
 
     def test_set_label_accepts_enum_and_string(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(1, label="implementing")
+        issue = make_issue(1, label="workflow:implementing")
         gh.add_issue(issue)
         gh.set_workflow_label(issue, WorkflowLabel.VALIDATING)
         self.assertEqual(gh.workflow_label(issue), WorkflowLabel.VALIDATING)
-        gh.set_workflow_label(issue, "documenting")  # plain string still ok
+        gh.set_workflow_label(issue, "workflow:documenting")  # string still ok
         self.assertEqual(gh.workflow_label(issue), WorkflowLabel.DOCUMENTING)
 
     def test_workflow_label_returns_typed_member(self) -> None:
         gh = FakeGitHubClient()
-        issue = make_issue(1, label="fixing")
+        issue = make_issue(1, label="workflow:fixing")
         gh.add_issue(issue)
         workflow_label = gh.workflow_label(issue)
         self.assertIsInstance(workflow_label, WorkflowLabel)

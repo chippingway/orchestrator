@@ -37,7 +37,10 @@ class DrainReviewPrMetadataTest(unittest.TestCase, support._DrainTestMixin):
             merged_scenario,
             support.EVENT_PR_MERGED,
         )
-        self.assertEqual(merged_event[support._STAGE_KEY], support.LABEL_RESOLVING_CONFLICT)
+        self.assertEqual(
+            merged_event[support._STAGE_KEY],
+            support.STAGE_RESOLVING_CONFLICT,
+        )
         # Field must be present (build_event_record drops None), and
         # the coerced default must be 0.
         self.assertIn(support._CONFLICT_ROUND_KEY, merged_event)

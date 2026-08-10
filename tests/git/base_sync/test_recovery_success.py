@@ -25,7 +25,7 @@ BEFORE_SHA = "before-sha"
 AFTER_SHA = "after-sha"
 REBASED_SHA = "rebased-sha"
 
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 
 EVENT_BASE_REBASED = "base_rebased"
 

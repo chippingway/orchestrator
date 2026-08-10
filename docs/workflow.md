@@ -1,8 +1,8 @@
 # Workflow — agent roles and command specs
 
 This file documents the agent-role side of the workflow: which stage invokes which role, how the role command specs
-(`DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT`) are parsed, and how the spec used by an in-flight issue is pinned for
-the life of its session.
+(`DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT`) are parsed, and how the spec used by an in-flight issue is pinned
+for the life of its session.
 
 For the full stage-by-stage state machine (label semantics, per-stage handler internals, per-tick flow), see
 [`state-machine.md`](state-machine.md). For the higher-level design (multi-repo dispatch, push hardening, agent
@@ -20,9 +20,10 @@ use `codex` or `claude` and each carries its own optional CLI args.
   first spawn (decomposing → `decomposer_agent`; question → `question_agent`, a separate pin).
 - **Implementer / dev** (`DEV_AGENT`, default `claude`) — spawned by `_handle_implementing`, `_handle_documenting`,
   `_handle_validating` (awaiting-human resume; the `CHANGES_REQUESTED` dev fix is dispatched here but relabels to
-  `fixing` BEFORE the spawn and records `stage="fixing"` analytics, so the dev-fix subphase is observably `fixing`, not
-  `validating`), `_handle_fixing` (in_review-route PR-feedback resume + validating-route awaiting-human rescan),
-  `_handle_resolving_conflict` (conflict resume + awaiting-human resume). Session: locked per issue after first spawn.
+  `workflow:fixing` BEFORE the spawn and records `stage="fixing"` analytics, so the dev-fix subphase is observably
+  `workflow:fixing`, not `workflow:validating`), `_handle_fixing` (in_review-route PR-feedback resume +
+  validating-route awaiting-human rescan), `_handle_resolving_conflict` (conflict resume + awaiting-human resume).
+  Session: locked per issue after first spawn.
 - **Reviewer** (`REVIEW_AGENT`, default `codex`) — spawned by `_handle_validating` (fresh every round). Session: fresh
   per round; current config always wins.
 
@@ -128,11 +129,11 @@ the env var.
 
 ### Local verify gate (not an agent)
 
-After the reviewer emits `VERDICT: APPROVED`, `_handle_validating` runs the configured `VERIFY_COMMANDS` directly in the
-per-issue worktree — these are plain shell commands, not an agent role, so no `*_AGENT` env var applies. The gate runs
-before the approval comment, the squash, the watermark seeding, and the `documenting` (final-docs) label flip. A clean
-run advances the issue; any failure parks on `validating` with a typed `park_reason` (`verify_failed` / `verify_timeout`
-/ `verify_dirty` / `verify_head_changed`). See
+After the reviewer emits `VERDICT: APPROVED`, `_handle_validating` runs the configured `VERIFY_COMMANDS` directly in
+the per-issue worktree — these are plain shell commands, not an agent role, so no `*_AGENT` env var applies. The gate
+runs before the approval comment, the squash, the watermark seeding, and the `workflow:documenting` (final-docs) label
+flip. A clean run advances the issue; any failure parks on `workflow:validating` with a typed `park_reason`
+(`verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`). See
 [`configuration.md#local-verification-gate`](configuration.md#local-verification-gate) for the env-var reference.
 
 ## Spec format
@@ -203,11 +204,11 @@ How it works per role:
   unconditionally on every fresh spawn, so a backend hiccup that produces commits without surfacing a session id (empty
   codex `-o` file, unparseable claude JSONL line) still anchors the role for the next tick.
 
-  On a resume, `_read_dev_session` re-parses `dev_agent` via `config._parse_agent_spec` to recover
-  `(backend, extra_args)` and passes the args through to `run_agent`. `_handle_documenting`, `_handle_validating`,
+  On a resume, `_read_dev_session` re-parses `dev_agent` via `config._parse_agent_spec` to recover `(backend,
+  extra_args)` and passes the args through to `run_agent`. `_handle_documenting`, `_handle_validating`,
   `_handle_fixing`, and `_handle_resolving_conflict` all resume the dev session via the same path, so the locked spec
   applies to every dev-side resume for the lifetime of the issue. `_handle_in_review` does not resume the dev itself —
-  fresh PR feedback routes the issue to `fixing` instead.
+  fresh PR feedback routes the issue to `workflow:fixing` instead.
 - **Decomposer (`DECOMPOSE_AGENT`).** Same mechanic in `_handle_decomposing`: the spec is persisted to
   `decomposer_agent` before the spawn and re-parsed via `_read_decomposer_session` on every resume. The same backend
   (not the same session) also drives the question stage — `_handle_question` reads `DECOMPOSE_AGENT_SPEC` as the
@@ -220,7 +221,7 @@ How it works per role:
 **Net effect:** flipping `DEV_AGENT` or `DECOMPOSE_AGENT` in env only affects fresh issues. Any issue with a live
 session keeps the original backend AND args until it reaches a terminal label (`done` / `rejected`); only then will a
 config change apply to a follow-up issue. Flipping `REVIEW_AGENT` takes effect on the next round of any issue in
-`validating`.
+`workflow:validating`.
 
 ### Backward compatibility
 

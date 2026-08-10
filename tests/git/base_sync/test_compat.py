@@ -47,7 +47,7 @@ _EXPECTED_SIGNATURES = (
 class BaseSyncCompatibilityAdapterTest(unittest.TestCase):
     def test_sync_accepts_historical_keywords(self) -> None:
         gh = Mock()
-        gh.workflow_label.return_value = "validating"
+        gh.workflow_label.return_value = "workflow:validating"
         state = Mock()
         state.get.return_value = "pre-rebase"
         run_sync = Mock()
@@ -65,7 +65,7 @@ class BaseSyncCompatibilityAdapterTest(unittest.TestCase):
         context = run_sync.call_args.args[0]
         self.assertEqual(context.pr_number, _SYNC_PR_NUMBER)
         self.assertEqual(context.behind, 2)
-        self.assertEqual(context.label, "validating")
+        self.assertEqual(context.label, "workflow:validating")
         self.assertEqual(context.pending_pre_rebase_sha, "pre-rebase")
 
     def test_recovery_applies_historical_defaults(self) -> None:
@@ -82,7 +82,7 @@ class BaseSyncCompatibilityAdapterTest(unittest.TestCase):
                 _STATE,
                 Path("worktree"),
                 pr_number=_RECOVERY_PR_NUMBER,
-                label="validating",
+                label="workflow:validating",
                 pending_pre_rebase_sha="before",
             )
 

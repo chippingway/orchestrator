@@ -49,7 +49,7 @@ REVIEW_FEEDBACK_WATERMARK = 4242
 DEV_SESSION = "dev-sess"
 BEFORE_FIX_SHA = "aaa"
 REVIEW_ROUND = "review_round"
-LABEL_DOCUMENTING = "documenting"
+LABEL_DOCUMENTING = "workflow:documenting"
 LABEL_IN_REVIEW = "in_review"
 AWAITING_HUMAN = "awaiting_human"
 BOT_LOGIN = "orchestrator"
@@ -67,7 +67,7 @@ class _ValidatingHandoffFixtureMixin(_PatchedWorkflowMixin):
         gh = FakeGitHubClient()
         issue = make_issue(
             issue_number,
-            label="validating",
+            label="workflow:validating",
             body=body,
             comments=list(comments),
         )
@@ -327,7 +327,7 @@ class _ValidatingToInReviewFixtureMixin(_PatchedWorkflowMixin):
         gh = FakeGitHubClient()
         issue = make_issue(
             HANDOFF_ISSUE,
-            label="validating",
+            label="workflow:validating",
             comments=[
                 FakeComment(
                     id=PICKUP_COMMENT_ID,
@@ -457,7 +457,7 @@ class ValidatingToInReviewHandoffTest(
         gh = FakeGitHubClient()
         issue = make_issue(
             SECOND_HANDOFF_ISSUE,
-            label="validating",
+            label="workflow:validating",
             comments=[
                 FakeComment(
                     id=PICKUP_COMMENT_ID,

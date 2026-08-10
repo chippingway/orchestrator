@@ -31,6 +31,7 @@ from orchestrator.workflow.stages.documenting import (
     state as _state,
 )
 from orchestrator.workflow.stages.implementing import parks as _dev_parks
+from orchestrator.workflow.state import WorkflowLabel
 
 
 def _park_documenting(
@@ -65,12 +66,15 @@ def _park_documenting_without_pr(
     """
     if state.get(_state._AWAITING_HUMAN):
         return
+    # The relabel instruction names the label verbatim: it is what the human
+    # reading this has to type into GitHub, so it carries the namespace even
+    # though the prose around it names the stage.
     _guards._park_awaiting_human(
         gh, issue, state,
-        f"{config.HITL_MENTIONS} `documenting` without a pinned "
-        "`pr_number`; the documenting stage runs against an existing "
-        "PR worktree. Relabel back to `implementing` (the dev's PR "
-        "opens there) after fixing.",
+        f"{config.HITL_MENTIONS} `{WorkflowLabel.DOCUMENTING}` without a "
+        "pinned `pr_number`; the documenting stage runs against an existing "
+        f"PR worktree. Relabel back to `{WorkflowLabel.IMPLEMENTING}` "
+        "(the dev's PR opens there) after fixing.",
         reason="missing_pr_number",
     )
     gh.write_pinned_state(issue, state)

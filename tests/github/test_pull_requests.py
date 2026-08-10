@@ -94,7 +94,7 @@ class StatelessPrStatusTest(unittest.TestCase):
         )
 
     def test_absent_label_is_false(self) -> None:
-        pull_request = FakePR(number=_PR_NUMBER, labels=[FakeLabel("ready")])
+        pull_request = FakePR(number=_PR_NUMBER, labels=[FakeLabel("workflow:ready")])
         self.assertFalse(
             _pull_requests.pr_has_label(pull_request, _LABEL_NAME),
         )

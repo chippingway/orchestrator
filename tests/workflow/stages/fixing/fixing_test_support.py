@@ -60,9 +60,10 @@ def _branch(issue_number: int) -> str:
     return f"orchestrator/geserdugarov__agent-orchestrator/issue-{issue_number}"
 
 
-FIXING = "fixing"
-VALIDATING = "validating"
-DOCUMENTING = "documenting"
+FIXING = "workflow:fixing"
+STAGE_FIXING = "fixing"
+VALIDATING = "workflow:validating"
+DOCUMENTING = "workflow:documenting"
 IN_REVIEW = "in_review"
 
 ISSUE = 880

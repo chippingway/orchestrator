@@ -184,9 +184,9 @@ def _split_summary(plan: _SplitPlan) -> tuple[str, WorkflowLabel]:
     if plan.is_umbrella:
         return (
             f":bookmark_tabs: decomposer split this into {len(plan.created)} "
-            "child issue(s); marking parent as `umbrella` (no implementation "
-            "of its own; will auto-resolve once every child resolves):\n\n"
-            f"{summary}",
+            f"child issue(s); marking parent as `{WorkflowLabel.UMBRELLA}` "
+            "(no implementation of its own; will auto-resolve once every "
+            f"child resolves):\n\n{summary}",
             WorkflowLabel.UMBRELLA,
         )
     return (

@@ -22,9 +22,9 @@ from tests.workflow.stages.documenting.documenting_scenario_test_support import 
     _DocumentingDriftFixture,
 )
 
-DOCUMENTING = "documenting"
+DOCUMENTING = "workflow:documenting"
 IN_REVIEW = "in_review"
-VALIDATING = "validating"
+VALIDATING = "workflow:validating"
 
 # --- Dev agent identity pinned into per-issue state ---------------------
 DEV_AGENT = "codex"

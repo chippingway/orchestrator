@@ -29,7 +29,7 @@ def _ready_drift_fixture():
     github = FakeGitHubClient()
     parent = make_issue(
         READY_DRIFT_PARENT_NUMBER,
-        label="ready",
+        label="workflow:ready",
         body="updated parent body",
     )
     github.add_issue(parent)
@@ -48,11 +48,11 @@ def _recovery_drift_fixture():
     github = FakeGitHubClient()
     parent = make_issue(
         RECOVERY_PARENT_NUMBER,
-        label="decomposing",
+        label="workflow:decomposing",
         body="updated body",
     )
     github.add_issue(parent)
-    github.add_issue(make_issue(RECOVERY_CHILD_NUMBER, label="blocked"))
+    github.add_issue(make_issue(RECOVERY_CHILD_NUMBER, label="workflow:blocked"))
     github.seed_state(
         RECOVERY_PARENT_NUMBER,
         user_content_hash=STALE_USER_CONTENT_HASH,
@@ -88,7 +88,7 @@ class ReadyDriftClearsStaleManifestStateTest(
         # `expected_children_count is not None OR children is non-empty`)
         # cannot fire and short-circuit the re-decompose.
         self.assertIn(
-            (READY_DRIFT_PARENT_NUMBER, "decomposing"),
+            (READY_DRIFT_PARENT_NUMBER, "workflow:decomposing"),
             gh.label_history,
         )
         state = gh.pinned_data(READY_DRIFT_PARENT_NUMBER)
@@ -160,11 +160,11 @@ class DriftBeforeHalfFinishedRecoveryTest(
         # Parent did NOT finalize to `blocked` against the stale
         # manifest; instead the fresh decomposer voted `single` -> `ready`.
         self.assertNotIn(
-            (RECOVERY_PARENT_NUMBER, "blocked"),
+            (RECOVERY_PARENT_NUMBER, "workflow:blocked"),
             gh.label_history,
         )
         self.assertIn(
-            (RECOVERY_PARENT_NUMBER, "ready"),
+            (RECOVERY_PARENT_NUMBER, "workflow:ready"),
             gh.label_history,
         )
         # Orphans listed in the notice.

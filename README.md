@@ -140,8 +140,9 @@ For deeper implementation details, use the references below.
    Any owner module works here; the package root is not one. `orchestrator/__init__.py` carries the version and
    nothing else, and `tests/repository/` enforces that — an issue pointed at it produces a PR the suite rejects.
 
-   Within about one minute, the orchestrator should comment "picking this up" and label the issue `decomposing`, then
-   walk it through `implementing` → `validating` → `documenting` → `in_review`, opening a PR along the way. The
+   Within about one minute, the orchestrator should comment "picking this up" and label the issue
+   `workflow:decomposing`, then walk it through `workflow:implementing` → `workflow:validating` →
+   `workflow:documenting` → `in_review`, opening a PR along the way. The
    orchestrator is manual-merge-only: a mergeable PR whose current head has completed the reviewer-approved final-docs
    handoff earns a one-shot HITL ping so you know it is ready. You can then click Merge by hand, or leave review
    comments for the orchestrator to address automatically. For the full state-machine narrative — including the

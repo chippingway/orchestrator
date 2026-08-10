@@ -39,7 +39,7 @@ class DrainReviewPrTerminalsTest(unittest.TestCase, support._PatchedWorkflowMixi
         mocks = self._run(
             lambda: self.assertFalse(
                 support.terminals._drain_review_pr_terminals(
-                    gh, support._TEST_SPEC, issue, state, None, stage=support.LABEL_FIXING,
+                    gh, support._TEST_SPEC, issue, state, None, stage=support.STAGE_FIXING,
                 )
             ),
             run_agent=support._agent(),
@@ -73,7 +73,7 @@ class DrainReviewPrTerminalsTest(unittest.TestCase, support._PatchedWorkflowMixi
         mocks = self._run(
             lambda: self.assertFalse(
                 support.terminals._drain_review_pr_terminals(
-                    gh, support._TEST_SPEC, issue, state, pr, stage=support.LABEL_IN_REVIEW,
+                    gh, support._TEST_SPEC, issue, state, pr, stage=support.STAGE_IN_REVIEW,
                 )
             ),
             run_agent=support._agent(),

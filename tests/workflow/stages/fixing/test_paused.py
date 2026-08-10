@@ -43,14 +43,14 @@ DEBOUNCE_SECONDS = 600
 def _paused_view(number: int) -> object:
     """A `fixing` issue that also carries `paused` -- the state a fresh
     `gh.get_issue` returns after an operator pauses mid-run."""
-    view = make_issue(number, label="fixing")
+    view = make_issue(number, label="workflow:fixing")
     view.labels.append(FakeLabel(PAUSED_LABEL))
     return view
 
 
 def _seed_fixing_pause(gh: FakeGitHubClient) -> object:
     old = datetime.now(timezone.utc) - timedelta(hours=1)
-    issue = make_issue(ISSUE, label="fixing")
+    issue = make_issue(ISSUE, label="workflow:fixing")
     issue.comments.append(
         FakeComment(
             id=TRIGGER_ID,
@@ -171,7 +171,7 @@ class FixingLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         # Tick 2: `paused` removed -> the fresh fetch is clean, so the resume's
         # pushed fix publishes and relabels to `validating`.
-        unpaused = make_issue(ISSUE, label="fixing")
+        unpaused = make_issue(ISSUE, label="workflow:fixing")
         with (
             patch.object(config, "IN_REVIEW_DEBOUNCE_SECONDS", DEBOUNCE_SECONDS),
             patch.object(gh, "get_issue", MagicMock(return_value=unpaused)),
@@ -185,7 +185,7 @@ class FixingLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
             )
 
         mocks["_push_branch"].assert_called_once()
-        self.assertIn((ISSUE, "validating"), gh.label_history)
+        self.assertIn((ISSUE, "workflow:validating"), gh.label_history)
         pinned_data = gh.pinned_data(ISSUE)
         self.assertEqual(pinned_data.get("review_round"), 0)
         self.assertIsNone(pinned_data.get("pending_fix_at"))

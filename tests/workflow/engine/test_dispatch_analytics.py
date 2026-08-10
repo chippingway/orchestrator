@@ -30,6 +30,10 @@ from tests.workflow.fixtures import (
 )
 
 
+# The tag each label reports itself as: what the analytics row records.
+_IMPLEMENTING_STAGE = "implementing"
+_VALIDATING_STAGE = "validating"
+
 _ANALYTICS_FILENAME = "analytics.jsonl"
 # The reviewer handler is patched by name: this module wants the validating
 # handler owner only as a patch target, and naming it instead of importing it
@@ -109,7 +113,7 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
                 dispatch._process_issue(gh, _TEST_SPEC, issue)
             record = _stage_evaluations(path, _SUCCESS_ISSUE)[0]
         self.assertEqual(record["repo"], TEST_REPO_SLUG)
-        self.assertEqual(record[_STAGE_KEY], LABEL_IMPLEMENTING)
+        self.assertEqual(record[_STAGE_KEY], _IMPLEMENTING_STAGE)
         self.assertEqual(record["result"], "ok")
         self.assertIn("duration_s", record)
         self.assertGreaterEqual(record["duration_s"], 0)
@@ -160,7 +164,7 @@ class StageEvaluationAnalyticsTest(unittest.TestCase):
                     "handler blew up",
                 )
             record = _stage_evaluations(path, _ERROR_ISSUE)[0]
-        self.assertEqual(record[_STAGE_KEY], LABEL_VALIDATING)
+        self.assertEqual(record[_STAGE_KEY], _VALIDATING_STAGE)
         self.assertEqual(record["result"], "error")
         self.assertIn("duration_s", record)
 
@@ -213,7 +217,7 @@ class StageEnterAnalyticsRecordTest(unittest.TestCase):
         self.assertEqual(len(records), 2)
         self.assertEqual(
             [record[_STAGE_KEY] for record in records],
-            [LABEL_IMPLEMENTING, LABEL_VALIDATING],
+            [_IMPLEMENTING_STAGE, _VALIDATING_STAGE],
         )
         self.assertEqual(
             list(map(_stage_enter_projection, records)),

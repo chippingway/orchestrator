@@ -18,7 +18,7 @@ CONFLICT_FILE = "a.py"
 BEFORE_HEAD = "beforehead"
 RUN_AGENT = "run_agent"
 PUSH_BRANCH = "_push_branch"
-LABEL_VALIDATING = "validating"
+LABEL_VALIDATING = "workflow:validating"
 
 
 def _assert_resolution_prompt(test_case, prompt: str) -> None:
@@ -84,7 +84,7 @@ class ResolvingConflictAgentExecutionTest(unittest.TestCase, _ResolvingConflictM
             force_with_lease=BEFORE_HEAD,
         )
         self.assertIn((CONFLICT_ISSUE, LABEL_VALIDATING), gh.label_history)
-        self.assertNotIn((CONFLICT_ISSUE, "documenting"), gh.label_history)
+        self.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), gh.label_history)
         _assert_resolved_state(self, gh)
 
     def test_agent_timeout_parks_awaiting_human(self) -> None:

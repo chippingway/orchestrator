@@ -32,6 +32,7 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.state import stage_name
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -140,6 +141,6 @@ def _park_awaiting_human(
     gh.emit_event(
         "park_awaiting_human",
         issue_number=issue.number,
-        stage=gh.workflow_label(issue),
+        stage=stage_name(gh.workflow_label(issue)),
         reason=reason,
     )

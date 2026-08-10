@@ -31,6 +31,7 @@ from orchestrator.git.base_sync.state import (
 )
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 
 def _park_auto_rebase_failure(
@@ -167,7 +168,7 @@ def _emit_recovered_rebase_event(
     context.gh.emit_event(
         "base_rebased",
         issue_number=context.issue.number,
-        stage=context.label,
+        stage=stage_name(context.label),
         pr_number=context.pr_number,
         sha=local_head,
         method=method,
@@ -191,7 +192,7 @@ def _route_recovered_rebase(
             local_head[:8],
             context.label,
         )
-        context.gh.set_workflow_label(context.issue, "validating")
+        context.gh.set_workflow_label(context.issue, WorkflowLabel.VALIDATING)
         context.gh.write_pinned_state(context.issue, context.state)
         return True
     context.gh.write_pinned_state(context.issue, context.state)

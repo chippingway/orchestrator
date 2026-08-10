@@ -22,12 +22,54 @@ from orchestrator.workflow.state import (
     WorkflowLabel,
     coerce_workflow_label,
     guard_transition,
+    legacy_label_name,
+    replaced_label_names,
+    stage_name,
 )
 
 _STATE_ATTR = "state"
 _ISSUE_STATE_OPEN = "open"
 _ISSUE_STATE_CLOSED = "closed"
 _RECORDED_EVENTS_CAP = 500
+
+# The stages whose closed issues still have a terminal arc left to drain: an
+# externally merged PR, or a human closing the issue out from under a running
+# agent. The pre-PR stages are deliberately absent -- a closed issue there has
+# nothing to finalize -- and the in-memory double sweeps this same set.
+CLOSED_SWEEP_LABELS: tuple[WorkflowLabel, ...] = (
+    WorkflowLabel.IMPLEMENTING,
+    WorkflowLabel.DOCUMENTING,
+    WorkflowLabel.VALIDATING,
+    WorkflowLabel.IN_REVIEW,
+    WorkflowLabel.FIXING,
+    WorkflowLabel.RESOLVING_CONFLICT,
+    WorkflowLabel.QUESTION,
+)
+
+
+def _closed_sweep_lookups() -> tuple[tuple[str, bool], ...]:
+    """Pair every swept label spelling with whether a miss on it is expected.
+
+    The pre-namespace spelling is queried beside the namespaced one because a
+    closed issue is the one case no other pass revisits: if the bootstrap could
+    not rename the label, nothing else would ever surface that issue again.
+    Both queries feed one ``seen_numbers`` set, so an issue a repository
+    carries under both spellings is still yielded once.
+
+    A miss on a legacy name is the expected answer on a migrated repository,
+    so it is throttled rather than re-asked every sweep -- throttled, not
+    remembered, because the label can still come back by hand.
+    """
+    lookups: list[tuple[str, bool]] = []
+    for sweep_label in CLOSED_SWEEP_LABELS:
+        lookups.append((str(sweep_label), False))
+        legacy_name = legacy_label_name(sweep_label)
+        if legacy_name is not None:
+            lookups.append((legacy_name, True))
+    return tuple(lookups)
+
+
+CLOSED_SWEEP_LOOKUPS = _closed_sweep_lookups()
 
 
 def iter_new_non_pr_issues(
@@ -75,16 +117,20 @@ def set_workflow_label(
             new_workflow_label,
             config.WORKFLOW_TRANSITION_GUARD,
         )
-    kept_labels = [
-        issue_label.name
-        for issue_label in issue.labels
-        if issue_label.name not in labels.WORKFLOW_LABELS
-    ]
+    # Only the labels this write actually owns come off. A bare tag beside a
+    # namespaced one belongs to the repository, not to the orchestrator, so it
+    # survives -- see `replaced_label_names`.
+    label_names = [issue_label.name for issue_label in issue.labels]
+    replaced = replaced_label_names(label_names)
+    kept_labels = [name for name in label_names if name not in replaced]
     if new_workflow_label is not None:
         kept_labels.append(new_workflow_label)
     issue.set_labels(*kept_labels)
     if new_workflow_label is not None:
-        client._emit_stage_enter(issue, new_workflow_label)
+        # The event and the analytics row name the state by its bare tag: the
+        # namespace is a GitHub label spelling, and every reader downstream of
+        # here keys on the tag under it.
+        client._emit_stage_enter(issue, stage_name(new_workflow_label))
 
 
 class GitHubIssueMixin:
@@ -115,16 +161,14 @@ class GitHubIssueMixin:
             and (self._pollable_calls - 1) % sweep_cadence != 0
         ):
             return
-        for label_name in (
-            WorkflowLabel.IMPLEMENTING,
-            WorkflowLabel.DOCUMENTING,
-            WorkflowLabel.VALIDATING,
-            WorkflowLabel.IN_REVIEW,
-            WorkflowLabel.FIXING,
-            WorkflowLabel.RESOLVING_CONFLICT,
-            WorkflowLabel.QUESTION,
-        ):
-            label_object = self._cached_label(label_name)
+        # Counted past the cadence gate, not beside `_pollable_calls`: the
+        # absent-label window is denominated in sweeps, and under `N>1` most
+        # polls never reach this loop at all.
+        self._closed_sweeps += 1
+        for label_name, absence_is_expected in CLOSED_SWEEP_LOOKUPS:
+            label_object = self._cached_label(
+                label_name, throttle_absent=absence_is_expected,
+            )
             if label_object is None:
                 continue
             yield from iter_new_non_pr_issues(

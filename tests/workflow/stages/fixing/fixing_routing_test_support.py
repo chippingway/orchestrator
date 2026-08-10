@@ -35,11 +35,13 @@ _issue_branch = fixtures._issue_branch
 BACKEND_CLAUDE = "claude"
 KEY_AWAITING_HUMAN = "awaiting_human"
 LABEL_DONE = "done"
-LABEL_FIXING = "fixing"
-LABEL_IMPLEMENTING = "implementing"
+LABEL_FIXING = "workflow:fixing"
+LABEL_IMPLEMENTING = "workflow:implementing"
+LABEL_IN_REVIEW = "in_review"
 LABEL_REJECTED = "rejected"
-LABEL_RESOLVING_CONFLICT = "resolving_conflict"
-LABEL_VALIDATING = "validating"
+LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
+LABEL_VALIDATING = "workflow:validating"
+STAGE_FIXING = "fixing"
 STATE_CLOSED = "closed"
 STATE_OPEN = "open"
 DEV_SESSION = "dev-sess"
@@ -266,4 +268,4 @@ class _FixingWorktreeDriftFixtureMixin:
             and event.get("action") == "entered"
         ]
         self.assertEqual(len(entered), 1)
-        self.assertEqual(entered[0].get("stage"), LABEL_FIXING)
+        self.assertEqual(entered[0].get("stage"), STAGE_FIXING)

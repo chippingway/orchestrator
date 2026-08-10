@@ -324,7 +324,7 @@ class TickEmitsRepoSkillCatalogTest(unittest.TestCase):
         from tests.workflow.fixtures import _TEST_SPEC
 
         gh = FakeGitHubClient()
-        gh.add_issue(make_issue(1, label="implementing"))
+        gh.add_issue(make_issue(1, label="workflow:implementing"))
         emit = MagicMock()
         with seam_patch(_REFRESH_BASE), \
                 patch.object(dispatch, "_process_issue"), \

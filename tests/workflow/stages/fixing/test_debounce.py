@@ -20,6 +20,7 @@ DEV_SESSION = support.DEV_SESSION
 EARLIER_PENDING_FIX_AT_TS = support.EARLIER_PENDING_FIX_AT_TS
 EVENT_AGENT_SPAWN = support.EVENT_AGENT_SPAWN
 FIXING = support.FIXING
+STAGE_FIXING = support.STAGE_FIXING
 FakeComment = support.FakeComment
 FakeUser = support.FakeUser
 INITIAL_PR_COMMENT_WATERMARK = support.INITIAL_PR_COMMENT_WATERMARK
@@ -130,7 +131,7 @@ class FixingDebounceAndAckTest(unittest.TestCase, _FixingFixtureMixin):
             if event["event"] == EVENT_AGENT_SPAWN and event.get("agent_role") == ROLE_DEVELOPER
         ]
         self.assertEqual(len(dev_spawns), 1)
-        self.assertEqual(dev_spawns[0]["stage"], FIXING)
+        self.assertEqual(dev_spawns[0]["stage"], STAGE_FIXING)
 
     # --- ACK fast path ----------------------------------------------------
 

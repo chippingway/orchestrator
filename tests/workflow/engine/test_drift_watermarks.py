@@ -132,7 +132,7 @@ class DriftMarksCommentsConsumedTest(
             (
                 (
                     support._IN_REVIEW_WATERMARK_ISSUE_NUMBER,
-                    "fixing",
+                    "workflow:fixing",
                 ) in gh.label_history,
                 (
                     support._IN_REVIEW_WATERMARK_ISSUE_NUMBER,

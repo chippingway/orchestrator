@@ -58,7 +58,7 @@ class AgentLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflo
                 "duration_s" in exit_event,
             ),
             (
-                support.LABEL_IMPLEMENTING,
+                support.STAGE_IMPLEMENTING,
                 support.ROLE_DEVELOPER,
                 config.DEV_AGENT,
                 False,
@@ -136,7 +136,7 @@ class AgentLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflo
                 reviewer_exit[support._SESSION_ID_KEY],
             ),
             (
-                support.LABEL_VALIDATING,
+                support.STAGE_VALIDATING,
                 config.REVIEW_AGENT,
                 1,
                 2,
