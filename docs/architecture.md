@@ -1412,6 +1412,14 @@ Stage-private helpers stay private to the stage that owns them (`_bump_in_review
 stays on the owner that defines it, and the borrower names that owner: fixing's quiet window imports
 `_comment_created_at` from `in_review/watermarks.py`, so that module is where a patch aimed at it lands.
 
+`orchestrator/__init__.py` is the whole of the package root, and it is metadata: the distribution version and the
+explicit `__all__` naming it, bound there rather than resolved on demand. Nothing else sits beside it but the two
+launch forms, `cli.py` and `__main__.py`, so an implementation module at the root would be a surface with no
+subpackage to name it by -- and `import orchestrator`, which every launch form and every owner import runs first,
+costs that one module and no owner behind it. The import-cost checks in `tests/runtime/test_imports.py` and
+`tests/apps/test_imports.py` hold that by comparing what a fresh interpreter plants against the root package alone,
+and `tests/repository/test_package_metadata.py` pins the published surface to the version.
+
 `orchestrator/runtime/` holds the polling process itself, one owner per thing a run is made of, and
 `orchestrator/cli.py` above them is where they are composed. `state.py` is what makes that split possible: the values
 the signal handler, the watchdog thread, the per-repo tick workers, and the loop all read and write travel as one
