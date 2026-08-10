@@ -9,18 +9,18 @@ from unittest.mock import MagicMock
 
 from orchestrator.workflow.engine import drift as _drift
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
     FakePRRef,
     make_issue,
 )
-from tests.workflow_git_owners import seam_patch
-from tests.workflow_other_labels import LABEL_RESOLVING_CONFLICT
-from tests.workflow_patch_models import _agent
-from tests.workflow_patch_runner import _PatchedWorkflowMixin
-from tests.workflow_repo_values import BACKEND_CLAUDE, STATE_OPEN
-from tests.workflow_value_helpers import _issue_branch
+from tests.workflow.git_owners import seam_patch
+from tests.workflow.other_labels import LABEL_RESOLVING_CONFLICT
+from tests.workflow.patch_models import _agent
+from tests.workflow.patch_runner import _PatchedWorkflowMixin
+from tests.workflow.repo_values import BACKEND_CLAUDE, STATE_OPEN
+from tests.workflow.value_helpers import _issue_branch
 
 
 _CONFLICT_ISSUE_NUMBER = 200

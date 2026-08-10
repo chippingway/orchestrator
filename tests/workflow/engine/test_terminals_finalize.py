@@ -11,13 +11,13 @@ import unittest
 from orchestrator.github import PinnedState
 from orchestrator.workflow.engine import terminals
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
     FakePRRef,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     EVENT_PR_MERGED,
     _PatchedWorkflowMixin,
     _TEST_SPEC,

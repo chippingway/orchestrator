@@ -7,13 +7,13 @@ import unittest
 from orchestrator.workflow.engine import drift as _drift
 
 from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
 )
 

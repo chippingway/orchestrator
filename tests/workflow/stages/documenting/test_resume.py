@@ -8,13 +8,13 @@ from tests.workflow.stages.documenting.documenting_assertion_test_support import
     _agent_prompt,
     _pr_comment_text,
 )
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _TEST_SPEC,
     _agent,
 )

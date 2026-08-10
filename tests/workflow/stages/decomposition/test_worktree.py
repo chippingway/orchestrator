@@ -5,20 +5,20 @@ from __future__ import annotations
 import unittest
 
 from tests.workflow.stages.decomposition.decomposition_test_support import _comment_with_marker
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     BACKEND_CLAUDE,
     KEY_AWAITING_HUMAN,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_READY,
     _TEST_SPEC,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
     _manifest,
 )

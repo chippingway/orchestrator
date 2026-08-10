@@ -9,17 +9,17 @@ from pathlib import Path
 from orchestrator import config
 from orchestrator.workflow.stages.implementing import handler as _implementing
 
-from tests.fakes import FakeGitHubClient, make_issue
+from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.stages.question.question_relabel_test_support import (
     RelabelCase,
     _seed_relabel,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
     LABEL_IMPLEMENTING,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _TEST_SPEC,
     _agent,
 )

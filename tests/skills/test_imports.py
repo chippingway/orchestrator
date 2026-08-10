@@ -60,7 +60,6 @@ _FORBIDDEN_PREFIXES = (
 # to its own chain and nothing besides.
 _ROOT_PACKAGE_MODULES = frozenset((
     "orchestrator",
-    "orchestrator._package_exports",
 ))
 
 _RESOLVER_HOOKS = ("__dir__", "__getattr__")

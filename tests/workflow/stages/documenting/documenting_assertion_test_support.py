@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from tests.fakes import FakeGitHubClient
+from tests.support.fakes import FakeGitHubClient
 
 RUN_AGENT = "run_agent"
 

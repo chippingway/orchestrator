@@ -10,8 +10,8 @@ from github import GithubException
 from github.IssueComment import IssueComment
 from github.PullRequest import PullRequest
 
+from orchestrator.github.aliases import StaticMethodAlias
 from orchestrator.github.pinned_state import GitHubStateMixin
-from orchestrator._static_alias import StaticMethodAlias
 
 log = logging.getLogger("orchestrator.github")
 

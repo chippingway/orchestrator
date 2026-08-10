@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from tests import workflow_tracked_repos_test_support as support
+from tests.workflow.stages import tracked_repos_test_support as support
 
 
 class FreshRespawnTrackedReposTest(unittest.TestCase):

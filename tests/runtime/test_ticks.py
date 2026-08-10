@@ -8,8 +8,8 @@ import threading
 import unittest
 
 from orchestrator.runtime.state import RuntimeState
-from tests import polling_scheduler_probes as _probes
-from tests import polling_test_support as _support
+from tests.runtime import polling_scheduler_probes as _probes
+from tests.runtime import polling_test_support as _support
 from tests.runtime import tick_test_support as _execution
 
 _ALPHA_FAILURE = "simulated alpha failure"

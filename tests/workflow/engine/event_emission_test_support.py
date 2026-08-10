@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from orchestrator import config
 
-from tests import fakes as _fakes
-from tests import workflow_helpers as _helpers
+from tests.support import fakes as _fakes
+from tests.workflow import fixtures as _helpers
 from tests.workflow.engine import event_values as _events
 
 

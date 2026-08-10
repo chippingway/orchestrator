@@ -5,11 +5,11 @@ from __future__ import annotations
 
 from orchestrator.workflow.stages.documenting import handler as _documenting
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _PatchedWorkflowMixin,
     _TEST_SPEC,
 )

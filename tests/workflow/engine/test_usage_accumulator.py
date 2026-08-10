@@ -20,18 +20,16 @@ from orchestrator.observability.usage.metrics import UsageMetrics
 from orchestrator.workflow.engine import drift as _drift, usage as engine_usage
 from orchestrator.workflow.stages.implementing import resume as _resume
 
-from tests import fakes, workflow_helpers
-from tests.workflow.engine.usage_accumulator_test_support import (
-    _PoisonedThenFreshRun,
-)
+from tests.workflow.engine import usage_accumulator_test_support as support
 
-FakeGitHubClient = fakes.FakeGitHubClient
-make_issue = fakes.make_issue
-REVIEW_APPROVED_MESSAGE = workflow_helpers.REVIEW_APPROVED_MESSAGE
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_TEST_SPEC = workflow_helpers._TEST_SPEC
-_agent = workflow_helpers._agent
-_fake_worktree = workflow_helpers._fake_worktree
+FakeGitHubClient = support.FakeGitHubClient
+make_issue = support.make_issue
+REVIEW_APPROVED_MESSAGE = support.REVIEW_APPROVED_MESSAGE
+_PatchedWorkflowMixin = support._PatchedWorkflowMixin
+_PoisonedThenFreshRun = support._PoisonedThenFreshRun
+_TEST_SPEC = support._TEST_SPEC
+_agent = support._agent
+_fake_worktree = support._fake_worktree
 
 
 _BACKEND_CLAUDE = "claude"

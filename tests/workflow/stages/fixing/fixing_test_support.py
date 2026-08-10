@@ -11,13 +11,15 @@ from unittest import mock
 
 from orchestrator import config as _config
 from orchestrator.git.worktrees import paths as _git_worktree_paths
-from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
 from orchestrator.workflow.stages.fixing import (
+    bookmarks as _bookmarks,
     continue_command as _continue_command,
 )
 from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
 
-from tests import fakes, implementing_fixing_test_cases, workflow_helpers
+from tests.support import fakes
+from tests.workflow import fixtures
+from tests.workflow.stages import implementing_fixing_test_cases
 
 dataclass = dataclasses.dataclass
 config = _config
@@ -39,10 +41,10 @@ make_issue = fakes.make_issue
 IssueScenario = implementing_fixing_test_cases.IssueScenario
 posted_comment_contains = implementing_fixing_test_cases.posted_comment_contains
 
-EVENT_AGENT_SPAWN = workflow_helpers.EVENT_AGENT_SPAWN
-ROLE_DEVELOPER = workflow_helpers.ROLE_DEVELOPER
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_agent = workflow_helpers._agent
+EVENT_AGENT_SPAWN = fixtures.EVENT_AGENT_SPAWN
+ROLE_DEVELOPER = fixtures.ROLE_DEVELOPER
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_agent = fixtures._agent
 
 # The dev-fix disposition is a validating owner the fixing resume imports
 # directly, so a test that has to wrap it patches that owner.

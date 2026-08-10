@@ -6,7 +6,7 @@ Which module a mock has to land on is a property of the caller, not of the
 name: a stage that imports its git owner can only be intercepted on that owner,
 and a mock left anywhere else would let the real command run. Recording the
 defining module once here keeps every test that holds the same probe pointed at
-the same owner, and gives `workflow_patch_context` one table to resolve its
+the same owner, and gives `patch_context` beside it one table to resolve its
 hermetic mocks against.
 """
 from __future__ import annotations

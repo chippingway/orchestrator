@@ -508,7 +508,8 @@ one owner, so the method count is waived there instead.
 
 Ruff and the line-length test enforce a repository-wide 120-column target set once as `line-length` under
 `[tool.ruff]` in [`../pyproject.toml`](../pyproject.toml). Ruff applies it to Python via the opted-in `E501` rule; the
-first-party [`../tests/test_line_length.py`](../tests/test_line_length.py) reads the same value and applies it to
+first-party [`../tests/repository/test_line_length.py`](../tests/repository/test_line_length.py) reads the same value
+and applies it to
 tracked Markdown/text files, exempting fenced code blocks, single unbreakable tokens (e.g. long URLs), binary assets,
 the lockfile, and the verbatim `LICENSE`.
 

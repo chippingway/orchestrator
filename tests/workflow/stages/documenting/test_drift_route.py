@@ -9,7 +9,7 @@ from tests.workflow.stages.documenting.documenting_drift_test_support import (
     _assert_reconcile_calls,
     _run_drift_reconcile,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _TEST_SPEC,
     _agent,
 )

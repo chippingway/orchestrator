@@ -19,14 +19,14 @@ from orchestrator.github.labels import PAUSED_LABEL
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.stages.implementing import resume as _implementing_resume
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeLabel,
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     _FAKE_WT,
     _PatchedWorkflowMixin,

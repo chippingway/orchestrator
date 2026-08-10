@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from orchestrator.workflow.stages.validating import handler as _validating
 
-from tests import workflow_tracked_repos_test_support as support
+from tests.workflow.stages import tracked_repos_test_support as support
 
 
 def _review_seed():

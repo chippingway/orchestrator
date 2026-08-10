@@ -10,8 +10,8 @@ from orchestrator.workflow.stages.validating import (
 )
 from orchestrator.workflow.stages.validating import handler as _validating
 
-from tests import fakes as _fakes
-from tests import workflow_helpers as _helpers
+from tests.support import fakes as _fakes
+from tests.workflow import fixtures as _helpers
 
 
 BACKEND_CLAUDE = _helpers.BACKEND_CLAUDE

@@ -13,7 +13,7 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.workflow.engine import comments as _comments
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeLabel,
@@ -23,7 +23,7 @@ from tests.fakes import (
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_FIXING,
     LABEL_IN_REVIEW,
     REVIEW_APPROVED_MESSAGE,

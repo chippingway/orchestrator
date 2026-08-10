@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.fixtures import (
     LABEL_VALIDATING,
     _PatchedWorkflowMixin,
     _issue_branch,

@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 from orchestrator.workflow.engine import drift as _drift
-from tests import fakes, implementing_fixing_test_cases, workflow_helpers
+from tests.support import fakes
+from tests.workflow import fixtures
+from tests.workflow.stages import implementing_fixing_test_cases
 
 FakeComment = fakes.FakeComment
 FakeGitHubClient = fakes.FakeGitHubClient
@@ -13,11 +15,11 @@ FakeUser = fakes.FakeUser
 IssueScenario = implementing_fixing_test_cases.IssueScenario
 posted_comment_contains = implementing_fixing_test_cases.posted_comment_contains
 make_issue = fakes.make_issue
-LABEL_IMPLEMENTING = workflow_helpers.LABEL_IMPLEMENTING
-LABEL_VALIDATING = workflow_helpers.LABEL_VALIDATING
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_agent = workflow_helpers._agent
-_issue_branch = workflow_helpers._issue_branch
+LABEL_IMPLEMENTING = fixtures.LABEL_IMPLEMENTING
+LABEL_VALIDATING = fixtures.LABEL_VALIDATING
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_agent = fixtures._agent
+_issue_branch = fixtures._issue_branch
 
 RUN_AGENT = "run_agent"
 USER_CONTENT_HASH = "user_content_hash"

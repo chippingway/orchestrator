@@ -19,7 +19,7 @@ from orchestrator.workflow.state import (
     coerce_workflow_label,
 )
 
-from tests.fakes import FakeGitHubClient, make_issue
+from tests.support.fakes import FakeGitHubClient, make_issue
 
 
 _VALIDATING_LABEL = "validating"
@@ -112,12 +112,22 @@ class CoerceWorkflowLabelTest(unittest.TestCase):
         self.assertIn("validatign", msg)
         self.assertIn("valid workflow label", msg)
 
-    def test_accepts_value_keyword(self) -> None:
-        # `value` is the public keyword; callers may pass the label by name.
-        self.assertIs(
-            coerce_workflow_label(value=_VALIDATING_LABEL),
-            WorkflowLabel.VALIDATING,
-        )
+    def test_accepts_either_label_keyword(self) -> None:
+        # Both spellings name the one label, so a caller may pass either.
+        for keyword in ("label_name", "value"):
+            with self.subTest(keyword=keyword):
+                self.assertIs(
+                    coerce_workflow_label(**{keyword: _VALIDATING_LABEL}),
+                    WorkflowLabel.VALIDATING,
+                )
+
+    def test_rejects_duplicate_and_unknown_keywords(self) -> None:
+        # A label passed twice or under a name the adapter does not know is a
+        # caller bug: raising beats silently picking one of the two.
+        with self.assertRaises(TypeError):
+            coerce_workflow_label(_VALIDATING_LABEL, value="done")
+        with self.assertRaises(TypeError):
+            coerce_workflow_label(label=_VALIDATING_LABEL)
 
 
 class LabelWriteTypoGuardTest(unittest.TestCase):

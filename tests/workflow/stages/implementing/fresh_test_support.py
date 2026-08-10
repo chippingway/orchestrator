@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from orchestrator import config
-from tests import implementing_fixing_test_cases
+from tests.workflow.stages import implementing_fixing_test_cases
 
 
 def assert_pr_routing(test_case, scenario) -> None:

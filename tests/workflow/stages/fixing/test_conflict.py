@@ -8,6 +8,7 @@ import unittest
 
 from orchestrator.git.base_sync import refresh as _base_refresh
 
+from tests.git.base_sync.sync_test_support import _patch_base_sync
 from tests.workflow.stages.fixing import (
     fixing_routing_test_support as support,
 )
@@ -17,7 +18,6 @@ LABEL_RESOLVING_CONFLICT = support.LABEL_RESOLVING_CONFLICT
 LABEL_VALIDATING = support.LABEL_VALIDATING
 MagicMock = support.MagicMock
 _FixingConflictFixtureMixin = support._FixingConflictFixtureMixin
-_patch_base_sync = support._patch_base_sync
 
 
 class FixingConflictDetourTest(

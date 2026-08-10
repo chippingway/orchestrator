@@ -1,11 +1,20 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Callable agent fixture for usage retry scenarios."""
+"""Fixtures and the callable agent the usage-accumulator tests run on."""
 from __future__ import annotations
 
 from typing import Optional
 
-from tests.workflow_helpers import _agent
+from tests.support import fakes
+from tests.workflow import fixtures
+
+FakeGitHubClient = fakes.FakeGitHubClient
+make_issue = fakes.make_issue
+REVIEW_APPROVED_MESSAGE = fixtures.REVIEW_APPROVED_MESSAGE
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_TEST_SPEC = fixtures._TEST_SPEC
+_agent = fixtures._agent
+_fake_worktree = fixtures._fake_worktree
 
 
 class _PoisonedThenFreshRun:

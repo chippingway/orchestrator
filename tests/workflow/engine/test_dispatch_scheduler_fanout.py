@@ -8,8 +8,8 @@ from pathlib import Path
 
 from orchestrator.workflow.engine import tick as _tick
 
-from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
+from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
 )
 

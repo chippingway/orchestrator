@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-from tests.fakes import FakeComment, FakeGitHubClient, FakeIssue, make_issue
+from tests.support.fakes import FakeComment, FakeGitHubClient, FakeIssue, make_issue
 
 LABEL_BLOCKED = "blocked"
 

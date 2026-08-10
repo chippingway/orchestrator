@@ -14,7 +14,7 @@ import unittest
 
 from orchestrator.workflow.engine import messages
 
-from tests.workflow_verdict_values import (
+from tests.workflow.verdict_values import (
     VERDICT_APPROVED,
     VERDICT_CHANGES_REQUESTED,
     VERDICT_UNKNOWN,

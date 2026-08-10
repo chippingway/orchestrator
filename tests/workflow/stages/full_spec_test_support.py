@@ -9,7 +9,9 @@ from unittest import mock
 from orchestrator import config as config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
-from tests import fakes, implementing_fixing_test_cases, workflow_helpers
+from tests.support import fakes
+from tests.workflow import fixtures
+from tests.workflow.stages import implementing_fixing_test_cases
 
 MagicMock = mock.MagicMock
 patch = mock.patch
@@ -25,19 +27,19 @@ FakeUser = fakes.FakeUser
 make_issue = fakes.make_issue
 IssueScenario = implementing_fixing_test_cases.IssueScenario
 
-BACKEND_CLAUDE = workflow_helpers.BACKEND_CLAUDE
-BACKEND_CODEX = workflow_helpers.BACKEND_CODEX
-KEY_AWAITING_HUMAN = workflow_helpers.KEY_AWAITING_HUMAN
-LABEL_DECOMPOSING = workflow_helpers.LABEL_DECOMPOSING
-LABEL_IMPLEMENTING = workflow_helpers.LABEL_IMPLEMENTING
-LABEL_VALIDATING = workflow_helpers.LABEL_VALIDATING
-REVIEW_APPROVED_MESSAGE = workflow_helpers.REVIEW_APPROVED_MESSAGE
-REVIEW_CHANGES_REQUESTED_MESSAGE = workflow_helpers.REVIEW_CHANGES_REQUESTED_MESSAGE
-_FAKE_WT = workflow_helpers._FAKE_WT
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_TEST_SPEC = workflow_helpers._TEST_SPEC
-_agent = workflow_helpers._agent
-_issue_branch = workflow_helpers._issue_branch
+BACKEND_CLAUDE = fixtures.BACKEND_CLAUDE
+BACKEND_CODEX = fixtures.BACKEND_CODEX
+KEY_AWAITING_HUMAN = fixtures.KEY_AWAITING_HUMAN
+LABEL_DECOMPOSING = fixtures.LABEL_DECOMPOSING
+LABEL_IMPLEMENTING = fixtures.LABEL_IMPLEMENTING
+LABEL_VALIDATING = fixtures.LABEL_VALIDATING
+REVIEW_APPROVED_MESSAGE = fixtures.REVIEW_APPROVED_MESSAGE
+REVIEW_CHANGES_REQUESTED_MESSAGE = fixtures.REVIEW_CHANGES_REQUESTED_MESSAGE
+_FAKE_WT = fixtures._FAKE_WT
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_TEST_SPEC = fixtures._TEST_SPEC
+_agent = fixtures._agent
+_issue_branch = fixtures._issue_branch
 
 CODEX_SPEC = "codex -m gpt-5.5 -c 'model_reasoning_effort=\"xhigh\"'"
 CODEX_ARGS = (

@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from orchestrator import agents
 from orchestrator.runtime import loop, shutdown
-from tests import polling_test_support as _support
+from tests.runtime import polling_test_support as _support
 from tests.cli.composition_test_support import composed_run
 
 _TERMINATE_ATTR = "terminate_all_running"

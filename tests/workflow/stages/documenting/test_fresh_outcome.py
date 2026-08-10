@@ -8,7 +8,7 @@ from tests.workflow.stages.documenting.documenting_assertion_test_support import
     _lifecycle_events,
     _pr_comment_text,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
 )
 

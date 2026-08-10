@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 from orchestrator import config
 from orchestrator.git.base_sync import refresh as _base_refresh
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeIssue,

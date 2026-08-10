@@ -8,7 +8,7 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.verification.models import VerifyResult
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakePR,
@@ -16,7 +16,7 @@ from tests.fakes import (
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
     _PatchedWorkflowMixin,
     _TEST_SPEC,

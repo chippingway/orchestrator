@@ -6,9 +6,9 @@ import json
 import unittest
 
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.pinned_state import PINNED_STATE_TEMPLATE
+from orchestrator.github.pinned_state import PINNED_STATE_TEMPLATE, PinnedState
 
-from tests.fakes import FakeComment, FakeUser, make_issue
+from tests.support.fakes import FakeComment, FakeUser, make_issue
 
 BOT = "orchestrator-bot"
 REAL_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-5"
@@ -207,6 +207,36 @@ class ReadPinnedStateRequiresStateOnlyBodyTest(unittest.TestCase):
 
         self.assertEqual(state.comment_id, _PINNED_COMMENT_ID)
         self.assertEqual(state.get(_BRANCH_KEY), REAL_BRANCH)
+
+
+class PinnedStateKeywordTest(unittest.TestCase):
+    """`state_data` and `data` name one payload, whichever spelling built it.
+
+    Live issues are read back through both, so the two have to be the same
+    dict rather than two copies that drift apart on the next write.
+    """
+
+    def test_keywords_share_data_attribute(self) -> None:
+        state_data = {_BRANCH_KEY: REAL_BRANCH}
+        descriptive_state = PinnedState(state_data=state_data)
+        legacy_state = PinnedState(data=state_data)
+
+        self.assertIs(descriptive_state.data, state_data)
+        self.assertIs(legacy_state.state_data, state_data)
+
+    def test_data_assignment_updates_internal_state(self) -> None:
+        pinned_state = PinnedState()
+        replacement = {"review_round": 2}
+
+        pinned_state.data = replacement
+
+        self.assertIs(pinned_state.state_data, replacement)
+
+    def test_invalid_keywords(self) -> None:
+        with self.assertRaises(TypeError):
+            PinnedState(state_data={}, data={})
+        with self.assertRaises(TypeError):
+            PinnedState(payload={})
 
 
 if __name__ == "__main__":

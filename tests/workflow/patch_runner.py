@@ -11,9 +11,9 @@ from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.in_review import handler as _in_review
 from orchestrator.workflow.stages.validating import handler as _validating
 
-from tests.workflow_patch_context import _patch_and_run
-from tests.workflow_patch_models import _WorkflowRunContext
-from tests.workflow_repo_values import _TEST_SPEC
+from tests.workflow.patch_context import _patch_and_run
+from tests.workflow.patch_models import _WorkflowRunContext
+from tests.workflow.repo_values import _TEST_SPEC
 
 
 class _ImplementationWorkflowMixin:

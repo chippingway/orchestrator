@@ -19,10 +19,10 @@ from pathlib import Path
 
 from orchestrator.workflow.engine import prompts
 
-from tests.fakes import make_issue
-from tests.workflow_helpers import _TEST_SPEC
+from tests.support.fakes import make_issue
+from tests.workflow.fixtures import _TEST_SPEC
 
-_REPO_ROOT = Path(__file__).resolve().parents[1]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Both roots the skill-catalog scanner reads. `.claude` is a symlink to
 # `.agents`, but the harness may load either, so the anchor must hold on both.

@@ -9,15 +9,15 @@ from pathlib import Path
 
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.observability.usage import trajectory as _trajectory
-from tests import (
-    workflow_patch_runner as _runner,
-    workflow_repo_values as _repo,
-    workflow_stage_labels as _labels,
-    workflow_state_values as _roles,
-    workflow_value_helpers as _value_helpers,
-    workflow_verdict_values as _verdicts,
+from tests.workflow import (
+    patch_runner as _runner,
+    repo_values as _repo,
+    stage_labels as _labels,
+    state_values as _roles,
+    value_helpers as _value_helpers,
+    verdict_values as _verdicts,
 )
-from tests.fakes import FakeGitHubClient
+from tests.support.fakes import FakeGitHubClient
 from tests.workflow.engine import event_values as _events
 
 

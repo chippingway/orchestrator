@@ -8,7 +8,7 @@ import unittest
 
 from orchestrator.workflow.stages.decomposition import run as _decomposing
 
-from tests import implementing_full_spec_test_support as support
+from tests.workflow.stages import full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX

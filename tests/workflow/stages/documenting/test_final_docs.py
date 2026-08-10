@@ -11,7 +11,7 @@ from orchestrator.workflow.stages.validating import watermarks as _validating_wa
 from orchestrator.workflow.stages.in_review import handler as _in_review
 
 from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeLabel,
@@ -20,7 +20,7 @@ from tests.fakes import (
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _TEST_SPEC,
     _agent,
 )

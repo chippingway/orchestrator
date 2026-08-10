@@ -20,7 +20,6 @@ _MODEBAR_KEY = "displayModeBar"
 # switch must not pay for a read, a driver, or a figure builder.
 _PACKAGE_CHAIN = frozenset((
     "orchestrator",
-    "orchestrator._package_exports",
     "orchestrator.observability",
     "orchestrator.observability.dashboard",
     _OWNER,

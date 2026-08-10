@@ -5,20 +5,20 @@ from __future__ import annotations
 import unittest
 
 from tests.workflow.stages.decomposition.decomposition_test_support import _seed_blocked_children
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     BACKEND_CLAUDE,
     KEY_AWAITING_HUMAN,
     KEY_PARENT_NUMBER,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_BLOCKED,
     LABEL_DECOMPOSING,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
     _manifest,
 )

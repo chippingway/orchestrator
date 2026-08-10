@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.worktrees import paths as _worktree_paths
 
-from tests.workflow_helpers import _agent
+from tests.workflow.fixtures import _agent
 
 WORKTREE_PATH = "_worktree_path"
 GIT_HARDENED = "_git_hardened"

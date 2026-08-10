@@ -11,13 +11,13 @@ from orchestrator.git.worktrees import recovery as _worktree_recovery
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.question import handler as _question
 
-from tests.fakes import FakeComment, FakeGitHubClient, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeComment, FakeGitHubClient, make_issue
+from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
     KEY_PARK_REASON,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_QUESTION,
     _PatchedWorkflowMixin,
     _TEST_SPEC,

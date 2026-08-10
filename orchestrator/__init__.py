@@ -1,11 +1,14 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""agent-orchestrator: GitHub-Issue-driven AI agent workflow."""
+"""agent-orchestrator: GitHub-Issue-driven AI agent workflow.
 
-# Seed explicit-use bindings while keeping this initializer import-only; the
-# compatibility imports below replace both harmless future-feature objects.
-from __future__ import annotations as __getattr__
-from __future__ import generator_stop as __dir__
+The two names below are the whole of the root package's surface, and they are
+bound here rather than resolved on demand so that `import orchestrator` costs
+this module and nothing else: every runtime owner lives under a subpackage a
+caller names directly, so a binding here would put one owner's graph behind an
+import of the package the launch forms already pay for.
+"""
 
-from orchestrator._package_exports import __dir__ as __dir__
-from orchestrator._package_exports import __getattr__ as __getattr__
+__all__ = ("__version__",)
+
+__version__ = "0.8.0"

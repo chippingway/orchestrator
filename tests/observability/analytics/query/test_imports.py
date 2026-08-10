@@ -440,7 +440,6 @@ _REACHABLE_PREFIXES = (
 # import-cost check reads against it.
 _PACKAGE_CHAIN = frozenset((
     "orchestrator",
-    "orchestrator._package_exports",
     "orchestrator.observability",
     "orchestrator.observability.analytics",
     _PACKAGE,

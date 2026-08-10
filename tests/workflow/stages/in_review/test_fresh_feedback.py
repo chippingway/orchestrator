@@ -19,7 +19,7 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.workflow.engine import dispatch as _dispatch
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakePR,
@@ -28,7 +28,7 @@ from tests.fakes import (
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_FIXING,
     _PatchedWorkflowMixin,
     _TEST_SPEC,

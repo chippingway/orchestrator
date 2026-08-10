@@ -37,7 +37,7 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.bootstrap import normalize_test_environment
+from tests.support.bootstrap import normalize_test_environment
 
 normalize_test_environment()
 

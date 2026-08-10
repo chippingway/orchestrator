@@ -35,7 +35,7 @@ _FLAT_MODULES = (
 # its import graph.
 _ALLOWED_ROOTS = ("orchestrator.config", "orchestrator.git")
 
-_ALLOWED_MODULES = ("orchestrator", "orchestrator._package_exports")
+_ALLOWED_MODULES = ("orchestrator",)
 
 _RESULT_OWNERS = (
     "orchestrator.git.verification.models",

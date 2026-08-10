@@ -18,8 +18,8 @@ from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
 from orchestrator.workflow.engine import dispatch, pickup
 from orchestrator.workflow.stages.implementing import handler as implementing
 
-from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
+from tests.workflow.fixtures import (
     EVENT_STAGE_ENTER,
     EVENT_STAGE_EVALUATION,
     LABEL_IMPLEMENTING,

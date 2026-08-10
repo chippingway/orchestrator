@@ -20,6 +20,7 @@ from orchestrator.github import pinned_state as _pinned_state
 # initializer without re-entering a half-built one.
 _MODULES = (
     "orchestrator.github",
+    "orchestrator.github.aliases",
     "orchestrator.github.checks",
     "orchestrator.github.client",
     "orchestrator.github.comments",

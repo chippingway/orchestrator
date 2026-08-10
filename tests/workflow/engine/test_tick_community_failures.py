@@ -11,8 +11,8 @@ from orchestrator import config
 from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
 from orchestrator.workflow.engine import tick
 
-from tests.fakes import FakeGitHubClient
-from tests.workflow_git_owners import seam_patch
+from tests.support.fakes import FakeGitHubClient
+from tests.workflow.git_owners import seam_patch
 from tests.workflow.engine.tick_community_test_support import (
     ALLOWED_LOGIN,
     ALLOWLIST_CONFIG,

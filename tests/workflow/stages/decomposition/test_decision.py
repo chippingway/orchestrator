@@ -13,21 +13,21 @@ from tests.workflow.stages.decomposition.decomposition_test_support import (
     _comments_for_issue,
     _labels_for_issue,
 )
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     KEY_PARENT_NUMBER,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_BLOCKED,
     LABEL_DECOMPOSING,
     LABEL_READY,
     LABEL_UMBRELLA,
     _TEST_SPEC,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
     _manifest,
 )
@@ -181,7 +181,7 @@ class HandleDecomposingDecisionTest(
         gh.add_issue(issue)
         manifest = _manifest(
             '{"decision": "single", "rationale": "fits", '
-            '"affected_files": ["orchestrator/config.py", "tests/fakes.py"], '
+            '"affected_files": ["orchestrator/config.py", "tests/support/fakes.py"], '
             '"notes": "Bump the default and cover it in fakes."}'
         )
 
@@ -201,7 +201,7 @@ class HandleDecomposingDecisionTest(
             ":mag:",
         )
         self.assertIn("orchestrator/config.py", context_comment)
-        self.assertIn("tests/fakes.py", context_comment)
+        self.assertIn("tests/support/fakes.py", context_comment)
         self.assertIn("Bump the default and cover it in fakes.", context_comment)
 
     def test_split_decision_creates_children(self) -> None:

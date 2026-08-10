@@ -23,7 +23,7 @@ from orchestrator import config
 from orchestrator.git import authentication
 from orchestrator.git.base_sync import recovery
 
-from tests.fakes import FakeGitHubClient, FakePR, make_issue
+from tests.support.fakes import FakeGitHubClient, FakePR, make_issue
 
 ISSUE = 7
 

@@ -14,7 +14,7 @@ from orchestrator.agents import AgentResult
 from orchestrator.observability.usage import metrics as _usage_metrics
 from orchestrator.workflow.engine import usage as engine_usage
 
-from tests.fakes import FakeGitHubClient
+from tests.support.fakes import FakeGitHubClient
 
 from tests.workflow.engine import usage_test_support as support
 

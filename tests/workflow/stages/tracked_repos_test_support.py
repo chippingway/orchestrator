@@ -14,8 +14,8 @@ from orchestrator.workflow.stages.decomposition import run as _decomposing
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.implementing import resume as _implementing_resume
 
-from tests import fakes as _fakes
-from tests import workflow_helpers as _helpers
+from tests.support import fakes as _fakes
+from tests.workflow import fixtures as _helpers
 
 
 REVIEW_APPROVED_MESSAGE = _helpers.REVIEW_APPROVED_MESSAGE

@@ -10,7 +10,7 @@ from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     _ResolvingConflictMixin,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
 )
 

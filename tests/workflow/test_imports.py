@@ -70,13 +70,16 @@ _LAZINESS_PROBE = (
 # The paths a second import site for anything under this package would take: a
 # flat spelling of the drift owner or of the comment, message, prompt, and
 # decomposition manifest owners, the shared-value and dependency leaves the
-# owners hold their own copies of, and the inventory plus resolver a lazy
-# surface over them would be rebuilt from.
+# owners hold their own copies of, the inventory plus resolver a lazy surface
+# over them would be rebuilt from, and the flat spelling of the `state` owner
+# itself -- which would be a second identity for the transition graph and the
+# write guard live issues already run on.
 _FLAT_MODULES = (
     "orchestrator._workflow_dependencies",
     "orchestrator._workflow_export_manifest",
     "orchestrator._workflow_exports",
     "orchestrator._workflow_state",
+    "orchestrator.state_machine",
     "orchestrator.workflow_drift",
     "orchestrator.workflow_messages",
 )

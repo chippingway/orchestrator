@@ -11,7 +11,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any, Optional
 
-from tests.script_launch_helpers import (
+from tests.apps.script_launch_helpers import (
     clear_modules as _drop_modules,
     drop_repo_root as _strip_repo_root,
     script_launch_sandbox as _launch_sandbox,

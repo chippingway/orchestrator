@@ -5,9 +5,9 @@
 import tempfile
 import unittest
 
-from tests import config_reload_helpers as _reload
-from tests import config_test_support as _support
-from tests import config_test_values as _config_cases
+from tests.config import config_reload_helpers as _reload
+from tests.config import config_test_support as _support
+from tests.config import config_test_values as _config_cases
 
 
 class ParallelLimitDefaultsTest(unittest.TestCase):

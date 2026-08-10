@@ -8,7 +8,9 @@ from orchestrator.workflow.stages.implementing import (
     publication as _publication,
     state as _state,
 )
-from tests import fakes, implementing_fixing_test_cases, workflow_helpers
+from tests.support import fakes
+from tests.workflow import fixtures
+from tests.workflow.stages import implementing_fixing_test_cases
 
 # The cap and the marker are state constants; the formatter that applies them
 # to a PR body belongs to the publication owner that builds the body.
@@ -24,10 +26,10 @@ make_issue = fakes.make_issue
 IssueScenario = implementing_fixing_test_cases.IssueScenario
 posted_comment_contains = implementing_fixing_test_cases.posted_comment_contains
 
-LABEL_IMPLEMENTING = workflow_helpers.LABEL_IMPLEMENTING
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_TEST_SPEC = workflow_helpers._TEST_SPEC
-_agent = workflow_helpers._agent
+LABEL_IMPLEMENTING = fixtures.LABEL_IMPLEMENTING
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_TEST_SPEC = fixtures._TEST_SPEC
+_agent = fixtures._agent
 
 DEV_SESSION = "sess-1"
 DONE_MESSAGE = "done"

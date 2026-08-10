@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from orchestrator.workflow.engine import drift as _drift
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,

@@ -7,11 +7,11 @@ from pathlib import Path
 
 from orchestrator import config
 
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
 )
 

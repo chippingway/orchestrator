@@ -11,7 +11,7 @@ from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.workflow.stages.implementing import resume as _implementing_resume
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeLabel,
@@ -20,7 +20,7 @@ from tests.fakes import (
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
     _FAKE_WT,
     _PatchedWorkflowMixin,

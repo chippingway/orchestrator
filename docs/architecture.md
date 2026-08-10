@@ -41,8 +41,8 @@ boundaries is named where its owner is described below.
 
 ```
 orchestrator/
-  __init__.py           lazy package/version compatibility surface;
-  _package_exports.py   owns root-package export resolution and caching
+  __init__.py           the package version and the `__all__` naming it, bound
+                        here so `import orchestrator` costs no owner behind it
   cli.py                `agent-orchestrator` console-script entry point and
                         the polling process's composition point
   __main__.py           `python -m orchestrator` launch form over `cli.main`;
@@ -77,6 +77,9 @@ orchestrator/
     __init__.py         stable public surface (`__all__`): the composed
                         `GitHubClient` and the pinned durable-state model,
                         re-exported from their owner modules
+    aliases.py          the descriptor three owners bind a stateless helper
+                        onto the client with, so class, instance, and module
+                        access all answer with the one module function
     client.py           authenticated `GitHubClient` over the mixin chain:
                         token resolution, PyGithub setup, worker-thread clone,
                         cached label reads, stage-enter events
@@ -1212,7 +1215,7 @@ Importing the package therefore costs the initializer and the state owner, and p
 engine, the config and analytics graph, nor the git and GitHub subsystems -- which
 `tests/workflow/test_imports.py` holds by probing both import paths in a clean interpreter. Those three layers --
 `github/labels.py`, `github/issues.py`, and the `git/base_sync/` owners -- all bind the state owner directly, and no
-flat module sits beside the package: a check in `tests/test_runtime_core_compat.py` asserts nothing resolves at that
+flat module sits beside the package: a check in `tests/workflow/test_imports.py` asserts nothing resolves at that
 module path. So `workflow/state.py` is the one module that *defines* the label vocabulary, its graph, and the write
 guard, and the two sites they answer on are that owner and the package API's re-export of five of them -- the same
 objects, which `tests/workflow/test_imports.py` pins by identity, so the graph a caller reads cannot fork. In-tree

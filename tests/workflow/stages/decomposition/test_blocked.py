@@ -12,12 +12,12 @@ from tests.workflow.stages.decomposition.decomposition_test_support import (
     _labels_for_issue,
     _run_with_logs,
 )
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     FakeIssue,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,

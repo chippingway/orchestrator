@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from tests import fakes
+from tests.support import fakes
 
 
 @dataclass(frozen=True)

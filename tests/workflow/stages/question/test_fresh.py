@@ -9,11 +9,11 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.workflow.stages.implementing import session as _dev_session
 
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _TEST_SPEC,
     _agent,
 )

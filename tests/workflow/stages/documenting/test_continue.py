@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 
 
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
 )
 

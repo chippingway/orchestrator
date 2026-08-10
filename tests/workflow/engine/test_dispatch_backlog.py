@@ -12,8 +12,8 @@ from orchestrator.github.labels import BACKLOG_LABEL
 from orchestrator.workflow.stages.implementing import handler as implementing
 from orchestrator.workflow.engine import dispatch, pickup
 
-from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
-from tests.workflow_helpers import _TEST_SPEC
+from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
+from tests.workflow.fixtures import _TEST_SPEC
 
 
 _UNLABELED_BACKLOG_ISSUE = 701

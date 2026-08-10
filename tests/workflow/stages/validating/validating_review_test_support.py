@@ -11,7 +11,8 @@ from unittest import mock
 from orchestrator import config as _config
 from orchestrator.workflow.engine import drift as _drift
 
-from tests import fakes, workflow_helpers
+from tests.support import fakes
+from tests.workflow import fixtures
 
 Path = pathlib.Path
 Optional = typing.Optional
@@ -24,19 +25,19 @@ FakeGitHubClient = fakes.FakeGitHubClient
 FakeUser = fakes.FakeUser
 make_issue = fakes.make_issue
 
-EVENT_AGENT_SPAWN = workflow_helpers.EVENT_AGENT_SPAWN
-LABEL_DOCUMENTING = workflow_helpers.LABEL_DOCUMENTING
-LABEL_FIXING = workflow_helpers.LABEL_FIXING
-LABEL_IN_REVIEW = workflow_helpers.LABEL_IN_REVIEW
-LABEL_VALIDATING = workflow_helpers.LABEL_VALIDATING
-REVIEW_APPROVED_MESSAGE = workflow_helpers.REVIEW_APPROVED_MESSAGE
-REVIEW_CHANGES_REQUESTED_MESSAGE = workflow_helpers.REVIEW_CHANGES_REQUESTED_MESSAGE
-ROLE_DEVELOPER = workflow_helpers.ROLE_DEVELOPER
-ROLE_REVIEWER = workflow_helpers.ROLE_REVIEWER
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_TEST_SPEC = workflow_helpers._TEST_SPEC
-_agent = workflow_helpers._agent
-_issue_branch = workflow_helpers._issue_branch
+EVENT_AGENT_SPAWN = fixtures.EVENT_AGENT_SPAWN
+LABEL_DOCUMENTING = fixtures.LABEL_DOCUMENTING
+LABEL_FIXING = fixtures.LABEL_FIXING
+LABEL_IN_REVIEW = fixtures.LABEL_IN_REVIEW
+LABEL_VALIDATING = fixtures.LABEL_VALIDATING
+REVIEW_APPROVED_MESSAGE = fixtures.REVIEW_APPROVED_MESSAGE
+REVIEW_CHANGES_REQUESTED_MESSAGE = fixtures.REVIEW_CHANGES_REQUESTED_MESSAGE
+ROLE_DEVELOPER = fixtures.ROLE_DEVELOPER
+ROLE_REVIEWER = fixtures.ROLE_REVIEWER
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_TEST_SPEC = fixtures._TEST_SPEC
+_agent = fixtures._agent
+_issue_branch = fixtures._issue_branch
 
 FRESH_REVIEW_ISSUE = 5
 FRESH_REVIEW_PR = 11

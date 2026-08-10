@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.git import authentication
 
-from tests.fakes import FakeGitHubClient, FakePR, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, FakePR, make_issue
+from tests.workflow.fixtures import (
     LABEL_IN_REVIEW,
     LABEL_RESOLVING_CONFLICT,
     LABEL_VALIDATING,

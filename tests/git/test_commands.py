@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 from orchestrator import config
 from orchestrator.git import commands
 
-from tests.workflow_git_helpers import _temp_git_repo_with_local_config
+from tests.git.transport_helpers import _temp_git_repo_with_local_config
 
 GIT = "git"
 HTTP_PROXY_KEY = "http.proxy"

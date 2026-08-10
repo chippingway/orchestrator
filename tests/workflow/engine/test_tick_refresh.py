@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.workflow.engine import dispatch, tick
 
-from tests.workflow_git_owners import seam_patch
+from tests.workflow.git_owners import seam_patch
 
 from tests.workflow.engine import tick_parallel_test_support as support
 

@@ -7,7 +7,7 @@ import time
 from functools import partial
 from pathlib import Path
 
-from tests.workflow_git_owners import seam_patch
+from tests.workflow.git_owners import seam_patch
 
 
 REPO_SLUG = "acme/widget"

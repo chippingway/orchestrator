@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Fixtures shared across the flat workflow tests, re-exported explicitly.
+"""Fixtures shared across the workflow tests, re-exported explicitly.
 
 Each name below is defined by the leaf beside it -- the event names, the two
 label vocabularies, the repo spec and backend values, the pinned-state keys and
@@ -10,14 +10,14 @@ tests that span several of those leaves reach them through.
 """
 from __future__ import annotations
 
-from tests import workflow_other_labels as _other_labels
-from tests import workflow_patch_models as _patch_models
-from tests import workflow_patch_runner as _patch_runner
-from tests import workflow_repo_values as _repo_values
-from tests import workflow_stage_labels as _stage_labels
-from tests import workflow_state_values as _state_values
-from tests import workflow_value_helpers as _value_helpers
-from tests import workflow_verdict_values as _verdict_values
+from tests.workflow import other_labels as _other_labels
+from tests.workflow import patch_models as _patch_models
+from tests.workflow import patch_runner as _patch_runner
+from tests.workflow import repo_values as _repo_values
+from tests.workflow import stage_labels as _stage_labels
+from tests.workflow import state_values as _state_values
+from tests.workflow import value_helpers as _value_helpers
+from tests.workflow import verdict_values as _verdict_values
 from tests.workflow.engine import event_values as _event_values
 
 EVENT_AGENT_EXIT = _event_values.EVENT_AGENT_EXIT

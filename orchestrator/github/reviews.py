@@ -8,8 +8,8 @@ from typing import Any, Optional
 from github.IssueComment import IssueComment
 from github.PullRequest import PullRequest
 
-from orchestrator._static_alias import StaticMethodAlias
 from orchestrator.github import pinned_state
+from orchestrator.github.aliases import StaticMethodAlias
 
 REVIEW_CHANGES_REQUESTED = "CHANGES_REQUESTED"
 REVIEW_APPROVED = "APPROVED"

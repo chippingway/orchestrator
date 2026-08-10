@@ -6,8 +6,8 @@ import threading
 from pathlib import Path
 
 
-from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
 )
 

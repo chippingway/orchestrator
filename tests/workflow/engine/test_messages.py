@@ -19,7 +19,7 @@ from orchestrator.agents import AgentResult
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import messages
 
-from tests.fakes import FakeComment, FakeGitHubClient, make_issue
+from tests.support.fakes import FakeComment, FakeGitHubClient, make_issue
 
 
 _AGENT_SESSION_ID = "s"

@@ -13,8 +13,8 @@ from orchestrator import config
 from orchestrator.git import authentication
 from orchestrator.git.base_sync import refresh
 
-from tests.fakes import FakeGitHubClient, FakePR, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, FakePR, make_issue
+from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     STATE_OPEN,
 )
