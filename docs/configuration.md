@@ -498,8 +498,13 @@ illegal write raises — and defines the per-repo `tick` entry point, publishing
 (`WPS410`). `tick` resolves `workflow/engine/tick.py` inside the call rather than binding it at module scope: the
 GitHub and git layers import `workflow/state.py` beside this initializer for the label vocabulary they are typed by,
 and a submodule import runs the initializer first, so an engine import here would route them back into the modules
-they are still initializing. `WPS412` is waived for that import-time logic. The remaining scopes are the two
+they are still initializing. `WPS412` is waived for that import-time logic. Two more facade scopes are the
 `observability/` initializers — the usage parsers and the analytics recorders — waived on the same grounds.
+
+The eighth scope is the one that is not a facade: `orchestrator/__init__.py` (`WPS412`, `WPS410`) is the whole of the
+root package. It declares the distribution version and the explicit `__all__` naming it and binds nothing else, so
+`import orchestrator` costs that module and no owner behind it. Both names are module-level metadata (`WPS410`) and
+both assignments read as logic in an initializer (`WPS412`), so each rule is waived there.
 
 `orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
 comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8
@@ -509,9 +514,8 @@ one owner, so the method count is waived there instead.
 Ruff and the line-length test enforce a repository-wide 120-column target set once as `line-length` under
 `[tool.ruff]` in [`../pyproject.toml`](../pyproject.toml). Ruff applies it to Python via the opted-in `E501` rule; the
 first-party [`../tests/repository/test_line_length.py`](../tests/repository/test_line_length.py) reads the same value
-and applies it to
-tracked Markdown/text files, exempting fenced code blocks, single unbreakable tokens (e.g. long URLs), binary assets,
-the lockfile, and the verbatim `LICENSE`.
+and applies it to tracked Markdown/text files, exempting fenced code blocks, single unbreakable tokens (e.g. long
+URLs), binary assets, the lockfile, and the verbatim `LICENSE`.
 
 The workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same

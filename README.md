@@ -135,7 +135,7 @@ For deeper implementation details, use the references below.
 
    > **Title:** Add a `hello()` function to the orchestrator package
    > **Body:** Add `hello()` to `orchestrator/__init__.py` returning the string `"hello, world"`. Add
-   > `tests/test_hello.py` asserting the return value. Don't change anything else.
+   > `tests/repository/test_hello.py` asserting the return value. Don't change anything else.
 
    Within about one minute, the orchestrator should comment "picking this up" and label the issue `decomposing`, then
    walk it through `implementing` → `validating` → `documenting` → `in_review`, opening a PR along the way. The
