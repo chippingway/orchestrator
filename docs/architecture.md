@@ -1053,8 +1053,8 @@ orchestrator/
                         through, notices before timeline
       page_render.py    the order a whole page is drawn in, and the two empty
                         reads it stops short on
-  apps/                 launch targets that have an owner here; both Streamlit
-                        pages, the CLI still being started at cli.py
+  apps/                 the two Streamlit pages a `streamlit run` names; the
+                        polling loop is launched at cli.py instead
     __init__.py         package marker only; an app is named to be launched
     bootstrap.py        the repo-root `sys.path` shim a script launch needs,
                         standard library only so it resolves before it runs
@@ -1073,6 +1073,41 @@ orchestrator/
                         list, plus the skill roots and SKILL.md marker
                         `catalog.py` reads back
 ```
+
+Five rules hold for the tree as a whole, each with a check under `tests/repository/` that finds its subjects on disk so
+a module added anywhere is covered the day it lands. The root is the three files above plus the ten packages under
+them, held to that exact inventory: a module parked beside them would be importable next to the package that owns the
+responsibility, and both would answer. No module wears one of the retired domain families as a prefix. Every family is
+forbidden in the private spelling its compatibility leaves carried (`_dashboard_read_core.py`), and the families whose
+word names a domain package and nothing else — `dashboard_`, `workflow_`, `git_`, `state_machine` — in the public
+spelling as well, so `workflow_state.py` fails one level down exactly as it would at the root. A word that also names a
+responsibility *inside* a package keeps its public spelling: `charts/usage_axis.py` and `usage/trajectory_models.py`
+are owners under the family's own package rather than that family flattened out of it. Nothing is named for an
+inventory of names either — `exports.py`, `manifest.py`, `compatibility.py`, whole or as the tail of a prefixed one,
+the decomposer's output manifest excepted — and nothing carries a `.pyi` stub or a module-level `__getattr__` /
+`__dir__`: a re-export is the owner's own object bound at import, so a lookup lands on the module that defines the name
+rather than on something answering for it.
+
+Imports run one way through four layers — `config/` at the bottom, the domains that do the work above it, `workflow/`
+deciding with them, and `cli.py` / `__main__.py` / `runtime/` / `apps/` composing the lot. The direction is read
+twice, because deferring an import weakens where it lands but not whether it belongs. At module scope, where an import
+decides what a package costs to load and whether it can be loaded at all, nothing points up but `workflow/state.py` —
+named exactly, and only by the two layers its labels type, `github/` and `git/`. Over every scope, the only reaches
+left are declared one by one in `tests/repository/test_layering.py`: three base-sync owners posting a notice or a park
+through the workflow's comment and guard owners, deferred to a call because at module scope they would be a cycle. An
+undeclared hop fails wherever it is written, and a declared one fails if it is bound at module scope after all. The
+launch forms compose each other and are reached from nothing below them at any scope, and no import anywhere is
+relative, because a relative target names its module by position and no layer can be read off it. And each package
+publishes either nothing at all or an explicit `__all__` of its owners' own objects, with nothing else of the
+package's own left in its namespace beside it — what an initializer imports from outside the package for its own use
+is a helper rather than a surface, and is not held to that. The eight that publish are listed under
+[`configuration.md#continuous-integration`](configuration.md#continuous-integration), where each is also a scoped lint
+waiver.
+
+The test tree mirrors this one, and two more checks hold it there: every package above has a mirrored tests package,
+and every directory the suite collects from carries an initializer of its own, with nothing at the tests root but the
+suite-wide fixtures. The mirror is why the same short module name recurs once per domain — one `test_imports.py` per
+package — and those initializers are what keep the recurrences distinct at collection.
 
 Nothing under `git/publication/` sits behind a facade: the
 divergence probe, the first-commit-subject read, the two subject-shape predicates, the two title helpers, and the
@@ -2646,8 +2681,8 @@ through `analytics/sink.py`, meters a run through `usage/`, and hands that run's
 `analytics/trajectories/`, so naming it buys those four chains and nothing else.
 Nothing under the tree carries an export manifest, a resolver hook, or a `.pyi` surface — a re-export is the owner's own
 object, bound once at import rather than resolved per lookup, so the module defining a name stays where a reader finds
-it and where a patch has to land, rather than a facade answering for it — the compatibility layer this destination
-exists to retire. Nothing observed is on the workflow's decision path, so no module may import the workflow engine, a
+it and where a patch has to land, rather than somewhere answering on its behalf. Nothing observed is on the workflow's
+decision path, so no module may import the workflow engine, a
 stage, or an application entrypoint — the CLI and the runtime loop on one side, and the two `streamlit run` targets
 under `apps/` on the other; the dependency runs one way, and an
 entrypoint composes these owners rather than the reverse. And Streamlit and Plotly stay function-local: they live in the

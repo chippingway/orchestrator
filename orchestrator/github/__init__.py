@@ -1,20 +1,20 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable PyGithub client surface for workflow and operator code.
+"""The package API the PyGithub client is reached through.
 
 Each domain surface lives in its own owner module: the workflow / control label
 vocabulary in ``labels``, audit records in ``events``, issue polling and writes
 in ``issues``, the durable pinned state in ``pinned_state``, pull requests in
 ``pull_requests``, review verdicts and feedback watermarks in ``reviews``, and
 check surfaces in ``checks``; ``client`` composes them into the concrete
-``GitHubClient``. This facade re-exports the narrow public surface (``__all__``):
-that client and the pinned durable-state model. Code that needs a single domain
-surface imports its owner directly, so this facade carries no private
-re-exports.
+``GitHubClient``. This initializer re-exports the narrow public surface
+(``__all__``): that client and the pinned durable-state model. Code that needs a
+single domain surface imports its owner directly, so nothing private is
+published here.
 
 Importing the ``client`` owner here pulls the whole mixin chain, whose leaves
 reach back into this package for their sibling owners. Those leaf imports name
-submodules rather than facade attributes, and a submodule import binds on the
+submodules rather than names bound here, and a submodule import binds on the
 parent package even while this initializer is still running, so importing any
 owner first never needs a name this module has not bound yet.
 """

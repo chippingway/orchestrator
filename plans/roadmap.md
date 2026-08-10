@@ -161,11 +161,6 @@ linked docs.
 
 Short actionable entries; expand into design docs only when picked up.
 
-- **Domain package refactor.** Replace the flat production and test
-  trees with domain packages, narrow explicit package APIs, and remove
-  the manifest-backed lazy compatibility system through phased PRs that
-  preserve runtime behavior. Full plan in
-  [`domain-package-refactor.md`](domain-package-refactor.md).
 - **Spec-first split.** Insert a `specifying` stage between `ready` and
   `implementing` so a separate spec agent writes failing tests first
   (scoped to test paths) and the orchestrator verifies they fail

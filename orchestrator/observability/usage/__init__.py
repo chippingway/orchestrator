@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Stable usage-parsing surface for one finished agent run.
+"""The package API one finished agent run is metered through.
 
 Home of the provider payloads a run is metered from. The owners divide by what
 a payload has to be turned into: the JSONL vocabulary and the resilient line
@@ -25,8 +25,7 @@ and ``SkillTriggers`` beside the parsers that fill them, and the
 object rather than a wrapper around it; that binding does not follow a later
 patch, so a test intercepting a parser targets the module its caller imported.
 Everything else -- the price tables, the protocol keys, the per-provider
-decoders -- is reached on its owner, so this facade carries no private
-re-exports.
+decoders -- is reached on its owner, so nothing private is published here.
 
 The parser is what a tracked run folds its per-issue counters from, so no owner
 here may reach the workflow that calls it: the dependency runs the other way,

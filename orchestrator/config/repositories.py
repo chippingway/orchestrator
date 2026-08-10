@@ -183,8 +183,8 @@ def parse_repos_env(
     ``remote_name`` (use ``origin`` explicitly to keep the default).
     Blank lines and lines starting with ``#`` are skipped. ``;`` is also
     accepted as an entry separator so the value fits on a single line in a
-    ``.env`` file (the simple parser in `_load_dotenv` cannot represent
-    multi-line values). Aborts (SystemExit) on malformed entries or
+    ``.env`` file (the simple parser in `_dotenv.load_dotenv` cannot
+    represent multi-line values). Aborts (SystemExit) on malformed entries or
     duplicate slugs; a missing ``target_root`` is warned to stderr but not
     fatal so a freshly-cloned host can still start the orchestrator and
     notice the problem on the first tick rather than at import.

@@ -14,22 +14,21 @@
 #   resolution into the same namespace the helpers read -- the reload / patch
 #   contract this package exists to preserve -- and publishes its narrow
 #   public surface through an explicit __all__ (WPS410) in that initializer.
-# * orchestrator/agents/__init__.py is the stable agent facade: it re-exports
-#   the model types, the runner owner's `run_agent`, and the process owner's
-#   `terminate_all_running`, and publishes its narrow public surface through an
-#   explicit __all__ (WPS410) so `orchestrator.agents` stays the historical
-#   import site. WPS412 is waived for that import-time logic.
-# * orchestrator/github/__init__.py is the stable PyGithub client facade: it
-#   re-exports the composed `GitHubClient` and the pinned durable-state model
-#   from their owner modules, and publishes its narrow public surface through
-#   an explicit __all__ (WPS410) so `orchestrator.github` stays the historical
-#   import site. WPS412 is waived for that import-time logic.
-# * orchestrator/scheduler/__init__.py is the stable scheduler facade: it
-#   re-exports the concrete `IssueScheduler` from the `service` owner and the
-#   caller-facing `SubmissionRequest` from the `models` owner, and publishes its
-#   narrow public surface through an explicit __all__ (WPS410) so
-#   `orchestrator.scheduler` stays the historical import site. WPS412 is waived
-#   for that import-time logic.
+# * orchestrator/agents/__init__.py is the API an agent run is driven through:
+#   it re-exports the model types, the runner owner's `run_agent`, and the
+#   process owner's `terminate_all_running`, and publishes that narrow public
+#   surface through an explicit __all__ (WPS410) so a caller spawns an agent
+#   through the package. WPS412 is waived for that import-time logic.
+# * orchestrator/github/__init__.py is the PyGithub client API: it re-exports
+#   the composed `GitHubClient` and the pinned durable-state model from their
+#   owner modules, and publishes that narrow public surface through an explicit
+#   __all__ (WPS410) so a caller reaches the client through the package. WPS412
+#   is waived for that import-time logic.
+# * orchestrator/scheduler/__init__.py is the scheduler API: it re-exports the
+#   concrete `IssueScheduler` from the `service` owner and the caller-facing
+#   `SubmissionRequest` from the `models` owner, and publishes that narrow
+#   public surface through an explicit __all__ (WPS410) so a caller submits
+#   through the package. WPS412 is waived for that import-time logic.
 # * orchestrator/workflow/__init__.py is the workflow package API: it
 #   re-exports five names from the `state` owner -- the two label vocabularies,
 #   the transition guard and the predicate under it, and the illegal-write
@@ -38,16 +37,16 @@
 #   beside it never pay for the engine graph. It publishes that narrow public
 #   surface through an explicit __all__ (WPS410), and WPS412 is waived for the
 #   import-time logic.
-# * orchestrator/observability/usage/__init__.py is the stable usage-parsing
-#   facade: it re-exports the nine parsers defined across the `metrics`,
-#   `skills`, and `trajectory` owners, a per-backend trio each, plus the five
-#   result types they hand back -- two from those same owners and the
+# * orchestrator/observability/usage/__init__.py is the usage-parsing API: it
+#   re-exports the nine parsers defined across the `metrics`, `skills`, and
+#   `trajectory` owners, a per-backend trio each, plus the five result types
+#   they hand back -- two from those same owners and the
 #   trajectory trio from `trajectory_models` -- and publishes that narrow
 #   public surface through an explicit __all__ (WPS410) so a caller reaches
 #   the parsers through the package. WPS412 is waived for that import-time
 #   logic.
-# * orchestrator/observability/analytics/recording/__init__.py is the stable
-#   analytics recording facade: it re-exports the six recorders a producer
+# * orchestrator/observability/analytics/recording/__init__.py is the analytics
+#   recording API: it re-exports the six recorders a producer
 #   calls -- the record envelope and the sink append beneath it, plus one each
 #   for a stage entered, a stage evaluated, a repo's skill catalog scanned,
 #   and a tracked agent run finished, five from the `events` owner and the

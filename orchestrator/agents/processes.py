@@ -7,7 +7,7 @@ group (``start_new_session=True``) and register the group leader here so the
 shutdown sweep can reach an in-flight run. Process creation lives in this owner
 so the historical ``orchestrator.agents.processes.subprocess.Popen`` patch
 point and the shared shutdown registry keep their exact behavior; the
-``orchestrator.agents`` facade re-exports only ``terminate_all_running``.
+``orchestrator.agents`` API re-exports only ``terminate_all_running``.
 """
 from __future__ import annotations
 

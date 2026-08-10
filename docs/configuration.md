@@ -473,22 +473,22 @@ does not duplicate Ruff's checks; dev tools are declared in `[dependency-groups]
 because the package initializer deliberately invokes the `environment` resolver and binds its results at import time
 (so a reload re-runs resolution) and publishes its narrow public surface through an explicit `__all__` there.
 
-The agent facade adds a second scope: `orchestrator/agents/__init__.py` (`WPS412`, `WPS410`) is the stable runner
-facade. It re-exports the model types, the runner owner's `run_agent`, and the process owner's `terminate_all_running`,
-and publishes its narrow public surface through an explicit `__all__` (`WPS410`); `run_agent` reaches the
-`agents.backends` command modules (`codex`, `claude`) directly at dispatch time, so the facade carries no private
-backend re-exports. `WPS412` is waived for that import-time logic.
+The agents package adds a second scope: `orchestrator/agents/__init__.py` (`WPS412`, `WPS410`) is the API an agent run
+is driven through. It re-exports the model types, the runner owner's `run_agent`, and the process owner's
+`terminate_all_running`, and publishes that narrow public surface through an explicit `__all__` (`WPS410`); `run_agent`
+reaches the `agents.backends` command modules (`codex`, `claude`) directly at dispatch time, so nothing private is
+published above them. `WPS412` is waived for that import-time logic.
 
-The github facade adds a third scope: `orchestrator/github/__init__.py` (`WPS412`, `WPS410`) re-exports the composed
+The github package adds a third scope: `orchestrator/github/__init__.py` (`WPS412`, `WPS410`) re-exports the composed
 `GitHubClient` and the pinned durable-state model from their owner modules and publishes that narrow public surface
 through an explicit `__all__` (`WPS410`); every other GitHub surface — labels, events, issues, pull requests, reviews,
-checks — is imported from its owner directly, so the facade carries no private re-exports. `WPS412` is waived for that
+checks — is imported from its owner directly, so nothing private is published above them. `WPS412` is waived for that
 import-time logic.
 
 The scheduler package adds a fourth scope: `orchestrator/scheduler/__init__.py` (`WPS412`, `WPS410`) re-exports the
 concrete `IssueScheduler` from the `service` owner and the caller-facing `SubmissionRequest` from the `models` owner,
 and publishes that narrow public surface through an explicit `__all__` (`WPS410`); the layers the scheduler is composed
-from stay private to `service`, so the facade carries no private re-exports. `WPS412` is waived for that import-time
+from stay private to `service`, so nothing private is published above them. `WPS412` is waived for that import-time
 logic.
 
 The workflow package adds another: `orchestrator/workflow/__init__.py` (`WPS412`, `WPS410`) is the package API. It
@@ -498,13 +498,18 @@ illegal write raises — and defines the per-repo `tick` entry point, publishing
 (`WPS410`). `tick` resolves `workflow/engine/tick.py` inside the call rather than binding it at module scope: the
 GitHub and git layers import `workflow/state.py` beside this initializer for the label vocabulary they are typed by,
 and a submodule import runs the initializer first, so an engine import here would route them back into the modules
-they are still initializing. `WPS412` is waived for that import-time logic. Two more facade scopes are the
-`observability/` initializers — the usage parsers and the analytics recorders — waived on the same grounds.
+they are still initializing. `WPS412` is waived for that import-time logic. Two more scopes are the `observability/`
+publishers — the usage parsers and the analytics recorders — waived on the same grounds.
 
-The eighth scope is the one that is not a facade: `orchestrator/__init__.py` (`WPS412`, `WPS410`) is the whole of the
+The eighth scope fronts no owner at all: `orchestrator/__init__.py` (`WPS412`, `WPS410`) is the whole of the
 root package. It declares the distribution version and the explicit `__all__` naming it and binds nothing else, so
 `import orchestrator` costs that module and no owner behind it. Both names are module-level metadata (`WPS410`) and
 both assignments read as logic in an initializer (`WPS412`), so each rule is waived there.
+
+Those eight are the whole publishing set: every other initializer in the tree binds nothing but the submodules an
+import plants, and `tests/repository/test_package_exports.py` compares the packages carrying an `__all__` against that
+list, so a ninth publisher is a deliberate edit here and a scope in [`../.flake8`](../.flake8) rather than a silent
+widening of what a package answers for.
 
 `orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
 comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8
@@ -541,6 +546,11 @@ dependency.
   loop. A second Ctrl+C terminates immediately.
 - `python -m orchestrator --once` — single tick then exit. Useful for tests and debugging.
 - `python -m orchestrator --log-level DEBUG` — verbose logs.
+
+Both forms above call `orchestrator/cli.py`, which is also what the `agent-orchestrator` console script declared in
+[`../pyproject.toml`](../pyproject.toml) runs (`uv run agent-orchestrator --once`). The module form is what `run.sh`
+launches and what the systemd unit below therefore supervises; the console script is the equivalent for an install
+that has the project on its `PATH`.
 
 On first start the orchestrator creates the workflow labels and the `backlog` / `paused` / `community_contribution`
 control labels on the repo, then begins polling open issues every `POLL_INTERVAL` seconds.

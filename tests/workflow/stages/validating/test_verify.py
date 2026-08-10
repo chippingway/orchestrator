@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.config import _parse_verify_commands as parse_verify_commands
+from orchestrator.config.environment import parse_verify_commands
 from orchestrator.git.verification.models import VerifyResult
 
 from tests.workflow.stages.validating import (
@@ -67,7 +67,7 @@ class HandleValidatingVerifyGateTest(
         self.assertIsNone(state.get(PARK_REASON))
 
     def test_config_parses_two_command_separators(self) -> None:
-        # `_parse_verify_commands` accepts both `;` and `\n` separators so
+        # `parse_verify_commands` accepts both `;` and `\n` separators so
         # the value fits on one line in a `.env` file. Blank lines and
         # `#`-commented lines are skipped.
 

@@ -133,9 +133,12 @@ For deeper implementation details, use the references below.
 
 6. **File a bootstrap test issue** to verify the path works end-to-end:
 
-   > **Title:** Add a `hello()` function to the orchestrator package
-   > **Body:** Add `hello()` to `orchestrator/__init__.py` returning the string `"hello, world"`. Add
-   > `tests/repository/test_hello.py` asserting the return value. Don't change anything else.
+   > **Title:** Add a `hello()` function to the skills package
+   > **Body:** Add `hello()` to `orchestrator/skills/discovery.py` returning the string `"hello, world"`. Add
+   > `tests/skills/test_hello.py` asserting the return value. Don't change anything else.
+
+   Any owner module works here; the package root is not one. `orchestrator/__init__.py` carries the version and
+   nothing else, and `tests/repository/` enforces that — an issue pointed at it produces a PR the suite rejects.
 
    Within about one minute, the orchestrator should comment "picking this up" and label the issue `decomposing`, then
    walk it through `implementing` → `validating` → `documenting` → `in_review`, opening a PR along the way. The
