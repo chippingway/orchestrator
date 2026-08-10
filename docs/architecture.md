@@ -82,7 +82,8 @@ orchestrator/
                         access all answer with the one module function
     client.py           authenticated `GitHubClient` over the mixin chain:
                         token resolution, PyGithub setup, worker-thread clone,
-                        cached label reads, stage-enter events
+                        cached label reads with a sweep-counted retry window on
+                        a confirmed-absent one, stage-enter events
     checks.py           status / check-run normalization, failure-before-pending
                         folding, and the fail-closed check-read client mixin
     comments.py         comment-author trust policy (is_trusted_author /
@@ -96,7 +97,8 @@ orchestrator/
                         comments, child creation)
     labels.py           workflow/control label vocabulary, bootstrap
                         specifications, predicates, and the label-bootstrap
-                        client mixin
+                        client mixin, which renames a pre-namespace label in
+                        place rather than creating a second one beside it
     pinned_state.py     authenticated pinned-state model, parser, and the
                         state / comment-watermark client mixin
     pull_requests.py    stateless PR status helpers plus the pull-request
@@ -126,7 +128,10 @@ orchestrator/
                         engine inside the call
     state.py            typed workflow state: the `WorkflowLabel` /
                         `ControlLabel` vocabularies, strict label coercion, the
-                        declared transition graph, and the transition guard
+                        declared transition graph, the transition guard, and
+                        the `workflow:` namespace boundary -- the bare stage
+                        tag under a label, the pre-namespace alias tables, and
+                        which labels one issue's write owns
     engine/
       __init__.py       package marker only; callers import an owner directly
       comments.py       the orchestrator marker and capped id ledger both
@@ -2705,10 +2710,13 @@ collide with them; the four a human also applies or reads on their own keep the 
 creates three non-workflow control labels: `backlog` and `paused` each make per-tick handlers skip the issue entirely
 (`backlog` is a "not yet" hold on a fresh issue, `paused` freezes an in-flight one), and `community_contribution` is
 applied by the per-tick open-PR sweep to PRs from non-bot authors outside `ALLOWED_ISSUE_AUTHORS` so a human reviews
-them.  The namespace is a GitHub label spelling and stops at that boundary: the *stage* an issue is in is still named
+them. The namespace is a GitHub label spelling and stops at that boundary: the *stage* an issue is in is still named
 by the bare tag under the label, which is what analytics rows, audit event payloads, agent-session attribution, and
 the pinned-state JSON have always recorded. `workflow/state.py` owns both directions — `stage_name` strips the prefix
-for those sinks, and `label_for_name` resolves either spelling back to its member.
+for those sinks, and `label_for_name` resolves either spelling back to its member. A namespaced label also outranks a
+pre-namespace one on the same issue, and a label write takes off only what it owns, so a bare `blocked` or `ready` the
+repository uses for its own triage survives a relabel; see
+[`state-machine.md#typed-states-and-the-transition-guard`](state-machine.md#typed-states-and-the-transition-guard).
 
 Label names are part of the public contract because live GitHub issues already carry them. For the meaning of each
 label, the control-label semantics, and the per-stage transitions they trigger, see

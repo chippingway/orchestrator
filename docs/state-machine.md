@@ -60,16 +60,29 @@ The label vocabulary is defined once in [`orchestrator/workflow/state.py`](../or
 every caller inside the tree imports directly — `orchestrator.workflow` re-exports the same objects for callers
 outside it: `WorkflowLabel` (a `StrEnum`) is the single source of truth for workflow states, and `ControlLabel` holds
 the modifiers above. Because `StrEnum` members *are* their wire strings, a member is the GitHub label verbatim — the
-enum just gives the names one authoritative definition.  The states the orchestrator drives itself are namespaced
+enum just gives the names one authoritative definition. The states the orchestrator drives itself are namespaced
 `workflow:<tag>` so a repository's own labels cannot collide with them; `in_review`, `question`, `done`, `rejected`,
 and every `ControlLabel` keep their bare spelling because a human applies or reads those directly. The namespace stops
 at the GitHub boundary — the *stage* identifier is the bare tag, and that is what analytics rows, audit event
 payloads, agent-session attribution, and the pinned-state JSON record. `stage_name` on the same owner strips the
-prefix for those sinks.  Migration off the pre-namespace vocabulary
-runs in two places. `ensure_workflow_labels` renames the bare label rather than creating a second one, which carries
-every issue holding it across in one edit — including the closed and parked ones no polling pass revisits. And
-`label_for_name` accepts either spelling, so on a repository the rename could not reach (an under-scoped PAT, a human
-re-adding the old label) an issue still routes and is rewritten to the namespaced spelling by its next label write.
+prefix for those sinks.
+
+Migration off the pre-namespace vocabulary runs in two places. `ensure_workflow_labels` renames the bare label rather
+than creating a second one, which carries every issue holding it across in one edit — including the closed and parked
+ones no polling pass revisits. And `label_for_name` accepts either spelling, so on a repository the rename could not
+reach (an under-scoped PAT, a human re-adding the old label) an issue still routes and is rewritten to the namespaced
+spelling by its next label write.
+
+An issue can therefore carry both spellings at once, and the namespaced one always wins — `issue_workflow_label`
+scans for it across every label before it will settle for a bare tag, so the order GitHub happens to return them in
+cannot change the answer. The write side mirrors that read. `replaced_label_names` takes off the namespaced labels
+always; a bare tag joins them only when it names a state coming off anyway — because the namespaced spelling of that
+same state sits beside it, or because the issue has no namespaced label at all and the bare one *is* its
+pre-migration state. So a bare `blocked` or `ready` the repository uses for its own triage, on an issue whose state
+is already namespaced, is read past and left in place: that protection is the point of the namespace, and it would be
+worth nothing if a relabel deleted the label anyway. The one case the two spellings cannot be told apart is a bare tag
+on an issue with no namespaced label — there it is taken as the pre-migration state, which is what lets the issue
+keep routing.
 
 Two guards run at `GitHubClient.set_workflow_label` (the single label-write chokepoint; `create_child_issue` bypasses
 `set_workflow_label` and shares only the typo guard for its direct write, coercing each child label through
@@ -207,11 +220,13 @@ cleanly:
 Pre-PR labels (`workflow:decomposing` / `workflow:blocked` / `workflow:umbrella` / `workflow:ready`) are not swept
 closed — a closed issue at those stages is a hard human stop until an operator relabels.
 
-The closed-issue sweep issues one closed-issue query per sweep label per repo, every tick — a fixed request cost that
-drives GitHub primary-rate-limit exhaustion on multi-repo hosts. `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` (default `1`)
-batches it to once every N ticks; the open-issue poll is unaffected, so the only effect of `N>1` is that an
-externally-merged/closed issue can take up to `N-1` extra ticks to finalize. See
-[configuration.md#github-rate-limits](configuration.md#github-rate-limits).
+The closed-issue sweep issues one closed-issue query per sweep label the repository actually carries, per repo, every
+tick — a fixed request cost that drives GitHub primary-rate-limit exhaustion on multi-repo hosts. A pre-namespace
+spelling the rename already retired costs only its `GET …/labels/<name>` miss, and even that is thrown away for
+twenty sweeps before being asked again rather than re-requested every pass.
+`CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` (default `1`) batches the whole sweep to once every N ticks; the open-issue poll is
+unaffected, so the only effect of `N>1` is that an externally-merged/closed issue can take up to `N-1` extra ticks to
+finalize. See [configuration.md#github-rate-limits](configuration.md#github-rate-limits).
 
 `done` and `rejected` are terminal no-ops. Every handler receives the active `RepoSpec`, so `git worktree add`,
 `git fetch <spec.remote_name> <spec.base_branch>`, push-token resolution, and PR-base selection all flow from the spec.

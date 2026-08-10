@@ -120,11 +120,11 @@ session lock, and full examples.
 - `POLL_INTERVAL` — default `60`. seconds between polling ticks
 - `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` — default `1`. how many ticks apart the closed-issue recovery sweep runs (see
   [GitHub rate limits](#github-rate-limits) below). The sweep issues one `GET …/issues?state=closed&labels=<L>` per
-  non-terminal workflow label **per repo**; across many repos at a short `POLL_INTERVAL` that fixed cost dominates
-  request volume and is the main driver of GitHub *primary* rate-limit (5000 req/hour/PAT) exhaustion. `1` runs it every
-  tick (unchanged behavior). Raise it (e.g. `4`–`5`) on multi-repo deployments; the only cost is that an
-  externally-merged/closed issue may take up to `N-1` extra ticks to finalize to `done`. The latency-sensitive
-  open-issue poll always runs every tick.
+  non-terminal workflow label the repository actually carries **per repo**; across many repos at a short
+  `POLL_INTERVAL` that fixed cost dominates request volume and is the main driver of GitHub *primary* rate-limit
+  (5000 req/hour/PAT) exhaustion. `1` runs it every tick (unchanged behavior). Raise it (e.g. `4`–`5`) on multi-repo
+  deployments; the only cost is that an externally-merged/closed issue may take up to `N-1` extra ticks to finalize to
+  `done`. The latency-sensitive open-issue poll always runs every tick.
 - `AGENT_TIMEOUT` — default `1800`. wall-clock cap per agent invocation, seconds
 - `REVIEW_TIMEOUT` — default (= `AGENT_TIMEOUT`). wall-clock cap per reviewer invocation, seconds
 - `SHUTDOWN_GRACE_SECONDS` — default `30`. seconds after SIGTERM/SIGINT before the loop force-terminates in-flight
@@ -175,8 +175,15 @@ Two built-in mitigations reduce the floor without touching `POLL_INTERVAL`:
 - **Workflow-label objects are cached** per repo client. They are immutable after `ensure_workflow_labels`, so the
   closed sweep no longer re-fetches them every tick — eliminating 7 `GET …/labels/<name>` requests per repo per tick
   automatically.
+- **A pre-namespace label the repository does not have is asked for rarely.** The sweep looks up each swept state
+  under both its `workflow:`-namespaced name and its pre-namespace one, so an issue still carrying the old label is
+  not stranded (see [`state-machine.md`](state-machine.md#pollable-issues-and-finalization)). A lookup that comes back
+  404 cannot be cached as a Label object, so it is instead thrown away for 20 sweeps before being asked again — on a
+  repository the bootstrap rename already reached, the five legacy spellings therefore cost five `GET …/labels/<name>`
+  requests every twentieth sweep and nothing in between. A 403 is never treated this way: rate-limit exhaustion is not
+  an answer about whether the label exists, so it is retried on the next sweep.
 - **`CLOSED_ISSUE_SWEEP_EVERY_N_TICKS`** batches the closed-issue recovery sweep to once every N ticks (see the list
-  above). At `N=4`–`5` the seven closed-label queries are amortized down by the same factor while the open-issue poll
+  above). At `N=4`–`5` the closed-label queries are amortized down by the same factor while the open-issue poll
   stays every tick.
 
 If you still approach the cap, the remaining levers are operator-side: raise `POLL_INTERVAL`, split repos across more
