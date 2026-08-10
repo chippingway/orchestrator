@@ -5,7 +5,7 @@
 The scheduler's responsibilities are split across three layers that only this
 module composes: read-only state inspection plus temporary claims, atomic slot
 admission and release, and worker dispatch with completion draining. Callers
-reach the composed ``IssueScheduler`` through the package facade.
+reach the composed ``IssueScheduler`` through the package API.
 """
 from __future__ import annotations
 

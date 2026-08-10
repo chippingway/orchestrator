@@ -11,6 +11,8 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import patch
 
+from orchestrator.config import _dotenv
+
 from tests.config import config_reload_helpers as _reload
 from tests.config import config_test_values as _config_cases
 
@@ -69,7 +71,11 @@ def load_config_from_dotenv(
             os.environ.pop(_config_cases._SKIP_DOTENV_ENV, None)
             for key in _config_cases._DOTENV_OWNED_KEYS:
                 os.environ.pop(key, None)
-            with patch.object(config, "REPO_ROOT", Path(temp_root)):
-                config._load_dotenv()
+            # The `.env` loader is named on its owner and handed the root to
+            # read it from, so what the detached module resolved at import does
+            # not decide what this body loads.
+            _dotenv.load_dotenv(
+                Path(temp_root), os.environ, config._config_warning,
+            )
             _apply_agent_specs(config)
     return config

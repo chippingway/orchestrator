@@ -14,9 +14,9 @@ from tests.config import config_test_values as _config_cases
 class RepositoryConfigModuleTest(unittest.TestCase):
     """The repository-entry model lives in ``orchestrator.config.models`` and
     the REPOS parsing / default-spec construction in
-    ``orchestrator.config.repositories``; ``orchestrator.config`` stays the
-    compatibility import site via a ``RepoSpec`` re-export and the
-    ``default_repo_specs`` wrapper existing callers and test patches resolve.
+    ``orchestrator.config.repositories``; ``orchestrator.config`` publishes
+    ``RepoSpec`` and the ``default_repo_specs`` accessor over them, because a
+    caller reading a resolved setting reads the type of one in the same breath.
     """
 
     def test_repospec_reexported_from_models_module(self) -> None:

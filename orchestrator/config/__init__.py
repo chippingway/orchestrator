@@ -29,18 +29,21 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-from orchestrator.config import _dotenv, credentials, environment
+from orchestrator.config import credentials, environment
 # The repository-entry model lives in the config `models` leaf and the REPOS
-# parsing / default-spec construction in `repositories`; re-export `RepoSpec`
-# so `orchestrator.config` stays the compatibility import site for every
-# caller and test patch target.
+# parsing / default-spec construction in `repositories`; `RepoSpec` is
+# re-exported here because a caller that reads a resolved setting reads the
+# type of one in the same breath.
 from orchestrator.config.models import RepoSpec as RepoSpec
 
 # The public package surface: resolved settings plus the repository-config
 # API. `__all__` bounds `from orchestrator.config import *`; the private
-# `_config_*` / `_parse_*` / `_load_dotenv` / `_strip_dotenv_quotes` /
-# `_resolve_github_token` aliases below are deliberately excluded and stay
-# reachable only by the unmigrated consumers that still import them by name.
+# `_config_*` / `_parse_agent_spec` / `_resolve_github_token` names below are
+# the package's own internal API -- the diagnostics funnel its leaves are
+# constructed with, and the two resolutions a caller reaches through this
+# module because this is where the settings around them are patched and
+# reloaded. They stay out of `__all__` for that reason: internal, deliberate,
+# and not a surface an outside caller is invited onto.
 __all__ = [
     "RepoSpec",
     "default_repo_specs",
@@ -118,31 +121,23 @@ def _config_warning(message: str) -> None:
     sys.stderr.write(f"{message}\n")
 
 
-def _load_dotenv() -> None:
-    """Load REPO_ROOT/.env into the process environment.
-
-    A compatibility shim over the `_dotenv` leaf: the resolver loads the
-    same file on every import, but reload tests still drive dotenv loading
-    directly after patching `REPO_ROOT`.
-    """
-    _dotenv.load_dotenv(REPO_ROOT, os.environ, _config_warning)
-
-
 def _parse_agent_spec(name: str, spec: str) -> tuple[str, tuple[str, ...]]:
     """Parse a shell-like backend spec into (backend, extra_args).
 
-    A thin binding over `environment.parse_agent_spec` on the config error
-    funnel. Reused at runtime by `orchestrator.workflow` to re-parse a spec
-    persisted to pinned state, so a legacy bare-backend value (`"codex"` /
-    `"claude"`) round-trips to `(backend, ())` and a full spec round-trips
-    to its tokens.
+    `environment.parse_agent_spec` bound to the error funnel above, so a caller
+    re-parsing a spec gets the same abort a bad one gets at import instead of
+    supplying a handler of its own. The workflow stages re-parse the spec
+    persisted in pinned state through here, so a bare-backend value (`"codex"`
+    / `"claude"`) round-trips to `(backend, ())` and a full spec to its tokens.
     """
     return environment.parse_agent_spec(name, spec, _config_error)
 
 
-_strip_dotenv_quotes = _dotenv.strip_dotenv_quotes
+# The token resolution the GitHub client and the push path reach through this
+# module rather than through `credentials`. Both read it beside the settings
+# resolved above, and a test intercepting a repo's token patches it here, on
+# the module whose reload contract decides what those settings are.
 _resolve_github_token = credentials.resolve_github_token
-_parse_verify_commands = environment.parse_verify_commands
 
 
 # Resolve every setting from a `.env`-loaded process environment. Building a

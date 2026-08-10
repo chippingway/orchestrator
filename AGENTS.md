@@ -34,10 +34,12 @@ Top level only. Which module owns what — down to individual helpers — is in
 [`docs/architecture.md`](docs/architecture.md#top-level-layout), which is the single place that inventory is
 maintained.
 
-- `orchestrator/` — the Python package. Its subpackages are named after what they own: `workflow/` (tick loop, label
-  dispatch, and the per-label stage handlers under `workflow/stages/`), `github/`, `git/`, `agents/`, `scheduler/`,
-  `config/`, `skills/`, and the observability surfaces (analytics sink, dashboards, usage parser). `main.py` is the
-  runtime entry point; most other root-level modules are compatibility facades that forward to those owners.
+- `orchestrator/` — the Python package. The root carries the version, `cli.py` (the composition point the
+  `agent-orchestrator` console script calls), and `__main__.py` (the `python -m orchestrator` form over it); every
+  other module lives under a subpackage named after what it owns: `workflow/` (tick loop, label dispatch, and the
+  per-label stage handlers under `workflow/stages/`), `github/`, `git/`, `agents/`, `scheduler/`, `config/`,
+  `skills/`, `runtime/` (the polling process), `apps/` (the `streamlit run` targets), and `observability/` (analytics
+  sink, dashboards, usage parser).
 - `tests/` — pytest suite, mirroring the package layout (`tests/workflow/`, `tests/github/`, `tests/git/`, …).
   In-memory GitHub doubles live in `tests/support/github/`.
 - `docs/` — architecture, state-machine, workflow, configuration, observability, and security references.
