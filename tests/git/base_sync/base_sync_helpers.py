@@ -12,7 +12,7 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.base_sync import models
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakePR,

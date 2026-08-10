@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from tests import workflow_helpers
+from tests.workflow import fixtures
 
 CONFLICT_ISSUE = 200
 HUMAN_REPLY_ID = 2000
@@ -23,8 +23,8 @@ def stale_session_agent():
     stale_stderr = "Error: No conversation found with session ID: poisoned-sess"
     return MagicMock(
         side_effect=[
-            workflow_helpers._agent(session_id="", last_message="", stderr=stale_stderr),
-            workflow_helpers._agent(session_id="fresh-sess", last_message="resolved"),
+            fixtures._agent(session_id="", last_message="", stderr=stale_stderr),
+            fixtures._agent(session_id="fresh-sess", last_message="resolved"),
         ],
     )
 

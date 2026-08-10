@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from tests.fakes import FakeGitHubClient, make_issue
+from tests.support.fakes import FakeGitHubClient, make_issue
 
 CONFLICT_ISSUE = 900
 IN_REVIEW_ISSUE = 901

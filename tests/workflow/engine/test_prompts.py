@@ -15,8 +15,8 @@ import unittest
 
 from orchestrator.workflow.engine import drift, prompts
 
-from tests.fakes import FakeComment, FakeUser, make_issue
-from tests.workflow_helpers import _TEST_SPEC
+from tests.support.fakes import FakeComment, FakeUser, make_issue
+from tests.workflow.fixtures import _TEST_SPEC
 
 
 _PROMPT_ISSUE_NUMBER = 67200

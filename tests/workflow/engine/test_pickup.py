@@ -15,8 +15,8 @@ from orchestrator.workflow.engine import pickup
 from orchestrator.workflow.stages.decomposition import run as _decomposing
 from orchestrator.workflow.stages.implementing import handler as _implementing
 
-from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import _PatchedWorkflowMixin, _TEST_SPEC, _agent
+from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.fixtures import _PatchedWorkflowMixin, _TEST_SPEC, _agent
 
 
 _DECOMPOSE_CONFIG = "DECOMPOSE"

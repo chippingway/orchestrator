@@ -10,7 +10,7 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.decomposition import run as _decomposing
 from orchestrator.workflow.stages.decomposition import session as _decomposer_session
 
-from tests import implementing_full_spec_test_support as support
+from tests.workflow.stages import full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX

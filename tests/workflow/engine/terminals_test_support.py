@@ -8,13 +8,13 @@ from dataclasses import dataclass
 from orchestrator.github import PinnedState
 from orchestrator.workflow.engine import terminals
 
-from tests import fakes as _fakes
-from tests import workflow_other_labels as _other_labels
-from tests import workflow_patch_models as _patch_models
-from tests import workflow_patch_runner as _patch_runner
-from tests import workflow_repo_values as _repo
-from tests import workflow_stage_labels as _stage_labels
-from tests import workflow_value_helpers as _value_helpers
+from tests.support import fakes as _fakes
+from tests.workflow import other_labels as _other_labels
+from tests.workflow import patch_models as _patch_models
+from tests.workflow import patch_runner as _patch_runner
+from tests.workflow import repo_values as _repo
+from tests.workflow import stage_labels as _stage_labels
+from tests.workflow import value_helpers as _value_helpers
 from tests.workflow.engine import event_values as _events
 
 

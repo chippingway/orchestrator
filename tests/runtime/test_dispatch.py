@@ -7,9 +7,9 @@ from __future__ import annotations
 import time
 import unittest
 
-from tests import polling_scheduler_probes as _probes
-from tests import polling_signal_probes as _signal_probes
-from tests import polling_test_support as _support
+from tests.runtime import polling_scheduler_probes as _probes
+from tests.runtime import polling_signal_probes as _signal_probes
+from tests.runtime import polling_test_support as _support
 from tests.runtime import tick_test_support as _execution
 
 

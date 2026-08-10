@@ -7,7 +7,7 @@ import unittest
 
 from orchestrator.workflow.stages.documenting import handler as _documenting
 
-from tests import workflow_tracked_repos_test_support as support
+from tests.workflow.stages import tracked_repos_test_support as support
 
 
 class ImplementerSpawnTrackedReposTest(unittest.TestCase, support._PatchedWorkflowMixin):

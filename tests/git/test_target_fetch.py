@@ -21,7 +21,7 @@ from tests.git.authentication_test_support import (
     _assert_hardened_fetch,
     _spec,
 )
-from tests.workflow_git_helpers import (
+from tests.git.transport_helpers import (
     _GitRunRecorder,
     _TokenResolver,
     _temp_git_repo_with_local_config,

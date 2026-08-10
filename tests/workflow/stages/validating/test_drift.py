@@ -10,14 +10,14 @@ from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import drift as _drift
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakePR,
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
     _PatchedWorkflowMixin,
     _agent,

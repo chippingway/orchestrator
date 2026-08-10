@@ -12,7 +12,7 @@ from orchestrator.git.verification.models import VerifyResult
 from tests.workflow.stages.validating import (
     validating_verify_test_support as verify_support,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_DOCUMENTING,
     LABEL_IN_REVIEW,
     REVIEW_APPROVED_MESSAGE,

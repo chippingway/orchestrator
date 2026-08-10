@@ -11,14 +11,14 @@ import unittest
 from orchestrator.workflow.engine import drift as _drift
 
 from tests.workflow.stages.implementing import fresh_test_support
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
-from tests.implementing_fixing_test_cases import IssueScenario
-from tests.workflow_helpers import (
+from tests.workflow.stages.implementing_fixing_test_cases import IssueScenario
+from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     _PatchedWorkflowMixin,
     _agent,

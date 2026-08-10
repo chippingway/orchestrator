@@ -3,8 +3,8 @@
 """Shared values and builders for community-contribution sweeps."""
 from __future__ import annotations
 
-from tests.fakes import FakeLabel, FakePR, FakeUser
-from tests.workflow_repo_values import _TEST_SPEC
+from tests.support.fakes import FakeLabel, FakePR, FakeUser
+from tests.workflow.repo_values import _TEST_SPEC
 
 
 OUTSIDER_LOGIN = "outsider"

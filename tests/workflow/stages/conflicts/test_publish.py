@@ -8,13 +8,13 @@ from unittest.mock import MagicMock, patch
 from orchestrator.git import commands as _git_commands
 from orchestrator.workflow.stages.conflicts import guards as _guards
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
     FakePRRef,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _FAKE_WT,
     _PatchedWorkflowMixin,
     _TEST_SPEC,

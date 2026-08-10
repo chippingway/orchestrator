@@ -11,14 +11,14 @@ from unittest.mock import patch
 
 from orchestrator import config
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakePR,
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_DOCUMENTING,
     LABEL_IN_REVIEW,
     LABEL_VALIDATING,

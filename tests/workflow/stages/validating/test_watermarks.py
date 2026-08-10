@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from orchestrator import config
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeLabel,
@@ -17,7 +17,7 @@ from tests.fakes import (
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
     _PatchedWorkflowMixin,
     _agent,
@@ -137,7 +137,7 @@ class ValidatingHandoffPreservesHumanFeedbackTest(
         # spawn here; the fixing handler drives the resume). Without the
         # surfacing, the handler would ping HITL for the manual merge
         # over the human's unaddressed feedback.
-        from tests.fakes import FakeLabel
+        from tests.support.fakes import FakeLabel
 
         if not any(label.name == LABEL_IN_REVIEW for label in issue.labels):
             issue.labels = [FakeLabel(LABEL_IN_REVIEW)]

@@ -5,13 +5,13 @@ from __future__ import annotations
 import unittest
 
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
     FakePRRef,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _TEST_SPEC,
     _agent,
 )

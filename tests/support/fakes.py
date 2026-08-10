@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Stable import surface for the in-memory GitHub test doubles.
 
-The doubles live in `tests.support.github`; this module is the flat bridge the
-workflow tests reach them through.
+The doubles are split across the modules of `tests.support.github`; this module
+is the one name the rest of the suite reaches all of them through.
 """
 from __future__ import annotations
 

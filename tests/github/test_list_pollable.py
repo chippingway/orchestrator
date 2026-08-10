@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from orchestrator import config
 
-from tests.fakes import FakeGitHubClient, make_issue
+from tests.support.fakes import FakeGitHubClient, make_issue
 
 
 _IMPLEMENTING_LABEL = "implementing"

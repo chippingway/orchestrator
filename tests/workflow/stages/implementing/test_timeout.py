@@ -19,14 +19,14 @@ from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import drift as _drift
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
-from tests.implementing_fixing_test_cases import IssueScenario
-from tests.workflow_helpers import (
+from tests.workflow.stages.implementing_fixing_test_cases import IssueScenario
+from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     LABEL_VALIDATING,
     _PatchedWorkflowMixin,

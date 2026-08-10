@@ -9,7 +9,7 @@ import os
 from types import ModuleType
 from unittest.mock import patch
 
-from tests.import_world_helpers import CONFIG_MODULE, SETTINGS_MODULE
+from tests.support.import_world_helpers import CONFIG_MODULE, SETTINGS_MODULE
 
 
 def _hermetic_env(extra: dict[str, str] | None) -> dict[str, str]:

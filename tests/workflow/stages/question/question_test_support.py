@@ -6,11 +6,11 @@ from pathlib import Path
 
 from orchestrator import config
 
-from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.fixtures import (
     BACKEND_CLAUDE,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_QUESTION,
 )
 

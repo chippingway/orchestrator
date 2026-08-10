@@ -318,10 +318,10 @@ class TickEmitsRepoSkillCatalogTest(unittest.TestCase):
         # the pass -- and what proves the spec it is handed is the one being
         # polled, which is all the catalog needs to read the right base ref.
         from orchestrator import workflow
-        from tests.workflow_git_owners import seam_patch
+        from tests.workflow.git_owners import seam_patch
         from orchestrator.workflow.engine import dispatch
-        from tests.fakes import FakeGitHubClient, make_issue
-        from tests.workflow_helpers import _TEST_SPEC
+        from tests.support.fakes import FakeGitHubClient, make_issue
+        from tests.workflow.fixtures import _TEST_SPEC
 
         gh = FakeGitHubClient()
         gh.add_issue(make_issue(1, label="implementing"))

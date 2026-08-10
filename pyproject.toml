@@ -50,7 +50,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 # Repository-wide line-length target. Ruff enforces it for Python (E501,
-# enabled below); `tests/test_line_length.py` reads this same value to
+# enabled below); `tests/repository/test_line_length.py` reads this same value to
 # enforce it for tracked Markdown/text files, so 120 lives in one place.
 line-length = 120
 

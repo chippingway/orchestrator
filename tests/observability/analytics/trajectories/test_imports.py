@@ -42,7 +42,6 @@ _OWNERS = (
 # package and the chain down to this one.
 _ALWAYS_PLANTED = frozenset((
     "orchestrator",
-    "orchestrator._package_exports",
     "orchestrator.observability",
     "orchestrator.observability.analytics",
 ))

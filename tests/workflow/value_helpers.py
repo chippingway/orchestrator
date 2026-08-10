@@ -9,8 +9,8 @@ from pathlib import Path
 
 from orchestrator.github import PinnedState
 
-from tests.fakes import FakeGitHubClient
-from tests.workflow_repo_values import (
+from tests.support.fakes import FakeGitHubClient
+from tests.workflow.repo_values import (
     TEST_REPO_SLUG,
     _FAKE_WT,
 )

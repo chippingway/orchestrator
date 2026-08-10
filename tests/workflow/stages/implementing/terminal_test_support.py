@@ -6,19 +6,20 @@ from __future__ import annotations
 
 from unittest import mock
 
-from tests import fakes, workflow_helpers
+from tests.support import fakes
+from tests.workflow import fixtures
 
 MagicMock = mock.MagicMock
 FakeGitHubClient = fakes.FakeGitHubClient
 FakePR = fakes.FakePR
 FakePRRef = fakes.FakePRRef
 make_issue = fakes.make_issue
-EVENT_PR_CLOSED_WITHOUT_MERGE = workflow_helpers.EVENT_PR_CLOSED_WITHOUT_MERGE
-LABEL_IMPLEMENTING = workflow_helpers.LABEL_IMPLEMENTING
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_TEST_SPEC = workflow_helpers._TEST_SPEC
-_agent = workflow_helpers._agent
-_issue_branch = workflow_helpers._issue_branch
+EVENT_PR_CLOSED_WITHOUT_MERGE = fixtures.EVENT_PR_CLOSED_WITHOUT_MERGE
+LABEL_IMPLEMENTING = fixtures.LABEL_IMPLEMENTING
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_TEST_SPEC = fixtures._TEST_SPEC
+_agent = fixtures._agent
+_issue_branch = fixtures._issue_branch
 
 RUN_AGENT = "run_agent"
 CLEANUP_TERMINAL_BRANCH = "_cleanup_terminal_branch"

@@ -15,8 +15,8 @@ from orchestrator.workflow.engine import pickup as _pickup
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.question import handler as _question
 
-from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import LABEL_QUESTION, _TEST_SPEC
+from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.fixtures import LABEL_QUESTION, _TEST_SPEC
 
 QUESTION_ISSUE_NUMBER = 801
 

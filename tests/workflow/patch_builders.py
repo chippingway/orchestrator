@@ -7,12 +7,12 @@ from unittest.mock import MagicMock
 
 from orchestrator.git.verification.models import VerifyResult
 
-from tests.workflow_patch_models import (
+from tests.workflow.patch_models import (
     _WorkflowRunContext,
     _as_mock,
     _default_infer_subject_prefix,
 )
-from tests.workflow_repo_values import _FAKE_WT
+from tests.workflow.repo_values import _FAKE_WT
 
 
 def _execution_mocks(context: _WorkflowRunContext) -> dict[str, object]:

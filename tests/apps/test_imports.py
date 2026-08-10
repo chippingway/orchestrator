@@ -29,7 +29,7 @@ _MODULES = (_BOOTSTRAP, *_APPS)
 
 # What `import orchestrator` alone plants, so the cost check can hold each app
 # to its own chain and nothing besides.
-_ROOT_MODULES = (_ORCHESTRATOR, f"{_ORCHESTRATOR}._package_exports")
+_ROOT_MODULES = (_ORCHESTRATOR,)
 
 # The optional dependency group no launch path may cost at import: it is what
 # the function-local imports inside the page's passes exist for.

@@ -12,8 +12,8 @@ from unittest.mock import MagicMock, patch
 from orchestrator import agents, config
 from orchestrator.runtime import shutdown
 from orchestrator.runtime.state import RuntimeState
-from tests import polling_signal_probes as _signal_probes
-from tests import polling_test_support as _support
+from tests.runtime import polling_signal_probes as _signal_probes
+from tests.runtime import polling_test_support as _support
 
 _TERMINATE_ATTR = "terminate_all_running"
 _FORCE_EXIT_ATTR = "force_exit"

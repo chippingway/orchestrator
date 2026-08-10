@@ -17,9 +17,9 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.workflow.engine import comments, drift, prompts
 
-from tests.fakes import FakeComment, FakeUser, make_issue
+from tests.support.fakes import FakeComment, FakeUser, make_issue
 from tests.workflow.engine import comment_trust_test_support as trust
-from tests.workflow_helpers import _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC
 
 
 def _built_prompts(issue, comments_text: str) -> dict[str, str]:

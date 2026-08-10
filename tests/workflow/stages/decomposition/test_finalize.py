@@ -7,14 +7,14 @@ import unittest
 from orchestrator.workflow.stages.decomposition import blocked as _blocked
 from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     FakeIssue,
     FakePR,
     FakePRRef,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,

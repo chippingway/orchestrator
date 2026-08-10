@@ -8,7 +8,7 @@ author, and one injection attempt from an outsider.
 """
 from __future__ import annotations
 
-from tests.fakes import FakeComment, FakeUser, make_issue
+from tests.support.fakes import FakeComment, FakeUser, make_issue
 
 # The issue author is on the allowlist; the outsider is not. The outsider's
 # comment carries a hostile URL plus patch-like instructions -- exactly the

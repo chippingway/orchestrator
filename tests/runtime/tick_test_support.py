@@ -21,8 +21,8 @@ from orchestrator import workflow
 from orchestrator.runtime import ticks
 from orchestrator.runtime.state import RuntimeState
 from orchestrator.scheduler import IssueScheduler
-from tests import polling_test_support as _support
-from tests.workflow_git_owners import seam_patch
+from tests.runtime import polling_test_support as _support
+from tests.workflow.git_owners import seam_patch
 
 _RETENTION_OWNER = "orchestrator.observability.analytics.retention"
 _PRUNE_ATTR = "prune_with_retention_logging"

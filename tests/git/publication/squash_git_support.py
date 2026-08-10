@@ -20,7 +20,7 @@ from orchestrator import config
 from orchestrator.git import authentication
 from orchestrator.git.publication import squash
 
-from tests.fakes import make_issue
+from tests.support.fakes import make_issue
 from tests.git.publication.publication_helpers import _spec
 
 BASE_BRANCH_NAME = "main"

@@ -12,7 +12,7 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.github.comments import filter_trusted, is_trusted_author
 
-from tests.fakes import FakeComment, FakeUser
+from tests.support.fakes import FakeComment, FakeUser
 
 
 _ALLOWED_LOGIN = "alice"

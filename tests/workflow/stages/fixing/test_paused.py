@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 from orchestrator import config
 from orchestrator.github.labels import PAUSED_LABEL
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeLabel,
@@ -27,7 +27,7 @@ from tests.fakes import (
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import _PatchedWorkflowMixin, _agent
+from tests.workflow.fixtures import _PatchedWorkflowMixin, _agent
 
 ISSUE = 880
 PR_NUMBER = 880

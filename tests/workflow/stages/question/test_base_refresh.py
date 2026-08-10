@@ -8,9 +8,9 @@ from unittest.mock import MagicMock
 
 from orchestrator.git.base_sync import refresh
 
-from tests.fakes import FakeGitHubClient, make_issue
+from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.git.base_sync.sync_test_support import _patch_base_sync
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_QUESTION,
     _TEST_SPEC,
 )

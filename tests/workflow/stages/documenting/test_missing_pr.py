@@ -6,11 +6,11 @@ import unittest
 
 from orchestrator.workflow.stages.documenting import handler as _documenting
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _TEST_SPEC,
 )
 

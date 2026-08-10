@@ -12,8 +12,8 @@ from orchestrator import config
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.workflow.engine import dispatch, tick as _tick
 
-from tests.fakes import FakeGitHubClient, FakeLabel, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
+from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     TEST_BASE_BRANCH,
 )

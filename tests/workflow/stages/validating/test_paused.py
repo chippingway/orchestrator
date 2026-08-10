@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 from orchestrator.github.labels import PAUSED_LABEL
 from orchestrator.workflow.engine import drift as _drift
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeLabel,
@@ -27,7 +27,7 @@ from tests.fakes import (
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _PatchedWorkflowMixin,
     _agent,
 )

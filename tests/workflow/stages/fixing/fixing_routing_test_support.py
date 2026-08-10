@@ -17,22 +17,21 @@ from orchestrator.workflow.stages.validating import (
     recovery as _validating_recovery,
 )
 
-from tests import fakes, workflow_git_owners, workflow_helpers
-from tests.git.base_sync import sync_test_support
+from tests.support import fakes
+from tests.workflow import fixtures, git_owners
 
 Path = pathlib.Path
 MagicMock = mock.MagicMock
 patch = mock.patch
-_patch_base_sync = sync_test_support._patch_base_sync
-seam_patch = workflow_git_owners.seam_patch
+seam_patch = git_owners.seam_patch
 FakeGitHubClient = fakes.FakeGitHubClient
 FakePR = fakes.FakePR
 FakePRRef = fakes.FakePRRef
 make_issue = fakes.make_issue
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_TEST_SPEC = workflow_helpers._TEST_SPEC
-_agent = workflow_helpers._agent
-_issue_branch = workflow_helpers._issue_branch
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_TEST_SPEC = fixtures._TEST_SPEC
+_agent = fixtures._agent
+_issue_branch = fixtures._issue_branch
 BACKEND_CLAUDE = "claude"
 KEY_AWAITING_HUMAN = "awaiting_human"
 LABEL_DONE = "done"

@@ -8,11 +8,11 @@ from unittest.mock import patch
 
 from orchestrator import config
 
-from tests.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
+from tests.workflow.fixtures import (
     KEY_LAST_ACTION_COMMENT_ID,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_QUESTION,
     _agent,
 )

@@ -9,7 +9,7 @@ from orchestrator import config
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
     FakePRRef,
@@ -18,7 +18,7 @@ from tests.fakes import (
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     _ResolvingConflictMixin,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _FAKE_WT,
     _PatchedWorkflowMixin,
     _TEST_SPEC,

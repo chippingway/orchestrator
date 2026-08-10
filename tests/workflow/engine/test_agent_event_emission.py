@@ -13,7 +13,7 @@ from orchestrator.workflow.stages.validating import (
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.validating import handler as _validating
 
-from tests import workflow_event_emission_test_support as support
+from tests.workflow.engine import event_emission_test_support as support
 
 
 class AgentLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMixin):

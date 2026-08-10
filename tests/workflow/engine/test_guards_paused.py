@@ -25,14 +25,14 @@ from orchestrator.workflow.stages.decomposition import run as _decomposing
 from orchestrator.workflow.stages.question import handler as _question
 from orchestrator.workflow.stages.validating import handler as _validating
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeLabel,
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,

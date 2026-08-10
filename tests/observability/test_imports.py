@@ -25,7 +25,6 @@ _TESTS_ROOT = Path(__file__).resolve().parents[1]
 # package to its own chain and nothing besides.
 _ROOT_PACKAGE_MODULES = frozenset((
     "orchestrator",
-    "orchestrator._package_exports",
 ))
 
 # Nothing observed here is on the workflow's decision path, so the dependency

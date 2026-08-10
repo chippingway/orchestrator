@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages.conflicts import handler as _conflicts
 
-from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import _TEST_SPEC
+from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.fixtures import _TEST_SPEC
 
 CONFLICT_ISSUE = 42
 

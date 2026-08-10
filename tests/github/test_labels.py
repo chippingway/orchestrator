@@ -12,7 +12,7 @@ from orchestrator.github import labels as _labels
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.state import ControlLabel, WorkflowLabel
 
-from tests.fakes import FakeIssue, FakeLabel
+from tests.support.fakes import FakeIssue, FakeLabel
 
 _HTTP_FORBIDDEN = 403
 _LABEL_SPECS = _labels.WORKFLOW_LABEL_SPECS + _labels.CONTROL_LABEL_SPECS
@@ -61,14 +61,6 @@ class WorkflowLabelPredicateTest(unittest.TestCase):
                     _labels.workflow_label(_issue_with(*label_names)),
                     expected,
                 )
-
-    def test_static_helper_alias_yields_the_function(self) -> None:
-        # `WORKFLOW_LABEL_METHOD` binds `workflow_label` unchanged onto the
-        # client class, so class or instance access returns the module function.
-        self.assertIs(
-            _labels.WORKFLOW_LABEL_METHOD.__get__(None, object),
-            _labels.workflow_label,
-        )
 
 
 class IssueHasLabelTest(unittest.TestCase):

@@ -6,14 +6,14 @@ from typing import Optional
 
 from orchestrator.workflow.stages.decomposition import run as _decomposing
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _PatchedWorkflowMixin,
     _TEST_SPEC,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _manifest,
 )
 

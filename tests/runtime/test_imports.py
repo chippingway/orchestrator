@@ -56,7 +56,7 @@ _RETIRED_MODULES = (
 
 # What `import orchestrator` alone plants, so the surface check can hold the
 # initializer to its own chain and nothing besides.
-_ROOT_MODULES = (_ORCHESTRATOR, f"{_ORCHESTRATOR}._package_exports")
+_ROOT_MODULES = (_ORCHESTRATOR,)
 
 _PROBE = """
 import sys

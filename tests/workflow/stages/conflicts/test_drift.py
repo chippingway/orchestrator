@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 
 
-from tests.fakes import FakeGitHubClient, FakePR, make_issue
-from tests.workflow_helpers import (
+from tests.support.fakes import FakeGitHubClient, FakePR, make_issue
+from tests.workflow.fixtures import (
     _PatchedWorkflowMixin,
     _agent,
     _issue_branch,

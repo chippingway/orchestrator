@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock
 
 
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
 )
 

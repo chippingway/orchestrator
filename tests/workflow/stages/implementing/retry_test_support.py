@@ -10,7 +10,9 @@ from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.workflow.stages.implementing import resume as _implementing_resume
-from tests import fakes, implementing_fixing_test_cases, workflow_helpers
+from tests.support import fakes
+from tests.workflow import fixtures
+from tests.workflow.stages import implementing_fixing_test_cases
 
 MagicMock = mock.MagicMock
 patch = mock.patch
@@ -21,19 +23,19 @@ FakeUser = fakes.FakeUser
 make_issue = fakes.make_issue
 IssueScenario = implementing_fixing_test_cases.IssueScenario
 
-BACKEND_CLAUDE = workflow_helpers.BACKEND_CLAUDE
-BACKEND_CODEX = workflow_helpers.BACKEND_CODEX
-LABEL_DOCUMENTING = workflow_helpers.LABEL_DOCUMENTING
-LABEL_IMPLEMENTING = workflow_helpers.LABEL_IMPLEMENTING
-LABEL_RESOLVING_CONFLICT = workflow_helpers.LABEL_RESOLVING_CONFLICT
-LABEL_VALIDATING = workflow_helpers.LABEL_VALIDATING
-REVIEW_APPROVED_MESSAGE = workflow_helpers.REVIEW_APPROVED_MESSAGE
-_FAKE_WT = workflow_helpers._FAKE_WT
-_PatchedWorkflowMixin = workflow_helpers._PatchedWorkflowMixin
-_TEST_SPEC = workflow_helpers._TEST_SPEC
-_agent = workflow_helpers._agent
-_issue_branch = workflow_helpers._issue_branch
-_iso_hours_ago = workflow_helpers._iso_hours_ago
+BACKEND_CLAUDE = fixtures.BACKEND_CLAUDE
+BACKEND_CODEX = fixtures.BACKEND_CODEX
+LABEL_DOCUMENTING = fixtures.LABEL_DOCUMENTING
+LABEL_IMPLEMENTING = fixtures.LABEL_IMPLEMENTING
+LABEL_RESOLVING_CONFLICT = fixtures.LABEL_RESOLVING_CONFLICT
+LABEL_VALIDATING = fixtures.LABEL_VALIDATING
+REVIEW_APPROVED_MESSAGE = fixtures.REVIEW_APPROVED_MESSAGE
+_FAKE_WT = fixtures._FAKE_WT
+_PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
+_TEST_SPEC = fixtures._TEST_SPEC
+_agent = fixtures._agent
+_issue_branch = fixtures._issue_branch
+_iso_hours_ago = fixtures._iso_hours_ago
 
 KEY_CODEX_SESSION_ID = "codex_session_id"
 KEY_DEV_AGENT = "dev_agent"

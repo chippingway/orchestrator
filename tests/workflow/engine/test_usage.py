@@ -15,7 +15,7 @@ from orchestrator.workflow.stages.validating import (
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.validating import handler as _validating
 
-from tests.fakes import FakeGitHubClient, FakeIssue, FakePR, make_issue
+from tests.support.fakes import FakeGitHubClient, FakeIssue, FakePR, make_issue
 
 from tests.workflow.engine import usage_test_support as support
 

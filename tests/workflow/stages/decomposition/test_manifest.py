@@ -7,8 +7,8 @@ import unittest
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.stages.decomposition import manifest as _decompose_manifest
 
-from tests.fakes import make_issue
-from tests.workflow_helpers import _TEST_SPEC, _manifest
+from tests.support.fakes import make_issue
+from tests.workflow.fixtures import _TEST_SPEC, _manifest
 
 KEY_DECISION = "decision"
 KEY_RATIONALE = "rationale"
@@ -256,7 +256,7 @@ class BuildSingleDecisionCommentTest(unittest.TestCase):
             {
                 KEY_DECISION: DECISION_SINGLE,
                 KEY_RATIONALE: "one small change",
-                "affected_files": ["orchestrator/config.py", "tests/fakes.py"],
+                "affected_files": ["orchestrator/config.py", "tests/support/fakes.py"],
                 "notes": "Bump the default and cover it in fakes.",
             }
         )
@@ -266,7 +266,7 @@ class BuildSingleDecisionCommentTest(unittest.TestCase):
         )
         self.assertIn("**Affected files:**", comment)
         self.assertIn("- `orchestrator/config.py`", comment)
-        self.assertIn("- `tests/fakes.py`", comment)
+        self.assertIn("- `tests/support/fakes.py`", comment)
         self.assertIn("**Implementation notes:**", comment)
         self.assertIn("Bump the default and cover it in fakes.", comment)
 

@@ -20,9 +20,9 @@ from orchestrator import cli, config, workflow
 from orchestrator.runtime import logs, shutdown, startup
 from orchestrator.runtime.state import RuntimeState
 from orchestrator.scheduler import IssueScheduler
-from tests import polling_scheduler_probes as _probes
-from tests import polling_signal_probes as _signal_probes
-from tests import polling_test_support as _support
+from tests.runtime import polling_scheduler_probes as _probes
+from tests.runtime import polling_signal_probes as _signal_probes
+from tests.runtime import polling_test_support as _support
 from tests.runtime.tick_test_support import patched_prune
 
 _DEFAULT_SPECS_ATTR = "default_repo_specs"

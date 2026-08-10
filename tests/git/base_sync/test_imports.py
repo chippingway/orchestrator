@@ -65,7 +65,6 @@ _FLAT_MODULES = (
 # its rebases run under and the repository spec they read their base ref off.
 _ALLOWED_MODULES = (
     "orchestrator",
-    "orchestrator._package_exports",
     "orchestrator.workflow",
     "orchestrator.workflow.state",
 )

@@ -1,8 +1,14 @@
 [flake8]
 # WPS412 forbids logic in an __init__.py and WPS410 forbids module-level
-# metadata such as __all__. Seven package initializers deliberately carry
-# import-time logic and are scoped exemptions here:
+# metadata such as __all__. Eight package initializers are scoped exemptions
+# here: the root one for the package metadata it declares, and seven that
+# deliberately carry import-time logic.
 #
+# * orchestrator/__init__.py is the whole of the root package: it declares the
+#   distribution version and the explicit __all__ (WPS410) naming it, and binds
+#   nothing else, so `import orchestrator` costs this module and no owner
+#   behind it. Both assignments read as logic to WPS412, which is waived for
+#   that reason.
 # * orchestrator/config/__init__.py invokes the `environment` resolver and
 #   binds its results so reloading or patching `orchestrator.config` re-runs
 #   resolution into the same namespace the helpers read -- the reload / patch
@@ -261,6 +267,7 @@
 # past the WPS214 ceiling of 7. Splitting the merge-side mutations out would
 # hand the composed client two mixins for one owner, so WPS214 is waived here.
 per-file-ignores =
+    orchestrator/__init__.py:WPS412,WPS410
     orchestrator/config/__init__.py:WPS412,WPS410
     orchestrator/agents/__init__.py:WPS412,WPS410
     orchestrator/github/__init__.py:WPS412,WPS410

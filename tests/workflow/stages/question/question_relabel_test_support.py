@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from tests.fakes import FakeGitHubClient, FakeIssue, make_issue
+from tests.support.fakes import FakeGitHubClient, FakeIssue, make_issue
 
 LABEL_IMPLEMENTING = "implementing"
 

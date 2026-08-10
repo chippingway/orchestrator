@@ -13,24 +13,24 @@ from tests.workflow.stages.decomposition.decomposition_test_support import (
     _labels_for_issue,
     _seed_blocked_children,
 )
-from tests.fakes import (
+from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     BACKEND_CLAUDE,
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     LABEL_BLOCKED,
     LABEL_DECOMPOSING,
     LABEL_IMPLEMENTING,
     _TEST_SPEC,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
     _manifest,
 )

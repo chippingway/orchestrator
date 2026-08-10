@@ -70,8 +70,8 @@ per-repo `tick` — and nothing routes through it. Get the boundary right:
   `from orchestrator.git.worktrees import paths as _worktree_paths`,
   `from orchestrator.workflow.engine import guards as _guards` — and call through that alias. Never
   reintroduce a call-time hop through the package initializer.
-- Tests patch the owner. `tests/workflow_git_owners.py` records which git module defines each seam
-  (`GIT_SEAM_OWNERS`, `seam_patch`) and `tests/workflow_patch_context.py` installs every hermetic mock
+- Tests patch the owner. `tests/workflow/git_owners.py` records which git module defines each seam
+  (`GIT_SEAM_OWNERS`, `seam_patch`) and `tests/workflow/patch_context.py` installs every hermetic mock
   on that table plus the agent runner, raising rather than falling back when a name has no owner.
 - Stage-private helpers (only used inside one stage module — e.g. `_bump_in_review_watermarks`,
   `_seed_legacy_in_review_watermarks`, `_emit_conflict_round_incremented`) stay private to that stage
@@ -98,10 +98,12 @@ per-repo `tick` — and nothing routes through it. Get the boundary right:
   its own support module rather than in a sibling stage's.
 - Each tests package carries its package-level guards (clean-process import, import-cycle / layering direction,
   and public surface) in its own `test_imports.py`.
-- Helpers that belong to no single stage get their own focused module under `tests/workflow/`; fixtures
-  shared across the flat workflow tests go in `tests/workflow_helpers.py`.
+- Helpers that belong to no single stage get their own focused module under `tests/workflow/`, and
+  `tests/workflow/fixtures.py` re-exports the ones a test spanning several of those leaves needs.
+  Nothing lands at the `tests/` root: a helper shared across domains goes under `tests/support/`, and
+  a test covering the repository's own files or the root package goes under `tests/repository/`.
 - Prefer extending the in-memory fakes in `tests/support/github/` (reached through the
-  `tests/fakes.py` bridge) over mocking PyGithub directly. New behavior should land with tests in
+  `tests/support/fakes.py` bridge) over mocking PyGithub directly. New behavior should land with tests in
   the matching stage file.
 - Before finalizing tests, do a redundancy pass:
   - List each added/modified test and the distinct behavior it protects.

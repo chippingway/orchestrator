@@ -11,7 +11,7 @@ from orchestrator.git import commands
 from orchestrator.git.publication import planning, titles
 from orchestrator.git.verification import probes as verification_probes
 
-from tests.fakes import make_issue
+from tests.support.fakes import make_issue
 from tests.git.publication.publication_helpers import (
     GIT_HELPER,
     WORKTREE,

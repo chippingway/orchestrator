@@ -15,7 +15,7 @@ from pathlib import Path
 
 from orchestrator.agents import processes
 
-from tests.workflow_helpers import TEST_BASE_BRANCH
+from tests.workflow.fixtures import TEST_BASE_BRANCH
 
 GIT_COMMAND = "git"
 QUIET_FLAG = "-q"

@@ -17,8 +17,8 @@ from orchestrator.workflow.stages.documenting import handler as _documenting
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.validating import handler as _validating
 
-from tests.fakes import FakeGitHubClient, make_issue
-from tests.workflow_helpers import _TEST_SPEC
+from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.fixtures import _TEST_SPEC
 
 LABEL_DOCUMENTING = "documenting"
 ROUTING_ISSUE_NUMBER = 901

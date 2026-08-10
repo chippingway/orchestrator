@@ -10,11 +10,11 @@ from tests.workflow.stages.question.question_relabel_test_support import (
     RelabelCase,
     _seed_relabel,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     _agent,
 )
 

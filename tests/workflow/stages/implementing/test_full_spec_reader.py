@@ -9,7 +9,7 @@ import unittest
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.implementing import session_read as _session_read
 
-from tests import implementing_full_spec_test_support as support
+from tests.workflow.stages import full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX

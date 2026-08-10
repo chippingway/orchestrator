@@ -7,7 +7,7 @@ import unittest
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     _ResolvingConflictMixin,
 )
-from tests.workflow_helpers import (
+from tests.workflow.fixtures import (
     EVENT_PR_CLOSED_WITHOUT_MERGE,
     EVENT_PR_MERGED,
 )

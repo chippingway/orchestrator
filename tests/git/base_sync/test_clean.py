@@ -19,7 +19,7 @@ from tests.git.base_sync.refresh_test_support import (
     _AwaitingHumanRecorder,
     _SyncWorktreeWithBaseFixture,
 )
-from tests.fakes import FakePRRef
+from tests.support.fakes import FakePRRef
 
 from tests.git.base_sync.clean_assertions import (
     _assert_clean_events,

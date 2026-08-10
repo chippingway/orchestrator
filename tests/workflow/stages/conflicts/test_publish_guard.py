@@ -10,13 +10,13 @@ from orchestrator.git import authentication as _authentication
 from orchestrator.git import commands as _git_commands
 from orchestrator.workflow.stages.conflicts import guards as _guards
 
-from tests.fakes import (
+from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
     FakePRRef,
     make_issue,
 )
-from tests.workflow_helpers import _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC
 
 
 def _pr(sha):

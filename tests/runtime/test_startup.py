@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.runtime import startup
-from tests import polling_test_support as _support
+from tests.runtime import polling_test_support as _support
 
 _GITHUB_CLIENT_ATTR = "GitHubClient"
 _DEFAULT_SPECS_ATTR = "default_repo_specs"
