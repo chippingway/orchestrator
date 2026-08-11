@@ -70,14 +70,14 @@ namespace stops at the GitHub boundary — the *stage* identifier is the bare ta
 audit event payloads, agent-session attribution, and the pinned-state JSON record. `stage_name` on the same owner
 strips the prefix for those sinks.
 
-Migration off the pre-namespace vocabulary runs in two places. `ensure_workflow_labels` renames the bare label rather
-than creating a second one, which carries every issue holding it across in one edit — including the closed and parked
-ones no polling pass revisits. That rename is driven by the label's spelling, so it covers the automatic control
-label as well; `backlog` and `paused` were never namespaced and have nothing to rename. And `label_for_name` accepts
-either spelling, so on a repository the rename could not reach (an under-scoped PAT, a human re-adding the old label)
-an issue still routes and is rewritten to the namespaced spelling by its next label write. The community sweep reads
-both spellings for the same reason, though it rewrites neither: the label it finds is proof the PR's one HITL ping
-already went out.
+Migration off the pre-namespace vocabulary is one write and the reads that cover what it could not reach.
+`ensure_workflow_labels` renames the bare label rather than creating a second one, which carries every issue holding
+it across in one edit — including the closed and parked ones no polling pass revisits. That rename is driven by the
+label's spelling, so it covers the automatic control label as well; `backlog` and `paused` were never namespaced and
+have nothing to rename. Where it could not run (an under-scoped PAT, a human re-adding the old label) both readers
+take either spelling: `label_for_name` keeps an issue routing and its next label write rewrites it to the namespaced
+spelling, and the community sweep asks for both spellings of its own label — rewriting neither, because the label it
+finds is proof the PR's one HITL ping already went out.
 
 An issue can therefore carry both spellings at once, and the namespaced one always wins — `issue_workflow_label`
 scans for it across every label before it will settle for a bare tag, so the order GitHub happens to return them in
