@@ -92,8 +92,8 @@ session lock, and full examples.
 - `REVIEW_AGENT` — default `codex`. reviewer command spec
 - `DECOMPOSE_AGENT` — default `claude`. decomposer command spec (validated even when `DECOMPOSE=off`); also drives the
   `question` stage
-- `DECOMPOSE` — default `on`. enable the `decomposing` stage; `off` reverts to the legacy "no label → implementing"
-  pickup
+- `DECOMPOSE` — default `on`. enable the `decomposing` stage; `off` reverts to the legacy
+  "no label → `workflow:implementing`" pickup
 - `CODEX_BIN` — default `codex`. executable launched when a role's first token is `codex`; override only if `codex` is
   not on `$PATH`
 - `CLAUDE_BIN` — default `claude`. executable launched when a role's first token is `claude`; override only if
