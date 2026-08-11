@@ -128,9 +128,9 @@ For deeper implementation details, use the references below.
    On first start, the orchestrator creates its workflow and control labels on the repo and begins polling open issues
    every 60 seconds. The states only it drives are namespaced `workflow:<state>`, as is the
    `workflow:community_contribution` control its open-PR sweep applies, so none of them can collide with a label the
-   repository already uses; `in_review`, `question`, `done`, `rejected`, `backlog`, and `paused` keep their bare
-   spelling because a human applies or reads those directly. On a repo it already drove before the labels were
-   namespaced, it renames each pre-namespace label (`implementing` → `workflow:implementing`, and so on) in place
+   repository already uses; `in_review`, `question`, `discussion`, `done`, `rejected`, `backlog`, and `paused` keep
+   their bare spelling because a human applies or reads those directly. On a repo it already drove before the labels
+   were namespaced, it renames each pre-namespace label (`implementing` → `workflow:implementing`, and so on) in place
    instead, which carries every issue holding one across with it. For other launch options (single-tick, debug
    logging) see
    [`docs/configuration.md#run-modes`](docs/configuration.md#run-modes). For a supervised production deployment

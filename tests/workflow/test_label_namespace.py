@@ -46,6 +46,7 @@ def _issue_with(*label_names: str) -> FakeIssue:
 _UNNAMESPACED_LABELS = frozenset((
     WorkflowLabel.IN_REVIEW,
     WorkflowLabel.QUESTION,
+    WorkflowLabel.DISCUSSION,
     WorkflowLabel.DONE,
     WorkflowLabel.REJECTED,
 ))

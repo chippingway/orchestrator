@@ -22,7 +22,7 @@ _COVERED_KEYS = (
     (palette.STAGE_COLORS, (
         "decomposing", "blocked", "ready", "umbrella", "implementing",
         "validating", "documenting", "in_review", "fixing",
-        "resolving_conflict", "question", "done", "rejected",
+        "resolving_conflict", "question", "discussion", "done", "rejected",
     )),
     (palette.COST_SOURCE_COLORS, (
         "reported", "estimated", "unknown-price", "no-usage",

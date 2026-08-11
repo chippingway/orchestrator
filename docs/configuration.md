@@ -314,8 +314,8 @@ stays cap-counted.
 - **Family-aware** (`workflow:decomposing`, `workflow:blocked`, `workflow:umbrella`, unlabeled): read and write
   cross-issue state (parent ↔ child) and must never run two at a time on the same repo.
 - **Fan-out** (`workflow:ready`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`, `in_review`,
-  `workflow:fixing`, `workflow:resolving_conflict`, `question`): only touch per-issue state; fan out concurrently up
-  to the caps.
+  `workflow:fixing`, `workflow:resolving_conflict`, `question`, `discussion`): only touch per-issue state; fan out
+  concurrently up to the caps.
 
 The pre-tick base refresh (`_refresh_base_and_worktrees`) is scheduler-aware: per-issue worktrees whose handler is
 currently in flight are skipped this tick, so a base advance cannot rebase a pre-PR worktree under a still-running

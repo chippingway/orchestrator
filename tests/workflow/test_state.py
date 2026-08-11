@@ -23,6 +23,10 @@ from tests.support.fakes import FakeGitHubClient, make_issue
 
 
 _VALIDATING_LABEL = "workflow:validating"
+# The states an operator applies by hand. Each is entered from outside the
+# graph, so the reachability walk has to start on them as well as on the
+# unlabeled entry.
+_OPERATOR_APPLIED = (WorkflowLabel.QUESTION, WorkflowLabel.DISCUSSION)
 _LABEL_WRITE_PATTERN = re.compile(
     r"set_workflow_label\([^)]*?WorkflowLabel\.([A-Z_]+)",
 )
@@ -189,10 +193,12 @@ class TransitionTableTest(unittest.TestCase):
             for target in targets:
                 self.assertIsInstance(target, WorkflowLabel)
 
-    def test_question_has_no_inbound_edge(self) -> None:
-        # `question` is operator-applied only; nothing transitions INTO it.
+    def test_operator_applied_has_no_inbound_edge(self) -> None:
+        # `question` and `discussion` are operator-applied only; nothing
+        # transitions INTO either, so neither has a pickup route to reach.
         for source, targets in ALLOWED_TRANSITIONS.items():
-            self.assertNotIn(WorkflowLabel.QUESTION, targets, source)
+            for state in _OPERATOR_APPLIED:
+                self.assertNotIn(state, targets, source)
 
     def test_entry_is_not_terminalizable(self) -> None:
         # An unlabeled issue only decomposes or implements -- never jumps
@@ -235,11 +241,12 @@ class TransitionGraphReachabilityTest(unittest.TestCase):
         # *somebody's* target, so an orphaned island (e.g. a future `{X -> Y,
         # Y -> X}` neither of which the entry can reach) still passes because
         # each is the other's target. A true BFS from the entry rejects it.
-        # `question` is operator-applied only and has no inbound edge (see
-        # `test_question_has_no_inbound_edge`), so it is seeded as already-seen;
-        # every other state must be reached from the `None` unlabeled entry.
-        seen = {WorkflowLabel.QUESTION}
-        frontier: list[WorkflowLabel | None] = [None, WorkflowLabel.QUESTION]
+        # `question` and `discussion` are operator-applied only and have no
+        # inbound edge (see `test_operator_applied_has_no_inbound_edge`), so
+        # they are seeded as already-seen; every other state must be reached
+        # from the `None` unlabeled entry.
+        seen = set(_OPERATOR_APPLIED)
+        frontier: list[WorkflowLabel | None] = [None, *_OPERATOR_APPLIED]
         while frontier:
             state = frontier.pop()
             for target in ALLOWED_TRANSITIONS.get(state, frozenset()):

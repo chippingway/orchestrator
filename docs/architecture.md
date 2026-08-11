@@ -41,8 +41,9 @@ boundaries is named where its owner is described below.
 
 A bare tag in the map below — `implementing`, `fixing`, `validating` — names the *stage*: the handler and the
 subpackage holding it. For a stage the orchestrator labels itself, the GitHub label an issue carries is a different
-string, spelled `workflow:<tag>` here and everywhere else in these docs. `in_review`, `question`, and the `done` /
-`rejected` terminals were never namespaced, so for those the two coincide; see [Workflow labels](#workflow-labels).
+string, spelled `workflow:<tag>` here and everywhere else in these docs. `in_review`, `question`, `discussion`, and
+the `done` / `rejected` terminals were never namespaced, so for those the two coincide; see
+[Workflow labels](#workflow-labels).
 
 ```
 orchestrator/
@@ -243,6 +244,10 @@ orchestrator/
                         implementing with its consumed-comment ratchet
         umbrella.py     the `umbrella` poll and the close its all-done branch
                         earns instead of an implementation pass
+      discussion/
+        __init__.py     package marker only; callers import an owner directly
+        handler.py      the tick an operator-held issue earns: none, so that
+                        applying the label is a quiet, reversible act
       documenting/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one final-docs tick asks its questions in
@@ -1426,15 +1431,15 @@ what keeps that serialization from deadlocking — a bucket whose every label is
 and global caps. Only issue numbers cross a thread boundary; `_refetch_and_process` mints a per-worker client and
 refetches against it, because PyGithub's `Issue` and the `Requester` chain behind it are not documented thread-safe.
 Its own helpers call each other in-module, and each handler is reached through a call-time import of the module
-`_STAGE_HANDLER_TARGETS` pairs with its label — eleven of the twelve entries name conflicts, decomposition,
-documenting, fixing, implementing, question, validating, and in_review owners under `workflow/stages/`, and the
-twelfth names the `pickup` sibling an unlabeled issue starts on. The import is deferred because the stage tree imports
-this subpackage, so binding one at module scope would point that edge back at itself; the lookup stays an attribute
-read on whichever module the table names, and every stage is named by the owner its handler lives on. That makes the
-owning module the target for a patch that has to intercept a dispatched handler, and this owner the target for one
-aimed at the partition, the cap-exemption probe, the timed dispatch, or a scheduler submit. It also owns the one log
-line every isolated per-issue failure reports on, which `workflow/engine/tick.py` reads off it so a tick's three
-isolation points cannot spell the same failure three ways.
+`_STAGE_HANDLER_TARGETS` pairs with its label — twelve of the thirteen entries name conflicts, decomposition,
+discussion, documenting, fixing, implementing, question, validating, and in_review owners under `workflow/stages/`,
+and the thirteenth names the `pickup` sibling an unlabeled issue starts on. The import is deferred because the stage
+tree imports this subpackage, so binding one at module scope would point that edge back at itself; the lookup stays an
+attribute read on whichever module the table names, and every stage is named by the owner its handler lives on. That
+makes the owning module the target for a patch that has to intercept a dispatched handler, and this owner the target
+for one aimed at the partition, the cap-exemption probe, the timed dispatch, or a scheduler submit. It also owns the
+one log line every isolated per-issue failure reports on, which `workflow/engine/tick.py` reads off it so a tick's
+three isolation points cannot spell the same failure three ways.
 
 `workflow/engine/tick.py` is bound the same way, and closes the subpackage. It owns one repo's polling pass, which is
 four things in one order. The base refresh runs first because everything after it reads what that fetch left behind —
@@ -2710,9 +2715,10 @@ that has the package — which is what keeps the data an owner shapes testable i
 
 An issue should have at most one workflow label at a time. The set is `workflow:decomposing`, `workflow:ready`,
 `workflow:blocked`, `workflow:umbrella`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`,
-`in_review`, `workflow:fixing`, `workflow:resolving_conflict`, `question`, and the two terminals `done` / `rejected`.
+`in_review`, `workflow:fixing`, `workflow:resolving_conflict`, `question`, `discussion`, and the two terminals
+`done` / `rejected`.
 The `workflow:` prefix marks what the orchestrator writes itself, so a repository's own vocabulary cannot collide with
-it; the four states a human also applies or reads on their own keep the bare spelling. The orchestrator also creates
+it; the five states a human also applies or reads on their own keep the bare spelling. The orchestrator also creates
 three non-workflow control labels: `backlog` and `paused` each make per-tick handlers skip the issue entirely
 (`backlog` is a "not yet" hold on a fresh issue, `paused` freezes an in-flight one), and
 `workflow:community_contribution` is applied by the per-tick open-PR sweep to PRs from non-bot authors outside
@@ -2731,7 +2737,7 @@ A repository whose labels predate the namespace is migrated by the startup label
 asks a three-way question: where only the pre-namespace spelling exists it is renamed in place rather than
 duplicated, so every issue holding it moves across in one edit; where the namespaced label already exists the
 bootstrap does nothing and leaves any bare label beside it defined; where neither exists the namespaced one is
-created. The six never-namespaced labels have no second spelling to migrate off and are simply created bare when
+created. The seven never-namespaced labels have no second spelling to migrate off and are simply created bare when
 missing. Wherever that rename does not run, three reads still take the bare spelling: issue routing, the community
 sweep's dedup marker, and the closed-issue sweep's query. A namespaced label outranks a pre-namespace one on the same
 issue, and a label write takes off only what it owns, so a bare `blocked` or `ready` the repository uses for its own
@@ -2812,7 +2818,8 @@ disabled-rollout and `ready` paths name `stages/implementing/handler.py` for `_h
 has to intercept the implementation a `single` verdict routes to targets that owner.
 
 `orchestrator/workflow/stages/` holds every stage -- `decomposition`, `implementing`, `documenting`, `validating`,
-`in_review`, `fixing`, `conflicts`, and `question` -- each as a subpackage of responsibility-named owners. Nothing
+`in_review`, `fixing`, `conflicts`, `question`, and `discussion` -- each as a subpackage of responsibility-named
+owners. Nothing
 answers for a stage beside them, so a name a stage owns has one module to resolve on and a `patch.object` there is the
 only interception a caller can need. Two checks in `tests/workflow/stages/test_imports.py` hold that line for every
 stage at once: `orchestrator.stages` resolves to nothing the interpreter would find, and every label in
@@ -3009,6 +3016,12 @@ read-only contract is decided by, so a mock for either has to land there. No fla
 `tests/workflow/stages/test_imports.py` covers this stage too, so the session lock, the parks, and the wire keys are
 each answered on an owner alone, `_handle_question` included.
 
+The discussion stage is one owner because it has one decision, and the decision is to do nothing. `handler` holds a
+`_handle_discussion` that reads no state and writes none: the label is an operator's hold on an issue humans are still
+settling, so a tick that touched the worktree, spawned an agent, or moved the label would be the orchestrator
+overriding the hold. The stage exists at all because a label absent from `_STAGE_HANDLER_TARGETS` is one the dispatcher
+warns about on every tick; routing it to a handler that returns is what makes applying the label safe.
+
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `workflow:decomposing` (when no dev session exists yet), resumes
 the locked dev session with the updated body (implementing, validating, in_review, resolving_conflict), or unwinds
@@ -3019,7 +3032,7 @@ back to `workflow:validating` without resuming dev (documenting). Both halves of
 routing.
 
 For per-stage internal flow — pickup, drift handling, decomposing, ready, blocked, umbrella, implementing,
-documenting, validating, in_review, fixing, resolving_conflict, question — see
+documenting, validating, in_review, fixing, resolving_conflict, question, discussion — see
 [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers).
 
 ## Agent subprocess (`agents.run_agent`)
