@@ -275,9 +275,9 @@ Each polling tick advances issues concurrently along two axes:
   (`REPOS` unset) stays in-thread.
 - **Within a repo.** Per-issue handlers are dispatched to a long-lived `IssueScheduler`. Fan-out issues
   (`workflow:ready` / `workflow:implementing` / `workflow:documenting` / `workflow:validating` / `in_review` /
-  `workflow:fixing` / `workflow:resolving_conflict`) are submitted one callable per issue. Family-aware issues
-  (`workflow:decomposing` / `workflow:blocked` / `workflow:umbrella` / unlabeled pickup) are folded into ONE bucket
-  submit per repo that drains them sequentially.
+  `workflow:fixing` / `workflow:resolving_conflict` / `question` / `discussion`) are submitted one callable per
+  issue. Family-aware issues (`workflow:decomposing` / `workflow:blocked` / `workflow:umbrella` / unlabeled pickup)
+  are folded into ONE bucket submit per repo that drains them sequentially.
 
 The two caps below are the levers:
 

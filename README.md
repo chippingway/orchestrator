@@ -164,6 +164,14 @@ is the terminal signal. See
 [`docs/workflow.md#question-stage--read-only-qa-on-the-question-label`][qa-lifecycle]
 for the full lifecycle and the read-only-violation park reasons.
 
+## Holding an issue for discussion
+
+Apply the `discussion` label to any open issue the orchestrator should leave alone while humans settle what to do with
+it. The label is recognized but inert — no agent is spawned, no worktree is created, and no comment or label is
+written — so applying it is a quiet, reversible act. Only a human ends the hold, by relabeling the issue to `done` or
+`rejected` or by taking the label off and letting it route as whatever it becomes. See
+[the discussion-stage lifecycle](docs/workflow.md#discussion-stage--the-operator-hold-on-the-discussion-label).
+
 ## Observability
 
 The workflow state lives on GitHub, but local logs explain what happened between label transitions.

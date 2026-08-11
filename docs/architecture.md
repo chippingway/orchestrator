@@ -3027,7 +3027,7 @@ an out-of-band human edit re-routes the issue back to `workflow:decomposing` (wh
 the locked dev session with the updated body (implementing, validating, in_review, resolving_conflict), or unwinds
 back to `workflow:validating` without resuming dev (documenting). Both halves of that hook sit on the
 `workflow/engine/drift.py` owner the stage leaves import directly, so a patch aimed at the hook targets that owner.
-`_handle_fixing` and `_handle_question` deliberately skip the drift hook — see
+`_handle_fixing`, `_handle_question`, and the inert `_handle_discussion` skip the drift hook — see
 [`state-machine.md#user-content-drift-detection`](state-machine.md#user-content-drift-detection) for the per-handler
 routing.
 
