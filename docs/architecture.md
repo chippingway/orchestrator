@@ -39,6 +39,11 @@ the analytics settings, which `patch.object(analytics_settings, "ANALYTICS_LOG_P
 reads one, because `observability/analytics/settings.py` is the single holder they all resolve through. Each of those
 boundaries is named where its owner is described below.
 
+A bare tag in the map below — `implementing`, `fixing`, `validating` — names the *stage*: the handler and the
+subpackage holding it. For a stage the orchestrator labels itself, the GitHub label an issue carries is a different
+string, spelled `workflow:<tag>` here and everywhere else in these docs. `in_review`, `question`, and the `done` /
+`rejected` terminals were never namespaced, so for those the two coincide; see [Workflow labels](#workflow-labels).
+
 ```
 orchestrator/
   __init__.py           the package version and the `__all__` naming it, bound
@@ -276,8 +281,9 @@ orchestrator/
                         the two refusals, and the guidance passthrough
         parked.py       the four answers an `awaiting_human` tick can reach and
                         the order they are asked in
-        drift.py        the `resolving_conflict` reroute a stuck validating-route
-                        park earns when its worktree has fallen behind base
+        drift.py        the `workflow:resolving_conflict` reroute a stuck
+                        validating-route park earns when its worktree has fallen
+                        behind base
         resume.py       the quiet window, the dev run, the ACK fast path, and
                         the `workflow:validating` relabel a pushed fix earns
         models.py       the frozen records the owners hand each other
@@ -309,7 +315,7 @@ orchestrator/
         continue_command.py
                         `/orchestrator continue` on a parked issue
         question_relabel.py
-                        the question -> implementing relabel guards
+                        the `question` -> `workflow:implementing` relabel guards
         models.py       the frozen records the owners hand each other
         state.py        the pinned-state keys and CLI marker tuples they share
       in_review/
@@ -322,8 +328,8 @@ orchestrator/
         fixing_route.py the pending-fix bookmarks, the hash refresh, and the
                         `workflow:fixing` relabel
         drift.py        a body edit on an open PR: the unread PR conversation
-                        captured first, the dev resume, and the `validating`
-                        return both outcomes earn
+                        captured first, the dev resume, and the
+                        `workflow:validating` return both outcomes earn
         merge_gate.py   the unmergeable park and the one HITL ready-ping an
                         approved, unvetoed head earns per head SHA
         watermarks.py   the one-way issue-side ratchet and the legacy seed a
@@ -350,8 +356,8 @@ orchestrator/
         reviewer.py     the round cap, the tracked reviewer spawn and its two
                         refusals, and the verdict fan-out
         approval.py     the verify gate, approval comment, optional squash, and
-                        the in_review watermark seed before the `documenting`
-                        relabel
+                        the in_review watermark seed before the
+                        `workflow:documenting` relabel
         verify.py       how a non-ok verify result reads and the park it earns
         watermarks.py   the seed walk past leading orchestrator comments and the
                         ratchet that never regresses one
@@ -2711,13 +2717,24 @@ three non-workflow control labels: `backlog` and `paused` each make per-tick han
 (`backlog` is a "not yet" hold on a fresh issue, `paused` freezes an in-flight one), and
 `workflow:community_contribution` is applied by the per-tick open-PR sweep to PRs from non-bot authors outside
 `ALLOWED_ISSUE_AUTHORS` so a human reviews them. The two an operator types stay bare; the one the sweep applies is
-namespaced on the same rule as the states. The namespace is a GitHub label spelling and stops at that boundary: the
-*stage* an issue is in is still named by the bare tag under the label, which is what analytics rows, audit event
-payloads, agent-session attribution, and the pinned-state JSON have always recorded. `workflow/state.py` owns both
-directions — `stage_name` strips the prefix for those sinks, and `label_for_name` resolves either spelling back to
-its member. A namespaced label also outranks a pre-namespace one on the same issue, and a label write takes off only
-what it owns, so a bare `blocked` or `ready` the repository uses for its own triage survives a relabel; see
-[`state-machine.md#typed-states-and-the-transition-guard`](state-machine.md#typed-states-and-the-transition-guard).
+namespaced on the same rule as the states.
+
+The namespace is a GitHub label spelling and stops at that boundary, which is the distinction the module map above
+reads by: a bare tag there names the *stage* — the handler, the subpackage under `orchestrator/workflow/stages/`
+holding it, and the identifier analytics rows, audit event payloads, and agent-session attribution have always carried
+— while the wire label an issue carries is spelled `workflow:<tag>`. `workflow/state.py` owns both directions:
+`stage_name` strips the prefix for those sinks, and `label_for_name` resolves either spelling back to its member.
+
+A repository whose labels predate the namespace is migrated by the startup label bootstrap. Of a namespaced label it
+asks a three-way question: where only the pre-namespace spelling exists it is renamed in place rather than
+duplicated, so every issue holding it moves across in one edit; where the namespaced label already exists the
+bootstrap does nothing and leaves any bare label beside it defined; where neither exists the namespaced one is
+created. The six never-namespaced labels have no second spelling to migrate off and are simply created bare when
+missing. Wherever that rename does not run, three reads still take the bare spelling: issue routing, the community
+sweep's dedup marker, and the closed-issue sweep's query. A namespaced label outranks a pre-namespace one on the same
+issue, and a label write takes off only what it owns, so a bare `blocked` or `ready` the repository uses for its own
+triage survives a relabel; see
+[`state-machine.md`](state-machine.md#legacy-labels-and-the-migration-off-them).
 
 Label names are part of the public contract because live GitHub issues already carry them. For the meaning of each
 label, the control-label semantics, and the per-stage transitions they trigger, see
@@ -3185,7 +3202,8 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
    │     _refresh_base_and_worktrees(gh, spec, scheduler): skip           │
    │       worktrees whose handler is still in flight in scheduler        │
    │     classify each pollable issue and submit to scheduler:            │
-   │       family-aware (decomposing/blocked/umbrella/unlabeled) →        │
+   │       family-aware (`workflow:decomposing` / `workflow:blocked` /    │
+   │         `workflow:umbrella` / unlabeled) →                           │
    │         ONE bucket submit per repo that drains sequentially          │
    │         (cap-exempt when every family issue is                       │
    │         `workflow:blocked` or `workflow:umbrella`)                   │
