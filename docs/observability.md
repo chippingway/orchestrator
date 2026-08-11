@@ -107,6 +107,20 @@ precision), `repo` (the slug `owner/name`), `issue` (issue number, int), and `ev
 when the emitter passes one (effectively always today). Extras whose value is `None` are dropped. `json.dumps` is
 called with `sort_keys=True` so on-disk order is stable across writers.
 
+`stage` always carries the **bare stage tag** — `implementing`, `fixing`, `resolving_conflict` — and never the
+`workflow:`-prefixed GitHub label the issue wears. Three shapes feed it here, and all three land on the tag:
+
+- **The tracked agent spawn** takes it as a literal from the stage that calls `_run_agent_tracked` (`stage="validating"`
+  in the reviewer owner, `stage="fixing"` in the fixing one), so `agent_spawn` / `agent_exit` read no label at all.
+- **`stage_enter`** is handed the label `set_workflow_label` is applying, normalized through
+  `workflow.state.stage_name` — the one emitter whose tag names where the issue is going rather than where it is.
+- **The events that describe an issue where it already sits** — the park funnel, the terminals, the base-sync writers
+  — normalize the label it currently carries the same way.
+
+The namespace therefore stops at the GitHub boundary, so a grep or a dashboard filter matches on the tag. See
+[`state-machine.md#workflow-labels`](state-machine.md#workflow-labels) for the two spellings and which labels have
+only one.
+
 **Event kinds.** Every kind is emitted through the single `GitHubClient.emit_event` chokepoint, which also appends to a
 capped in-memory tail (`recorded_events`, `_RECORDED_EVENTS_CAP = 500`) for tests and short-window debugging — the
 file is the durable record.
@@ -132,13 +146,13 @@ file is the durable record.
   plus `_finalize_if_pr_merged` (in `workflow/engine/terminals.py`, which also owns those arcs) from
   `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks
   and from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; extras: `pr_number`, `sha`,
-  `merge_method="external"`, `review_round`, `conflict_round`, `retry_count`; `stage` reflects the workflow label at
-  finalize entry.
+  `merge_method="external"`, `review_round`, `conflict_round`, `retry_count`; `stage` names the stage the issue was in
+  at finalize entry.
 - `pr_closed_without_merge` — `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict` when the PR is
   closed without merge; plus `_finalize_if_issue_closed` from `_handle_implementing` / `_handle_documenting` /
   `_handle_validating` entry checks (only when the linked PR is also closed; an open PR with a manually-closed issue is
-  left alone); extras: `pr_number`, `sha`, `review_round`, `conflict_round`, `retry_count`; `stage` reflects the
-  workflow label at finalize entry.
+  left alone); extras: `pr_number`, `sha`, `review_round`, `conflict_round`, `retry_count`; `stage` names the stage the
+  issue was in at finalize entry.
 - `merge_attempt` — Every `git rebase origin/<base>` inside `_handle_resolving_conflict`; extras:
   `method="base_rebase"`, `result` (`success` / `failed` / `conflict`), `pr_number`, `sha`, `conflict_round`,
   `review_round`, `retry_count`.
@@ -153,7 +167,7 @@ file is the durable record.
   `workflow:validating` / `workflow:documenting` / `in_review` / `workflow:fixing` back to `workflow:validating`; also
   `_recover_pending_auto_base_rebase` when a crashed prior tick is finalized; extras: `pr_number`, `sha` (new head),
   `method` ∈ {`auto_clean_rebase`, `crash_recovery_pushed`, `crash_recovery_relabel_only`}, `review_round`
-  (post-reset, so 0), `retry_count`; `stage` reflects the workflow label at the start of the rebase.
+  (post-reset, so 0), `retry_count`; `stage` names the stage the issue was in when the rebase started.
 
 **`agent_spawn` / `agent_exit` extras.** On top of the shared fields:
 
@@ -254,8 +268,12 @@ and `prune_old_records` are silent no-ops and no file is opened.
 
 **Schema.** Every record is built by `recording.build_record` and carries `ts` (UTC ISO-8601 at second precision),
 `repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included when the caller
-passes one; extras whose value is `None` are dropped. `json.dumps` uses `sort_keys=True` so on-disk order is stable. The
-JSONL file is the raw foundation layer for the Postgres aggregation step.
+passes one, and carries the same bare stage tag the audit sink records rather than the `workflow:`-prefixed label — so
+`WHERE stage = 'validating'` is the form that matches, here and in the Postgres column the sync loads it into. The
+recorders with an audit twin are handed the tag their emitter already resolved; `stage_evaluation` has no twin, and
+the per-issue dispatcher that writes it alone normalizes the label it dispatched on the same way. Extras whose value
+is `None` are dropped. `json.dumps` uses `sort_keys=True` so on-disk order is stable. The JSONL file is the raw
+foundation layer for the Postgres aggregation step.
 
 **Event kinds written today:**
 

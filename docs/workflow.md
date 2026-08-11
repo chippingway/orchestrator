@@ -10,6 +10,12 @@ subprocess shape), see [`architecture.md`](architecture.md). For the audit event
 see [`observability.md`](observability.md). For env vars and run modes, see [`configuration.md`](configuration.md). For
 the user-facing summary, see [`../README.md`](../README.md).
 
+Stage and label names are spelled apart here as they are in
+[`state-machine.md`](state-machine.md#workflow-labels): a bare tag names the **stage** — the handler, the subpackage
+under `orchestrator/workflow/stages/` holding it, and the identifier a session's analytics row is attributed to —
+while `workflow:<tag>` is the **wire label** the GitHub issue carries. `in_review`, `question`, and the `done` /
+`rejected` terminals were never namespaced, so those read the same on both sides.
+
 ## Roles and the workflow stages that invoke them
 
 The workflow has three agent roles, each spawned by a different set of stage handlers. Roles are independent: each can
@@ -20,10 +26,10 @@ use `codex` or `claude` and each carries its own optional CLI args.
   first spawn (decomposing → `decomposer_agent`; question → `question_agent`, a separate pin).
 - **Implementer / dev** (`DEV_AGENT`, default `claude`) — spawned by `_handle_implementing`, `_handle_documenting`,
   `_handle_validating` (awaiting-human resume; the `CHANGES_REQUESTED` dev fix is dispatched here but relabels to
-  `workflow:fixing` BEFORE the spawn and records `stage="fixing"` analytics, so the dev-fix subphase is observably
-  `workflow:fixing`, not `workflow:validating`), `_handle_fixing` (in_review-route PR-feedback resume +
-  validating-route awaiting-human rescan), `_handle_resolving_conflict` (conflict resume + awaiting-human resume).
-  Session: locked per issue after first spawn.
+  `workflow:fixing` BEFORE the spawn and records `stage="fixing"` analytics, so the dev-fix subphase reads as fixing
+  rather than validating on both the wire label and the analytics row), `_handle_fixing` (in_review-route PR-feedback
+  resume + validating-route awaiting-human rescan), `_handle_resolving_conflict` (conflict resume + awaiting-human
+  resume). Session: locked per issue after first spawn.
 - **Reviewer** (`REVIEW_AGENT`, default `codex`) — spawned by `_handle_validating` (fresh every round). Session: fresh
   per round; current config always wins.
 
