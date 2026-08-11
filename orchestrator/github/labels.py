@@ -55,6 +55,11 @@ WORKFLOW_LABEL_SPECS: tuple[tuple[WorkflowLabel, str, str], ...] = (
         "Resolving an actual rebase conflict (clean rebases route straight to validating)",
     ),
     (WorkflowLabel.QUESTION, "d876e3", "Awaiting a clarifying answer from a human before the orchestrator can advance"),
+    (
+        WorkflowLabel.DISCUSSION,
+        "0ea5e9",
+        "Held for a human discussion; the orchestrator takes no action until it is relabeled",
+    ),
     (WorkflowLabel.DONE, "cccccc", "Merged to main"),
     (WorkflowLabel.REJECTED, "5c0000", "Issue rejected / closed without merge"),
 )

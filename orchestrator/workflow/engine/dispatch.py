@@ -41,11 +41,11 @@ mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
 
 The handler for a label is reached by importing the module
-`_STAGE_HANDLER_TARGETS` pairs it with, at call time: eleven of them are
-conflicts, decomposition, documenting, fixing, implementing, question,
-validating, and in_review owners under `workflow/stages/`, and the twelfth is
-the `pickup` sibling an unlabeled issue starts on -- and the stage tree imports
-this subpackage, so binding any of them
+`_STAGE_HANDLER_TARGETS` pairs it with, at call time: twelve of them are
+conflicts, decomposition, discussion, documenting, fixing, implementing,
+question, validating, and in_review owners under `workflow/stages/`, and the
+thirteenth is the `pickup` sibling an unlabeled issue starts on -- and the stage
+tree imports this subpackage, so binding any of them
 at module scope would point that edge back at itself. Every entry names the
 owner its handler lives on, so the patch that intercepts a dispatch is the one
 against whichever module the table names.
@@ -94,6 +94,7 @@ _FAMILY_BUCKET_ISSUE: int = 0
 
 _CONFLICTS_PACKAGE = "orchestrator.workflow.stages.conflicts"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
+_DISCUSSION_PACKAGE = "orchestrator.workflow.stages.discussion"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _FIXING_PACKAGE = "orchestrator.workflow.stages.fixing"
 _IMPLEMENTING_PACKAGE = "orchestrator.workflow.stages.implementing"
@@ -121,6 +122,7 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
         f"{_CONFLICTS_PACKAGE}.handler", "_handle_resolving_conflict",
     ),
     WorkflowLabel.QUESTION: (f"{_QUESTION_PACKAGE}.handler", "_handle_question"),
+    WorkflowLabel.DISCUSSION: (f"{_DISCUSSION_PACKAGE}.handler", "_handle_discussion"),
 })
 
 

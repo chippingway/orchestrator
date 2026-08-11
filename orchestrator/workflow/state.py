@@ -14,12 +14,12 @@ both are spelled out literally rather than derived from where this owner sits.
 
 The labels the orchestrator writes itself are namespaced `workflow:<tag>` so a
 repository's own vocabulary cannot collide with them; the ones a human also
-applies or reads on their own (`in_review`, `question`, `done`, `rejected`, and
-the `backlog` / `paused` controls) keep their bare spelling. `stage_name`
-strips the namespace back off a workflow label, because the tag -- not the
-label -- is what analytics rows, audit events, and agent sessions have always
-recorded, and `label_for_name` accepts a bare tag as well so an issue labeled
-before the namespace still resolves to its member.
+applies or reads on their own (`in_review`, `question`, `discussion`, `done`,
+`rejected`, and the `backlog` / `paused` controls) keep their bare spelling.
+`stage_name` strips the namespace back off a workflow label, because the tag --
+not the label -- is what analytics rows, audit events, and agent sessions have
+always recorded, and `label_for_name` accepts a bare tag as well so an issue
+labeled before the namespace still resolves to its member.
 """
 from __future__ import annotations
 
@@ -47,6 +47,7 @@ class WorkflowLabel(StrEnum):
     FIXING = "workflow:fixing"
     RESOLVING_CONFLICT = "workflow:resolving_conflict"
     QUESTION = "question"
+    DISCUSSION = "discussion"
     DONE = "done"
     REJECTED = "rejected"
 
@@ -121,6 +122,12 @@ _FORWARD: Mapping[
     ),
     WorkflowLabel.RESOLVING_CONFLICT: frozenset((WorkflowLabel.VALIDATING,)),
     WorkflowLabel.QUESTION: frozenset((WorkflowLabel.DONE,)),
+    # Nothing routes an issue into `discussion`, so the only edges it needs are
+    # the two a human leaves it by: the thread settled on doing the work, or on
+    # not doing it.
+    WorkflowLabel.DISCUSSION: frozenset(
+        (WorkflowLabel.DONE, WorkflowLabel.REJECTED),
+    ),
     WorkflowLabel.DONE: frozenset(),
     WorkflowLabel.REJECTED: frozenset(),
 })

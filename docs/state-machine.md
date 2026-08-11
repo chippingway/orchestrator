@@ -26,7 +26,7 @@ the literal string on the GitHub issue, which is what a label write puts there, 
 pollable-issue queries ask for, and the per-tick dispatcher partitions on. A bare `<tag>` is the **stage**: the handler
 that runs while an issue carries that label, the subpackage under `orchestrator/workflow/stages/` holding it, and the
 identifier analytics rows, audit event payloads, and agent-session attribution carry. The labels that were never
-namespaced — `in_review`, `question`, and the `done` / `rejected` terminals — read the same either way.
+namespaced — `in_review`, `question`, `discussion`, and the `done` / `rejected` terminals — read the same either way.
 
 The prefix is a collision guard, not the membership test — being a `WorkflowLabel` member is. A `workflow:`-prefixed
 name that is not one resolves to no state at all: the `workflow:dependencies` / `workflow:github_actions` /
@@ -78,9 +78,10 @@ every caller inside the tree imports directly — `orchestrator.workflow` re-exp
 outside it: `WorkflowLabel` (a `StrEnum`) is the single source of truth for workflow states, and `ControlLabel` holds
 the modifiers above. Because `StrEnum` members *are* their wire strings, a member is the GitHub label verbatim — the
 enum just gives the names one authoritative definition. The labels the orchestrator writes itself are namespaced
-`workflow:<tag>` so a repository's own labels cannot collide with them; `in_review`, `question`, `done`, `rejected`,
-and the `backlog` / `paused` controls keep their bare spelling because a human applies or reads those directly. The
-automatic `workflow:community_contribution` control is namespaced with the rest of what the orchestrator applies. The
+`workflow:<tag>` so a repository's own labels cannot collide with them; `in_review`, `question`, `discussion`, `done`,
+`rejected`, and the `backlog` / `paused` controls keep their bare spelling because a human applies or reads those
+directly. The automatic `workflow:community_contribution` control is namespaced with the rest of what the
+orchestrator applies. The
 namespace stops at the GitHub boundary, and `stage_name` on the same owner is what strips a wire label back to the
 stage tag every sink below that boundary records. A repository whose labels predate the namespace still carries the
 bare spellings; how it moves off them is [below](#legacy-labels-and-the-migration-off-them).
@@ -127,6 +128,9 @@ GitHub UI bypass both guards, so the guard never fights a human.
   operator relabel.
 - `question` — Operator-applied read-only Q&A label: the decomposer agent answers in the per-issue worktree and waits
   on a human reply or close. No PR is opened.
+- `discussion` — Operator-applied hold on an issue humans are still settling between themselves. Its handler does
+  nothing at all — no agent, no worktree, no comment, no label write — so applying the label is a quiet, reversible
+  act. Nothing routes an issue in, and only a human relabel takes it out, to `done` or `rejected`.
 - `done` — Terminal success; PR merged, umbrella resolved, or a `question` issue closed.
 - `rejected` — Terminal rejection; PR or issue closed without merge.
 
@@ -149,10 +153,10 @@ spelling to migrate off, so only those reach all three answers:
   label write of the orchestrator's would otherwise reach.
 - **Neither exists** → the namespaced label is created fresh.
 
-The six labels that were never namespaced — `in_review`, `question`, `done`, `rejected`, and the `backlog` / `paused`
-controls — have no second spelling to migrate off, so the bootstrap only ever skips one that already exists or creates
-it bare. Which vocabulary a spec came from decides nothing here: the rename is driven by the label's own spelling,
-which is why it covers `workflow:community_contribution` alongside the states.
+The seven labels that were never namespaced — `in_review`, `question`, `discussion`, `done`, `rejected`, and the
+`backlog` / `paused` controls — have no second spelling to migrate off, so the bootstrap only ever skips one that
+already exists or creates it bare. Which vocabulary a spec came from decides nothing here: the rename is driven by the
+label's own spelling, which is why it covers `workflow:community_contribution` alongside the states.
 
 A PAT without `Issues: Read and write` can neither rename nor create: the refusal is logged and the rest of the
 bootstrap is abandoned, leaving that repository on its old vocabulary until the permission is granted and the process
@@ -207,10 +211,11 @@ The dispatch loop classifies each pollable issue by workflow label before submit
   dedicated executor and does not consume a `MAX_PARALLEL_ISSUES_*` slot, so a blocked parent waiting on children
   cannot deadlock those children.
 - **Fan-out labels** (`workflow:ready`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`,
-  `in_review`, `workflow:fixing`, `workflow:resolving_conflict`, and the operator-applied `question`) only touch their
-  own state and worktree. They run concurrently up to the per-repo and global caps. A **closed** fan-out issue (a
-  merged-PR or closed-question issue still carrying its sweep label, surfaced by the closed-issue sweep) is submitted
-  `cap_exempt=True`: its handler only runs a terminal finalization (flip to `done` / `rejected` + branch cleanup) with
+  `in_review`, `workflow:fixing`, `workflow:resolving_conflict`, and the operator-applied `question` and
+  `discussion`) only touch their own state and worktree. They run concurrently up to the per-repo and global caps. A
+  **closed** fan-out issue (a merged-PR or closed-question issue still carrying its sweep label, surfaced by the
+  closed-issue sweep) is submitted `cap_exempt=True`: its handler only runs a terminal finalization (flip to `done` /
+  `rejected` + branch cleanup) with
   no agent spawn, so it must not be starved behind active agent work — otherwise under `parallel_limit=1` a merged-PR
   issue sits closed-but-labeled for many ticks while a sibling reviewer or docs agent holds the only slot.
 
@@ -1033,12 +1038,25 @@ The Q&A flow keeps state minimal: no PR is ever opened, no branch is ever pushed
 survives across ticks when an unsafe park requires operator inspection. The locked session resumes across cleanup
 because session state lives in pinned state, not in the worktree.
 
+### `_handle_discussion` (label `discussion`)
+- **Trigger**: each tick while the label is `discussion`. Like `question` the label is operator-applied — no handler
+  routes into it, there is no pickup route to it, and it is deliberately NOT in `_FAMILY_AWARE_LABELS`, so fan-out
+  concurrency is preserved.
+- **Input**: none. The handler reads neither comments nor pinned state.
+- **Action**: none. The issue is held for a human discussion, so a tick spawns no agent, creates no worktree, posts no
+  comment, and writes no label or pinned state. The handler exists so the dispatcher recognizes the label instead of
+  warning about it every tick, which is what makes applying the label safe.
+- **Output**: a no-op tick, plus the `stage_evaluation` analytics record every dispatch produces.
+- **Exit**: a human relabel only, to `done` or `rejected` (the two edges `ALLOWED_TRANSITIONS` grants the state), or by
+  removing the label and letting the issue route as whatever it becomes. Closing the issue is not a terminal signal:
+  `discussion` is absent from `CLOSED_SWEEP_LABELS`, so a closed discussion issue is never polled again.
+
 ## State transition (label lifecycle)
 
 ```
    Legend: a node is the workflow label the issue carries. `in_review`,
-   `question`, `done`, and `rejected` are unprefixed; every state the
-   orchestrator drives itself is namespaced `workflow:<tag>`. Route,
+   `question`, `discussion`, `done`, and `rejected` are unprefixed; every
+   state the orchestrator drives itself is namespaced `workflow:<tag>`. Route,
    handler, and manifest names below are the bare tag, not a label.
 
    Forward (single-task happy path):
@@ -1167,6 +1185,11 @@ because session state lives in pinned state, not in the worktree.
        workflow:implementing  branch ─► drop question park, resume dev;
                              dirty or branch has commits ─► park
                              (question_unsafe_relabel)
+
+   discussion (operator-applied; no automatic in/out transitions):
+     every tick           ─► nothing: no agent, no worktree, no comment,
+                             no label write
+     human relabel        ─► done | rejected
 
    any stage ──► [park: awaiting_human=true]
                        (timeout, dirty tree, question, push fail,

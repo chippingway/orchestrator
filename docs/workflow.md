@@ -13,8 +13,8 @@ the user-facing summary, see [`../README.md`](../README.md).
 Stage and label names are spelled apart here as they are in
 [`state-machine.md`](state-machine.md#workflow-labels): a bare tag names the **stage** — the handler, the subpackage
 under `orchestrator/workflow/stages/` holding it, and the identifier a session's analytics row is attributed to —
-while `workflow:<tag>` is the **wire label** the GitHub issue carries. `in_review`, `question`, and the `done` /
-`rejected` terminals were never namespaced, so those read the same on both sides.
+while `workflow:<tag>` is the **wire label** the GitHub issue carries. `in_review`, `question`, `discussion`, and the
+`done` / `rejected` terminals were never namespaced, so those read the same on both sides.
 
 ## Roles and the workflow stages that invoke them
 
@@ -52,17 +52,18 @@ spawn; and implementing, validating, in_review, conflicts, documenting, and fixi
 park reasons on `git/base_sync/state.py` —
 so a patch meant to intercept one of those has to land on the owner. The git a stage runs on is named the same way:
 the worktree, HEAD, fetch, push, and PR-title helpers live on owners under `orchestrator/git/`, and the tracked spawn
-every role goes through dispatches on `orchestrator/agents/runner.py`. All eight stages live under
+every role goes through dispatches on `orchestrator/agents/runner.py`. All nine stages live under
 `orchestrator/workflow/stages/`: the `decomposing` / `ready` / `blocked` / `umbrella` handlers on owners in
 `orchestrator/workflow/stages/decomposition/`, `_handle_implementing` on owners in
 `orchestrator/workflow/stages/implementing/`, `_handle_documenting` in `orchestrator/workflow/stages/documenting/`,
 `_handle_validating` in `orchestrator/workflow/stages/validating/`, `_handle_in_review` in
 `orchestrator/workflow/stages/in_review/`, `_handle_fixing` in `orchestrator/workflow/stages/fixing/`,
-`_handle_resolving_conflict` in `orchestrator/workflow/stages/conflicts/`, and `_handle_question` in
-`orchestrator/workflow/stages/question/`. Nothing answers for a stage beside those owners, so each handler is reached on
-the one module that holds it, and the dispatcher and the same-tick pickup start name that module directly. The per-stage
-behavior is documented in [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What follows is the
-role-specific glue.
+`_handle_resolving_conflict` in `orchestrator/workflow/stages/conflicts/`, `_handle_question` in
+`orchestrator/workflow/stages/question/`, and the inert `_handle_discussion` in
+`orchestrator/workflow/stages/discussion/`. Nothing answers for a stage beside those owners, so each handler is
+reached on the one module that holds it, and the dispatcher and the same-tick pickup start name that module directly.
+The per-stage behavior is documented in [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What
+follows is the role-specific glue.
 
 - **Dev session reuse.** The implementer session is spawned once in `_handle_implementing` and then resumed by
   `_handle_documenting`, `_handle_validating`, `_handle_fixing`, and `_handle_resolving_conflict` whenever they need the
@@ -94,6 +95,14 @@ tears down the worktree.
 
 For the per-`park_reason` semantics and the implementing-side relabel guard (`question_unsafe_relabel`), see
 [`state-machine.md#_handle_question-label-question`](state-machine.md#_handle_question-label-question).
+
+### Discussion stage — the operator hold on the `discussion` label
+
+The `discussion` label is operator-applied like `question`, with no automatic transitions in or out, but it invokes no
+role at all. `_handle_discussion` spawns nothing, creates no worktree, and writes neither a comment nor a label, so an
+issue humans are still settling among themselves stays exactly as they left it. Only a human relabel ends the hold —
+to `done` or `rejected`, or by taking the label off. See
+[`state-machine.md#_handle_discussion-label-discussion`](state-machine.md#_handle_discussion-label-discussion).
 
 ### Tracked-repos awareness in working-agent prompts
 

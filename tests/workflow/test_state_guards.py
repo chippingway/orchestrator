@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 from orchestrator import config
 from orchestrator.workflow import state as _state
 from orchestrator.workflow.state import (
+    ALLOWED_TRANSITIONS,
     IllegalTransition,
     WorkflowLabel,
     guard_transition,
@@ -87,13 +88,14 @@ class TerminalTransitionTest(unittest.TestCase):
     """Terminal transitions are limited to their exact workflow sources."""
 
     def test_done_allowed_only_from_its_exact_sources(self) -> None:
-        # External-merge / drain sources, plus umbrella/question whose own
-        # forward completion is `-> done`. NOT the pre-PR states.
+        # External-merge / drain sources, plus umbrella/question/discussion
+        # whose own forward completion is `-> done`. NOT the pre-PR states.
         sources = {
             WorkflowLabel.IMPLEMENTING, WorkflowLabel.VALIDATING,
             WorkflowLabel.DOCUMENTING, WorkflowLabel.IN_REVIEW,
             WorkflowLabel.FIXING, WorkflowLabel.RESOLVING_CONFLICT,
             WorkflowLabel.UMBRELLA, WorkflowLabel.QUESTION,
+            WorkflowLabel.DISCUSSION,
         }
         for state in WorkflowLabel:
             if state in (WorkflowLabel.DONE, WorkflowLabel.REJECTED):
@@ -108,6 +110,7 @@ class TerminalTransitionTest(unittest.TestCase):
             WorkflowLabel.IMPLEMENTING, WorkflowLabel.VALIDATING,
             WorkflowLabel.DOCUMENTING, WorkflowLabel.IN_REVIEW,
             WorkflowLabel.FIXING, WorkflowLabel.RESOLVING_CONFLICT,
+            WorkflowLabel.DISCUSSION,
         }
         for state in WorkflowLabel:
             if state in (WorkflowLabel.DONE, WorkflowLabel.REJECTED):
@@ -125,6 +128,17 @@ class TerminalTransitionTest(unittest.TestCase):
         )
         self.assertFalse(
             is_allowed_transition(WorkflowLabel.QUESTION, WorkflowLabel.REJECTED)
+        )
+
+    def test_discussion_leaves_by_either_terminal(self) -> None:
+        # The other operator-applied state settles both ways: a discussion ends
+        # in the work being done or in the issue being turned down. Asserting
+        # the edge set rather than a probe per edge is what makes the pair
+        # exhaustive -- a discussion that could reach a working state would be
+        # the orchestrator resuming work on a hold nobody lifted.
+        self.assertEqual(
+            ALLOWED_TRANSITIONS[WorkflowLabel.DISCUSSION],
+            frozenset((WorkflowLabel.DONE, WorkflowLabel.REJECTED)),
         )
 
     def test_pre_pr_states_are_not_terminalizable(self) -> None:

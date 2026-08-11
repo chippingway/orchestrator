@@ -128,6 +128,7 @@ STAGE_COLORS: Mapping[str, str] = MappingProxyType({
     "fixing": _RED,
     "resolving_conflict": "#d98a3a",
     "question": "#6b7a99",
+    "discussion": "#0ea5e9",
     "done": SUCCESS,
     "rejected": NEUTRAL,
 })

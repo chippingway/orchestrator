@@ -4,9 +4,10 @@
 
 Owner of every per-label stage handler. Each stage is a subpackage of
 responsibility-named owners -- ``decomposition``, ``implementing``,
-``documenting``, ``validating``, ``in_review``, ``fixing``, ``conflicts``, and
-``question`` -- and these are the only modules a stage's names answer on, so a
-``patch.object`` on the owner is the only interception a caller can need.
+``documenting``, ``validating``, ``in_review``, ``fixing``, ``conflicts``,
+``question``, and ``discussion`` -- and these are the only modules a stage's
+names answer on, so a ``patch.object`` on the owner is the only interception a
+caller can need.
 Dispatch names them too: the label table names the owner a handler lives on, so
 a patch meant to intercept a dispatched handler has to land there.
 

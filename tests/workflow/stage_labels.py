@@ -1,9 +1,10 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Active workflow labels shared by stage tests."""
+"""The workflow labels a stage handler answers on, shared by stage tests."""
 
 
 LABEL_DECOMPOSING = "workflow:decomposing"
+LABEL_DISCUSSION = "discussion"
 LABEL_DOCUMENTING = "workflow:documenting"
 LABEL_FIXING = "workflow:fixing"
 LABEL_IMPLEMENTING = "workflow:implementing"
