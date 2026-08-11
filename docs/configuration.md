@@ -539,7 +539,12 @@ artifacts, push tags, or comment on PRs. The job uses no repository secrets, so 
 scope.
 
 [`../.github/dependabot.yml`](../.github/dependabot.yml) opens weekly update PRs for the `github-actions` and `uv`
-(Python `pyproject.toml` + `uv.lock`) ecosystems with a 30-day `cooldown.default-days` window.
+(Python `pyproject.toml` + `uv.lock`) ecosystems with a 30-day `cooldown.default-days` window. Each entry declares the
+service labels GitHub stamps on the PRs it opens: `workflow:dependencies` on every update PR, so the whole dependency
+queue is one label filter, plus `workflow:github_actions` or `workflow:python:uv` naming which ecosystem moved. Those
+three share the `workflow:` prefix with the labels the orchestrator writes but are not workflow states — nothing in
+the tree reads them, so a PR carrying one is not an issue in a stage. `github-actions` and `uv` above name the
+ecosystems Dependabot updates, not labels.
 [`../.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml) runs
 `actions/dependency-review-action` on every PR and fails the check when a PR introduces a vulnerable or non-compliant
 dependency.
