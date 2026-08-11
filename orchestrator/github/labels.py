@@ -5,9 +5,12 @@
 The bootstrap is also the migration off the pre-namespace vocabulary: a
 repository that still carries the bare label is renamed rather than given a
 second one, so every issue holding it -- including the closed ones no sweep
-would surface again -- moves across in one edit. `workflow_label` reads the
-bare spelling too, which is what keeps an issue routing on a repository the
-rename could not reach.
+would surface again -- moves across in one edit. That covers the automatic
+control label alongside the workflow states, because the rename is driven by
+the spelling rather than by which table a spec came from; `backlog` and
+`paused` are the operator's to type and were never namespaced, so neither has
+a rename to make. `workflow_label` reads the bare spelling too, which is what
+keeps an issue routing on a repository the rename could not reach.
 """
 from __future__ import annotations
 
@@ -61,6 +64,18 @@ WORKFLOW_LABELS = frozenset(WorkflowLabel)
 BACKLOG_LABEL = ControlLabel.BACKLOG
 PAUSED_LABEL = ControlLabel.PAUSED
 COMMUNITY_CONTRIBUTION_LABEL = ControlLabel.COMMUNITY_CONTRIBUTION
+# Every spelling the sweep's own label can be found under. The label is the
+# sweep's dedup marker, so a PR still carrying the bare one -- on a repository
+# the bootstrap rename could not reach -- has to read as already marked, or the
+# HITL ping fires a second time on a PR a human was already asked to review.
+COMMUNITY_CONTRIBUTION_LABEL_NAMES: tuple[str, ...] = tuple(
+    label_name
+    for label_name in (
+        COMMUNITY_CONTRIBUTION_LABEL,
+        legacy_label_name(COMMUNITY_CONTRIBUTION_LABEL),
+    )
+    if label_name is not None
+)
 CONTROL_LABEL_SPECS: tuple[tuple[ControlLabel, str, str], ...] = (
     (
         BACKLOG_LABEL,

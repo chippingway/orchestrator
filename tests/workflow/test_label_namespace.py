@@ -6,6 +6,7 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.state import (
+    ControlLabel,
     WorkflowLabel,
     coerce_workflow_label,
     issue_workflow_label,
@@ -48,10 +49,16 @@ _UNNAMESPACED_LABELS = frozenset((
     WorkflowLabel.DONE,
     WorkflowLabel.REJECTED,
 ))
+# The same split across the controls: an operator types these two by hand, and
+# the sweep's community-contribution label is the one the orchestrator applies.
+_MANUAL_CONTROL_LABELS = frozenset((
+    ControlLabel.BACKLOG,
+    ControlLabel.PAUSED,
+))
 
 
 class LabelNamespaceTest(unittest.TestCase):
-    """Automated states are namespaced on GitHub and bare everywhere else."""
+    """Automated labels are namespaced on GitHub and bare everywhere else."""
 
     def test_every_driven_state_is_namespaced(self) -> None:
         for member in WorkflowLabel:
@@ -59,6 +66,14 @@ class LabelNamespaceTest(unittest.TestCase):
                 self.assertEqual(
                     str(member).startswith(_NAMESPACE),
                     member not in _UNNAMESPACED_LABELS,
+                )
+
+    def test_only_the_automatic_control_is_namespaced(self) -> None:
+        for member in ControlLabel:
+            with self.subTest(label=member):
+                self.assertEqual(
+                    str(member).startswith(_NAMESPACE),
+                    member not in _MANUAL_CONTROL_LABELS,
                 )
 
     def test_stage_name_strips_the_namespace(self) -> None:
@@ -69,8 +84,15 @@ class LabelNamespaceTest(unittest.TestCase):
         self.assertIsNone(stage_name(None))
 
     def test_legacy_name_is_the_tag_only_when_renamed(self) -> None:
+        # The bare spelling a repository may still carry, which is what the
+        # bootstrap renames and what a labeled PR is recognized under.
         self.assertEqual(legacy_label_name(WorkflowLabel.FIXING), "fixing")
+        self.assertEqual(
+            legacy_label_name(ControlLabel.COMMUNITY_CONTRIBUTION),
+            "community_contribution",
+        )
         self.assertIsNone(legacy_label_name(WorkflowLabel.DONE))
+        self.assertIsNone(legacy_label_name(ControlLabel.BACKLOG))
 
 
 class LegacyLabelCompatibilityTest(unittest.TestCase):
@@ -86,6 +108,11 @@ class LegacyLabelCompatibilityTest(unittest.TestCase):
         self.assertIs(label_for_name("fixing"), WorkflowLabel.FIXING)
         self.assertIs(label_for_name("workflow:fixing"), WorkflowLabel.FIXING)
         self.assertIsNone(label_for_name("backlog"))
+        # Sharing the prefix does not make a control label a workflow state:
+        # resolving one would route the PR sweep's own label to a handler.
+        self.assertIsNone(
+            label_for_name(ControlLabel.COMMUNITY_CONTRIBUTION),
+        )
 
     def test_coercion_accepts_the_legacy_spelling(self) -> None:
         self.assertIs(coerce_workflow_label("fixing"), WorkflowLabel.FIXING)

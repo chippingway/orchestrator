@@ -82,8 +82,8 @@ For deeper implementation details, use the references below.
      comments from authors outside the list are also dropped from the conversation text fed to every coding agent and
      from the drift-detection hash, so an outsider cannot inject workflow-driving instructions or re-trigger drift; and
      the per-tick sweep labels open PRs from anyone outside the list (bot accounts such as Dependabot excepted)
-     with `community_contribution` and @-mentions `HITL_HANDLE` once per PR so a human reviews community-submitted
-     work.
+     with `workflow:community_contribution` and @-mentions `HITL_HANDLE` once per PR so a human reviews
+     community-submitted work.
 
    Then store the personal access token **outside** the repo so the implementer agent (which runs
    in a sibling worktree with sandbox bypass enabled) cannot read it via a relative

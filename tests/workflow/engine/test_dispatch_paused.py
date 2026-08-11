@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.github.labels import (
     BACKLOG_LABEL,
+    COMMUNITY_CONTRIBUTION_LABEL,
     PAUSED_LABEL,
     hard_skip_control_label,
 )
@@ -89,10 +90,10 @@ class HardSkipControlLabelTest(unittest.TestCase):
     log line names the operator's actual label."""
 
     def test_returns_none_without_a_hard_skip_label(self) -> None:
-        # `community_contribution` is a control label that is not a hard skip:
-        # it coexists with the workflow without parking the issue.
+        # The community-contribution label is a control label that is not a
+        # hard skip: it coexists with the workflow without parking the issue.
         issue = make_issue(_COMMUNITY_ISSUE, label=_IMPLEMENTING_LABEL)
-        issue.labels.append(FakeLabel("community_contribution"))
+        issue.labels.append(FakeLabel(COMMUNITY_CONTRIBUTION_LABEL))
         self.assertIsNone(hard_skip_control_label(issue))
 
     def test_reports_the_present_hard_skip_label(self) -> None:

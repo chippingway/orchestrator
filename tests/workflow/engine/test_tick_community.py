@@ -7,7 +7,10 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
+from orchestrator.github.labels import (
+    COMMUNITY_CONTRIBUTION_LABEL,
+    COMMUNITY_CONTRIBUTION_LABEL_NAMES,
+)
 from orchestrator.workflow.engine import tick
 
 from tests.support.fakes import FakeGitHubClient
@@ -85,17 +88,21 @@ class SweepCommunityContributionPRsTest(unittest.TestCase):
         self.assertEqual(gh.posted_pr_comments, [])
 
     def test_labeled_prs_are_not_pinged_again(self) -> None:
-        gh = FakeGitHubClient()
-        gh.add_pr(
-            _pr(
-                3,
-                author=_OUTSIDER_LOGIN,
-                labels=(COMMUNITY_CONTRIBUTION_LABEL,),
-            )
-        )
-        with patch.object(config, _ALLOWLIST_CONFIG, (_ALLOWED_LOGIN,)):
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
-        # Still labeled exactly once, no duplicate comment.
-        names = [label.name for label in gh.pulls[3].labels]
-        self.assertEqual(names.count(COMMUNITY_CONTRIBUTION_LABEL), 1)
-        self.assertEqual(gh.posted_pr_comments, [])
+        # Either spelling is the dedup marker: a PR labeled on a repository
+        # whose label the bootstrap rename could not reach has already had its
+        # one HITL ping, so it earns neither a second label nor a second ping.
+        for label_name in COMMUNITY_CONTRIBUTION_LABEL_NAMES:
+            with self.subTest(label=label_name):
+                gh = FakeGitHubClient()
+                gh.add_pr(
+                    _pr(3, author=_OUTSIDER_LOGIN, labels=(label_name,))
+                )
+                with patch.object(
+                    config, _ALLOWLIST_CONFIG, (_ALLOWED_LOGIN,),
+                ):
+                    tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+                self.assertEqual(
+                    [label.name for label in gh.pulls[3].labels],
+                    [label_name],
+                )
+                self.assertEqual(gh.posted_pr_comments, [])

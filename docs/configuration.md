@@ -100,20 +100,21 @@ session lock, and full examples.
   `claude` is not on `$PATH`
 - `ALLOWED_ISSUE_AUTHORS` — default _(unset)_. comma-separated GitHub logins; when set, only auto-pick-up unlabeled
   issues from those authors, and the per-tick sweep labels open PRs from anyone outside the list with
-  `community_contribution` and @-mentions `HITL_HANDLE` once per PR (bot-authored PRs such as Dependabot are excluded
-  via `user.type == "Bot"`). When set it additionally becomes a comment trust boundary: comments from authors outside
-  the list stay visible on GitHub but are dropped from the conversation text fed to every agent prompt (implement /
-  review / documentation / decompose / question / conflict, the awaiting-human resumes, and the `in_review` / `fixing`
-  PR-feedback loop), from the base-sync auto-rebase retry-unpark signal, and from the `user_content_hash` drift
-  signal, so an outsider on a public repo cannot inject workflow-driving instructions into an agent, resume an
-  awaiting-human session, retry a parked auto-rebase, reset the review-round cap via `/orchestrator
-  add-review-rounds`, route `in_review` to `workflow:fixing` (or set its pending-fix bookmark), or shift the hash to
-  re-trigger drift. Login comparison is case-insensitive; an empty allowlist trusts every author (legacy single-user
-  behavior), so on these prompt / resume / PR-feedback surfaces a Bot/App login is gated like any other author —
-  excluded only once the allowlist is populated and its login is not on it. A separate `user.type == "Bot"` structural
-  check, independent of the allowlist, covers the `user_content_hash` drift hash and the community-contribution PR
-  sweep. See [`state-machine.md`](state-machine.md#user-content-drift-detection) for the full drift-hash filter list
-  and [`security.md`](security.md#comment-trust-boundary-allowed_issue_authors) for the trust-boundary rationale
+  `workflow:community_contribution` and @-mentions `HITL_HANDLE` once per PR (bot-authored PRs such as Dependabot are
+  excluded via `user.type == "Bot"`). When set it additionally becomes a comment trust boundary: comments from authors
+  outside the list stay visible on GitHub but are dropped from the conversation text fed to every agent prompt
+  (implement / review / documentation / decompose / question / conflict, the awaiting-human resumes, and the
+  `in_review` / `fixing` PR-feedback loop), from the base-sync auto-rebase retry-unpark signal, and from the
+  `user_content_hash` drift signal, so an outsider on a public repo cannot inject workflow-driving instructions into
+  an agent, resume an awaiting-human session, retry a parked auto-rebase, reset the review-round cap via
+  `/orchestrator add-review-rounds`, route `in_review` to `workflow:fixing` (or set its pending-fix bookmark), or
+  shift the hash to re-trigger drift. Login comparison is case-insensitive; an empty allowlist trusts every author
+  (legacy single-user behavior), so on these prompt / resume / PR-feedback surfaces a Bot/App login is gated like any
+  other author — excluded once the allowlist is populated and its login is not on it. A separate `user.type == "Bot"`
+  structural check, independent of the allowlist, covers the `user_content_hash` drift hash and the
+  community-contribution PR sweep. See [`state-machine.md`](state-machine.md#user-content-drift-detection) for the
+  full drift-hash filter list and
+  [`security.md`](security.md#comment-trust-boundary-allowed_issue_authors) for the trust-boundary rationale
 
 ## Cadence and budgets
 
@@ -563,8 +564,9 @@ Both forms above call `orchestrator/cli.py`, which is also what the `agent-orche
 launches and what the systemd unit below therefore supervises; the console script is the equivalent for an install
 that has the project on its `PATH`.
 
-On first start the orchestrator creates the workflow labels and the `backlog` / `paused` / `community_contribution`
-control labels on the repo, then begins polling open issues every `POLL_INTERVAL` seconds.
+On first start the orchestrator creates the workflow labels and the `backlog` / `paused` /
+`workflow:community_contribution` control labels on the repo, then begins polling open issues every `POLL_INTERVAL`
+seconds. On a repo it drove before the labels were namespaced, each pre-namespace label is renamed in place instead.
 
 ## Running under systemd (user service)
 
@@ -747,7 +749,9 @@ When each setting's change takes effect:
   `fixing`, `resolving_conflict`) re-reads the label after the run returns, before any post-agent side effect, and
   discards the result rather than pushing, opening a PR, relabeling, advancing watermarks, or posting comments, so the
   committed work stays on the branch and republishes once the label is removed.
-- `community_contribution` — Applied automatically (not by an operator) by the per-tick open-PR sweep when
+- `workflow:community_contribution` — Applied automatically (not by an operator) by the per-tick open-PR sweep when
   `ALLOWED_ISSUE_AUTHORS` is set: any open PR whose author is outside the allowlist is labeled and `HITL_HANDLE` is
   @-mentioned once per PR so a human reviews the community-submitted work. Bot authors (Dependabot, Renovate, CI bots)
-  are skipped. With the allowlist empty (the default), the sweep is a no-op.
+  are skipped. With the allowlist empty (the default), the sweep is a no-op. It carries the `workflow:` prefix — unlike
+  the two controls above — because the orchestrator writes it itself; a PR still carrying the pre-namespace spelling
+  counts as already labeled, so the migration cannot cost it a second HITL ping.
