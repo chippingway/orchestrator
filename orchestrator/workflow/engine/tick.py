@@ -53,7 +53,10 @@ from typing import Any, Optional
 from orchestrator import config
 from orchestrator.git.base_sync import refresh as _base_refresh
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
+from orchestrator.github.labels import (
+    COMMUNITY_CONTRIBUTION_LABEL,
+    COMMUNITY_CONTRIBUTION_LABEL_NAMES,
+)
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.skills import catalog as _catalog
 from orchestrator.workflow.engine import dispatch as _dispatch
@@ -66,6 +69,18 @@ class _CommunityContribution:
     author: str
 
 
+def _has_contribution_label(gh: GitHubClient, pr) -> bool:
+    """Whether the sweep already marked this PR, under either spelling.
+
+    A PR labeled before the namespace -- on a repository whose label the
+    bootstrap rename could not reach -- has already had its one HITL ping.
+    """
+    return any(
+        gh.pr_has_label(pr, label_name)
+        for label_name in COMMUNITY_CONTRIBUTION_LABEL_NAMES
+    )
+
+
 def _community_contribution_for_pr(
     gh: GitHubClient, pr, allowed_lower: set[str],
 ) -> Optional[_CommunityContribution]:
@@ -75,7 +90,7 @@ def _community_contribution_for_pr(
     author = getattr(user, "login", None) or ""
     if author.lower() in allowed_lower:
         return None
-    if gh.pr_has_label(pr, COMMUNITY_CONTRIBUTION_LABEL):
+    if _has_contribution_label(gh, pr):
         return None
     return _CommunityContribution(author)
 
@@ -118,9 +133,9 @@ def _sweep_community_contribution_prs(
     No-op when ALLOWED_ISSUE_AUTHORS is empty (the default) so a single-user
     deployment keeps the legacy "anyone is trusted" behavior. When the list
     is populated, every open PR whose author is not in it earns the
-    `community_contribution` label and a one-shot HITL ping comment; the
-    label is idempotent (already-labeled PRs are skipped) so the comment
-    fires exactly once per PR.
+    `workflow:community_contribution` label and a one-shot HITL ping comment;
+    the label is idempotent (a PR already carrying either spelling of it is
+    skipped) so the comment fires exactly once per PR.
 
     Bot-authored PRs (Dependabot, Renovate, CI bots) are skipped by
     GitHub's `user.type == "Bot"` flag -- they open PRs structurally and

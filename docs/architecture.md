@@ -2705,17 +2705,18 @@ that has the package — which is what keeps the data an owner shapes testable i
 An issue should have at most one workflow label at a time. The set is `workflow:decomposing`, `workflow:ready`,
 `workflow:blocked`, `workflow:umbrella`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`,
 `in_review`, `workflow:fixing`, `workflow:resolving_conflict`, `question`, and the two terminals `done` / `rejected`.
-The `workflow:` prefix marks the states the orchestrator drives itself, so a repository's own vocabulary cannot
-collide with them; the four a human also applies or reads on their own keep the bare spelling. The orchestrator also
-creates three non-workflow control labels: `backlog` and `paused` each make per-tick handlers skip the issue entirely
-(`backlog` is a "not yet" hold on a fresh issue, `paused` freezes an in-flight one), and `community_contribution` is
-applied by the per-tick open-PR sweep to PRs from non-bot authors outside `ALLOWED_ISSUE_AUTHORS` so a human reviews
-them. The namespace is a GitHub label spelling and stops at that boundary: the *stage* an issue is in is still named
-by the bare tag under the label, which is what analytics rows, audit event payloads, agent-session attribution, and
-the pinned-state JSON have always recorded. `workflow/state.py` owns both directions — `stage_name` strips the prefix
-for those sinks, and `label_for_name` resolves either spelling back to its member. A namespaced label also outranks a
-pre-namespace one on the same issue, and a label write takes off only what it owns, so a bare `blocked` or `ready` the
-repository uses for its own triage survives a relabel; see
+The `workflow:` prefix marks what the orchestrator writes itself, so a repository's own vocabulary cannot collide with
+it; the four states a human also applies or reads on their own keep the bare spelling. The orchestrator also creates
+three non-workflow control labels: `backlog` and `paused` each make per-tick handlers skip the issue entirely
+(`backlog` is a "not yet" hold on a fresh issue, `paused` freezes an in-flight one), and
+`workflow:community_contribution` is applied by the per-tick open-PR sweep to PRs from non-bot authors outside
+`ALLOWED_ISSUE_AUTHORS` so a human reviews them. The two an operator types stay bare; the one the sweep applies is
+namespaced on the same rule as the states. The namespace is a GitHub label spelling and stops at that boundary: the
+*stage* an issue is in is still named by the bare tag under the label, which is what analytics rows, audit event
+payloads, agent-session attribution, and the pinned-state JSON have always recorded. `workflow/state.py` owns both
+directions — `stage_name` strips the prefix for those sinks, and `label_for_name` resolves either spelling back to
+its member. A namespaced label also outranks a pre-namespace one on the same issue, and a label write takes off only
+what it owns, so a bare `blocked` or `ready` the repository uses for its own triage survives a relabel; see
 [`state-machine.md#typed-states-and-the-transition-guard`](state-machine.md#typed-states-and-the-transition-guard).
 
 Label names are part of the public contract because live GitHub issues already carry them. For the meaning of each

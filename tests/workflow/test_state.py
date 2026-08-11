@@ -78,7 +78,8 @@ class WorkflowLabelEnumTest(unittest.TestCase):
         self.assertEqual(ControlLabel.BACKLOG, "backlog")
         self.assertEqual(ControlLabel.PAUSED, "paused")
         self.assertEqual(
-            ControlLabel.COMMUNITY_CONTRIBUTION, "community_contribution",
+            ControlLabel.COMMUNITY_CONTRIBUTION,
+            "workflow:community_contribution",
         )
         for label in ControlLabel:
             self.assertNotIn(label, _labels.WORKFLOW_LABELS)
@@ -88,8 +89,8 @@ class WorkflowLabelEnumTest(unittest.TestCase):
             {spec[0] for spec in _labels.CONTROL_LABEL_SPECS},
             set(ControlLabel),
         )
-        # `community_contribution` is registered for bootstrap but is not a
-        # hard skip: it coexists with the workflow rather than pausing it.
+        # The community-contribution label is registered for bootstrap but is
+        # not a hard skip: it coexists with the workflow rather than pausing it.
         self.assertNotIn(
             _labels.COMMUNITY_CONTRIBUTION_LABEL, _labels.HARD_SKIP_CONTROL_LABELS
         )

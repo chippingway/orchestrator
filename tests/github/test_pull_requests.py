@@ -23,7 +23,7 @@ _HTTP_SERVER_ERROR = 500
 _BRANCH = "orchestrator/issue-7"
 _BASE = "main"
 _OWNER_LOGIN = "geserdugarov"
-_LABEL_NAME = "community_contribution"
+_LABEL_NAME = "workflow:community_contribution"
 _HEAD_SHA = "f00dcafe"
 
 # (merged, PyGithub state) -> the one state every workflow gate reads.
@@ -87,7 +87,7 @@ class StatelessPrStatusTest(unittest.TestCase):
     def test_matches_label_case_insensitively(self) -> None:
         pull_request = FakePR(
             number=_PR_NUMBER,
-            labels=[FakeLabel("Community_Contribution")],
+            labels=[FakeLabel("Workflow:Community_Contribution")],
         )
         self.assertTrue(
             _pull_requests.pr_has_label(pull_request, _LABEL_NAME),

@@ -47,12 +47,14 @@ Three non-workflow **control labels** modify behavior without occupying the work
   command is not an un-pause and does not clear `paused`. It is unrelated to un-pausing, but not exempt from it — the
   hard skip fires in `_process_issue` before any handler, so a continue comment posted on a paused issue is deferred
   with everything else until the label is removed.
-- `community_contribution` is applied by the per-tick open-PR sweep (on the `workflow/engine/tick.py` owner, which
-  drives it before per-issue dispatch) when `ALLOWED_ISSUE_AUTHORS` is configured: any open PR whose author is not in
-  the allowlist is labeled and `HITL_HANDLE` is @-mentioned once per PR. Bot-authored PRs
+- `workflow:community_contribution` is applied by the per-tick open-PR sweep (on the `workflow/engine/tick.py` owner,
+  which drives it before per-issue dispatch) when `ALLOWED_ISSUE_AUTHORS` is configured: any open PR whose author is
+  not in the allowlist is labeled and `HITL_HANDLE` is @-mentioned once per PR. Bot-authored PRs
   (Dependabot, Renovate, CI bots) are skipped via GitHub's `user.type == "Bot"` flag — they open PRs structurally and
   are not community contributions. The orchestrator does not otherwise drive these PRs. With `ALLOWED_ISSUE_AUTHORS`
-  empty (the default), the sweep is a no-op.
+  empty (the default), the sweep is a no-op. The label is the sweep's own dedup marker rather than an operator
+  control, which is why it is namespaced where `backlog` / `paused` are not, and why the sweep asks for both its
+  spellings: a PR the bootstrap rename could not reach is already labeled, and re-labeling it would repeat the ping.
 
 ### Typed states and the transition guard
 
@@ -60,18 +62,22 @@ The label vocabulary is defined once in [`orchestrator/workflow/state.py`](../or
 every caller inside the tree imports directly — `orchestrator.workflow` re-exports the same objects for callers
 outside it: `WorkflowLabel` (a `StrEnum`) is the single source of truth for workflow states, and `ControlLabel` holds
 the modifiers above. Because `StrEnum` members *are* their wire strings, a member is the GitHub label verbatim — the
-enum just gives the names one authoritative definition. The states the orchestrator drives itself are namespaced
+enum just gives the names one authoritative definition. The labels the orchestrator writes itself are namespaced
 `workflow:<tag>` so a repository's own labels cannot collide with them; `in_review`, `question`, `done`, `rejected`,
-and every `ControlLabel` keep their bare spelling because a human applies or reads those directly. The namespace stops
-at the GitHub boundary — the *stage* identifier is the bare tag, and that is what analytics rows, audit event
-payloads, agent-session attribution, and the pinned-state JSON record. `stage_name` on the same owner strips the
-prefix for those sinks.
+and the `backlog` / `paused` controls keep their bare spelling because a human applies or reads those directly. The
+automatic `workflow:community_contribution` control is namespaced with the rest of what the orchestrator applies. The
+namespace stops at the GitHub boundary — the *stage* identifier is the bare tag, and that is what analytics rows,
+audit event payloads, agent-session attribution, and the pinned-state JSON record. `stage_name` on the same owner
+strips the prefix for those sinks.
 
 Migration off the pre-namespace vocabulary runs in two places. `ensure_workflow_labels` renames the bare label rather
 than creating a second one, which carries every issue holding it across in one edit — including the closed and parked
-ones no polling pass revisits. And `label_for_name` accepts either spelling, so on a repository the rename could not
-reach (an under-scoped PAT, a human re-adding the old label) an issue still routes and is rewritten to the namespaced
-spelling by its next label write.
+ones no polling pass revisits. That rename is driven by the label's spelling, so it covers the automatic control
+label as well; `backlog` and `paused` were never namespaced and have nothing to rename. And `label_for_name` accepts
+either spelling, so on a repository the rename could not reach (an under-scoped PAT, a human re-adding the old label)
+an issue still routes and is rewritten to the namespaced spelling by its next label write. The community sweep reads
+both spellings for the same reason, though it rewrites neither: the label it finds is proof the PR's one HITL ping
+already went out.
 
 An issue can therefore carry both spellings at once, and the namespaced one always wins — `issue_workflow_label`
 scans for it across every label before it will settle for a bare tag, so the order GitHub happens to return them in

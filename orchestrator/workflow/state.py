@@ -12,13 +12,14 @@ able to rename. The label members are the GitHub label strings live issues
 already carry, and the logger name is what operator log filters select on, so
 both are spelled out literally rather than derived from where this owner sits.
 
-The states the orchestrator drives itself are namespaced `workflow:<tag>` so a
-repository's own vocabulary cannot collide with them; the states a human also
-applies or reads on their own (`in_review`, `question`, `done`, `rejected`)
-keep their bare spelling. `stage_name` strips the namespace back off, because
-the tag -- not the label -- is what analytics rows, audit events, and agent
-sessions have always recorded, and `label_for_name` accepts a bare tag as well
-so an issue labeled before the namespace still resolves to its member.
+The labels the orchestrator writes itself are namespaced `workflow:<tag>` so a
+repository's own vocabulary cannot collide with them; the ones a human also
+applies or reads on their own (`in_review`, `question`, `done`, `rejected`, and
+the `backlog` / `paused` controls) keep their bare spelling. `stage_name`
+strips the namespace back off a workflow label, because the tag -- not the
+label -- is what analytics rows, audit events, and agent sessions have always
+recorded, and `label_for_name` accepts a bare tag as well so an issue labeled
+before the namespace still resolves to its member.
 """
 from __future__ import annotations
 
@@ -51,15 +52,20 @@ class WorkflowLabel(StrEnum):
 
 
 class ControlLabel(StrEnum):
-    """Operator modifiers that coexist with a workflow state.
+    """Modifiers that coexist with a workflow state.
 
     These values gate or redirect processing while leaving the underlying
     ``WorkflowLabel`` intact. They never enter the workflow transition table.
+
+    ``BACKLOG`` and ``PAUSED`` are the operator's own controls and keep their
+    bare spelling for a human to type; ``COMMUNITY_CONTRIBUTION`` is written by
+    the orchestrator's open-PR sweep, so it is namespaced with everything else
+    the orchestrator applies.
     """
 
     BACKLOG = "backlog"
     PAUSED = "paused"
-    COMMUNITY_CONTRIBUTION = "community_contribution"
+    COMMUNITY_CONTRIBUTION = "workflow:community_contribution"
 
 
 class IllegalTransition(Exception):
@@ -159,10 +165,19 @@ def stage_name(label: Optional[str | WorkflowLabel]) -> Optional[str]:
     return str(label).removeprefix(_LABEL_NAMESPACE)
 
 
-def legacy_label_name(label: str | WorkflowLabel) -> Optional[str]:
-    """Return the pre-namespace spelling of a label, or None if it has none."""
-    bare_tag = stage_name(label)
-    return None if bare_tag == str(label) else bare_tag
+def legacy_label_name(
+    label: str | WorkflowLabel | ControlLabel,
+) -> Optional[str]:
+    """Return the pre-namespace spelling of a label, or None if it has none.
+
+    Every namespaced label has one, control labels included: the namespace is
+    exactly what the migration adds, so what it strips is what the repository
+    carried before. A label already spelled bare is not one this ever renamed.
+    """
+    label_name = str(label)
+    if not label_name.startswith(_LABEL_NAMESPACE):
+        return None
+    return label_name.removeprefix(_LABEL_NAMESPACE)
 
 
 def _canonical_label_names() -> Mapping[str, WorkflowLabel]:

@@ -21,9 +21,15 @@ from tests.support.fakes import FakeIssue, FakeLabel
 
 _HTTP_FORBIDDEN = 403
 _LEGACY_IMPLEMENTING = "implementing"
+_NAME_KWARG = "name"
 _LABEL_SPECS = _labels.WORKFLOW_LABEL_SPECS + _labels.CONTROL_LABEL_SPECS
-_SPEC_BY_LABEL = MappingProxyType(
-    {spec[0]: spec for spec in _labels.WORKFLOW_LABEL_SPECS},
+_SPEC_BY_LABEL = MappingProxyType({spec[0]: spec for spec in _LABEL_SPECS})
+# The labels the bootstrap has a pre-namespace spelling to rename: what the
+# orchestrator writes itself, the automatic control label as much as a state.
+# `backlog` / `paused` are the operator's to type and stay bare.
+_RENAMED_LABELS = (
+    WorkflowLabel.IMPLEMENTING,
+    ControlLabel.COMMUNITY_CONTRIBUTION,
 )
 
 
@@ -68,7 +74,8 @@ _WORKFLOW_LABEL_CASES = (
 )
 
 # Issue label sets -> the first hard-skip control label (backlog before
-# paused); `community_contribution` coexists with the workflow and never skips.
+# paused); the community-contribution label coexists with the workflow state
+# and never skips.
 _HARD_SKIP_CASES = (
     ((ControlLabel.PAUSED, ControlLabel.BACKLOG), ControlLabel.BACKLOG),
     ((WorkflowLabel.IMPLEMENTING, ControlLabel.PAUSED), ControlLabel.PAUSED),
@@ -110,8 +117,8 @@ class IssueHasLabelTest(unittest.TestCase):
 class HardSkipControlLabelTest(unittest.TestCase):
     """Only `backlog` and `paused` suppress processing, backlog reported first.
 
-    `community_contribution` is registered for bootstrap but coexists with the
-    workflow rather than pausing it, so it is never a hard skip.
+    The community-contribution label is registered for bootstrap but coexists
+    with the workflow rather than pausing it, so it is never a hard skip.
     """
 
     def test_reports_first_hard_skip_control_label(self) -> None:
@@ -143,7 +150,7 @@ class EnsureWorkflowLabelsTest(unittest.TestCase):
         self.gh.ensure_workflow_labels()
 
         created = {
-            call.kwargs["name"]: call.kwargs
+            call.kwargs[_NAME_KWARG]: call.kwargs
             for call in self.gh.repo.create_label.call_args_list
         }
         self.assertNotIn(present[0], created)
@@ -151,10 +158,27 @@ class EnsureWorkflowLabelsTest(unittest.TestCase):
         self.assertEqual(
             created[absent[0]],
             {
-                "name": absent[0],
+                _NAME_KWARG: absent[0],
                 "color": absent[1],
                 "description": absent[2],
             },
+        )
+
+    def test_absent_control_label_is_namespaced(self) -> None:
+        # A repository carrying neither spelling gets the namespaced name
+        # outright, so the community sweep's dedup marker is born under the
+        # same name the sweep later reads back off a PR.
+        self.gh.repo.get_labels.return_value = []
+
+        self.gh.ensure_workflow_labels()
+
+        created = {
+            call.kwargs[_NAME_KWARG]
+            for call in self.gh.repo.create_label.call_args_list
+        }
+        self.assertIn(ControlLabel.COMMUNITY_CONTRIBUTION, created)
+        self.assertNotIn(
+            _legacy_label_name(ControlLabel.COMMUNITY_CONTRIBUTION), created,
         )
 
     def test_unreadable_labels_skip_the_bootstrap(self) -> None:
@@ -186,7 +210,9 @@ class LegacyLabelRenameTest(unittest.TestCase):
 
     A rename carries every issue already holding the old label across in one
     edit -- including the closed and `backlog`-parked ones no polling pass
-    revisits, which a second label beside the first would strand.
+    revisits, which a second label beside the first would strand. A PR the
+    community sweep already labeled migrates the same way, which is what keeps
+    its one HITL ping from repeating under a second spelling.
     """
 
     def setUp(self) -> None:
@@ -194,23 +220,25 @@ class LegacyLabelRenameTest(unittest.TestCase):
         self.gh.repo = MagicMock()
 
     def test_renames_the_bare_label_in_place(self) -> None:
-        legacy_label = _repo_label(
-            _legacy_label_name(WorkflowLabel.IMPLEMENTING),
-        )
-        self.gh.repo.get_labels.return_value = [legacy_label]
+        for label in _RENAMED_LABELS:
+            with self.subTest(label=label):
+                # One repository per case: the creation calls of the case
+                # before it would otherwise still be on the mock.
+                self.gh.repo = MagicMock()
+                spec = _SPEC_BY_LABEL[label]
+                legacy_label = _repo_label(_legacy_label_name(label))
+                self.gh.repo.get_labels.return_value = [legacy_label]
 
-        self.gh.ensure_workflow_labels()
+                self.gh.ensure_workflow_labels()
 
-        legacy_label.edit.assert_called_once_with(
-            name=WorkflowLabel.IMPLEMENTING,
-            color=_SPEC_BY_LABEL[WorkflowLabel.IMPLEMENTING][1],
-            description=_SPEC_BY_LABEL[WorkflowLabel.IMPLEMENTING][2],
-        )
-        created = {
-            call.kwargs["name"]
-            for call in self.gh.repo.create_label.call_args_list
-        }
-        self.assertNotIn(WorkflowLabel.IMPLEMENTING, created)
+                legacy_label.edit.assert_called_once_with(
+                    name=label, color=spec[1], description=spec[2],
+                )
+                created = {
+                    call.kwargs[_NAME_KWARG]
+                    for call in self.gh.repo.create_label.call_args_list
+                }
+                self.assertNotIn(label, created)
 
     def test_refused_rename_stops_bootstrap(self) -> None:
         # Same standing-down as a refused creation: an under-scoped PAT must
