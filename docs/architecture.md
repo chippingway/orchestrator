@@ -2717,7 +2717,9 @@ three non-workflow control labels: `backlog` and `paused` each make per-tick han
 (`backlog` is a "not yet" hold on a fresh issue, `paused` freezes an in-flight one), and
 `workflow:community_contribution` is applied by the per-tick open-PR sweep to PRs from non-bot authors outside
 `ALLOWED_ISSUE_AUTHORS` so a human reviews them. The two an operator types stay bare; the one the sweep applies is
-namespaced on the same rule as the states.
+namespaced on the same rule as the states. Both sets above are closed, and `WorkflowLabel` / `ControlLabel` membership
+is what closes them rather than the prefix: a `workflow:`-prefixed name outside them — Dependabot's service labels on
+its own update PRs — is not a state, routes nowhere, and survives a label write untouched.
 
 The namespace is a GitHub label spelling and stops at that boundary, which is the distinction the module map above
 reads by: a bare tag there names the *stage* — the handler, the subpackage under `orchestrator/workflow/stages/`
