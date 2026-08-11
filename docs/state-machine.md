@@ -401,8 +401,10 @@ unread human comment past those watermarks to `workflow:fixing`, so the drift ch
 changes the ID scan didn't catch (title/body edits, and edits to existing issue-thread comments whose ids are already
 below the watermark).
 
-`_handle_fixing` and `_handle_question` deliberately skip the drift check. `_handle_fixing` refreshes
-`user_content_hash` itself once it has consumed the PR-side feedback; `_handle_question` runs its own conversation flow.
+`_handle_fixing`, `_handle_question`, and `_handle_discussion` deliberately skip the drift check. `_handle_fixing`
+refreshes `user_content_hash` itself once it has consumed the PR-side feedback; `_handle_question` runs its own
+conversation flow; `_handle_discussion` runs nothing at all, so an edit to an issue on hold is for the humans holding
+it to act on.
 
 Non-human content is filtered six ways:
 
