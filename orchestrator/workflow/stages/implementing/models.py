@@ -39,6 +39,11 @@ class _PreparedDevRun:
     before_sha: Optional[str]
     paused: bool
     worktree: Path
+    # True when no agent ran and the result was synthesized from commits the
+    # worktree already held. The disposition cannot infer this from the tree:
+    # a recovered run publishes work whose HEAD moved on some earlier tick,
+    # which looks exactly like a live run that answered without committing.
+    recovered: bool = False
 
 
 @dataclass(frozen=True)

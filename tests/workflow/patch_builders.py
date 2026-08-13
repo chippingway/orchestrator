@@ -45,7 +45,10 @@ def _cleanup_mocks(context: _WorkflowRunContext) -> dict[str, object]:
         "_cleanup_decompose_worktree": MagicMock(),
         "_cleanup_question_worktree": MagicMock(),
         "_cleanup_terminal_branch": MagicMock(),
-        "_branch_has_unpushed_commits": MagicMock(return_value=None),
+        "_branch_has_unpushed_commits": MagicMock(
+            return_value=context.unpushed_branch,
+        ),
+        "_branch_tip_sha": MagicMock(return_value=context.branch_tip_sha),
     }
 
 

@@ -12,10 +12,12 @@ from orchestrator.git.worktrees import recovery
 
 from tests.git.worktrees.recovery_test_support import (
     GIT_BRANCH,
+    GIT_REV_PARSE,
     GIT_UPDATE_REF,
     GitBranchFixture,
     REAL_GIT_SLUG,
     _seed_branch_fixture,
+    _temp_root,
 )
 from tests.workflow.stages.question.question_real_git_test_support import (
     _run_git,
@@ -184,6 +186,71 @@ class BranchHasUnpushedCommitsRealGitTest(unittest.TestCase):
                     primary.issue_number,
                 ),
                 namespaced,
+            )
+
+
+class BranchTipShaRealGitTest(unittest.TestCase):
+    """Direct coverage for `_branch_tip_sha`, the probe the discussion
+    stage's round anchor is compared against. The stage tests mock it on
+    this owner, so the real `rev-parse` args, the lock acquisition, and
+    the missing-ref answer are only exercised here.
+    """
+
+    def test_returns_empty_when_branch_does_not_exist(self) -> None:
+        with _temp_root("tip-noBranch-") as temp_root:
+            target, _ = _seed_target_root(temp_root)
+            self.assertEqual(
+                recovery._branch_tip_sha(
+                    _spec_for(target),
+                    _issue_branch(MISSING_BRANCH_ISSUE_NUMBER, slug=REAL_GIT_SLUG),
+                ),
+                "",
+            )
+
+    def test_returns_the_named_branch_tip(self) -> None:
+        with _temp_root("tip-named-") as temp_root:
+            fixture = _seed_branch_fixture(
+                temp_root,
+                AHEAD_BRANCH_ISSUE_NUMBER,
+                _issue_branch(AHEAD_BRANCH_ISSUE_NUMBER, slug=REAL_GIT_SLUG),
+            )
+            fixture.commit("agent commit")
+            tip = _run_git(
+                GIT_REV_PARSE, fixture.branch, cwd=fixture.target,
+            ).stdout.strip()
+            self.assertEqual(
+                recovery._branch_tip_sha(fixture.spec, fixture.branch),
+                tip,
+            )
+            self.assertNotEqual(tip, fixture.base_sha)
+
+    def test_a_legacy_branch_answers_for_itself(self) -> None:
+        # Regression: an issue pinned to the legacy `orchestrator/issue-N`
+        # ref opens its discussion round there while the slug-namespaced ref
+        # exists beside it at base. A probe that walked candidates would
+        # answer with the namespaced tip -- unchanged since the round opened
+        # -- and the commit sitting on the legacy branch would go unreported,
+        # to be adopted by the next round as its own baseline. The tip
+        # answered for is the branch the caller names.
+        with _temp_root("tip-legacy-") as temp_root:
+            namespaced = _issue_branch(
+                DUAL_BRANCH_ISSUE_NUMBER, slug=REAL_GIT_SLUG,
+            )
+            anchored = _seed_branch_fixture(
+                temp_root,
+                DUAL_BRANCH_ISSUE_NUMBER,
+                _legacy_branch(DUAL_BRANCH_ISSUE_NUMBER),
+            )
+            _run_git(GIT_BRANCH, namespaced, anchored.base_sha, cwd=anchored.target)
+            anchored.commit("discussion agent commit")
+
+            self.assertEqual(
+                recovery._branch_tip_sha(anchored.spec, namespaced),
+                anchored.base_sha,
+            )
+            self.assertNotEqual(
+                recovery._branch_tip_sha(anchored.spec, anchored.branch),
+                anchored.base_sha,
             )
 
 

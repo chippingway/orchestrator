@@ -5,11 +5,12 @@
 Each conversation-carrying builder opens on the same header: the issue body,
 the thread text ``comments.py`` already trust-filtered, and the tracked-repository
 block beside it. That shared opening is why an untrusted author's comment is
-absent from the implement, review, documentation, decompose, and question
-prompts alike -- one filtered read feeds all five -- and why the placeholders for
-an empty body or an empty thread read the same in each. The blank line those
-sections are joined on comes from ``comments.py`` too, so a quoted thread and
-the prompt assembled around it break into paragraphs the same way.
+absent from the implement, review, documentation, decompose, question, and
+discussion prompts alike -- one filtered read feeds all six -- and why the
+placeholders for an empty body or an empty thread read the same in each. The
+blank line those sections are joined on comes from ``comments.py`` too, so a
+quoted thread and the prompt assembled around it break into paragraphs the same
+way.
 
 The notes appended below it are contracts the rest of the workflow enforces.
 ``_FOREGROUND_ONLY_NOTE`` goes on every prompt that can end in a commit: a
@@ -339,6 +340,77 @@ def _build_question_followup_prompt(comments: list) -> str:
         "Reminder: this is still the read-only question stage. Do NOT "
         "modify, create, delete, commit, or push any file. End with a "
         "clear answer or a single, focused follow-up question."
+    )
+
+
+def _build_discussion_prompt(
+    spec: config.RepoSpec,
+    issue: Issue,
+    comments_text: str,
+    specs: list[config.RepoSpec],
+) -> str:
+    """Compose the opening prompt used by the `discussion` stage.
+
+    The stage exists to widen a design before anyone commits to it, so this
+    prompt is shaped against the two ways an agent narrows one. It has to
+    research the repository itself, because a round spent asking humans for
+    facts that `git log` answers is a round the design does not advance; and it
+    has to keep the questions it comes back with at the architecture level,
+    because trivia crowds out the decisions a human is actually needed for.
+
+    What it must end on is a numbered frontier: the subset of open questions
+    whose answers do not depend on another open question, each with a
+    recommended answer, so a human replies by number instead of re-deriving the
+    tree. Everything downstream of those waits for a later round, which is what
+    keeps one comment from asking for a decision that the answer above it may
+    make moot.
+
+    The agent runs in the per-issue `issue-N` worktree with the same read-only
+    expectations the `question` stage sets -- the orchestrator parks on any
+    commit or dirty tree -- plus the standing rule that no implementation
+    begins until a human confirms the design explicitly on the thread.
+    """
+    body = issue.body or _NO_BODY
+    convo = comments_text or _NO_PRIOR_COMMENTS
+    tracked = _comments._build_tracked_repos_context(spec, specs)
+    tracked_block = f"{tracked}\n\n" if tracked else ""
+    return (
+        f"You are opening an architecture discussion on GitHub issue "
+        f"#{issue.number}: {issue.title!r}.\n\n"
+        f"Issue body:\n{body}\n\n"
+        f"Conversation so far:\n{convo}\n\n"
+        f"{tracked_block}"
+        "Nobody has asked you to implement anything. This is the first round "
+        "of a design conversation with the humans on the thread, and the only "
+        "thing it produces is your written analysis.\n\n"
+        "Research the repository yourself first. Do NOT ask a human for a "
+        "fact you can read: use read-only commands (`git ls-files`, "
+        "`git log`, `grep`, `cat`) to find the modules, contracts, and prior "
+        "decisions this issue lands on, and cite the paths and commits you "
+        "relied on so your reasoning can be checked.\n\n"
+        "Then explore the design space out loud, as a tree rather than as a "
+        "single answer. Start from what the issue leaves open, expand each "
+        "branch into the concrete shapes it could take, and say what each one "
+        "would commit this repository to. Include at least one unconventional "
+        "option the existing code does not suggest, and say honestly why it "
+        "might or might not fit. Name any research worth doing before the "
+        "design is settled -- prior art to read, a measurement to take, a "
+        "constraint to confirm -- and what its outcome would change.\n\n"
+        "Keep it at the architecture level: boundaries and interfaces, who "
+        "owns which state, failure and migration behavior, compatibility, and "
+        "the trade-offs between them. Naming, formatting, and other "
+        "implementation trivia belong to whoever implements this, not to "
+        "this thread.\n\n"
+        "End with a NUMBERED list of the questions that can be answered right "
+        "now -- the frontier. A question earns a number only if its answer "
+        "does not depend on another question you are also asking; hold "
+        "everything downstream of an open question for a later round. Give "
+        "each numbered question your own recommended answer and one line of "
+        "reasoning, so a human can agree or overrule by number.\n\n"
+        "You MUST NOT modify, create, delete, commit, or push any file, and "
+        "you MUST NOT start implementing any part of this. Wait for a human "
+        "to confirm the decisions explicitly on the issue thread; until they "
+        "do, nothing is settled and no work begins."
     )
 
 

@@ -61,7 +61,14 @@ def _publish_committed_work(
     branch that omits the dirty files). Shared by the fresh-completion, timeout,
     and user-content-drift dispositions so each handles a committed worktree
     identically.
+
+    Reaching here retires the read-only baseline. It named the tip a handoff
+    was certified at so a run that committed nothing could be told from one
+    that did, and there is committed work here either way -- while a baseline
+    left behind would go on freezing this branch out of the base refresh long
+    after the stage that needed it still holds the issue.
     """
+    state.set(_state._READ_ONLY_BASELINE_SHA, None)
     dirty = _verification_probes._worktree_dirty_files(work.worktree)
     if dirty:
         _parks._on_dirty_worktree(gh, issue, state, work.agent_result, dirty)
@@ -155,6 +162,32 @@ def _try_recover_implementing_timeout_park(
     return "pushed"
 
 
+def _run_left_commits(
+    spec: config.RepoSpec, state: PinnedState, prepared: _models._PreparedDevRun,
+) -> bool:
+    """True when there is committed work for THIS disposition to publish.
+
+    Ahead-of-base answers this for every issue that reached the stage the
+    ordinary way: it spawns only on a branch carrying nothing, so commits found
+    afterwards are the run's. The exception is a branch a read-only relabel
+    certified and handed on, which was already ahead of base when the agent
+    started. There the baseline is the floor: HEAD still sitting on it means
+    the only commits present are the inherited ones, and an agent that came
+    back with a clarifying question rather than an implementation would
+    otherwise have that inherited work pushed, a PR opened over it, and the
+    issue routed to review instead of parking on the question it asked.
+
+    A recovered run is the one case published without asking, because it is
+    defined by commits that predate the tick.
+    """
+    if not _worktree_creation._has_new_commits(spec, prepared.worktree):
+        return False
+    baseline = state.get(_state._READ_ONLY_BASELINE_SHA)
+    if prepared.recovered or not baseline:
+        return True
+    return _verification_probes._head_sha(prepared.worktree) != str(baseline)
+
+
 def _dispose_agent_result(
     gh: GitHubClient,
     spec: config.RepoSpec,
@@ -166,10 +199,12 @@ def _dispose_agent_result(
 
     A timed-out run publishes a commit produced by THIS run (clean tree), parks
     a dirty tree for inspection, or parks `agent_timeout` when HEAD did not
-    advance past `before_sha`. A clean exit publishes new commits or parks the
-    agent's question. `before_sha` (not `_has_new_commits`, which only compares
-    to `origin/<base>`) is what distinguishes a commit produced by THIS run
-    from carried-over commits already on the branch.
+    advance past `before_sha`. A clean exit publishes what this run committed
+    or parks the agent's question. Neither half can read `_has_new_commits`
+    alone, since it only compares to `origin/<base>` and a branch can arrive
+    here already ahead of it: the timeout half measures against `before_sha`,
+    and the clean half against the certified baseline a read-only relabel left
+    (see `_run_left_commits`).
     """
     if prepared.agent_result.timed_out:
         # The implementer can commit clean work and then get killed by the
@@ -191,7 +226,7 @@ def _dispose_agent_result(
         gh.write_pinned_state(issue, state)
         return
 
-    if _worktree_creation._has_new_commits(spec, prepared.worktree):
+    if _run_left_commits(spec, state, prepared):
         _publish_committed_work(
             gh,
             spec,

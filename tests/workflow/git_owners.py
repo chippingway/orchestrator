@@ -41,6 +41,7 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_authed_fetch": _authentication,
     "_branch_ahead_behind": _publication_probes,
     "_branch_has_unpushed_commits": _worktree_recovery,
+    "_branch_tip_sha": _worktree_recovery,
     "_cleanup_decompose_worktree": _worktree_decomposition,
     "_cleanup_question_worktree": _worktree_terminal,
     "_cleanup_terminal_branch": _worktree_terminal,

@@ -128,9 +128,10 @@ GitHub UI bypass both guards, so the guard never fights a human.
   operator relabel.
 - `question` — Operator-applied read-only Q&A label: the decomposer agent answers in the per-issue worktree and waits
   on a human reply or close. No PR is opened.
-- `discussion` — Operator-applied hold on an issue humans are still settling between themselves. Its handler does
-  nothing at all — no agent, no worktree, no comment, no label write — so applying the label is a quiet, reversible
-  act. Nothing routes an issue in, and only a human relabel takes it out, to `done` or `rejected`.
+- `discussion` — Operator-applied architecture discussion: the decomposer agent researches the repository, explores the
+  design as a tree, and comes back with a numbered frontier of currently-answerable questions plus its own recommended
+  answers, then parks awaiting human. Nothing is implemented, no PR is opened, nothing routes an issue in, and only a
+  human relabel takes it out, to `done` or `rejected`.
 - `done` — Terminal success; PR merged, umbrella resolved, or a `question` issue closed.
 - `rejected` — Terminal rejection; PR or issue closed without merge.
 
@@ -305,7 +306,9 @@ into a few groups:
 - **Agent identity.** `dev_agent` + `dev_session_id` (locked dev session — see
   [in-flight session lock](workflow.md#in-flight-session-lock--pinned-full-spec-until-the-session-ends)),
   `review_agent` (traceability only; reviewer is fresh per round), `decomposer_agent` + `decomposer_session_id`
-  (parents), `question_agent` + `question_session_id` (`question` stage).
+  (parents), `question_agent` + `question_session_id` (`question` stage), `discussion_agent` +
+  `discussion_session_id` (`discussion` stage). The last three pairs are separate pins on purpose: each conversation
+  seeds from `DECOMPOSE_AGENT` on its own first spawn and is then locked independently of the others on the same issue.
 - **Decomposition.** `children`, `dep_graph` (`{child_idx_str: [child_idx, ...]}` — GitHub has no first-class blocks
   relation), `decomposed_at`, `pickup_comment_id`.
 - **PR / branch.** `branch`, `pr_number`, `review_round`, `conflict_round`.
@@ -338,25 +341,55 @@ into a few groups:
   would otherwise drop) as the validating-route replay anchor. The rebuilt batch is what the `/orchestrator continue`
   operator command replays when retrying a session-failure park (see `_handle_fixing`); the anchor is cleared on a
   pushed fix and inside `_clear_pending_fix_bookmarks`.
-- **Crash-recovery anchor.** `pending_auto_base_rebase_push_sha` — set to the pre-rebase local HEAD immediately BEFORE
+- **Crash-recovery anchors.** `discussion_round_branch` + `discussion_round_sha` — the branch a discussion round
+  opened on and the SHA it was at, written BEFORE the spawn and surviving every exit the stage takes; only a
+  successful relabel out (`_clear_stale_read_only_park`) drops the pair. It answers two questions, and which one is
+  being asked is settled by whether the discussion stage has the issue parked:
+  on an unparked issue it means a round ended with no disposition (withheld by a mid-run `paused`, or cut short) and
+  comparing it to the branch says whether that round committed; on a parked one it says everything the branch carries
+  AT that SHA predates this stage — which is what `read_only_relabel.py` reads to let a discussion held on an
+  inherited PR branch relabel to implementing. A park that *did* find a commit keeps the pair for that second reading:
+  it is the tip the park tells the operator to reset back to, and the one the guard then certifies, so dropping it
+  would strand a PR-backed issue whose only other remedies (reset to base, delete the branch) destroy the PR. The
+  branch is recorded beside the SHA because an issue pinned to a legacy `orchestrator/issue-N` ref opens its round
+  there, and answering for the slug-namespaced ref instead would report an unchanged tip while the commit sat
+  elsewhere.
+  `read_only_baseline_sha` — what that anchor becomes when the relabel clears. `_clear_stale_read_only_park` hands the
+  certified tip to the implementing stage rather than dropping it, because the fresh-spawn path reads any branch ahead
+  of base as a previous dev run whose publication was interrupted (`_has_new_commits`) — and the branch a discussion
+  was held on may legitimately be ahead of base already. Without the handover the first implementing tick would skip
+  the implementer and republish the inherited commits as the work the discussion just agreed to.
+  `spawn._recovered_work_present` spends it: while HEAD still sits on that SHA the commits are inherited and the dev
+  runs, and once the dev commits, HEAD moves off it and the key is dropped. `disposition._run_left_commits` reads the
+  same floor at the other end of the tick, so a dev that answers with a question instead of committing parks on it
+  rather than having the inherited commits published as its work. Both the cleared park and this key are written
+  BEFORE the spawn, because a mid-run pause or a shutdown interruption returns without writing pinned state at all:
+  staged, the acceptance would be lost and the next tick would read the park and anchor back and convict the
+  developer's own commit. An unspent baseline also holds the branch out of the base refresh (`_issue_skips_base_sync`
+  again), since a rebase would move HEAD off the certified SHA while the inherited commits it names are still there
+  and the next spawn would read them as an interrupted dev run. `_publish_committed_work` retires it — there is
+  committed work to publish either way at that point — so the freeze ends with the stage that needed it rather than
+  following the issue through review.
+  `pending_auto_base_rebase_push_sha` — set to the pre-rebase local HEAD immediately BEFORE
   `_rebase_base_into_worktree`; cleared on every exit. A non-empty value on entry means a previous tick rebased and died
   before the post-push write, and `_recover_pending_auto_base_rebase` keys off it to either no-op, push the recovered
   head, or park as `auto_base_rebase_push_failed`.
 - **Counters / timestamps.** `retry_window_start` + `retry_count` (24h fresh-spawn budget shared between implementing
   and decomposing), `silent_park_count` (dev-session silent-park counter), `dev_resume_count` (per-dev-session resume
   budget; once it reaches `DEV_SESSION_MAX_RESUMES` the session is retired and respawned fresh from durable state, reset
-  to 0 on every fresh spawn), `merged_at` / `closed_without_merge_at` terminal stamps.
+  to 0 on every fresh spawn), `merged_at` / `closed_without_merge_at` terminal stamps, and the per-round stamps
+  `last_question_at` / `last_discussion_at` the two operator-applied conversation stages set on every run they settle.
 - **Usage meter.** `issue_agent_runs` + `issue_total_tokens` + `issue_total_cost_usd` + `issue_cost_sources` are
   per-issue cumulative counters folded in by `_accumulate_issue_usage` at each developer (implementing), reviewer
-  (validating), decomposer (decomposing), and question run site from the `UsageMetrics` that `_run_agent_tracked`
-  parses. `issue_total_tokens` sums input +
+  (validating), decomposer (decomposing), question, and discussion run site from the `UsageMetrics` that
+  `_run_agent_tracked` parses. `issue_total_tokens` sums input +
   output + cache-read + cache-write (codex `cached_tokens` is excluded — it is already part of `input_tokens`, so
   summing it would double-count); `issue_total_cost_usd` sums each run's `cost_usd` (`None` costs from `no-usage` /
   `unknown-price` runs add nothing); `issue_cost_sources` is the sorted distinct `cost_source` set a terminal verdict
   reads to mark `(est.)` (any `estimated`) or unpriced `unknown` (any `unknown-price`). The increment rides the
   handler's existing single `write_pinned_state`, so an `interrupted` run that returns without writing never accrues.
-  The read-only decomposer / question stages additionally skip the fold for `interrupted` runs, so even their
-  dirty/commits inspection park (which does write pinned state) records no counter.
+  The read-only decomposer / question / discussion stages additionally skip the fold for `interrupted` runs, so even
+  their dirty/commits inspection park (which does write pinned state) records no counter.
 - **Terminal usage verdict.** `_format_issue_usage_verdict` renders those counters into one visible receipt line
   (`:receipt: this issue: N agent runs · T tokens · $X.XX`, `(est.)` appended when any `estimated` contributed,
   `unknown` in place of the figure when an `unknown-price` run leaves the total incomplete). It returns nothing when
@@ -402,9 +435,9 @@ changes the ID scan didn't catch (title/body edits, and edits to existing issue-
 below the watermark).
 
 `_handle_fixing`, `_handle_question`, and `_handle_discussion` deliberately skip the drift check. `_handle_fixing`
-refreshes `user_content_hash` itself once it has consumed the PR-side feedback; `_handle_question` runs its own
-conversation flow; `_handle_discussion` runs nothing at all, so an edit to an issue on hold is for the humans holding
-it to act on.
+refreshes `user_content_hash` itself once it has consumed the PR-side feedback; `_handle_question` and
+`_handle_discussion` run their own conversation flows on an operator-applied label nothing routes into, so rerouting
+an edited issue to `workflow:decomposing` would take it out of the conversation a human deliberately put it in.
 
 Non-human content is filtered six ways:
 
@@ -420,7 +453,8 @@ Non-human content is filtered six ways:
 - untrusted authors via `github.comments.is_trusted_author` when `ALLOWED_ISSUE_AUTHORS` is set (opt-in; empty
   allowlist trusts everyone), so an outsider's comment cannot shift the hash and re-trigger drift on a public repo.
   The same trust helpers filter the conversation text fed to agent prompts: `_recent_comments_text` (implement /
-  review / documentation / decompose / question / drift-resume); the awaiting-human resume paths that quote new
+  review / documentation / decompose / question / discussion / drift-resume); the awaiting-human resume paths that
+  quote new
   replies directly (`filter_trusted` in the implementing, validating, decomposing, documenting, resolving_conflict,
   and question resumes) plus the auto-rebase-park retry-unpark in `_sync_pr_worktree_to_base`; and the four-surface
   PR-feedback scans driving the `in_review` -> `workflow:fixing` route, the fixing dev-resume, and the `/orchestrator
@@ -604,7 +638,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      `orchestrator/<owner>__<name>/issue-<n>` (the slug-namespaced branch keeps two RepoSpecs sharing a `target_root`
      from colliding on the same `orchestrator/issue-<n>` ref). Worktrees with unpushed commits are reused (crash
      recovery); otherwise force-removed and recreated from `<spec.remote_name>/<spec.base_branch>`.
-  3. If the worktree already has commits (recovered), skip the agent and go straight to push.
+  3. If the worktree already has commits (recovered), skip the agent and go straight to push — unless those commits
+     are the ones a read-only relabel just certified (`read_only_baseline_sha` still equal to HEAD), which is a branch
+     the issue arrived carrying rather than a run to finish, so the implementer spawns normally.
   4. Else gate the run on the per-issue retry budget (`MAX_RETRIES_PER_DAY`, default 3); a 24h window opens at the first
      counted spawn. Only fresh spawns count.
   5. Else build the implementer prompt (issue body + recent comments + "commit, do not push"), persist `dev_agent`
@@ -1044,14 +1080,78 @@ because session state lives in pinned state, not in the worktree.
 - **Trigger**: each tick while the label is `discussion`. Like `question` the label is operator-applied — no handler
   routes into it, there is no pickup route to it, and it is deliberately NOT in `_FAMILY_AWARE_LABELS`, so fan-out
   concurrency is preserved.
-- **Input**: none. The handler reads neither comments nor pinned state.
-- **Action**: none. The issue is held for a human discussion, so a tick spawns no agent, creates no worktree, posts no
-  comment, and writes no label or pinned state. The handler exists so the dispatcher recognizes the label instead of
-  warning about it every tick, which is what makes applying the label safe.
-- **Output**: a no-op tick, plus the `stage_evaluation` analytics record every dispatch produces.
-- **Exit**: a human relabel only, to `done` or `rejected` (the two edges `ALLOWED_TRANSITIONS` grants the state), or by
-  removing the label and letting the issue route as whatever it becomes. Closing the issue is not a terminal signal:
-  `discussion` is absent from `CLOSED_SWEEP_LABELS`, so a closed discussion issue is never polled again.
+- **Input**: pinned `awaiting_human` + `park_reason`, and the trust-filtered issue thread the opening prompt quotes.
+- **Gate**: `awaiting_human` short-circuits the whole tick **only when `park_reason` carries the `discussion_`
+  prefix**. That park is the round already on the thread, which the humans are answering, so a parked issue spawns
+  nothing, comments nothing, and writes nothing. A park any *other* stage wrote does not gate: pinned state outlives a
+  relabel, so an issue an operator moves here while it is parked elsewhere is awaiting a reply nobody will send it
+  here, and reading `awaiting_human` alone would leave it inert for good.
+- **Preflight** (two halves, both WITHOUT spawning). First, a `discussion_round_sha` on an unparked issue means a
+  round opened and never reached a disposition; if the checkout's HEAD has moved off it — or, when the directory is
+  gone, the tip of the recorded `discussion_round_branch` has, which is asked instead of whether the branch is ahead
+  of base so an issue relabeled here from a PR stage is not convicted of its dev's commits — that round committed, and
+  it parks `discussion_commits` now rather than letting the next round adopt the commit as its own baseline. A
+  matching HEAD just means the withheld round left nothing, and the tick replays it as the pause promised. Second,
+  uncommitted changes already in the `issue-N` checkout park `discussion_stranded`: every park this stage writes
+  suppresses the next tick, so a dirty tree at the top of a tick
+  came either from a round that died before it could park on what it wrote or from the stage the issue was relabeled
+  out of — and `_ensure_worktree` force-removes a dirty checkout that carries no commits, which would destroy it. The
+  park names the paths and leaves the tree untouched for the operator to inspect and reset.
+- **Action**: spawn the configured `DECOMPOSE_AGENT` once (`agent_role="decomposer"`, `stage="discussion"`) in the
+  per-issue `issue-N` worktree on the issue's own branch — restored, when the local ref has been pruned, by
+  `_ensure_pr_worktree` from the PR head if the issue carries a `pr_number` and by `_ensure_worktree` from the base
+  branch if it does not, since an issue relabeled here from a PR stage is discussed on the branch its PR is open
+  against and a base-branch rebuild would hide the PR's commits from the round and from the anchor it writes next —
+  with the opening discussion prompt
+  (`_build_discussion_prompt`): research the repository with read-only commands rather than asking a human for
+  readable facts, explore the design as a tree including one unconventional option and the research worth doing,
+  stay at the architecture level rather than implementation trivia, and close with a NUMBERED list of the questions
+  answerable right now — those whose answers do not depend on another open question — each with the agent's own
+  recommended answer. `discussion_agent` (the full spec, re-parsed from pinned state on every round after the first so
+  a `DECOMPOSE_AGENT` flip cannot retarget a replayed one) and `discussion_round_branch` + `discussion_round_sha` (the
+  branch the round opened on and the SHA it was at) are WRITTEN before the spawn: a round can end with no disposition
+  at all — a mid-run `paused` withholds every one by contract, a crash takes them with it — and the next tick reuses
+  the same checkout, so without that anchor a commit the ended round made becomes the new round's own baseline and
+  reads as work the branch arrived carrying.
+  `discussion_session_id` is staged after the spawn and rides the park's write, so it never outlives the analysis it
+  points at. No developer or reviewer is ever spawned, no branch is pushed, and no PR is opened.
+- **Disposition** (in order): a `paused` / `backlog` label applied mid-run suppresses every disposition below and
+  returns without writing anything — the anchor above is what keeps that safe for a round that committed. Otherwise
+  `last_discussion_at` is stamped and a non-interrupted run's usage is folded, then `discussion_commits` (a run that
+  wrote outranks how it ended), then `discussion_timeout`, then `discussion_dirty` — checked before the
+  interruption guard and before the response, so a round that started implementing parks on what it wrote rather than
+  being published as a design — then an interrupted run returns silently, then a non-empty response parks
+  `discussion_response` and an empty one parks `discussion_silent` with stderr diagnostics. Both read-only checks are
+  measured against the checkout THIS round opened on: a HEAD read before the spawn and compared after (not
+  `_has_new_commits`, which is base-relative and would blame the agent for dev commits an issue relabeled here from a
+  PR stage already carried), and a tree the preflight above already established was clean.
+- **Output**: the agent's response quoted in an issue comment pinging `HITL_MENTIONS`, or the matching park comment;
+  `awaiting_human=True` with the durable `park_reason` re-set after `_park_awaiting_human` clears it. The `issue-N`
+  worktree is PRESERVED on every exit — the tree the discussion read is the tree its next round and the operator both
+  look at — so this stage never tears one down, and the per-tick base sync stands down on the `discussion` label
+  (alongside `question`, in `_issue_skips_base_sync`) so `<remote>/<base>` is never rebased over that state. That same
+  gate also stands down on an unconsumed `discussion_*` / `question_*` park whatever the current label is, because the
+  refresh runs before the handlers: an operator's relabel to `workflow:implementing` removes the label a full tick
+  before the guard below rules on the branch, and a rebase in that gap would move the tip off the recorded anchor and
+  convict a branch nobody touched. Clearing the park does not lift the freeze either: it becomes
+  `read_only_baseline_sha`, and the branch stays put until that is spent on published work.
+- **Exit**: a human relabel only — to `done` or `rejected` (the two edges `ALLOWED_TRANSITIONS` grants the state), or,
+  through the GitHub UI, to `workflow:implementing` once the thread settles on building it. That last one is not a
+  graph edge, so it arrives as an operator relabel and is screened by the read-only guard in
+  `workflow/stages/implementing/read_only_relabel.py`: a `discussion_*` park whose worktree is dirty, or whose
+  recorded branch no longer sits at the SHA the round anchored on, re-parks as `discussion_unsafe_relabel` rather than
+  letting the recovered-worktree shortcut push that work as a dev implementation; a clean one clears the park and the
+  dev spawns fresh. The anchor is checked whatever the branch's relation to base now is — a reset all the way to base
+  is not ahead of base, but on a PR-backed issue it discarded the very commits the round was certified against — while
+  a recorded ref that no longer exists is not a violation, since nothing local is left to attribute and the checkout is
+  rebuilt from the PR head. The refusal names the anchor as the reset target, so an issue whose branch legitimately
+  carries a PR's commits has a way back that does not discard them, and the clear hands that same tip on as
+  `read_only_baseline_sha` so the shortcut does not then mistake those inherited commits for a dev run to finish.
+  **Removing the label is not an exit.** The stage records `discussion_agent` / `discussion_round_sha` in the
+  issue's pinned comment, and `_handle_pickup` starts an unlabeled issue on a fresh `PinnedState`, so the pickup would
+  write a *second* pinned comment while `read_pinned_state` keeps returning the first — the discussion's. Closing the
+  issue is not a terminal signal either: `discussion` is absent from `CLOSED_SWEEP_LABELS`, so a closed discussion
+  issue is never polled again.
 
 ## State transition (label lifecycle)
 
@@ -1189,8 +1289,32 @@ because session state lives in pinned state, not in the worktree.
                              (question_unsafe_relabel)
 
    discussion (operator-applied; no automatic in/out transitions):
-     every tick           ─► nothing: no agent, no worktree, no comment,
-                             no label write
+     first tick           ─► decomposer agent opens the design discussion in
+                             the issue-N worktree; response posted, park
+                             (discussion_response); worktree PRESERVED
+     HEAD moved off the  ─► park (discussion_commits) WITHOUT spawning: a
+       recorded round SHA    round that ended with no disposition (paused
+       on entry              mid-run, or crashed) committed, and the next
+                             round would otherwise inherit it as its baseline
+     dirty tree on entry  ─► park (discussion_stranded) WITHOUT spawning; the
+                             checkout is left untouched for inspection
+     agent commits        ─► park (discussion_commits); a run that wrote
+                             outranks how it ended
+     agent timeout        ─► park (discussion_timeout)
+     dirty tree after the ─► park (discussion_dirty); the response is NOT
+       run                   published as a design
+     agent silent         ─► park (discussion_silent)
+     paused mid-run       ─► nothing published; the pre-spawn round SHA is
+                             what the next tick classifies by
+     parked by discussion ─► nothing: no agent, no comment, no write
+     parked by any other  ─► the first round opens anyway; that park is not
+       stage                 waiting on a reply this stage will ever get
+     relabel to           ─► implementing's guard: clean worktree, and a
+       workflow:implementing  branch still at the round's recorded SHA (so its
+                             commits are the ones the issue arrived with) ─►
+                             drop discussion park, resume dev; dirty or a
+                             moved/uncertified branch ─► park
+                             (discussion_unsafe_relabel)
      human relabel        ─► done | rejected
 
    any stage ──► [park: awaiting_human=true]

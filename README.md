@@ -164,13 +164,21 @@ is the terminal signal. See
 [`docs/workflow.md#question-stage--read-only-qa-on-the-question-label`][qa-lifecycle]
 for the full lifecycle and the read-only-violation park reasons.
 
-## Holding an issue for discussion
+## Discussing an issue's architecture
 
-Apply the `discussion` label to any open issue the orchestrator should leave alone while humans settle what to do with
-it. The label is recognized but inert — no agent is spawned, no worktree is created, and no comment or label is
-written — so applying it is a quiet, reversible act. Only a human ends the hold, by relabeling the issue to `done` or
-`rejected` or by taking the label off and letting it route as whatever it becomes. See
-[the discussion-stage lifecycle](docs/workflow.md#discussion-stage--the-operator-hold-on-the-discussion-label).
+Apply the `discussion` label to any open issue whose design should be argued out before anyone builds it. The
+orchestrator spawns the configured `DECOMPOSE_AGENT` once in the issue's worktree with a prompt that tells it to
+research the repository itself, explore the design as a tree (including an option the current code does not suggest),
+raise architecture decisions rather than implementation trivia, and close with a numbered list of the questions
+answerable right now — each with its own recommended answer — so you can agree or overrule by number. The response is
+posted as an issue comment pinging `HITL_HANDLE` and the issue then waits: nothing is implemented, no PR is opened,
+and later ticks do nothing until a human relabels the issue — to `done` or `rejected` when the thread settles it, or
+to `workflow:implementing` to build what was agreed (the orchestrator refuses that one if the agent left commits or
+edits behind, so nothing unreviewed is pushed). Do not simply remove the label: the discussion records its state in
+the issue's pinned comment, and an unlabeled issue is picked up as a brand-new one that starts a second pinned
+comment. See
+[the discussion-stage lifecycle][discussion-lifecycle] for the prompt's full contract and the park reasons a round
+that writes or goes silent earns.
 
 ## Observability
 
@@ -221,3 +229,4 @@ Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE) for the
 [ci-link]: https://github.com/geserdugarov/agent-orchestrator/actions/workflows/ci.yml
 [cfg-systemd]: docs/configuration.md#running-under-systemd-user-service
 [qa-lifecycle]: docs/workflow.md#question-stage--read-only-qa-on-the-question-label
+[discussion-lifecycle]: docs/workflow.md#discussion-stage--architecture-discussion-on-the-discussion-label

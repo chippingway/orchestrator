@@ -1,9 +1,9 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""`discussion` label bootstrap + dispatcher routing. What the handler does --
-nothing -- is pinned in the sibling module; this one covers only the label-spec
-/ family-aware / dispatcher wiring that keeps the dispatcher from falling
-through to pickup or to its unrecognized-label warning."""
+"""`discussion` label bootstrap + dispatcher routing. What a tick does with the
+label is pinned in the sibling modules; this one covers only the label-spec /
+family-aware / dispatcher wiring that keeps the dispatcher from falling through
+to pickup or to its unrecognized-label warning."""
 
 from __future__ import annotations
 
@@ -40,10 +40,10 @@ class DiscussionLabelRoutingTest(unittest.TestCase):
         self.assertIn(LABEL_DISCUSSION, names)
 
     def test_discussion_label_is_not_family_aware(self) -> None:
-        # A held issue touches nothing at all, so the label must stay out of
-        # `_FAMILY_AWARE_LABELS` -- routing it through the single-threaded
-        # family bucket would serialize fan-out work behind a hold that does
-        # no work of its own.
+        # A discussion round reads and writes only its own issue and worktree,
+        # so the label must stay out of `_FAMILY_AWARE_LABELS` -- routing it
+        # through the single-threaded family bucket would serialize every
+        # repo's fan-out work behind one long-running agent conversation.
         self.assertNotIn(LABEL_DISCUSSION, _dispatch._FAMILY_AWARE_LABELS)
 
     def test_dispatcher_routes_discussion_to_handler(self) -> None:

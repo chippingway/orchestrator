@@ -91,7 +91,7 @@ session lock, and full examples.
 - `DEV_AGENT` — default `claude`. implementer command spec
 - `REVIEW_AGENT` — default `codex`. reviewer command spec
 - `DECOMPOSE_AGENT` — default `claude`. decomposer command spec (validated even when `DECOMPOSE=off`); also drives the
-  `question` stage
+  `question` and `discussion` stages
 - `DECOMPOSE` — default `on`. enable the `decomposing` stage; `off` reverts to the legacy
   "no label → `workflow:implementing`" pickup
 - `CODEX_BIN` — default `codex`. executable launched when a role's first token is `codex`; override only if `codex` is
@@ -103,8 +103,8 @@ session lock, and full examples.
   `workflow:community_contribution` and @-mentions `HITL_HANDLE` once per PR (bot-authored PRs such as Dependabot are
   excluded via `user.type == "Bot"`). When set it additionally becomes a comment trust boundary: comments from authors
   outside the list stay visible on GitHub but are dropped from the conversation text fed to every agent prompt
-  (implement / review / documentation / decompose / question / conflict, the awaiting-human resumes, and the
-  `in_review` / `fixing` PR-feedback loop), from the base-sync auto-rebase retry-unpark signal, and from the
+  (implement / review / documentation / decompose / question / discussion / conflict, the awaiting-human resumes, and
+  the `in_review` / `fixing` PR-feedback loop), from the base-sync auto-rebase retry-unpark signal, and from the
   `user_content_hash` drift signal, so an outsider on a public repo cannot inject workflow-driving instructions into
   an agent, resume an awaiting-human session, retry a parked auto-rebase, reset the review-round cap via
   `/orchestrator add-review-rounds`, route `in_review` to `workflow:fixing` (or set its pending-fix bookmark), or
@@ -660,8 +660,9 @@ hazards are worth knowing:
 - **In-flight agent spec is pinned.** When a `codex` / `claude` session starts, the orchestrator writes the full
   `DEV_AGENT` / `DECOMPOSE_AGENT` spec into pinned state and re-parses it (not the current `.env`) on every resume.
   Flipping `DEV_AGENT` or `DECOMPOSE_AGENT` after a session is locked does nothing for that issue until it reaches
-  `done` or `rejected`. The question stage seeds from `DECOMPOSE_AGENT` on first spawn and pins to `question_agent` for
-  the rest of the Q&A. `REVIEW_AGENT` is not pinned — the reviewer spawns fresh each round.
+  `done` or `rejected`. The question and discussion stages each seed from `DECOMPOSE_AGENT` on their own first spawn
+  and pin to `question_agent` / `discussion_agent` for the rest of that conversation. `REVIEW_AGENT` is not pinned —
+  the reviewer spawns fresh each round.
 
 ### Safe restart guidance
 
@@ -732,8 +733,8 @@ When each setting's change takes effect:
   overrides take precedence over `MAX_PARALLEL_ISSUES_PER_REPO`.
 - `WORKFLOW_TRANSITION_GUARD` — next Python start (parsed at config import).
 - `DEV_AGENT`, `DECOMPOSE_AGENT` — next Python start, **except** for issues whose pinned state already names a
-  `dev_agent` / `decomposer_agent` / `question_agent` — those keep the pinned spec until the issue reaches `done` or
-  `rejected`
+  `dev_agent` / `decomposer_agent` / `question_agent` / `discussion_agent` — those keep the pinned spec until the
+  issue reaches `done` or `rejected`
 - `REVIEW_AGENT` — next reviewer spawn after the next Python start (not pinned per issue)
 - `GITHUB_TOKEN` — not loaded from `.env`. Update the process environment or rewrite the file at
   `ORCHESTRATOR_TOKEN_FILE` (default `~/.config/<owner>/<repo>/token`) before the next start

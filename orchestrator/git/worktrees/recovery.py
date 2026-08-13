@@ -78,6 +78,35 @@ def _branch_has_unpushed_commits(
     return None
 
 
+def _branch_tip_sha(spec: config.RepoSpec, branch: str) -> str:
+    """Return the SHA one named local branch points at, or '' if it has none.
+
+    The absolute-SHA counterpart to `_branch_has_unpushed_commits`: that probe
+    answers "is this branch ahead of base", which cannot tell a commit made
+    since some moment from commits the branch already carried. A caller
+    holding a recorded SHA -- the discussion stage's round anchor -- needs the
+    tip itself to compare against, or an issue whose branch arrived with a
+    dev's commits reads as having been committed to just now.
+
+    The branch is named by the caller rather than derived, because the caller
+    is the one that knows which ref its recorded SHA belongs to: an issue
+    whose pinned state carries a legacy `orchestrator/issue-N` branch has its
+    round open on that ref, and answering for the slug-namespaced one instead
+    would report an unchanged tip while the commit sits on the branch the
+    round actually used. Inspects the parent clone, so the answer survives the
+    worktree being gone; returns '' when the branch does not exist or the read
+    fails, which callers treat as "nothing to attribute".
+    """
+    with locks._target_root_lock(spec.target_root):
+        tip_result = commands._git(
+            "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}",
+            cwd=spec.target_root,
+        )
+    if tip_result.returncode != 0:
+        return ""
+    return (tip_result.stdout or "").strip()
+
+
 def _candidate_issue_branches(
     spec: config.RepoSpec, issue_number: int,
 ) -> tuple[str, ...]:

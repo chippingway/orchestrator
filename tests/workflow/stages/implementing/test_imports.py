@@ -31,7 +31,7 @@ _OWNERS = (
     "models",
     "parks",
     "publication",
-    "question_relabel",
+    "read_only_relabel",
     "resume",
     "session",
     "session_read",

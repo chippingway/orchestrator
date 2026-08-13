@@ -190,7 +190,8 @@ def _prompt_comment_chunk(issue_comment: object) -> Optional[str]:
 
 def _recent_comments_text(issue: Issue, max_chars: int = 4000) -> str:
     """Conversation text fed to every agent prompt (implement, review,
-    documentation, decompose, question, and the drift-resume prompt).
+    documentation, decompose, question, discussion, and the drift-resume
+    prompt).
 
     An untrusted author's comment is dropped whole -- its body and any URLs
     it contains never reach the prompt -- so once `ALLOWED_ISSUE_AUTHORS`

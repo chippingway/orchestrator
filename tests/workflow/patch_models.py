@@ -27,6 +27,8 @@ class _WorkflowRunContext:
     dirty_files: tuple = ()
     push_branch: bool = True
     head_shas: tuple = ("",)
+    branch_tip_sha: str = ""
+    unpushed_branch: Optional[str] = None
     first_commit_subject: str = ""
     fallback_prefix: Optional[str] = None
     squash_result: tuple = (True, None, 0, None)

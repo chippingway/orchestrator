@@ -5,8 +5,9 @@
 One authenticated fetch of `origin/<base>` per spec feeds every issue
 worktree that survived the previous tick, so the gates that decide whether a
 worktree may be touched at all belong together: an in-flight scheduler claim,
-a dispatcher hard-skip, the read-only question stage, an unreadable issue,
-and a dirty pre-PR tree each end the sync before any rewrite is attempted.
+a dispatcher hard-skip, the read-only conversation stages, an unreadable
+issue, and a dirty pre-PR tree each end the sync before any rewrite is
+attempted.
 What survives is routed by whether pinned state already carries a PR --
 `pre_pr` rebases the local branch nobody has pushed yet, while the PR-aware
 coordinator has to keep the pushed head and the reviewer's SHA in step.
@@ -27,10 +28,19 @@ from orchestrator.git.base_sync import (
 )
 from orchestrator.git.verification import probes as _probes
 from orchestrator.git.worktrees import paths as _paths
-from orchestrator.github import client as _client, labels as _labels
+from orchestrator.github import (
+    client as _client,
+    labels as _labels,
+    pinned_state as _pinned_state,
+)
 from orchestrator.scheduler import IssueScheduler
+from orchestrator.workflow.state import WorkflowLabel
 
 log = _state.log
+
+_READ_ONLY_STAGE_LABELS: tuple[str, ...] = (
+    str(WorkflowLabel.QUESTION), str(WorkflowLabel.DISCUSSION),
+)
 
 
 def _issue_worktree_number(worktree: Path) -> Optional[int]:
@@ -56,8 +66,37 @@ def _base_sync_issue(
         return None
 
 
-def _issue_skips_base_sync(issue: Issue, issue_number: int) -> bool:
-    """Apply dispatcher hard-skips and the question-stage read-only gate."""
+def _issue_skips_base_sync(
+    issue: Issue, issue_number: int, state: _pinned_state.PinnedState,
+) -> bool:
+    """Apply dispatcher hard-skips and the read-only stage gate.
+
+    Neither read-only stage ever pushes, so the checkout under one of their
+    labels is something to read rather than work in progress: an inspection
+    target an unsafe park left for an operator, and -- in the discussion
+    stage, which preserves its tree on every exit -- the tree the next round
+    opens on. Rebasing `origin/<base>` over either would rewrite the state
+    someone was parked to look at.
+
+    The label answers that only while the stage still holds the issue, so the
+    park is consulted beside it. An operator's relabel takes the label away a
+    full tick before the implementing guard reads the recorded round tip and
+    rules on the branch, and this refresh runs first in that tick: a rebase in
+    the gap moves the tip off the anchor and the guard convicts a branch
+    nobody touched. Its refusal then asks for a reset back to that same
+    anchor, which only hands the next tick the same rebase to redo. The
+    checkout therefore stays frozen until the guard's own write clears the
+    park, from which tick on the branch syncs normally again.
+
+    Clearing the park does not end the freeze, because the guard replaces it
+    with `read_only_baseline_sha` -- the tip it certified, which the dev run
+    is measured against until that run commits something. A rebase would move
+    the branch off that SHA while the inherited commits it names are still
+    there, and the spawn path would then read them as a dev run whose
+    publication was interrupted and push them without an agent ever running.
+    The baseline is retired the moment there is committed work to publish, so
+    this holds for the ticks the dev spends answering rather than building.
+    """
     skip_label = _labels.hard_skip_control_label(issue)
     if skip_label is not None:
         log.debug(
@@ -66,14 +105,29 @@ def _issue_skips_base_sync(issue: Issue, issue_number: int) -> bool:
             skip_label,
         )
         return True
-    if not _labels.issue_has_label(issue, "question"):
-        return False
-    log.debug(
-        "issue=#%d has 'question' label; skipping base sync "
-        "(read-only stage)",
-        issue_number,
-    )
-    return True
+    if state.get("read_only_baseline_sha"):
+        log.debug(
+            "issue=#%d holds an unspent read-only baseline; skipping base sync",
+            issue_number,
+        )
+        return True
+    park_reason = state.get("park_reason") if state.get("awaiting_human") else None
+    for stage_label in _READ_ONLY_STAGE_LABELS:
+        if _labels.issue_has_label(issue, stage_label):
+            log.debug(
+                "issue=#%d has %r label; skipping base sync (read-only stage)",
+                issue_number,
+                stage_label,
+            )
+            return True
+        if isinstance(park_reason, str) and park_reason.startswith(f"{stage_label}_"):
+            log.debug(
+                "issue=#%d carries an unconsumed %r park; skipping base sync",
+                issue_number,
+                park_reason,
+            )
+            return True
+    return False
 
 
 def _worktree_behind_base(
@@ -107,10 +161,13 @@ def _sync_worktree_with_base(
     honored even when local HEAD already contains the latest base.
     """
     issue = _base_sync_issue(gh, issue_number)
-    if issue is None or _issue_skips_base_sync(issue, issue_number):
+    if issue is None:
         return
 
     state = gh.read_pinned_state(issue)
+    if _issue_skips_base_sync(issue, issue_number, state):
+        return
+
     pr_number = state.get("pr_number")
     if pr_number is None and _probes._worktree_dirty_files(worktree):
         log.debug(
