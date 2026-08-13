@@ -4,12 +4,13 @@
 
 Every check ahead of the spawn is there because running the agent first would
 make it unanswerable. A merged PR or a closed issue ends the issue, so both are
-read before anything spends tokens. A stale `question_*` park has to be cleared
-or refused before the fresh-spawn path's recovered-worktree shortcut can publish
-question-agent commits as a dev implementation. An operator's
-`/orchestrator continue` has to be recognized before drift handling mistakes the
-bare command for changed requirements. Only then is a body edit considered, and
-only if that does not own the tick does the run get prepared.
+read before anything spends tokens. A stale read-only park (`question_*` or
+`discussion_*`) has to be cleared or refused before the fresh-spawn path's
+recovered-worktree shortcut can publish that agent's commits as a dev
+implementation. An operator's `/orchestrator continue` has to be recognized
+before drift handling mistakes the bare command for changed requirements. Only
+then is a body edit considered, and only if that does not own the tick does the
+run get prepared.
 
 After the run the order matters just as much: the interruption and live-pause
 refusals both come BEFORE the disposition, and both return without writing
@@ -34,7 +35,7 @@ from orchestrator.workflow.stages.implementing import (
     continue_command as _continue_command,
     disposition as _disposition,
     drift as _drift,
-    question_relabel as _question_relabel,
+    read_only_relabel as _read_only_relabel,
     spawn as _spawn,
 )
 
@@ -46,7 +47,7 @@ def _implementing_preflight(
         return True
     if _terminals._finalize_if_issue_closed(gh, spec, issue, state):
         return True
-    if _question_relabel._handle_stale_question_park(gh, spec, issue, state):
+    if _read_only_relabel._handle_stale_read_only_park(gh, spec, issue, state):
         return True
     if _continue_command._handle_parked_continue_command(gh, spec, issue, state):
         return True

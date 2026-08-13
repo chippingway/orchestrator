@@ -9,7 +9,11 @@ timeout recovery); only an unparked one is allowed to spawn.
 An unparked tick still has a shortcut before the agent: a worktree that already
 carries commits is a previous run whose publication was interrupted, so the
 recovered result is synthesized and the commits are pushed rather than
-implemented again. Then the retry budget gates the spawn, and the agent spec is
+implemented again. The one issue that is not true of is one a read-only
+relabel just let through -- a discussion may be held on the branch its PR is
+open against, so the commits there predate this stage entirely, and the guard
+records the tip it certified for exactly this read. Then the retry budget
+gates the spawn, and the agent spec is
 persisted BEFORE the run -- so a spawn that commits but returns no session id
 still leaves the durable role identity behind and a later `DEV_AGENT` flip
 cannot retarget the next resume at a backend that never ran on this issue.
@@ -102,22 +106,70 @@ def _spawn_implementer(
     return agent_result, _guards._paused_during_agent_run(gh, issue)
 
 
+def _recovered_work_present(
+    spec: config.RepoSpec, state: PinnedState, worktree: Path, before_sha: str,
+) -> bool:
+    """True when the commits on the branch are a previous dev run's.
+
+    "Ahead of base" is the whole test for an issue that reached this stage the
+    ordinary way: nothing but a dev run puts commits there, so finding some
+    means a run committed and died before its publication. It is not the test
+    for an issue a read-only relabel let through, because those are allowed to
+    arrive on a branch that already carries a PR's commits -- the relabel
+    guard certified them, recording the tip it vouched for, and reading them
+    as a finished run would skip the implementer and republish the design's
+    predecessor as the work the discussion just agreed to.
+
+    The baseline is spent as soon as it stops describing the branch: once the
+    dev commits, HEAD moves off it and every later tick is judged the ordinary
+    way again.
+    """
+    if not _worktree_creation._has_new_commits(spec, worktree):
+        return False
+    baseline = state.get(_state._READ_ONLY_BASELINE_SHA)
+    if baseline and str(baseline) == before_sha:
+        return False
+    if baseline:
+        state.set(_state._READ_ONLY_BASELINE_SHA, None)
+    return True
+
+
+def _ensure_dev_worktree(
+    spec: config.RepoSpec, issue: Issue, state: PinnedState,
+) -> Path:
+    """Prepare the dev checkout, restoring a pruned one from the right ref.
+
+    A fresh implementing run belongs at base, and `_ensure_worktree` puts a
+    missing branch there. An issue that already has a PR does not: it reaches
+    this stage carrying commits the PR is open against -- a discussion relabel
+    is the way in -- and rebuilding its local ref from `<remote>/<base>` would
+    hand the dev an empty tree, then let publication force-push that over the
+    PR. `_ensure_pr_worktree` restores from the PR head instead, which is only
+    a ref to ask for once a PR exists, so `pr_number` decides.
+    """
+    branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
+    if state.get("pr_number") is None:
+        return _worktree_creation._ensure_worktree(
+            spec, issue.number, branch=branch,
+        )
+    return _worktree_creation._ensure_pr_worktree(
+        spec, issue.number, branch=branch,
+    )
+
+
 def _prepare_active_dev_run(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
 ) -> Optional[_models._PreparedDevRun]:
-    worktree = _worktree_creation._ensure_worktree(
-        spec,
-        issue.number,
-        branch=_worktree_paths._resolve_branch_name(state, spec, issue.number),
-    )
+    worktree = _ensure_dev_worktree(spec, issue, state)
     before_sha = _verification_probes._head_sha(worktree)
-    if _worktree_creation._has_new_commits(spec, worktree):
+    if _recovered_work_present(spec, state, worktree, before_sha):
         log.info(
             "issue=#%d skipping agent; worktree already has commits",
             issue.number,
         )
         return _models._PreparedDevRun(
             _recovered_dev_result(state), before_sha, False, worktree,
+            recovered=True,
         )
     spawned = _spawn_implementer(gh, spec, issue, state, worktree)
     if spawned is None:

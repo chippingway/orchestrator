@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +22,13 @@ GIT_BRANCH = "branch"
 GIT_COMMIT_MESSAGE_FLAG = "-m"
 GIT_REV_PARSE = "rev-parse"
 GIT_UPDATE_REF = "update-ref"
+
+
+@contextlib.contextmanager
+def _temp_root(prefix: str):
+    """Yield a throwaway directory as a `Path`, removed on exit."""
+    with tempfile.TemporaryDirectory(prefix=prefix) as temp_dir:
+        yield Path(temp_dir)
 
 
 @dataclass(frozen=True)

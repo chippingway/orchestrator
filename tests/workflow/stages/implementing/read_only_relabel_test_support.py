@@ -1,0 +1,132 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""Fixtures for the read-only relabel guard and the handoff it accepts.
+
+Both modules beside this one drive a whole implementing tick against an issue
+an operator moved here while a `discussion` park was still on it, so they share
+the seed and the two probes that decide what the guard sees.
+
+The discussion stage's wire vocabulary is spelled out here rather than borrowed
+from that stage's own test support: what these modules pin down is how THIS
+stage reads pinned state it did not write, so the strings are part of the
+contract under test and a shared constant would let a rename pass unnoticed on
+the side that has to keep understanding it.
+"""
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
+from orchestrator import config
+from orchestrator.git.worktrees import (
+    paths as _worktree_paths,
+    recovery as _worktree_recovery,
+)
+from orchestrator.workflow.engine import drift as _drift
+from orchestrator.workflow.stages.implementing import handler as _implementing
+
+from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.fixtures import (
+    LABEL_IMPLEMENTING,
+    _TEST_SPEC,
+    _issue_branch,
+)
+
+PUSH_BRANCH = "_push_branch"
+RUN_AGENT = "run_agent"
+ENSURE_PR_WORKTREE = "_ensure_pr_worktree"
+ENSURE_WORKTREE = "_ensure_worktree"
+
+KEY_ROUND_BRANCH = "discussion_round_branch"
+KEY_ROUND_SHA = "discussion_round_sha"
+KEY_READ_ONLY_BASELINE = "read_only_baseline_sha"
+PARK_DISCUSSION_COMMITS = "discussion_commits"
+PARK_DISCUSSION_RESPONSE = "discussion_response"
+PARK_DISCUSSION_UNSAFE_RELABEL = "discussion_unsafe_relabel"
+DISCUSSION_SESSION = "d-sess-1"
+
+HEAD_BEFORE_ROUND = "head-before-the-round"
+HEAD_AFTER_COMMIT = "head-after-the-agent-committed"
+
+RELABEL_WATERMARK = 77000
+UNEXPECTED_AGENT_MESSAGE = "should not run"
+DEV_SESSION = "dev-sess"
+
+_TEMP_PREFIX = "ro-relabel-"
+_WORKTREE_PATH = "_worktree_path"
+_BRANCH_HAS_UNPUSHED_COMMITS = "_branch_has_unpushed_commits"
+
+
+def _seed_relabeled_discussion(issue_number: int, park_reason: str, **extra):
+    """An issue an operator moved to `implementing` while discussion held it.
+
+    The anchor is seeded because that is the shape a real park leaves: every
+    exit the discussion stage takes records the branch and SHA its round
+    opened on, and none of its parks withdraws the pair.
+
+    The current body hash is seeded for a subtler reason. Without one the
+    drift hook snapshots it, and that is a pinned-state write of its own on
+    the same object -- it would persist whatever else the tick had staged and
+    hide a handoff that was never durably written.
+    """
+    gh = FakeGitHubClient()
+    issue = make_issue(issue_number, label=LABEL_IMPLEMENTING)
+    gh.add_issue(issue)
+    gh.seed_state(
+        issue.number,
+        awaiting_human=True,
+        park_reason=park_reason,
+        discussion_agent=config.DECOMPOSE_AGENT_SPEC,
+        discussion_session_id=DISCUSSION_SESSION,
+        last_action_comment_id=RELABEL_WATERMARK,
+        user_content_hash=_drift._compute_user_content_hash(issue, set()),
+        **{
+            KEY_ROUND_BRANCH: _issue_branch(issue_number),
+            KEY_ROUND_SHA: HEAD_BEFORE_ROUND,
+        },
+        **extra,
+    )
+    return gh, issue
+
+
+class _RelabelStageCall:
+    """One implementing tick with the worktree and branch probes pinned."""
+
+    def __init__(self, gh, issue, worktree, unpushed_branch) -> None:
+        self._gh = gh
+        self._issue = issue
+        self._worktree = worktree
+        self._unpushed_branch = unpushed_branch
+
+    def __call__(self) -> None:
+        with (
+            patch.object(
+                _worktree_paths, _WORKTREE_PATH, return_value=self._worktree,
+            ),
+            patch.object(
+                _worktree_recovery,
+                _BRANCH_HAS_UNPUSHED_COMMITS,
+                return_value=self._unpushed_branch,
+            ),
+        ):
+            _implementing._handle_implementing(self._gh, _TEST_SPEC, self._issue)
+
+
+class _ReadOnlyRelabelMixin:
+    """Drive one implementing tick against a checkout that is on disk."""
+
+    def _run_implementing_on_worktree(
+        self, gh, issue, *, unpushed_branch, **run_options,
+    ):
+        """Both probes are patched from inside the call rather than around it:
+        the hermetic seam set installs its own `_branch_has_unpushed_commits`,
+        so a patch applied outside would be the one overridden.
+        """
+        with tempfile.TemporaryDirectory(prefix=_TEMP_PREFIX) as parent:
+            worktree = Path(parent) / f"issue-{issue.number}"
+            worktree.mkdir(parents=True, exist_ok=True)
+            return self._run(
+                _RelabelStageCall(gh, issue, worktree, unpushed_branch),
+                **run_options,
+            )

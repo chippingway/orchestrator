@@ -78,7 +78,7 @@
 # others fall to, so WPS202 is waived.
 #
 # orchestrator/workflow/engine/prompts.py is one owner for the prompt builders
-# the workflow stages share, so it carries 13 members past the same ceiling.
+# the workflow stages share, so it carries 14 members past the same ceiling.
 # They share one opening header and one set of notes, and each one's marker
 # contract is what another owner then parses; splitting them by stage would let
 # the prompt and the parser that reads its answer drift apart, so WPS202 is
@@ -179,6 +179,36 @@
 # the dev resume from the implementing owners and the reply disposition from
 # the validating ones, and names the three git owners behind the checkout it
 # resolves, recreates, and watermarks. WPS201 is waived for that file.
+#
+# orchestrator/workflow/stages/discussion/parks.py is one owner for every way
+# that stage hands an issue back, and carries 10 members past the WPS202
+# ceiling of 7: the funnel (`_park_discussion`), the two text builders its
+# messages share (`_dirty_files_markdown` for the bounded path list the dirty
+# and stranded parks quote, `_reset_target` for the SHA the two commit parks
+# tell an operator to reset to), and one message each for the seven ways a
+# round ends -- dirty, stranded, timed out, committed, recovered-commit,
+# silent, and the response itself. The reason each park records is not just
+# its message: the handler reads the `discussion_` prefix back on the next
+# tick to decide whose turn it is, so a park assembled anywhere other than
+# behind the funnel that stamps it would earn a second round over the top of
+# the first, and a builder split off from the parks that quote it would put
+# one hand-back's wording across two modules. WPS202 is waived.
+#
+# orchestrator/workflow/stages/implementing/read_only_relabel.py is one owner
+# for the guard both read-only stages' parks are screened by, so it carries 9
+# members past the WPS202 ceiling of 7 and names 13 imports past the WPS201
+# ceiling of 12. The extra members and the extra import are the same thing: the
+# two stages ask different questions of the same branch -- ahead-of-base for a
+# question park, which never finishes on a branch carrying anything, and
+# unchanged-since-the-round-anchor for a discussion park, which is allowed to
+# open on the commits an issue arrived with -- so the owner is typed by the
+# discussion stage's key vocabulary as well as implementing's own, and pays for
+# it twice: `_uncertified_commits` asks the branch question, and
+# `_relabel_remediation` answers the one that follows from it, since an issue
+# whose branch legitimately carries a PR's commits cannot be told to reset to
+# base or delete the branch. Splitting the screen from the refusal it feeds
+# would put one relabel's decision across two modules. WPS201 and WPS202 are
+# waived.
 #
 # Three implementing stage owners and one question stage owner sit one past the
 # same ceiling at 13 -- `implementing/continue_command.py`,
@@ -294,10 +324,12 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS201
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
+    orchestrator/workflow/stages/discussion/parks.py:WPS202
     orchestrator/workflow/stages/fixing/handler.py:WPS201
     orchestrator/workflow/stages/fixing/resume.py:WPS201
     orchestrator/workflow/stages/implementing/continue_command.py:WPS201
     orchestrator/workflow/stages/implementing/publication.py:WPS201
+    orchestrator/workflow/stages/implementing/read_only_relabel.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/spawn.py:WPS201
     orchestrator/workflow/stages/in_review/drift.py:WPS201
     orchestrator/workflow/stages/question/outcomes.py:WPS201

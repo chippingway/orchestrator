@@ -66,6 +66,15 @@ _PARK_REASON = "park_reason"
 
 _PRE_IMPLEMENT_SHA = "pre_implement_sha"
 
+# The tip a read-only stage's relabel certified as "what the branch already
+# carried". The recovered-worktree shortcut reads commits ahead of base as a
+# previous dev run's, which an issue arriving from `discussion` on its PR's
+# branch would trip on its first tick -- the dev would be skipped and the
+# inherited commits republished as its work. Written by
+# `read_only_relabel._clear_stale_read_only_park` from the round anchor it
+# retires; spent by `spawn._prepare_active_dev_run`.
+_READ_ONLY_BASELINE_SHA = "read_only_baseline_sha"
+
 _BRANCH = "branch"
 
 _IMPLEMENTING_STAGE = "implementing"

@@ -22,9 +22,9 @@ handoff, and `parks` owns the four ways a commit-less run stops. The last four
 own the signals that arrive between runs -- a body edit (`drift`), a body edit
 before any session existed plus the quiet timeout recovery
 (`drift_preflight`), an operator's `/orchestrator continue` (`continue_command`),
-and a `question` -> `implementing` relabel (`question_relabel`) -- over the
-records they hand each other (`models`) and the pinned-state keys and CLI
-markers they share (`state`).
+and a `question` / `discussion` -> `implementing` relabel (`read_only_relabel`)
+-- over the records they hand each other (`models`) and the pinned-state keys
+and CLI markers they share (`state`).
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per issue, and an eager binding here would

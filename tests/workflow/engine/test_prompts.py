@@ -40,6 +40,7 @@ _HEADER_BUILDERS = (
     ("documentation", prompts._build_documentation_prompt),
     ("question", prompts._build_question_prompt),
     ("decompose", prompts._build_decompose_prompt),
+    ("discussion", prompts._build_discussion_prompt),
 )
 
 # The conflict prompt is the one commit-producing prompt with no style note:

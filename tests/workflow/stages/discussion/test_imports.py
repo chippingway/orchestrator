@@ -21,7 +21,7 @@ _PARENT = "orchestrator.workflow.stages"
 
 _HANDLER_OWNER = "handler"
 
-_OWNERS = (_HANDLER_OWNER,)
+_OWNERS = (_HANDLER_OWNER, "models", "outcomes", "parks", "run", "state")
 
 # Bound at module scope, so collecting this file is what plants the owner in
 # `sys.modules` -- the same protection each sibling owner package gets from its
@@ -52,12 +52,13 @@ def _imported_orchestrator_modules(module: str) -> set[str]:
 
 
 class CleanProcessImportTest(unittest.TestCase):
-    """The package and the owner beneath it import alone.
+    """The package and every owner beneath it import alone.
 
-    The owner imports the GitHub client it is typed by, and the engine's
-    dispatcher reaches back into this package. A subprocess per module gives
-    each a clean `sys.modules` no other test has already populated, exposing an
-    import-order cycle a package-first suite run would mask.
+    The owners import the GitHub client they are typed by and the engine
+    surfaces a round is spawned and parked through, and the engine's dispatcher
+    reaches back into this package. A subprocess per module gives each a clean
+    `sys.modules` no other test has already populated, exposing an import-order
+    cycle a package-first suite run would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:
@@ -77,8 +78,8 @@ class LayeringTest(unittest.TestCase):
 
     def test_initializer_reaches_no_owner(self) -> None:
         # An eager owner binding here would charge every importer of a sibling
-        # stage for the GitHub subsystem this one is typed by, to reach a
-        # handler that does nothing.
+        # stage for the agent, worktree, and GitHub machinery only a discussion
+        # round reaches.
         self.assertEqual(
             _imported_orchestrator_modules(_PACKAGE),
             _imported_orchestrator_modules(_PARENT) | {_PACKAGE},

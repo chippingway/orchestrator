@@ -246,8 +246,21 @@ orchestrator/
                         earns instead of an implementation pass
       discussion/
         __init__.py     package marker only; callers import an owner directly
-        handler.py      the tick an operator-held issue earns: none, so that
-                        applying the label is a quiet, reversible act
+        handler.py      the order one discussion tick asks its three questions
+                        in: whose turn it is, what the checkout already holds,
+                        then what the round left behind
+        run.py          the opening round in the issue's own worktree, the
+                        restorer that checkout is rebuilt by, the probes
+                        bracketing it, the locked agent it runs under, and the
+                        branch and SHA it records opening on
+        outcomes.py     the pause, timeout, read-only, and response decisions
+                        one finished round is classified by, and their routing
+        parks.py        every way the stage hands the issue back and the
+                        funnel that stamps each park's reason
+        models.py       the run, the agent identity, the round with the HEAD it
+                        opened on, and the assessed outcome
+        state.py        the park reasons, wire keys, run identity, and the
+                        predicate that says which park is this stage's own
       documenting/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one final-docs tick asks its questions in
@@ -296,8 +309,10 @@ orchestrator/
       implementing/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one tick asks its questions in
-        spawn.py        awaiting-human vs active, the recovered-worktree
-                        shortcut, and the retry-gated fresh spawn
+        spawn.py        awaiting-human vs active, the restorer the checkout
+                        comes back from, the recovered-worktree shortcut and
+                        the certified baseline it stands down for, and the
+                        retry-gated fresh spawn
         session_read.py the locked session read plus the stale / overflow /
                         quota classifiers and the blockquote they quote with
         session.py      the three session retirements, the per-issue 24h spawn
@@ -307,7 +322,8 @@ orchestrator/
         execution.py    one resume, its poisoned-session retry, and what each
                         attempt is allowed to persist
         worktree.py     the checkout a resume runs in, restored when reaped
-        disposition.py  the `before_sha` publish / timeout-park decision and
+        disposition.py  the `before_sha` publish / timeout-park decision, the
+                        certified floor a clean exit is credited against, and
                         the timeout park's own next-tick recovery
         parks.py        the session-limit, question, silent-failure, and
                         dirty-tree parks
@@ -319,8 +335,9 @@ orchestrator/
                         a pre-session edit and the quiet timeout recovery
         continue_command.py
                         `/orchestrator continue` on a parked issue
-        question_relabel.py
-                        the `question` -> `workflow:implementing` relabel guards
+        read_only_relabel.py
+                        the `question` / `discussion` -> `workflow:implementing`
+                        relabel guards
         models.py       the frozen records the owners hand each other
         state.py        the pinned-state keys and CLI marker tuples they share
       in_review/
@@ -2849,7 +2866,7 @@ alone. `_MAX_CHILDREN` runs the other way: the cap lives with the validator that
 cannot drift apart.
 
 The implementing owners bind their collaborators the same way, and they divide along the decisions one tick makes
-rather than the code it runs. `handler` holds the order those decisions are asked in and calls `question_relabel` and
+rather than the code it runs. `handler` holds the order those decisions are asked in and calls `read_only_relabel` and
 `continue_command` for the two preflight signals, `drift` for a body edit, `spawn` for the run itself, and
 `disposition` for what the run left behind. `spawn` asks `session` for the retry budget and `drift_preflight` for the
 awaiting-human route; `resume` and `execution` split one resume between the call shape callers wrote against and the
@@ -3016,18 +3033,50 @@ read-only contract is decided by, so a mock for either has to land there. No fla
 `tests/workflow/stages/test_imports.py` covers this stage too, so the session lock, the parks, and the wire keys are
 each answered on an owner alone, `_handle_question` included.
 
-The discussion stage is one owner because it has one decision, and the decision is to do nothing. `handler` holds a
-`_handle_discussion` that reads no state and writes none: the label is an operator's hold on an issue humans are still
-settling, so a tick that touched the worktree, spawned an agent, or moved the label would be the orchestrator
-overriding the hold. The stage exists at all because a label absent from `_STAGE_HANDLER_TARGETS` is one the dispatcher
-warns about on every tick; routing it to a handler that returns is what makes applying the label safe.
+The discussion stage divides the same way the question stage does, because it is the same shape of conversation held
+to a stricter contract: the agent may not write anything AND may not decide anything. `handler` holds the order -- the
+gate that makes a discussion-owned park the humans' turn (a park any other stage wrote does not gate, or an issue
+relabeled here while parked elsewhere would stay inert for good), the two preflights on what the last round left,
+then the round and its disposition -- and it is where the stage stops, since no route from here reaches another stage,
+a push, or a PR. `run` opens the round in the issue's own `issue-N` worktree and owns every probe of it: the
+pre-`_ensure_worktree` dirty read, because preparing the checkout force-removes a dirty tree that carries no commits;
+the pre-spawn `_head_sha`, because the branch may already carry another stage's commits; and the same question asked a
+tick late for a round that never got to answer it. That last one is why the SHA is written down before the spawn
+rather than only held: a mid-run `paused` suppresses every disposition by contract and a crash takes them with it, and
+the next tick reuses the same checkout, so an anchor is the only thing that can tell a commit the ended round made
+from one the branch arrived carrying. `discussion_session_id` is staged after the spawn instead and rides the park's
+write, so a round nobody sees leaves no conversation pointer. `outcomes` enforces the no-write contract on the round
+that does come back, checking commits and the dirty tree before interruption and before the response, so a round that
+started implementing parks on what it wrote rather than being published as a design. The same reasoning is why
+`git/base_sync/refresh.py` lists this label beside `question` in its read-only gate — and the park beside the label,
+since the refresh runs a full tick before the guard that consumes it — and why
+`stages/implementing/read_only_relabel.py` refuses a relabel out of a `discussion_*` park whose branch has moved off
+the SHA the round recorded: the tree survives every exit, so nothing may rebase over it and nothing may ship as dev
+work what this stage did not vouch for — while the commits an issue arrived carrying, which that same record
+certifies, still let the relabel through. Clearing that park hands the certified tip on as `read_only_baseline_sha`,
+because `stages/implementing/spawn.py` otherwise reads any branch ahead of base as an interrupted dev run and would
+skip the implementer to republish the very commits the discussion was held on top of.
+`parks` holds what each of those decisions then says to the
+human, and every one of them lands on its one funnel — the funnel restores the `park_reason` the shared helper clears,
+and that reason is what the handler's gate reads back next tick, so a park assembled anywhere else would earn a second
+round over the top of the first. `state` and `models` reach no engine or git owner, so the park reasons, the
+park predicate the handler gates on, and the carriers are all decidable without one. Unlike question, no owner here
+tears a worktree down: the tree the discussion read is the tree its next round and the operator both look at. The
+stage borrows the same engine surfaces question does -- the tracked spawn, the awaiting-human park, the prompt
+builder, the trusted conversation text, and the stderr diagnostics from `workflow/engine/`, `_worktree_path` and
+`_resolve_branch_name` from `git/worktrees/paths.py`, `_ensure_worktree` from `git/worktrees/creation.py`, and
+`_head_sha` and `_worktree_dirty_files` from `git/verification/probes.py` -- and the last two are what the read-only
+contract is decided by, so a mock for either has to land there. It takes one restorer question of its own: an issue
+carrying a `pr_number` is discussed on the branch that PR is open against, so a pruned local ref is rebuilt by
+`_ensure_pr_worktree` from the PR head rather than by `_ensure_worktree` from the base branch, which would drop the
+PR's commits out of the tree the round reads.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `workflow:decomposing` (when no dev session exists yet), resumes
 the locked dev session with the updated body (implementing, validating, in_review, resolving_conflict), or unwinds
 back to `workflow:validating` without resuming dev (documenting). Both halves of that hook sit on the
 `workflow/engine/drift.py` owner the stage leaves import directly, so a patch aimed at the hook targets that owner.
-`_handle_fixing`, `_handle_question`, and the inert `_handle_discussion` skip the drift hook — see
+`_handle_fixing`, `_handle_question`, and `_handle_discussion` skip the drift hook — see
 [`state-machine.md#user-content-drift-detection`](state-machine.md#user-content-drift-detection) for the per-handler
 routing.
 
@@ -3158,7 +3207,10 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
   concurrent up to `spec.parallel_limit` per repo and `MAX_PARALLEL_ISSUES_GLOBAL` across all repos. No-agent family
   buckets (`workflow:blocked` / `workflow:umbrella`) are cap-exempt.
 - **decomposer agent (`DECOMPOSE_AGENT`)** — subprocess (fresh or resumed). Trigger: `_handle_decomposing` (retry
-  budget OK) or HITL resume. Cadence: one shot per tick when needed.
+  budget OK) or HITL resume. Cadence: one shot per tick when needed. The same role spec also backs two read-only
+  stages that pin their own keys and never resume a decomposing session: `_handle_question` (`question_agent`) and
+  `_handle_discussion` (`discussion_agent`, `agent_role="decomposer"` / `stage="discussion"`, spawned fresh each
+  round).
 - **implementer agent (`DEV_AGENT`)** — subprocess. Trigger: `_handle_implementing` (no commits yet, retry budget OK)
   or HITL resume. Cadence: one shot per tick when needed.
 - **reviewer agent (`REVIEW_AGENT`)** — subprocess (fresh session). Trigger: `_handle_validating`, round < max.

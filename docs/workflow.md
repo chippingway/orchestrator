@@ -22,8 +22,9 @@ The workflow has three agent roles, each spawned by a different set of stage han
 use `codex` or `claude` and each carries its own optional CLI args.
 
 - **Decomposer** (`DECOMPOSE_AGENT`, default `claude`) — spawned by `_handle_decomposing` (and its `awaiting_human`
-  resume); `_handle_question` (and its `awaiting_human` resume) reuses the same backend. Session: locked per issue after
-  first spawn (decomposing → `decomposer_agent`; question → `question_agent`, a separate pin).
+  resume); `_handle_question` (and its `awaiting_human` resume) and `_handle_discussion` reuse the same backend.
+  Session: locked per issue after first spawn (decomposing → `decomposer_agent`; question → `question_agent`;
+  discussion → `discussion_agent`, each a separate pin).
 - **Implementer / dev** (`DEV_AGENT`, default `claude`) — spawned by `_handle_implementing`, `_handle_documenting`,
   `_handle_validating` (awaiting-human resume; the `CHANGES_REQUESTED` dev fix is dispatched here but relabels to
   `workflow:fixing` BEFORE the spawn and records `stage="fixing"` analytics, so the dev-fix subphase reads as fixing
@@ -59,7 +60,7 @@ every role goes through dispatches on `orchestrator/agents/runner.py`. All nine 
 `_handle_validating` in `orchestrator/workflow/stages/validating/`, `_handle_in_review` in
 `orchestrator/workflow/stages/in_review/`, `_handle_fixing` in `orchestrator/workflow/stages/fixing/`,
 `_handle_resolving_conflict` in `orchestrator/workflow/stages/conflicts/`, `_handle_question` in
-`orchestrator/workflow/stages/question/`, and the inert `_handle_discussion` in
+`orchestrator/workflow/stages/question/`, and `_handle_discussion` on owners in
 `orchestrator/workflow/stages/discussion/`. Nothing answers for a stage beside those owners, so each handler is
 reached on the one module that holds it, and the dispatcher and the same-tick pickup start name that module directly.
 The per-stage behavior is documented in [`state-machine.md#stage-handlers`](state-machine.md#stage-handlers). What
@@ -78,7 +79,9 @@ follows is the role-specific glue.
 - **Decomposer reuse.** `_handle_decomposing` spawns the decomposer once and resumes it on every awaiting-human reply.
   The `question` stage reads `DECOMPOSE_AGENT` only as the *fallback* on the first-ever question spawn, then pins what
   it ran under to `question_agent` (a separate key) so a multi-turn Q&A keeps its own lock independent of any
-  decomposing session on the same issue.
+  decomposing session on the same issue. The `discussion` stage borrows the same role on the same terms and pins to
+  `discussion_agent`, a third independent key. Its lock is not a session lock: every round is a fresh spawn, so what
+  the pin protects is which backend and args a replayed round runs under, not a conversation to resume.
 
 ### Question stage — read-only Q&A on the `question` label
 
@@ -93,15 +96,43 @@ inspection; the per-tick base sync is skipped while the label is `question` so `
 inspection state. Closing the issue is the terminal signal: the closed-`question` sweep flips the issue to `done` and
 tears down the worktree.
 
-For the per-`park_reason` semantics and the implementing-side relabel guard (`question_unsafe_relabel`), see
+For the per-`park_reason` semantics and the implementing-side relabel guard
+(`read_only_relabel`, which answers for the `discussion` stage's parks too), see
 [`state-machine.md#_handle_question-label-question`](state-machine.md#_handle_question-label-question).
 
-### Discussion stage — the operator hold on the `discussion` label
+### Discussion stage — architecture discussion on the `discussion` label
 
-The `discussion` label is operator-applied like `question`, with no automatic transitions in or out, but it invokes no
-role at all. `_handle_discussion` spawns nothing, creates no worktree, and writes neither a comment nor a label, so an
-issue humans are still settling among themselves stays exactly as they left it. Only a human relabel ends the hold —
-to `done` or `rejected`, or by taking the label off. See
+The `discussion` label is operator-applied like `question`, with no automatic transitions in or out, and it reuses the
+decomposer's configured backend — a discussion is the decomposer reasoning about a design before anything is
+decomposed. `_handle_discussion` runs it once in the issue's per-issue worktree (`issue-N`, on the issue's own branch)
+with a prompt that tells it to research the repository itself, explore the design as a tree rather than a single
+answer, raise architecture decisions, unconventional alternatives, and worthwhile research rather than implementation
+trivia, and close with a NUMBERED list of the questions answerable right now — each with the agent's own recommended
+answer — so a human can agree or overrule by number. Nothing is implemented until a human confirms explicitly on the
+thread.
+
+The run is recorded under `agent_role="decomposer"` with `stage="discussion"`. Two records are written BEFORE the
+spawn: `discussion_agent`, so the conversation's identity survives a CLI that hands back nothing and a replayed round
+stays on the backend that opened it rather than on whatever `DECOMPOSE_AGENT` says now, and
+`discussion_round_branch` + `discussion_round_sha`, the branch the round opened on and the SHA it was at. That pair
+is the crash-recovery anchor — a round can end with no disposition at all (a mid-run `paused` withholds every one by
+contract, a crash takes them with it) and the next tick reuses the same checkout, so without the anchor a commit the
+ended round made would become the new round's baseline and read as work the branch arrived carrying.
+
+No park withdraws it, including the two that report a commit. On a parked issue the same pair is what the
+implementing relabel guard reads — a branch still at that SHA carries only what the issue arrived with — which is how
+a discussion held on a branch that already had its dev's commits is relabeled without being accused of them, and how
+one that *was* committed to gets back: the park names that SHA as the reset target, and resetting to it drops the
+agent's commit while leaving the PR's underneath. Resetting to base or deleting the branch would take the PR with it,
+so the anchor is what makes a non-destructive recovery exist at all. The successful relabel is what finally clears
+the pair. `discussion_session_id` rides the park's write instead, so it never outlives the analysis it points at.
+
+The clean response is posted as a comment pinging `HITL_HANDLE` and the issue parks awaiting human; the worktree is
+preserved on every exit and the per-tick base sync skips the `discussion` label as it does `question`, so nothing
+rebases `<remote>/<base>` over it. No developer or reviewer is spawned, no branch is pushed, and no PR is opened. A
+parked issue's next tick does nothing at all — the round on the thread is the humans' turn. A relabel to
+`workflow:implementing` goes through the same read-only guard the question stage uses, so a park that left commits or
+edits is refused as `discussion_unsafe_relabel` rather than pushed as dev work. See
 [`state-machine.md#_handle_discussion-label-discussion`](state-machine.md#_handle_discussion-label-discussion).
 
 ### Tracked-repos awareness in working-agent prompts
@@ -124,12 +155,13 @@ Shape of the block:
 - The framing is deliberately **stage-neutral**: it says only that the sibling checkouts are read-only references and
   explicitly defers the question of whether the agent may write in its *own* working directory to the surrounding stage
   prompt. So the same block is safe in both the write-granting prompts (implementer / documentation) and the read-only
-  prompts (reviewer / decomposer / question).
+  prompts (reviewer / decomposer / question / discussion).
 
 Which prompts carry it (every builder below lives in `workflow/engine/prompts.py`):
 
 - **Embedded** in `_build_implement_prompt`, `_build_documentation_prompt`, `_build_review_prompt`,
-  `_build_decompose_prompt`, `_build_question_prompt`, and `_build_fresh_respawn_preamble`. The fresh-respawn preamble
+  `_build_decompose_prompt`, `_build_question_prompt`, `_build_discussion_prompt`, and
+  `_build_fresh_respawn_preamble`. The fresh-respawn preamble
   matters because a transcript-less respawn (proactive `DEV_SESSION_MAX_RESUMES` rotation, the consecutive-silent-park
   fallback, poisoned-session recovery, or an operator `/orchestrator continue` command that drops a session-failure
   park's poisoned dev session before replaying the preserved PR-feedback batch) never saw the original spawn's block, so
