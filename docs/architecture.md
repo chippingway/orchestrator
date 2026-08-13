@@ -480,7 +480,9 @@ orchestrator/
                         best-effort removal
       paths.py          slug sanitization, git-ref-safe branch segments, path
                         and branch derivation, pinned/legacy branch resolution
-      recovery.py       candidate-branch discovery and unpushed-commit probes
+      recovery.py       candidate-branch discovery, the unpushed-commit probe,
+                        and the absolute tip read of one caller-named branch
+                        that a recorded SHA is compared against
       terminal.py       question-stage teardown and terminal local + remote
                         branch cleanup composed from cleanup.py
   observability/
@@ -2876,7 +2878,9 @@ owner, no GitHub client, and no worktree helper — `session_read` reads the con
 which is why the pinned-state keys, the carriers, and the CLI-marker classifiers can be exercised without a client. So
 a patch that has to intercept a park, a push, a resume, or a session read targets the owner module. The helpers the
 stage does not own are named the same way: the branch and worktree names from `git/worktrees/paths.py`, the checkout
-and its commit probe from `git/worktrees/creation.py`, the unpushed-branch probe from `git/worktrees/recovery.py`, the
+and its commit probe from `git/worktrees/creation.py`, the unpushed-branch and branch-tip probes from
+`git/worktrees/recovery.py` (the second is how the read-only relabel guard measures a branch against the SHA a
+discussion round recorded, which ahead-of-base cannot answer), the
 HEAD and dirty reads from `git/verification/probes.py`, the push from `git/authentication.py`, the commit subject and
 the PR title builders from `git/publication/`, and the auto-rebase park reasons from `git/base_sync/state.py` — so a
 patch on any of those lands on the owner that defines it. No flat module
@@ -3064,7 +3068,9 @@ park predicate the handler gates on, and the carriers are all decidable without 
 tears a worktree down: the tree the discussion read is the tree its next round and the operator both look at. The
 stage borrows the same engine surfaces question does -- the tracked spawn, the awaiting-human park, the prompt
 builder, the trusted conversation text, and the stderr diagnostics from `workflow/engine/`, `_worktree_path` and
-`_resolve_branch_name` from `git/worktrees/paths.py`, `_ensure_worktree` from `git/worktrees/creation.py`, and
+`_resolve_branch_name` from `git/worktrees/paths.py`, `_ensure_worktree` from `git/worktrees/creation.py`,
+`_branch_tip_sha` from `git/worktrees/recovery.py` -- the anchor comparison falls back to it when the checkout
+directory is gone but the branch survives -- and
 `_head_sha` and `_worktree_dirty_files` from `git/verification/probes.py` -- and the last two are what the read-only
 contract is decided by, so a mock for either has to land there. It takes one restorer question of its own: an issue
 carrying a `pr_number` is discussed on the branch that PR is open against, so a pruned local ref is rebuilt by
