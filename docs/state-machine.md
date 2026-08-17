@@ -50,12 +50,15 @@ Three non-workflow **control labels** modify behavior without occupying the work
   stages that resume committed work (`implementing`, `in_review`, `fixing`, `resolving_conflict`, the `validating`
   drift / awaiting-human / reviewer-change dev resumes, and the `documenting` initial and follow-up docs passes) and
   the read-only agent stages (the decomposer run in `decomposing`, fresh spawn and awaiting-human resume; the reviewer
-  run in `validating`; and the question run, fresh spawn and awaiting-human resume) all consult it. A `paused` applied
+  run in `validating`; and the question and discussion runs, opening round and awaiting-human resume alike) all
+  consult it. A `paused` applied
   mid-run stops before a PR opens, the label flips, a HITL park or ACK comment posts, a docs push lands, usage
   counters fold, child issues are created, watermarks advance, or pinned state advances, so a dev stage's committed
   work stays on the branch and republishes through the normal recovered-worktree / stranded-fix path once the label is
-  removed, while the read-only decomposer / reviewer / question runs simply re-run from durable state on the next
-  tick. Because `paused` is a plain control label, removing it is the entire resume protocol — the next poll picks the
+  removed, while the read-only decomposer / reviewer / question / discussion runs simply re-run from durable state on
+  the next tick — a withheld discussion round against the same replies, since the watermark it staged is one of the
+  mutations the pause leaves unpersisted. Because `paused` is a plain control label, removing it is the entire resume
+  protocol — the next poll picks the
   issue back up from durable state; there is no un-pause command. This is distinct from `/orchestrator continue` (§
   `_handle_fixing` `_handle_continue_command`, plus the shared implementing / documenting handling), which retries
   only specific `awaiting_human` session-failure parked *retry* flows: pausing is never a `park_reason`, so a continue
@@ -456,8 +459,12 @@ Non-human content is filtered six ways:
 - untrusted authors via `github.comments.is_trusted_author` when `ALLOWED_ISSUE_AUTHORS` is set (opt-in; empty
   allowlist trusts everyone), so an outsider's comment cannot shift the hash and re-trigger drift on a public repo.
   The same trust helpers filter the conversation text fed to agent prompts: `_recent_comments_text` (implement /
-  review / documentation / decompose / question / discussion / drift-resume); the awaiting-human resume paths that
-  quote new
+  review / documentation / decompose / question / drift-resume) and `_thread_text` beneath it, which the `discussion`
+  stage calls directly over its own thread snapshot — with one documented retention, the orchestrator's own comments
+  by recorded `orchestrator_comment_ids`, since that stage's full-context prompt rebuilds a conversation the
+  orchestrator is half of (see
+  [the trust boundary](security.md#comment-trust-boundary-allowed_issue_authors)); the awaiting-human resume paths
+  that quote new
   replies directly (`filter_trusted` in the implementing, validating, decomposing, documenting, resolving_conflict,
   question, and discussion resumes) plus the auto-rebase-park retry-unpark in `_sync_pr_worktree_to_base`; and the
   four-surface
@@ -1120,7 +1127,9 @@ because session state lives in pinned state, not in the worktree.
   came either from a round that died before it could park on what it wrote or from the stage the issue was relabeled
   out of — and `_ensure_worktree` force-removes a dirty checkout that carries no commits, which would destroy it. The
   park names the paths and leaves the tree untouched for the operator to inspect and reset.
-- **Action**: spawn the configured `DECOMPOSE_AGENT` once (`agent_role="decomposer"`, `stage="discussion"`) in the
+- **Action**: spawn one agent per tick (`agent_role="decomposer"`, `stage="discussion"`) — the configured
+  `DECOMPOSE_AGENT` on the conversation's first round, and on every round after it whatever `discussion_agent` pinned
+  then, resuming `discussion_session_id` when there is one — in the
   per-issue `issue-N` worktree on the issue's own branch. A resumed round reuses that checkout as it stands — the tree
   the operator was reading while they composed the reply, already established clean and on the anchor by the hold
   above — and only a directory that has gone is restored at all. Restoring it (for an opening round, or a resumed one

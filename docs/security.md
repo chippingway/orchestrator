@@ -209,6 +209,15 @@ The security posture:
   PR-feedback loop. So an outsider on a public repo cannot inject instructions into an agent, resume a parked session,
   retry a parked rebase, route `in_review` to `workflow:fixing`, or shift the drift hash, while the audit trail of
   what they said stays intact.
+- **One retention, and it is the orchestrator's own words.** The `discussion` stage rebuilds the whole conversation
+  into a prompt whenever a round has no session to resume, and it is itself half of that conversation: with the
+  allowlist naming the maintainers and not the account the token belongs to — the shape an operator lands on by
+  writing down only the humans — the rebuild would otherwise hand a fresh agent the human's answers by number with
+  the numbered questions they answer missing. So that one prompt keeps comments the orchestrator *posted*, and only
+  those. The evidence is the `orchestrator_comment_ids` recorded at post time, never the `_ORCH_COMMENT_MARKER` in
+  the body: the marker identifies the same comments to the scans that DROP them, where anyone pasting it costs only
+  themselves their own comment, whereas admitting a comment on it would be an allowlist bypass any author could write.
+  No third-party comment is retained anywhere, and no other prompt retains anything.
 - **Filtering is fail-safe.** A comment whose author failed to load (empty login) is untrusted. On the awaiting-human
   resume paths (and the auto-rebase retry-unpark) the filter runs on the whole comment batch up front, so an untrusted
   comment there never advances the consumed-watermark nor is marked read — it is re-filtered on each later tick

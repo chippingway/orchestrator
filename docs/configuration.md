@@ -112,7 +112,11 @@ session lock, and full examples.
   (legacy single-user behavior), so on these prompt / resume / PR-feedback surfaces a Bot/App login is gated like any
   other author — excluded once the allowlist is populated and its login is not on it. A separate `user.type == "Bot"`
   structural check, independent of the allowlist, covers the `user_content_hash` drift hash and the
-  community-contribution PR sweep. See [`state-machine.md`](state-machine.md#user-content-drift-detection) for the
+  community-contribution PR sweep. One prompt keeps something the allowlist would drop: the `discussion` stage
+  rebuilds the whole conversation for a round with no session to resume, and retains the orchestrator's *own* posted
+  comments there — by the ids it recorded when it posted them — so a deployment that lists its humans and not the
+  token's account still hands that agent both halves of the thread. No third-party comment is ever retained.
+  See [`state-machine.md`](state-machine.md#user-content-drift-detection) for the
   full drift-hash filter list and
   [`security.md`](security.md#comment-trust-boundary-allowed_issue_authors) for the trust-boundary rationale
 
