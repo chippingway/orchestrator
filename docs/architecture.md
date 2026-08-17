@@ -264,12 +264,17 @@ orchestrator/
                         and the branch and SHA it records opening on
         outcomes.py     the pause, timeout, read-only, and response decisions
                         one finished round is classified by, and their routing
-        parks.py        every way the stage hands the issue back and the
-                        funnel that stamps each park's reason
-        models.py       the run, the agent identity, the round with the HEAD it
-                        opened on, and the assessed outcome
-        state.py        the park reasons, wire keys, run identity, and the
-                        predicate that says which park is this stage's own
+        parks.py        every way the stage hands the issue back, including a
+                        reply into a checkout no round may open on, and the
+                        funnel that stamps each park's reason and puts back
+                        the consumed ceiling the shared helper overwrites
+        models.py       the run, the agent identity and session, the prompt
+                        paired with the replies it read, the round with the
+                        HEAD it opened on, and the assessed outcome
+        state.py        the park reasons, wire keys, run identity, the
+                        predicate that says which park is this stage's own,
+                        and the one that says whether it already asked for the
+                        checkout to be repaired
       documenting/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one final-docs tick asks its questions in
@@ -3097,10 +3102,13 @@ certifies, still let the relabel through. Clearing that park hands the certified
 because `stages/implementing/spawn.py` otherwise reads any branch ahead of base as an interrupted dev run and would
 skip the implementer to republish the very commits the discussion was held on top of.
 `parks` holds what each of those decisions then says to the
-human, and every one of them lands on its one funnel — the funnel restores the `park_reason` the shared helper clears,
-and that reason is what the handler's gate reads back next tick, so a park assembled anywhere else would earn a second
-round over the top of the first. `state` and `models` reach no engine or git owner, so the park reasons, the
-park predicate the handler gates on, and the carriers are all decidable without one. Unlike question, no owner here
+human, and every one of them lands on its one funnel — the funnel puts back two things the shared helper overwrote:
+the `park_reason`, which the handler's gate reads back next tick, so a park assembled anywhere else would earn a
+second round over the top of the first; and the consumed ceiling, which the helper stamps at the newest comment on
+the thread and which has to stay where the round's own prompt read to, or a reply that landed during the run is
+recorded as answered by a round that never saw it. `state` and `models` reach no engine or git owner, so the park
+reasons, the two predicates the handler gates on — whose park this is, and whether it has already asked for the
+checkout to be repaired — and the carriers are all decidable without one. Unlike question, no owner here
 tears a worktree down: the tree the discussion read is the tree its next round and the operator both look at. The
 stage borrows the same engine surfaces question does -- the tracked spawn, the awaiting-human park, the prompt
 builder, the trusted conversation text, and the stderr diagnostics from `workflow/engine/`, `_worktree_path` and
