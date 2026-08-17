@@ -349,7 +349,12 @@ def _build_discussion_prompt(
     comments_text: str,
     specs: list[config.RepoSpec],
 ) -> str:
-    """Compose the opening prompt used by the `discussion` stage.
+    """Compose the full-context prompt used by the `discussion` stage.
+
+    Every round that cannot be handed to a live session gets this one: the
+    conversation's first, and any later one whose backend returned no session
+    id to resume. Both need the issue body, the title, and the trusted thread
+    inline, because the agent reading it has nothing cached to answer against.
 
     The stage exists to widen a design before anyone commits to it, so this
     prompt is shaped against the two ways an agent narrows one. It has to
@@ -380,9 +385,9 @@ def _build_discussion_prompt(
         f"Issue body:\n{body}\n\n"
         f"Conversation so far:\n{convo}\n\n"
         f"{tracked_block}"
-        "Nobody has asked you to implement anything. This is the first round "
-        "of a design conversation with the humans on the thread, and the only "
-        "thing it produces is your written analysis.\n\n"
+        "Nobody has asked you to implement anything. This is a design "
+        "conversation with the humans on the thread, and the only thing it "
+        "produces is your written analysis.\n\n"
         "Research the repository yourself first. Do NOT ask a human for a "
         "fact you can read: use read-only commands (`git ls-files`, "
         "`git log`, `grep`, `cat`) to find the modules, contracts, and prior "
@@ -404,13 +409,60 @@ def _build_discussion_prompt(
         "End with a NUMBERED list of the questions that can be answered right "
         "now -- the frontier. A question earns a number only if its answer "
         "does not depend on another question you are also asking; hold "
-        "everything downstream of an open question for a later round. Give "
+        "everything downstream of an open question for a later round, and "
+        "treat anything the conversation above has already settled as decided "
+        "rather than asking it again. Give "
         "each numbered question your own recommended answer and one line of "
         "reasoning, so a human can agree or overrule by number.\n\n"
         "You MUST NOT modify, create, delete, commit, or push any file, and "
         "you MUST NOT start implementing any part of this. Wait for a human "
         "to confirm the decisions explicitly on the issue thread; until they "
         "do, nothing is settled and no work begins."
+    )
+
+
+def _build_discussion_followup_prompt(comments: list) -> str:
+    """Compose the resume prompt a discussion round sends its locked session.
+
+    The humans replied to a numbered frontier, so what this round owes them is
+    not another opening analysis but the same tree redrawn: their answers
+    close the branches they chose, and closing those is what makes the
+    questions underneath answerable for the first time. Asking for a fresh
+    frontier is therefore the whole request -- a round that only acknowledged
+    the reply would leave the conversation exactly where the last one did.
+
+    The no-write, no-implement contract is restated for the reason the
+    question stage restates its own: a design question the humans have just
+    answered is the moment an agent is most likely to read the discussion as
+    over and start building. Confirmation of a design is a human relabel, not
+    a sentence on the thread.
+    """
+    body = _SECTION_SEP.join(
+        _comments._quote_comment_line(comment) for comment in comments
+    )
+    quoted = _messages._as_blockquote(body)
+    return (
+        "The humans replied on the issue thread. Their answers settle the "
+        "questions those answers cover; treat each as decided, even where you "
+        "recommended otherwise.\n\n"
+        f"Human reply:\n\n{quoted}\n\n"
+        "Fold the answers back into the design tree you already have. Say "
+        "briefly what each one rules out, check anything a settled branch "
+        "newly makes worth confirming in the repository with read-only "
+        "commands (`git ls-files`, `git log`, `grep`, `cat`), and expand the "
+        "branches those answers have opened up.\n\n"
+        "End with a NUMBERED list of the questions answerable right now given "
+        "everything decided so far -- the new frontier. A question earns a "
+        "number only if its answer does not depend on another question you "
+        "are also asking, and a question the thread has already answered "
+        "earns none at all. Give each your own recommended answer and one "
+        "line of reasoning, so a human can agree or overrule by number. If "
+        "nothing is left open, say so plainly and state the design the thread "
+        "has converged on.\n\n"
+        "Reminder: this is still the read-only discussion stage. You MUST NOT "
+        "modify, create, delete, commit, or push any file, and you MUST NOT "
+        "start implementing any part of this -- an answered question is not "
+        "the confirmation to begin."
     )
 
 

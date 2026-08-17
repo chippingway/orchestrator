@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The contract the opening discussion prompt makes with its agent.
+"""The contract each discussion prompt makes with its agent.
 
 Each clause here is one the stage would be pointless without: an agent that
 asks a human for facts `git log` answers burns a round, one that returns a
@@ -8,6 +8,13 @@ single answer instead of a tree hides the decision, one that asks about naming
 crowds out the architecture, one that asks everything at once asks for
 decisions its own earlier answers may moot, and one that starts implementing
 has taken the confirmation this stage exists to wait for.
+
+The resume prompt is held to the same contract plus the one clause only it can
+break. A round that read the humans' answers as agreement and stopped there
+would end the conversation without advancing it, so what it is asked for is
+the tree redrawn around what those answers settled and the frontier they
+opened up -- and the no-write rule is restated, since an answered design
+question is the moment an agent is likeliest to decide it may now build.
 """
 
 from __future__ import annotations
@@ -16,13 +23,35 @@ import unittest
 
 from orchestrator.workflow.engine import prompts as _prompts
 
-from tests.support.fakes import make_issue
+from tests.support.fakes import FakeComment, FakeUser, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 
 _PROMPT_ISSUE_NUMBER = 950
 _ISSUE_TITLE = "give the sink its own schema"
 _ISSUE_BODY = "the writer and the sink disagree about who owns the columns"
 _THREAD_TEXT = "@alice: this decides the migration story too"
+_REPLY_AUTHOR = "alice"
+_REPLY_BODY = "1: own it. 2: overruled, keep the shim."
+_REPLY_ID = 4200
+
+# One clause per thing a resumed round has to do that an opening one does not.
+_REQUIRED_FOLLOWUP_CLAUSES = (
+    # The humans' answers are decisions, not suggestions to re-argue.
+    "Their answers settle the questions those answers cover",
+    "even where you recommended otherwise",
+    # The tree is redrawn around them rather than re-derived from scratch.
+    "Fold the answers back into the design tree you already have",
+    "expand the branches those answers have opened up",
+    # A new frontier, with the settled questions gone from it.
+    "NUMBERED list of the questions answerable right now",
+    "already answered earns none at all",
+    "your own recommended answer",
+    "If nothing is left open",
+    # Answering a question is not the confirmation to start building.
+    "MUST NOT modify, create, delete, commit, or push any file",
+    "MUST NOT start implementing",
+    "an answered question is not the confirmation to begin",
+)
 
 # One clause per thing the round has to do, quoted from the prompt so a
 # rewrite that drops the behavior fails here rather than in production.
@@ -73,6 +102,38 @@ class DiscussionPromptTest(unittest.TestCase):
         )
         self.assertIn(_ISSUE_TITLE, self.prompt)
         self.assertIn("Nobody has asked you to implement anything", self.prompt)
+
+    def test_a_settled_question_is_not_asked_again(self) -> None:
+        # This prompt is also what a round with no session to resume is given,
+        # and that round's thread already holds the answers to some of what it
+        # is about to number.
+        self.assertIn(
+            "treat anything the conversation above has already settled as "
+            "decided",
+            self.prompt,
+        )
+
+
+class DiscussionFollowupPromptTest(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.prompt = _prompts._build_discussion_followup_prompt([
+            FakeComment(
+                id=_REPLY_ID,
+                body=_REPLY_BODY,
+                user=FakeUser(_REPLY_AUTHOR),
+            ),
+        ])
+
+    def test_every_clause_reaches_the_agent(self) -> None:
+        for clause in _REQUIRED_FOLLOWUP_CLAUSES:
+            with self.subTest(clause=clause):
+                self.assertIn(clause, self.prompt)
+
+    def test_the_reply_is_quoted_with_its_author(self) -> None:
+        # The agent answers a specific human by number, so who said what has
+        # to survive into the prompt rather than arriving as anonymous text.
+        self.assertIn(f"> @{_REPLY_AUTHOR}: {_REPLY_BODY}", self.prompt)
 
 
 if __name__ == "__main__":

@@ -167,12 +167,15 @@ for the full lifecycle and the read-only-violation park reasons.
 ## Discussing an issue's architecture
 
 Apply the `discussion` label to any open issue whose design should be argued out before anyone builds it. The
-orchestrator spawns the configured `DECOMPOSE_AGENT` once in the issue's worktree with a prompt that tells it to
+orchestrator spawns the configured `DECOMPOSE_AGENT` in the issue's worktree with a prompt that tells it to
 research the repository itself, explore the design as a tree (including an option the current code does not suggest),
 raise architecture decisions rather than implementation trivia, and close with a numbered list of the questions
 answerable right now — each with its own recommended answer — so you can agree or overrule by number. The response is
-posted as an issue comment pinging `HITL_HANDLE` and the issue then waits: nothing is implemented, no PR is opened,
-and later ticks do nothing until a human relabels the issue — to `done` or `rejected` when the thread settles it, or
+posted as an issue comment pinging `HITL_HANDLE` and the issue then waits on you. Answer by number and the same
+session resumes for another round: it folds your answers in as decided, expands what they opened up, and posts the
+frontier they left, then waits again — for as many rounds as you keep replying. Nothing is implemented and no PR is
+opened at any point, and the issue leaves only when a human relabels it — to `done` or `rejected` when the thread
+settles it, or
 to `workflow:implementing` to build what was agreed (the orchestrator refuses that one if the agent left commits or
 edits behind, so nothing unreviewed is pushed). Do not simply remove the label: the discussion records its state in
 the issue's pinned comment, and an unlabeled issue is picked up as a brand-new one that starts a second pinned

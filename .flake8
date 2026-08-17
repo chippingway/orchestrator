@@ -181,13 +181,18 @@
 # resolves, recreates, and watermarks. WPS201 is waived for that file.
 #
 # orchestrator/workflow/stages/discussion/parks.py is one owner for every way
-# that stage hands an issue back, and carries 10 members past the WPS202
+# that stage hands an issue back, and carries 11 members past the WPS202
 # ceiling of 7: the funnel (`_park_discussion`), the two text builders its
 # messages share (`_dirty_files_markdown` for the bounded path list the dirty
-# and stranded parks quote, `_reset_target` for the SHA the two commit parks
-# tell an operator to reset to), and one message each for the seven ways a
-# round ends -- dirty, stranded, timed out, committed, recovered-commit,
-# silent, and the response itself. The reason each park records is not just
+# and stranded parks quote, `_reset_target` for the SHA the commit parks tell
+# an operator to reset to), and one message each for the eight ways a round
+# ends or fails to open -- dirty, stranded, timed out, committed,
+# recovered-commit, blocked-resume, silent, and the response itself. The
+# blocked-resume one is the odd member: no round ran, but a human's reply into
+# a checkout no round may open on needs the same paths and the same reset
+# command every other read-only park quotes, and assembling it anywhere else
+# would put one hand-back's wording outside the funnel that stamps its reason.
+# The reason each park records is not just
 # its message: the handler reads the `discussion_` prefix back on the next
 # tick to decide whose turn it is, so a park assembled anywhere other than
 # behind the funnel that stamps it would earn a second round over the top of

@@ -8,7 +8,13 @@ owner: the park is written by one module and read by the handler that decides
 whether a tick has a round to run at all, and `discussion_agent` /
 `discussion_session_id` record which backend and conversation this issue's
 discussion belongs to. Spelling them once is what keeps a typo from reading as
-"never parked" or "never spawned".
+"never parked", "never spawned", or "nobody has replied yet".
+
+`_LAST_ACTION_COMMENT_ID` is the one key here every other stage writes too: the
+thread position a round's replies are read after, stamped by the shared park
+helper on the way out and moved past the replies a resumed round was handed on
+the way in. Spelling it anything but what that helper writes would leave a
+conversation answering comments the park before it already consumed.
 
 The reasons share a prefix because that prefix is what `_parked_by_discussion`
 asks about -- and what `workflow/stages/implementing/read_only_relabel.py` asks
@@ -71,6 +77,8 @@ _PARK_REASON = "park_reason"
 # locally. See `run._ensure_round_worktree`.
 _PR_NUMBER = "pr_number"
 
+_LAST_ACTION_COMMENT_ID = "last_action_comment_id"
+
 _DISCUSSION_AGENT_KEY = "discussion_agent"
 
 _DISCUSSION_SESSION_KEY = "discussion_session_id"
@@ -95,16 +103,38 @@ _DISCUSSION_STRANDED = "discussion_stranded"
 
 _DISCUSSION_TIMEOUT = "discussion_timeout"
 
+# The parks whose comment names a checkout to repair and the command to repair
+# it with. A reply arriving into a tree still in that state earns no second
+# copy of those instructions; every other park does have to say it once. The
+# timeout park is deliberately absent: it tells an operator to inspect the
+# worktree, which is not the same as telling them what to reset it to.
+_REPAIR_PARK_REASONS = frozenset((
+    _DISCUSSION_COMMITS, _DISCUSSION_DIRTY, _DISCUSSION_STRANDED,
+))
+
 
 def _parked_by_discussion(state: PinnedState) -> bool:
     """True when THIS stage is the one waiting on a human reply.
 
     A park written here is the round on the thread the humans are answering, so
-    the next tick has nothing to do. A park written by any other stage is not:
-    the operator relabeled a parked issue into a discussion, and the reply that
-    park is waiting for is one nobody is going to send here.
+    the next tick has nothing to open: it has a reply to look for instead, and
+    only a trusted one past the watermark makes it this stage's turn again. A
+    park written by any other stage is not: the operator relabeled a parked
+    issue into a discussion, and the reply that park is waiting for is one
+    nobody is going to send here.
     """
     if not state.get(_AWAITING_HUMAN):
         return False
     park_reason = state.get(_PARK_REASON)
     return str(park_reason or "").startswith(_DISCUSSION_PARK_PREFIX)
+
+
+def _repair_already_requested(state: PinnedState) -> bool:
+    """True when the park on this issue already said how to fix the checkout.
+
+    What it gates is whether a reply into an unrepairable tree is worth a
+    comment. Told once, an operator does not need telling again every time
+    somebody answers -- and the park written to tell them is itself one of
+    these, so the telling stops on its own.
+    """
+    return str(state.get(_PARK_REASON) or "") in _REPAIR_PARK_REASONS

@@ -52,11 +52,25 @@ def _park_discussion(
     The shared park helper clears `park_reason`, so this funnel restores the
     stage-specific one and persists the completed state mutation -- the single
     durable write every route in this stage reaches the issue through.
+
+    It also stamps `last_action_comment_id` at the newest comment on the
+    thread, which this funnel restores for the same kind of reason. That stamp
+    is right for a stage whose park ENDS the exchange, but a discussion's park
+    is an invitation to answer it, and minutes of agent run separate the thread
+    the round read from the thread as it stands now. Anything posted in that
+    window -- a human's second thought, an outsider's comment the allowlist may
+    later admit -- would be recorded as read by a round that never saw it, and
+    nothing here reads a comment twice. What the round did read it has already
+    staged, so restoring the value this call was entered with is exactly the
+    ceiling to keep. The comment just posted needs no watermark to be skipped:
+    `_new_trusted_replies` knows the stage's own messages by id and marker.
     """
+    consumed_through = run.state.get(_state._LAST_ACTION_COMMENT_ID)
     _guards._park_awaiting_human(
         run.gh, run.issue, run.state, message, reason=reason,
     )
     run.state.set(_state._PARK_REASON, reason)
+    run.state.set(_state._LAST_ACTION_COMMENT_ID, consumed_through)
     run.gh.write_pinned_state(run.issue, run.state)
 
 
@@ -165,13 +179,52 @@ def _park_recovered_commit(run: _models._DiscussionRun) -> None:
     )
 
 
+def _park_blocked_resume(
+    run: _models._DiscussionRun, dirty_files: tuple[str, ...],
+) -> None:
+    """Report a reply that cannot be answered until the checkout is restored.
+
+    A park this stage wrote earlier said "reset the worktree"; this one is for
+    the case where none did -- the last round ended cleanly, and the tree was
+    dirtied or committed to afterwards. Without it a human who answers the
+    frontier gets silence, since the guard that refuses to open a round on such
+    a tree has nothing on the thread to point them at.
+
+    The reason it lands under is one of the two the operator's next move
+    differs between, chosen by which probe found the violation, so the pinned
+    record still says whether there are commits to reset off or edits to clean.
+    Both are why this park is written once: the reason it leaves IS a repair
+    request, so the tick after it holds quietly rather than repeating itself.
+    The reply is left unconsumed either way, so answering it again is not
+    something the human has to think to do.
+    """
+    if dirty_files:
+        found = f"it is holding {len(dirty_files)} uncommitted change(s)"
+        reason = _state._DISCUSSION_DIRTY
+        listing = f"\n\n{_dirty_files_markdown(dirty_files)}"
+    else:
+        found = "it carries commits made since that round opened"
+        reason = _state._DISCUSSION_COMMITS
+        listing = ""
+    _park_discussion(
+        run,
+        f"{config.HITL_MENTIONS} your reply is noted, but the per-issue "
+        "worktree is no longer the checkout this discussion was left on "
+        f"({found}), so no round was opened on it and nothing was overwritten."
+        f" {_reset_target(run)} Your reply stays unread until then, and the "
+        f"discussion continues from it on its own once the tree is back."
+        f"{listing}",
+        reason=reason,
+    )
+
+
 def _park_silent_discussion(
     run: _models._DiscussionRun, discussion_result: AgentResult,
 ) -> None:
-    # Every round this stage opens is a fresh spawn -- the pinned spec locks
-    # which backend runs, not a session to resume -- so a silent one is the
-    # backend or its CLI failing, and naming a resume would send an operator
-    # looking for a session that was never asked for.
+    # A round of this stage is either a first spawn or a resume of the pinned
+    # session, and the stderr tail is what tells an operator which one went
+    # quiet -- so the message names neither rather than sending them looking
+    # for a session that may never have been asked for.
     diagnostics = _messages._format_stderr_diagnostics(
         discussion_result, "Discussion agent",
     )
