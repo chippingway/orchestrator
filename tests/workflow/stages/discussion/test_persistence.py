@@ -186,9 +186,11 @@ class DiscussionPersistenceTest(unittest.TestCase, _DiscussionWorkflowMixin):
         )
         pinned_data = gh.pinned_data(issue.number)
         self.assertEqual(pinned_data[KEY_DISCUSSION_AGENT], SPEC_WITH_ARGS)
-        # No session id came back, so none is recorded -- and the spec is
-        # pinned anyway, which is the whole point of staging it first.
-        self.assertNotIn(KEY_DISCUSSION_SESSION_ID, pinned_data)
+        # No session id came back, so the round records that it has none --
+        # written rather than left out, since a fresh round is a new
+        # conversation and any pin it found belongs to a finished one. The
+        # spec is pinned anyway, which is the whole point of staging it first.
+        self.assertIsNone(pinned_data[KEY_DISCUSSION_SESSION_ID])
 
     def test_a_crashed_round_leaves_its_provenance(self) -> None:
         # The spawn raising is the exit that reaches no disposition at all, so

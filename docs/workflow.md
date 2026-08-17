@@ -80,8 +80,9 @@ follows is the role-specific glue.
   The `question` stage reads `DECOMPOSE_AGENT` only as the *fallback* on the first-ever question spawn, then pins what
   it ran under to `question_agent` (a separate key) so a multi-turn Q&A keeps its own lock independent of any
   decomposing session on the same issue. The `discussion` stage borrows the same role on the same terms and pins to
-  `discussion_agent`, a third independent key. Its lock is not a session lock: every round is a fresh spawn, so what
-  the pin protects is which backend and args a replayed round runs under, not a conversation to resume.
+  `discussion_agent` + `discussion_session_id`, a third independent pair, and resumes that session on every human
+  reply — so the pin protects both which backend and args a later round runs under and the conversation it continues,
+  since a session id is only meaningful to the CLI that issued it.
 
 ### Question stage — read-only Q&A on the `question` label
 
@@ -111,6 +112,25 @@ trivia, and close with a NUMBERED list of the questions answerable right now —
 answer — so a human can agree or overrule by number. Nothing is implemented until a human confirms explicitly on the
 thread.
 
+Answering by number resumes the pinned session for another round. Only issue comments past the consumed
+`last_action_comment_id` that are neither from an untrusted author nor the orchestrator's own count as an answer, so
+an empty or all-untrusted batch is a no-op that writes nothing and leaves the reply for the tick after the allowlist
+changes. The resume quotes those replies to the live session
+(`_build_discussion_followup_prompt`) and asks for the tree redrawn around what they settled and the frontier
+recomputed, then parks again — as many rounds as the humans keep replying. A round with no `discussion_session_id` to
+resume gets the full prompt instead, since it reaches a fresh agent that would otherwise arrive with no design to
+fold an answer into; a round that was not itself a resume records the absence of an id as well as the presence of one,
+so a stale pin cannot outlive the conversation it belonged to. That rebuilt context keeps the orchestrator's own
+posted analyses even when `ALLOWED_ISSUE_AUTHORS` does not list the bot's account, so the fresh agent reads the
+human's answers together with the numbered questions they answer.
+
+Each round consumes exactly what its own prompt read, so a comment posted while the agent was running survives to
+earn the next round instead of being stamped past by the park. The `issue-N` worktree is reused rather than rebuilt
+across the whole conversation, and a reply arriving into a checkout that has moved off the round anchor or is holding
+edits opens no round on it: reported once with the paths and the reset command when nothing on the thread had said
+so yet, held in silence when the standing park already did. The answer stays unconsumed through both, so resetting
+the tree is the whole of what the operator has to do.
+
 The run is recorded under `agent_role="decomposer"` with `stage="discussion"`. Two records are written BEFORE the
 spawn: `discussion_agent`, so the conversation's identity survives a CLI that hands back nothing and a replayed round
 stays on the backend that opened it rather than on whatever `DECOMPOSE_AGENT` says now, and
@@ -130,7 +150,8 @@ the pair. `discussion_session_id` rides the park's write instead, so it never ou
 The clean response is posted as a comment pinging `HITL_HANDLE` and the issue parks awaiting human; the worktree is
 preserved on every exit and the per-tick base sync skips the `discussion` label as it does `question`, so nothing
 rebases `<remote>/<base>` over it. No developer or reviewer is spawned, no branch is pushed, and no PR is opened. A
-parked issue's next tick does nothing at all — the round on the thread is the humans' turn. A relabel to
+parked issue's next tick costs one comment read and nothing else until somebody answers — the round on the thread is
+the humans' turn. A relabel to
 `workflow:implementing` goes through the same read-only guard the question stage uses, so a park that left commits or
 edits is refused as `discussion_unsafe_relabel` rather than pushed as dev work. See
 [`state-machine.md#_handle_discussion-label-discussion`](state-machine.md#_handle_discussion-label-discussion).
@@ -167,7 +188,8 @@ Which prompts carry it (every builder below lives in `workflow/engine/prompts.py
   park's poisoned dev session before replaying the preserved PR-feedback batch) never saw the original spawn's block, so
   the re-grounding text must re-feed it alongside the issue body and conversation.
 - **Omitted** from the bare resume / followup builders (`_build_fix_prompt`, `_build_conflict_resolution_prompt`,
-  `_build_pr_comment_followup`, `_build_question_followup_prompt`): those text payloads resume a live session that
+  `_build_pr_comment_followup`, `_build_question_followup_prompt`, `_build_discussion_followup_prompt`): those text
+  payloads resume a live session that
   already received the block at spawn time, so repeating it would only burn tokens.
 
 The default single-repo deployment (or any host with `EXPOSE_TRACKED_REPOS=off`) gets an empty string here — **zero

@@ -13,7 +13,16 @@ The read side is the one choke point every conversation-carrying agent prompt
 draws its thread text from, so the ``ALLOWED_ISSUE_AUTHORS`` trust filter is
 applied here. An untrusted author's comment is dropped whole rather than
 trimmed, which is what keeps an outsider on a public repo from steering a
-coding agent through the issue thread.
+coding agent through the issue thread. It has two spellings because a caller
+that derives anything ELSE from the same thread -- a watermark over what its
+prompt just quoted -- has to do both from one snapshot, and that caller passes
+the comments rather than the issue. The same caller is why the per-comment
+filter takes ids to retain past the allowlist: an orchestrator rebuilding a
+conversation it is half of needs its own side of it, and a deployment that
+lists its humans and not its bot account would otherwise hand a fresh agent
+the answers without the questions. Only the recorded ids are admissible there
+-- the marker above identifies the same comments to the scans that DROP them,
+where a forged one costs its author their own comment rather than admitting it.
 
 The tracked-repository awareness block sits beside the thread read because both
 are bounded, non-secret context folded into the same agent prompts. So is the
@@ -41,6 +50,10 @@ _ORCH_COMMENT_MARKER = "<!--orchestrator-comment-->"
 _SECTION_SEP = "\n\n"
 
 _TRACKED_REPOS_CAP = 20
+
+# The default for every reader that has no recorded orchestrator ids to offer,
+# which is every one but the conversation rebuild in the discussion stage.
+_NO_RETAINED_IDS: frozenset = frozenset()
 
 
 def _build_tracked_repos_context(
@@ -176,16 +189,56 @@ def _quote_comment_line(comment: object, label: str = "") -> str:
     return f"@{author}{label}: {body}"
 
 
-def _prompt_comment_chunk(issue_comment: object) -> Optional[str]:
-    """Format one trusted, non-state issue comment for an agent prompt."""
+def _prompt_comment_chunk(
+    issue_comment: object, retained_ids: frozenset = _NO_RETAINED_IDS,
+) -> Optional[str]:
+    """Format one non-state issue comment for an agent prompt, or drop it.
+
+    `retained_ids` are comment ids this orchestrator recorded at the moment it
+    posted them, so a body they name is one it wrote itself and is kept
+    whatever the allowlist says about the account the token belongs to. That
+    matters for a prompt rebuilding a conversation the orchestrator is half of:
+    with `ALLOWED_ISSUE_AUTHORS` set and the bot's own login absent from it --
+    the shape a deployment lands on by writing down only its humans -- an
+    agent would otherwise read the answers without the questions they answer.
+
+    Recorded ids are the only admissible evidence here. The `_ORCH_COMMENT_MARKER`
+    that identifies the same comments to the scans that DROP them is an HTML
+    comment anyone can paste, which is harmless when it only silences the
+    pasted comment and an allowlist bypass when it admits one.
+    """
     body = getattr(issue_comment, "body", None) or ""
     if "<!--orchestrator-state" in body:
         return None
     user = getattr(issue_comment, "user", None)
-    if not is_trusted_author(user):
+    posted_here = getattr(issue_comment, "id", None) in retained_ids
+    if not (posted_here or is_trusted_author(user)):
         return None
     login = user.login if user else "user"
     return f"@{login}: {body}"
+
+
+def _thread_text(
+    issue_comments,
+    max_chars: int = 4000,
+    *,
+    retained_ids: frozenset = _NO_RETAINED_IDS,
+) -> str:
+    """Render an already-read list of comments as agent-prompt conversation.
+
+    Taking the comments rather than the issue is what lets a caller build the
+    text and whatever else it derives from the same thread out of ONE read: a
+    stage that reads twice shows an agent a comment that landed between the
+    two and then records a watermark below it, which on a stage that reads no
+    comment twice means the agent is sent it again next tick.
+    """
+    chunks: list[str] = []
+    for issue_comment in issue_comments:
+        chunk = _prompt_comment_chunk(issue_comment, retained_ids)
+        if chunk is not None:
+            chunks.append(chunk)
+    text = _SECTION_SEP.join(chunks)
+    return text[-max_chars:] if len(text) > max_chars else text
 
 
 def _recent_comments_text(issue: Issue, max_chars: int = 4000) -> str:
@@ -199,11 +252,9 @@ def _recent_comments_text(issue: Issue, max_chars: int = 4000) -> str:
     instructions into a coding agent through the issue thread. With no
     allowlist configured `is_trusted_author` trusts every author, so the
     default single-user deployment sees the full thread unchanged.
+
+    Nothing is retained past that filter here: this convenience reads the
+    thread itself, so a caller holding recorded orchestrator ids passes them
+    to `_thread_text` with the snapshot it already has.
     """
-    chunks: list[str] = []
-    for issue_comment in issue.get_comments():
-        chunk = _prompt_comment_chunk(issue_comment)
-        if chunk is not None:
-            chunks.append(chunk)
-    text = _SECTION_SEP.join(chunks)
-    return text[-max_chars:] if len(text) > max_chars else text
+    return _thread_text(issue.get_comments(), max_chars)

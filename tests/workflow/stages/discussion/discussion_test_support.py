@@ -10,6 +10,10 @@ round and the operator to read.
 `_run_discussion` seeds a HEAD that does not move across the round, because a
 round is only read as having committed when the SHA it opened on changes under
 it. A test about commits says so by overriding `head_shas`.
+
+What a conversation's LATER rounds are seeded and driven by lives beside this
+in `discussion_resume_test_support.py`, since a park's durable record is a
+fixture of its own shape.
 """
 from __future__ import annotations
 
@@ -50,6 +54,11 @@ HEAD_BEFORE_ROUND = "head-before-the-round"
 HEAD_AFTER_COMMIT = "head-after-the-agent-committed"
 UNMOVED_HEAD = (HEAD_BEFORE_ROUND, HEAD_BEFORE_ROUND)
 MOVED_HEAD = (HEAD_BEFORE_ROUND, HEAD_AFTER_COMMIT)
+# A resumed round on a checkout that is really on disk reads HEAD once more
+# than an opening one: the hold's anchor check comes before the SHA it opens
+# on and the SHA it is judged against.
+UNMOVED_HEAD_RESUMED = (HEAD_BEFORE_ROUND,) * 3
+MOVED_HEAD_RESUMED = (HEAD_BEFORE_ROUND, HEAD_BEFORE_ROUND, HEAD_AFTER_COMMIT)
 
 CLEANUP_DECOMPOSE_WORKTREE = "_cleanup_decompose_worktree"
 CLEANUP_QUESTION_WORKTREE = "_cleanup_question_worktree"
@@ -72,6 +81,8 @@ FLIPPED_ARGS = ("-m", "gpt-5")
 DISCUSSION_TOPIC = "should the sink own its own schema?"
 DISCUSSION_RESPONSE = "Two branches: own it, or borrow the writer's."
 DISCUSSION_SESSION = "d-sess-1"
+
+RESUME_SESSION_ID = "resume_session_id"
 
 DIRTY_FILE_COUNT = 15
 DIRTY_DISPLAY_LIMIT = 10

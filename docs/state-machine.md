@@ -130,8 +130,9 @@ GitHub UI bypass both guards, so the guard never fights a human.
   on a human reply or close. No PR is opened.
 - `discussion` — Operator-applied architecture discussion: the decomposer agent researches the repository, explores the
   design as a tree, and comes back with a numbered frontier of currently-answerable questions plus its own recommended
-  answers, then parks awaiting human. Nothing is implemented, no PR is opened, nothing routes an issue in, and only a
-  human relabel takes it out, to `done` or `rejected`.
+  answers, then parks awaiting human. Answering by number resumes the same session, which recomputes the frontier
+  around what those answers settled and parks again, for as many rounds as the humans reply. Nothing is implemented,
+  no PR is opened, nothing routes an issue in, and only a human relabel takes it out, to `done` or `rejected`.
 - `done` — Terminal success; PR merged, umbrella resolved, or a `question` issue closed.
 - `rejected` — Terminal rejection; PR or issue closed without merge.
 
@@ -308,7 +309,9 @@ into a few groups:
   `review_agent` (traceability only; reviewer is fresh per round), `decomposer_agent` + `decomposer_session_id`
   (parents), `question_agent` + `question_session_id` (`question` stage), `discussion_agent` +
   `discussion_session_id` (`discussion` stage). The last three pairs are separate pins on purpose: each conversation
-  seeds from `DECOMPOSE_AGENT` on its own first spawn and is then locked independently of the others on the same issue.
+  seeds from `DECOMPOSE_AGENT` on its own first spawn and is then locked independently of the others on the same issue,
+  and each resumes its own session id on a human reply, so a flip of `DECOMPOSE_AGENT` between two rounds can neither
+  move a conversation onto a backend that never ran it nor hand that backend a session id it never issued.
 - **Decomposition.** `children`, `dep_graph` (`{child_idx_str: [child_idx, ...]}` — GitHub has no first-class blocks
   relation), `decomposed_at`, `pickup_comment_id`.
 - **PR / branch.** `branch`, `pr_number`, `review_round`, `conflict_round`.
@@ -456,7 +459,8 @@ Non-human content is filtered six ways:
   review / documentation / decompose / question / discussion / drift-resume); the awaiting-human resume paths that
   quote new
   replies directly (`filter_trusted` in the implementing, validating, decomposing, documenting, resolving_conflict,
-  and question resumes) plus the auto-rebase-park retry-unpark in `_sync_pr_worktree_to_base`; and the four-surface
+  question, and discussion resumes) plus the auto-rebase-park retry-unpark in `_sync_pr_worktree_to_base`; and the
+  four-surface
   PR-feedback scans driving the `in_review` -> `workflow:fixing` route, the fixing dev-resume, and the `/orchestrator
   continue` batch replay (`filter_trusted` in `_scan_fresh_pr_feedback`, the drift-resume PR-conversation block,
   `_rescan_fixing_feedback`, and `_reconstruct_pending_fix_batch`). On every awaiting-human resume — and the
@@ -1080,12 +1084,31 @@ because session state lives in pinned state, not in the worktree.
 - **Trigger**: each tick while the label is `discussion`. Like `question` the label is operator-applied — no handler
   routes into it, there is no pickup route to it, and it is deliberately NOT in `_FAMILY_AWARE_LABELS`, so fan-out
   concurrency is preserved.
-- **Input**: pinned `awaiting_human` + `park_reason`, and the trust-filtered issue thread the opening prompt quotes.
-- **Gate**: `awaiting_human` short-circuits the whole tick **only when `park_reason` carries the `discussion_`
-  prefix**. That park is the round already on the thread, which the humans are answering, so a parked issue spawns
-  nothing, comments nothing, and writes nothing. A park any *other* stage wrote does not gate: pinned state outlives a
-  relabel, so an issue an operator moves here while it is parked elsewhere is awaiting a reply nobody will send it
-  here, and reading `awaiting_human` alone would leave it inert for good.
+- **Input**: pinned `awaiting_human` + `park_reason`, the consumed `last_action_comment_id` watermark, the
+  `orchestrator_comment_ids` list the stage's own comments are recognized by, and the trust-filtered issue thread —
+  quoted whole by the full prompt, and from the watermark forward by a resume.
+- **Gate**: `awaiting_human` short-circuits the tick's *opening* round **only when `park_reason` carries the
+  `discussion_` prefix**. That park is the round already on the thread, which the humans are answering, so nothing new
+  is opened over the top of it; what the tick looks for instead is their answer. Issue comments past
+  `last_action_comment_id` that survive both `filter_trusted` and the orchestrator's-own-comment drop are what makes
+  it this stage's turn again — an empty batch, or one entirely from authors `ALLOWED_ISSUE_AUTHORS` excludes, spawns
+  nothing, comments nothing, and writes nothing, leaving the reply (if any) unconsumed for the tick after the
+  allowlist changes. A park any *other*
+  stage wrote does not gate at all: pinned state outlives a relabel, so an issue an operator moves here while it is
+  parked elsewhere is awaiting a reply nobody will send it here, and reading `awaiting_human` alone would leave it
+  inert for good.
+- **Resume hold**: a parked issue WITH a reply asks the two preflight questions below before opening its round, and a
+  yes to either stops the round — opening one anyway would rewrite `discussion_round_sha` with the moved tip
+  (spending the reset target the earlier park quoted and the implementing relabel guard re-measures against) or have
+  `_ensure_worktree` force-remove the dirty tree the operator was parked to inspect. Whether the hold is *reported*
+  depends on what the standing park already said: a `discussion_commits` / `discussion_dirty` / `discussion_stranded`
+  park (`_repair_already_requested`) has already named the paths and quoted the reset command, so the reply is held
+  silently rather than earning a second copy of those instructions. Any other park — a round that ended cleanly and
+  had its tree dirtied or committed to afterwards — earns one `_park_blocked_resume` comment carrying the paths and
+  the reset target, recorded under `discussion_dirty` or `discussion_commits` by which probe fired. That reason is
+  itself a repair request, so the report is written once and every reply after it is held silently. No path here
+  consumes the reply, so once the operator resets, the answer they already wrote is picked up on the next tick with
+  no further action from them.
 - **Preflight** (two halves, both WITHOUT spawning). First, a `discussion_round_sha` on an unparked issue means a
   round opened and never reached a disposition; if the checkout's HEAD has moved off it — or, when the directory is
   gone, the tip of the recorded `discussion_round_branch` has, which is asked instead of whether the branch is ahead
@@ -1098,23 +1121,49 @@ because session state lives in pinned state, not in the worktree.
   out of — and `_ensure_worktree` force-removes a dirty checkout that carries no commits, which would destroy it. The
   park names the paths and leaves the tree untouched for the operator to inspect and reset.
 - **Action**: spawn the configured `DECOMPOSE_AGENT` once (`agent_role="decomposer"`, `stage="discussion"`) in the
-  per-issue `issue-N` worktree on the issue's own branch — restored, when the local ref has been pruned, by
-  `_ensure_pr_worktree` from the PR head if the issue carries a `pr_number` and by `_ensure_worktree` from the base
-  branch if it does not, since an issue relabeled here from a PR stage is discussed on the branch its PR is open
-  against and a base-branch rebuild would hide the PR's commits from the round and from the anchor it writes next —
-  with the opening discussion prompt
-  (`_build_discussion_prompt`): research the repository with read-only commands rather than asking a human for
-  readable facts, explore the design as a tree including one unconventional option and the research worth doing,
-  stay at the architecture level rather than implementation trivia, and close with a NUMBERED list of the questions
+  per-issue `issue-N` worktree on the issue's own branch. A resumed round reuses that checkout as it stands — the tree
+  the operator was reading while they composed the reply, already established clean and on the anchor by the hold
+  above — and only a directory that has gone is restored at all. Restoring it (for an opening round, or a resumed one
+  whose directory vanished) goes through `_ensure_pr_worktree` from the PR head if the issue carries a `pr_number` and
+  `_ensure_worktree` from the base branch if it does not, since an issue relabeled here from a PR stage is discussed
+  on the branch its PR is open against and a base-branch rebuild would hide the PR's commits from the round and from
+  the anchor it writes next.
+- **Prompt**: the opening round — and any later one with no `discussion_session_id` to resume — is given
+  `_build_discussion_prompt`, which carries the issue body, title, and trust-filtered thread: research the repository
+  with read-only commands rather than asking a human for readable facts, explore the design as a tree including one
+  unconventional option and the research worth doing, stay at the architecture level rather than implementation
+  trivia, treat what the thread has already settled as decided, and close with a NUMBERED list of the questions
   answerable right now — those whose answers do not depend on another open question — each with the agent's own
-  recommended answer. `discussion_agent` (the full spec, re-parsed from pinned state on every round after the first so
-  a `DECOMPOSE_AGENT` flip cannot retarget a replayed one) and `discussion_round_branch` + `discussion_round_sha` (the
-  branch the round opened on and the SHA it was at) are WRITTEN before the spawn: a round can end with no disposition
-  at all — a mid-run `paused` withholds every one by contract, a crash takes them with it — and the next tick reuses
-  the same checkout, so without that anchor a commit the ended round made becomes the new round's own baseline and
-  reads as work the branch arrived carrying.
-  `discussion_session_id` is staged after the spawn and rides the park's write, so it never outlives the analysis it
-  points at. No developer or reviewer is ever spawned, no branch is pushed, and no PR is opened.
+  recommended answer. That thread is read ONCE, and the same snapshot supplies both the text and the ceiling the
+  round records as read — a second read is a thread minutes older or newer than the one the agent saw, and the
+  disagreement between them is a comment either shown and re-sent next tick or consumed and never shown. The
+  orchestrator's own analyses are retained in that text past `ALLOWED_ISSUE_AUTHORS` by their recorded
+  `orchestrator_comment_ids` (not by the body marker, which anyone can paste), because a deployment that allowlists
+  its humans and not its bot account would otherwise rebuild the conversation with the human's answers by number and
+  the numbered questions they answer missing. A round WITH a session id to resume is given
+  `_build_discussion_followup_prompt` instead and
+  passed `resume_session_id`: it quotes only the trusted replies, since the live session already holds the issue and
+  its own prior analysis, and asks for the frontier recomputed — the answers folded in as decided, the branches they
+  opened expanded, and a fresh numbered frontier with the settled questions gone from it — under the same no-write,
+  no-implement contract. The degrade to the full prompt matters because `_run_agent_tracked` starts a *fresh* agent
+  when no session id is passed, and a followup handed to that would arrive with no issue body, no design, and no
+  frontier to fold an answer into.
+- **Records**: `discussion_agent` (the full spec) and `discussion_round_branch` + `discussion_round_sha` (the branch
+  the round opened on and the SHA it was at) are WRITTEN before the spawn: a round can end with no disposition at all
+  — a mid-run `paused` withholds every one by contract, a crash takes them with it — and the next tick reuses the same
+  checkout, so without that anchor a commit the ended round made becomes the new round's own baseline and reads as
+  work the branch arrived carrying. `discussion_agent` and `discussion_session_id` are re-read from pinned state on
+  every round after the first rather than re-resolved, so a `DECOMPOSE_AGENT` flip between two rounds can retarget
+  neither a replayed one nor a resumed one. `discussion_session_id` is staged after the spawn and rides the park's
+  write, so it never outlives the analysis it points at — and a round that was NOT resumed writes it either way,
+  absence included, since whatever it opened is a new conversation and an issue relabeled out of this stage and back
+  arrives unparked still carrying the previous one's id. The consumed watermark is staged after the pre-spawn write
+  for the same reason as the session id and lands with that same park: a round that never reaches a disposition is
+  replayed, and it has to be replayed against the same replies rather than against an answer already recorded as
+  read. Both round shapes stage one, over what their own prompt read — a resume consumes the batch it quotes, an
+  opening round the whole trusted thread the full prompt rebuilt, which it has to or the comments it just answered
+  would read as unanswered replies on the next tick. No developer or reviewer is ever spawned, no branch is pushed,
+  and no PR is opened.
 - **Disposition** (in order): a `paused` / `backlog` label applied mid-run suppresses every disposition below and
   returns without writing anything — the anchor above is what keeps that safe for a round that committed. Otherwise
   `last_discussion_at` is stamped and a non-interrupted run's usage is folded, then `discussion_commits` (a run that
@@ -1126,7 +1175,17 @@ because session state lives in pinned state, not in the worktree.
   `_has_new_commits`, which is base-relative and would blame the agent for dev commits an issue relabeled here from a
   PR stage already carried), and a tree the preflight above already established was clean.
 - **Output**: the agent's response quoted in an issue comment pinging `HITL_MENTIONS`, or the matching park comment;
-  `awaiting_human=True` with the durable `park_reason` re-set after `_park_awaiting_human` clears it. The `issue-N`
+  `awaiting_human=True` with the durable `park_reason` re-set after `_park_awaiting_human` clears it. That helper also
+  stamps `last_action_comment_id` at the newest comment on the thread, and this stage's park funnel puts back the
+  value it was entered with: the ceiling this round's prompt was BUILT from, not the thread as it stands minutes of
+  agent run later. A comment posted in that window — a human's second thought, or an outsider's the allowlist may
+  later admit — is never in front of the prompt, and this stage reads no comment twice, so recording it as consumed
+  would mean it is answered never. Leaving the mark below the stage's own posted analysis is safe because
+  `_new_trusted_replies` drops the orchestrator's own comments by recorded id and by the `_ORCH_COMMENT_MARKER` in
+  their body (never by author login, which a PAT shared with a human's account would turn against that human's real
+  replies), so a conversation cannot resume on itself. Every
+  round after the opening one ends the same way, so a settled design is a human relabel rather than anything the stage
+  decides for itself. The `issue-N`
   worktree is PRESERVED on every exit — the tree the discussion read is the tree its next round and the operator both
   look at — so this stage never tears one down, and the per-tick base sync stands down on the `discussion` label
   (alongside `question`, in `_issue_skips_base_sync`) so `<remote>/<base>` is never rebased over that state. That same

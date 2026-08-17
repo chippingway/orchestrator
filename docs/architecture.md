@@ -142,8 +142,11 @@ orchestrator/
       __init__.py       package marker only; callers import an owner directly
       comments.py       the orchestrator marker and capped id ledger both
                         comment posters write, the trusted-author thread read
-                        every prompt quotes, the paragraph break that read and
-                        the prompt builders share, and the tracked-repos block
+                        every prompt quotes -- over a caller's own snapshot or
+                        a read of its own, retaining the orchestrator's
+                        recorded ids when a caller offers them -- the paragraph
+                        break that read and the prompt builders share, and the
+                        tracked-repos block
       dispatch.py       one tick's pollable issues turned into handler calls:
                         the hard-skip filter, the family / fanout partition and
                         its cap exemptions, the per-worker refetch, the
@@ -246,13 +249,19 @@ orchestrator/
                         earns instead of an implementation pass
       discussion/
         __init__.py     package marker only; callers import an owner directly
-        handler.py      the order one discussion tick asks its three questions
-                        in: whose turn it is, what the checkout already holds,
-                        then what the round left behind
-        run.py          the opening round in the issue's own worktree, the
-                        restorer that checkout is rebuilt by, the probes
-                        bracketing it, the locked agent it runs under, and the
-                        branch and SHA it records opening on
+        handler.py      the order one discussion tick asks its questions in:
+                        whose turn it is and whether the humans have answered,
+                        what the checkout already holds, then what the round
+                        left behind
+        session.py      the pinned agent and session a conversation is locked
+                        to, the filter its replies and consumed watermark are
+                        drawn through, and the prompt a round gets given what
+                        it has to resume -- paired with the replies that
+                        prompt has therefore read, since a full-context round
+                        derives both from one snapshot of the thread
+        run.py          one round in the issue's own worktree, the restorer
+                        that checkout is rebuilt by, the probes bracketing it,
+                        and the branch and SHA it records opening on
         outcomes.py     the pause, timeout, read-only, and response decisions
                         one finished round is classified by, and their routing
         parks.py        every way the stage hands the issue back and the
@@ -1306,7 +1315,14 @@ and checking every owner that declares a logger.
 marker and append to the id ledger in-module, and the thread read applies the per-comment trust filter in-module -- and
 the workflow and stage leaves that post a comment, quote one, or read the thread import the owner rather than reaching
 for the name on a facade. So a patch that has to intercept a posted issue or PR comment, the tracked-repos block, or
-the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`.
+the conversation text a prompt quotes targets `orchestrator.workflow.engine.comments`. The thread read comes in two
+spellings for one reason: a caller that derives something else from the same thread -- the discussion stage's
+conversation rebuild, which also has to record how far that text read -- passes the snapshot it already holds, because
+a second read is a different thread and the two answers would then disagree by whatever landed between them. That
+caller is also the one that passes recorded orchestrator ids, which the per-comment filter retains past the allowlist:
+a deployment listing its humans and not its bot would otherwise rebuild a conversation with only one side of it in.
+Recorded ids and not the body marker, since a marker anyone can paste is a safe reason to DROP a comment and an
+allowlist bypass as a reason to keep one.
 
 `workflow/engine/messages.py` is bound the same way. It owns both halves of what an agent's last message is worth:
 the strict markers read out of it -- the review and documentation verdicts, the drift `ACK:`, and the operator's
@@ -3040,16 +3056,36 @@ each answered on an owner alone, `_handle_question` included.
 The discussion stage divides the same way the question stage does, because it is the same shape of conversation held
 to a stricter contract: the agent may not write anything AND may not decide anything. `handler` holds the order -- the
 gate that makes a discussion-owned park the humans' turn (a park any other stage wrote does not gate, or an issue
-relabeled here while parked elsewhere would stay inert for good), the two preflights on what the last round left,
-then the round and its disposition -- and it is where the stage stops, since no route from here reaches another stage,
-a push, or a PR. `run` opens the round in the issue's own `issue-N` worktree and owns every probe of it: the
-pre-`_ensure_worktree` dirty read, because preparing the checkout force-removes a dirty tree that carries no commits;
-the pre-spawn `_head_sha`, because the branch may already carry another stage's commits; and the same question asked a
-tick late for a round that never got to answer it. That last one is why the SHA is written down before the spawn
+relabeled here while parked elsewhere would stay inert for good), the trusted reply that ends that turn, the two
+preflights on what the last round left, then the round and its disposition -- and it is where the stage stops, since
+no route from here reaches another stage, a push, or a PR. `session` is what keeps a multi-round conversation on one
+agent: the pinned spec and session id every round after the first is read back from rather than re-resolved, the one
+filter both the prompt and the consumed watermark are drawn through (so neither an untrusted reply nor the stage's own
+posted analysis can steer the agent or be recorded as read), and the degrade from the followup prompt to the full one
+for a round with no session to resume -- since `_run_agent_tracked` starts a fresh agent then, and a bare quote of the
+reply would reach it with no design attached. That rebuild is also where the stage's own analyses are retained past
+the allowlist by their recorded ids, since a deployment listing its humans and not its bot account would otherwise
+hand a fresh agent the answers without the questions -- and it reads the thread ONCE, handing back the replies its
+text quoted alongside the text, because a ceiling derived from a second read disagrees with the prompt by whatever
+landed between the two. Reading the replies and consuming them are separate calls with the round's provenance write
+between them, which is what leaves a reply unconsumed when the tick declines to spawn on it
+-- or dies before its disposition, so the next process replays the round against the same answer. What is consumed is
+measured over what the round's own prompt was built from and never over the thread as the park finds it, because
+minutes of agent run separate the two and a comment that lands in them is one this stage would otherwise read never;
+recognizing its own comments without a watermark above them is what `engine/comments`' id list and body marker are
+for, and why neither reader here matches on author login. `run` opens the round in the issue's own
+`issue-N` worktree -- reusing the tree its predecessor read whenever it is still there -- and owns every probe of it:
+the pre-`_ensure_worktree` dirty read, because preparing the checkout force-removes a dirty tree that carries no
+commits; the pre-spawn `_head_sha`, because the branch may already carry another stage's commits; and the same
+question asked a tick late for a round that never got to answer it -- or asked of a parked issue a reply has just
+arrived on, where a tree off the anchor or holding edits stops the round: reported once when the standing park said
+nothing about repairing it, and held in silence when that park already carried the paths and the reset command. That
+last one is why the SHA is written down before the spawn
 rather than only held: a mid-run `paused` suppresses every disposition by contract and a crash takes them with it, and
 the next tick reuses the same checkout, so an anchor is the only thing that can tell a commit the ended round made
-from one the branch arrived carrying. `discussion_session_id` is staged after the spawn instead and rides the park's
-write, so a round nobody sees leaves no conversation pointer. `outcomes` enforces the no-write contract on the round
+from one the branch arrived carrying. `discussion_session_id` and the consumed watermark are staged after that write
+instead and ride the park's, so a round nobody sees leaves no conversation pointer and consumes no answer. `outcomes`
+enforces the no-write contract on the round
 that does come back, checking commits and the dirty tree before interruption and before the response, so a round that
 started implementing parks on what it wrote rather than being published as a design. The same reasoning is why
 `git/base_sync/refresh.py` lists this label beside `question` in its read-only gate — and the park beside the label,
@@ -3214,9 +3250,10 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
   buckets (`workflow:blocked` / `workflow:umbrella`) are cap-exempt.
 - **decomposer agent (`DECOMPOSE_AGENT`)** — subprocess (fresh or resumed). Trigger: `_handle_decomposing` (retry
   budget OK) or HITL resume. Cadence: one shot per tick when needed. The same role spec also backs two read-only
-  stages that pin their own keys and never resume a decomposing session: `_handle_question` (`question_agent`) and
-  `_handle_discussion` (`discussion_agent`, `agent_role="decomposer"` / `stage="discussion"`, spawned fresh each
-  round).
+  stages that pin their own keys and resume their own sessions rather than a decomposing one: `_handle_question`
+  (`question_agent` + `question_session_id`) and `_handle_discussion` (`discussion_agent` +
+  `discussion_session_id`, `agent_role="decomposer"` / `stage="discussion"`, spawned fresh on the opening round and
+  resumed on each trusted human reply after it).
 - **implementer agent (`DEV_AGENT`)** — subprocess. Trigger: `_handle_implementing` (no commits yet, retry budget OK)
   or HITL resume. Cadence: one shot per tick when needed.
 - **reviewer agent (`REVIEW_AGENT`)** — subprocess (fresh session). Trigger: `_handle_validating`, round < max.
