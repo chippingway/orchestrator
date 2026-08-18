@@ -19,7 +19,10 @@ issue parks forever. ``_COMMIT_STYLE_NOTE`` goes on the subset of those whose
 agent also writes a subject, since the repo's own `git log` is the style
 authority and never a hardcoded type list. The conflict prompt is the one that
 takes the first note without the second -- its agent finishes an in-progress
-rebase, replaying subjects somebody else already wrote.
+rebase, replaying subjects somebody else already wrote. The two discussion
+prompts take both, even though most of their rounds commit nothing: the round
+a human confirms the design on writes the plan and its subject, and which round
+that is is not knowable when the prompt is built.
 
 A prompt that promises a marker -- ``VERDICT:``, ``DOCS: NO_CHANGE``, ``ACK:``,
 the fenced manifest -- spells out the exact literal ``messages.py`` and the
@@ -348,6 +351,7 @@ def _build_discussion_prompt(
     issue: Issue,
     comments_text: str,
     specs: list[config.RepoSpec],
+    plan_path: str,
 ) -> str:
     """Compose the full-context prompt used by the `discussion` stage.
 
@@ -370,10 +374,16 @@ def _build_discussion_prompt(
     keeps one comment from asking for a decision that the answer above it may
     make moot.
 
-    The agent runs in the per-issue `issue-N` worktree with the same read-only
+    The agent runs in the per-issue `issue-N` worktree under the same
     expectations the `question` stage sets -- the orchestrator parks on any
-    commit or dirty tree -- plus the standing rule that no implementation
-    begins until a human confirms the design explicitly on the thread.
+    commit or dirty tree -- with one exception the human has to unlock. Once
+    they confirm on the thread that both sides understand the design the same
+    way, the agreed design is written down in `plan_path` and committed there,
+    alone: that commit is the stage's only artifact, and the orchestrator
+    checks the branch against the base before publishing it, so the prompt
+    states the same bound the check enforces. The path is passed in rather
+    than spelled here because the owner that refuses to publish anything else
+    is the owner that names it.
     """
     body = issue.body or _NO_BODY
     convo = comments_text or _NO_PRIOR_COMMENTS
@@ -414,14 +424,46 @@ def _build_discussion_prompt(
         "rather than asking it again. Give "
         "each numbered question your own recommended answer and one line of "
         "reasoning, so a human can agree or overrule by number.\n\n"
-        "You MUST NOT modify, create, delete, commit, or push any file, and "
-        "you MUST NOT start implementing any part of this. Wait for a human "
-        "to confirm the decisions explicitly on the issue thread; until they "
-        "do, nothing is settled and no work begins."
+        "Until a human states explicitly on this thread that you and they "
+        "understand the design the same way, you MUST NOT modify, create, "
+        "delete, commit, or push any file, and you MUST NOT start "
+        "implementing any part of this: nothing is settled and no work "
+        "begins.\n\n"
+        f"{_plan_publication_instruction(plan_path)}\n\n"
+        f"{_COMMIT_STYLE_NOTE}\n\n"
+        f"{_FOREGROUND_ONLY_NOTE}"
     )
 
 
-def _build_discussion_followup_prompt(comments: list) -> str:
+def _plan_publication_instruction(plan_path: str) -> str:
+    """The one write a confirmed discussion earns, and its exact bound.
+
+    Both discussion prompts carry this verbatim because both can be the round
+    the confirmation lands on: an opening prompt is also what a later round
+    with no session to resume is given, and the humans may well have confirmed
+    the design several rounds before that. The bound is stated as the check
+    states it -- one path, nothing else, no push -- since an agent that
+    commits a second file has its whole plan refused rather than trimmed.
+    """
+    return (
+        "Once they have confirmed exactly that -- and only then -- write the "
+        f"agreed design down in `{plan_path}` and COMMIT that file. It is "
+        "what the implementation will be built from, so it carries the "
+        "decisions the thread resolved and what each one rules out, the "
+        "evidence and research behind them with the paths and commits you "
+        "relied on, the alternatives you considered and why they lost, the "
+        "risks and how each would show up, and the implementation plan that "
+        "follows. Commit that ONE file and nothing else -- no code, no "
+        "configuration, no second plan -- and do NOT push it or open a pull "
+        "request: the orchestrator checks the branch against the base branch "
+        "and publishes it for review itself. A commit that touches anything "
+        "else publishes nothing and parks the issue for a human."
+    )
+
+
+def _build_discussion_followup_prompt(
+    comments: list, plan_path: str,
+) -> str:
     """Compose the resume prompt a discussion round sends its locked session.
 
     The humans replied to a numbered frontier, so what this round owes them is
@@ -431,11 +473,12 @@ def _build_discussion_followup_prompt(comments: list) -> str:
     frontier is therefore the whole request -- a round that only acknowledged
     the reply would leave the conversation exactly where the last one did.
 
-    The no-write, no-implement contract is restated for the reason the
-    question stage restates its own: a design question the humans have just
-    answered is the moment an agent is most likely to read the discussion as
-    over and start building. Confirmation of a design is a human relabel, not
-    a sentence on the thread.
+    This is also the prompt the confirmation itself arrives on, so it carries
+    both halves of the contract and the boundary between them. An answered
+    question is still not permission to build: only a reply that says the two
+    sides understand the design the same way unlocks the one write this stage
+    allows, and what that write may touch is stated as narrowly as the check
+    that refuses everything else.
     """
     body = _SECTION_SEP.join(
         _comments._quote_comment_line(comment) for comment in comments
@@ -459,10 +502,14 @@ def _build_discussion_followup_prompt(comments: list) -> str:
         "line of reasoning, so a human can agree or overrule by number. If "
         "nothing is left open, say so plainly and state the design the thread "
         "has converged on.\n\n"
-        "Reminder: this is still the read-only discussion stage. You MUST NOT "
-        "modify, create, delete, commit, or push any file, and you MUST NOT "
-        "start implementing any part of this -- an answered question is not "
-        "the confirmation to begin."
+        "Reminder: an answered question is not the confirmation to begin. "
+        "Unless the reply above states explicitly that you and the humans "
+        "understand the design the same way, you MUST NOT modify, create, "
+        "delete, commit, or push any file, and you MUST NOT start "
+        "implementing any part of this.\n\n"
+        f"{_plan_publication_instruction(plan_path)}\n\n"
+        f"{_COMMIT_STYLE_NOTE}\n\n"
+        f"{_FOREGROUND_ONLY_NOTE}"
     )
 
 

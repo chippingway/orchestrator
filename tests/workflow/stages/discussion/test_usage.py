@@ -24,7 +24,7 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
     MOVED_HEAD,
-    PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_PLAN_INVALID,
     _DiscussionWorkflowMixin,
     _seed_discussion,
 )
@@ -73,7 +73,9 @@ class DiscussionUsageTest(unittest.TestCase, _DiscussionWorkflowMixin):
         # park runs ahead of the interruption guard, so this tick DOES write.
         # A fold that ran and was then discarded unwritten would be invisible
         # here without it.
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_COMMITS)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_INVALID,
+        )
         self.assertNotIn(KEY_ISSUE_AGENT_RUNS, pinned_data)
         self.assertNotIn(KEY_ISSUE_TOTAL_TOKENS, pinned_data)
 

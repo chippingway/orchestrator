@@ -109,8 +109,8 @@ decomposed. `_handle_discussion` runs it once in the issue's per-issue worktree 
 with a prompt that tells it to research the repository itself, explore the design as a tree rather than a single
 answer, raise architecture decisions, unconventional alternatives, and worthwhile research rather than implementation
 trivia, and close with a NUMBERED list of the questions answerable right now — each with the agent's own recommended
-answer — so a human can agree or overrule by number. Nothing is implemented until a human confirms explicitly on the
-thread.
+answer — so a human can agree or overrule by number. Nothing is written, and nothing is implemented, until a human
+states on the thread that they and the agent understand the design the same way.
 
 Answering by number resumes the pinned session for another round. Only issue comments past the consumed
 `last_action_comment_id` that are neither from an untrusted author nor the orchestrator's own count as an answer, so
@@ -149,12 +149,91 @@ the pair. `discussion_session_id` rides the park's write instead, so it never ou
 
 The clean response is posted as a comment pinging `HITL_HANDLE` and the issue parks awaiting human; the worktree is
 preserved on every exit and the per-tick base sync skips the `discussion` label as it does `question`, so nothing
-rebases `<remote>/<base>` over it. No developer or reviewer is spawned, no branch is pushed, and no PR is opened. A
-parked issue's next tick costs one comment read and nothing else until somebody answers — the round on the thread is
-the humans' turn. A relabel to
-`workflow:implementing` goes through the same read-only guard the question stage uses, so a park that left commits or
-edits is refused as `discussion_unsafe_relabel` rather than pushed as dev work. See
+rebases `<remote>/<base>` over it. No developer or reviewer is ever spawned. A parked issue's next tick costs one
+comment read and nothing else until somebody answers — the round on the thread is the humans' turn. A relabel to
+`workflow:implementing` goes through the same read-only guard the question stage uses, so a park that left unpublished
+commits or edits is refused as `discussion_unsafe_relabel` rather than pushed as dev work. See
 [`state-machine.md#_handle_discussion-label-discussion`](state-machine.md#_handle_discussion-label-discussion).
+
+#### The plan PR the confirmation earns
+
+Both prompts also carry the one write the confirmation unlocks: `plans/issue-<number>.md`, holding the resolved
+decisions, the evidence and research behind them, the alternatives and why they lost, the risks, and the
+implementation plan — committed alone, with no push and no PR of the agent's own. The path is spelled by the stage's
+own key owner and handed to the prompt builders, so what the agent is told and what the check looks for cannot drift.
+
+The check is what publication turns on, since no orchestrator can verify that a human agreed to anything: a round that
+moved HEAD has its branch read once, by four probes, and every one has to answer. The worktree status has to have been
+read and be clean — an unreadable tree is not a clean one, and a corrupt index fails `git status` while a
+commit-to-commit diff still succeeds. The paths its commits change have to be exactly the plan path — measured
+against the base commit the round pinned before it spawned, not against `<remote>/<base>`: the per-issue checkout is a
+linked worktree sharing the clone's refs, so an agent can commit code, repoint that ref onto the code commit, and
+commit the plan, leaving a ref-relative diff that names one path while the push carries two commits. And the plan has
+to be in HEAD as a regular file, because deleting a file the base branch carries changes exactly the path writing it
+would — and a symlink or a submodule pointer left at that path resolves there while carrying no document to read.
+A missing plan, a deleted one, a second one, a code or configuration change, edits left loose, a
+tree that could not be inspected, or a round whose base was never recorded park `discussion_plan_invalid` with the
+offending paths and the anchor to reset to, and push nothing. A valid one is pushed through the same hardened
+`_push_branch` every stage uses, with the lease pinned to a tip the remote was just read at and that this commit
+contains — a branch the remote lacks, or an ancestor of the plan commit; anything else parks
+`discussion_push_failed` (after the in-flight marker, so the reply that retries it has a publication to reach) rather
+than sending an older commit over somebody's push or over history the branch was reset off. Its PR is
+found-or-opened so a tick
+that died between `open_pr` and the pinned write
+recovers into a reuse rather than a duplicate, and the PR body names the decomposer session that wrote the plan
+without any closing keyword — merging a plan must not close the issue it plans. A reused PR is only known to be open
+on the branch, so one whose body does not already name that session has it rewritten; one that does keeps whatever
+else it says. A failed push parks
+`discussion_push_failed` with the commit intact. The marker's write is also what supersedes a standing
+`discussion_push_failed` with `discussion_publishing`, since it spends the reply that asked for the retry: left as it
+was, a crash right after it would leave a publication the recovery refuses to resume and no unread answer to resume it
+with.
+
+Every one of those readings names the tip that was read first rather than asking `HEAD` again, and so does the push,
+since each is a separate git invocation and a branch that moves between them would publish work no check ever saw.
+It is also handed a session to name: `discussion_session_id` is pinned before a resumed round spawns and recorded
+from what a fresh one opens, and a plan whose round left neither parks `discussion_plan_unattributed` rather than
+going out under a body that cannot say which conversation produced it.
+
+Publication writes twice. `discussion_publishing_sha` goes first and alone, naming the tip about to be pushed, because
+everything after it can change the world: it is what lets a later tick tell a commit this stage began publishing from
+one that merely looks like a plan. It is also what says where to rebuild a checkout that has gone: `pr_number` is
+written after the PR is open, so between the two writes only the marker knows the branch may already be pushed, and a
+tick that rebuilt it from the base branch instead would refuse the publication for a tip it cannot find and open
+another round over the top of the PR. While it stands, the remote is asked whether the branch is there — restored
+from if it is, rebuilt from base if the push never landed. `discussion_base_sha` rides the pre-spawn write beside the
+anchor:
+it is what the remote said the base branch was at, read through the token before the agent could touch anything, and
+it is persisted rather than re-read so a later tick recovering the round measures against the base that round was
+given. It is also an id this clone can read, not just one the remote named: the base advances between the tick's own
+fetch and the round that opens in it, and a local diff naming an absent commit fails and reports no paths — which is
+how a plan written exactly as asked gets refused for changing nothing. One authenticated fetch of the base supplies a
+missing object, and a base still unreadable after it is recorded as none.
+Under a park, the publishing marker and `discussion_round_open` — written beside the anchor
+before every spawn and cleared by every park — are the only two things that attribute a commit to this stage: the
+first is finished on its own if a tick died mid-publication (that tick's write already spent the reply that would
+otherwise carry the next one there) and on the reply itself when the push is what failed — a reply that retry then
+consumes, or a failure would be asked for again by the same comment every poll; the second covers a resumed
+round that committed the confirmed plan and was paused or cut short before it could report, which is judged exactly as
+the same crash on an unparked issue is. The marker is asked first and answers for the branch either way: a tip it does
+not name parks `discussion_stale_publication` rather than being read as the round's, and is spent only by the next
+round opening or by the branch going back to the round's anchor over a remote that no longer carries the commit it
+names — the push sends the SHA it validated rather than `HEAD`, so a local ref that never moved says nothing about
+whether the plan went out. Anything neither record accounts for is reported as the
+commit it is, so neither a stray session's plan-shaped commit nor a human's rejection of the design can publish one.
+
+The second write is the park's, and it
+carries `discussion_plan_path`, `branch`, `pr_number`, `discussion_plan_sha` (the two records implementing tells a
+design from a build by, so its merged-PR terminal does not read a plan being agreed to as work having landed: the path
+answers while it stands, whatever the humans' own edits did to that PR's head, and the commit answers past the handoff
+that retires it — which is why that handoff re-reads the PR and records the head it is on THEN, and brings the
+developer's checkout onto it, rather than leaving the developer on a design its reviewers have moved past), the
+round anchor moved onto the published tip, and the retired
+marker, alongside the `pr_opened` event emitted with `stage="discussion"`. The label stays `discussion` —
+no `validating`, no `documenting`, no `in_review` — and every later tick with that record holds: no agent, no round,
+no write. Moving the anchor is what lets the operator relabel to `workflow:implementing` afterwards: the guard
+measures the branch against it, so an anchor left behind would convict the branch of the commit this stage just
+published.
 
 ### Tracked-repos awareness in working-agent prompts
 
@@ -175,8 +254,9 @@ Shape of the block:
   disclosure analysis.
 - The framing is deliberately **stage-neutral**: it says only that the sibling checkouts are read-only references and
   explicitly defers the question of whether the agent may write in its *own* working directory to the surrounding stage
-  prompt. So the same block is safe in both the write-granting prompts (implementer / documentation) and the read-only
-  prompts (reviewer / decomposer / question / discussion).
+  prompt. So the same block is safe in the write-granting prompts (implementer / documentation), in the read-only ones
+  (reviewer / decomposer / question), and in the discussion prompts, whose single write a human's confirmation
+  unlocks — none of them widens what the surrounding prompt granted.
 
 Which prompts carry it (every builder below lives in `workflow/engine/prompts.py`):
 

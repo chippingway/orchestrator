@@ -1,6 +1,14 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""A real bare remote and worker drivers for the creation smoke test."""
+"""A real bare remote plus the worlds and drivers the creation tests run in.
+
+`_RealGitWorktreeRepo` is the shared floor: a bare remote, a clone of it as
+`target_root`, and the token-bearing fetch redirected at that path.
+`_AmendedPlanRepo` builds the one shape the plan handoff faces on top of it --
+a per-issue checkout on the plan this orchestrator published, and a different
+head on the remote, committed from a second clone the way a reviewer's own edit
+to a plan PR arrives.
+"""
 
 from __future__ import annotations
 
@@ -14,14 +22,25 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git import authentication, locks
-from orchestrator.git.worktrees import creation
+from orchestrator.git.worktrees import creation, paths
 
 from tests.git.concurrency_test_support import _start_and_join
 
 GIT_COMMAND = "git"
+QUIET_FLAG = "--quiet"
+MESSAGE_FLAG = "-m"
 BASE_BRANCH = "main"
 ORIGIN_REMOTE = "origin"
+GIT_PUSH = "push"
 REAL_GIT_TIMEOUT_SECONDS = 30.0
+PLAN_PATH = "plans/the-plan.md"
+PUBLISHED_PLAN_TEXT = "# the plan, as this orchestrator published it\n"
+AMENDED_PLAN_TEXT = "# the plan, as its reviewers left it\n"
+REVIEWER_CLONE = "reviewer"
+MERGED_CLONE = "merged"
+MERGE_MESSAGE = "merge the plan"
+AUTHOR_NAME = "Dev"
+AUTHOR_EMAIL = "dev@example.com"
 
 
 def _run_git(
@@ -43,15 +62,52 @@ def _run_git(
     return git_result.stdout
 
 
-def _local_fetch(spec, branch):
-    """Stand in for the token-bearing fetch against a file:// remote."""
-    return subprocess.run(
-        [GIT_COMMAND, "fetch", "--quiet", spec.remote_name, branch],
-        cwd=str(spec.target_root),
-        capture_output=True,
-        text=True,
-        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
-    )
+def _author_env() -> dict:
+    """The identity every commit these worlds are built from is made under.
+
+    Passed per invocation rather than configured in each repository: a clone
+    made here inherits nothing, and a commit with no identity fails outright.
+    """
+    return {
+        "GIT_AUTHOR_NAME": AUTHOR_NAME,
+        "GIT_AUTHOR_EMAIL": AUTHOR_EMAIL,
+        "GIT_COMMITTER_NAME": AUTHOR_NAME,
+        "GIT_COMMITTER_EMAIL": AUTHOR_EMAIL,
+    }
+
+
+class _LocalTransport:
+    """The two token-bearing reads, redirected at a file:// remote.
+
+    Both keep the signatures the creators call them by, since they are
+    installed on the owner that defines them: all that changes is that the URL
+    is a path this test built rather than a host a token opens. Instance
+    methods rather than free functions so the pair travels together, and one
+    instance is enough -- neither of them holds anything.
+    """
+
+    def fetch(self, spec, branch):
+        """Fetch one branch into the clone, reporting failure as git does."""
+        return subprocess.run(
+            [GIT_COMMAND, "fetch", "--quiet", spec.remote_name, branch],
+            cwd=str(spec.target_root),
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        )
+
+    def tip(self, spec, worktree, branch):
+        """What the remote says that branch is at, or `""` when it has none.
+
+        The third answer the real read gives -- `None` for a read that could
+        not be taken -- is left to the test that wants one to patch in.
+        """
+        listed = _run_git(
+            "ls-remote", ORIGIN_REMOTE, f"refs/heads/{branch}",
+            cwd=spec.target_root,
+        )
+        first_line = (listed or "").split("\n")[0].strip()
+        return first_line.split()[0] if first_line else ""
 
 
 class _RealGitWorktreeRepo:
@@ -75,6 +131,9 @@ class _RealGitWorktreeRepo:
         self._seed_initial_commit()
         self._patch_runtime(test_case)
 
+    def head_of(self, checkout: Path) -> str:
+        return _run_git("rev-parse", "HEAD", cwd=checkout).strip()
+
     def _initialize_remote(self) -> None:
         subprocess.run(
             [GIT_COMMAND, "init", "--bare", "-b", BASE_BRANCH, str(self._remote)],
@@ -88,22 +147,29 @@ class _RealGitWorktreeRepo:
         )
 
     def _seed_initial_commit(self) -> None:
-        author_env = {
-            "GIT_AUTHOR_NAME": "Dev",
-            "GIT_AUTHOR_EMAIL": "dev@example.com",
-            "GIT_COMMITTER_NAME": "Dev",
-            "GIT_COMMITTER_EMAIL": "dev@example.com",
-        }
         (self._work / "README.md").write_text("hello\n")
         _run_git("add", ".", cwd=self._work)
         _run_git(
             "commit",
-            "-m",
+            MESSAGE_FLAG,
             "initial",
             cwd=self._work,
-            env_extra=author_env,
+            env_extra=_author_env(),
         )
-        _run_git("push", ORIGIN_REMOTE, BASE_BRANCH, cwd=self._work)
+        _run_git(GIT_PUSH, ORIGIN_REMOTE, BASE_BRANCH, cwd=self._work)
+
+    def _commit_plan(self, checkout: Path, text: str) -> str:
+        """Write the plan in `checkout`, commit it, and return the new SHA."""
+        plan = checkout / PLAN_PATH
+        plan.parent.mkdir(parents=True, exist_ok=True)
+        plan.write_text(text)
+        _run_git("add", "-A", cwd=checkout)
+        _run_git(
+            "commit", QUIET_FLAG, MESSAGE_FLAG, PLAN_PATH,
+            cwd=checkout,
+            env_extra=_author_env(),
+        )
+        return self.head_of(checkout)
 
     def _patch_runtime(self, test_case) -> None:
         worktrees_patch = patch.object(
@@ -114,12 +180,142 @@ class _RealGitWorktreeRepo:
         fetch_patch = patch.object(
             authentication,
             "_authed_target_fetch",
-            side_effect=_local_fetch,
+            side_effect=_LocalTransport().fetch,
         )
-        worktrees_patch.start()
-        fetch_patch.start()
-        test_case.addCleanup(worktrees_patch.stop)
-        test_case.addCleanup(fetch_patch.stop)
+        tip_patch = patch.object(
+            authentication,
+            "_remote_branch_tip",
+            side_effect=_LocalTransport().tip,
+        )
+        for runtime_patch in (worktrees_patch, fetch_patch, tip_patch):
+            runtime_patch.start()
+            test_case.addCleanup(runtime_patch.stop)
+
+
+class _AmendedPlanRepo(_RealGitWorktreeRepo):
+    """A published plan in the issue's checkout, an amended one on the remote.
+
+    `plant` leaves the world the handoff meets: the per-issue worktree sits on
+    the commit the orchestrator pushed, and the branch's remote head is a later
+    commit this clone has never fetched -- which is what a human correcting the
+    Markdown on the plan PR, or merging the base into it, really leaves behind.
+    """
+
+    def plant(self, test_case, issue_number: int, branch: str) -> None:
+        self.prepare(test_case)
+        self.worktree = paths._worktree_path(self.spec, issue_number)
+        self.worktree.parent.mkdir(parents=True, exist_ok=True)
+        _run_git(
+            "worktree", "add", QUIET_FLAG, "-b", branch,
+            str(self.worktree), BASE_BRANCH, cwd=self._work,
+        )
+        self.published = self._commit_plan(self.worktree, PUBLISHED_PLAN_TEXT)
+        _run_git(
+            GIT_PUSH, QUIET_FLAG, ORIGIN_REMOTE, branch, cwd=self.worktree,
+        )
+        self.amended = self._amend_from_a_second_clone(branch)
+
+    def delete_on_remote(self, branch: str) -> None:
+        """Drop the branch from the remote, the way a merged PR's deletion does.
+
+        The local ref and its checkout stay exactly where they were, which is
+        the shape the handoff meets: a head it cannot fetch, and nothing left on
+        that branch for anything to overwrite.
+        """
+        _run_git(
+            GIT_PUSH, QUIET_FLAG, ORIGIN_REMOTE, "--delete", branch,
+            cwd=self._work,
+        )
+
+    def merge_into_base(self, branch: str) -> str:
+        """Land the branch on the remote's base, and say where that put it.
+
+        From the reviewers' own clone for the same reason their amendment is
+        made there: what THIS clone's `<remote>/<base>` names has to stay the
+        base as it stood before the merge, which is what a host that has not
+        fetched since really holds -- and on that base the plan does not exist.
+        """
+        reviewer = self._tmpdir / REVIEWER_CLONE
+        _run_git("checkout", QUIET_FLAG, BASE_BRANCH, cwd=reviewer)
+        _run_git(
+            "merge", QUIET_FLAG, "--no-ff", MESSAGE_FLAG, MERGE_MESSAGE, branch,
+            cwd=reviewer, env_extra=_author_env(),
+        )
+        _run_git(GIT_PUSH, QUIET_FLAG, ORIGIN_REMOTE, BASE_BRANCH, cwd=reviewer)
+        return self.head_of(reviewer)
+
+    def delete_local_branch(self, branch: str) -> None:
+        """Drop the local ref, leaving only what was fetched beside it."""
+        _run_git("branch", "-D", branch, cwd=self._work)
+
+    def remove_worktree(self) -> None:
+        """Drop the checkout, the way a host restart or a cleanup would."""
+        _run_git(
+            "worktree", "remove", "--force", str(self.worktree),
+            cwd=self._work,
+        )
+
+    def branch_tip(self, branch: str) -> str:
+        return _run_git(
+            "rev-parse", f"refs/heads/{branch}", cwd=self._work,
+        ).strip()
+
+    def _amend_from_a_second_clone(self, branch: str) -> str:
+        """Put a later commit on the branch's remote head, from elsewhere.
+
+        A second clone rather than this one, so the amendment exists only where
+        the humans made it: on the remote. Committing it here would leave the
+        local branch already carrying it and there would be nothing to fetch.
+        """
+        reviewer = self._tmpdir / REVIEWER_CLONE
+        _run_git(
+            "clone", QUIET_FLAG, "--branch", branch,
+            str(self._remote), str(reviewer), cwd=self._tmpdir,
+        )
+        amended = self._commit_plan(reviewer, AMENDED_PLAN_TEXT)
+        _run_git(GIT_PUSH, QUIET_FLAG, ORIGIN_REMOTE, branch, cwd=reviewer)
+        return amended
+
+
+class _MergedPlanRepo(_RealGitWorktreeRepo):
+    """A plan that merged, whose branch the remote no longer has.
+
+    The lifecycle a fresh host meets: the issue still records the PR, so every
+    tick routes to the PR-aware creator, and neither the local branch nor the
+    remote one exists any more. Both the branch and its merge are made in a
+    second clone, so the clone the creators run in has never seen that ref.
+    """
+
+    def base_tip(self) -> str:
+        """What the clone's remote-tracking base ref points at right now."""
+        return _run_git(
+            "rev-parse", f"refs/remotes/{ORIGIN_REMOTE}/{BASE_BRANCH}",
+            cwd=self._work,
+        ).strip()
+
+    def plant(self, test_case, branch: str, *, deleted: bool = True) -> None:
+        self.prepare(test_case)
+        scratch = self._tmpdir / MERGED_CLONE
+        _run_git(
+            "clone", QUIET_FLAG, str(self._remote), str(scratch),
+            cwd=self._tmpdir,
+        )
+        _run_git("checkout", QUIET_FLAG, "-b", branch, cwd=scratch)
+        self._commit_plan(scratch, PUBLISHED_PLAN_TEXT)
+        _run_git(GIT_PUSH, QUIET_FLAG, ORIGIN_REMOTE, branch, cwd=scratch)
+        _run_git("checkout", QUIET_FLAG, BASE_BRANCH, cwd=scratch)
+        _run_git(
+            "merge", QUIET_FLAG, "--no-ff", MESSAGE_FLAG, MERGE_MESSAGE, branch,
+            cwd=scratch, env_extra=_author_env(),
+        )
+        _run_git(
+            GIT_PUSH, QUIET_FLAG, ORIGIN_REMOTE, BASE_BRANCH, cwd=scratch,
+        )
+        if deleted:
+            _run_git(
+                GIT_PUSH, QUIET_FLAG, ORIGIN_REMOTE, "--delete", branch,
+                cwd=scratch,
+            )
 
 
 class _EnsureRecorder:

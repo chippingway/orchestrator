@@ -3,12 +3,14 @@
 """The four ways an opening round ends somewhere other than a design.
 
 A timeout and a silent exit are the agent failing to say anything; commits and
-a dirty tree are it saying something by doing, which this stage does not allow
--- a discussion that starts editing has skipped the human confirmation the
-whole stage waits for. All four park awaiting a human with their own reason, so
-an operator reading pinned state can tell which happened, and all four keep the
-worktree, because in every one of them there is something on disk worth
-looking at.
+a dirty tree are it saying something by doing. The one write this stage allows
+is the agreed plan on its own path, so a round that committed anything else --
+or left edits loose beside it -- publishes nothing, and an opening round has by
+definition no confirmation behind it yet. All four park awaiting a human with
+their own reason, so an operator reading pinned state can tell which happened,
+and all four keep the worktree, because in every one of them there is something
+on disk worth looking at. What a commit that IS the plan earns instead is in
+`test_publication.py`.
 """
 
 from __future__ import annotations
@@ -30,8 +32,8 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
     MOVED_HEAD,
-    PARK_DISCUSSION_COMMITS,
     PARK_DISCUSSION_DIRTY,
+    PARK_DISCUSSION_PLAN_INVALID,
 )
 from tests.workflow.stages.discussion.discussion_test_support import (
     PARK_DISCUSSION_RESPONSE,
@@ -43,6 +45,7 @@ from tests.workflow.stages.discussion.discussion_test_support import (
 from tests.workflow.stages.discussion.discussion_test_support import (
     HEAD_BEFORE_ROUND,
     KEY_ROUND_SHA,
+    PARK_DISCUSSION_UNREADABLE,
     _dirty_files,
     _seed_discussion,
 )
@@ -53,7 +56,10 @@ _DIRTY_ISSUE_NUMBER = 922
 _SILENT_ISSUE_NUMBER = 923
 _INTERRUPTED_COMMITS_ISSUE_NUMBER = 924
 _INHERITED_COMMITS_ISSUE_NUMBER = 925
+_UNREADABLE_HEAD_ISSUE_NUMBER = 926
 _AGENT_STDERR = "backend refused the session"
+_UNREADABLE_HEAD = "`HEAD` could not be read"
+_CODE_PATH = "orchestrator/workflow/stages/discussion/handler.py"
 _LAST_SHOWN_FILE = DIRTY_DISPLAY_LIMIT - 1
 
 
@@ -81,6 +87,9 @@ class DiscussionParkTest(unittest.TestCase, _DiscussionWorkflowMixin):
         self.assertNotIn("half a thought", body)
 
     def test_commits_park_before_the_response(self) -> None:
+        # An opening round has no confirmation behind it, so whatever it
+        # committed is not a plan anyone agreed to -- and the branch changes
+        # nothing the publication check permits either way.
         gh, issue = _seed_discussion(_COMMITS_ISSUE_NUMBER)
 
         mocks = self._run_discussion(
@@ -91,11 +100,16 @@ class DiscussionParkTest(unittest.TestCase, _DiscussionWorkflowMixin):
                 last_message=DISCUSSION_RESPONSE,
             ),
             head_shas=MOVED_HEAD,
+            committed_paths=(_CODE_PATH,),
         )
 
         body = self._assert_parked(
-            gh, mocks, issue.number, PARK_DISCUSSION_COMMITS,
+            gh, mocks, issue.number, PARK_DISCUSSION_PLAN_INVALID,
         )
+        # The refusal quotes what the branch actually changed, so an operator
+        # can see how far the round got without opening the worktree.
+        self.assertIn(f"- `{_CODE_PATH}`", body)
+        self.assertIn(self.plan_path(issue.number), body)
         # What it wrote outranks what it said: the analysis is not published
         # as a design when the agent has already started building one.
         self.assertNotIn(DISCUSSION_RESPONSE, body)
@@ -187,7 +201,9 @@ class DiscussionParkTest(unittest.TestCase, _DiscussionWorkflowMixin):
             head_shas=MOVED_HEAD,
         )
 
-        self._assert_parked(gh, mocks, issue.number, PARK_DISCUSSION_COMMITS)
+        self._assert_parked(
+            gh, mocks, issue.number, PARK_DISCUSSION_PLAN_INVALID,
+        )
 
     def _assert_parked(self, gh, mocks, issue_number: int, reason: str) -> str:
         self.assert_nothing_published(gh, mocks)
@@ -199,6 +215,42 @@ class DiscussionParkTest(unittest.TestCase, _DiscussionWorkflowMixin):
         _, body = gh.posted_comments[0]
         self.assertIn(config.HITL_MENTIONS, body)
         return body
+
+
+class DiscussionUnreadableRoundTest(
+    unittest.TestCase, _DiscussionWorkflowMixin,
+):
+    """A finished round whose checkout will not say what it did."""
+
+    def test_a_head_that_would_not_read_parks(self) -> None:
+        # One transient failure between two good reads is the whole of it: the
+        # round opened on a tip, `rev-parse` failed once afterwards, and the
+        # tip is back by the time anything else asks. Empty compares unequal to
+        # what the round opened on, so that single failure reads as a commit --
+        # and the plan-shaped commit the branch arrived carrying goes onto a
+        # pull request attributed to a session that wrote nothing at all.
+        gh, issue = _seed_discussion(_UNREADABLE_HEAD_ISSUE_NUMBER)
+
+        mocks = self._run_discussion(
+            gh,
+            issue,
+            run_agent=_agent(
+                session_id=DISCUSSION_SESSION, last_message=DISCUSSION_RESPONSE,
+            ),
+            head_shas=(HEAD_BEFORE_ROUND, "", HEAD_BEFORE_ROUND),
+            committed_paths=(self.plan_path(_UNREADABLE_HEAD_ISSUE_NUMBER),),
+        )
+
+        mocks[RUN_AGENT].assert_called_once()
+        self.assert_nothing_published(gh, mocks)
+        pinned_data = gh.pinned_data(issue.number)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_UNREADABLE,
+        )
+        # And the tree is left exactly as the round left it, since what an
+        # operator has to look at is why git could not be asked about it.
+        self.assert_worktree_preserved(mocks)
+        self.assertIn(_UNREADABLE_HEAD, gh.posted_comments[0][1])
 
 
 if __name__ == "__main__":

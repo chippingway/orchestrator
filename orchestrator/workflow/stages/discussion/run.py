@@ -9,13 +9,24 @@ later round of the same conversation, look at the tree the discussion actually
 read. Nothing here tears it down for that reason, and a resumed round reuses
 the tree its predecessor left rather than rebuilding one over it.
 
-Reusing that tree is why every probe here exists. `_stranded_dirty_files` runs
-BEFORE the checkout is prepared, because preparing it force-removes a dirty
-tree that carries no commits and wiping it would destroy the only evidence an
-operator has. Which restorer prepares it is decided by `pr_number`: once a PR
-is open, the branch under discussion is the one it is open against, and a
-pruned local ref has to come back from the PR head rather than from the base
-branch. `_head_sha` is read after the checkout is settled and
+Reusing that tree is why every probe here exists. `_stranded_worktree_state`
+runs BEFORE the checkout is prepared, because preparing it force-removes a
+dirty tree that carries no commits and wiping it would destroy the only
+evidence an operator has -- and it reports whether git could be asked at all,
+since a probe that never ran answers with the same emptiness a clean tree does
+and the step behind it does not wait for proof. It is also asked before the
+anchor comparison rather than after it, because that comparison's own `HEAD`
+read can fail: unresolvable, it comes back empty and compares unequal to every
+anchor, so a checkout nothing has established anything about would answer "a
+round committed here" -- and a publication is what follows that answer.
+
+Which restorer prepares it is decided by what may be on the
+remote: once a PR is open, the branch under discussion is the one it is open
+against, and a pruned local ref has to come back from the PR head rather than
+from the base branch. A publication in flight says the same thing before there
+is a `pr_number` to read it off -- the marker is written before the push and
+the number only after the PR -- so that window is settled by asking the remote
+whether the branch is there. `_head_sha` is read after the checkout is settled and
 before the spawn, because the branch may already carry commits from a stage the
 issue passed through before an operator relabeled it here; a base-relative
 probe would read those as this round's work and park the agent for something it
@@ -46,8 +57,11 @@ behind -- and the next round resumes the last one that was actually published.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+from typing import Optional
 
+from orchestrator.git import authentication as _authentication
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import (
     creation as _worktree_creation,
@@ -59,11 +73,27 @@ from orchestrator.workflow.stages.discussion import models as _models
 from orchestrator.workflow.stages.discussion import session as _session
 from orchestrator.workflow.stages.discussion import state as _state
 
+log = logging.getLogger("orchestrator.workflow")
 
-def _stranded_dirty_files(
+
+# What a checkout the round is free to open over reports: read, and holding
+# nothing. It is also the answer for a directory that is not there at all --
+# nothing to preserve, and no probe that could have failed to say so -- and the
+# reading a caller hands the blocked-resume park when what blocks it is a
+# commit rather than anything in the tree.
+_CLEAN_TREE = _verification_probes._WorktreeStatus(readable=True)
+
+# What a checkout that could not answer for itself reports, whichever of
+# the two reads failed: a tree `git status` could not report on and a
+# `HEAD` that would not resolve are both checkouts nothing here has
+# established anything about, and the callers hold on either.
+_UNREADABLE_TREE = _verification_probes._WorktreeStatus(readable=False)
+
+
+def _stranded_worktree_state(
     run: _models._DiscussionRun,
-) -> tuple[str, ...]:
-    """Uncommitted paths the checkout carried before this round opened.
+) -> _verification_probes._WorktreeStatus:
+    """What the checkout was holding before this round could open, if anything.
 
     Every park this stage writes suppresses the next tick, so work waiting in
     the tree at the top of a discussion tick came either from a round that died
@@ -71,14 +101,30 @@ def _stranded_dirty_files(
     relabeled out of. Reading it here -- ahead of the `_ensure_worktree` that
     would force-remove exactly that tree -- is what lets the caller preserve it
     instead of recreating over it.
+
+    The STATUS form of the read rather than the path list, because what follows
+    a clean answer is destructive. The list form maps its own failure to "no
+    paths", which is exactly what a clean tree reports, so a `git status` that
+    could not run -- a corrupt index, a half-removed directory -- would read as
+    a tree with nothing in it worth keeping and be force-removed before an
+    operator ever saw why it failed. A tree nothing proved empty is not empty,
+    and the post-round checks lean on this one having proved it.
+
+    It is asked BEFORE the anchor comparison beside it for the same reason. An
+    unresolvable `HEAD` comes back as the empty string and compares unequal to
+    every anchor there is, so that comparison read on an unproven checkout
+    answers "a round committed here" -- and what follows that answer is a
+    publication. A checkout `git status` could not report on is the shape a
+    broken one really takes, and holding it here is what keeps the comparison
+    from being asked of it at all.
     """
     worktree = _worktree_paths._worktree_path(run.spec, run.issue.number)
     if not worktree.exists():
-        return ()
-    return tuple(_verification_probes._worktree_dirty_files(worktree))
+        return _CLEAN_TREE
+    return _verification_probes._worktree_status(worktree)
 
 
-def _round_anchor_moved(run: _models._DiscussionRun) -> bool:
+def _round_anchor_moved(run: _models._DiscussionRun) -> Optional[bool]:
     """True when the checkout no longer sits where the last round opened it.
 
     The anchor is what makes this answerable: it is written before the spawn
@@ -100,6 +146,14 @@ def _round_anchor_moved(run: _models._DiscussionRun) -> bool:
     here from a PR stage has a branch ahead of base whatever this stage did, and
     an issue pinned to a legacy branch has a slug-namespaced ref beside it whose
     unchanged tip says nothing about where the round actually ran.
+
+    A `HEAD` that could not be read is neither, which is why the answer has a
+    third value. It comes back empty, and empty compares unequal to every
+    anchor there is -- so read as a move it would put the commit the branch
+    already carried onto a pull request in this stage's name, attributed to a
+    round that wrote nothing; read as a match it would open a round in a
+    checkout nothing has established anything about, recreating it over
+    whatever is there. `None` says so, and the caller holds.
     """
     anchor = run.state.get(_state._ROUND_SHA)
     if not anchor:
@@ -107,7 +161,10 @@ def _round_anchor_moved(run: _models._DiscussionRun) -> bool:
     worktree = _worktree_paths._worktree_path(run.spec, run.issue.number)
     if not worktree.exists():
         return _recorded_branch_moved(run, str(anchor))
-    return _verification_probes._head_sha(worktree) != str(anchor)
+    head = _verification_probes._head_sha(worktree)
+    if not head:
+        return None
+    return head != str(anchor)
 
 
 def _recorded_branch_moved(run: _models._DiscussionRun, anchor: str) -> bool:
@@ -136,16 +193,49 @@ def _ensure_round_worktree(run: _models._DiscussionRun, branch: str) -> Path:
     carrying, so the relabel guard would later vouch for it.
 
     `_ensure_pr_worktree` anchors the same restore on `<remote>/<branch>`
-    instead. That ref only exists once a PR has been pushed, so `pr_number` is
-    what the choice is made on rather than the ref being probed for.
+    instead, which is where the commits an issue has already published live.
     """
-    if run.state.get(_state._PR_NUMBER) is None:
-        return _worktree_creation._ensure_worktree(
+    if _publication_on_the_remote(run, branch):
+        return _worktree_creation._ensure_pr_worktree(
             run.spec, run.issue.number, branch=branch,
         )
-    return _worktree_creation._ensure_pr_worktree(
+    return _worktree_creation._ensure_worktree(
         run.spec, run.issue.number, branch=branch,
     )
+
+
+def _publication_on_the_remote(
+    run: _models._DiscussionRun, branch: str,
+) -> bool:
+    """True when this issue's branch may carry commits only the remote has.
+
+    A recorded `pr_number` is the settled case: the issue is discussed on the
+    branch that PR is open against, and rebuilding from `<remote>/<base>` would
+    hand the round a tree with the PR's commits missing.
+
+    A publication in flight is the unsettled one, and it is why this is not
+    decided on `pr_number` alone. The marker is written durably BEFORE the
+    push, and the PR number only after the PR is open, so a tick that died in
+    between leaves an issue whose plan is pushed and whose PR is open with
+    nothing pinned pointing at either. Lose the worktree and the local ref as
+    well -- a host restart, an operator's cleanup, a fresh clone -- and a
+    base-anchored restore would rebuild the branch without the published
+    commit, refuse the publication it cannot find, and leave the conversation
+    free to open another round over the top of a PR nobody retired.
+
+    So the remote is asked, and only for the tick that has a marker standing.
+    An answer of "no such branch" is the push that never landed, which the base
+    restore is right for; an answer nobody could give is not absence, and
+    reading it as one would rebuild over a plan that may well be published.
+    """
+    if run.state.get(_state._PR_NUMBER) is not None:
+        return True
+    if not run.state.get(_state._PUBLISHING_SHA):
+        return False
+    remote_tip = _authentication._remote_branch_tip(
+        run.spec, run.spec.target_root, branch,
+    )
+    return remote_tip != ""
 
 
 def _open_round_checkout(
@@ -165,6 +255,29 @@ def _open_round_checkout(
     statement about the checkout this just settled: the branch it resolved and
     the tip that branch was at once the tree was in hand. Both are read back
     by a later tick as one record, so neither is written without the other.
+
+    The base goes with them, and it is read from the remote rather than off
+    the local `<remote>/<base>` ref: that ref lives in the object store this
+    worktree shares with the agent about to run in it, so an agent could move
+    it onto its own code commit and have the publication check measure the
+    plan against that. What the remote says cannot be rewritten from here --
+    and what is recorded is an id this clone can still read, since the diff
+    that spends it is local and a base the store lacks would fail it.
+
+    The session pin goes with them, in the one direction knowable before the
+    spawn: a resumed round keeps the id it is resuming, and a round resuming
+    nothing drops whatever was there, because the conversation it opens has no
+    id yet and the previous one's would otherwise be what a publication
+    recovered from a crash here named.
+
+    The open flag goes with them too, and it is what a RESUMED round would
+    otherwise have no way to say. An opening round leaves the issue unparked,
+    so an anchor found on an unparked issue already means "a round opened and
+    never reported"; a resumed one runs with the previous park still durable,
+    where that reading is unavailable -- a commit under a park is somebody
+    else's until something says a round of this stage was in flight. Without
+    it, a resumed round that wrote the agreed plan and was then paused or cut
+    short would be reported to the humans as a violation to reset away.
     """
     branch = _worktree_paths._resolve_branch_name(
         run.state, run.spec, run.issue.number,
@@ -178,7 +291,77 @@ def _open_round_checkout(
     head_before = _verification_probes._head_sha(worktree)
     run.state.set(_state._ROUND_BRANCH, branch)
     run.state.set(_state._ROUND_SHA, head_before)
+    run.state.set(_state._ROUND_OPEN, True)
+    run.state.set(_state._BASE_SHA, _pinned_base_sha(run, worktree))
+    if not resumed and run.state.get(_state._DISCUSSION_SESSION_KEY):
+        # A round that resumes nothing opens a NEW conversation, and the id it
+        # will be known by does not exist yet. Dropping the pin before the
+        # spawn is what stops a round cut short from leaving the PREVIOUS
+        # round's id standing beside this one's commit: a publication
+        # recovered from that would name a conversation that never saw the
+        # plan it was publishing.
+        run.state.set(_state._DISCUSSION_SESSION_KEY, None)
+    # Any publication still marked in flight is superseded here. A round only
+    # opens on a tree back at the anchor, so the commit such a marker names is
+    # one the operator has already reset away; left standing, it would refuse
+    # to publish whatever THIS round goes on to commit for not being it.
+    run.state.set(_state._PUBLISHING_SHA, None)
     return worktree, head_before
+
+
+def _pinned_base_sha(run: _models._DiscussionRun, worktree: Path) -> str:
+    """The base commit this round's work will be measured against.
+
+    Read once, before the agent can touch anything, and recorded so the tick
+    that publishes measures against the same commit even when it is a later
+    one recovering a round that never reported. An unanswerable read is stored
+    as no base at all, which the publication check refuses on: a diff has to
+    have two ends the agent did not choose.
+
+    What the remote NAMES is only half of what that record has to be worth. The
+    check that spends it is a local diff, and the base branch moves on its own:
+    the tick fetches it once at the top, and this read can happen long after --
+    a handler waits its turn in the scheduler, and every round of a long
+    conversation asks again. An id this clone does not hold makes that diff
+    fail, and a failed diff comes back as no paths at all, which is the same
+    answer a branch that changes nothing gives. A plan written exactly as asked
+    would be refused for a race nobody here lost.
+
+    So the OBJECT is required, not just the name. One fetch of the base brings
+    whatever the remote has now and every ancestor with it, which is where a
+    tip read moments ago lives, and only an id the store then really holds is
+    pinned. One still missing after that is a base this round cannot be judged
+    against -- the remote rewrote it, or the fetch could not run -- and
+    recording it anyway would spend the round on a reading nobody could take.
+    """
+    base_sha = _authentication._remote_branch_tip(
+        run.spec, worktree, run.spec.base_branch,
+    ) or ""
+    if not base_sha or _base_object_available(run, worktree, base_sha):
+        return base_sha
+    log.warning(
+        "issue=#%s base %s of %s is not in the local object store even after "
+        "a fetch; the round opens with no base to be measured against",
+        run.issue.number, base_sha, run.spec.base_branch,
+    )
+    return ""
+
+
+def _base_object_available(
+    run: _models._DiscussionRun, worktree: Path, base_sha: str,
+) -> bool:
+    """True when the pinned base is readable here, fetching once if it is not.
+
+    The fetch lands in `target_root`, whose object store this linked worktree
+    shares, so what it brings is readable from the checkout the diff will be
+    taken in. Its exit status is deliberately not the answer: a fetch that
+    reported success without bringing this commit leaves the caller in exactly
+    the position a failed one does, so the store is asked again either way.
+    """
+    if _verification_probes._commit_present(worktree, base_sha):
+        return True
+    _authentication._authed_target_fetch(run.spec, run.spec.base_branch)
+    return _verification_probes._commit_present(worktree, base_sha)
 
 
 def _open_discussion_round(
@@ -191,12 +374,14 @@ def _open_discussion_round(
     batch with nothing in it never earns a round at all.
 
     The spec and the anchor are written before the spawn because they are what
-    a round that never comes back is judged by. The consumed watermark is
+    a round that never comes back is judged by, and the checkout record beside
+    them carries the session this round runs under for the same reason. The
+    consumed watermark is
     deliberately not in that write: a round that never comes back is replayed,
     and it has to be replayed against the same replies rather than against an
     answer already recorded as read. It is staged after it instead, beside the
-    session id, so both reach GitHub only with the park that reports what the
-    round made of them.
+    session id the spawn hands back, so both reach GitHub only with the park
+    that reports what the round made of them.
 
     Both round shapes stage one, and each over what its OWN prompt read: a
     resume over the batch it quotes, a full-context round over the thread it

@@ -28,8 +28,9 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     HEAD_AFTER_COMMIT,
     HEAD_BEFORE_ROUND,
     KEY_ROUND_BRANCH,
+    KEY_ROUND_OPEN,
     KEY_ROUND_SHA,
-    PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_PLAN_INVALID,
 )
 from tests.workflow.stages.discussion.discussion_test_support import (
     BRANCH_TIP_SHA,
@@ -84,7 +85,9 @@ class DiscussionMissingWorktreeRecoveryTest(
 
         mocks[RUN_AGENT].assert_not_called()
         pinned_data = gh.pinned_data(issue.number)
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_COMMITS)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_INVALID,
+        )
         self.assertTrue(pinned_data[KEY_AWAITING_HUMAN])
 
     def test_the_recorded_branch_is_the_one_probed(self) -> None:
@@ -99,6 +102,7 @@ class DiscussionMissingWorktreeRecoveryTest(
             **{
                 KEY_ROUND_BRANCH: anchored_branch,
                 KEY_ROUND_SHA: HEAD_BEFORE_ROUND,
+                KEY_ROUND_OPEN: True,
             },
         )
 
@@ -145,6 +149,7 @@ class DiscussionMissingWorktreeRecoveryTest(
             **{
                 KEY_ROUND_BRANCH: _issue_branch(issue_number),
                 KEY_ROUND_SHA: HEAD_BEFORE_ROUND,
+                KEY_ROUND_OPEN: True,
             },
         )
         return gh, issue

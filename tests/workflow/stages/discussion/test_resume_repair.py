@@ -37,6 +37,7 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     HEAD_BEFORE_ROUND,
     PARK_DISCUSSION_COMMITS,
     PARK_DISCUSSION_DIRTY,
+    PARK_DISCUSSION_UNREADABLE,
 )
 from tests.workflow.stages.discussion.discussion_test_support import (
     RUN_AGENT,
@@ -56,6 +57,8 @@ from tests.workflow.stages.discussion.discussion_resume_test_support import (
 _DIRTIED_ISSUE_NUMBER = 1130
 _COMMITTED_ISSUE_NUMBER = 1131
 _REPAIRED_ISSUE_NUMBER = 1132
+_UNREADABLE_ISSUE_NUMBER = 1133
+_RESET_COMMAND = "reset --hard"
 
 
 class DiscussionBlockedResumeTest(unittest.TestCase, _DiscussionWorkflowMixin):
@@ -79,9 +82,35 @@ class DiscussionBlockedResumeTest(unittest.TestCase, _DiscussionWorkflowMixin):
             gh,
             "uncommitted change(s)",
             f"... ({DIRTY_OVERFLOW_COUNT} more)",
-            f"reset --hard {HEAD_BEFORE_ROUND}",
+            f"{_RESET_COMMAND} {HEAD_BEFORE_ROUND}",
         )
         self._assert_reply_kept(gh, issue, PARK_DISCUSSION_DIRTY)
+
+    def test_an_unreadable_tree_is_reported_once(self) -> None:
+        # The resume side of the same probe. `git status` failed, so its list
+        # form answers with no paths -- the reading a clean tree gives -- and a
+        # round would open on a tree nothing has established anything about.
+        # The report names no reset target, because the read that would have
+        # found one is the thing that failed.
+        gh, issue = _seed_parked_discussion(
+            _UNREADABLE_ISSUE_NUMBER, replies=(_reply(DISCUSSION_REPLY),),
+        )
+
+        with tempfile.TemporaryDirectory() as tree:
+            checkout = Path(tree)
+            mocks = self._blocked_tick(gh, issue, checkout, unreadable=True)
+            self._blocked_tick(gh, issue, checkout, unreadable=True)
+
+        mocks[RUN_AGENT].assert_not_called()
+        # One comment across both ticks: the reason this park leaves is itself
+        # a repair request, so the second reply into the same tree is held
+        # silently -- and a round that had opened would have parked over it.
+        self.assertEqual(len(gh.posted_comments), 1)
+        self._assert_report_names(
+            gh, "could not be read (`git status` or `HEAD` failed)",
+        )
+        self.assertNotIn(_RESET_COMMAND, gh.posted_comments[0][1])
+        self._assert_reply_kept(gh, issue, PARK_DISCUSSION_UNREADABLE)
 
     def test_a_new_commit_is_reported_once(self) -> None:
         gh, issue = _seed_parked_discussion(
@@ -94,14 +123,14 @@ class DiscussionBlockedResumeTest(unittest.TestCase, _DiscussionWorkflowMixin):
                 issue,
                 Path(tree),
                 run_agent=_agent(last_message=UNASKED_ROUND),
-                head_shas=(HEAD_AFTER_COMMIT,),
+                head_shas=(HEAD_AFTER_COMMIT,) * 2,
             )
             repeat_mocks = self._run_discussion_on_worktree(
                 gh,
                 issue,
                 Path(tree),
                 run_agent=_agent(last_message=UNASKED_ROUND),
-                head_shas=(HEAD_AFTER_COMMIT,),
+                head_shas=(HEAD_AFTER_COMMIT,) * 2,
             )
 
         mocks[RUN_AGENT].assert_not_called()
@@ -141,14 +170,20 @@ class DiscussionBlockedResumeTest(unittest.TestCase, _DiscussionWorkflowMixin):
             gh.pinned_data(issue.number)[KEY_LAST_ACTION_COMMENT_ID], REPLY_ID,
         )
 
-    def _blocked_tick(self, gh, issue, worktree: Path):
-        """One tick whose checkout is holding edits it must not lose."""
+    def _blocked_tick(self, gh, issue, worktree: Path, *, unreadable: bool = False):
+        """One tick whose checkout may not be opened on.
+
+        `unreadable` is the other way that happens: the tree holds nothing git
+        could name because git could not be asked, which is the reading the
+        path list cannot tell apart from a clean tree.
+        """
         return self._run_discussion_on_worktree(
             gh,
             issue,
             worktree,
             run_agent=_agent(last_message=UNASKED_ROUND),
-            dirty_files=_dirty_files(),
+            dirty_files=() if unreadable else _dirty_files(),
+            tree_readable=not unreadable,
             head_shas=UNMOVED_HEAD_RESUMED,
         )
 

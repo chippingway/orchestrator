@@ -15,6 +15,13 @@ would end the conversation without advancing it, so what it is asked for is
 the tree redrawn around what those answers settled and the frontier they
 opened up -- and the no-write rule is restated, since an answered design
 question is the moment an agent is likeliest to decide it may now build.
+
+Both carry the plan clause, and both are checked for it. The confirmation can
+land on either -- an opening prompt is also what a round with no session to
+resume is given, however many rounds in that happens -- and the clause has to
+name the same single path, the same "nothing else", and the same "do not push"
+that the publication check enforces, or a plan written to the letter of the
+prompt is refused by the orchestrator that asked for it.
 """
 
 from __future__ import annotations
@@ -33,6 +40,30 @@ _THREAD_TEXT = "@alice: this decides the migration story too"
 _REPLY_AUTHOR = "alice"
 _REPLY_BODY = "1: own it. 2: overruled, keep the shim."
 _REPLY_ID = 4200
+_PLAN_PATH = f"plans/issue-{_PROMPT_ISSUE_NUMBER}.md"
+
+# The one write a confirmed discussion earns, stated in both prompts. Each
+# clause is a bound the orchestrator enforces after the fact: a plan committed
+# with anything beside it is refused whole, so an agent told less than this
+# would lose the round it spent writing it.
+_REQUIRED_PLAN_CLAUSES = (
+    # Only an explicit shared understanding unlocks the write.
+    "understand the design the same way",
+    "Once they have confirmed exactly that -- and only then",
+    # The path, and everything the plan has to carry.
+    f"`{_PLAN_PATH}` and COMMIT that file",
+    "decisions the thread resolved and what each one rules out",
+    "evidence and research behind them",
+    "alternatives you considered and why they lost",
+    "risks and how each would show up",
+    "implementation plan that follows",
+    # Exactly one file, and the orchestrator publishes it.
+    "Commit that ONE file and nothing else",
+    "no code, no configuration, no second plan",
+    "do NOT push it or open a pull request",
+    "publishes it for review itself",
+    "A commit that touches anything else publishes nothing",
+)
 
 # One clause per thing a resumed round has to do that an opening one does not.
 _REQUIRED_FOLLOWUP_CLAUSES = (
@@ -51,6 +82,7 @@ _REQUIRED_FOLLOWUP_CLAUSES = (
     "MUST NOT modify, create, delete, commit, or push any file",
     "MUST NOT start implementing",
     "an answered question is not the confirmation to begin",
+    "Unless the reply above states explicitly",
 )
 
 # One clause per thing the round has to do, quoted from the prompt so a
@@ -74,7 +106,8 @@ _REQUIRED_CLAUSES = (
     # Nothing happens until a human says so.
     "MUST NOT modify, create, delete, commit, or push any file",
     "MUST NOT start implementing",
-    "Wait for a human to confirm the decisions explicitly",
+    "Until a human states explicitly on this thread",
+    "nothing is settled and no work begins",
 )
 
 
@@ -88,10 +121,11 @@ class DiscussionPromptTest(unittest.TestCase):
             ),
             _THREAD_TEXT,
             [_TEST_SPEC],
+            _PLAN_PATH,
         )
 
     def test_every_clause_reaches_the_agent(self) -> None:
-        for clause in _REQUIRED_CLAUSES:
+        for clause in (*_REQUIRED_CLAUSES, *_REQUIRED_PLAN_CLAUSES):
             with self.subTest(clause=clause):
                 self.assertIn(clause, self.prompt)
 
@@ -117,16 +151,19 @@ class DiscussionPromptTest(unittest.TestCase):
 class DiscussionFollowupPromptTest(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.prompt = _prompts._build_discussion_followup_prompt([
-            FakeComment(
-                id=_REPLY_ID,
-                body=_REPLY_BODY,
-                user=FakeUser(_REPLY_AUTHOR),
-            ),
-        ])
+        self.prompt = _prompts._build_discussion_followup_prompt(
+            [
+                FakeComment(
+                    id=_REPLY_ID,
+                    body=_REPLY_BODY,
+                    user=FakeUser(_REPLY_AUTHOR),
+                ),
+            ],
+            _PLAN_PATH,
+        )
 
     def test_every_clause_reaches_the_agent(self) -> None:
-        for clause in _REQUIRED_FOLLOWUP_CLAUSES:
+        for clause in (*_REQUIRED_FOLLOWUP_CLAUSES, *_REQUIRED_PLAN_CLAUSES):
             with self.subTest(clause=clause):
                 self.assertIn(clause, self.prompt)
 

@@ -9,33 +9,41 @@ the agent found for itself, the branches the design could take, and a numbered
 frontier of the questions a human can answer right now, each with a recommended
 answer. Answering by number resumes the same conversation, which redraws the
 tree around what those answers settled and posts the frontier they opened up,
-for as many rounds as the humans keep replying. No branch is pushed, no PR is
-opened, no developer or reviewer is spawned, and the issue leaves only when a
-human relabels or closes it. That "discuss, then wait" contract is the whole
-reason the stage is shaped the way it is -- the agent is told to write nothing
-and decide nothing on its own, and every owner here is arranged so a round that
-acted anyway is caught before it can be published as a design.
+for as many rounds as the humans keep replying. No developer or reviewer is
+spawned, and the issue leaves only when a human relabels or closes it.
+
+The conversation has exactly one artifact, and a human unlocks it. Once one of
+them states on the thread that both sides understand the design the same way,
+the same session writes that understanding into `plans/issue-N.md` and commits
+it, and the stage publishes that commit as a pull request to review -- keeping
+the label, opening no further round, and entering no other stage. Everything
+around that is the shape of the contract: nothing may be written before the
+confirmation, and after it the branch is checked against the base and published
+only when it is that one file and nothing else.
 
 The owners divide by what one tick has to decide. `handler` holds the order --
-a park this stage wrote is the humans' turn and earns a round only once one of
-them replies, a checkout already holding work is preserved rather than run
-over, otherwise the round and then its disposition -- and it is where the stage
-stops: nothing below it reaches another stage. `session` is what keeps a
-conversation on one agent across all of them: the pinned spec and session id a
-round is locked to, the trust filter both the prompt and the consumed watermark
-are drawn through, and the choice between resuming a live session and
-rebuilding the whole conversation for a round that has none to resume. `run` is
-the round itself, opened in the issue's
+a published plan ends the conversation, a park this stage wrote is the humans'
+turn and earns a round only once one of them replies, a checkout already
+holding work is preserved rather than run over, otherwise the round and then
+its disposition -- and it is where the stage stops: nothing below it reaches
+another stage. `session` is what keeps a conversation on one agent across all
+of them: the pinned spec and session id a round is locked to, the trust filter
+both the prompt and the consumed watermark are drawn through, and the choice
+between resuming a live session and rebuilding the whole conversation for a
+round that has none to resume. `run` is the round itself, opened in the issue's
 own `issue-N` worktree, and it owns the probes that bracket the spawn as well
 as the records it stages around it, because both are about telling this round's
 work apart from what the checkout was already carrying. `outcomes` is where the
-no-write contract is enforced: commits and a dirty tree are checked before
-interruption and before the analysis, so an agent that started implementing
-parks on that rather than being read as a design. `parks` is every ending, each
-stamped with the reason the next tick's turn-taking gate reads back. `state`
-and `models` hold the wire keys, the park reasons, and the carriers between
-them, so what a park is called and what a round is identified by are decidable
-without a client.
+write contract is enforced: commits and a dirty tree are checked before
+interruption and before the analysis, so an agent that started implementing is
+judged on what it wrote rather than read as a design. `publication` is what
+that judgement runs: one reading of the branch, the push and the found-or-opened
+PR a publishable plan earns, and the records that reading leaves behind.
+`parks` is every ending, each stamped with the reason the next tick's
+turn-taking gate reads back. `state` and `models` hold the wire keys, the park
+reasons, the plan path both the prompt and the check are drawn from, and the
+carriers between them, so what a park is called and what a round is identified
+by are decidable without a client.
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per issue, and an eager binding here would

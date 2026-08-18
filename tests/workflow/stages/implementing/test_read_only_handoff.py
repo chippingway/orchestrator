@@ -39,6 +39,8 @@ from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     PARK_DISCUSSION_RESPONSE,
     PUSH_BRANCH,
     RUN_AGENT,
+)
+from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     _ReadOnlyRelabelMixin,
     _seed_relabeled_discussion,
 )
@@ -48,6 +50,7 @@ _INTERRUPTED_ISSUE_NUMBER = 996
 _PR_HANDOFF_ISSUE_NUMBER = 997
 _PUBLISHED_ISSUE_NUMBER = 998
 _HANDOFF_PR_NUMBER = 5150
+_IMPLEMENTED = "implemented"
 
 
 class ReadOnlyHandoffTest(
@@ -72,7 +75,7 @@ class ReadOnlyHandoffTest(
             run_agent=_agent(session_id=DEV_SESSION, last_message="which store?"),
             has_new_commits=True,
             branch_tip_sha=HEAD_BEFORE_ROUND,
-            head_shas=(HEAD_BEFORE_ROUND, HEAD_BEFORE_ROUND),
+            head_shas=(HEAD_BEFORE_ROUND,) * 3,
         )
 
         mocks[RUN_AGENT].assert_called_once()
@@ -101,7 +104,7 @@ class ReadOnlyHandoffTest(
             run_agent=_agent(interrupted=True, last_message="cut short"),
             has_new_commits=True,
             branch_tip_sha=HEAD_BEFORE_ROUND,
-            head_shas=(HEAD_BEFORE_ROUND, HEAD_AFTER_COMMIT),
+            head_shas=(HEAD_BEFORE_ROUND, HEAD_BEFORE_ROUND, HEAD_AFTER_COMMIT),
         )
 
         mocks[RUN_AGENT].assert_called_once()
@@ -131,10 +134,10 @@ class ReadOnlyHandoffTest(
             gh,
             issue,
             unpushed_branch=_issue_branch(issue.number),
-            run_agent=_agent(session_id=DEV_SESSION, last_message="implemented"),
+            run_agent=_agent(session_id=DEV_SESSION, last_message=_IMPLEMENTED),
             has_new_commits=True,
             branch_tip_sha=HEAD_BEFORE_ROUND,
-            head_shas=(HEAD_BEFORE_ROUND, HEAD_AFTER_COMMIT),
+            head_shas=(HEAD_BEFORE_ROUND, HEAD_BEFORE_ROUND, HEAD_AFTER_COMMIT),
         )
 
         mocks[RUN_AGENT].assert_called_once()
@@ -164,10 +167,10 @@ class ReadOnlyHandoffTest(
             gh,
             issue,
             unpushed_branch=None,
-            run_agent=_agent(session_id=DEV_SESSION, last_message="implemented"),
+            run_agent=_agent(session_id=DEV_SESSION, last_message=_IMPLEMENTED),
             has_new_commits=[False, True],
             branch_tip_sha=HEAD_BEFORE_ROUND,
-            head_shas=(HEAD_BEFORE_ROUND, HEAD_AFTER_COMMIT),
+            head_shas=(HEAD_BEFORE_ROUND, HEAD_BEFORE_ROUND, HEAD_AFTER_COMMIT),
         )
 
         mocks[ENSURE_PR_WORKTREE].assert_called_once_with(

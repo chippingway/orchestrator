@@ -127,7 +127,7 @@ class DiscussionResumeNoopTest(unittest.TestCase, _DiscussionWorkflowMixin):
                 issue,
                 Path(tree),
                 run_agent=_agent(last_message=UNASKED_ROUND),
-                head_shas=(HEAD_AFTER_COMMIT,),
+                head_shas=(HEAD_AFTER_COMMIT,) * 2,
             )
 
         self._assert_reply_still_waiting(

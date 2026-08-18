@@ -42,6 +42,21 @@ _READ_ONLY_STAGE_LABELS: tuple[str, ...] = (
     str(WorkflowLabel.QUESTION), str(WorkflowLabel.DISCUSSION),
 )
 
+# Every record that freezes a branch on its own, whatever the labels and flags
+# beside it say: the tip a read-only relabel handed over and has not spent, and
+# the two a discussion tick leaves while it is mid-flight. They are spelled here
+# the way every pinned key this module reads is -- what this gate pins down is
+# how the refresh reads state written by stages it never calls into, so a shared
+# constant would let a rename pass unnoticed on the side that has to keep
+# understanding it. The two discussion records do not depend on
+# `awaiting_human`: an opening round leaves the issue unparked by design, so the
+# park read below would never see them.
+_FROZEN_BY_KEYS: tuple[str, ...] = (
+    "read_only_baseline_sha",
+    "discussion_round_open",
+    "discussion_publishing_sha",
+)
+
 
 def _issue_worktree_number(worktree: Path) -> Optional[int]:
     """Return an issue number only for a valid issue worktree directory."""
@@ -69,14 +84,21 @@ def _base_sync_issue(
 def _issue_skips_base_sync(
     issue: Issue, issue_number: int, state: _pinned_state.PinnedState,
 ) -> bool:
-    """Apply dispatcher hard-skips and the read-only stage gate.
+    """Apply dispatcher hard-skips and the conversation stage gate.
 
-    Neither read-only stage ever pushes, so the checkout under one of their
-    labels is something to read rather than work in progress: an inspection
-    target an unsafe park left for an operator, and -- in the discussion
-    stage, which preserves its tree on every exit -- the tree the next round
-    opens on. Rebasing `origin/<base>` over either would rewrite the state
-    someone was parked to look at.
+    Neither conversation stage builds anything in its checkout, so the tree
+    under one of their labels is something to read rather than work in
+    progress: an inspection target an unsafe park left for an operator, and --
+    in the discussion stage, which preserves its tree on every exit -- the tree
+    the next round opens on. Rebasing `origin/<base>` over either would rewrite
+    the state someone was parked to look at.
+
+    The discussion stage does push, once: the plan its humans confirmed, on the
+    branch and at the SHA its own check read. That is the sharper reason to
+    stand down rather than a reason not to. A rebase between that reading and
+    the push would move the branch off the commit that was validated, and the
+    same rebase after publication would move it off the tip the PR is open
+    against and the record vouches for.
 
     The label answers that only while the stage still holds the issue, so the
     park is consulted beside it. An operator's relabel takes the label away a
@@ -87,6 +109,14 @@ def _issue_skips_base_sync(
     anchor, which only hands the next tick the same rebase to redo. The
     checkout therefore stays frozen until the guard's own write clears the
     park, from which tick on the branch syncs normally again.
+
+    A discussion round or publication left in flight freezes the branch on the
+    same terms and without any park at all. Those records are written before
+    the thing they describe, so a tick that died mid-round leaves one standing
+    with `awaiting_human` false -- and the commit it died holding is on the
+    branch. Rebasing over it moves the tip off the anchor its own stage will
+    measure it against, and on a PR-backed issue the PR-aware route would push
+    that rewrite over a plan PR the publication may already have opened.
 
     Clearing the park does not end the freeze, because the guard replaces it
     with `read_only_baseline_sha` -- the tip it certified, which the dev run
@@ -105,10 +135,11 @@ def _issue_skips_base_sync(
             skip_label,
         )
         return True
-    if state.get("read_only_baseline_sha"):
+    held = [key for key in _FROZEN_BY_KEYS if state.get(key)]
+    if held:
         log.debug(
-            "issue=#%d holds an unspent read-only baseline; skipping base sync",
-            issue_number,
+            "issue=#%d holds unspent read-only state (%s); skipping base sync",
+            issue_number, ", ".join(held),
         )
         return True
     park_reason = state.get("park_reason") if state.get("awaiting_human") else None

@@ -45,7 +45,7 @@ from tests.workflow.stages.discussion.discussion_test_support import (
 )
 from tests.workflow.stages.discussion.discussion_test_support import (
     ENSURE_WORKTREE,
-    PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_PLAN_INVALID,
     RUN_AGENT,
     _DiscussionWorkflowMixin,
     _paused_view,
@@ -57,7 +57,9 @@ _BACKLOG_ISSUE_NUMBER = 931
 _INTERRUPTED_ISSUE_NUMBER = 932
 _PAUSED_COMMIT_ISSUE_NUMBER = 933
 _PAUSED_CLEAN_ISSUE_NUMBER = 934
-_MOVED = (HEAD_AFTER_COMMIT,)
+# The recovery tick reads the tip twice: once to see it has moved off the
+# anchor, and once as the tip the publication check would publish.
+_MOVED = (HEAD_AFTER_COMMIT, HEAD_AFTER_COMMIT)
 _UNMOVED = (HEAD_BEFORE_ROUND,)
 
 
@@ -153,7 +155,9 @@ class DiscussionLivePauseTest(unittest.TestCase, _DiscussionWorkflowMixin):
 
     def _assert_commit_named(self, gh, issue_number: int) -> None:
         pinned_data = gh.pinned_data(issue_number)
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_COMMITS)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_INVALID,
+        )
         self.assertTrue(pinned_data[KEY_AWAITING_HUMAN])
         # The anchor outlives the park that reported the commit: it is the
         # only recorded point separating what the agent wrote from what the

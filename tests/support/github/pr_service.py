@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
+from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER
 
 from tests.support.github.pr_helpers import (
@@ -90,6 +91,37 @@ class _PullStatusService:
     pr_has_changes_requested = _pr_has_changes_requested
     pr_combined_check_state = _pr_combined_check_state
 
+    def find_pr_for_commit(
+        self, *, branch: str, base: str, head_sha: str,
+    ) -> Optional[FakePR]:
+        """The PR on this branch carrying `head_sha`, whatever state it is in.
+
+        Searched over every PR the fake holds rather than over the open-PR
+        table beside it, since the whole point of the real lookup is the one a
+        merge has already closed -- and by the commits it carries as well as by
+        its head, since a human pushing to the branch moves one and not the
+        other.
+
+        `unreadable_pr_commits` names the PRs whose commit list GitHub refuses,
+        which the real client answers with `PR_LOOKUP_UNREADABLE` rather than
+        with "does not carry it": the head is still free to match, and only a
+        candidate that had to be asked about its commits and could not be
+        leaves the whole lookup unanswered. `unreadable_pr_lookups` is the same
+        answer one level up -- the enumeration itself failing, which reaches no
+        candidate at all.
+        """
+        if branch in self.unreadable_pr_lookups:
+            return _pull_requests.PR_LOOKUP_UNREADABLE
+        unreadable = False
+        for pull_request in self.pulls.values():
+            carries = self._pr_carries(pull_request, branch, head_sha)
+            if carries:
+                return pull_request
+            unreadable = unreadable or carries is None
+        if unreadable:
+            return _pull_requests.PR_LOOKUP_UNREADABLE
+        return None
+
     def merge_pr(
         self,
         pr: FakePR,
@@ -104,9 +136,25 @@ class _PullStatusService:
         pr.state = _STATE_CLOSED
         return True
 
+    def edit_pr_body(self, pr: FakePR, body: str) -> None:
+        self.edited_pr_bodies.append((pr.number, body))
+        pr.body = body
+
     def delete_remote_branch(self, branch: str) -> bool:
         self.deleted_remote_branches.append(branch)
         return self.delete_remote_branch_returns_ok
+
+    def _pr_carries(
+        self, pr: FakePR, branch: str, head_sha: str,
+    ) -> Optional[bool]:
+        """Whether one PR carries the commit, or None when it cannot be read."""
+        if pr.head_branch != branch:
+            return False
+        if pr.head.sha == head_sha:
+            return True
+        if pr.number in self.unreadable_pr_commits:
+            return None
+        return head_sha in pr.commit_shas
 
 
 class _PullFeedbackService:

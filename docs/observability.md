@@ -143,7 +143,9 @@ file is the durable record.
   `agent_session_limit` (a quota-exhausted agent message, parked retryably as `agent_silent`), `dirty_worktree`,
   `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`, `question_*`,
   `discussion_*`, ...).
-- `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`.
+- `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The
+  `discussion` stage's plan publication emits the same event with `stage="discussion"` when it opens (never when it
+  reuses) a plan PR; it carries no `retry_count`, having no retry budget of its own.
 - `pr_merged` — External merge terminal arcs in `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict`;
   plus `_finalize_if_pr_merged` (in `workflow/engine/terminals.py`, which also owns those arcs) from
   `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks

@@ -25,6 +25,7 @@ class _FakeIssueHistory:
 class _FakePullHistory:
     _posted_pr_comments: _CommentHistory = field(default_factory=list)
     _opened_prs: list[FakePR] = field(default_factory=list)
+    _edited_pr_bodies: _CommentHistory = field(default_factory=list)
     _merge_calls: list[tuple[int, str, str]] = field(default_factory=list)
     _deleted_remote_branches: list[str] = field(default_factory=list)
 
@@ -35,6 +36,14 @@ class _FakePullState:
     _pulls: dict[int, FakePR] = field(default_factory=dict)
     _merge_returns_ok: bool = True
     _delete_remote_branch_returns_ok: bool = True
+    # PR numbers whose commit list GitHub refuses to serve, which the real
+    # client reports as an unreadable lookup rather than as "does not carry
+    # the commit".
+    _unreadable_pr_commits: set[int] = field(default_factory=set)
+    # Branches whose pull requests GitHub will not enumerate at all, which is
+    # the same answer one level up: the candidate that would have matched is
+    # one the walk never reaches.
+    _unreadable_pr_lookups: set[str] = field(default_factory=set)
 
 
 @dataclass

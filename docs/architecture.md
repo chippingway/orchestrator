@@ -108,8 +108,9 @@ orchestrator/
     pinned_state.py     authenticated pinned-state model, parser, and the
                         state / comment-watermark client mixin
     pull_requests.py    stateless PR status helpers plus the pull-request
-                        client mixin (lookup, creation, comments, labeling,
-                        SHA-pinned merge, remote-branch delete)
+                        client mixin (lookup, creation, comments, body
+                        rewrite, labeling, SHA-pinned merge, remote-branch
+                        delete)
     reviews.py          current-head review aggregation plus the review client
                         mixin (approval verdicts, unread feedback watermarks)
   agents/
@@ -170,10 +171,11 @@ orchestrator/
                         dispatch to the chosen stage
       prompts.py        the prompt builders the stages share (implement,
                         respawn, review, documentation, fix, conflict, question
-                        and its followup, PR-comment followup, decompose) plus
-                        the commit-style / foreground-only notes, the
-                        empty-body placeholders, and the single-decision
-                        comment
+                        and its followup, PR-comment followup, decompose,
+                        discussion and its followup) plus the plan-publication
+                        clause both discussion prompts carry, the commit-style
+                        / foreground-only notes, the empty-body placeholders,
+                        and the single-decision comment
       terminals.py      how an issue stops being worked: the merged, rejected,
                         and human-closed arcs with their stamps, receipts,
                         events, issue close, and branch cleanup, plus the
@@ -262,19 +264,32 @@ orchestrator/
         run.py          one round in the issue's own worktree, the restorer
                         that checkout is rebuilt by, the probes bracketing it,
                         and the branch and SHA it records opening on
-        outcomes.py     the pause, timeout, read-only, and response decisions
-                        one finished round is classified by, and their routing
+        outcomes.py     the pause, timeout, write, and response decisions one
+                        finished round is classified by, and their routing
+        publication.py  one reading of what the branch carries, which commits
+                        are this stage's to publish and which only to finish,
+                        the push and found-or-opened PR a plan alone earns,
+                        and the records that publication hands the next tick
         parks.py        every way the stage hands the issue back, including a
                         reply into a checkout no round may open on, and the
                         funnel that stamps each park's reason and puts back
                         the consumed ceiling the shared helper overwrites
         models.py       the run, the agent identity and session, the prompt
                         paired with the replies it read, the round with the
-                        HEAD it opened on, and the assessed outcome
-        state.py        the park reasons, wire keys, run identity, the
-                        predicate that says which park is this stage's own,
-                        and the one that says whether it already asked for the
-                        checkout to be repaired
+                        HEAD it opened on, the assessed outcome, and the
+                        artifact a publication is decided from
+        state.py        the park reasons, wire keys, run identity, the plan
+                        path the prompt and the check share, the commit the
+                        plan PR carries (which implementing reads against that
+                        PR's head so a merged plan is not mistaken for merged
+                        work), the open-round flag and
+                        the in-flight publication marker that say which commit
+                        under a park is this stage's -- and, while the marker
+                        stands, that no other commit is -- the predicate
+                        that says which park is this stage's own, the one that
+                        says whether it already asked for the checkout to be
+                        repaired, and the one that says the plan is already
+                        published
       documenting/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one final-docs tick asks its questions in
@@ -341,8 +356,9 @@ orchestrator/
                         the timeout park's own next-tick recovery
         parks.py        the session-limit, question, silent-failure, and
                         dirty-tree parks
-        publication.py  the push, the PR reuse or open, and the validating
-                        handoff with its counter resets
+        publication.py  the push, the PR reuse (re-bodied when it was opened
+                        elsewhere) or open, and the validating handoff with
+                        its counter resets
         drift.py        a body edit mid-implementation: the resume it earns and
                         the `ACK:` that answers it
         drift_preflight.py
@@ -351,7 +367,9 @@ orchestrator/
                         `/orchestrator continue` on a parked issue
         read_only_relabel.py
                         the `question` / `discussion` -> `workflow:implementing`
-                        relabel guards
+                        relabel guards, and the reconcile that keeps an
+                        accepted plan handoff in step with its PR until a
+                        developer publishes
         models.py       the frozen records the owners hand each other
         state.py        the pinned-state keys and CLI marker tuples they share
       in_review/
@@ -425,7 +443,9 @@ orchestrator/
                         refusal logger, named orchestrator.git_plumbing for the
                         operator filters that select on it
     commands.py         plain / hardened git execution, the argv hardening
-                        prefixes, and the unsafe local-transport probe
+                        prefixes, the replacement-object and graft shutoff the
+                        hardened environment carries, and the unsafe
+                        local-transport probe
     locks.py            per-target-root re-entrant lock registry and accessor
     base_sync/
       __init__.py       package marker only; callers import an owner directly
@@ -478,7 +498,13 @@ orchestrator/
       __init__.py       package marker only; callers import an owner directly
       models.py         VerifyResult statuses / fields and the output budget
       output.py         redact-then-truncate pass over captured verify output
-      probes.py         HEAD snapshot and hardened porcelain dirty-file scan
+      probes.py         HEAD snapshot and whether HEAD is the branch a caller
+                        publishes to, hardened NUL-delimited porcelain status
+                        read in both
+                        its answers (the path list, and whether git could be
+                        asked at all), and the two reads a named commit is
+                        judged by -- its base-relative changed paths, and
+                        whether a path survived into its tree
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         stripped child env and fail-fast command sequencing
     worktrees/
@@ -1189,9 +1215,16 @@ the prefix an operator's level and handler selection is keyed on holds still whi
 calls `models`, `process` calls `output` and `probes`, `runner` calls `process` -- and the validating approval gate
 reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or
 the dirty-file scan targets the owner module. `_run_verify_commands` answers on `git.verification.runner` alone, as
-`VerifyResult` and `_truncate_verify_output` do on their owners and `_head_sha` / `_worktree_dirty_files` on
+`VerifyResult` and `_truncate_verify_output` do on their owners and `_head_sha` / `_worktree_status` (with
+`_reported_paths` and `_suppressed_index_paths` under it) /
+`_worktree_dirty_files` / `_committed_paths_since` / `_revision_contains_path` / `_commit_present` /
+`_commit_contains` on
 `git.verification.probes`: every stage owner that compares a HEAD
-watermark or refuses a dirty tree names the probe owner, so a mock for either read lands there. No
+watermark, refuses a dirty tree, proves one clean, asks which paths a branch's commits change against base, asks
+whether a path survived them as a regular file -- a symlink or a gitlink resolves at the same path while carrying no
+document -- asks whether an id it is about to record names a commit this clone can read at all, or asks whether the
+commit it is about to push over a tip keeps what is on it,
+names the probe owner, so a mock for any of them lands there. No
 facade of the verification domain's own sits beside `git/verification/`: a check in
 `tests/git/verification/test_imports.py` asserts nothing resolves at `orchestrator.verify` or at the inventory and
 resolver-hook paths a second import site would be built from, so every verification name is defined on an owner and
@@ -1201,7 +1234,9 @@ refusal helpers directly -- so a patch that has to intercept the transport probe
 or the remote-ref lease read targets `orchestrator.git.authentication`. The squash rewrite and every stage fetch
 and push name that owner, so a mock that
 has to intercept that force-push, either conflict fetch, validating's pre-fix fetch, the documenting prep or
-drift-unwind fetch, or the implementing, validating, conflict, or docs push targets it.
+drift-unwind fetch, or the implementing, validating, conflict, or docs push targets it -- as does the discussion
+stage's pre-spawn base read, `_remote_branch_tip`, which asks the remote what a branch is at without consulting a
+local ref at all.
 The plain and hardened runners answer on `git.commands`, which documenting's drift reset, the divergence and
 base-distance reads conflicts takes, and fixing's behind-base probe all name directly.
 The no-prompt environment
@@ -1230,7 +1265,26 @@ unpushed-commit probe, and the whole decomposer path/creation/removal trio -- so
 restores, names, probes, or tears down lands on `git.worktrees.creation` / `.paths` / `.recovery` /
 `.decomposition`. The two sanitizers, the
 branch and worktree-path derivations, and the pinned/legacy resolver answer on `git.worktrees.paths`, the
-unpushed-commit probe on `recovery`, the two creators and the new-commit probe on `creation`, the decomposer's
+unpushed-commit probe on `recovery`, the two creators, the new-commit probe, the PR-branch start point (the PR's own
+remote head while THIS tick's fetch of it landed, and `<remote>/<base>` only when the REMOTE says there is no such
+branch -- a merged PR whose branch GitHub deleted keeps its `pr_number`, so naming a ref nobody has would fail every
+later tick's `worktree add` and no implementer would run again, while reading a failed fetch as that deletion would
+rebuild a live PR at base and force-push over it, so an unconfirmed absence raises instead. A remote-tracking ref
+outlives the fetch that wrote it, so one a failed fetch left behind is not anchored on either: restored from it, an
+interrupted publication comes back looking like a branch somebody reset, and the recovery retires its marker while the
+plan sits published on a PR nobody recorded), the base anchor a finished pull request's branch ends on (a base this
+tick fetched or nothing at all, for that same reason: a cached ref names the base as of the last fetch that worked,
+which for work that has only just merged is a base without it), and the
+handoff anchor
+(`_anchor_pr_worktree`, the one mutation here that MOVES a checkout the creators would have reused -- for the caller
+that has already proved it carries nothing of its own and needs the branch on the head a PR is really open against
+(re-read from the remote rather than taken from the caller, since the head it names was read off GitHub before this
+ran and a commit pushed in between leaves the fetch bringing THAT one while the named one still resolves underneath
+it), or
+on the base once that PR has merged and the design it carried has landed there,
+and hardened like every other reset in the repository since both the checkout and the common repo it shares are ones
+an agent has had)
+on `creation`, the decomposer's
 path, creation, and removal on `decomposition`, and the two teardowns on `terminal`. The slug pattern and the
 worktrees root answer on `git.worktrees.paths` alone. No facade of the
 worktree-lifecycle domain's own sits beside `git/worktrees/`: three checks in
@@ -1347,7 +1401,9 @@ earlier commit already carried), and one set of placeholders for an empty body o
 promises -- `VERDICT:`, `DOCS: NO_CHANGE`, `ACK:`, the
 fenced manifest -- is parsed by `engine/messages.py` or the decomposition stage's manifest owners, so the prompt and
 the parser that reads its answer are edited as a pair; the child cap the decompose prompt states is read straight off
-`workflow/stages/decomposition/validation.py` so the two cannot disagree. It reaches `comments.py` for the thread text,
+`workflow/stages/decomposition/validation.py` so the two cannot disagree, and the plan path the two discussion prompts
+promise is handed in by the discussion stage, whose publication check refuses every other path — the same pairing seen
+from the other side. It reaches `comments.py` for the thread text,
 the tracked-repos block, and the paragraph break its own sections are joined on -- one definition is what keeps a
 quoted thread and the prompt built around it breaking the same way -- and `messages.py` for the blockquote; the stage
 leaves that build a prompt or append a note import the owner. So a
@@ -3059,11 +3115,14 @@ read-only contract is decided by, so a mock for either has to land there. No fla
 each answered on an owner alone, `_handle_question` included.
 
 The discussion stage divides the same way the question stage does, because it is the same shape of conversation held
-to a stricter contract: the agent may not write anything AND may not decide anything. `handler` holds the order -- the
+to a stricter contract: until a human says the two sides understand the design the same way, the agent may not write
+anything AND may not decide anything. `handler` holds the order -- the hold on an issue whose plan is already
+published (the record its own publication left, read as a pair with `pr_number` so a dev's inherited PR is not
+mistaken for one), the
 gate that makes a discussion-owned park the humans' turn (a park any other stage wrote does not gate, or an issue
 relabeled here while parked elsewhere would stay inert for good), the trusted reply that ends that turn, the two
 preflights on what the last round left, then the round and its disposition -- and it is where the stage stops, since
-no route from here reaches another stage, a push, or a PR. `session` is what keeps a multi-round conversation on one
+no route from here reaches another stage. `session` is what keeps a multi-round conversation on one
 agent: the pinned spec and session id every round after the first is read back from rather than re-resolved, the one
 filter both the prompt and the consumed watermark are drawn through (so neither an untrusted reply nor the stage's own
 posted analysis can steer the agent or be recorded as read), and the degrade from the followup prompt to the full one
@@ -3090,36 +3149,168 @@ rather than only held: a mid-run `paused` suppresses every disposition by contra
 the next tick reuses the same checkout, so an anchor is the only thing that can tell a commit the ended round made
 from one the branch arrived carrying. `discussion_session_id` and the consumed watermark are staged after that write
 instead and ride the park's, so a round nobody sees leaves no conversation pointer and consumes no answer. `outcomes`
-enforces the no-write contract on the round
+enforces the write contract on the round
 that does come back, checking commits and the dirty tree before interruption and before the response, so a round that
-started implementing parks on what it wrote rather than being published as a design. The same reasoning is why
+wrote is judged on what it wrote rather than published as a design. What a commit means is `publication`'s to answer:
+one reading of the branch -- whether its tree could be read and is clean, what its commits change against the base
+commit the round pinned before it spawned, and whether the plan is in HEAD as a regular file at all, since a
+deletion changes exactly
+the path an addition would -- decides between the agreed plan, which is pushed and opened as a PR, and everything
+else, which parks with that reading quoted. Who may reach it is the other half of the answer. The disposition of the
+round that committed and the preflight that finds a commit a round never got to report both hold a commit the anchor
+attributes to a round of this stage. A parked issue holds nothing of the kind on its face -- its round is over, and a
+plan-shaped commit appearing afterwards is somebody else's -- so two records say when it does.
+What the push is allowed to overwrite is read before it runs. The lease is pinned to the tip the remote was just
+observed at, and what makes that tip publishable is whether the commit being published CONTAINS it (`_commit_contains`):
+a branch the remote does not have yet is the ordinary first publication, and every other tip has to be an ancestor of
+the plan commit, which a replay after a crash and an inherited PR branch the plan sits on top of both are. A lease
+cannot answer that -- it proves the ref has not moved, not that what is on it survives -- so a round that reset an
+inherited branch to base before committing its plan would pass every other reading and delete the PR's history.
+Anything else is somebody's own write to that branch -- a reviewer amending the plan on
+its PR while a publication of it is unfinished -- and parks `discussion_push_failed` naming it. Pinning is what makes
+the reading hold: `_push_branch`'s own `ls-remote` fallback would adopt whatever the remote had become as the value it
+may clobber, so a publication being retried after a crash would send its older validated commit straight over that
+write. The refusal is taken after the in-flight marker is durable, because the reply that retries it reaches the
+publication through that marker and a park without one leaves the thread with nothing to answer.
+`discussion_base_sha` rides that same pre-spawn write and is the commit the whole reading is measured from: what the
+REMOTE said the base branch was at, read through the token rather than off `refs/remotes/<remote>/<base>`, which names
+the base but lives in the object store the issue's worktree shares -- an agent can commit code, repoint that ref onto
+it, and commit the plan, leaving a diff that shows one file while the branch carries two commits. It is persisted, not
+re-read, because the tick that publishes need not be the tick that ran. What is recorded is an id this clone can read
+and not merely one the remote named: the base advances between a tick's own fetch and the round that opens in it, and
+an absent object fails the local diff that spends the record -- which reports no paths, exactly what a branch changing
+nothing reports. So `_commit_present` is asked, one `_authed_target_fetch` of the base supplies what is missing, and a
+commit still unreadable after it is recorded as no base rather than as a reading nobody could take.
+`discussion_round_open`, written beside the anchor before every spawn and cleared by every park, covers the resumed
+round: it runs with the park it is answering still
+durable, so one that committed the confirmed plan and was then paused or cut short is judged exactly as the same
+crash on an unparked issue is. `discussion_publishing_sha`, written before the push, covers the publication itself --
+turning a failed push into a retry (which spends the reply that asked for it, so a failure is not re-asked every poll,
+and which replaces `discussion_push_failed` with `discussion_publishing` in that same write, since a reason the
+recovery refuses to resume plus a spent reply is a publication nothing would pick up again)
+and keeping a crash between `open_pr` and the pinned write from asking an operator
+to reset away the commit its PR is open against. Neither becomes a way to publish a design nobody argued out: the
+marker is asked first and answers for the branch either way, so a second plan-shaped commit appearing over an
+unfinished publication is refused rather than read as the round's own work, and it is spent only by the next round
+opening or by the branch going back to the anchor over a remote that no longer carries the commit it names -- the
+push sends the SHA it validated rather than `HEAD`, so a local ref that never moved says nothing about whether the
+plan went out, and dropping the record on that reading would leave a published plan on a pull request nobody
+recorded while another round opened over it. The PR that publication lands on gets the same treatment as the
+branch: `find_open_pr` only promises something open on this ref, so a body that does not name the publishing session
+is rewritten to the plan's and one that does is left as it stands. What that lookup cannot see is the other half of
+the same crash window -- a plan PR merged before anything recorded its number, which closes it and, with auto-delete
+on, takes the head branch too -- so `find_pr_for_commit` asks by the publication's own SHA across every state before
+the push -- matching on the commits a pull request CARRIES rather than the head it is on, since a human pushing to
+that branch or merging the base into it moves the head inside the same window while the published commit stays in
+the PR. MERGED, its number is recorded and nothing is pushed or opened: the branch the merge deleted would otherwise
+be recreated and a second pull request asked for on a commit already in the base. Closed without merging is the
+opposite reading and gets the ordinary publication: nothing landed, the branch is still there, and a recorded
+pull request nobody can open would hold the stage on an unreviewable artifact instead of leaving one to read. A
+commit list GitHub declines to serve is a third answer (`PR_LOOKUP_UNREADABLE`) rather than a miss, since that list
+is the only place an amended, squash-merged publication is still visible; so is an enumeration that never reached
+the candidate. Either way the stage writes its marker and stops, and the next tick asks again. The recovery asks
+the same pair about the commit the MARKER names, since a checkout rebuilt from the remote comes back on whatever
+head the humans left there. The
+recovery asks the same question before it judges the branch at all, since a host that lost the checkout and the local
+ref rebuilds from the base -- the merge took the branch -- and that tip matches neither the marker nor the anchor.
+The same reasoning is why
 `git/base_sync/refresh.py` lists this label beside `question` in its read-only gate — and the park beside the label,
-since the refresh runs a full tick before the guard that consumes it — and why
-`stages/implementing/read_only_relabel.py` refuses a relabel out of a `discussion_*` park whose branch has moved off
-the SHA the round recorded: the tree survives every exit, so nothing may rebase over it and nothing may ship as dev
+since the refresh runs a full tick before the guard that consumes it, and `discussion_round_open` /
+`discussion_publishing_sha` beside both, since those are written before the thing they describe and a tick that died
+mid-round leaves one standing with no park at all — and why
+`stages/implementing/handler.py` asks whether a merged recorded PR is this issue's work having landed before it
+finalizes -- a plan PR is a design being agreed to, and two records say which it still is. `discussion_plan_path`
+answers first and answers whatever that PR's head is now, because it is retired by this stage's own handoff before
+anything spawns: while it stands nothing here has pushed, so a head that has moved is the humans editing the plan they
+are agreeing to (a correction, a base merged in to make it mergeable) rather than an implementation to finalize.
+`discussion_plan_sha` against the PR's head answers for the ticks after that handoff, which is what stays right when a
+tick pushes onto the PR and dies before recording it -- and it is the head the handoff itself read, not the commit
+publication pushed, so an amendment the humans made is not what the tick after reads as an implementation. That read
+has a third answer: a PR GitHub could not be asked about ends the tick unfinalized and unspawned rather than falling
+through to the terminal, which would fetch it again, and a request that failed once and succeeded next would finalize
+the very plan the first answer protects. This is also why
+`stages/implementing/read_only_relabel.py` refuses a relabel out of a `discussion_*` park -- or out of an unfinished
+round, which carries no park at all -- whose branch, or whose checkout's own `HEAD`, has moved off
+the SHA the round recorded (a commit made while detached leaves every ref where it was and the plan in the tree,
+which is exactly what the shortcut would push), or whose tree `git status` could not report on at all (the list form
+of that read answers a failure with no paths, which is what a clean tree answers, and the creators force-remove a
+checkout nothing is holding). An unfinished PUBLICATION is refused on its record alone, because the
+marker precedes the push and a fresh clone reads clean on every local probe at once, so the way out it names is the
+`discussion` label whose recovery finishes it rather than a reset: the tree survives every exit, so nothing may
+rebase over it and
+nothing may ship as dev
 work what this stage did not vouch for — while the commits an issue arrived carrying, which that same record
-certifies, still let the relabel through. Clearing that park hands the certified tip on as `read_only_baseline_sha`,
+certifies, still let the relabel through — as does a published plan, whose anchor was moved onto the tip its
+publication pushed, and as does the live head of the plan PR itself, which is the design as its reviewers left it.
+Once that PR has MERGED the older ahead-of-base reading comes back, because the handoff for a merged plan resets the
+branch to the base and records that in the write after the reset: a crash in between leaves a tip no record names,
+and an exact match would report the base branch itself as unreviewed work.
+Clearing that park hands the certified tip on as `read_only_baseline_sha`,
 because `stages/implementing/spawn.py` otherwise reads any branch ahead of base as an interrupted dev run and would
-skip the implementer to republish the very commits the discussion was held on top of.
+skip the implementer to republish the very commits the discussion was held on top of. The same clear retires
+`discussion_plan_path`: the relabel is the humans deciding, and a record left behind would hold this stage inert if the
+issue ever came back. What replaces it is that live head, read once and used twice: recorded as the plan commit, and
+anchored onto the branch through `worktrees/creation._anchor_pr_worktree` -- one authenticated fetch, a re-read of
+what the remote says that branch is on, and a hardened
+`reset --hard` (an `update-ref` where the checkout is gone) -- so the developer builds on what was approved instead of
+on a tip whose push would take the amendment back out. The re-read is the one that covers the gap between reading the
+PR and moving the ref: a human pushing in between leaves the fetch bringing their commit with the one just read still
+resolving underneath it, so a local-object check alone would anchor on a head the PR has moved past and the push after
+it would take their commit off the remote as its own lease. That call answers with the tip the branch ended up on, and
+the baseline records it: the reviewed head, or `<remote>/<base>` when the remote confirms the branch is gone and what it
+carried has landed there -- and that base is one the tick fetched, since a cached ref a failed fetch left behind names
+the base from before the merge, which for a plan that has just landed is the one base the plan is not in. An answer of
+nothing at all HOLDS the handoff -- the tick ends having written nothing, with
+the plan record still standing -- because taking it would spawn the developer on a commit the reviewers moved past and
+let the ordinary push that follows read their head off the remote as its own lease and overwrite it. Reading GitHub
+before the guard rules is what makes the move
+crash-safe: a tick that anchors and dies before its write leaves a tip the next one recognizes as the reviewed head
+rather than convicting the branch of it. What that write leaves is a state of its own, not a moment: the baseline
+beside `discussion_plan_sha` says the handoff was accepted and this stage has published nothing since, and an
+interruption anywhere after it -- a live pause, a shutdown sweep, a dead process -- leaves an issue sitting there for
+polls while the design is still on an open pull request its reviewers can move.
+`_reconcile_open_plan_handoff` is the guard's own reading taken again on each of those ticks, so an amendment made in
+that window is inherited rather than read as this stage having pushed (which closes the issue as `done` on a merged
+design, or spawns the developer on a checkout whose push takes the correction back out), and a merge is re-anchored at
+a base that has moved since. The branch is what ends it, because a push reaches git before it reaches the issue: a tip
+past the baseline is a developer's own work, and a tip nothing could read is no answer and holds the tick. The move
+itself is marked durably first (`read_only_anchor_sha`), since it too puts the ref on the reviewers' head before
+anything records that it did -- and a marker still standing is what tells the branch that crash left from a
+developer's commit, which the recovered-work shortcut would otherwise push with no agent having run.
 `parks` holds what each of those decisions then says to the
 human, and every one of them lands on its one funnel — the funnel puts back two things the shared helper overwrote:
 the `park_reason`, which the handler's gate reads back next tick, so a park assembled anywhere else would earn a
 second round over the top of the first; and the consumed ceiling, which the helper stamps at the newest comment on
 the thread and which has to stay where the round's own prompt read to, or a reply that landed during the run is
 recorded as answered by a round that never saw it. `state` and `models` reach no engine or git owner, so the park
-reasons, the two predicates the handler gates on — whose park this is, and whether it has already asked for the
-checkout to be repaired — and the carriers are all decidable without one. Unlike question, no owner here
+reasons, the three predicates the handler gates on — whose park this is, whether it has already asked for the
+checkout to be repaired, and whether the plan is already published — the plan path itself, and the carriers are all
+decidable without one. Spelling that path on `state` is what keeps the prompt that promises the agent a file and the
+check that refuses every other one from drifting apart: the prompt builders are handed it, and the publication check
+compares against it. Unlike question, no owner here
 tears a worktree down: the tree the discussion read is the tree its next round and the operator both look at. The
 stage borrows the same engine surfaces question does -- the tracked spawn, the awaiting-human park, the prompt
 builder, the trusted conversation text, and the stderr diagnostics from `workflow/engine/`, `_worktree_path` and
 `_resolve_branch_name` from `git/worktrees/paths.py`, `_ensure_worktree` from `git/worktrees/creation.py`,
 `_branch_tip_sha` from `git/worktrees/recovery.py` -- the anchor comparison falls back to it when the checkout
 directory is gone but the branch survives -- and
-`_head_sha` and `_worktree_dirty_files` from `git/verification/probes.py` -- and the last two are what the read-only
-contract is decided by, so a mock for either has to land there. It takes one restorer question of its own: an issue
+`_head_sha`, `_worktree_status` beside the `_worktree_dirty_files` list its other callers read,
+`_committed_paths_since`, and `_revision_contains_path` from `git/verification/probes.py` -- those are what the
+write contract is decided by, so a mock for any of them has to land there. The status form is the one a publication
+asks, because an unreadable tree and a clean one are the same empty list and only one of them may be pushed over.
+Opening a round adds two more: `_remote_branch_tip` from `git/authentication.py`, read before the spawn so the base
+the round's work is finally measured against is the remote's answer rather than a local ref the round could repoint,
+and `_commit_present` beside it, because the diff that spends that answer is local -- an id the store lacks is fetched
+in through `_authed_target_fetch` from the same owner, or recorded as no base at all.
+Publishing adds the
+push from that same owner and the commit subject and PR title builders from `git/publication/`, the same
+owners every dev PR is opened through. It takes one restorer question of its own: an issue
 carrying a `pr_number` is discussed on the branch that PR is open against, so a pruned local ref is rebuilt by
 `_ensure_pr_worktree` from the PR head rather than by `_ensure_worktree` from the base branch, which would drop the
-PR's commits out of the tree the round reads.
+PR's commits out of the tree the round reads. A publication in flight answers that question the same way and earlier,
+which is why `_remote_branch_tip` is read a second time there: the marker precedes the push and `pr_number` follows
+the PR, so a crash between them leaves a pushed branch and an open PR with nothing pinned naming either -- and if the
+worktree and the local ref are gone as well, only the remote can say the branch exists to restore from.
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `workflow:decomposing` (when no dev session exists yet), resumes
@@ -3209,6 +3400,38 @@ keys).
   `agent-orchestrator <agent-orchestrator@users.noreply.github.com>`) so agent commits are stamped with the
   orchestrator's identity regardless of the host's `~/.gitconfig`.
 
+### Hardened local git (`git.commands._git_hardened`)
+
+Every local git operation inside a worktree the agent can write to runs through this envelope: the `-c` overrides
+that neutralize `core.hooksPath` / `core.fsmonitor` / `credential.helper` / commit signing, `GIT_CONFIG_GLOBAL` and
+`GIT_CONFIG_SYSTEM` detached from `~/.gitconfig` and `/etc/gitconfig`, and the orchestrator's committer identity.
+
+Git's own output is decoded with `surrogateescape` rather than strictly, for the same class of reason. A repository
+path is bytes, and a committed file whose name is not valid UTF-8 makes a strict decode raise inside `subprocess`
+before any caller sees a return code -- taking the tick out where the probe should have reported the extra path and
+parked the artifact it invalidates.
+
+It also turns object replacement off — `GIT_NO_REPLACE_OBJECTS=1` for `refs/replace/<oid>` and
+`GIT_GRAFT_FILE=/dev/null` for the graft file. Neither of those is config, so nothing above reaches them, and each is
+writable by an agent whose linked worktree shares the clone's refs and git dir. Left on, they change what git says a
+commit's tree and parents ARE without changing the commit anyone named: a decomposer could stand a synthetic commit
+carrying its code in for the base and have the plan check measure against that, while the push — which names the real
+SHA — carries the code as well. Both are disabled for every hardened read, so a probe and the push it gates are
+talking about the same objects.
+
+Two more sit on the working-tree operations themselves rather than in the envelope, because neither is config either.
+`core.worktree` in a linked worktree's own `config.worktree` — which an agent
+enables by writing `extensions.worktreeConfig` into the clone it shares — points every path operation at any directory
+it likes, and a `-c core.worktree=` override does NOT win against it, so the tree is named with `--work-tree` instead:
+by `verification/probes._worktree_status`, which would otherwise report on a clean shadow checkout, and by the
+`reset --hard` in `worktrees/creation._move_branch_onto`, which would otherwise report success and move the ref while
+writing the reviewed commit's files into that other directory -- leaving the issue's checkout on the plan it had, the
+handoff baseline naming a tip the tree is not on, and whatever was in the redirected directory overwritten.
+And `assume-unchanged` / `skip-worktree` are bits on an index entry: git honours them by not comparing the file, so a
+tracked path the agent rewrote reports clean. Those entries are read separately (`git ls-files -v`) and answered as
+paths AND as a withheld `readable`, so a caller refusing on what git listed and one that has to prove the tree empty
+both fail closed on them.
+
 ## Push path (`git.authentication._push_branch`)
 
 The orchestrator (not the agent) pushes. The push is hardened against the agent-controlled worktree:
@@ -3221,7 +3444,10 @@ The orchestrator (not the agent) pushes. The push is hardened against the agent-
   `pushInsteadOf` rewrite or any `http.*` proxy/TLS setting (e.g. `http.proxy`, `http.sslVerify=false`) that could
   tunnel the token-bearing push through an attacker proxy or disable certificate verification. Env-var proxies
   (`https_proxy`) are operator-set and stay honored — only agent-writable config-file transport is rejected.
-- Pushes via explicit refspec `HEAD:refs/heads/<branch>` (no upstream stored).
+- Pushes via an explicit refspec (no upstream stored): `HEAD:refs/heads/<branch>` by default, or
+  `<revision>:refs/heads/<branch>` when the caller names the commit it means. A caller that decided to push by
+  inspecting a commit — the discussion stage's plan publication — names it, because `HEAD` between the reading and
+  the push is not necessarily the commit that was checked.
 
 ## Observability
 

@@ -37,6 +37,10 @@ PARK_QUESTION_DIRTY = "question_dirty"
 PARK_QUESTION_SILENT = "question_silent"
 PARK_QUESTION_TIMEOUT = "question_timeout"
 PARK_QUESTION_UNSAFE_RELABEL = "question_unsafe_relabel"
+# What the reset checkout is on. The value certifies nothing on its own -- a
+# question park records no tip to match -- but it has to be READABLE: a guard
+# that cannot see where the tree is may not vouch for it.
+RESET_CHECKOUT_HEAD = "head-after-the-operator-reset"
 
 BRANCH_HAS_UNPUSHED_COMMITS = "_branch_has_unpushed_commits"
 CLEANUP_QUESTION_WORKTREE = "_cleanup_question_worktree"
@@ -218,16 +222,19 @@ class QuestionRelabelToImplementingTest(
                     session_id="dev-sess-recovered",
                     last_message="implemented",
                 ),
-                # The unsafe-park branch check uses
-                # `_branch_has_unpushed_commits` (default False --
-                # the operator reset the local branch too) for the
-                # commits half of its safety check, not the
-                # worktree's `_has_new_commits`. So only two
-                # `_has_new_commits` calls fire: (1) the
-                # recovered-worktree check in the fresh-spawn
-                # branch sees clean -> agent spawns; (2) the
+                # Three `_has_new_commits` calls fire, and the first is
+                # the guard's own reading of the CHECKOUT: with no
+                # recorded tip to match a question park against, "not
+                # ahead of base" is what certifies it -- and it is asked
+                # of HEAD, so a commit made while detached convicts as
+                # readily as one on the branch. The branch half of that
+                # safety check is `_branch_has_unpushed_commits` (default
+                # False -- the operator reset the local branch too). Then
+                # (2) the recovered-worktree check in the fresh-spawn
+                # branch sees clean -> agent spawns, and (3) the
                 # post-agent commit check -> push path.
-                has_new_commits=[False, True],
+                has_new_commits=[False, False, True],
+                head_shas=(RESET_CHECKOUT_HEAD,) * 2,
                 push_branch=True,
             )
 

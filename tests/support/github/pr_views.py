@@ -16,6 +16,10 @@ class _PullHistoryView:
         return self._pull_history._opened_prs
 
     @property
+    def edited_pr_bodies(self) -> list[tuple[int, str]]:
+        return self._pull_history._edited_pr_bodies
+
+    @property
     def merge_calls(self) -> list[tuple[int, str, str]]:
         return self._pull_history._merge_calls
 
@@ -40,3 +44,11 @@ class _PullStateView:
     @property
     def delete_remote_branch_returns_ok(self) -> bool:
         return self._pull_state._delete_remote_branch_returns_ok
+
+    @property
+    def unreadable_pr_commits(self) -> set[int]:
+        return self._pull_state._unreadable_pr_commits
+
+    @property
+    def unreadable_pr_lookups(self) -> set[str]:
+        return self._pull_state._unreadable_pr_lookups

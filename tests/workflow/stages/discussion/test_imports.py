@@ -22,7 +22,14 @@ _PARENT = "orchestrator.workflow.stages"
 _HANDLER_OWNER = "handler"
 
 _OWNERS = (
-    _HANDLER_OWNER, "models", "outcomes", "parks", "run", "session", "state",
+    _HANDLER_OWNER,
+    "models",
+    "outcomes",
+    "parks",
+    "publication",
+    "run",
+    "session",
+    "state",
 )
 
 # Bound at module scope, so collecting this file is what plants the owner in

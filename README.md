@@ -173,15 +173,24 @@ raise architecture decisions rather than implementation trivia, and close with a
 answerable right now — each with its own recommended answer — so you can agree or overrule by number. The response is
 posted as an issue comment pinging `HITL_HANDLE` and the issue then waits on you. Answer by number and the same
 session resumes for another round: it folds your answers in as decided, expands what they opened up, and posts the
-frontier they left, then waits again — for as many rounds as you keep replying. Nothing is implemented and no PR is
-opened at any point, and the issue leaves only when a human relabels it — to `done` or `rejected` when the thread
-settles it, or
-to `workflow:implementing` to build what was agreed (the orchestrator refuses that one if the agent left commits or
-edits behind, so nothing unreviewed is pushed). Do not simply remove the label: the discussion records its state in
-the issue's pinned comment, and an unlabeled issue is picked up as a brand-new one that starts a second pinned
-comment. See
+frontier they left, then waits again — for as many rounds as you keep replying. Nothing is written until you say the
+design is settled.
+
+When you state on the thread that you and the agent understand the design the same way, that same session writes it
+up in `plans/issue-<number>.md` — the resolved decisions, the evidence behind them, the alternatives, the risks, and
+the implementation plan — and commits that one file. The orchestrator then checks the branch against your base branch
+and publishes it as a pull request only when the whole diff is that Markdown file, the file is really there, and the
+worktree is provably clean; a commit carrying anything else — or a worktree it could not inspect — parks the issue for
+you with the offending paths and the SHA to reset back to, and pushes nothing. The issue keeps the `discussion` label
+the whole time and no further round is opened once the plan PR is up.
+
+The issue leaves only when a human relabels it — to `done` or `rejected` when the thread settles it, or to
+`workflow:implementing` to build what the plan describes (the orchestrator refuses that one if the agent left
+unpublished commits or edits behind, so nothing unreviewed is pushed). Do not simply remove the label: the discussion
+records its state in the issue's pinned comment, and an unlabeled issue is picked up as a brand-new one that starts a
+second pinned comment. See
 [the discussion-stage lifecycle][discussion-lifecycle] for the prompt's full contract and the park reasons a round
-that writes or goes silent earns.
+that writes the wrong thing or goes silent earns.
 
 ## Observability
 
