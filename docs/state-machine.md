@@ -141,10 +141,13 @@ GitHub UI bypass both guards, so the guard never fights a human.
   answers, then parks awaiting human. Answering by number resumes the same session, which recomputes the frontier
   around what those answers settled and parks again, for as many rounds as the humans reply. Once a human confirms the
   shared understanding, the same session commits `plans/issue-<number>.md` and the stage publishes that one file as a
-  plan PR, keeping the label and opening no further round. Nothing is implemented here and nothing routes an issue in
-  or out: only a human relabel takes it out — to `done` or `rejected`, the two edges `ALLOWED_TRANSITIONS` grants the
-  state, or through the GitHub UI to `workflow:implementing` to have the plan built, which arrives as an operator
-  relabel and is screened by the read-only guard rather than travelling a graph edge.
+  plan PR, keeping the label and opening no further round while the humans read it. Nothing is implemented here and
+  nothing routes an issue in. What takes it out is the humans deciding, in one of three places. Their verdict on that
+  plan PR is drained by the stage itself: merged is `done`, closed unmerged is `rejected`, and either finalizes the
+  issue and reaps the worktree and the branches. Closing the ISSUE before a plan PR exists is `rejected` the same way,
+  with no teardown. Otherwise a human relabel takes it out — to `done` or `rejected` by hand, the two edges
+  `ALLOWED_TRANSITIONS` grants the state, or through the GitHub UI to `workflow:implementing` to have the plan built,
+  which arrives as an operator relabel and is screened by the read-only guard rather than travelling a graph edge.
 - `done` — Terminal success; PR merged, umbrella resolved, or a `question` issue closed.
 - `rejected` — Terminal rejection; PR or issue closed without merge.
 
@@ -277,13 +280,13 @@ a PR the next handler would finalize. A `gh.get_pr` failure is treated as "leave
 ### Pollable issues and finalization
 
 `gh.list_pollable_issues()` yields all open non-PR issues plus closed non-PR issues still labeled with one of the
-seven sweep labels: `workflow:implementing`, `workflow:documenting`, `workflow:validating`, `in_review`,
-`workflow:fixing`, `workflow:resolving_conflict`, `question`. Each is queried under its pre-namespace spelling too,
-because a closed issue is the one case no other pass revisits: on a repository whose labels the bootstrap could not
-rename (see [Legacy labels and the migration off them](#legacy-labels-and-the-migration-off-them)), the bare label is
+eight sweep labels: `workflow:implementing`, `workflow:documenting`, `workflow:validating`, `in_review`,
+`workflow:fixing`, `workflow:resolving_conflict`, `question`, `discussion`. Each is queried under its pre-namespace
+spelling too, because a closed issue is the one case no other pass revisits: on a repository whose labels the
+bootstrap could not rename (see
+[Legacy labels and the migration off them](#legacy-labels-and-the-migration-off-them)), the bare label is
 all that is left to find it by. Both queries feed one seen-number set, so an issue carrying both spellings is yielded
-once. The closed-issue sweep makes external manual merges and operator closes finalize
-cleanly:
+once. The closed-issue sweep makes external manual merges and operator closes finalize cleanly:
 - Closed `in_review` / `workflow:fixing` / `workflow:resolving_conflict` — a human-merged PR with a `Resolves #N`
   footer auto-closes the issue before the orchestrator can flip the label.
 - Closed `workflow:implementing` / `workflow:documenting` / `workflow:validating` — the same external-merge race when
@@ -291,6 +294,12 @@ cleanly:
   instead of stranding the issue.
 - Closed `question` — a human closing the issue is the terminal signal `_handle_question` consumes to finalize to
   `done`.
+- Closed `discussion` — two different endings, and the label is swept for a longer window than the rest. With no plan
+  PR published, the close is the whole signal and `_handle_discussion` finalizes to `rejected`, which is what takes
+  the issue back out of the sweep. WITH one, the close says nothing about the design: the stage holds its terminal
+  and keeps the `discussion` label precisely so this sweep goes on yielding the issue until the plan PR itself
+  merges (`done`) or closes unmerged (`rejected`). Nothing else revisits a closed issue, so a terminal flip while
+  that PR is open would strand the worktree and the branches the plan lives on.
 
 Pre-PR labels (`workflow:decomposing` / `workflow:blocked` / `workflow:umbrella` / `workflow:ready`) are not swept
 closed — a closed issue at those stages is a hard human stop until an operator relabels.
@@ -1155,11 +1164,44 @@ because session state lives in pinned state, not in the worktree.
 - **Input**: pinned `awaiting_human` + `park_reason`, the consumed `last_action_comment_id` watermark, the
   `orchestrator_comment_ids` list the stage's own comments are recognized by, and the trust-filtered issue thread —
   quoted whole by the full prompt, and from the watermark forward by a resume.
-- **Published-plan hold**: a recorded `discussion_plan_path` **and** `pr_number` end the tick before anything else —
-  no round, no agent, no comment, no write. Both halves are read because either alone means something else: an issue
-  relabeled here from a PR stage arrives carrying its dev's `pr_number`, and a plan path without a PR is a record no
-  publication ever wrote (they land in one durable write). The design is on a PR with the humans now, so the label
-  stays `discussion` and the only way on is a relabel.
+- **Plan-PR terminal**: a recorded `discussion_plan_path` **and** `pr_number` end the tick before anything else — no
+  round, no agent — and what that pull request has become is polled first, ahead of every local reading. Both halves
+  are read because either alone means something else: an issue relabeled here from a PR stage arrives carrying its
+  dev's `pr_number`, and a plan path without a PR is a record no publication ever wrote (they land in one durable
+  write). A MERGED plan PR is the humans taking the design and finalizes to `done`; one CLOSED without merging is
+  them turning it down and finalizes to `rejected`. Both take the terminal tail every other stage takes, in that
+  order: the `merged_at` / `closed_without_merge_at` stamp, the label, the cumulative usage receipt posted BEFORE the
+  single pinned write so its comment id rides the same state, the `pr_merged` (`merge_method="external"`) /
+  `pr_closed_without_merge` event with `stage="discussion"`, the issue close, and only then
+  `_cleanup_terminal_branch` — the worktree plus the local and remote branches. Teardown last is the contract: an
+  operator who finds a leftover checkout still has an issue that says what happened to it.
+  An OPEN plan PR is neither, and is a strict no-op — no comment, no write, no label — that KEEPS the worktree and
+  both branches, since they are what that pull request is open against. That holds whether or not the ISSUE is still
+  open: a human closing the issue out from under an open plan PR has said nothing about the design, so the stage
+  keeps the `discussion` label (which is what leaves the issue inside the closed-issue sweep) and its checkout until
+  the PR itself resolves. A `gh.get_pr` failure is that same hold, since every ending below it is a claim about a
+  pull request nobody could read; the tick after this one asks again.
+- **Pre-PR close**: a closed issue with no recorded plan PR is finalized to `rejected` — the
+  `closed_without_merge_at` stamp, the label, the receipt, one write — ahead of the publication recovery and every
+  turn-taking gate below it, since a human stop signal outranks whatever the stage was about to do. No event, because
+  there is no pull request for one to name, and no teardown: the branch may be carrying an unpublished plan commit,
+  or belong to a PR the issue merely arrived here holding, and neither is something a closed issue alone justifies
+  deleting. The `rejected` flip is what takes the issue back out of the closed-issue sweep.
+  **A standing `discussion_publishing_sha` is read first, though, and it is what makes "no recorded plan PR"
+  different from "no plan PR".** The publication opens its pull request before it writes the number down, so a tick
+  that died in that window leaves a real one with nothing pinned pointing at it — and the humans can decide the issue,
+  or that pull request, inside the same window. So the marker's commit is looked up across every state
+  (`find_pr_for_commit`, the same lookup the publication's own recovery uses) and what comes back decides: a MERGED or
+  CLOSED one is finalized here exactly as a recorded one is, with `pr_number` and `branch` written first because the
+  event names one and the cleanup resolves the branch from the other. That branch is resolved ONCE, before either is
+  set, and the same value serves the lookup and the reap: `_resolve_branch_name` falls back to the pre-namespace
+  `orchestrator/issue-N` whenever it finds a `pr_number` with no `branch` beside it, so a branch worked out after the
+  recovered number was written would name a ref this stage never pushed and leave the real local and remote branches
+  standing. An OPEN one holds the tick exactly as a recorded
+  open one does, label and checkout intact; and a lookup GitHub declined decides nothing and is asked again next tick.
+  Only "no pull request carries that commit" — a push that never landed, or a tick that died before it — reaches the
+  pre-PR ending above. Taken for a discussion that never published, an open one would be flipped out of the sweep with
+  its branch and worktree left for nothing to reap, while its plan sat on a pull request nobody would come back to.
 - **Interrupted-publication resume**: a `discussion_publishing_sha` naming the tip the checkout is on now, on any park
   other than `discussion_push_failed`, finishes that publication before the turn-taking below runs — no agent, no
   round. It has to run there rather than behind a reply, because the marker's own write persists whatever the round
@@ -1181,7 +1223,11 @@ because session state lives in pinned state, not in the worktree.
   own plan on its PR moves that tip past it — and asked of an object, so the branch is fetched unless that tip is
   already here, because git refuses an id this clone has never seen and the refusal reads exactly like a branch that
   dropped the commit). A remote that could not be read, or a tip nothing could bring here, establishes nothing and
-  keeps the record. Otherwise the same `discussion_stale_publication` park is written, saying that the plan is out
+  keeps the record. Otherwise the pull request carrying the commit is asked for once more — a merge or an amended-open
+  head is already settled above, so what is left to find is one the humans CLOSED, which the reset above could also
+  have explained and which this reading has now ruled out. Finding it records the number and lets `terminal` finish
+  the issue `rejected` on the next tick; finding none writes the same `discussion_stale_publication` park, saying
+  that the plan is out
   there and that dropping it means closing its pull request rather than resetting a branch here. A new round retires
   the marker for the same reason the reset does, since a round only opens on a tree the publication's commit has
   already been reset off.
@@ -1323,7 +1369,9 @@ because session state lives in pinned state, not in the worktree.
   opening round the whole trusted thread the full prompt rebuilt, which it has to or the comments it just answered
   would read as unanswered replies on the next tick. No developer or reviewer is ever spawned.
   `discussion_round_open` rides the pre-spawn write beside the anchor and says the round it describes has not
-  reported yet; every park clears it. `discussion_base_sha` rides it too: the commit the REMOTE said the base branch
+  reported yet; every park clears it, as does the one ending that writes records without parking -- the adoption of a
+  pull request the humans have already decided.
+  `discussion_base_sha` rides it too: the commit the REMOTE said the base branch
   was at, read through the token before the agent could touch the checkout, and the commit this round's work is
   finally measured against. `refs/remotes/<remote>/<base>` names the same thing but lives in the object store the
   per-issue worktree shares, so an agent could commit code, repoint that ref onto it, and commit the plan — leaving a
@@ -1345,7 +1393,11 @@ because session state lives in pinned state, not in the worktree.
   A publication writes twice. `discussion_publishing_sha` goes first, on its own, naming the tip it is about to push:
   everything after that write can leave the world changed, so it is what makes a half-finished publication both
   recoverable and attributable, and it carries whatever the round staged beside it since those records describe the
-  publication it precedes. The rest land in the park's write, which also retires the marker: `discussion_plan_path`
+  publication it precedes. The rest go down in one further write, which also retires the marker — the park's, when the
+  pull request is still open and the humans are being told where to read the plan, and a write of its own when the
+  recovery adopts one they have already decided, since a "review the plan there" message would then be answering a
+  verdict with instructions (`terminal` reads those records on the next tick and finishes the issue instead).
+  The records are `discussion_plan_path`
   and `pr_number` (the pair the
   hold at the top reads, and the pair that also tells the implementing stage its recorded PR is still a design however
   that PR's head has moved since), `discussion_plan_sha` (the commit that PR carries — read against the PR's head once
@@ -1452,10 +1504,20 @@ because session state lives in pinned state, not in the worktree.
   divergence gives — which would park `discussion_push_failed` on every retry with `pr_number` never written. The
   lease below reads the same way for the same reason, and a tip nothing can fetch is refused there rather than adopted
   here on a reading that was never taken.
-  A PR closed WITHOUT merging is deliberately not that answer: nothing landed, the branch it was opened from
-  is still there, and recording a pull request nobody can review would hold the stage on an artifact that cannot be
-  read while the reviewable one it owes the humans is never opened — so the publication runs its ordinary course and
-  opens one. An adopted PR is made to name the publishing session before it is recorded, through the same check the
+  A PR closed WITHOUT merging is the same answer to the PUSH, and for a sharper reason than the merge: pushing at one
+  opens a REPLACEMENT proposing the very design a human just turned down, and the issue is then held on that
+  replacement with their rejection left with nothing pointing at it. So the close is recorded like the merge, and
+  `terminal` reads that record on the next tick to finish the issue `rejected`. The reading taken where the branch has
+  MOVED off the marker's commit takes the same three answers but holds the close back, because there the caller's
+  other answer is an operator's reset — the remedy the stale-publication park asks for — and answering that park can
+  mean closing the stray pull request as well as resetting the branch, so a close read as a verdict on the spot would
+  finish the issue on debris somebody was tidying. It is taken up once the reset has been ruled out (the branch is not
+  back at the anchor, or the remote still carries the commit), and then it IS the verdict: without that, a reviewer
+  who amends the plan and then closes it leaves an issue parked `discussion_stale_publication` for good — no
+  `pr_number`, no terminal label, no event, and no branch anything will reap. Neither DECIDED ending is parked with
+  the "review the plan there" message an open one earns: the humans have already decided, and the records go down on
+  their own for the terminal to speak from. An adopted PR is made to name the publishing session before it is
+  recorded, through the same check the
   reuse below runs: the lookup proves branch, base and commit and nothing about who opened it, so a hand-opened pull
   request on the plan's branch that a human merged or wrote on top of would otherwise be recorded as the artifact and
   described by a body about something else. And nothing is adopted at all without a session to name — the same
@@ -1469,35 +1531,40 @@ because session state lives in pinned state, not in the worktree.
   here carrying a PR, an operator can open one by hand — so a reused PR whose body does not already name the
   publishing session has that body rewritten to the plan's; one that names it is left as it stands, annotations and
   all. Its body names the `discussion_agent` backend and `discussion_session_id` that wrote the plan
-  and carries no closing keyword (merging a plan must not close the issue it plans), its title comes from the plan
+  and carries no closing keyword — what a merge meant is this stage's own terminal to record, and the keyword outlives
+  the label, so on a PR handed to a developer by a relabel it would let a merge of the plan alone close the issue as
+  finished work. The body says what deciding it does instead: merging finishes the issue `done`, closing it unmerged
+  finishes it `rejected`, and having the plan built is a relabel made before either. Its title comes from the plan
   commit's own subject, and `pr_opened` is emitted with `stage="discussion"` only on the branch that really opened
   one. The label is untouched throughout: no `validating`, no `documenting`, no `in_review`.
 - **Output**: the agent's response quoted in an issue comment pinging `HITL_MENTIONS`, or the matching park comment;
-  `awaiting_human=True` with the durable `park_reason` re-set after `_park_awaiting_human` clears it. That helper also
-  stamps `last_action_comment_id` at the newest comment on the thread, and this stage's park funnel puts back the
-  value it was entered with: the ceiling this round's prompt was BUILT from, not the thread as it stands minutes of
-  agent run later. A comment posted in that window — a human's second thought, or an outsider's the allowlist may
-  later admit — is never in front of the prompt, and this stage reads no comment twice, so recording it as consumed
-  would mean it is answered never. Leaving the mark below the stage's own posted analysis is safe because
+  `awaiting_human=True` with the durable `park_reason` re-set after `_park_awaiting_human` clears it. Or, on the
+  terminal arcs above, the usage receipt plus the flip to `done` / `rejected` — and on the holds, nothing at all. That
+  helper also stamps `last_action_comment_id` at the newest comment on the thread, and this stage's park funnel puts
+  back the value it was entered with: the ceiling this round's prompt was BUILT from, not the thread as it stands
+  minutes of agent run later. A comment posted in that window — a human's second thought, or an outsider's the
+  allowlist may later admit — is never in front of the prompt, and this stage reads no comment twice, so recording it
+  as consumed would mean it is answered never. Leaving the mark below the stage's own posted analysis is safe because
   `_new_trusted_replies` drops the orchestrator's own comments by recorded id and by the `_ORCH_COMMENT_MARKER` in
   their body (never by author login, which a PAT shared with a human's account would turn against that human's real
-  replies), so a conversation cannot resume on itself. Every
-  round after the opening one ends the same way until the humans confirm the design; what that confirmation buys is a
-  plan PR, not a transition, so leaving this stage is still a human relabel rather than anything the stage decides for
-  itself. The `issue-N`
-  worktree is PRESERVED on every exit — the tree the discussion read is the tree its next round and the operator both
-  look at — so this stage never tears one down, and the per-tick base sync stands down on the `discussion` label
-  (alongside `question`, in `_issue_skips_base_sync`) so `<remote>/<base>` is never rebased over that state. That same
-  gate also stands down on an unconsumed `discussion_*` / `question_*` park whatever the current label is, because the
-  refresh runs before the handlers: an operator's relabel to `workflow:implementing` removes the label a full tick
-  before the guard below rules on the branch, and a rebase in that gap would move the tip off the recorded anchor and
-  convict a branch nobody touched. It stands down on the two in-flight records as well —
-  `discussion_round_open` and `discussion_publishing_sha`, whatever `awaiting_human` says — because both are written
-  BEFORE the thing they describe: a tick that died after the agent committed leaves one standing with no park at all,
-  and the commit it died holding on the branch. Clearing the park does not lift the freeze either: it becomes
-  `read_only_baseline_sha`, and the branch stays put until that is spent on published work.
-- **Exit**: a human relabel only — to `done` or `rejected` (the two edges `ALLOWED_TRANSITIONS` grants the state), or,
-  through the GitHub UI, to `workflow:implementing` once the thread settles on building it. That last one is not a
+  replies), so a conversation cannot resume on itself. Every round after the opening one ends the same way until the
+  humans confirm the design; what that confirmation buys is a plan PR, not a transition, so the stage decides no
+  transition of its own until that PR is decided — and then it decides only the terminal the humans wrote on it.
+  Everywhere else, leaving this stage is a human relabel. The `issue-N` worktree is PRESERVED on every ROUND exit —
+  the tree the discussion read is the tree its next round and the operator both look at — so the only thing that ever
+  tears one down is the plan-PR terminal above, and only once that pull request is gone; the per-tick base sync stands
+  down on the `discussion` label (alongside `question`, in `_issue_skips_base_sync`) so `<remote>/<base>` is never
+  rebased over that state. That same gate also stands down on an unconsumed `discussion_*` / `question_*` park
+  whatever the current label is, because the refresh runs before the handlers: an operator's relabel to
+  `workflow:implementing` removes the label a full tick before the guard below rules on the branch, and a rebase in
+  that gap would move the tip off the recorded anchor and convict a branch nobody touched. It stands down on the two
+  in-flight records as well — `discussion_round_open` and `discussion_publishing_sha`, whatever `awaiting_human` says
+  — because both are written BEFORE the thing they describe: a tick that died after the agent committed leaves one
+  standing with no park at all, and the commit it died holding on the branch. Clearing the park does not lift the
+  freeze either: it becomes `read_only_baseline_sha`, and the branch stays put until that is spent on published work.
+- **Exit**: either terminal above — the plan-PR verdict, or the pre-PR close — to `done` or `rejected`, the two edges
+  `ALLOWED_TRANSITIONS` grants the state; or a human relabel: to either of those same two by hand, or, through the
+  GitHub UI, to `workflow:implementing` once the thread settles on building it. That last one is not a
   graph edge, so it arrives as an operator relabel and is screened by the read-only guard in
   `workflow/stages/implementing/read_only_relabel.py`: a `discussion_*` park whose worktree is dirty, whose recorded
   branch no longer sits at the SHA the round anchored on, or whose CHECKOUT is on a commit no record vouches for,
@@ -1592,8 +1659,9 @@ because session state lives in pinned state, not in the worktree.
   **Removing the label is not an exit.** The stage records `discussion_agent` / `discussion_round_sha` in the
   issue's pinned comment, and `_handle_pickup` starts an unlabeled issue on a fresh `PinnedState`, so the pickup would
   write a *second* pinned comment while `read_pinned_state` keeps returning the first — the discussion's. Closing the
-  issue is not a terminal signal either: `discussion` is absent from `CLOSED_SWEEP_LABELS`, so a closed discussion
-  issue is never polled again.
+  issue IS a terminal signal, and `discussion` is in `CLOSED_SWEEP_LABELS` so the closed issue keeps being polled
+  until that signal is drained: with no plan PR the close finalizes to `rejected`, and with one it waits for the
+  pull request (see the terminal bullet at the top of the handler above).
 
 ## State transition (label lifecycle)
 
@@ -1730,13 +1798,28 @@ because session state lives in pinned state, not in the worktree.
                              dirty or branch has commits ─► park
                              (question_unsafe_relabel)
 
-   discussion (operator-applied; no automatic in/out transitions):
+   discussion (operator-applied; nothing routes IN, and the only automatic
+   ways out are the terminals below: the verdict the humans leave on the plan
+   PR, and a close of the issue before one exists):
      first tick           ─► decomposer agent opens the design discussion in
                              the issue-N worktree; response posted, park
                              (discussion_response); worktree PRESERVED
-     plan PR recorded     ─► nothing: no agent, no comment, no write; the
-       (plan path +          design is on a PR with the humans and the label
-        pr_number)           stays `discussion`
+     plan PR recorded,    ─► nothing: no agent, no comment, no write, no
+       still open            teardown; the design is with the humans and the
+       (plan path +          label stays `discussion` -- which is also what
+        pr_number)           keeps a manually CLOSED issue in the closed-issue
+                             sweep until that PR resolves. A PR that could not
+                             be fetched holds the same way
+     plan PR merged       ─► label=done, stamp merged_at, usage receipt, emit
+                             pr_merged (stage=discussion), close the issue,
+                             then cleanup (worktree + local + remote branch)
+     plan PR closed       ─► label=rejected, stamp closed_without_merge_at,
+       without merging       usage receipt, emit pr_closed_without_merge
+                             (stage=discussion), close the issue, then cleanup
+     issue closed with    ─► label=rejected, stamp closed_without_merge_at,
+       no plan PR            usage receipt; no event and NO teardown -- the
+                             branch may hold an unpublished plan commit or a
+                             PR the issue arrived here carrying
      HEAD moved off the  ─► the commit is judged WITHOUT spawning: the agreed
        recorded round SHA    plan is published as the ended round would have,
        on entry              anything else parks (discussion_plan_invalid), so
@@ -1746,12 +1829,19 @@ because session state lives in pinned state, not in the worktree.
      unreadable tree on   ─► park (discussion_unreadable_worktree) WITHOUT
        entry                 spawning; nothing proved it empty, so nothing
                              recreates over it
-     the plan's own PR    ─► record its number and park
-       already merged         (discussion_plan_published) WITHOUT pushing: the
-                              branch the merge deleted is not recreated and no
-                              second pull request is asked for. Closed WITHOUT
-                              merging is not this arc: nothing landed, so the
-                              publication opens a reviewable PR as usual
+     the plan's own PR    ─► record its number WITHOUT pushing and WITHOUT a
+       already decided        park: the branch a merge deleted is not recreated,
+       (merged, or closed     no second pull request is asked for, and no
+        without merging)      replacement is opened over a design a human turned
+                              down. The humans have decided, so nothing tells
+                              them to go and review it -- the terminal above
+                              reads those records next tick and finishes the
+                              issue `done` or `rejected`
+     issue closed inside  ─► the same lookup, run by the terminal instead: a
+       that window            decided PR finalizes the issue (pr_number and
+                              branch recorded first), an open one holds with the
+                              label and checkout intact, and no PR at all falls
+                              through to the pre-PR close above
      agent commits the   ─► record the tip being published, push, find-or-open
        agreed plan alone     the plan PR, record plan path + branch +
                              pr_number, re-anchor on the published tip, park

@@ -4,9 +4,10 @@
 
 Neither stage ships code, so a checkout under one of their labels is something
 to read rather than work in progress -- an inspection target an unsafe park
-left an operator, and, in the discussion stage which preserves its tree on
-every exit, the state the next round is meant to open on. The refresh runs
-before any handler does, so without this gate a tick would rebase
+left an operator, and, in the discussion stage which keeps its tree on every
+exit short of the terminal that finishes the issue, the state the next round is
+meant to open on. The refresh runs before any handler does, so without this
+gate a tick would rebase
 `origin/<base>` over that tree, and it would do it on exactly the parked issues
 the handlers themselves never touch again.
 

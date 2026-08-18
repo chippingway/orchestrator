@@ -30,6 +30,7 @@ _OWNERS = (
     "run",
     "session",
     "state",
+    "terminal",
 )
 
 # Bound at module scope, so collecting this file is what plants the owner in

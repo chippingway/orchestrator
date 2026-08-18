@@ -23,6 +23,18 @@ fetch-failure answer: the merged check leaves the issue alone, the closed-issue
 check defers the whole tick so a transient failure cannot label a merged-PR
 issue `rejected`. Every entry point returns True to mean "this tick is over".
 
+`workflow/stages/discussion/terminal.py` composes the arcs itself rather than
+taking an entry point here, because its third one differs: a closed issue whose
+plan PR is still open KEEPS its label -- that label is what the closed-issue
+sweep finds it by, and the plan the humans are reading is what decides. It
+reaches `_finalize_merged_pr` and `_finalize_rejected_pr` directly for that
+reason, and `_finalize_closed_issue_with_open_pr` for a close with no pull
+request to poll at all -- which is the same shape that arc already serves here,
+a close whose linked PR is not the thing being decided. It records as fully as
+the other two -- the stamp, the `rejected` label, the receipt, one write -- and
+differs only in what it has nothing to say about: no event, since there is no
+pull request for the payload to name, and no branch cleanup.
+
 Branch cleanup is deliberately outside the shared tail. It runs on the two arcs
 where the PR itself is gone and the branch is dead weight, and is withheld on
 the open-PR arc so an operator can still reopen or salvage what the closed

@@ -89,9 +89,10 @@ def _issue_skips_base_sync(
     Neither conversation stage builds anything in its checkout, so the tree
     under one of their labels is something to read rather than work in
     progress: an inspection target an unsafe park left for an operator, and --
-    in the discussion stage, which preserves its tree on every exit -- the tree
-    the next round opens on. Rebasing `origin/<base>` over either would rewrite
-    the state someone was parked to look at.
+    in the discussion stage, which keeps its tree on every exit short of the
+    terminal that finishes the issue -- the tree the next round opens on.
+    Rebasing `origin/<base>` over either would rewrite the state someone was
+    parked to look at.
 
     The discussion stage does push, once: the plan its humans confirmed, on the
     branch and at the SHA its own check read. That is the sharper reason to

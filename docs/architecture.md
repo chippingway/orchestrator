@@ -254,9 +254,15 @@ orchestrator/
       discussion/
         __init__.py     package marker only; callers import an owner directly
         handler.py      the order one discussion tick asks its questions in:
-                        whose turn it is and whether the humans have answered,
-                        what the checkout already holds, then what the round
-                        left behind
+                        whether the conversation is over at all, whose turn it
+                        is and whether the humans have answered, what the
+                        checkout already holds, then what the round left behind
+        terminal.py     what the plan PR has become, polled ahead of every
+                        agent path: the merged and closed-unmerged finalizes,
+                        the open-PR hold that keeps the checkout and both
+                        branches, the marker lookup that finds a pull request
+                        the crash window left unrecorded, and the pre-PR close
+                        that rejects without tearing anything down
         session.py      the pinned agent and session a conversation is locked
                         to, the filter its replies and consumed watermark are
                         drawn through, and the prompt a round gets given what
@@ -3124,8 +3130,8 @@ each answered on an owner alone, `_handle_question` included.
 
 The discussion stage divides the same way the question stage does, because it is the same shape of conversation held
 to a stricter contract: until a human says the two sides understand the design the same way, the agent may not write
-anything AND may not decide anything. `handler` holds the order -- the hold on an issue whose plan is already
-published (the record its own publication left, read as a pair with `pr_number` so a dev's inherited PR is not
+anything AND may not decide anything. `handler` holds the order -- `terminal`'s poll of an issue whose plan is
+already published (the record its own publication left, read as a pair with `pr_number` so a dev's inherited PR is not
 mistaken for one), the
 gate that makes a discussion-owned park the humans' turn (a park any other stage wrote does not gate, or an issue
 relabeled here while parked elsewhere would stay inert for good), the trusted reply that ends that turn, the two
@@ -3189,7 +3195,8 @@ and not merely one the remote named: the base advances between a tick's own fetc
 an absent object fails the local diff that spends the record -- which reports no paths, exactly what a branch changing
 nothing reports. So `_commit_present` is asked, one `_authed_target_fetch` of the base supplies what is missing, and a
 commit still unreadable after it is recorded as no base rather than as a reading nobody could take.
-`discussion_round_open`, written beside the anchor before every spawn and cleared by every park, covers the resumed
+`discussion_round_open`, written beside the anchor before every spawn and cleared by every park (and by the one
+ending that records without parking, the adoption of an already-decided pull request), covers the resumed
 round: it runs with the park it is answering still
 durable, so one that committed the confirmed plan and was then paused or cut short is judged exactly as the same
 crash on an unparked issue is. `discussion_publishing_sha`, written before the push, covers the publication itself --
@@ -3244,9 +3251,8 @@ which is exactly what the shortcut would push), or whose tree `git status` could
 of that read answers a failure with no paths, which is what a clean tree answers, and the creators force-remove a
 checkout nothing is holding). An unfinished PUBLICATION is refused on its record alone, because the
 marker precedes the push and a fresh clone reads clean on every local probe at once, so the way out it names is the
-`discussion` label whose recovery finishes it rather than a reset: the tree survives every exit, so nothing may
-rebase over it and
-nothing may ship as dev
+`discussion` label whose recovery finishes it rather than a reset: the tree survives every exit short of the terminal
+that finishes the issue, so nothing may rebase over it and nothing may ship as dev
 work what this stage did not vouch for — while the commits an issue arrived carrying, which that same record
 certifies, still let the relabel through — as does a published plan, whose anchor was moved onto the tip its
 publication pushed, and as does the live head of the plan PR itself, which is the design as its reviewers left it.
@@ -3295,8 +3301,20 @@ reasons, the three predicates the handler gates on — whose park this is, wheth
 checkout to be repaired, and whether the plan is already published — the plan path itself, and the carriers are all
 decidable without one. Spelling that path on `state` is what keeps the prompt that promises the agent a file and the
 check that refuses every other one from drifting apart: the prompt builders are handed it, and the publication check
-compares against it. Unlike question, no owner here
-tears a worktree down: the tree the discussion read is the tree its next round and the operator both look at. The
+compares against it. `terminal` is what asks the pull request those records name what it has become, and it is asked
+ahead of every local reading because both endings this stage has were made somewhere else: a merged plan PR finalizes
+to `done`, one closed unmerged to `rejected`, and either takes the shared tail from `engine/terminals` under
+`stage="discussion"` -- the stamp, the label, the receipt before the single write, the event, the close, and
+`_cleanup_terminal_branch` last of all. An open one decides nothing and, more to the point, reaps nothing, which is
+also what a closed ISSUE with an open plan PR gets: the label it keeps is what leaves it inside the closed-issue sweep
+until the pull request itself resolves. A closed issue with no plan PR is the one arc that needs no pull request, and
+it rejects without a teardown -- the branch under it may be an unpublished plan commit or a PR the issue merely
+arrived here holding. That last reading is taken only once a standing `discussion_publishing_sha` has been looked up
+by commit, since the publication opens its pull request before it records the number and a human can decide the issue
+inside that window: a decided pull request found there is finalized on the spot (its number and branch written first,
+because the event names one and the cleanup resolves the other), and an open one holds like a recorded one.
+So the only worktree this stage ever tears down is one whose plan PR is gone: everywhere else
+the tree the discussion read is the tree its next round and the operator both look at. The
 stage borrows the same engine surfaces question does -- the tracked spawn, the awaiting-human park, the prompt
 builder, the trusted conversation text, and the stderr diagnostics from `workflow/engine/`, `_worktree_path` and
 `_resolve_branch_name` from `git/worktrees/paths.py`, `_ensure_worktree` from `git/worktrees/creation.py`,

@@ -182,15 +182,18 @@ the implementation plan — and commits that one file. The orchestrator then che
 and publishes it as a pull request only when the whole diff is that Markdown file, the file is really there, and the
 worktree is provably clean; a commit carrying anything else — or a worktree it could not inspect — parks the issue for
 you with the offending paths and the SHA to reset back to, and pushes nothing. The issue keeps the `discussion` label
-the whole time and no further round is opened once the plan PR is up.
+while you read that pull request, and no further round is opened over the top of it.
 
-The issue leaves only when a human relabels it — to `done` or `rejected` when the thread settles it, or to
-`workflow:implementing` to build what the plan describes (the orchestrator refuses that one if the agent left
-unpublished commits or edits behind, so nothing unreviewed is pushed). Do not simply remove the label: the discussion
-records its state in the issue's pinned comment, and an unlabeled issue is picked up as a brand-new one that starts a
-second pinned comment. See
-[the discussion-stage lifecycle][discussion-lifecycle] for the prompt's full contract and the park reasons a round
-that writes the wrong thing or goes silent earns.
+What you do with that pull request is what ends the discussion. Merge it and the design is agreed: the orchestrator
+finishes the issue as `done`, closes it, posts what the whole conversation cost, and removes the worktree and the
+branch. Close it unmerged and the design is declined: the issue finishes as `rejected` the same way. Closing the ISSUE
+while the plan PR is still open decides nothing — the orchestrator keeps the label and the checkout and waits for your
+verdict on the pull request. To have the plan BUILT instead, relabel to `workflow:implementing` before you decide the
+PR (the orchestrator refuses that relabel if the agent left unpublished commits or edits behind, so nothing unreviewed
+is pushed); `done` and `rejected` are also yours to apply by hand at any point. Do not simply remove the label: the
+discussion records its state in the issue's pinned comment, and an unlabeled issue is picked up as a brand-new one
+that starts a second pinned comment. See [the discussion-stage lifecycle][discussion-lifecycle] for the prompt's full
+contract and the park reasons a round that writes the wrong thing or goes silent earns.
 
 ## Observability
 
