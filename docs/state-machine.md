@@ -262,9 +262,20 @@ Two paths depending on whether a PR exists:
   `workflow:validating` so the reviewer re-runs against the rewritten head. Only when the rebase actually leaves
   conflicted files does the helper relabel to `workflow:resolving_conflict`.
 
-The `question` label skips both paths unconditionally — its handler tears down its own
-worktree, and merging base into a question worktree would either accrete commits on a read-only branch or mask an
-inspection state.
+The `question` and `discussion` labels skip both paths unconditionally (`_issue_skips_base_sync`) — the question
+handler tears down its own worktree, the discussion stage keeps its checkout across every round exit, and merging
+base into either would accrete commits on a branch no developer owns or rewrite the state an unsafe park left for an
+operator to read. On the discussion side it is also what protects the publication: the plan is pushed at the SHA the
+stage's own check read, so a rebase between that reading and the push — or after it, onto the tip the plan PR is open
+against — would move the branch off the commit anything vouches for.
+
+The skip outlives the label. An unconsumed `question_*` / `discussion_*` park is honored whatever the issue is
+labeled now, because an operator's relabel to `workflow:implementing` takes the label off a full tick before the
+read-only guard rules on the branch, and a rebase in that gap would move the tip off the SHA the guard measures and
+convict a branch nobody touched. So are the three records that freeze a branch on their own: the two a discussion
+tick writes BEFORE the thing they describe (`discussion_round_open` and `discussion_publishing_sha`, which a tick
+that died mid-round leaves standing with no park at all, and with the commit it died holding on the branch), and the
+`read_only_baseline_sha` the guard writes in place of a park it clears, which stands until the dev run commits.
 
 Refresh-only failure modes — push rejected (`auto_base_rebase_push_failed`), rebase failed without conflicted files
 (`auto_base_rebase_failed`), dirty-after-clean-rebase (`auto_base_rebase_dirty`) — reset HEAD back to the pre-rebase
@@ -1666,6 +1677,23 @@ because session state lives in pinned state, not in the worktree.
   issue IS a terminal signal, and `discussion` is in `CLOSED_SWEEP_LABELS` so the closed issue keeps being polled
   until that signal is drained: with no plan PR the close finalizes to `rejected`, and with one it waits for the
   pull request (see the terminal bullet at the top of the handler above).
+
+This is the `question` flow held to a different contract, and what differs is what a round may leave behind. A
+question never writes, opens no PR, and tears its worktree down on every safe exit, so closing the issue is the whole
+of its ending. A discussion writes once — `plans/issue-<number>.md`, and only after a human confirms the design on the
+thread — publishes that one file as a pull request, keeps its checkout until that pull request is gone, and ends on
+the verdict the humans leave on it. What the two share is the shape around that: an operator-applied bare label
+nothing routes into, the decomposer's backend under a pin of the conversation's own (`question_agent` /
+`discussion_agent` and their session ids, each an independent pair), a park that suppresses the next tick until a
+trusted reply arrives, the read-only base-sync gate, no developer and no reviewer at any point, and the same guard
+screening a relabel to `workflow:implementing`.
+
+The plan that relabel hands over is an artifact, not a specification the workflow reads back. Nothing downstream
+parses it: the developer is spawned with the ordinary `_build_implement_prompt` built from the issue body and the
+trusted thread, on the branch the plan PR is open against, and the final-docs pass behind it is told not to inspect
+or modify the `plans/` tree at all. The file rides along on that branch and lands with the implementation as the
+record of what was agreed — the issue is still what the developer is briefed from and what the reviewer judges the
+diff against.
 
 ## State transition (label lifecycle)
 

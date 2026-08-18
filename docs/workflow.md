@@ -114,6 +114,13 @@ trivia, and close with a NUMBERED list of the questions answerable right now —
 answer — so a human can agree or overrule by number. Nothing is written, and nothing is implemented, until a human
 states on the thread that they and the agent understand the design the same way.
 
+Where the two stages part is what a round may leave behind. `question` is read-only for its whole life — a commit or
+a dirty tree is a violation it parks on — it opens no PR, it tears its worktree down on every safe exit, and closing
+the issue finishes it `done`. A discussion is read-only only up to the confirmation: after it the agent may commit
+exactly one file, the stage publishes that file as a pull request, the `issue-N` checkout is preserved on every round
+exit instead, and the ending is the verdict the humans leave on that pull request — merged is `done`, closed unmerged
+is `rejected` — with a close of the issue before a plan exists the only other ending the stage takes for itself.
+
 Answering by number resumes the pinned session for another round. Only issue comments past the consumed
 `last_action_comment_id` that are neither from an untrusted author nor the orchestrator's own count as an answer, so
 an empty or all-untrusted batch is a no-op that writes nothing and leaves the reply for the tick after the allowlist
@@ -267,6 +274,12 @@ proposing the design they just turned down.
 Moving the anchor is what lets the operator relabel to `workflow:implementing` before any of that: the guard
 measures the branch against it, so an anchor left behind would convict the branch of the commit this stage just
 published.
+
+The plan is an artifact, not a specification anything downstream reads. Nothing in the workflow parses it: the
+relabel spawns the developer with the ordinary `_build_implement_prompt` built from the issue body and the trusted
+thread, on the branch the plan PR is open against, and the final-docs pass that follows is told not to inspect or
+modify the `plans/` tree at all. So the plan file rides along on the branch and lands with the implementation as the
+human-readable record of what was agreed — the issue is still what the developer is briefed from and judged against.
 
 ### Tracked-repos awareness in working-agent prompts
 

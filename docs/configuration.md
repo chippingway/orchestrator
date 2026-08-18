@@ -93,7 +93,9 @@ session lock, and full examples.
 - `DECOMPOSE_AGENT` — default `claude`. decomposer command spec (validated even when `DECOMPOSE=off`); also drives the
   `question` and `discussion` stages
 - `DECOMPOSE` — default `on`. enable the `decomposing` stage; `off` reverts to the legacy
-  "no label → `workflow:implementing`" pickup
+  "no label → `workflow:implementing`" pickup. It gates that pickup route only: the two operator-applied
+  conversation labels, `question` and `discussion`, still run on the decomposer's spec with `DECOMPOSE=off`, which is
+  why that spec is validated either way
 - `CODEX_BIN` — default `codex`. executable launched when a role's first token is `codex`; override only if `codex` is
   not on `$PATH`
 - `CLAUDE_BIN` — default `claude`. executable launched when a role's first token is `claude`; override only if
@@ -129,7 +131,10 @@ session lock, and full examples.
   `POLL_INTERVAL` that fixed cost dominates request volume and is the main driver of GitHub *primary* rate-limit
   (5000 req/hour/PAT) exhaustion. `1` runs it every tick (unchanged behavior). Raise it (e.g. `4`–`5`) on multi-repo
   deployments; the only cost is that an externally-merged/closed issue may take up to `N-1` extra ticks to finalize to
-  `done`. The latency-sensitive open-issue poll always runs every tick.
+  `done`. The latency-sensitive open-issue poll always runs every tick. A closed `discussion` is the one issue the
+  sweep keeps costing: with no plan PR published it waits the same `N-1` ticks to finalize to `rejected`, and with one
+  still open it deliberately keeps its `discussion` label so the sweep goes on yielding it every pass until the humans
+  decide that pull request — a verdict `N>1` therefore picks up that many ticks later as well.
 - `AGENT_TIMEOUT` — default `1800`. wall-clock cap per agent invocation, seconds
 - `REVIEW_TIMEOUT` — default (= `AGENT_TIMEOUT`). wall-clock cap per reviewer invocation, seconds
 - `SHUTDOWN_GRACE_SECONDS` — default `30`. seconds after SIGTERM/SIGINT before the loop force-terminates in-flight
@@ -759,7 +764,11 @@ When each setting's change takes effect:
   takes effect: every stage that resumes a dev agent (`implementing`, `validating`, `documenting`, `in_review`,
   `fixing`, `resolving_conflict`) re-reads the label after the run returns, before any post-agent side effect, and
   discards the result rather than pushing, opening a PR, relabeling, advancing watermarks, or posting comments, so the
-  committed work stays on the branch and republishes once the label is removed.
+  committed work stays on the branch and republishes once the label is removed. The two conversation stages honor it
+  on the same terms: a `paused` that lands while a `question` or `discussion` round is running suppresses every
+  disposition below it, so nothing is posted, parked, folded into the usage counters, or written to pinned state. A
+  discussion round that had just committed the confirmed plan keeps that commit on its branch and has it published by
+  the tick after the label comes off, classified against the round anchor the stage wrote before the spawn.
 - `workflow:community_contribution` — Applied automatically (not by an operator) by the per-tick open-PR sweep when
   `ALLOWED_ISSUE_AUTHORS` is set: any open PR whose author is outside the allowlist is labeled and `HITL_HANDLE` is
   @-mentioned once per PR so a human reviews the community-submitted work. Bot authors (Dependabot, Renovate, CI bots)

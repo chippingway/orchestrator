@@ -174,7 +174,9 @@ answerable right now — each with its own recommended answer — so you can agr
 posted as an issue comment pinging `HITL_HANDLE` and the issue then waits on you. Answer by number and the same
 session resumes for another round: it folds your answers in as decided, expands what they opened up, and posts the
 frontier they left, then waits again — for as many rounds as you keep replying. Nothing is written until you say the
-design is settled.
+design is settled. No developer or reviewer agent runs at any point: where the `question` label above stays read-only
+for its whole life and finishes when you close the issue, a discussion can earn exactly one write — and what you do
+with that write is what ends it.
 
 When you state on the thread that you and the agent understand the design the same way, that same session writes it
 up in `plans/issue-<number>.md` — the resolved decisions, the evidence behind them, the alternatives, the risks, and
@@ -194,6 +196,13 @@ is pushed); `done` and `rejected` are also yours to apply by hand at any point. 
 discussion records its state in the issue's pinned comment, and an unlabeled issue is picked up as a brand-new one
 that starts a second pinned comment. See [the discussion-stage lifecycle][discussion-lifecycle] for the prompt's full
 contract and the park reasons a round that writes the wrong thing or goes silent earns.
+
+The plan file is a record, not a specification the rest of the workflow reads: nothing downstream parses it, a
+developer that picks the issue up after a relabel is briefed from the issue and the thread as usual, and the
+final-docs pass is told to leave the `plans/` tree alone — so the file rides along on the branch and lands with the
+implementation. Every round is recorded under the decomposer role with the stage `discussion`, so what a design
+conversation costs shows up in the analytics dashboard beside implementation work, and the receipt the orchestrator
+posts when the issue finishes covers the whole of it.
 
 ## Observability
 
