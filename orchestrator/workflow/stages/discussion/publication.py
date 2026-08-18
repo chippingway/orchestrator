@@ -31,8 +31,18 @@ records a PR that does not exist. The PR is next and is reused if one is
 already open on the branch, which is what a tick that died between `open_pr`
 and the pinned write recovers through -- it re-derives the same artifact from
 the same branch and finds its own PR rather than 422-ing on a duplicate. The
-records are staged last and land with the park's write, which is also what
-retires the marker, so an issue never carries half a publication.
+records are staged last and go down in one write, which is also what retires
+the marker, so an issue never carries half a publication.
+
+Which write that is depends on what the pull request is. An OPEN one is a
+design still waiting on the humans, so the records ride the park that tells
+them where to read it. One they have already DECIDED -- merged, or closed
+without merging, which only the recovery ever adopts -- is not: telling
+somebody to go and review what they have just settled would answer a verdict
+with instructions, so there the records are persisted on their own and nothing
+is said on the thread. `terminal` reads them on the next tick and finishes the
+issue `done` or `rejected`, with the usage receipt and the teardown, which is
+the whole of what is left to say.
 
 Two of those records are not bookkeeping. `pr_number` and `branch` are what a
 later checkout is restored from, and the round anchor is moved onto the
@@ -69,11 +79,17 @@ _PR_OPENED_EVENT = "pr_opened"
 # already-carried publication is adopted rather than pushed to.
 _OPEN_PR_STATE = "open"
 
-# What `pr_state` calls a pull request whose head landed on the base branch.
-# It is the only non-open state that finishes a publication: `closed` is a
-# design the humans turned down or a pull request somebody tidied away, and
-# neither is an artifact anybody can review.
-_MERGED_PR_STATE = "merged"
+# What `pr_state` calls a design the humans turned down. It is the one verdict
+# a settle cannot act on the moment it sees it: an operator answering the stale
+# park may close the stray pull request as part of the very reset that park
+# asked for, so the close is only a verdict once the reset has been ruled out.
+_CLOSED_PR_STATE = "closed"
+
+# The states a lookup by commit narrows to: every verdict the humans can leave
+# on a pull request, since to a publication a merge and a close are the same
+# "nothing left to push here". Which of them the caller may act on, and when,
+# is the caller's own -- see `_settled_plan_pr` and `_settle_moved_marker`.
+_DECIDED_PR_STATES = frozenset((_CLOSED_PR_STATE, "merged"))
 
 
 def _plan_artifact(run: _models._DiscussionRun) -> _models._PlanArtifact:
@@ -270,7 +286,8 @@ def _settle_moved_marker(
     forever with no `pr_number` and no plan path ever written, while the plan
     it is parked about is in the base branch. So the pull request itself is
     asked for by commit, and finding it finishes the publication the crash
-    interrupted.
+    interrupted. An OPEN one the humans have pushed past is the same answer for
+    the same reason, and is settled in the same place.
 
     That question is the one this cannot proceed without an answer to. Both
     readings under it act on the marker -- one spends it, the other refuses on
@@ -286,8 +303,22 @@ def _settle_moved_marker(
     request nobody recorded and the conversation opens another round over the
     top of it. So the marker is only spent once the branch the remote holds can
     be shown not to carry the commit it names.
+
+    A pull request the humans CLOSED without merging is the one answer that
+    waits for that reading rather than preceding it, because it is the only one
+    the reset can also explain. An operator answering the stale park may well
+    close the stray pull request while they are resetting the branch, and a
+    close read as a verdict there would finish the issue on debris they were
+    tidying. So it is taken up only once the reset has been ruled out -- the
+    branch is not back at the anchor, or the remote still carries the commit --
+    and then it IS the verdict: the plan is out there, the humans turned it
+    down, and `terminal` finishes the issue `rejected` from the record this
+    writes. Refused instead, the issue parks on a stale publication forever
+    with no number, no label, no event, and no branch anything will reap, which
+    is exactly what a reviewer who amends the plan and then closes it leaves
+    behind.
     """
-    landed = _landed_plan_pr(run, artifact, in_flight)
+    landed = _settled_plan_pr(run, artifact, in_flight)
     if landed is _pull_requests.PR_LOOKUP_UNREADABLE:
         log.warning(
             "issue=#%s holding a publication in flight on %s: GitHub could "
@@ -295,7 +326,7 @@ def _settle_moved_marker(
             run.issue.number, in_flight,
         )
         return True
-    if landed is not None:
+    if landed is not None and run.gh.pr_state(landed) != _CLOSED_PR_STATE:
         _record_landed_plan(run, artifact, landed)
         return True
     published = _publication_on_the_branch(run, artifact, in_flight)
@@ -310,6 +341,9 @@ def _settle_moved_marker(
         # whatever this tick writes next carries it.
         run.state.set(_state._PUBLISHING_SHA, None)
         return False
+    if landed is not None:
+        _record_landed_plan(run, artifact, landed)
+        return True
     _refuse_stale_publication(run, artifact, in_flight, published)
     return True
 
@@ -396,12 +430,13 @@ def _readable_remote_tip(
     return _verification_probes._commit_present(artifact.worktree, remote_tip)
 
 
-def _merged_plan_pr(
+def _plan_pr_by_commit(
     run: _models._DiscussionRun,
     artifact: _models._PlanArtifact,
-    in_flight: str,
+    commit: str,
+    wanted_states: frozenset,
 ):
-    """The pull request this publication landed AND merged on, if there is one.
+    """The pull request carrying this commit, when it is in one of these states.
 
     Searched by commit and across every state, which is the pair of things
     `find_open_pr` cannot do. A tick that opened the plan PR and died before
@@ -416,30 +451,26 @@ def _merged_plan_pr(
     The commit is what makes an answer of any state safe to look at: a branch
     name outlives every pull request opened on it, so widening the search is
     only sound because the SHA narrows it back to the one this publication put
-    there. What is done with the answer narrows again, to MERGED alone. A
-    pull request closed without merging is not a published plan by any reading
-    an operator would recognize -- nobody can review it, nothing links the issue
-    to a design, and the branch it was opened from is usually still sitting
-    there -- so recording it would leave the stage held on an artifact that
-    cannot be looked at, and this stage would neither open a reviewable one nor
-    ever say why. Answered as nothing, the publication runs its ordinary course
-    and the humans get a pull request they can read.
+    there. Which states count is the CALLER's, and so is WHEN each of them may
+    be acted on: `_settled_plan_pr` composes this into the one answer a
+    publication has, and `_settle_moved_marker` holds one of that answer's
+    verdicts back until it has ruled out an operator's reset.
 
     A lookup nobody could take is handed straight back rather than narrowed,
-    because the narrowing is what would turn it into a "no": the merged pull
-    request this exists to find has a moved head and a deleted branch, so its
+    because the narrowing is what would turn it into a "no": the pull request
+    this exists to find has a moved head and possibly a deleted branch, so its
     commit list is the only place it is still visible, and one failed read of
-    that list is enough to have the recovery republish over a design that
-    already landed.
+    that list is enough to have the recovery republish over a design the humans
+    already settled.
     """
     plan_pr = run.gh.find_pr_for_commit(
         branch=artifact.branch,
         base=run.spec.base_branch,
-        head_sha=in_flight,
+        head_sha=commit,
     )
     if plan_pr is _pull_requests.PR_LOOKUP_UNREADABLE:
         return plan_pr
-    if plan_pr is None or run.gh.pr_state(plan_pr) != _MERGED_PR_STATE:
+    if plan_pr is None or run.gh.pr_state(plan_pr) not in wanted_states:
         return None
     return plan_pr
 
@@ -514,25 +545,34 @@ def _plan_pr_overtaken(
     return plan_pr
 
 
-def _landed_plan_pr(
+def _settled_plan_pr(
     run: _models._DiscussionRun, artifact: _models._PlanArtifact, commit: str,
 ):
-    """The pull request `commit` is already published on, if there is one.
+    """The pull request that leaves this commit nothing to publish, if any.
 
-    Both readings share one caller-visible answer because both mean the same
-    thing to a publication: there is nothing left to push. A merge took the
-    branch with it, and a head the humans moved past the commit carries it
-    already -- pushing at either would recreate a ref GitHub deleted or send
-    the older SHA over their work.
+    Three ways one does, and all three are the humans having settled it
+    somewhere this host cannot see. A MERGE took the branch with it and put the
+    design in the base, so pushing would recreate a ref GitHub deleted and ask
+    for a pull request with no commits between its two refs. A CLOSE without
+    merging is the design turned down, so pushing would open a REPLACEMENT
+    proposing it all over again -- with the issue then held on that replacement
+    and their rejection left with nothing pointing at it. An OPEN one whose
+    head they moved past this commit carries it already, so the only thing a
+    push could send is the older SHA over their own work.
 
-    Asked in that order because the merged one is cheaper: it is a single
-    lookup, while the open reading has to establish the remote tip and its
-    ancestry first. `PR_LOOKUP_UNREADABLE` from either short-circuits the
-    rest, since it is truthy and says the question could not be put at all.
+    Asked in that order because the first two are one lookup between them,
+    while the open reading has to establish the remote tip and its ancestry
+    first. `PR_LOOKUP_UNREADABLE` from either short-circuits the rest, since it
+    is truthy and says the question could not be put at all.
+
+    What a caller may DO with a close is not decided here, because it depends
+    on where the branch is: `_settle_moved_marker` holds that one answer back
+    until it has ruled out an operator's reset, since answering the stale park
+    can mean closing the stray pull request as well as resetting the branch.
     """
-    return _merged_plan_pr(run, artifact, commit) or _plan_pr_overtaken(
-        run, artifact, commit,
-    )
+    return _plan_pr_by_commit(
+        run, artifact, commit, _DECIDED_PR_STATES,
+    ) or _plan_pr_overtaken(run, artifact, commit)
 
 
 def _refuse_stale_publication(
@@ -608,7 +648,7 @@ def _publish_plan(
     the write is what carries the round's own records there, since a round
     holding its session id only in memory would come back unattributable.
     """
-    landed = _landed_plan_pr(run, artifact, artifact.head_sha)
+    landed = _settled_plan_pr(run, artifact, artifact.head_sha)
     if landed is _pull_requests.PR_LOOKUP_UNREADABLE:
         _hold_unreadable_plan_pr(run, artifact)
         return
@@ -649,14 +689,25 @@ def _record_landed_plan(
 
     A merge is one way in, and pushing there would recreate a ref GitHub
     deleted on purpose and ask for a pull request with no commits between its
-    two refs. The other is an open pull request whose head a human moved past
-    this commit while still carrying it, and pushing there would send the older
-    SHA over their work.
+    two refs. A close without merging is the second, and pushing there would
+    ask the humans for a design they have just turned down -- on a REPLACEMENT
+    pull request, leaving their rejection with nothing pointing at it. The
+    third is an open pull request whose head a human moved past this commit
+    while still carrying it, and pushing there would send the older SHA over
+    their work.
 
-    A pull request somebody closed without merging is neither: it is not an
-    artifact the humans can be held against, and recorded here it would freeze
-    the stage on a design nobody can open while the publication that would have
-    given them a reviewable one never runs.
+    What the park says depends on which of them it was, because the park is
+    what the humans read. An OPEN one is a design still waiting on them, and
+    the message says where to review it and how to have it built. A DECIDED one
+    is not: they merged or closed it already, and telling them to go and review
+    it would be answering a verdict they have given with instructions they have
+    no use for. So the records are written on their own there, and what speaks
+    instead is `terminal` on the very next tick, which reads them and finishes
+    the issue `done` or `rejected` with the usage receipt and the teardown.
+    The open-round flag is retired by hand on that path, because the park
+    funnel is what retires it everywhere else: a round whose plan is on a pull
+    request has reported, and a flag left standing would have a later tick
+    treat somebody else's commit as this round's.
 
     Nothing happens at all without a session to name, which is asked before
     the pull request is touched rather than after: this path reaches one
@@ -687,7 +738,11 @@ def _record_landed_plan(
     )
     _attribute_reused_pr(run, artifact, plan_pr)
     _record_published_plan(run, artifact, plan_pr.number)
-    _parks._park_published_plan(run, artifact, plan_pr.number)
+    if run.gh.pr_state(plan_pr) == _OPEN_PR_STATE:
+        _parks._park_published_plan(run, artifact, plan_pr.number)
+        return
+    run.state.set(_state._ROUND_OPEN, None)
+    run.gh.write_pinned_state(run.issue, run.state)
 
 
 def _marked_publication(
@@ -952,20 +1007,36 @@ def _plan_pr_attribution(run: _models._DiscussionRun) -> str:
 def _plan_pr_body(
     run: _models._DiscussionRun, artifact: _models._PlanArtifact,
 ) -> str:
-    """Say what the PR is, which session wrote it, and what it does not do.
+    """Say what the PR is, which session wrote it, and what deciding it does.
 
-    No closing keyword appears anywhere in it. `Resolves #N` would close the
-    issue the moment the plan merged, and the issue is precisely what has to
-    stay open -- the plan is the input to the work, not the work.
+    What a decision on it MEANS is the part a reviewer cannot infer from the
+    diff: this pull request is the design being agreed, so taking it finishes
+    the issue rather than starting anything, and having the plan built is a
+    relabel made BEFORE either button is pressed. This body is the only thing
+    that reaches the person about to press one.
+
+    No closing keyword appears anywhere in it all the same, and that is not a
+    contradiction. What a merge meant is this stage's to record -- the stamp,
+    the usage receipt, the event, and the teardown all ride the terminal it
+    drains -- and `Resolves #N` would have GitHub close the issue with none of
+    it written. The keyword also outlives the label it was written under: a
+    relabel to `workflow:implementing` hands the developer this very pull
+    request, and a closing keyword there would let a merge of the plan alone
+    close the issue as finished work -- the exact reading `discussion_plan_path`
+    exists to refuse.
     """
+    issue_number = run.issue.number
     plan_summary = (
         "The resolved decisions, the evidence behind them, the alternatives "
         "considered, the risks, and the implementation plan are in "
-        f"`{artifact.plan_path}`; this branch changes nothing else. The issue "
-        "stays in `discussion` until a human relabels it, so merging this "
-        "starts no implementation on its own."
+        f"`{artifact.plan_path}`; this branch changes nothing else, and no "
+        "implementation starts from here. Merging it is agreeing to the "
+        f"design: the orchestrator finishes #{issue_number} as `done`, closes "
+        "it, and removes the branch this pull request was opened from. "
+        "Closing this pull request unmerged finishes the issue as `rejected` "
+        f"the same way. To have the plan BUILT instead, relabel #{issue_number} "
+        "`workflow:implementing` before doing either."
     )
-    issue_number = run.issue.number
     return "\n".join((
         f"Plan for #{issue_number}, as agreed on the issue thread.",
         "",
@@ -982,9 +1053,11 @@ def _record_published_plan(
 ) -> None:
     """Stage what was published, where it lives, and what certifies it.
 
-    All four land in the park's single durable write, so an issue is never
-    left carrying a PR number without the branch it is open against or a plan
-    path without the PR that reviews it.
+    All four land in one durable write -- the park's where the pull request is
+    still open, and the caller's own where it has already been decided and
+    there is nothing to say on the thread -- so an issue is never left carrying
+    a PR number without the branch it is open against or a plan path without
+    the PR that reviews it.
 
     The anchor is the load-bearing one. It records the branch and the tip this
     stage vouches for, and moving it onto the published commit is what lets

@@ -23,11 +23,14 @@ the branch back into existence and asks GitHub for a second pull request on a
 commit that is already in the base. What finds it instead is the commit the
 marker names, asked of any state.
 
-What is DONE with that answer narrows back to a merge. A pull request closed
-without one is not a published plan: nobody can review it, and the branch it
-was opened from is usually still there. Recorded as the artifact, it would hold
-the stage on something that cannot be looked at and the reviewable pull request
-the humans are owed would never be opened.
+What is DONE with that answer covers a close without a merge as well, because
+to a publication both are the same thing: a verdict the humans have given, and
+nothing left to push at. Read as nothing, a closed one would be answered with a
+REPLACEMENT pull request proposing the design they just turned down. Recorded
+instead, it is what the terminal finishes the issue `rejected` from -- so
+neither ending is parked with the "review the plan there" message an open one
+earns, since telling somebody to review what they have already decided is
+answering a verdict with instructions.
 
 What the search matches on is the commits a pull request CARRIES rather than
 the head it is on. The window it exists for is the one between opening the PR
@@ -229,11 +232,14 @@ class DiscussionPlanPrReuseTest(unittest.TestCase, _DiscussionWorkflowMixin):
 class DiscussionMergedPlanPrTest(unittest.TestCase, _DiscussionWorkflowMixin):
     """The same crash window, reopened after the plan PR has left the open set.
 
-    Which way it left decides everything. A merge is the publication finishing
-    without this stage: the design is in the base, the branch is usually gone
-    with it, and all that is missing is the record. A close is the opposite --
-    nothing landed, nothing is reviewable, and the branch is still sitting
-    there waiting for a pull request somebody can actually read.
+    Which way it left decides what the issue ENDS as, and nothing else. A merge
+    is the design agreed: it is in the base, the branch is usually gone with
+    it, and all that is missing is the record. A close is the design turned
+    down. Neither is a publication with anything left to do, so both are
+    recorded rather than pushed at -- pushing at the close would open a
+    replacement proposing the very plan the humans just declined -- and what
+    the record buys is the terminal a tick later: `done` for the merge,
+    `rejected` for the close.
     """
 
     def test_a_merged_pr_is_recorded_not_reopened(self) -> None:
@@ -258,35 +264,36 @@ class DiscussionMergedPlanPrTest(unittest.TestCase, _DiscussionWorkflowMixin):
             )
 
         # Nothing recreates the branch and nothing asks for a second PR, and no
-        # round opens over a plan the humans have already taken.
+        # round opens over a plan the humans have already taken. Nothing is
+        # said to them either -- the records go down on their own, and the
+        # terminal reads them on the next tick.
         mocks[PUSH_BRANCH].assert_not_called()
         mocks[RUN_AGENT].assert_not_called()
-        self.assertEqual(gh.opened_prs, [])
+        self.assertEqual((gh.opened_prs, gh.posted_comments), ([], []))
         pinned_data = gh.pinned_data(issue.number)
         self.assertEqual(
             (
                 pinned_data[KEY_PR_NUMBER],
                 pinned_data[KEY_PLAN_PATH],
-                pinned_data[KEY_PARK_REASON],
                 pinned_data[KEY_PUBLISHING_SHA],
             ),
             (
                 _MERGED_PR_NUMBER,
                 self.plan_path(_MERGED_PR_ISSUE_NUMBER),
-                PARK_DISCUSSION_PLAN_PUBLISHED,
                 None,
             ),
         )
 
-    def test_a_closed_pr_is_replaced_not_recorded(self) -> None:
+    def test_a_closed_pr_is_recorded_not_replaced(self) -> None:
         # The same window, ended the other way: a human closed the plan PR
-        # without merging it, so nothing landed and the branch is still on the
-        # remote. Read as "already published", the number of a pull request
-        # nobody can open goes into the records, the stage holds on it for
-        # good, and the reviewable one it was supposed to leave is never asked
-        # for.
+        # without merging it. That is a verdict on the design, and pushing
+        # again would open a REPLACEMENT proposing the very plan they turned
+        # down -- with the issue then held on that replacement and their
+        # rejection left with nothing pointing at it. The close is recorded
+        # instead, which is what the terminal finishes the issue `rejected`
+        # from on the next tick.
         gh, issue = _seed_merged_publication(
-            _CLOSED_PR_ISSUE_NUMBER, merged=False,
+            _CLOSED_PR_ISSUE_NUMBER, merged=False, round_open=True,
         )
 
         with tempfile.TemporaryDirectory() as tree:
@@ -300,17 +307,20 @@ class DiscussionMergedPlanPrTest(unittest.TestCase, _DiscussionWorkflowMixin):
                 remote_branch_tip=HEAD_AFTER_COMMIT,
             )
 
-        # The publication runs its ordinary course, so the humans end up with a
-        # pull request they can read rather than a record of one they cannot.
-        mocks[PUSH_BRANCH].assert_called_once()
-        self.assertEqual(len(gh.opened_prs), 1)
+        mocks[PUSH_BRANCH].assert_not_called()
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertEqual((gh.opened_prs, gh.posted_comments), ([], []))
         pinned_data = gh.pinned_data(issue.number)
         self.assertEqual(
-            pinned_data[KEY_PR_NUMBER], gh.opened_prs[0].number,
-        )
-        self.assertNotEqual(pinned_data[KEY_PR_NUMBER], _CLOSED_PR_NUMBER)
-        self.assertEqual(
-            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_PUBLISHED,
+            (
+                pinned_data[KEY_PR_NUMBER],
+                pinned_data[KEY_PUBLISHING_SHA],
+                # Retired with the marker: the round whose plan is on a pull
+                # request has reported, and the park that would normally say so
+                # is the one this ending skips.
+                pinned_data[KEY_ROUND_OPEN],
+            ),
+            (_CLOSED_PR_NUMBER, None, None),
         )
 
     def test_an_amended_merged_pr_is_recorded(self) -> None:
@@ -328,12 +338,9 @@ class DiscussionMergedPlanPrTest(unittest.TestCase, _DiscussionWorkflowMixin):
         )
 
         mocks[PUSH_BRANCH].assert_not_called()
-        self.assertEqual(gh.opened_prs, [])
+        self.assertEqual((gh.opened_prs, gh.posted_comments), ([], []))
         pinned_data = gh.pinned_data(amended_issue.number)
         self.assertEqual(pinned_data[KEY_PR_NUMBER], _AMENDED_PR_NUMBER)
-        self.assertEqual(
-            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_PUBLISHED,
-        )
         self.assertIsNone(pinned_data[KEY_PUBLISHING_SHA])
 
     def test_an_amended_open_pr_is_adopted(self) -> None:
@@ -393,8 +400,8 @@ class DiscussionMergedPlanPrTest(unittest.TestCase, _DiscussionWorkflowMixin):
 
         pinned_data = gh.pinned_data(held_issue.number)
         self.assertEqual(
-            (pinned_data[KEY_PR_NUMBER], pinned_data[KEY_PARK_REASON]),
-            (_AMENDED_PR_NUMBER, PARK_DISCUSSION_PLAN_PUBLISHED),
+            (pinned_data[KEY_PR_NUMBER], pinned_data[KEY_PUBLISHING_SHA]),
+            (_AMENDED_PR_NUMBER, None),
         )
 
     def test_an_adopted_pr_is_attributed(self) -> None:
@@ -472,7 +479,11 @@ def _run_amended_recovery(case, gh, issue, **overrides):
 
 
 def _seed_merged_publication(
-    issue_number: int, *, merged: bool = True, session: bool = True,
+    issue_number: int,
+    *,
+    merged: bool = True,
+    session: bool = True,
+    round_open: bool = False,
 ):
     """A publication whose PR left the open set before it was recorded.
 
@@ -480,7 +491,8 @@ def _seed_merged_publication(
     is no longer open, which is the one state the open-PR lookup cannot see.
     `merged` is which way it left, and the remote answers to match: a merge
     takes the head branch with it, and a close leaves the branch exactly where
-    the push put it.
+    the push put it. `round_open` is the flag the crash left behind with it,
+    since the round that made the commit only ever clears it by reporting.
     """
     gh, issue = _seed_discussion(issue_number)
     branch = _issue_branch(issue_number)
@@ -490,6 +502,7 @@ def _seed_merged_publication(
             KEY_PUBLISHING_SHA: HEAD_AFTER_COMMIT,
             KEY_ROUND_BRANCH: branch,
             KEY_ROUND_SHA: HEAD_BEFORE_ROUND,
+            KEY_ROUND_OPEN: round_open or None,
             KEY_BASE_SHA: BASE_TIP_SHA,
             KEY_DISCUSSION_AGENT: config.DECOMPOSE_AGENT_SPEC,
             KEY_DISCUSSION_SESSION_ID: DISCUSSION_SESSION if session else None,

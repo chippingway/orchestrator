@@ -40,12 +40,15 @@ from unittest.mock import MagicMock
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
     BASE_TIP_SHA,
+    EVENT_PR_CLOSED_WITHOUT_MERGE,
     KEY_PARK_REASON,
+    LABEL_REJECTED,
     STATE_CLOSED,
     _agent,
 )
 
 from tests.workflow.stages.discussion.discussion_test_support import (
+    CLEANUP_TERMINAL_BRANCH,
     DISCUSSION_SESSION,
     ENSURE_PR_WORKTREE,
     ENSURE_WORKTREE,
@@ -84,10 +87,17 @@ _UNPUSHED_ISSUE_NUMBER = 1281
 _LOST_RETRY_ISSUE_NUMBER = 1282
 _MERGED_LOST_ISSUE_NUMBER = 1283
 _AMENDED_LOST_ISSUE_NUMBER = 1284
+_CLOSED_LOST_ISSUE_NUMBER = 1285
 
 _OPEN_PR_NUMBER = 8321
 _MERGED_PR_NUMBER = 8322
 _AMENDED_PR_NUMBER = 8323
+_CLOSED_PR_NUMBER = 8324
+# The stamp a rejection leaves, spelled here rather than imported from the
+# terminal's own fixtures: it is a pinned-state wire key, and a test that
+# reads it from the owner would agree with a rename instead of failing on
+# one.
+_KEY_CLOSED_WITHOUT_MERGE_AT = "closed_without_merge_at"
 # What a reviewer's own push onto the plan's branch leaves as its head, and
 # what a checkout rebuilt from that branch therefore comes back on.
 _AMENDED_HEAD = "the-commit-a-reviewer-pushed-onto-the-plan-pr"
@@ -281,18 +291,21 @@ class DiscussionLostCheckoutTest(unittest.TestCase, _DiscussionWorkflowMixin):
         # that is already in the base.
         mocks[RUN_AGENT].assert_not_called()
         self.assertEqual(gh.opened_prs, [])
+        # Nothing is said to the humans either: they merged it, so a park
+        # telling them to go and review it would answer a verdict they have
+        # already given. The records go down on their own, and the terminal
+        # reads them on the next tick.
+        self.assertEqual(gh.posted_comments, [])
         pinned_data = gh.pinned_data(merged_issue.number)
         self.assertEqual(
             (
                 pinned_data[KEY_PR_NUMBER],
                 pinned_data[KEY_PLAN_PATH],
-                pinned_data[KEY_PARK_REASON],
                 pinned_data[KEY_PUBLISHING_SHA],
             ),
             (
                 _MERGED_PR_NUMBER,
                 self.plan_path(merged_issue.number),
-                PARK_DISCUSSION_PLAN_PUBLISHED,
                 None,
             ),
         )
@@ -343,6 +356,64 @@ class DiscussionLostCheckoutTest(unittest.TestCase, _DiscussionWorkflowMixin):
                 None,
             ),
         )
+
+    def test_an_amended_closed_pr_is_recorded(self) -> None:
+        # The same rebuild, ended the other way: the humans amended the plan on
+        # its pull request and then closed it without merging. Their head still
+        # carries the commit the marker names, so there is nothing left to
+        # push -- but a close is not the reset the stale park asks for either,
+        # and refused as one the issue parks forever with no `pr_number`, no
+        # terminal label, no event, and no branch anything will reap, while the
+        # verdict sits on a pull request nothing points at.
+        gh, closed_issue = _seed_interrupted_publication(
+            _CLOSED_LOST_ISSUE_NUMBER,
+        )
+        gh.add_pr(FakePR(
+            number=_CLOSED_PR_NUMBER,
+            head_branch=_issue_branch(closed_issue.number),
+            head=FakePRRef(sha=_AMENDED_HEAD),
+            commit_shas=(HEAD_AFTER_COMMIT,),
+            state=STATE_CLOSED,
+        ))
+
+        recorded = self._run_over_missing_checkout(
+            gh,
+            closed_issue,
+            head_shas=(_AMENDED_HEAD,) * 2,
+            remote_branch_tip=_AMENDED_HEAD,
+            commit_contains=_descends_from_the_plan,
+        )
+
+        # Recorded rather than refused, and said to nobody: what the humans
+        # decided needs no park telling them to go and review it.
+        recorded[RUN_AGENT].assert_not_called()
+        self.assert_nothing_published(gh, recorded)
+        self.assertEqual(gh.posted_comments, [])
+        self.assertEqual(
+            gh.pinned_data(closed_issue.number)[KEY_PR_NUMBER],
+            _CLOSED_PR_NUMBER,
+        )
+
+        # And the tick after it is the ending they asked for.
+        finalized = self._run_discussion(
+            gh, closed_issue, run_agent=_agent(last_message=_INHERITING_ROUND),
+        )
+
+        self.assertEqual(
+            gh.label_history, [(closed_issue.number, LABEL_REJECTED)],
+        )
+        self.assertIn(
+            _KEY_CLOSED_WITHOUT_MERGE_AT,
+            gh.pinned_data(closed_issue.number),
+        )
+        self.assertEqual(
+            len([
+                event for event in gh.recorded_events
+                if event["event"] == EVENT_PR_CLOSED_WITHOUT_MERGE
+            ]),
+            1,
+        )
+        finalized[CLEANUP_TERMINAL_BRANCH].assert_called_once()
 
     def _run_over_missing_checkout(self, gh, issue, **run_options):
         """One tick whose per-issue checkout is not on disk at all."""

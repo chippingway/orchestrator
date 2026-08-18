@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """One `discussion` tick, in the order its questions have to be asked.
 
-Whether the conversation is over comes first. Once the humans have confirmed a
-design and this stage has published the plan they confirmed, the issue is with
-them on a pull request: no round is opened over the top of it, no agent is
-spawned, and the label stays where it is until a human moves it. That gate
-reads the publication's own record rather than the bare `pr_number`, since an
-issue relabeled here from a PR stage arrives carrying its dev's.
+Whether the conversation is over comes first, and `terminal` is what answers
+it. Once the humans have confirmed a design and this stage has published the
+plan they confirmed, the issue is with them on a pull request, and what that
+pull request has become is the whole of what a tick may do next: no round is
+opened over the top of it and no agent is spawned, whether the plan merged,
+was turned down, or is still being read. That gate reads the publication's own
+record rather than the bare `pr_number`, since an issue relabeled here from a
+PR stage arrives carrying its dev's -- and it answers for a closed issue too,
+which is why it runs ahead of the publication recovery below it rather than
+beside the parks.
 
 A publication that started and did not finish comes next, ahead of the
 turn-taking below it, because the answer that would otherwise carry a tick this
@@ -72,7 +76,10 @@ it can publish is the plan the humans confirmed: the design is not settled until
 they say so on the thread, so what a tick can produce is an analysis to reply
 to, a park to reply into, or -- once -- the agreed plan on a PR. The worktree
 the round ran in survives every one of those exits, because the tree the
-discussion read is the tree the next round and the operator both look at.
+discussion read is the tree the next round and the operator both look at. The
+one thing that ever takes it down is the terminal above, and only once the
+plan PR is gone: what the tree holds is what that pull request is open
+against.
 """
 from __future__ import annotations
 
@@ -87,6 +94,7 @@ from orchestrator.workflow.stages.discussion import publication as _publication
 from orchestrator.workflow.stages.discussion import run as _run
 from orchestrator.workflow.stages.discussion import session as _session
 from orchestrator.workflow.stages.discussion import state as _state
+from orchestrator.workflow.stages.discussion import terminal as _terminal
 
 
 def _run_discussion_round(
@@ -261,7 +269,7 @@ def _handle_discussion(
 ) -> None:
     """Open the discussion, answer the humans in it, or wait on them."""
     discussion_run = _models._DiscussionRun.start(gh, spec, issue)
-    if _state._plan_published(discussion_run.state):
+    if _terminal._drain_discussion_terminals(discussion_run):
         return
     if _publication._finish_interrupted_publication(discussion_run):
         return

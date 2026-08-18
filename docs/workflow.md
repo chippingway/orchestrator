@@ -103,7 +103,9 @@ For the per-`park_reason` semantics and the implementing-side relabel guard
 
 ### Discussion stage — architecture discussion on the `discussion` label
 
-The `discussion` label is operator-applied like `question`, with no automatic transitions in or out, and it reuses the
+The `discussion` label is operator-applied like `question`: nothing routes an issue in, and the only transitions out
+the orchestrator makes for itself are the two terminals it drains once the humans have decided somewhere it can read
+— the verdict they leave on the plan PR below, and a close of the issue before one exists. It reuses the
 decomposer's configured backend — a discussion is the decomposer reasoning about a design before anything is
 decomposed. `_handle_discussion` runs it once in the issue's per-issue worktree (`issue-N`, on the issue's own branch)
 with a prompt that tells it to research the repository itself, explore the design as a tree rather than a single
@@ -148,11 +150,12 @@ so the anchor is what makes a non-destructive recovery exist at all. The success
 the pair. `discussion_session_id` rides the park's write instead, so it never outlives the analysis it points at.
 
 The clean response is posted as a comment pinging `HITL_HANDLE` and the issue parks awaiting human; the worktree is
-preserved on every exit and the per-tick base sync skips the `discussion` label as it does `question`, so nothing
-rebases `<remote>/<base>` over it. No developer or reviewer is ever spawned. A parked issue's next tick costs one
-comment read and nothing else until somebody answers — the round on the thread is the humans' turn. A relabel to
-`workflow:implementing` goes through the same read-only guard the question stage uses, so a park that left unpublished
-commits or edits is refused as `discussion_unsafe_relabel` rather than pushed as dev work. See
+preserved on every round exit — only the plan PR reaching a terminal ever reaps one — and the per-tick base sync skips
+the `discussion` label as it does `question`, so nothing rebases `<remote>/<base>` over it. No developer or reviewer
+is ever spawned. A parked issue's next tick costs one comment read and nothing else until somebody answers — the round
+on the thread is the humans' turn. A relabel to `workflow:implementing` goes through the same read-only guard the
+question stage uses, so a park that left unpublished commits or edits is refused as `discussion_unsafe_relabel` rather
+than pushed as dev work. See
 [`state-machine.md#_handle_discussion-label-discussion`](state-machine.md#_handle_discussion-label-discussion).
 
 #### The plan PR the confirmation earns
@@ -181,7 +184,11 @@ than sending an older commit over somebody's push or over history the branch was
 found-or-opened so a tick
 that died between `open_pr` and the pinned write
 recovers into a reuse rather than a duplicate, and the PR body names the decomposer session that wrote the plan
-without any closing keyword — merging a plan must not close the issue it plans. A reused PR is only known to be open
+without any closing keyword: what a merge meant is the stage's own terminal to record, and the keyword outlives the
+label it was written under, so on a PR a relabel hands to a developer it would let a merge of the plan alone close the
+issue as finished work. What the body says instead is what deciding it does — merging finishes the issue `done`,
+closing it unmerged finishes it `rejected`, and having the plan built is a relabel made before either.
+A reused PR is only known to be open
 on the branch — as is one ADOPTED for already carrying the plan commit, which is what a crash before `pr_number` was
 written leaves the recovery to find, and which the lookup proves nothing about the provenance of — so one whose body
 does not already name that session has it rewritten; one that does keeps whatever else it says. A failed push parks
@@ -211,7 +218,8 @@ fetch and the round that opens in it, and a local diff naming an absent commit f
 how a plan written exactly as asked gets refused for changing nothing. One authenticated fetch of the base supplies a
 missing object, and a base still unreadable after it is recorded as none.
 Under a park, the publishing marker and `discussion_round_open` — written beside the anchor
-before every spawn and cleared by every park — are the only two things that attribute a commit to this stage: the
+before every spawn and cleared by every park, and by the adoption that records an already-decided pull request
+without one — are the only two things that attribute a commit to this stage: the
 first is finished on its own if a tick died mid-publication (that tick's write already spent the reply that would
 otherwise carry the next one there) and on the reply itself when the push is what failed — a reply that retry then
 consumes, or a failure would be asked for again by the same comment every poll; the second covers a resumed
@@ -231,8 +239,32 @@ that retires it — which is why that handoff re-reads the PR and records the he
 developer's checkout onto it, rather than leaving the developer on a design its reviewers have moved past), the
 round anchor moved onto the published tip, and the retired
 marker, alongside the `pr_opened` event emitted with `stage="discussion"`. The label stays `discussion` —
-no `validating`, no `documenting`, no `in_review` — and every later tick with that record holds: no agent, no round,
-no write. Moving the anchor is what lets the operator relabel to `workflow:implementing` afterwards: the guard
+no `validating`, no `documenting`, no `in_review` — and every later tick with that record polls that PR before
+anything else: no agent and no round whatever it says. While it is open the tick writes nothing at all and keeps the
+checkout and both branches, since they are what the humans are reading the plan on. Merged, the design was taken and
+the issue finalizes to `done`; closed without merging, it was turned down and finalizes to `rejected`. Either way the
+shared terminal tail runs under `stage="discussion"` — the timestamp, the label, the cumulative usage receipt posted
+before the single pinned write, the `pr_merged` / `pr_closed_without_merge` event, the issue close — and only then
+does `_cleanup_terminal_branch` take the worktree and the local and remote branches, which is the one thing that ever
+tears a discussion checkout down.
+
+A human closing the issue is a terminal too, and `discussion` is in the closed-issue sweep so a closed one keeps
+being polled. With the plan PR still open, the close says nothing about the design: the stage keeps its label — which
+is what leaves it inside that sweep — and its checkout until the PR itself resolves. With no plan PR at all there is
+nothing to wait for, so the close finalizes to `rejected` outright, ahead of the publication recovery and every
+turn-taking gate, and tears nothing down: the branch under it may carry an unpublished plan commit or belong to a PR
+the issue merely arrived here holding.
+
+"No plan PR" is decided by a lookup, not by the absence of a record, because the two come apart for one tick. The
+publication opens its pull request before it writes the number down, so a tick that dies in between leaves a real one
+with nothing pinned pointing at it — and a human can close the issue, or decide that pull request, inside the same
+window. So a standing `discussion_publishing_sha` is looked up by its commit across every state first: a merged or
+closed one finalizes the issue there and then, an open one holds it exactly as a recorded open one does, and only
+"nothing carries that commit" reaches the pre-PR ending. The publication side of the same window refuses to push at a
+pull request the humans have decided, for the same reason from the other end — a push there would open a REPLACEMENT
+proposing the design they just turned down.
+
+Moving the anchor is what lets the operator relabel to `workflow:implementing` before any of that: the guard
 measures the branch against it, so an anchor left behind would convict the branch of the commit this stage just
 published.
 

@@ -123,8 +123,10 @@ _FORWARD: Mapping[
     WorkflowLabel.RESOLVING_CONFLICT: frozenset((WorkflowLabel.VALIDATING,)),
     WorkflowLabel.QUESTION: frozenset((WorkflowLabel.DONE,)),
     # Nothing routes an issue into `discussion`, so the only edges it needs are
-    # the two a human leaves it by: the thread settled on doing the work, or on
-    # not doing it.
+    # its two endings: the design was taken, or it was not. A human applies
+    # either by hand, and the stage writes the same two itself once they have
+    # decided somewhere it can read -- by merging or closing the plan PR, or by
+    # closing the issue before one exists.
     WorkflowLabel.DISCUSSION: frozenset(
         (WorkflowLabel.DONE, WorkflowLabel.REJECTED),
     ),

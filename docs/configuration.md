@@ -164,21 +164,22 @@ A single fine-grained PAT gets **5000 REST requests/hour** (the GitHub *primary*
 fixed number of `GET /repos/…` requests **per repo**, independent of how much real work the repo has:
 
 - the open-issue poll (`list_pollable_issues`): 1+ requests,
-- the closed-issue recovery sweep: one `GET …/issues?state=closed&labels=<L>` per non-terminal workflow label (7
-  today), and
+- the closed-issue recovery sweep: one `GET …/issues?state=closed&labels=<L>` per non-terminal workflow label (8
+  today — the six PR-carrying stages plus `question` and `discussion`, each of which has a terminal a closed issue
+  may still owe), and
 - the community-contribution PR sweep: 1 `GET …/pulls` request.
 
-With `R` repos at `POLL_INTERVAL` seconds, the floor is roughly `R × (9 + sweep) × 3600 / POLL_INTERVAL` requests/hour
-even when every repo is idle. Past ~5–6 repos at the 60s default this exceeds 5000/hour: the budget is spent partway
-into each hour, GitHub starts returning `403: Forbidden` with an `X-RateLimit-Reset` in the future, and PyGithub's
-`GithubRetry` sleeps (uninterruptibly) until the reset — typically a ~15–18 minute stall **every hour**, on the
-hour. The signature in `orchestrator.log` is repeated `github.GithubRetry: … failed with 403: Forbidden` followed by
-`Setting next backoff to <hundreds-to-1000+>s`.
+With `R` repos at `POLL_INTERVAL` seconds, the floor is roughly `R × (10 + sweep) × 3600 / POLL_INTERVAL`
+requests/hour even when every repo is idle. Past ~5–6 repos at the 60s default this exceeds 5000/hour: the budget is
+spent partway into each hour, GitHub starts returning `403: Forbidden` with an `X-RateLimit-Reset` in the future, and
+PyGithub's `GithubRetry` sleeps (uninterruptibly) until the reset — typically a ~15–18 minute stall **every hour**, on
+the hour. The signature in `orchestrator.log` is repeated `github.GithubRetry: … failed with 403: Forbidden` followed
+by `Setting next backoff to <hundreds-to-1000+>s`.
 
 Two built-in mitigations reduce the floor without touching `POLL_INTERVAL`:
 
 - **Workflow-label objects are cached** per repo client. They are immutable after `ensure_workflow_labels`, so the
-  closed sweep no longer re-fetches them every tick — eliminating 7 `GET …/labels/<name>` requests per repo per tick
+  closed sweep no longer re-fetches them every tick — eliminating 8 `GET …/labels/<name>` requests per repo per tick
   automatically.
 - **A pre-namespace label the repository does not have is asked for rarely.** The sweep looks up each swept state
   under both its `workflow:`-namespaced name and its pre-namespace one, so an issue still carrying the old label is

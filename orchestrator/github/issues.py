@@ -33,9 +33,22 @@ _ISSUE_STATE_CLOSED = "closed"
 _RECORDED_EVENTS_CAP = 500
 
 # The stages whose closed issues still have a terminal arc left to drain: an
-# externally merged PR, or a human closing the issue out from under a running
-# agent. The pre-PR stages are deliberately absent -- a closed issue there has
-# nothing to finalize -- and the in-memory double sweeps this same set.
+# externally merged PR, a human closing the issue out from under a running
+# agent, or -- on the two operator-applied conversation labels -- the close
+# itself being the whole signal. The in-memory double sweeps this same set.
+#
+# What is absent is the decomposition family (`decomposing` / `ready` /
+# `blocked` / `umbrella`): a closed issue there is a hard human stop with
+# nothing to finalize, and it stays out until an operator relabels it.
+#
+# A label leaves this set by being written off the issue, which every terminal
+# arc does as it fires -- so in steady state the sweep costs one pass per
+# closed issue. `discussion` is the one exception, and it is deliberate: a
+# discussion whose plan PR is still open holds its terminal rather than taking
+# one, KEEPING the label, so the sweep goes on yielding that issue every pass
+# until the humans decide the pull request. Nothing else revisits a closed
+# issue, and the branch and worktree the plan lives on have nothing else that
+# would reap them.
 CLOSED_SWEEP_LABELS: tuple[WorkflowLabel, ...] = (
     WorkflowLabel.IMPLEMENTING,
     WorkflowLabel.DOCUMENTING,
@@ -44,6 +57,7 @@ CLOSED_SWEEP_LABELS: tuple[WorkflowLabel, ...] = (
     WorkflowLabel.FIXING,
     WorkflowLabel.RESOLVING_CONFLICT,
     WorkflowLabel.QUESTION,
+    WorkflowLabel.DISCUSSION,
 )
 
 

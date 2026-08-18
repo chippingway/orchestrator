@@ -149,14 +149,21 @@ file is the durable record.
 - `pr_merged` — External merge terminal arcs in `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict`;
   plus `_finalize_if_pr_merged` (in `workflow/engine/terminals.py`, which also owns those arcs) from
   `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks
-  and from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; extras: `pr_number`, `sha`,
-  `merge_method="external"`, `review_round`, `conflict_round`, `retry_count`; `stage` names the stage the issue was in
-  at finalize entry.
+  and from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; plus the `discussion` stage's
+  plan-PR terminal (`workflow/stages/discussion/terminal.py`), which polls the recorded plan PR at handler entry and
+  drains the same `_finalize_merged_pr` arc when the humans merged it; extras: `pr_number`, `sha`,
+  `merge_method="external"`, `review_round`, `conflict_round`, `retry_count` — a plan PR carries none of those three
+  counters, so its record reports `review_round: 0` and drops the other two with the rest of the null extras;
+  `stage` names the stage the issue was in at finalize entry — spelled literally as `discussion` on that path, since
+  the stage attributes its own runs rather than re-reading the label.
 - `pr_closed_without_merge` — `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict` when the PR is
   closed without merge; plus `_finalize_if_issue_closed` from `_handle_implementing` / `_handle_documenting` /
   `_handle_validating` entry checks (only when the linked PR is also closed; an open PR with a manually-closed issue is
-  left alone); extras: `pr_number`, `sha`, `review_round`, `conflict_round`, `retry_count`; `stage` names the stage the
-  issue was in at finalize entry.
+  left alone); plus the same `discussion` plan-PR terminal with `stage="discussion"` when the humans closed the plan PR
+  unmerged. Two discussion endings deliberately emit NOTHING: a manually closed issue whose plan PR is still open (the
+  stage holds its terminal and keeps the label so the closed-issue sweep goes on yielding it), and a close before any
+  plan PR exists (finalized `rejected`, with no pull request for the payload to name); extras: `pr_number`, `sha`,
+  `review_round`, `conflict_round`, `retry_count`; `stage` names the stage the issue was in at finalize entry.
 - `merge_attempt` — Every `git rebase origin/<base>` inside `_handle_resolving_conflict`; extras:
   `method="base_rebase"`, `result` (`success` / `failed` / `conflict`), `pr_number`, `sha`, `conflict_round`,
   `review_round`, `retry_count`.

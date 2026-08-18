@@ -83,6 +83,24 @@ class ListPollableIssuesTest(unittest.TestCase):
         }
         self.assertEqual(out, {1, 9})
 
+    def test_closed_discussion_included_for_its_pr(self) -> None:
+        # A human can close a `discussion` issue while the plan PR it produced
+        # is still open, and that close says nothing about the design -- so
+        # `_handle_discussion` holds its terminal, keeps the label, and waits
+        # for the pull request. The sweep is the only thing that revisits a
+        # closed issue, so without `discussion` in it the worktree and the
+        # branches the plan lives on would outlive every pass that knows to
+        # reap them.
+        gh = FakeGitHubClient()
+        closed_discussion = make_issue(10, label="discussion")
+        closed_discussion.closed = True
+        gh.add_issue(closed_discussion)
+        out = {
+            pollable_issue.number
+            for pollable_issue in gh.list_pollable_issues()
+        }
+        self.assertEqual(out, {10})
+
 
 class ListPollableIssuesClosedSweepTest(unittest.TestCase):
     """A closed issue parked mid-flight must still be yielded: the per-handler

@@ -240,7 +240,7 @@
 # through a re-export site instead would put a module that defines nothing
 # between the caller and the helper it runs, so WPS201 is waived.
 #
-# It carries 23 members past the WPS202 ceiling of 7 for the same span: the
+# It carries 25 members past the WPS202 ceiling of 7 for the same span: the
 # checkout it reads (`_plan_worktree`), the reading itself -- where the branch
 # is resolved (`_plan_artifact`) and where every probe of it is taken
 # (`_probe_plan_branch`) -- the three entry points that reading is judged behind -- one for a commit a
@@ -249,15 +249,21 @@
 # which of those a crashed tick gets -- the remote read that settle spends its
 # marker against (`_publication_on_the_branch`, since a local ref that never
 # moved cannot say whether the commit went out), the commit-pinned PR lookup
-# beside it (`_merged_plan_pr`, which searches every state and then keeps only
-# a merge, since a pull request closed without one is not an artifact anybody
-# can review) and the open-PR reading next to it (`_plan_pr_overtaken`, for a
+# beside it (`_plan_pr_by_commit`, which searches every state and keeps the
+# ones its CALLER names, since a branch name outlives every pull request opened
+# on it and only the commit narrows the answer back to this publication's) and
+# the open-PR reading next to it (`_plan_pr_overtaken`, for a
 # head a human moved past this commit while still carrying it, where the push
 # the lease refuses is a push there was never anything left to make) behind the
-# one answer both give a caller (`_landed_plan_pr`: there is nothing left to
-# push, and the two entry points ask it about different commits -- the tip on
+# one answer they compose into (`_settled_plan_pr`: every verdict the humans
+# can leave on a pull request, since a merge, a close, and a head pushed past
+# the commit all mean this publication has nothing left to push. WHEN a caller
+# may act on each is its own -- the settle holds a close back until it has
+# ruled out an operator's reset, because answering the stale park can mean
+# closing the stray pull request as well as resetting the branch). The two
+# entry points ask about different commits -- the tip on
 # disk, and the tip the marker names when a rebuilt checkout is on somebody
-# else's head), the fetch
+# else's head. Then the fetch
 # those two readings and the lease below them share (`_readable_remote_tip`,
 # since each asks a local ancestry question about an id that came off the
 # remote, and an id this store cannot resolve answers the same "no" a real
@@ -283,6 +289,21 @@
 # be published and what publishing does in two modules, and the two would then
 # have to agree on the order that makes a half-finished publication
 # recoverable. WPS202 is waived.
+#
+# orchestrator/workflow/stages/discussion/terminal.py is the one place a
+# discussion is decided to be over, and it carries 3 members past the WPS202
+# ceiling of 7: the entry point that orders the readings, the two ways a pull
+# request is found (`_plan_pr` off the records, `_interrupted_plan_pr` off the
+# marker a crash left instead) with the ref resolution both share
+# (`_plan_branch`), the arc the humans' verdict names (`_finalize_by_pr_state`)
+# and the drain that applies it to a recorded pull request (`_drain_plan_pr`),
+# the closed-issue reading that spends the marker (`_finalize_closed_discussion`)
+# with the record it has to make first (`_record_recovered_pr`), the ending a
+# close with no pull request behind it earns (`_reject_closed_discussion`), and
+# the issue-state read they gate on (`_issue_closed`). Splitting the two lookups
+# from the arcs they feed would put "which pull request is this issue's" in a
+# second module from "what its verdict means", and those two disagreeing is
+# exactly how a human's rejection gets republished over. WPS202 is waived.
 #
 # orchestrator/workflow/stages/discussion/run.py is one owner for a round and
 # the record it opens on, and carries 9 members past the WPS202 ceiling of 7:
@@ -509,6 +530,7 @@ per-file-ignores =
     orchestrator/workflow/stages/discussion/parks.py:WPS202
     orchestrator/workflow/stages/discussion/publication.py:WPS201,WPS202
     orchestrator/workflow/stages/discussion/run.py:WPS202
+    orchestrator/workflow/stages/discussion/terminal.py:WPS202
     orchestrator/workflow/stages/fixing/handler.py:WPS201
     orchestrator/workflow/stages/fixing/resume.py:WPS201
     orchestrator/workflow/stages/implementing/continue_command.py:WPS201

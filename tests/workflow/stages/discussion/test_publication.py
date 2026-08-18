@@ -180,12 +180,25 @@ class DiscussionPlanHandoffTest(_PublishedPlanCase):
         self.assertIn(f"{SPEC_BACKEND} session `{DISCUSSION_SESSION}`", body)
         self.assertIn(self.plan_path(self.issue.number), body)
 
+    def test_the_pr_body_says_what_deciding_it_does(self) -> None:
+        # Neither button on this PR does what its diff suggests: merging
+        # agrees the design and finishes the issue, and building it is a
+        # relabel made first. The body is the only thing that says so to the
+        # person about to press one.
+        issue_number = self.issue.number
+        body = self.gh.opened_prs[0].body
+        self.assertIn(f"finishes #{issue_number} as `done`", body)
+        self.assertIn("`rejected`", body)
+        self.assertIn(str(LABEL_IMPLEMENTING), body)
+
     def test_the_pr_body_closes_nothing(self) -> None:
-        # The plan is the input to the work, so merging it must leave the
-        # issue open for a human to relabel rather than closing it.
+        # What a merge meant is the stage's own terminal to record, and the
+        # keyword outlives the label: a relabel hands the developer this very
+        # PR, where a closing keyword would let a merge of the plan alone
+        # close the issue as finished work.
         body = self.gh.opened_prs[0].body
         self.assertNotIn("Resolves", body)
-        self.assertNotIn("Closes", body)
+        self.assertNotIn("Closes #", body)
 
     def test_the_handoff_is_recorded(self) -> None:
         pinned_data = self.gh.pinned_data(self.issue.number)

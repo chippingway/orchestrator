@@ -2,32 +2,44 @@
 # SPDX-License-Identifier: Apache-2.0
 """Decomposer-led architecture discussion on an operator-applied `discussion` label.
 
-Nothing routes an issue in or out of this stage automatically. An operator
-applies the label to have the design argued out before anyone commits to it,
-and what comes back is an analysis on the issue thread: the repository facts
-the agent found for itself, the branches the design could take, and a numbered
-frontier of the questions a human can answer right now, each with a recommended
-answer. Answering by number resumes the same conversation, which redraws the
-tree around what those answers settled and posts the frontier they opened up,
-for as many rounds as the humans keep replying. No developer or reviewer is
-spawned, and the issue leaves only when a human relabels or closes it.
+Nothing routes an issue INTO this stage: an operator applies the label to have
+the design argued out before anyone commits to it, and what comes back is an
+analysis on the issue thread -- the repository facts the agent found for
+itself, the branches the design could take, and a numbered frontier of the
+questions a human can answer right now, each with a recommended answer.
+Answering by number resumes the same conversation, which redraws the tree
+around what those answers settled and posts the frontier they opened up, for
+as many rounds as the humans keep replying. No developer or reviewer is ever
+spawned. What takes an issue OUT is a human deciding: a relabel, a close, or a
+verdict on the plan PR below. The last two the stage records for itself, since
+both are said off the thread where no round would ever read them; a relabel is
+the operator moving the issue on by hand.
 
 The conversation has exactly one artifact, and a human unlocks it. Once one of
 them states on the thread that both sides understand the design the same way,
 the same session writes that understanding into `plans/issue-N.md` and commits
 it, and the stage publishes that commit as a pull request to review -- keeping
-the label, opening no further round, and entering no other stage. Everything
+the label while the humans read it, opening no further round, and entering no
+other stage. What they do with that pull request is what ends the conversation:
+merging it is the design agreed and the issue finishes `done`, closing it
+unmerged is the design declined and it finishes `rejected`, and either way the
+checkout and the branches go with it. Everything
 around that is the shape of the contract: nothing may be written before the
 confirmation, and after it the branch is checked against the base and published
 only when it is that one file and nothing else.
 
 The owners divide by what one tick has to decide. `handler` holds the order --
-a published plan ends the conversation, a park this stage wrote is the humans'
-turn and earns a round only once one of them replies, a checkout already
-holding work is preserved rather than run over, otherwise the round and then
-its disposition -- and it is where the stage stops: nothing below it reaches
-another stage. `session` is what keeps a conversation on one agent across all
-of them: the pinned spec and session id a round is locked to, the trust filter
+a published plan is with the humans and `terminal` asks what they did with it,
+a park this stage wrote is the humans' turn and earns a round only once one of
+them replies, a checkout already holding work is preserved rather than run
+over, otherwise the round and then its disposition -- and it is where the stage
+stops: nothing below it reaches another stage. `terminal` is also the only
+thing here that ends the issue: a plan PR the humans merged or closed finalizes
+it and takes the checkout and the branches with it, an open one changes and
+reaps nothing however long they take, and an issue closed before any plan
+reached a pull request is recorded as rejected with the tree left where it is.
+`session` is what keeps a conversation on one agent across all of them: the
+pinned spec and session id a round is locked to, the trust filter
 both the prompt and the consumed watermark are drawn through, and the choice
 between resuming a live session and rebuilding the whole conversation for a
 round that has none to resume. `run` is the round itself, opened in the issue's

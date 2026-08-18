@@ -9,6 +9,7 @@ GitHub label spelling changing under them, not with it.
 
 
 STAGE_DECOMPOSING = "decomposing"
+STAGE_DISCUSSION = "discussion"
 STAGE_DOCUMENTING = "documenting"
 STAGE_FIXING = "fixing"
 STAGE_IMPLEMENTING = "implementing"
