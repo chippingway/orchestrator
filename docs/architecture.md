@@ -2922,8 +2922,9 @@ The orchestrator process is stateless; the label and the pinned JSON are the ent
 For the full per-tick sequence (eligible-issue enumeration, family vs. fan-out partitioning, the pre-PR rebase /
 PR-having clean-rebase + push (with `workflow:resolving_conflict` reached on actual rebase conflicts, plus the
 `fixing` worktree-drift dead-lock breaker that hands a stuck validating-route transient fix-loop to
-`workflow:resolving_conflict` when the worktree is behind base or carries an unpushed rebase), the `question` skip,
-the per-tick external-merge sweeps, and the complete pinned-state JSON schema), see
+`workflow:resolving_conflict` when the worktree is behind base or carries an unpushed rebase), the read-only skip
+the `question` and `discussion` labels take (and the parks and in-flight discussion records that keep taking it after
+the label is gone), the per-tick external-merge sweeps, and the complete pinned-state JSON schema), see
 [`state-machine.md#per-tick-flow-workflowtick`](state-machine.md#per-tick-flow-workflowtick).
 
 ## Stage handlers
@@ -3372,12 +3373,13 @@ from `timed_out` (the orchestrator's own `AGENT_TIMEOUT` firing). `usage` (defau
 tracked run so callers can read token / cost metrics off the result without re-parsing stdout; it stays `None` for a
 result that never flowed through
 `_run_agent_tracked` or whose usage parse failed (fail-open). The developer (implementing), reviewer
-(validating), decomposer (decomposing), and question handlers consume it: `_accumulate_issue_usage` — in
+(validating), decomposer (decomposing), question, and discussion handlers consume it: `_accumulate_issue_usage` — in
 `workflow/engine/usage.py`, which each of those handlers binds directly — folds
 each run's `usage` into the per-issue `issue_agent_runs` / `issue_total_tokens` / `issue_total_cost_usd` /
 `issue_cost_sources` counters on the pinned state
 ([`state-machine.md#pinned-state`](state-machine.md#pinned-state)); at each terminal (PR merge / reject, umbrella
-close, closed question) `_format_issue_usage_verdict` beside it reads those counters back into one visible receipt
+close, closed question, and both discussion endings — the verdict the humans leave on the plan PR, and a close of the
+issue before one exists) `_format_issue_usage_verdict` beside it reads those counters back into one visible receipt
 comment — the sole read-side consumer, and nothing gates on the figure. `CodexResult` is kept as a
 transitional alias.
 
@@ -3517,11 +3519,13 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
   concurrent up to `spec.parallel_limit` per repo and `MAX_PARALLEL_ISSUES_GLOBAL` across all repos. No-agent family
   buckets (`workflow:blocked` / `workflow:umbrella`) are cap-exempt.
 - **decomposer agent (`DECOMPOSE_AGENT`)** — subprocess (fresh or resumed). Trigger: `_handle_decomposing` (retry
-  budget OK) or HITL resume. Cadence: one shot per tick when needed. The same role spec also backs two read-only
-  stages that pin their own keys and resume their own sessions rather than a decomposing one: `_handle_question`
-  (`question_agent` + `question_session_id`) and `_handle_discussion` (`discussion_agent` +
-  `discussion_session_id`, `agent_role="decomposer"` / `stage="discussion"`, spawned fresh on the opening round and
-  resumed on each trusted human reply after it).
+  budget OK) or HITL resume. Cadence: one shot per tick when needed. The same role spec also backs the two
+  operator-applied conversation stages, which pin their own keys and resume their own sessions rather than a
+  decomposing one: `_handle_question` (`question_agent` + `question_session_id`, read-only for the whole
+  conversation) and `_handle_discussion` (`discussion_agent` + `discussion_session_id`,
+  `agent_role="decomposer"` / `stage="discussion"`, spawned fresh on the opening round and resumed on each trusted
+  human reply after it — read-only until a human confirms the design on the thread, and from there allowed exactly
+  one commit of `plans/issue-<number>.md` for the stage to publish).
 - **implementer agent (`DEV_AGENT`)** — subprocess. Trigger: `_handle_implementing` (no commits yet, retry budget OK)
   or HITL resume. Cadence: one shot per tick when needed.
 - **reviewer agent (`REVIEW_AGENT`)** — subprocess (fresh session). Trigger: `_handle_validating`, round < max.
@@ -3540,7 +3544,17 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
   sweep. Cadence: once per tick per such issue.
 - **question agent (`DECOMPOSE_AGENT` backend)** — subprocess (read-only). Trigger: `_handle_question` (no prior
   session OR new human comment on a parked Q&A). Cadence: one shot per tick when needed.
-- **`git push`** — subprocess. Trigger: after dev produces clean commits. Cadence: per fix.
+- **`_handle_discussion`** — function call. Trigger: issue label `discussion` OR closed-`discussion` issue from the
+  polling sweep, which keeps yielding that issue every pass while its plan PR is still open. Cadence: once per tick
+  per such issue, and the tick spawns nothing at all when the plan PR is already published, when the park on the
+  thread is still unanswered, or when the checkout is one no round may open on.
+- **discussion agent (`DECOMPOSE_AGENT` backend)** — subprocess. Trigger: `_handle_discussion` (the conversation's
+  opening round, or a trusted human reply past the consumed watermark on a parked one). Cadence: one shot per tick
+  when needed. No developer or reviewer ever runs on this label: the one thing the stage produces is the plan PR, and
+  having that plan built is an operator relabel to `workflow:implementing`.
+- **`git push`** — subprocess. Trigger: after dev produces clean commits, or after a discussion round commits the
+  confirmed plan and the branch reads as exactly that one file. Cadence: per fix; per discussion, once the humans
+  have confirmed the design — retried on the reply to a failed push, never on a round of its own.
 - **self-restart check** — git fetch + diff. Trigger: start of each tick. Cadence: every tick.
 
 ## Architecture schema
