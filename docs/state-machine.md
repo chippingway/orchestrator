@@ -230,9 +230,10 @@ The dispatch loop classifies each pollable issue by workflow label before submit
 - **Fan-out labels** (`workflow:ready`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`,
   `in_review`, `workflow:fixing`, `workflow:resolving_conflict`, and the operator-applied `question` and
   `discussion`) only touch their own state and worktree. They run concurrently up to the per-repo and global caps. A
-  **closed** fan-out issue (a merged-PR or closed-question issue still carrying its sweep label, surfaced by the
-  closed-issue sweep) is submitted `cap_exempt=True`: its handler only runs a terminal finalization (flip to `done` /
-  `rejected` + branch cleanup) with
+  **closed** fan-out issue (a merged-PR, closed-`question`, or closed-`discussion` issue still carrying its sweep
+  label, surfaced by the closed-issue sweep) is submitted `cap_exempt=True`: its handler only runs a terminal
+  finalization (flip to `done` / `rejected` + branch cleanup) — or, on a closed `discussion` whose plan PR is still
+  open, one PR poll and nothing at all, since that issue is held for the humans' verdict rather than finalized — with
   no agent spawn, so it must not be starved behind active agent work — otherwise under `parallel_limit=1` a merged-PR
   issue sits closed-but-labeled for many ticks while a sibling reviewer or docs agent holds the only slot.
 
@@ -453,8 +454,11 @@ into a few groups:
   `_drain_review_pr_terminals` — all three arcs, including the open-PR/manually-closed-issue rejection — and
   `_finalize_if_issue_closed`, all on the `workflow/engine/terminals.py` owner the stage leaves import
   directly) post it as a standalone `_post_issue_usage_verdict` comment, the `umbrella`
-  all-children-done branch appends it to its close comment, and the closed-`question` terminal posts it when
-  question-stage counters accrued. Reusing `_post_issue_comment` keeps the receipt's comment id tracked in
+  all-children-done branch appends it to its close comment, the closed-`question` terminal posts it when
+  question-stage counters accrued, and the `discussion` stage's plan-PR terminal posts it on each of its three
+  endings — the merged plan, the plan closed unmerged, and a close with no plan PR at all — since that owner
+  composes those same three arcs directly rather than through either entry point. Reusing `_post_issue_comment`
+  keeps the receipt's comment id tracked in
   `orchestrator_comment_ids`. This is a read-only verdict — no budget breaker or control behavior gates on it.
 
 The legacy `codex_session_id` key (written before `dev_agent` existed) is still honored on read by `_read_dev_session`:
