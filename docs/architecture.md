@@ -108,9 +108,11 @@ orchestrator/
     pinned_state.py     authenticated pinned-state model, parser, and the
                         state / comment-watermark client mixin
     pull_requests.py    stateless PR status helpers plus the pull-request
-                        client mixin (lookup, creation, comments, body
-                        rewrite, labeling, SHA-pinned merge, remote-branch
-                        delete)
+                        client mixin (lookup by open state and the commit-
+                        pinned one beside it, which widens to every state and
+                        answers a third way when GitHub could not be asked at
+                        all, creation, comments, body rewrite, labeling,
+                        SHA-pinned merge, remote-branch delete)
     reviews.py          current-head review aggregation plus the review client
                         mixin (approval verdicts, unread feedback watermarks)
   agents/
@@ -439,7 +441,9 @@ orchestrator/
     __init__.py         package marker only; callers import an owner directly
     authentication.py   per-repo token resolution, the askpass session and its
                         detached environment, the authenticated worktree /
-                        target-root fetches, the hardened lease push, and the
+                        target-root fetches, the remote-ref read that answers
+                        what a branch is at without consulting a local one, the
+                        hardened lease push of a caller-named commit, and the
                         refusal logger, named orchestrator.git_plumbing for the
                         operator filters that select on it
     commands.py         plain / hardened git execution, the argv hardening
@@ -514,8 +518,11 @@ orchestrator/
                         the operator filters that select on it
       cleanup.py        lock-held issue-worktree removal and local branch
                         deletion behind their best-effort boundaries
-      creation.py       issue / PR worktree creation, stale-worktree reuse, and
-                        the new-commit probe the reuse decision turns on
+      creation.py       issue / PR worktree creation, stale-worktree reuse,
+                        the new-commit probe the reuse decision turns on, and
+                        the one move that brings a checkout the creators would
+                        have reused onto the head a pull request is really open
+                        against -- or onto the base once that PR has merged
       decomposition.py  decomposer scratch path, detached creation, and
                         best-effort removal
       paths.py          slug sanitization, git-ref-safe branch segments, path
@@ -1215,8 +1222,8 @@ the prefix an operator's level and handler selection is keyed on holds still whi
 calls `models`, `process` calls `output` and `probes`, `runner` calls `process` -- and the validating approval gate
 reaches `runner._run_verify_commands` directly, so a patch that has to intercept the verify run, the HEAD snapshot, or
 the dirty-file scan targets the owner module. `_run_verify_commands` answers on `git.verification.runner` alone, as
-`VerifyResult` and `_truncate_verify_output` do on their owners and `_head_sha` / `_worktree_status` (with
-`_reported_paths` and `_suppressed_index_paths` under it) /
+`VerifyResult` and `_truncate_verify_output` do on their owners and `_head_sha` / `_head_on_branch` /
+`_worktree_status` (with `_reported_paths` and `_suppressed_index_paths` under it) /
 `_worktree_dirty_files` / `_committed_paths_since` / `_revision_contains_path` / `_commit_present` /
 `_commit_contains` on
 `git.verification.probes`: every stage owner that compares a HEAD
@@ -1224,7 +1231,8 @@ watermark, refuses a dirty tree, proves one clean, asks which paths a branch's c
 whether a path survived them as a regular file -- a symlink or a gitlink resolves at the same path while carrying no
 document -- asks whether an id it is about to record names a commit this clone can read at all, or asks whether the
 commit it is about to push over a tip keeps what is on it,
-names the probe owner, so a mock for any of them lands there. No
+asks whether the checkout's `HEAD` is the branch it is about to publish to
+at all, names the probe owner, so a mock for any of them lands there. No
 facade of the verification domain's own sits beside `git/verification/`: a check in
 `tests/git/verification/test_imports.py` asserts nothing resolves at `orchestrator.verify` or at the inventory and
 resolver-hook paths a second import site would be built from, so every verification name is defined on an owner and

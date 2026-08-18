@@ -182,8 +182,9 @@ found-or-opened so a tick
 that died between `open_pr` and the pinned write
 recovers into a reuse rather than a duplicate, and the PR body names the decomposer session that wrote the plan
 without any closing keyword — merging a plan must not close the issue it plans. A reused PR is only known to be open
-on the branch, so one whose body does not already name that session has it rewritten; one that does keeps whatever
-else it says. A failed push parks
+on the branch — as is one ADOPTED for already carrying the plan commit, which is what a crash before `pr_number` was
+written leaves the recovery to find, and which the lookup proves nothing about the provenance of — so one whose body
+does not already name that session has it rewritten; one that does keeps whatever else it says. A failed push parks
 `discussion_push_failed` with the commit intact. The marker's write is also what supersedes a standing
 `discussion_push_failed` with `discussion_publishing`, since it spends the reply that asked for the retry: left as it
 was, a crash right after it would leave a publication the recovery refuses to resume and no unread answer to resume it
