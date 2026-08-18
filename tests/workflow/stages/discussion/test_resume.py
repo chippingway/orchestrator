@@ -46,7 +46,7 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     MOVED_HEAD_RESUMED,
 )
 from tests.workflow.stages.discussion.discussion_test_support import (
-    PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_PLAN_INVALID,
     PARK_DISCUSSION_RESPONSE,
     RESUME_SESSION_ID,
     RUN_AGENT,
@@ -103,7 +103,9 @@ class DiscussionResumeTest(unittest.TestCase, _DiscussionWorkflowMixin):
         )
         self.assertEqual(
             spawn_call.args[1],
-            _prompts._build_discussion_followup_prompt([human_reply]),
+            _prompts._build_discussion_followup_prompt(
+                [human_reply], self.plan_path(issue.number),
+            ),
         )
         self._assert_parked_on_the_next_frontier(gh, issue)
 
@@ -230,7 +232,9 @@ class DiscussionResumeTest(unittest.TestCase, _DiscussionWorkflowMixin):
         self.assert_nothing_published(gh, mocks)
         self.assert_worktree_preserved(mocks)
         pinned_data = gh.pinned_data(issue.number)
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_COMMITS)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_INVALID,
+        )
         self.assertEqual(pinned_data[KEY_ROUND_SHA], HEAD_BEFORE_ROUND)
         self.assertIn(HEAD_BEFORE_ROUND, gh.posted_comments[-1][1])
 

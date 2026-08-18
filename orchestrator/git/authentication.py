@@ -32,6 +32,11 @@ log = logging.getLogger("orchestrator.git_plumbing")
 
 _FETCH = "fetch"
 
+# What a push publishes when the caller names no commit of its own: whatever
+# the worktree is on now, which is right for every caller that just made the
+# work it is publishing.
+_HEAD = "HEAD"
+
 _ASKPASS_MODE = 0o700
 
 
@@ -265,6 +270,47 @@ def _authed_target_fetch(
             )
 
 
+def _remote_branch_tip(
+    spec: config.RepoSpec, worktree: Path, branch: str,
+) -> Optional[str]:
+    """Ask the REMOTE what `branch` is at, ignoring every local ref.
+
+    For the caller that has to measure an agent's work against a base it
+    cannot have moved. `refs/remotes/<remote>/<base>` looks like that base but
+    is a local ref in an object store the agent's worktree shares, so an agent
+    that commits code, repoints that ref at its own commit, and then commits
+    the plan leaves a base-relative diff showing only the plan -- while the
+    branch it would publish carries both. The remote's own answer is the one
+    nothing on this host can rewrite.
+
+    None on any failure -- a missing token, a worktree whose config could
+    hijack the transport, or an unreachable remote -- and "" when the branch
+    does not exist there. A caller pinning a base treats both as "no base was
+    established", which is the only safe reading for a check that gates a push.
+
+    A caller asking whether its own work is still out there has to tell them
+    apart, and the discussion stage's publication does: "" is the remote saying
+    that branch is not there, which is what lets a record of an unfinished
+    publication finally be spent, while None established nothing and keeps it.
+    Collapsing the two would drop the record of a plan on every reading that
+    failed.
+    """
+    token = _resolved_git_token(spec, "read the remote branch tip")
+    if not token:
+        return None
+    unsafe = commands._unsafe_local_transport_config(worktree)
+    if unsafe:
+        log.error(
+            "refusing to read %s from the remote: worktree .git/config has "
+            "transport-hijacking config: %s", branch, unsafe,
+        )
+        return None
+    with _git_auth_session(spec, token) as auth_session:
+        return _remote_branch_sha(
+            auth_session, worktree, branch, f"refs/heads/{branch}", None,
+        )
+
+
 def _remote_branch_sha(
     auth_session: _GitAuthSession,
     worktree: Path,
@@ -300,6 +346,7 @@ def _push_with_auth(
     worktree: Path,
     branch: str,
     force_with_lease: Optional[str],
+    revision: str,
 ) -> bool:
     """Push one branch through an established askpass session."""
     ref = f"refs/heads/{branch}"
@@ -314,7 +361,7 @@ def _push_with_auth(
             "push",
             f"--force-with-lease={ref}:{remote_sha}",
             auth_session.auth_url,
-            f"HEAD:{ref}",
+            f"{revision}:{ref}",
         ],
         cwd=str(worktree),
         capture_output=True,
@@ -334,19 +381,34 @@ def _push_branch(
     spec: config.RepoSpec, worktree: Path, branch: str,
     *,
     force_with_lease: Optional[str] = None,
+    revision: Optional[str] = None,
 ) -> bool:
     """Push via GIT_ASKPASS so the token never appears in argv.
+
+    `revision`, when provided, is the exact commit to publish, and it exists
+    for the caller that decided to push by INSPECTING one: the discussion
+    stage reads a branch, proves it carries the agreed plan and nothing else,
+    and then pushes. `HEAD` between those two moments is not necessarily the
+    commit that was proven -- another tick, an operator, or a stray agent can
+    move it -- and pushing whatever HEAD says would publish work no check ever
+    saw while the record named the commit that passed. Naming the SHA closes
+    that window in the only place it can be closed: a revision the local repo
+    no longer has is refused by git rather than substituted.
 
     `force_with_lease`, when provided, is the SHA the caller expects the
     remote ref to be at. The push then uses
     `--force-with-lease=refs/heads/<branch>:<sha>` against that exact SHA,
     so a concurrent update to the remote rejects the push instead of being
-    silently clobbered. This is the squash/rewrite path: pinning the lease
-    to the caller-supplied pre-rewrite HEAD (rather than reading it from
-    the live remote) prevents the "out-of-band update happened in the
-    window between approval and push" race -- a fresh `ls-remote` would
-    treat the unexpected new remote SHA as the lease value and silently
-    overwrite it.
+    silently clobbered, and no `ls-remote` of our own is taken. Any caller
+    that DECIDED to push by reading the remote belongs on this path: the
+    squash/rewrite, which pins the pre-rewrite HEAD it approved, and the
+    `discussion` stage's plan publication, which pins the tip it
+    established the branch was safe to move. Pinning is what prevents the
+    "out-of-band update happened in the window between the reading and the
+    push" race -- a fresh `ls-remote` would treat the unexpected new remote
+    SHA as the lease value and silently overwrite it, which for a
+    publication being retried after a crash means overwriting whoever
+    pushed to the branch in between.
 
     When `force_with_lease` is None (the default), the function reads the
     current remote SHA via `ls-remote` and uses that as the lease. This is
@@ -412,5 +474,5 @@ def _push_branch(
         # An empty expected SHA means the remote ref must not exist, which
         # preserves the create-branch lease behavior.
         return _push_with_auth(
-            auth_session, worktree, branch, force_with_lease,
+            auth_session, worktree, branch, force_with_lease, revision or _HEAD,
         )

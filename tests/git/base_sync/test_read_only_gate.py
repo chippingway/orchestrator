@@ -2,13 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 """The per-tick base refresh leaves both read-only stages' checkouts alone.
 
-Neither stage ever pushes, so a checkout under one of their labels is
-something to read rather than work in progress -- an inspection target an
-unsafe park left an operator, and, in the discussion stage which preserves its
-tree on every exit, the state the next round is meant to open on. The refresh
-runs before any handler does, so without this gate a tick would rebase
+Neither stage ships code, so a checkout under one of their labels is something
+to read rather than work in progress -- an inspection target an unsafe park
+left an operator, and, in the discussion stage which preserves its tree on
+every exit, the state the next round is meant to open on. The refresh runs
+before any handler does, so without this gate a tick would rebase
 `origin/<base>` over that tree, and it would do it on exactly the parked issues
 the handlers themselves never touch again.
+
+The discussion stage does push once -- the plan its humans confirmed, from its
+own publication and onto a pull request of that file alone -- which is why the
+gate reads that stage's in-flight records as well as its parks: a rebase over
+the commit a publication is mid-way through pushing would move the branch off
+the very tip the record names.
 """
 
 from __future__ import annotations
@@ -32,6 +38,7 @@ _BASE_REFRESH_ISSUE_NUMBER = 980
 _RELABELED_ISSUE_NUMBER = 984
 _UNSPENT_BASELINE_ISSUE_NUMBER = 987
 _CONSUMED_PARK_ISSUE_NUMBER = 988
+_IN_FLIGHT_ISSUE_NUMBER = 990
 _CERTIFIED_TIP = "head-the-relabel-certified"
 _WORKTREE_ROOT = "/tmp/read-only-issue-"
 _READ_ONLY_LABELS = (LABEL_QUESTION, LABEL_DISCUSSION)
@@ -42,6 +49,13 @@ _UNCONSUMED_PARKS = (
     "discussion_response",
     "discussion_unsafe_relabel",
     "question_commits",
+)
+# What a discussion tick that died mid-flight leaves behind, with no park and
+# no flag beside it: a round that never reported, and a publication that was
+# already pushing when the process went away.
+_IN_FLIGHT_RECORDS = (
+    {"discussion_round_open": True},
+    {"discussion_publishing_sha": "head-a-publication-was-pushing"},
 )
 
 
@@ -85,6 +99,25 @@ class ReadOnlyLabelBaseRefreshSkipTest(unittest.TestCase):
             park_reason="agent_question",
             read_only_baseline_sha=_CERTIFIED_TIP,
         )
+
+    def test_unfinished_discussion_work_holds_it(self) -> None:
+        # The records a discussion tick leaves while it is mid-flight, on an
+        # issue an operator has already relabeled: the label is gone, and
+        # neither record depends on `awaiting_human` -- an opening round leaves
+        # the issue unparked by design -- so the park read above never sees
+        # them. Rebasing over the commit such a tick died holding moves the
+        # branch off the anchor its own stage measures it against, and on a
+        # PR-backed issue the PR-aware route would push that rewrite over a
+        # plan PR the publication may already have opened.
+        for offset, record in enumerate(_IN_FLIGHT_RECORDS):
+            with self.subTest(record=record):
+                self._assert_skipped(
+                    _IN_FLIGHT_ISSUE_NUMBER + offset,
+                    LABEL_IMPLEMENTING,
+                    awaiting_human=False,
+                    park_reason=None,
+                    **record,
+                )
 
     def test_a_consumed_park_syncs_again(self) -> None:
         # The guard cleared the park and persisted it, so nothing is holding

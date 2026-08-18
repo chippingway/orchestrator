@@ -26,11 +26,24 @@ _THREAD_TEXT = "@alice: please cover it in tests"
 _BASE_REF = "origin/main"
 _OVERFLOW_FILES = 23
 _FEEDBACK_COMMENT_ID = 42
+_PLAN_PATH = f"plans/issue-{_PROMPT_ISSUE_NUMBER}.md"
 # Subject prefixes the repo-local instruction must NOT enumerate: the
 # orchestrator runs against arbitrary repos, so a closed Conventional-Commits
 # list would teach the wrong style everywhere else.
 _FORBIDDEN_PREFIXES = ("feat:", "chore:", "refactor:", "test:")
 _FOREGROUND_MARKER = "NEVER start a background job"
+
+def _discussion_prompt(spec, issue, comments_text, specs) -> str:
+    """The discussion builder called on the shared four, plus its own fifth.
+
+    It is the one header builder with an argument of its own -- the path the
+    stage would publish -- so the header sweep below reaches it through this
+    rather than teaching every other builder a parameter none of them has.
+    """
+    return prompts._build_discussion_prompt(
+        spec, issue, comments_text, specs, _PLAN_PATH,
+    )
+
 
 # Every builder that opens on the shared issue-body + conversation header.
 _HEADER_BUILDERS = (
@@ -40,7 +53,7 @@ _HEADER_BUILDERS = (
     ("documentation", prompts._build_documentation_prompt),
     ("question", prompts._build_question_prompt),
     ("decompose", prompts._build_decompose_prompt),
-    ("discussion", prompts._build_discussion_prompt),
+    ("discussion", _discussion_prompt),
 )
 
 # The conflict prompt is the one commit-producing prompt with no style note:
@@ -80,6 +93,15 @@ def _commit_producing_prompts() -> dict[str, str]:
         ),
         "user_content_change": drift._build_user_content_change_prompt(
             issue, comments_text="",
+        ),
+        # Both discussion prompts: a confirmed design is written down and
+        # committed by whichever round the confirmation lands on, and its
+        # subject becomes the plan PR's title.
+        "discussion": _discussion_prompt(
+            _TEST_SPEC, issue, "", [_TEST_SPEC],
+        ),
+        "discussion_followup": prompts._build_discussion_followup_prompt(
+            comments, _PLAN_PATH,
         ),
     }
 

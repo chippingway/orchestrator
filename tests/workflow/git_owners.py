@@ -38,13 +38,18 @@ from orchestrator.git.worktrees import (
 )
 
 GIT_SEAM_OWNERS = MappingProxyType({
+    "_anchor_pr_worktree": _worktree_creation,
     "_authed_fetch": _authentication,
+    "_authed_target_fetch": _authentication,
     "_branch_ahead_behind": _publication_probes,
     "_branch_has_unpushed_commits": _worktree_recovery,
     "_branch_tip_sha": _worktree_recovery,
     "_cleanup_decompose_worktree": _worktree_decomposition,
     "_cleanup_question_worktree": _worktree_terminal,
     "_cleanup_terminal_branch": _worktree_terminal,
+    "_commit_contains": _verification_probes,
+    "_commit_present": _verification_probes,
+    "_committed_paths_since": _verification_probes,
     "_decompose_worktree_path": _worktree_decomposition,
     "_ensure_decompose_worktree": _worktree_decomposition,
     "_ensure_pr_worktree": _worktree_creation,
@@ -53,17 +58,21 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_git": _commands,
     "_git_hardened": _commands,
     "_has_new_commits": _worktree_creation,
+    "_head_on_branch": _verification_probes,
     "_head_sha": _verification_probes,
     "_infer_subject_prefix": _publication_titles,
     "_push_branch": _authentication,
     "_rebase_base_into_worktree": _base_sync_pre_pr,
     "_rebase_in_progress": _base_sync_pre_pr,
     "_refresh_base_and_worktrees": _base_sync_refresh,
+    "_remote_branch_tip": _authentication,
     "_resolve_branch_name": _worktree_paths,
+    "_revision_contains_path": _verification_probes,
     "_run_verify_commands": _verify_runner,
     "_squash_and_force_push": _squash,
     "_worktree_dirty_files": _verification_probes,
     "_worktree_path": _worktree_paths,
+    "_worktree_status": _verification_probes,
 })
 
 

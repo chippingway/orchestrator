@@ -10,22 +10,32 @@ outcome the next tick could otherwise mistake for work the branch arrived with
 -- is the anchor `run` wrote before the spawn: it outlives the withheld round,
 so the next active tick classifies the commit instead of adopting it.
 
-Then the commit park, then the timeout: a run that wrote outranks how it ended,
-since the timeout's message would otherwise be the only record of a round that
-also edited the tree.
+Then whether the commit question is answerable at all, then the commit, then
+the timeout: a run that wrote outranks how it ended, since the timeout's
+message would otherwise be the only record of a round that also edited the
+tree. The first of those is there because the question is a comparison and one
+of its ends is a `HEAD` read that can fail: unresolvable, it comes back empty,
+compares unequal to the SHA the round opened on, and would publish the commit
+already on the branch as this round's own.
 
-Everything after that is the rest of the read-only contract. A dirty tree is
+What a commit MEANS is not decided here, though -- it is
+handed to `publication`, which reads the branch and either publishes the agreed
+plan or refuses everything else. That is the one outcome that can end in
+something other than a park, and it is still ordered above the timeout for the
+same reason: what the round wrote is the fact of record.
+
+Everything after that is the rest of the write contract. A dirty tree is
 inspected before interruption and before the response itself, so a run that
 wrote despite the prompt parks on what it wrote rather than on what it said: a
-discussion that starts editing has skipped the human confirmation the whole
-stage exists to wait for, and the operator needs the tree to see how far it
-got. Both violations are read against what the round started from -- a HEAD
-that moved under it, not a branch merely ahead of base -- because an issue an
-operator relabels here from a PR stage arrives with commits its dev already
-made, and parking the discussion agent for those would accuse it of work it
-never did. Only a clean tree gets to be a design analysis, and an empty message
-on a clean tree is a backend failure wearing an analysis's clothes, which is
-why that park is the one carrying stderr diagnostics.
+discussion that starts editing outside the one path it may commit has skipped
+the human confirmation the whole stage exists to wait for, and the operator
+needs the tree to see how far it got. Both violations are read against what the
+round started from -- a HEAD that moved under it, not a branch merely ahead of
+base -- because an issue an operator relabels here from a PR stage arrives with
+commits its dev already made, and parking the discussion agent for those would
+accuse it of work it never did. Only a clean tree gets to be a design analysis,
+and an empty message on a clean tree is a backend failure wearing an analysis's
+clothes, which is why that park is the one carrying stderr diagnostics.
 
 Assessment and routing are the whole of this owner because the park has to be
 selected before any of it is published: what each selection then says to the
@@ -34,26 +44,41 @@ touching the order the decisions are made in.
 """
 from __future__ import annotations
 
+from typing import Optional
+
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.discussion import models as _models
 from orchestrator.workflow.stages.discussion import parks as _parks
+from orchestrator.workflow.stages.discussion import publication as _publication
 from orchestrator.workflow.stages.discussion import state as _state
 
 
 def _round_committed(
     run: _models._DiscussionRun, round_result: _models._DiscussionRound,
-) -> bool:
-    """True when HEAD moved under this round.
+) -> Optional[bool]:
+    """True when HEAD moved under this round, or None when nothing can say.
 
     Measured against the SHA the round opened on rather than against the base,
     so a branch an operator relabeled here from a PR stage keeps the commits
     its dev already made without the discussion agent being blamed for them.
+
+    BOTH ends have to have been read, because an unresolvable `HEAD` comes back
+    as the empty string and empty compares unequal to whatever the other end
+    is. Answered as a move, that reading publishes: the branch of an issue that
+    arrived carrying a plan-shaped commit would go onto a pull request in this
+    stage's name, attributed to a round that wrote nothing at all -- and a
+    single transient failure between two good reads is enough to produce it. So
+    a read that did not land answers for itself, and the caller holds rather
+    than classifying a round it cannot see the effect of.
     """
     worktree = _worktree_paths._worktree_path(run.spec, run.issue.number)
-    return _verification_probes._head_sha(worktree) != round_result.head_before
+    head_after = _verification_probes._head_sha(worktree)
+    if not head_after or not round_result.head_before:
+        return None
+    return head_after != round_result.head_before
 
 
 def _assess_discussion_outcome(
@@ -73,7 +98,10 @@ def _assess_discussion_outcome(
     if not discussion_result.interrupted:
         _usage._accumulate_issue_usage(run.state, discussion_result.usage)
 
-    if _round_committed(run, round_result):
+    committed = _round_committed(run, round_result)
+    if committed is None:
+        return _models._DiscussionOutcome(_state._DISCUSSION_UNREADABLE)
+    if committed:
         return _models._DiscussionOutcome(_state._DISCUSSION_COMMITS)
 
     if discussion_result.timed_out:
@@ -113,17 +141,33 @@ def _assess_discussion_worktree(
     return _models._DiscussionOutcome(_state._DISCUSSION_SILENT)
 
 
+def _dispose_round_commit(run: _models._DiscussionRun) -> None:
+    """Publish what the round committed, or refuse it in the round's name.
+
+    The reading of the branch is taken by `publication` and handed back only
+    when nothing was published, so the refusal quotes the same paths the
+    decision was made on rather than probing the tree a second time and
+    describing a checkout that may have moved between the two.
+    """
+    unpublishable = _publication._publish_plan_if_committed(run)
+    if unpublishable is not None:
+        _parks._park_unpublishable_plan(run, unpublishable)
+
+
 def _route_discussion_outcome(
     run: _models._DiscussionRun,
     round_result: _models._DiscussionRound,
     outcome: _models._DiscussionOutcome,
 ) -> None:
-    """Publish the park selected by `_assess_discussion_outcome`."""
-    if outcome.park_reason == _state._DISCUSSION_TIMEOUT:
-        _parks._park_timed_out_discussion(run)
+    """Publish the outcome selected by `_assess_discussion_outcome`."""
+    if outcome.park_reason == _state._DISCUSSION_UNREADABLE:
+        _parks._park_unreadable_round(run)
         return
     if outcome.park_reason == _state._DISCUSSION_COMMITS:
-        _parks._park_committed_discussion(run)
+        _dispose_round_commit(run)
+        return
+    if outcome.park_reason == _state._DISCUSSION_TIMEOUT:
+        _parks._park_timed_out_discussion(run)
         return
     if outcome.park_reason == _state._DISCUSSION_DIRTY:
         _parks._park_dirty_discussion(run, outcome.dirty_files)

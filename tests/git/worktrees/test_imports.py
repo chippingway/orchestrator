@@ -74,7 +74,9 @@ _OWNER_ONLY_NAMES = (
 # pattern and the digest math behind it, the two sanitizers, the branch, root,
 # and worktree-path derivations and the pinned / legacy resolver, the
 # candidate-branch and commit-count reads behind the unpushed-commit probe, the
-# two creators, the new-commit probe, and the `worktree` argv they run, the
+# two creators, the new-commit probe, the reported fetch and the start point a
+# restore picks, the handoff anchor with the target choice, the ref move, and the
+# revision read under it, and the `worktree` argv they run, the
 # decomposer's path, creation, and removal, the per-issue removal and local
 # branch deletion, and the two teardowns composed from them. Naming the whole
 # surface makes a helper added to an owner an edit here rather than a
@@ -83,8 +85,11 @@ _OWNER_DEFINED = (
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
+    ("_VERIFY_REF", creation),
     ("_WORKTREE_ADD", creation),
     ("_WORKTREE_REMOVE_FORCE", creation),
+    ("_anchor_pr_worktree", creation),
+    ("_anchor_target", creation),
     ("_branch_commit_count", recovery),
     ("_branch_has_unpushed_commits", recovery),
     ("_branch_name", paths),
@@ -98,10 +103,14 @@ _OWNER_DEFINED = (
     ("_ensure_decompose_worktree", decomposition),
     ("_ensure_pr_worktree", creation),
     ("_ensure_worktree", creation),
+    ("_fetch_for_restore", creation),
     ("_has_new_commits", creation),
+    ("_move_branch_onto", creation),
+    ("_pr_branch_start_point", creation),
     ("_remove_issue_worktree", cleanup),
     ("_repo_worktrees_root", paths),
     ("_resolve_branch_name", paths),
+    ("_resolved_commit", creation),
     ("_run_decompose_worktree_removal", decomposition),
     ("_run_issue_worktree_removal", cleanup),
     ("_run_local_branch_deletion", cleanup),

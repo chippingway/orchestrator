@@ -135,6 +135,27 @@ class PushBranchLeaseTest(unittest.TestCase):
                 push_cmd,
             )
 
+    def test_a_named_revision_is_what_gets_published(self) -> None:
+        # A caller that decided to push by INSPECTING a commit must publish
+        # that commit. `HEAD` between the reading and the push is not
+        # necessarily the same one -- another tick, an operator, or a stray
+        # agent can move the branch -- so the refspec names the SHA rather
+        # than whatever the worktree is on by the time git runs.
+        with _patched_push(
+            [
+                _git_result(),
+                _git_result(stdout=f"{OBSERVED_SHA}\t{ISSUE_REF}\n"),
+                _git_result(),
+            ]
+        ) as run_mock:
+            ok = authentication._push_branch(
+                _spec(), WORKTREE, ISSUE_BRANCH, revision=PINNED_SHA,
+            )
+            self.assertTrue(ok)
+            push_cmd = run_mock.call_args_list[2].args[0]
+            self.assertIn(f"{PINNED_SHA}:{ISSUE_REF}", push_cmd)
+            self.assertNotIn(f"HEAD:{ISSUE_REF}", push_cmd)
+
     def test_ls_remote_failure_aborts_without_pushing(self) -> None:
         # git echoes the remote URL in transport errors, so the diagnostic is
         # scrubbed before it reaches the log.

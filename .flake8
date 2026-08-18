@@ -78,7 +78,7 @@
 # others fall to, so WPS202 is waived.
 #
 # orchestrator/workflow/engine/prompts.py is one owner for the prompt builders
-# the workflow stages share, so it carries 14 members past the same ceiling.
+# the workflow stages share, so it carries 15 members past the same ceiling.
 # They share one opening header and one set of notes, and each one's marker
 # contract is what another owner then parses; splitting them by stage would let
 # the prompt and the parser that reads its answer drift apart, so WPS202 is
@@ -180,45 +180,167 @@
 # the validating ones, and names the three git owners behind the checkout it
 # resolves, recreates, and watermarks. WPS201 is waived for that file.
 #
+# orchestrator/workflow/stages/discussion/handler.py is one tick asked in the
+# order its questions have to be asked, and it carries 1 member past the WPS202
+# ceiling of 7: the round and its disposition, the resume a reply drives, the
+# hold that refuses to open one on a checkout nobody may open on, the single
+# reading both of those are decided from, and the three settles that reading
+# fans out to -- a commit under this stage's own park, a checkout that has
+# moved off the anchor, and the recovered commit both of them share -- behind
+# the entry point that orders the lot. Splitting the settles from the order
+# they are asked in would put the ownership rule (a commit is this stage's only
+# while one of its rounds is in flight) in a second module from the reading it
+# is applied to, and those two drifting apart is exactly how a foreign stage's
+# commit gets published as a plan. WPS202 is waived.
+#
 # orchestrator/workflow/stages/discussion/parks.py is one owner for every way
-# that stage hands an issue back, and carries 11 members past the WPS202
-# ceiling of 7: the funnel (`_park_discussion`), the two text builders its
-# messages share (`_dirty_files_markdown` for the bounded path list the dirty
-# and stranded parks quote, `_reset_target` for the SHA the commit parks tell
-# an operator to reset to), and one message each for the eight ways a round
-# ends or fails to open -- dirty, stranded, timed out, committed,
-# recovered-commit, blocked-resume, silent, and the response itself. The
-# blocked-resume one is the odd member: no round ran, but a human's reply into
-# a checkout no round may open on needs the same paths and the same reset
-# command every other read-only park quotes, and assembling it anywhere else
-# would put one hand-back's wording outside the funnel that stamps its reason.
-# The reason each park records is not just
+# that stage hands an issue back, and carries 22 members past the WPS202
+# ceiling of 7: the funnel (`_park_discussion`), the seven text builders its
+# messages share (`_paths_markdown` for the bounded path list the dirty,
+# stranded, and refused-commit parks quote, `_reset_target` for the SHA the
+# commit parks tell an operator to reset to, `_committed_reading` /
+# `_artifact_reading` / `_unpublishable_plan_message` for the reading of the
+# branch the two refusals
+# of a committed artifact share, and `_stale_publication_standing` /
+# `_stale_publication_remedy` for the two halves a stale publication's message
+# differs by -- whether the remote still carries the commit decides both what
+# is true of it and whether dropping it is a local reset at all), and one
+# builder each for the fourteen ways a
+# round ends or fails to open -- dirty, stranded, unreadable, timed out,
+# refused commit,
+# recovered refused commit, a commit no round of this stage was in flight to
+# have made, blocked-resume, silent, and the response itself,
+# plus the four the plan publication reaches: the PR it opened, the push that
+# failed, the publication whose commit the branch has moved off, and the plan
+# no session was recorded for. Two of those builders carry a second message
+# rather than a second member: a checkout `git status` could not report on
+# blocks a round the same way a dirty one does, from the same two sites, and
+# has to say the opposite thing -- no paths to quote, no tip to reset to -- so
+# the wording that differs stays beside the wording it differs from. The
+# blocked-resume one is the odd member: no round ran, but a
+# human's reply into a checkout no round may open on needs the same paths and
+# the same reset command every other park quotes, and assembling it anywhere
+# else would put one hand-back's wording outside the funnel that stamps its
+# reason. The reason each park records is not just
 # its message: the handler reads the `discussion_` prefix back on the next
 # tick to decide whose turn it is, so a park assembled anywhere other than
 # behind the funnel that stamps it would earn a second round over the top of
 # the first, and a builder split off from the parks that quote it would put
 # one hand-back's wording across two modules. WPS202 is waived.
 #
+# orchestrator/workflow/stages/discussion/publication.py names 13 imports past
+# the WPS201 ceiling of 12 for the reason every publishing owner does: it spans
+# one artifact from the branch it is read off to the PR it lands on, so it is
+# typed by the stage's own carriers, keys, parks, round-checkout restorer, and
+# session read, and by one git owner per step -- the branch and worktree names,
+# the HEAD, status, committed-path, and tree probes, the authenticated push,
+# the first-commit subject, and the PR title builders are each their own owner,
+# so a module that resolves a branch, reads four probes off it, pushes it, and
+# titles its PR pays six imports for one paragraph of code. Reaching them
+# through a re-export site instead would put a module that defines nothing
+# between the caller and the helper it runs, so WPS201 is waived.
+#
+# It carries 23 members past the WPS202 ceiling of 7 for the same span: the
+# checkout it reads (`_plan_worktree`), the reading itself -- where the branch
+# is resolved (`_plan_artifact`) and where every probe of it is taken
+# (`_probe_plan_branch`) -- the three entry points that reading is judged behind -- one for a commit a
+# round of this stage just made or left unreported, one for a publication in
+# flight that a tick has to settle either way, and the pre-gate that decides
+# which of those a crashed tick gets -- the remote read that settle spends its
+# marker against (`_publication_on_the_branch`, since a local ref that never
+# moved cannot say whether the commit went out), the commit-pinned PR lookup
+# beside it (`_merged_plan_pr`, which searches every state and then keeps only
+# a merge, since a pull request closed without one is not an artifact anybody
+# can review) and the open-PR reading next to it (`_plan_pr_overtaken`, for a
+# head a human moved past this commit while still carrying it, where the push
+# the lease refuses is a push there was never anything left to make) behind the
+# one answer both give a caller (`_landed_plan_pr`: there is nothing left to
+# push, and the two entry points ask it about different commits -- the tip on
+# disk, and the tip the marker names when a rebuilt checkout is on somebody
+# else's head), the fetch
+# those two readings and the lease below them share (`_readable_remote_tip`,
+# since each asks a local ancestry question about an id that came off the
+# remote, and an id this store cannot resolve answers the same "no" a real
+# divergence does), with the recording both of them end on
+# (`_record_landed_plan`, since pushing a branch a merge deleted, asking for a
+# second pull request on a commit already in the base, and sending an older SHA
+# over somebody's own work are the three things that would otherwise follow)
+# and the hold neither of them can be answered without
+# (`_hold_unreadable_plan_pr`, for a commit list GitHub declined to serve,
+# where the marker is written and nothing else so a round's session id is not
+# lost to a read that has to be taken again), the settle for a marker whose tip
+# has moved (`_settle_moved_marker`, which is every reading that acts ON the
+# record rather than on the commit it names),
+# the refusal that settle
+# writes once, the
+# publication they share (`_publish_plan`), the found-or-opened PR with its
+# title, its body, and the attribution both that body and the reuse of a PR
+# opened elsewhere are checked against -- plus the one question every path
+# that touches a pull request asks first (`_attributable_plan`: there has to
+# be a conversation to name, and the adoption reaches a PR ahead of the push's
+# own refusal) -- and the records the whole thing leaves.
+# Splitting the entry points from the publication they share would put what may
+# be published and what publishing does in two modules, and the two would then
+# have to agree on the order that makes a half-finished publication
+# recoverable. WPS202 is waived.
+#
+# orchestrator/workflow/stages/discussion/run.py is one owner for a round and
+# the record it opens on, and carries 9 members past the WPS202 ceiling of 7:
+# the two probes read before anything is prepared (`_stranded_worktree_state`,
+# `_round_anchor_moved`) with the branch-tip fallback one of them needs
+# (`_recorded_branch_moved`), the checkout the round runs in
+# (`_ensure_round_worktree`) and the question of where to restore it from when
+# it is gone (`_publication_on_the_remote`), the pre-spawn write that settles
+# it and records
+# what it opened on (`_open_round_checkout`) together with the authenticated
+# base read that write pins (`_pinned_base_sha`), the round itself
+# (`_open_discussion_round`), and the identity it runs under
+# (`_record_round_session`). Every one of them exists for the same write: what a later
+# tick may attribute to this round is decided by what was recorded before it
+# spawned, so splitting the probes from the record they are compared against
+# would put one attribution across two modules. WPS202 is waived.
+#
 # orchestrator/workflow/stages/implementing/read_only_relabel.py is one owner
-# for the guard both read-only stages' parks are screened by, so it carries 9
-# members past the WPS202 ceiling of 7 and names 13 imports past the WPS201
-# ceiling of 12. The extra members and the extra import are the same thing: the
+# for the guard both read-only stages' parks are screened by AND for keeping
+# what that guard handed over in step with the plan PR until a developer
+# publishes, so it carries 16 members past the WPS202 ceiling of 7 and names 13
+# imports past the WPS201 ceiling of 12. The six that keep it in step belong
+# with the guard rather than beside it: the reconcile
+# (`_reconcile_open_plan_handoff`) reads the state the handoff left
+# (`_accepted_handoff_baseline`), asks whether a developer has published on it
+# since (`_handoff_unspent`), and takes the same reading of the same pull
+# request (`_read_plan_pr`, split out because the guard knows there is one from
+# the path record and the reconcile from the record that retired it) to put the
+# branch back on what it carries (`_readvance_plan_handoff`, through the
+# guard's own `_inherited_tip`, behind a marker `_spend_handoff_anchor` retires
+# when the move it describes has nothing left to make). Split off, the rule
+# that decides where a developer starts would live in two modules for one
+# handoff -- and the marker that says the branch is this stage's rather than a
+# developer's would be written in one and read in the other. The extra
+# members and the extra import are the same thing: the
 # two stages ask different questions of the same branch -- ahead-of-base for a
 # question park, which never finishes on a branch carrying anything, and
 # unchanged-since-the-round-anchor for a discussion park, which is allowed to
 # open on the commits an issue arrived with -- so the owner is typed by the
 # discussion stage's key vocabulary as well as implementing's own, and pays for
-# it twice: `_uncertified_commits` asks the branch question, and
+# it several times over: `_uncertified_commits` asks the branch question,
+# `_tip_is_uncertified` decides which of the two readings answers it (a merged
+# plan takes the older one back, since its own handoff moves the branch to the
+# base before the write that records where it landed), and
 # `_relabel_remediation` answers the one that follows from it, since an issue
 # whose branch legitimately carries a PR's commits cannot be told to reset to
 # base or delete the branch. Splitting the screen from the refusal it feeds
 # would put one relabel's decision across two modules. WPS201 and WPS202 are
 # waived.
 #
-# Three implementing stage owners and one question stage owner sit one past the
-# same ceiling at 13 -- `implementing/continue_command.py`,
-# `implementing/publication.py`, `implementing/spawn.py`, and
-# `question/outcomes.py`. Each names the git owner behind every helper it runs,
+# Three implementing stage owners and one question stage owner sit past the
+# same ceiling -- `implementing/continue_command.py`, `implementing/spawn.py`,
+# and `question/outcomes.py` at 13, and `implementing/publication.py` at 14,
+# where the extra name is the `discussion` stage's plan-PR key: the record it
+# retires is what kept implementing's merged-PR terminal from reading a plan
+# being agreed to as work having landed, and this is the site that replaces
+# that PR with one carrying the work. Each names the git owner behind every
+# helper it runs,
 # and those helpers are split across owners on purpose: the branch and worktree
 # names, the checkout creation and its commit probe, the HEAD and dirty probes,
 # the authenticated push, the commit-subject probe, the PR title builders, and
@@ -227,6 +349,22 @@
 # imports for one paragraph of code. Reaching them through a single re-export
 # site instead would put a module that defines nothing between the caller and
 # the helper it runs, so WPS201 is waived for those files.
+#
+# orchestrator/workflow/stages/implementing/publication.py carries 9 members
+# past the WPS202 ceiling of 7 for one step that has to happen in one order:
+# the agent message trimmed to fit a body (`_format_pr_agent_message`), the
+# title taken from the branch's own first commit (`_derive_pr_title`), the
+# session line the body states and the reuse checks a PR for
+# (`_dev_pr_attribution`), the body itself (`_build_pr_body`), the
+# found-or-opened PR (`_reuse_or_open_pr`) with the rewrite that makes a PR
+# opened elsewhere -- an inherited plan PR most of all -- describe the work
+# just pushed onto it (`_attribute_reused_pr`), the handoff write
+# (`_advance_to_validating`) and the counters it spends
+# (`_reset_implementing_counters`), and the entry point that sequences them
+# (`_on_commits`). Splitting the reuse from the body it rewrites would put one
+# PR's description across two modules, and splitting the handoff from the push
+# would break the order that makes a crashed tick recoverable. WPS202 is
+# waived.
 #
 # Two fixing stage owners name more than the same WPS201 ceiling of 12.
 # `resume.py` names 22: it spans one dev run end to end, so it is typed by the
@@ -290,16 +428,54 @@
 # escalation -- so it carries 9 members past the same ceiling.
 # orchestrator/git/authentication.py owns everything the PAT travels through --
 # per-repository token resolution, the askpass session and its detached
-# environment, the two authenticated fetches, and the lease-pinned push -- so it
-# carries 10 members past the same ceiling. Splitting any of them out would put
+# environment, the two authenticated fetches, the authenticated read of a
+# remote branch's tip, and the lease-pinned push -- so it
+# carries 11 members past the same ceiling. Splitting any of them out would put
 # a raw token on a module boundary. All three single-owner groupings are
 # deliberate, so WPS202 is waived for those files.
 #
+# orchestrator/git/worktrees/creation.py owns every way a per-issue checkout
+# comes into existence or is put where a PR's reviewed state now is -- the two
+# creators, the unpushed-work probe they both gate on, the reported fetch they
+# restore through, the start point a restore picks, and the handoff anchor with
+# the target choice, the base fallback, and the ref move under it -- so it
+# carries 10 members past the WPS202 ceiling of 7. Each is one decision about
+# which ref may be trusted,
+# and two of them share the rule that only decides right together: the base is
+# reserved for a branch the REMOTE says is gone, never for one a fetch merely
+# failed to bring. Splitting them would put that rule in two places to drift
+# apart, so WPS202 is waived.
+#
+# orchestrator/git/verification/probes.py owns every read over what an agent
+# run left in a worktree -- the HEAD snapshot and the question of whether HEAD
+# is the branch a caller is about to publish to, the status form and the path
+# list
+# built from it, the porcelain parse and the suppressed-index read that form
+# answers with, the tree entry at a permitted path, and the two commit-level
+# questions a caller has to answer before it records an object id or overwrites
+# a ref with one -- so it carries 11 members past the same ceiling. Each is one
+# hardened `git` invocation whose failure mode is decided in the same place its
+# flags are, and the callers pick between them by which of those failures is
+# safe for them, so splitting the family would separate a probe from the answer
+# beside it that it exists to be told apart from. The two the status form is
+# built out of are the same rule again at one level down: what a clean tree
+# means is decided by the parse and the index read together, and a caller can
+# reach neither on its own. WPS202 is waived.
+#
 # orchestrator/github/pull_requests.py owns the whole pull-request surface --
-# branch/base lookup, creation, comments, labeling, retrieval, the SHA-pinned
-# merge, and the head-branch delete -- so its client mixin carries 8 methods
-# past the WPS214 ceiling of 7. Splitting the merge-side mutations out would
-# hand the composed client two mixins for one owner, so WPS214 is waived here.
+# branch/base lookup by open state and the commit-pinned one beside it that
+# widens to any state and matches on the commits a pull request CARRIES rather
+# than the head it is on (what a publication whose PR was amended or merged
+# before anything recorded its number is found by, with the walk it is built
+# from split off so the enumeration's own failure -- a page that never came
+# back is not a branch with no pull requests on it -- has one place to be
+# caught), creation, comments,
+# body rewrite,
+# labeling, retrieval,
+# the SHA-pinned merge, and the head-branch delete -- so its client mixin
+# carries 11 methods past the WPS214 ceiling of 7. Splitting the merge-side
+# mutations out would hand the composed client two mixins for one owner, so
+# WPS214 is waived here.
 per-file-ignores =
     orchestrator/__init__.py:WPS412,WPS410
     orchestrator/config/__init__.py:WPS412,WPS410
@@ -329,11 +505,14 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS201
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
+    orchestrator/workflow/stages/discussion/handler.py:WPS202
     orchestrator/workflow/stages/discussion/parks.py:WPS202
+    orchestrator/workflow/stages/discussion/publication.py:WPS201,WPS202
+    orchestrator/workflow/stages/discussion/run.py:WPS202
     orchestrator/workflow/stages/fixing/handler.py:WPS201
     orchestrator/workflow/stages/fixing/resume.py:WPS201
     orchestrator/workflow/stages/implementing/continue_command.py:WPS201
-    orchestrator/workflow/stages/implementing/publication.py:WPS201
+    orchestrator/workflow/stages/implementing/publication.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/read_only_relabel.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/spawn.py:WPS201
     orchestrator/workflow/stages/in_review/drift.py:WPS201
@@ -349,4 +528,6 @@ per-file-ignores =
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202
+    orchestrator/git/verification/probes.py:WPS202
+    orchestrator/git/worktrees/creation.py:WPS202
     orchestrator/github/pull_requests.py:WPS214

@@ -6,8 +6,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from orchestrator.git.verification.models import VerifyResult
+from orchestrator.git.verification.probes import _WorktreeStatus
 
 from tests.workflow.patch_models import (
+    _AnchorAnswers,
+    _RemoteTipAnswers,
     _WorkflowRunContext,
     _as_mock,
     _default_infer_subject_prefix,
@@ -28,11 +31,31 @@ def _execution_mocks(context: _WorkflowRunContext) -> dict[str, object]:
         "_worktree_dirty_files": MagicMock(
             return_value=list(context.dirty_files),
         ),
+        # The status form answers the same read for the caller that has to
+        # prove a clean tree, so both are driven by one seed -- and a test
+        # about an unreadable worktree flips `tree_readable` alone.
+        "_worktree_status": MagicMock(
+            return_value=_WorktreeStatus(
+                readable=context.tree_readable,
+                paths=tuple(context.dirty_files),
+            ),
+        ),
+        "_committed_paths_since": MagicMock(
+            return_value=list(context.committed_paths),
+        ),
+        "_revision_contains_path": MagicMock(
+            return_value=context.head_contains_path,
+        ),
     }
 
 
 def _worktree_mocks(context: _WorkflowRunContext) -> dict[str, object]:
     return {
+        # The handoff's own move of the branch onto a plan PR's live head,
+        # answering with the tip it landed on: the head that was asked for by
+        # default, and whatever a test about a deleted branch or a move that
+        # could not be made names instead.
+        "_anchor_pr_worktree": MagicMock(side_effect=_AnchorAnswers(context)),
         "_ensure_worktree": MagicMock(return_value=_FAKE_WT),
         "_ensure_pr_worktree": MagicMock(return_value=_FAKE_WT),
         "_ensure_decompose_worktree": MagicMock(return_value=_FAKE_WT),
@@ -62,6 +85,28 @@ def _publication_mocks(context: _WorkflowRunContext) -> dict[str, object]:
     return {
         "_push_branch": MagicMock(return_value=bool(context.push_branch)),
         "_head_sha": MagicMock(side_effect=list(context.head_shas)),
+        "_head_on_branch": MagicMock(
+            return_value=bool(context.head_on_branch),
+        ),
+        "_remote_branch_tip": MagicMock(
+            side_effect=_RemoteTipAnswers(context),
+        ),
+        # The base a round pins is the remote's answer plus the object behind
+        # it, so the presence probe and the fetch that would supply it are
+        # neutralized beside the read. A tick here has whatever base it was
+        # seeded with; what happens when the store really lacks one is pinned
+        # against real repositories in the discussion stage's own tests.
+        "_commit_present": MagicMock(return_value=True),
+        # Whether one commit's history contains another. A bool answers both
+        # directions the same, which is the ordinary branch a plan sits on top
+        # of; a test about a branch somebody pushed to has to tell them apart,
+        # since the published commit contains the remote tip in one direction
+        # and is contained by it in the other -- so a callable answering
+        # `(worktree, ancestor, revision)` is taken as the probe itself.
+        "_commit_contains": _as_mock(context.commit_contains),
+        "_authed_target_fetch": MagicMock(
+            return_value=MagicMock(returncode=0, stdout="", stderr=""),
+        ),
         "_first_commit_subject": MagicMock(
             return_value=context.first_commit_subject,
         ),

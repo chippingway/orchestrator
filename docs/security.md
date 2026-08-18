@@ -275,7 +275,9 @@ The security posture:
   themselves wrote into `REPOS`. No tokens, no `ORCHESTRATOR_TOKEN_FILE`, no provider keys, no remote URLs — there is
   nothing secret-shaped to redact because nothing secret is included by construction.
 - **Write-containment is unchanged.** The orchestrator pushes only the *current* issue's branch from the current
-  worktree, via an explicit `HEAD:refs/heads/<branch>` refspec under the hardened git envelope
+  worktree, via an explicit `<commit>:refs/heads/<branch>` refspec under the hardened git envelope — `HEAD` for a
+  caller publishing work it just made, and the exact validated SHA where the decision to push came from inspecting a
+  commit, as the discussion stage's plan publication does
   ([`architecture.md#push-path`](architecture.md#push-path-gitauthentication_push_branch)). If a misled agent edits a
   sibling
   checkout, nothing the orchestrator does publishes it — it surfaces as a dirty foreign tree, never as a PR. The

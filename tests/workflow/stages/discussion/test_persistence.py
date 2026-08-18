@@ -40,7 +40,7 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_ROUND_SHA,
 )
 from tests.workflow.stages.discussion.discussion_test_support import (
-    PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_PLAN_INVALID,
     PARK_DISCUSSION_RESPONSE,
     RUN_AGENT,
     SPEC_ARGS,
@@ -236,12 +236,16 @@ class DiscussionPersistenceTest(unittest.TestCase, _DiscussionWorkflowMixin):
                 issue,
                 Path(tree),
                 run_agent=_agent(last_message="a round that would inherit it"),
-                head_shas=(HEAD_AFTER_COMMIT,),
+                # Read twice: the tip has moved off the anchor, and the
+                # publication check reads what that tip would publish.
+                head_shas=(HEAD_AFTER_COMMIT,) * 2,
             )
 
         recovery_mocks[RUN_AGENT].assert_not_called()
         pinned_data = gh.pinned_data(issue.number)
-        self.assertEqual(pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_COMMITS)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_INVALID,
+        )
         # Reporting the commit does not spend the anchor: it is the tip an
         # operator has to reset back to, and what clears the relabel after.
         self.assertEqual(pinned_data[KEY_ROUND_SHA], HEAD_BEFORE_ROUND)

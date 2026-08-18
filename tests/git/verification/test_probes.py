@@ -1,6 +1,13 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""HEAD and dirty-file probing owned by the verification probe module."""
+"""HEAD, dirty-file, and tree probing owned by the verification probe module.
+
+The two answers the status read can give are pinned separately on purpose. A
+caller that refuses on what git NAMED wants the list, where an unreadable tree
+and a clean one are both "nothing to refuse on"; a caller whose next step is a
+push has to prove the tree is clean, and for it the difference between the two
+is the whole question.
+"""
 
 from __future__ import annotations
 
@@ -20,21 +27,45 @@ from tests.workflow.fixtures import TEST_BASE_BRANCH
 GIT_COMMAND = "git"
 QUIET_FLAG = "-q"
 GIT_CONFIG = "config"
+HARDENED_GIT = "_git_hardened"
 SEED_FILE = "seed"
 LEFTOVER_FILE = "leftover.txt"
 EXECUTABLE_MODE = 0o755
 HEAD_SHA = "f00dcafe"
 GIT_FAILURE = 128
 WORKTREE = Path("/tmp/orchestrator-test-verification-probes")
+PLAN_PATH = "plans/issue-42.md"
+REGULAR_MODE = "100644"
+BLOB_TYPE = "blob"
+TREE_OBJECT = "0f1e2d3c4b5a69788796a5b4c3d2e1f009182736"
 
-# Porcelain v1 status lines and the paths they name.
+# Every mode git can hold at one path, and whether it is the document the
+# caller is asking about.
+TREE_ENTRY_CASES = (
+    ("100644", BLOB_TYPE, True),
+    ("100755", BLOB_TYPE, True),
+    ("120000", BLOB_TYPE, False),
+    ("160000", "commit", False),
+    ("040000", "tree", False),
+)
+
+# An untracked file named exactly as porcelain's line format spells a rename.
+# Read that way, what follows the arrow is a lone quote, which is nothing --
+# and the tree holding it reports clean.
+ARROW_FILE = " -> "
+
+# NUL-delimited porcelain v1 records and the paths they name. Nothing is
+# quoted under `-z`, and a rename's source is its own record after the one
+# naming where the file is now -- both halves are reported, since a caller
+# permitting exactly one path is entitled to know a file left another behind.
 PORCELAIN_CASES = (
-    (" M src/app.py", ["src/app.py"]),
-    ("?? leftover.txt", ["leftover.txt"]),
-    ("R  old.py -> new.py", ["new.py"]),
-    ('?? "quoted path.txt"', ["quoted path.txt"]),
-    ("??", []),
-    (" M  ", []),
+    (" M src/app.py\0", ["src/app.py"]),
+    ("?? leftover.txt\0", ["leftover.txt"]),
+    ("R  new.py\0old.py\0", ["new.py", "old.py"]),
+    ("?? quoted path.txt\0", ["quoted path.txt"]),
+    (f"?? {ARROW_FILE}\0", [ARROW_FILE]),
+    ("??\0", []),
+    ("", []),
 )
 
 
@@ -72,27 +103,102 @@ class HeadShaProbeTest(unittest.TestCase):
 
 
 class PorcelainParsingTest(unittest.TestCase):
-    """`_worktree_dirty_files` turns porcelain v1 lines into paths."""
+    """`_worktree_dirty_files` turns NUL-delimited porcelain records into paths."""
 
-    def test_each_status_line_yields_its_path(self) -> None:
-        for line, expected in PORCELAIN_CASES:
-            with self.subTest(line=line):
-                with patch.object(commands, "_git_hardened", return_value=_completed(0, line)):
+    def test_each_status_record_yields_its_path(self) -> None:
+        for record, expected in PORCELAIN_CASES:
+            with self.subTest(record=record):
+                with patch.object(commands, HARDENED_GIT, return_value=_completed(0, record)):
                     self.assertEqual(probes._worktree_dirty_files(WORKTREE), expected)
 
     def test_all_reported_paths_are_collected(self) -> None:
-        status = "\n".join(line for line, paths in PORCELAIN_CASES if paths)
-        with patch.object(commands, "_git_hardened", return_value=_completed(0, status)):
+        status = "".join(record for record, paths in PORCELAIN_CASES if paths)
+        with patch.object(commands, HARDENED_GIT, return_value=_completed(0, status)):
             self.assertEqual(
                 probes._worktree_dirty_files(WORKTREE),
-                ["src/app.py", LEFTOVER_FILE, "new.py", "quoted path.txt"],
+                [
+                    "src/app.py", LEFTOVER_FILE, "new.py", "old.py",
+                    "quoted path.txt", ARROW_FILE,
+                ],
             )
 
-    def test_failed_probe_reports_a_clean_tree(self) -> None:
-        # A probe that could not run proves nothing about the tree, and the
-        # callers that refuse to publish on dirtiness read the list directly.
-        with patch.object(commands, "_git_hardened", return_value=_completed(GIT_FAILURE, LEFTOVER_FILE)):
+    def test_failed_probe_names_no_paths(self) -> None:
+        # The list form is what a caller refusing on named paths reads, so a
+        # probe that could not run names none. What it could not prove is the
+        # status form's to say -- see below.
+        with patch.object(commands, HARDENED_GIT, return_value=_completed(GIT_FAILURE, LEFTOVER_FILE)):
             self.assertEqual(probes._worktree_dirty_files(WORKTREE), [])
+
+
+class WorktreeStatusProbeTest(unittest.TestCase):
+    """`_worktree_status` says whether git could be asked, not just what it said."""
+
+    def test_a_read_tree_reports_its_paths(self) -> None:
+        with patch.object(commands, HARDENED_GIT, return_value=_completed(0, f"?? {LEFTOVER_FILE}")):
+            status = probes._worktree_status(WORKTREE)
+
+        self.assertTrue(status.readable)
+        self.assertEqual(status.paths, (LEFTOVER_FILE,))
+
+    def test_a_failed_read_is_not_a_clean_tree(self) -> None:
+        # A corrupt index fails `git status` while a commit-to-commit diff
+        # still succeeds. Reported as an empty path list, that would let a
+        # publication push on the strength of a probe that never ran.
+        with patch.object(commands, HARDENED_GIT, return_value=_completed(GIT_FAILURE, "fatal: bad index")):
+            status = probes._worktree_status(WORKTREE)
+
+        self.assertFalse(status.readable)
+        self.assertEqual(status.paths, ())
+
+
+class RevisionContainsPathProbeTest(unittest.TestCase):
+    """`_revision_contains_path` tells a written document from everything else."""
+
+    def test_the_named_commit_is_the_one_read(self) -> None:
+        # Named, never `HEAD`: the caller decides by this reading and then
+        # pushes the same SHA, so a symbolic read could answer for a commit
+        # the branch has since moved off.
+        read = _completed(0, self._entry(REGULAR_MODE))
+        with patch.object(commands, HARDENED_GIT, return_value=read) as git:
+            self.assertTrue(
+                probes._revision_contains_path(WORKTREE, HEAD_SHA, PLAN_PATH),
+            )
+            self.assertEqual(
+                git.call_args.args,
+                ("ls-tree", "-z", "--full-tree", HEAD_SHA, "--", PLAN_PATH),
+            )
+
+    def test_a_missing_path_is_reported(self) -> None:
+        # The case the base-relative diff cannot see: deleting a file the base
+        # branch carries changes exactly the path writing it would. git reports
+        # it as an empty reading rather than a failure.
+        for read in (_completed(GIT_FAILURE, ""), _completed(0, "")):
+            with self.subTest(returncode=read.returncode):
+                with patch.object(commands, HARDENED_GIT, return_value=read):
+                    self.assertFalse(
+                        probes._revision_contains_path(
+                            WORKTREE, HEAD_SHA, PLAN_PATH,
+                        ),
+                    )
+
+    def test_only_a_regular_file_answers_yes(self) -> None:
+        # Every mode git can store at the path, and only two of them are the
+        # document a reviewer opens there: a symlink resolves to whatever it
+        # names, and a gitlink is a commit id for a submodule nobody fetches.
+        for mode, object_type, expected in TREE_ENTRY_CASES:
+            with self.subTest(mode=mode):
+                read = _completed(0, self._entry(mode, object_type))
+                with patch.object(commands, HARDENED_GIT, return_value=read):
+                    self.assertEqual(
+                        probes._revision_contains_path(
+                            WORKTREE, HEAD_SHA, PLAN_PATH,
+                        ),
+                        expected,
+                    )
+
+    def _entry(self, mode: str, object_type: str = BLOB_TYPE) -> str:
+        """One `ls-tree -z` record, in the layout git writes it."""
+        return f"{mode} {object_type} {TREE_OBJECT}\t{PLAN_PATH}\0"
 
 
 class WorktreeDirtyFilesHardeningTest(unittest.TestCase):

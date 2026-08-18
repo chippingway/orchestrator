@@ -91,6 +91,10 @@ class FakePR:
     issue_comments: list[FakeComment] = field(default_factory=list)
     review_comments: list[FakeComment] = field(default_factory=list)
     reviews: list[FakePRReview] = field(default_factory=list)
+    # The commits the PR is made of, beyond whatever its head is now. A human
+    # pushing to the branch moves the head while what was published stays in
+    # the pull request, which is the whole reason the real lookup asks.
+    commit_shas: tuple[str, ...] = ()
     approval_head_sha: Optional[str] = None
     changes_requested: bool = False
     changes_requested_head_sha: Optional[str] = None

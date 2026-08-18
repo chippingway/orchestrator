@@ -20,11 +20,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import patch
 
 from orchestrator import config
+from orchestrator.github.labels import PAUSED_LABEL
 
 from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.fixtures import (
+    BASE_TIP_SHA,
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
     KEY_PARK_REASON,
@@ -35,11 +38,15 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_SESSION,
     ENSURE_WORKTREE,
     HEAD_BEFORE_ROUND,
+    KEY_BASE_SHA,
     KEY_DISCUSSION_AGENT,
     KEY_DISCUSSION_SESSION_ID,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_ROUND_BRANCH,
     KEY_ROUND_SHA,
     PARK_DISCUSSION_RESPONSE,
+    _paused_view,
 )
 from tests.workflow.stages.discussion.discussion_test_support import (
     RESUME_SESSION_ID,
@@ -121,11 +128,49 @@ def _seed_parked_discussion(
         KEY_DISCUSSION_AGENT: agent_spec or config.DECOMPOSE_AGENT_SPEC,
         KEY_ROUND_BRANCH: _issue_branch(number),
         KEY_ROUND_SHA: HEAD_BEFORE_ROUND,
+        KEY_BASE_SHA: BASE_TIP_SHA,
     }
     if session_id is not None:
         parked_state[KEY_DISCUSSION_SESSION_ID] = session_id
     gh.seed_state(number, **parked_state)
     return gh, issue
+
+
+def _mark_in_flight(gh, issue_number: int, **records) -> None:
+    """Add what a tick that did not finish leaves standing beside a park.
+
+    Seeded on top of a park rather than through it, because these are not part
+    of parking: they say this stage was mid-round or mid-publish when the park
+    was already durable, which is what separates a commit it may act on from
+    one it merely found on the branch afterwards.
+    """
+    gh.seed_state(
+        issue_number, **{**gh.pinned_data(issue_number), **records},
+    )
+
+
+def _paused_resumed_round(case, gh, issue, tree: Path):
+    """Run one resumed round an operator paused while it was in flight.
+
+    The pause withholds every disposition, so what the round leaves behind is
+    only what it wrote and what its pre-spawn write recorded -- which is the
+    state a crash in the same window leaves too, and the one a later tick has
+    to recognize as its own.
+    """
+    with patch.object(
+        gh,
+        "get_issue",
+        return_value=_paused_view(issue.number, PAUSED_LABEL),
+    ):
+        return case._run_discussion_on_worktree(
+            gh,
+            issue,
+            tree,
+            run_agent=_agent(
+                session_id=DISCUSSION_SESSION, last_message=UNASKED_ROUND,
+            ),
+            head_shas=(HEAD_BEFORE_ROUND,) * 2,
+        )
 
 
 @dataclass(frozen=True)

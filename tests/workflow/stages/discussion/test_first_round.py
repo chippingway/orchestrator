@@ -30,8 +30,12 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_SESSION,
     ENSURE_DECOMPOSE_WORKTREE,
     ENSURE_WORKTREE,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
     PARK_DISCUSSION_COMMITS,
     PARK_DISCUSSION_DIRTY,
+    PARK_DISCUSSION_PLAN_INVALID,
+    PARK_DISCUSSION_PUSH_FAILED,
     PARK_DISCUSSION_RESPONSE,
 )
 from tests.workflow.stages.discussion.discussion_test_support import (
@@ -63,6 +67,8 @@ _ROLE_DECOMPOSER = "decomposer"
 _DISCUSSION_PARKS = (
     PARK_DISCUSSION_RESPONSE,
     PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_PLAN_INVALID,
+    PARK_DISCUSSION_PUSH_FAILED,
     PARK_DISCUSSION_DIRTY,
     PARK_DISCUSSION_SILENT,
     PARK_DISCUSSION_STRANDED,
@@ -176,7 +182,11 @@ class DiscussionFirstRoundTest(unittest.TestCase, _DiscussionWorkflowMixin):
         self.assertEqual(
             mocks[RUN_AGENT].call_args.args[1],
             _prompts._build_discussion_prompt(
-                _TEST_SPEC, issue, "", config.default_repo_specs(),
+                _TEST_SPEC,
+                issue,
+                "",
+                config.default_repo_specs(),
+                self.plan_path(issue.number),
             ),
         )
 

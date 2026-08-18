@@ -16,6 +16,7 @@ from orchestrator.git import commands
 from tests.git.transport_helpers import _temp_git_repo_with_local_config
 
 GIT = "git"
+SUBPROCESS_RUN = "subprocess.run"
 HTTP_PROXY_KEY = "http.proxy"
 PROXY_URL = "http://evil.example:8080"
 WORKTREE = Path("/tmp/orchestrator-test-git-commands")
@@ -46,7 +47,7 @@ class GitExecutionTest(unittest.TestCase):
         # a prompting git command would hang the worker instead of failing.
         subprocess_run = _recorded_run()
 
-        with patch("subprocess.run", subprocess_run):
+        with patch(SUBPROCESS_RUN, subprocess_run):
             commands._git("status", "--porcelain", cwd=WORKTREE)
 
         self.assertEqual(
@@ -62,7 +63,7 @@ class GitExecutionTest(unittest.TestCase):
     def test_hardened_git_blocks_planted_config(self) -> None:
         subprocess_run = _recorded_run()
 
-        with patch("subprocess.run", subprocess_run):
+        with patch(SUBPROCESS_RUN, subprocess_run):
             commands._git_hardened("rebase", "x", cwd=WORKTREE)
 
         argv = subprocess_run.call_args.args[0]
@@ -78,7 +79,7 @@ class GitExecutionTest(unittest.TestCase):
         # with "Committer identity unknown" without these env vars.
         subprocess_run = _recorded_run()
 
-        with patch("subprocess.run", subprocess_run):
+        with patch(SUBPROCESS_RUN, subprocess_run):
             commands._git_hardened("rebase", "x", cwd=WORKTREE)
 
         env = subprocess_run.call_args.kwargs["env"]
@@ -88,6 +89,20 @@ class GitExecutionTest(unittest.TestCase):
         self.assertEqual(env.get("GIT_COMMITTER_EMAIL"), config.AGENT_GIT_EMAIL)
         self.assertEqual(env.get("GIT_CONFIG_GLOBAL"), os.devnull)
         self.assertEqual(env.get("GIT_CONFIG_SYSTEM"), os.devnull)
+
+    def test_hardened_git_disables_object_replacement(self) -> None:
+        # `refs/replace/` and the graft file are not config, so detaching
+        # global config and overriding `-c` settings leaves both standing --
+        # and either one makes git answer for a commit nobody wrote. Only
+        # these two env vars turn them off.
+        subprocess_run = _recorded_run()
+
+        with patch(SUBPROCESS_RUN, subprocess_run):
+            commands._git_hardened("diff", "--name-only", cwd=WORKTREE)
+
+        env = subprocess_run.call_args.kwargs["env"]
+        self.assertEqual(env.get("GIT_NO_REPLACE_OBJECTS"), "1")
+        self.assertEqual(env.get("GIT_GRAFT_FILE"), os.devnull)
 
 
 class TransportConfigProbeTest(unittest.TestCase):

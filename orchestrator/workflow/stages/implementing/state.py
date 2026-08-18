@@ -75,7 +75,18 @@ _PRE_IMPLEMENT_SHA = "pre_implement_sha"
 # retires; spent by `spawn._prepare_active_dev_run`.
 _READ_ONLY_BASELINE_SHA = "read_only_baseline_sha"
 
+# The head an accepted plan handoff is moving the branch onto, written before
+# the move and retired by the write that records where it landed. Without it,
+# the tick after a crash in between cannot tell the branch that move left --
+# sitting on the plan PR's live head -- from a developer's own commit, and the
+# recovered-worktree shortcut would push the reviewers' amendment as the
+# implementation with no agent having run. Written and spent by
+# `read_only_relabel._readvance_plan_handoff`.
+_HANDOFF_ANCHOR_SHA = "read_only_anchor_sha"
+
 _BRANCH = "branch"
+
+_PR_NUMBER = "pr_number"
 
 _IMPLEMENTING_STAGE = "implementing"
 

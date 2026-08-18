@@ -12,7 +12,11 @@ move the watermark. And the backend can hand back no session id at all, which
 is why both prompt choices sit together: a round with nothing to resume gets
 the full conversation rebuilt instead, since a followup handed to a fresh agent
 would arrive with no issue body, no frontier, and no design to fold an answer
-into.
+into. Both are handed the plan path this stage would publish, spelled by its
+own key owner rather than by the prompt: a round with nothing cached can still
+be the round the humans confirm on, and a path the agent is told that differs
+from the path the publication check looks for would refuse every plan written
+to it.
 
 Reading the replies and consuming them are deliberately separate calls, and
 `run` puts the round's provenance write between them. Nothing is consumed until
@@ -189,7 +193,9 @@ def _build_round_prompt(
     """
     if replies and session.session_id:
         return _models._DiscussionPrompt(
-            text=_prompts._build_discussion_followup_prompt(replies),
+            text=_prompts._build_discussion_followup_prompt(
+                replies, _state._plan_path(run.issue.number),
+            ),
             consumed=tuple(replies),
         )
     return _build_full_context_prompt(run)
@@ -220,6 +226,7 @@ def _build_full_context_prompt(
                 thread, retained_ids=_comments._orchestrator_ids(run.state),
             ),
             config.default_repo_specs(),
+            _state._plan_path(run.issue.number),
         ),
         consumed=tuple(_new_trusted_replies(run, thread)),
     )

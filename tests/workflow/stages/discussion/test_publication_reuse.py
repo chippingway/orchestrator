@@ -1,0 +1,546 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""Adopting a pull request that is already open on the branch.
+
+A publication asks for the open PR before it opens one, which is what turns a
+tick that died between `open_pr` and its records into a reuse rather than a
+duplicate. What comes back, though, is only known to be open on this branch:
+an issue can arrive here carrying a PR, and an operator can open one by hand.
+So the reuse fixes up what it adopts -- the body has to name the session whose
+plan the branch now carries, since that name is how a reviewer finds the
+conversation the plan came out of, and a body about something else would
+describe the published plan as whatever that PR used to be.
+
+Presence of the name is the whole test, not equality with what this stage
+would write: a PR of ours that a human has since annotated still says who
+produced it, and rewriting it wholesale would throw their words away.
+
+The same crash window has a longer half, and open state cannot answer it. A
+human can merge the plan PR before anything comes looking, which closes it and
+-- with the repository auto-deleting merged branches -- takes its head branch
+away too. Searched by open state alone the recovery finds nothing, so it pushes
+the branch back into existence and asks GitHub for a second pull request on a
+commit that is already in the base. What finds it instead is the commit the
+marker names, asked of any state.
+
+What is DONE with that answer narrows back to a merge. A pull request closed
+without one is not a published plan: nobody can review it, and the branch it
+was opened from is usually still there. Recorded as the artifact, it would hold
+the stage on something that cannot be looked at and the reviewable pull request
+the humans are owed would never be opened.
+
+What the search matches on is the commits a pull request CARRIES rather than
+the head it is on. The window it exists for is the one between opening the PR
+and recording its number, and a human pushing to that branch -- or merging the
+base into it to make it mergeable -- moves the head inside that window while
+the published commit stays in the pull request.
+"""
+
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from orchestrator import config
+
+from tests.support.fakes import FakePR, FakePRRef
+from tests.workflow.fixtures import (
+    BASE_TIP_SHA,
+    KEY_PARK_REASON,
+    STATE_CLOSED,
+    _agent,
+)
+
+from tests.workflow.stages.discussion.discussion_test_support import (
+    DISCUSSION_SESSION,
+    HEAD_AFTER_COMMIT,
+    HEAD_BEFORE_ROUND,
+    KEY_BASE_SHA,
+    KEY_DISCUSSION_AGENT,
+    KEY_DISCUSSION_SESSION_ID,
+    KEY_PR_NUMBER,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
+    KEY_PLAN_PATH,
+    KEY_PUBLISHING_SHA,
+    KEY_ROUND_BRANCH,
+    KEY_ROUND_OPEN,
+    KEY_ROUND_SHA,
+    PARK_DISCUSSION_PLAN_PUBLISHED,
+    PUSH_BRANCH,
+    RUN_AGENT,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
+    PARK_DISCUSSION_UNATTRIBUTED,
+    SPEC_BACKEND,
+    _DiscussionWorkflowMixin,
+    _issue_branch,
+    _seed_discussion,
+)
+
+_REUSED_PR_ISSUE_NUMBER = 1260
+_FOREIGN_PR_ISSUE_NUMBER = 1261
+_OWN_PR_ISSUE_NUMBER = 1262
+_MERGED_PR_ISSUE_NUMBER = 1263
+_CLOSED_PR_ISSUE_NUMBER = 1264
+_AMENDED_OPEN_ISSUE_NUMBER = 1265
+_AMENDED_MERGED_ISSUE_NUMBER = 1266
+_UNREADABLE_LOOKUP_ISSUE_NUMBER = 1267
+_FOREIGN_OPEN_ISSUE_NUMBER = 1268
+_FOREIGN_MERGED_ISSUE_NUMBER = 1269
+_SESSIONLESS_OPEN_ISSUE_NUMBER = 1270
+_SESSIONLESS_MERGED_ISSUE_NUMBER = 1271
+
+_EXISTING_PR_NUMBER = 7788
+_MERGED_PR_NUMBER = 7799
+_CLOSED_PR_NUMBER = 7800
+_AMENDED_PR_NUMBER = 7801
+# What the remote says about a branch a merge auto-deleted.
+_NO_SUCH_BRANCH = ""
+# What `pr_state` calls a pull request the humans have not merged yet.
+_OPEN_PR_STATE = "open"
+
+# The two states an adopted pull request can be found in, each of which a
+# human's own hand-opened one can reach on the plan's branch.
+_UNATTRIBUTED_ADOPTIONS = (
+    (_FOREIGN_OPEN_ISSUE_NUMBER, False),
+    (_FOREIGN_MERGED_ISSUE_NUMBER, True),
+)
+
+# The same two, reached by a round that never recorded the conversation it
+# opened -- so there is no session for the body to name at all.
+_SESSIONLESS_ADOPTIONS = (
+    (_SESSIONLESS_OPEN_ISSUE_NUMBER, False),
+    (_SESSIONLESS_MERGED_ISSUE_NUMBER, True),
+)
+# What a human pushing onto the plan's branch leaves as its head, inside the
+# window between the PR being opened and its number being written down.
+_AMENDED_HEAD = "the-commit-a-human-pushed-onto-the-plan-pr"
+
+
+def _descends_from_the_plan(worktree, ancestor: str, revision: str) -> bool:
+    """The ancestry a human's own push onto the plan's branch really leaves.
+
+    Their commit contains the one this publication pushed; the published one
+    does not contain theirs. A single answer for both directions is what makes
+    a branch somebody pushed to read as a fast-forward this stage may take.
+    """
+    return (ancestor, revision) == (HEAD_AFTER_COMMIT, _AMENDED_HEAD)
+_EVENT_PR_OPENED = "pr_opened"
+_INHERITING_ROUND = "a round that would inherit it"
+_FOREIGN_BODY = "a pull request somebody else opened on this branch"
+_ATTRIBUTION = (
+    f"Generated by orchestrator ({SPEC_BACKEND} session "
+    f"`{DISCUSSION_SESSION}`) in the `discussion` stage."
+)
+# A publication that opens no round of its own reads the tip twice: once
+# against the anchor, and once as the tip it would push.
+_RECOVERED_HEAD = (HEAD_AFTER_COMMIT,) * 2
+
+
+class DiscussionPlanPrReuseTest(unittest.TestCase, _DiscussionWorkflowMixin):
+    """What a publication does with a PR it did not open this tick."""
+
+    def test_an_open_pr_is_adopted_not_duplicated(self) -> None:
+        # What a tick that died between opening the PR and recording it looks
+        # like on the next one: the same branch, the same publishable plan,
+        # and a PR already open on it. Opening a second would 422.
+        reused = self._publish_over_open_pr(_REUSED_PR_ISSUE_NUMBER)
+
+        self.assertEqual(reused.gh.opened_prs, [])
+        self.assertEqual(reused.pinned[KEY_PR_NUMBER], _EXISTING_PR_NUMBER)
+        self.assertEqual(
+            reused.pinned[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_PUBLISHED,
+        )
+        # The event belongs to the tick that really opened the PR, so a
+        # recovered publication does not count a second one.
+        self.assertEqual(
+            [
+                event for event in reused.gh.recorded_events
+                if event["event"] == _EVENT_PR_OPENED
+            ],
+            [],
+        )
+
+    def test_a_body_that_names_nothing_is_rewritten(self) -> None:
+        reused = self._publish_over_open_pr(
+            _FOREIGN_PR_ISSUE_NUMBER, body=_FOREIGN_BODY,
+        )
+
+        adopted = reused.pr.body
+        self.assertEqual(
+            reused.gh.edited_pr_bodies, [(_EXISTING_PR_NUMBER, adopted)],
+        )
+        self.assertIn(_ATTRIBUTION, adopted)
+        self.assertIn(reused.plan_path, adopted)
+        self.assertNotIn(_FOREIGN_BODY, adopted)
+
+    def test_a_body_that_names_the_session_stands(self) -> None:
+        # The ordinary reuse: this stage's own PR, recovered by a later tick.
+        # Rewriting it would throw away whatever a human added in between.
+        annotated = f"{_ATTRIBUTION}\n\nand a reviewer's note under it"
+
+        reused = self._publish_over_open_pr(
+            _OWN_PR_ISSUE_NUMBER, body=annotated,
+        )
+
+        self.assertEqual(reused.gh.edited_pr_bodies, [])
+        self.assertEqual(reused.pr.body, annotated)
+
+    def _publish_over_open_pr(self, issue_number: int, *, body: str = ""):
+        """Publish a recovered plan onto a branch that already has a PR."""
+        gh, issue = _seed_discussion(issue_number)
+        branch = _issue_branch(issue_number)
+        gh.seed_state(
+            issue.number,
+            **{
+                KEY_ROUND_BRANCH: branch,
+                KEY_ROUND_SHA: HEAD_BEFORE_ROUND,
+                KEY_ROUND_OPEN: True,
+                KEY_BASE_SHA: BASE_TIP_SHA,
+                KEY_DISCUSSION_AGENT: config.DECOMPOSE_AGENT_SPEC,
+                KEY_DISCUSSION_SESSION_ID: DISCUSSION_SESSION,
+            },
+        )
+        gh.existing_open_pr[branch] = FakePR(
+            number=_EXISTING_PR_NUMBER, head_branch=branch, body=body,
+        )
+        plan_path = self.plan_path(issue_number)
+
+        with tempfile.TemporaryDirectory() as tree:
+            self._run_discussion_on_worktree(
+                gh,
+                issue,
+                Path(tree),
+                run_agent=_agent(last_message=_INHERITING_ROUND),
+                head_shas=_RECOVERED_HEAD,
+                committed_paths=(plan_path,),
+            )
+
+        return _ReusedPlanPr(
+            gh=gh,
+            pr=gh.existing_open_pr[branch],
+            plan_path=plan_path,
+            pinned=dict(gh.pinned_data(issue_number)),
+        )
+
+
+class DiscussionMergedPlanPrTest(unittest.TestCase, _DiscussionWorkflowMixin):
+    """The same crash window, reopened after the plan PR has left the open set.
+
+    Which way it left decides everything. A merge is the publication finishing
+    without this stage: the design is in the base, the branch is usually gone
+    with it, and all that is missing is the record. A close is the opposite --
+    nothing landed, nothing is reviewable, and the branch is still sitting
+    there waiting for a pull request somebody can actually read.
+    """
+
+    def test_a_merged_pr_is_recorded_not_reopened(self) -> None:
+        # The publication pushed and opened its PR, then died before writing
+        # the number down. A human merged that PR and GitHub deleted the branch
+        # with it, so every reading a later tick takes says the plan never went
+        # out: no branch on the remote, and no OPEN pull request anywhere. Left
+        # there, the recovery pushes the deleted branch back and asks for a
+        # second PR with no commits between it and the base -- or drops the
+        # marker and opens another round over a design that already landed.
+        gh, issue = _seed_merged_publication(_MERGED_PR_ISSUE_NUMBER)
+
+        with tempfile.TemporaryDirectory() as tree:
+            mocks = self._run_discussion_on_worktree(
+                gh,
+                issue,
+                Path(tree),
+                run_agent=_agent(last_message=_INHERITING_ROUND),
+                head_shas=_RECOVERED_HEAD,
+                committed_paths=(self.plan_path(_MERGED_PR_ISSUE_NUMBER),),
+                remote_branch_tip=_NO_SUCH_BRANCH,
+            )
+
+        # Nothing recreates the branch and nothing asks for a second PR, and no
+        # round opens over a plan the humans have already taken.
+        mocks[PUSH_BRANCH].assert_not_called()
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertEqual(gh.opened_prs, [])
+        pinned_data = gh.pinned_data(issue.number)
+        self.assertEqual(
+            (
+                pinned_data[KEY_PR_NUMBER],
+                pinned_data[KEY_PLAN_PATH],
+                pinned_data[KEY_PARK_REASON],
+                pinned_data[KEY_PUBLISHING_SHA],
+            ),
+            (
+                _MERGED_PR_NUMBER,
+                self.plan_path(_MERGED_PR_ISSUE_NUMBER),
+                PARK_DISCUSSION_PLAN_PUBLISHED,
+                None,
+            ),
+        )
+
+    def test_a_closed_pr_is_replaced_not_recorded(self) -> None:
+        # The same window, ended the other way: a human closed the plan PR
+        # without merging it, so nothing landed and the branch is still on the
+        # remote. Read as "already published", the number of a pull request
+        # nobody can open goes into the records, the stage holds on it for
+        # good, and the reviewable one it was supposed to leave is never asked
+        # for.
+        gh, issue = _seed_merged_publication(
+            _CLOSED_PR_ISSUE_NUMBER, merged=False,
+        )
+
+        with tempfile.TemporaryDirectory() as tree:
+            mocks = self._run_discussion_on_worktree(
+                gh,
+                issue,
+                Path(tree),
+                run_agent=_agent(last_message=_INHERITING_ROUND),
+                head_shas=_RECOVERED_HEAD,
+                committed_paths=(self.plan_path(_CLOSED_PR_ISSUE_NUMBER),),
+                remote_branch_tip=HEAD_AFTER_COMMIT,
+            )
+
+        # The publication runs its ordinary course, so the humans end up with a
+        # pull request they can read rather than a record of one they cannot.
+        mocks[PUSH_BRANCH].assert_called_once()
+        self.assertEqual(len(gh.opened_prs), 1)
+        pinned_data = gh.pinned_data(issue.number)
+        self.assertEqual(
+            pinned_data[KEY_PR_NUMBER], gh.opened_prs[0].number,
+        )
+        self.assertNotEqual(pinned_data[KEY_PR_NUMBER], _CLOSED_PR_NUMBER)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_PUBLISHED,
+        )
+
+    def test_an_amended_merged_pr_is_recorded(self) -> None:
+        # A human pushed onto the plan's branch inside the window, then merged
+        # it. The PR is on their commit, not on the one this publication put
+        # there -- so a lookup by head finds nothing, and the recovery pushes a
+        # branch the merge deleted and asks for a second pull request for a
+        # design already in the base.
+        gh, amended_issue = _seed_amended_publication(
+            _AMENDED_MERGED_ISSUE_NUMBER, merged=True,
+        )
+
+        mocks = _run_amended_recovery(
+            self, gh, amended_issue, remote_branch_tip=_NO_SUCH_BRANCH,
+        )
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        self.assertEqual(gh.opened_prs, [])
+        pinned_data = gh.pinned_data(amended_issue.number)
+        self.assertEqual(pinned_data[KEY_PR_NUMBER], _AMENDED_PR_NUMBER)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_PUBLISHED,
+        )
+        self.assertIsNone(pinned_data[KEY_PUBLISHING_SHA])
+
+    def test_an_amended_open_pr_is_adopted(self) -> None:
+        # The same amendment with the PR still open, and the ancestry the real
+        # one has: their head DESCENDS from the commit this publication put
+        # there, so the branch already carries it and the only thing a push
+        # could do is send the older SHA over their work. Refusing that is
+        # right -- the lease does -- but a refusal alone parks
+        # `discussion_push_failed` with no `pr_number`, leaving the plan
+        # published, reviewable, and unreachable from the issue that made it.
+        gh, amended_issue = _seed_amended_publication(
+            _AMENDED_OPEN_ISSUE_NUMBER, merged=False,
+        )
+
+        mocks = _run_amended_recovery(
+            self,
+            gh,
+            amended_issue,
+            remote_branch_tip=_AMENDED_HEAD,
+            commit_contains=_descends_from_the_plan,
+        )
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        self.assertEqual(gh.opened_prs, [])
+        pinned_data = gh.pinned_data(amended_issue.number)
+        self.assertEqual(pinned_data[KEY_PR_NUMBER], _AMENDED_PR_NUMBER)
+        self.assertEqual(
+            pinned_data[KEY_PARK_REASON], PARK_DISCUSSION_PLAN_PUBLISHED,
+        )
+        self.assertIsNone(pinned_data[KEY_PUBLISHING_SHA])
+
+    def test_an_unreadable_lookup_holds_publishing(self) -> None:
+        # The same merged-and-amended publication, with the one read that can
+        # still see it failing. Answered as "no pull request carries this",
+        # the recovery pushes a branch the merge deleted and opens a second
+        # pull request proposing to take the humans' amendment back out.
+        gh, held_issue = _seed_amended_publication(
+            _UNREADABLE_LOOKUP_ISSUE_NUMBER, merged=True,
+        )
+        gh.unreadable_pr_commits.add(_AMENDED_PR_NUMBER)
+
+        held = _run_amended_recovery(self, gh, held_issue)
+
+        # Nothing pushed, nothing opened, and nothing said to the humans: one
+        # read has to be taken again, which is not theirs to act on.
+        held[PUSH_BRANCH].assert_not_called()
+        self.assertEqual((gh.opened_prs, gh.posted_comments), ([], []))
+        pinned_data = gh.pinned_data(held_issue.number)
+        # The marker stands, which is what carries the retry to the next tick.
+        self.assertEqual(
+            (pinned_data.get(KEY_PR_NUMBER), pinned_data[KEY_PUBLISHING_SHA]),
+            (None, HEAD_AFTER_COMMIT),
+        )
+
+        gh.unreadable_pr_commits.clear()
+        _run_amended_recovery(self, gh, held_issue)
+
+        pinned_data = gh.pinned_data(held_issue.number)
+        self.assertEqual(
+            (pinned_data[KEY_PR_NUMBER], pinned_data[KEY_PARK_REASON]),
+            (_AMENDED_PR_NUMBER, PARK_DISCUSSION_PLAN_PUBLISHED),
+        )
+
+    def test_an_adopted_pr_is_attributed(self) -> None:
+        # What the lookup proves is branch, base and commit -- never that
+        # anything here opened this pull request. A human can open one by hand
+        # on the branch the plan was pushed to, and merging it or writing on
+        # top of it puts it on exactly this path: recorded as the artifact, the
+        # plan is reachable from the issue and described by a body about
+        # something else. (A body that already names the session is left as it
+        # stands, through the same check the reuse beside this runs.)
+        for issue_number, merged in _UNATTRIBUTED_ADOPTIONS:
+            with self.subTest(merged=merged):
+                gh, foreign = _seed_amended_publication(
+                    issue_number, merged=merged, body=_FOREIGN_BODY,
+                )
+
+                _run_amended_recovery(
+                    self,
+                    gh,
+                    foreign,
+                    remote_branch_tip=_AMENDED_HEAD,
+                    commit_contains=_descends_from_the_plan,
+                )
+
+                adopted = gh.pulls[_AMENDED_PR_NUMBER].body
+                self.assertEqual(
+                    gh.edited_pr_bodies, [(_AMENDED_PR_NUMBER, adopted)],
+                )
+                self.assertIn(_ATTRIBUTION, adopted)
+                self.assertNotIn(_FOREIGN_BODY, adopted)
+
+    def test_a_sessionless_adoption_is_refused(self) -> None:
+        # The push path refuses a plan no conversation can be traced to, and
+        # this one reaches a pull request BEFORE it: a round that opened a new
+        # conversation and was cut short before recording the id it opened
+        # leaves exactly that plan, and adopting under it would record the PR
+        # as the published design and rewrite its body to say `session None`.
+        for issue_number, merged in _SESSIONLESS_ADOPTIONS:
+            with self.subTest(merged=merged):
+                gh, sessionless = _seed_amended_publication(
+                    issue_number, merged=merged, session=False,
+                )
+
+                _run_amended_recovery(
+                    self,
+                    gh,
+                    sessionless,
+                    remote_branch_tip=_AMENDED_HEAD,
+                    commit_contains=_descends_from_the_plan,
+                )
+
+                self.assertEqual(gh.edited_pr_bodies, [])
+                pinned_data = gh.pinned_data(sessionless.number)
+                self.assertEqual(
+                    (
+                        pinned_data.get(KEY_PR_NUMBER),
+                        pinned_data[KEY_PARK_REASON],
+                    ),
+                    (None, PARK_DISCUSSION_UNATTRIBUTED),
+                )
+
+
+def _run_amended_recovery(case, gh, issue, **overrides):
+    """One recovery tick over a checkout still on the published commit."""
+    with tempfile.TemporaryDirectory() as tree:
+        return case._run_discussion_on_worktree(
+            gh,
+            issue,
+            Path(tree),
+            run_agent=_agent(last_message=_INHERITING_ROUND),
+            head_shas=_RECOVERED_HEAD,
+            committed_paths=(case.plan_path(issue.number),),
+            **overrides,
+        )
+
+
+def _seed_merged_publication(
+    issue_number: int, *, merged: bool = True, session: bool = True,
+):
+    """A publication whose PR left the open set before it was recorded.
+
+    The marker names the commit that went out and the pull request carrying it
+    is no longer open, which is the one state the open-PR lookup cannot see.
+    `merged` is which way it left, and the remote answers to match: a merge
+    takes the head branch with it, and a close leaves the branch exactly where
+    the push put it.
+    """
+    gh, issue = _seed_discussion(issue_number)
+    branch = _issue_branch(issue_number)
+    gh.seed_state(
+        issue.number,
+        **{
+            KEY_PUBLISHING_SHA: HEAD_AFTER_COMMIT,
+            KEY_ROUND_BRANCH: branch,
+            KEY_ROUND_SHA: HEAD_BEFORE_ROUND,
+            KEY_BASE_SHA: BASE_TIP_SHA,
+            KEY_DISCUSSION_AGENT: config.DECOMPOSE_AGENT_SPEC,
+            KEY_DISCUSSION_SESSION_ID: DISCUSSION_SESSION if session else None,
+        },
+    )
+    gh.add_pr(FakePR(
+        number=_MERGED_PR_NUMBER if merged else _CLOSED_PR_NUMBER,
+        head_branch=branch,
+        head=FakePRRef(sha=HEAD_AFTER_COMMIT),
+        merged=merged,
+        state=STATE_CLOSED,
+    ))
+    return gh, issue
+
+
+def _seed_amended_publication(
+    issue_number: int, *, merged: bool, body: str = "", session: bool = True,
+):
+    """The same window, with a human's own commit on the pull request.
+
+    Its head is theirs and its commit list still carries what this publication
+    pushed, which is the pair the lookup has to tell apart. `body` is what that
+    pull request says about itself, since the lookup proves branch, base and
+    commit and nothing about who opened it, and `session` is whether the round
+    that made the plan lived long enough to record the conversation it opened.
+    """
+    gh, issue = _seed_merged_publication(
+        issue_number, merged=merged, session=session,
+    )
+    gh.pulls.pop(_MERGED_PR_NUMBER if merged else _CLOSED_PR_NUMBER)
+    gh.add_pr(FakePR(
+        number=_AMENDED_PR_NUMBER,
+        head_branch=_issue_branch(issue_number),
+        head=FakePRRef(sha=_AMENDED_HEAD),
+        commit_shas=(HEAD_AFTER_COMMIT,),
+        body=body,
+        merged=merged,
+        state=STATE_CLOSED if merged else _OPEN_PR_STATE,
+    ))
+    return gh, issue
+
+
+class _ReusedPlanPr:
+    """The PR a publication adopted, and what the tick recorded around it."""
+
+    def __init__(self, gh, pr, plan_path: str, pinned: dict) -> None:
+        self.gh = gh
+        self.pr = pr
+        self.plan_path = plan_path
+        self.pinned = pinned
+
+
+if __name__ == "__main__":
+    unittest.main()

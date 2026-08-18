@@ -26,6 +26,7 @@ LEGACY_BRANCH = "orchestrator/issue-300"
 FETCH = "fetch"
 REV_LIST = "rev-list"
 REV_PARSE = "rev-parse"
+REMOTE_REFS_PREFIX = "refs/remotes/"
 WORKTREE_ADD = ("worktree", "add")
 WORKTREE_REMOVE_FORCE = ("worktree", "remove", "--force")
 
@@ -52,7 +53,10 @@ class _GitRecorder:
     """Answer the probes the lifecycle owners make and record every call.
 
     `local_branch_present` drives the `rev-parse --verify <branch>` probe
-    that decides between attaching to an existing ref and restoring one;
+    that decides between attaching to an existing ref and restoring one,
+    and `remote_branch_present` the `refs/remotes/...` probe that decides
+    which ref a restore anchors on -- both false is the merged PR whose
+    branch GitHub deleted, seen from a host with no local ref left.
     `commit_probe` and `worktree_add` let a test hand back the exact
     `rev-list --count` and `worktree add` results a scenario needs.
     """
@@ -61,18 +65,20 @@ class _GitRecorder:
         self,
         *,
         local_branch_present: bool = True,
+        remote_branch_present: bool = True,
         commit_probe: Optional[MagicMock] = None,
         worktree_add: Optional[MagicMock] = None,
     ) -> None:
         self.calls: list[_GitCall] = []
         self.local_branch_present = local_branch_present
+        self.remote_branch_present = remote_branch_present
         self.commit_probe = commit_probe or _git_result()
         self.worktree_add = worktree_add or _git_result()
 
     def __call__(self, *args: str, cwd: Path) -> MagicMock:
         self.calls.append((args, cwd))
         if args[0] == REV_PARSE:
-            return _git_result(returncode=0 if self.local_branch_present else 1)
+            return _git_result(returncode=0 if self._ref_present(args) else 1)
         if args[0] == REV_LIST:
             return self.commit_probe
         if args[:2] == WORKTREE_ADD:
@@ -99,6 +105,12 @@ class _GitRecorder:
         under systemd has none -- every fetch has to ride the askpass token.
         """
         return [args for args, _cwd in self.calls if args[0] == FETCH]
+
+    def _ref_present(self, args: _GitArgs) -> bool:
+        """Which ref was asked about decides which seed answers."""
+        if any(arg.startswith(REMOTE_REFS_PREFIX) for arg in args):
+            return self.remote_branch_present
+        return self.local_branch_present
 
 
 class _AuthedFetchRecorder:
@@ -139,13 +151,20 @@ class _WorktreeFixture:
 
 
 @contextmanager
-def _worktree_fixture(**recorder_options) -> Iterator[_WorktreeFixture]:
+def _worktree_fixture(
+    *, remote_tip: Optional[str] = "", **recorder_options,
+) -> Iterator[_WorktreeFixture]:
     """Point the worktrees root at a temp dir and fake the git plumbing.
 
     The owners bind `git.commands` and `git.authentication` directly, so a
     test that has to intercept what they run patches those owners.
     `WORKTREES_DIR` moves so `Path.exists()` answers for
     real -- the reuse decision turns on it.
+
+    `remote_tip` is what the remote itself says about the branch, which is the
+    only thing that turns a missing remote-tracking ref into a confirmed
+    deletion: `""` is "no such branch", a SHA is "still there and this host
+    just could not fetch it", and `None` is a read that failed.
     """
     recorder = _GitRecorder(**recorder_options)
     fetches = _AuthedFetchRecorder()
@@ -154,6 +173,9 @@ def _worktree_fixture(**recorder_options) -> Iterator[_WorktreeFixture]:
             patch.object(config, "WORKTREES_DIR", Path(temp_dir)),
             patch.object(commands, "_git", recorder),
             patch.object(authentication, "_authed_target_fetch", fetches),
+            patch.object(
+                authentication, "_remote_branch_tip", return_value=remote_tip,
+            ),
         ):
             yield _WorktreeFixture(
                 git=recorder, fetches=fetches, spec=_spec(),
