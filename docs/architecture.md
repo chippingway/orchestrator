@@ -1519,7 +1519,15 @@ or salvage what the closed issue left behind. The two entry points differ only i
 `_finalize_if_issue_closed` fetch their own at handler entry for `implementing`, `documenting`, `validating`, and the
 umbrella / blocked child aggregation — which is why each owns its fetch-failure answer, the merged check leaving the
 issue alone and the closed-issue check deferring the tick so a transient failure cannot label a merged-PR issue
-`rejected`. Its own helpers call each other in-module and reach `usage.py` for the stamp and the receipt and
+`rejected`. `workflow/stages/discussion/terminal.py` takes neither entry point and composes the arcs itself, because
+its third condition is not the one above: a closed issue whose plan PR is still open KEEPS its `discussion` label,
+since that label is what the closed-issue sweep finds the issue by and the plan the humans are still reading is what
+decides. So it reaches `_finalize_merged_pr` (with `close_if_open_only`, the issue may already be closed) and
+`_finalize_rejected_pr` directly for the verdict on that pull request, and `_finalize_closed_issue_with_open_pr` with
+`pr=None` for a close with no pull request to poll at all — which is the same shape that arc already serves, a close
+whose PR is not the thing being decided, and which records as fully as the other two while emitting no event (there is
+no PR for the payload to name) and reaping no branch. Its own helpers call each other in-module and reach `usage.py`
+for the stamp and the receipt and
 `git.worktrees` for the branch name and the cleanup, and every stage leaf that drains or finalizes a terminal imports
 the owner, so a patch that has to intercept an arc, a drain, or an entry-time finalize targets
 `orchestrator.workflow.engine.terminals`. The issue-state vocabulary the closed-issue arc reads and writes -- the
