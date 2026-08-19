@@ -12,8 +12,9 @@ the same stream under the same resilience contract: the opt-in skill-trigger ext
 below. None of the three reads or writes a file — redaction, truncation, and the append itself belong to the writers
 downstream of them.
 
-Which module owns which piece is in [`architecture.md`](../architecture.md#top-level-layout), the single place that
-inventory is maintained; the knobs are in [`configuration/observability.md`](../configuration/observability.md).
+Which module owns which piece is in [`architecture.md`](../architecture.md#top-level-layout), where the
+observability inventory is maintained; the knobs are in
+[`configuration/observability.md`](../configuration/observability.md).
 
 **Module layout.** The package initializer is the public surface: under a narrow `__all__` it re-exports the nine
 parsers `metrics.py`, `skills.py`, and `trajectory.py` define, a per-backend trio each, plus the five result types they

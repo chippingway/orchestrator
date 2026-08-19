@@ -116,7 +116,8 @@ Each workflow label dispatches to one `_handle_<label>` function under `orchestr
 stages — pickup through the PR loop — are in
 [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md); the two operator-applied conversation stages
 are in [`state-machine/conversation-stages.md`](state-machine/conversation-stages.md). Which module owns each handler
-is in [`architecture.md#stage-handlers`](architecture.md#stage-handlers); what the agent each one spawns is allowed to
+is in [`architecture/workflow-modules.md`](architecture/workflow-modules.md), and the dispatch that reaches one in
+[`architecture.md#stage-handlers`](architecture.md#stage-handlers); what the agent each one spawns is allowed to
 do is in [`workflow.md`](workflow.md).
 
 ### `_handle_pickup` (no label → `workflow:decomposing` or `workflow:implementing`)

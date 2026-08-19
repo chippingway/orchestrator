@@ -8,7 +8,7 @@ trajectory recorder, is documented in [`trajectories.md`](trajectories.md).
 
 The record shapes below are a compatibility contract: an operator's `jq` filter, a `logrotate` rule, and the Postgres
 `analytics_events` columns all key off them. Which module owns which piece of the write path is *not* repeated here —
-[`architecture.md`](../architecture.md#top-level-layout) is the single place that inventory is maintained. For the
+[`architecture.md`](../architecture.md#top-level-layout) is where that inventory is maintained. For the
 knobs themselves see [`configuration/observability.md`](../configuration/observability.md). The parser the analytics
 `agent_exit` counts come from is on [`usage.md`](usage.md), and the database, read model, and dashboard that sink is
 aggregated into afterwards are on [`analytics-database.md`](analytics-database.md) and
