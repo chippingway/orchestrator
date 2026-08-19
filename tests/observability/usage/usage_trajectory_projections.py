@@ -11,3 +11,11 @@ def claude_summary(trajectory) -> tuple:
         trajectory.final_output,
         (trajectory.skills.available, trajectory.skills.triggered),
     )
+
+
+def source_item_classes(trajectory) -> dict:
+    """Each accounted source item's type and disposition, keyed by its id."""
+    return {
+        source_item.item_id: (source_item.item_type, source_item.disposition)
+        for source_item in trajectory.source_items
+    }

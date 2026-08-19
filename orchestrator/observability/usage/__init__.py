@@ -19,14 +19,15 @@ reconstruction one timeline is rebuilt into (``trajectory_models``,
 This initializer re-exports the narrow public surface (``__all__``): the nine
 parsers a caller dispatches through -- a per-backend trio each for token and
 cost (``metrics``), skill evidence (``skills``), and the ordered timeline
-(``trajectory``) -- plus the five result types they hand back: ``UsageMetrics``
+(``trajectory``) -- plus the six result types they hand back: ``UsageMetrics``
 and ``SkillTriggers`` beside the parsers that fill them, and the
-``AgentTrajectory`` / ``TrajectoryStep`` / ``TurnUsage`` trio on
-``trajectory_models``. Each is bound here once, at import, to the owner's own
-object rather than a wrapper around it; that binding does not follow a later
-patch, so a test intercepting a parser targets the module its caller imported.
-Everything else -- the price tables, the protocol keys, the per-provider
-decoders -- is reached on its owner, so nothing private is published here.
+``AgentTrajectory`` / ``TrajectoryStep`` / ``SourceItem`` / ``TurnUsage``
+quartet on ``trajectory_models``. Each is bound here once, at import, to the
+owner's own object rather than a wrapper around it; that binding does not
+follow a later patch, so a test intercepting a parser targets the module its
+caller imported. Everything else -- the price tables, the protocol keys, the
+per-provider decoders -- is reached on its owner, so nothing private is
+published here.
 
 The parser is what a tracked run folds its per-issue counters from, so no owner
 here may reach the workflow that calls it: the dependency runs the other way,
@@ -40,6 +41,7 @@ from orchestrator.observability.usage import trajectory_models as _records
 __all__ = (
     "AgentTrajectory",
     "SkillTriggers",
+    "SourceItem",
     "TrajectoryStep",
     "TurnUsage",
     "UsageMetrics",
@@ -65,6 +67,7 @@ parse_claude_skills = _skills.parse_claude_skills
 parse_codex_skills = _skills.parse_codex_skills
 
 AgentTrajectory = _records.AgentTrajectory
+SourceItem = _records.SourceItem
 TrajectoryStep = _records.TrajectoryStep
 TurnUsage = _records.TurnUsage
 parse_agent_trajectory = _trajectory.parse_agent_trajectory

@@ -1,6 +1,13 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Trajectory records one parsed run is reconstructed into."""
+"""Trajectory records one parsed run is reconstructed into.
+
+Two of the records here answer different questions about the same run. The
+ordered `TrajectoryStep` list is what the run *did*; the `SourceItem` list
+beside it is what the parser did with every item the provider stream
+identified, so an id that reaches no step is a decision this record names
+rather than a silence a reader has to reconstruct.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +23,17 @@ NAME_FIELD = "name"
 TOOL_ID_FIELD = "tool_id"
 TURN_FIELD = "turn"
 CONTENT_FIELD = "content"
+ITEM_ID_FIELD = "item_id"
+ITEM_TYPE_FIELD = "item_type"
+DISPOSITION_FIELD = "disposition"
+
+# Where one identified source item ended up. The four are exhaustive by
+# construction -- a parser assigns exactly one per id -- which is what lets a
+# reader tell an item the parser held back from one it never saw.
+ITEM_STORED = "stored"
+ITEM_UNSUPPORTED = "unsupported"
+ITEM_EXCLUDED = "excluded"
+ITEM_EMPTY = "empty"
 STEP_SIGNATURE = inspect.Signature(
     parameters=(
         inspect.Parameter(KIND_FIELD, inspect.Parameter.POSITIONAL_OR_KEYWORD),
@@ -62,6 +80,37 @@ class TrajectoryStep:
 
 
 @dataclass(frozen=True)
+class SourceItem:
+    """One identified provider stream item, and where the parser put it.
+
+    The provider identifies an item once and then reports it over as many
+    frames as it takes, so one of these stands for the whole item rather than
+    for a frame of it. `disposition` is the classification the parser settled
+    on: `stored` when the item's own steps are in the trajectory, `unsupported`
+    when nothing normalized its type and a placeholder step names it instead,
+    `excluded` when the parser deliberately keeps neither the item nor its
+    payload, and `empty` when its frames carried nothing to store.
+
+    A `stored` message item is the reason this record exists. A text turn is
+    not a tool call and carries no `tool_id`, so the id the provider gave it
+    has nowhere to live on the step itself -- and reusing the tool field for
+    one would make a message look like a call to everything downstream that
+    joins a result to its invocation by that field.
+    """
+
+    item_id: str
+    item_type: str
+    disposition: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            ITEM_ID_FIELD: self.item_id,
+            ITEM_TYPE_FIELD: self.item_type,
+            DISPOSITION_FIELD: self.disposition,
+        }
+
+
+@dataclass(frozen=True)
 class TurnUsage:
     """Per-turn token usage for one Claude assistant turn."""
 
@@ -96,6 +145,7 @@ class AgentTrajectory:
     tools: tuple[str, ...] = ()
     skills: SkillTriggers = field(default_factory=SkillTriggers)
     steps: tuple[TrajectoryStep, ...] = ()
+    source_items: tuple[SourceItem, ...] = ()
     final_output: Optional[str] = None
     turns: tuple[TurnUsage, ...] = ()
 
@@ -110,6 +160,9 @@ class AgentTrajectory:
                 "available": list(self.skills.available),
             },
             "steps": [step.to_dict() for step in self.steps],
+            "source_items": [
+                source_item.to_dict() for source_item in self.source_items
+            ],
             "final_output": self.final_output,
             "turns": [turn_usage.to_dict() for turn_usage in self.turns],
         }
