@@ -1,18 +1,21 @@
 # Agent Orchestrator — Roadmap
 
-## Status as of 2026-07-23
+## Status as of 2026-08-19
 
-The full label lifecycle is wired end-to-end: pickup → `decomposing` →
-`ready` / `blocked` / `umbrella` → `implementing` → `validating` →
-`documenting` (final-docs handoff) → `in_review` → terminal
-`done` / `rejected`, with `fixing` and `resolving_conflict` as the
-review-side loops back to `validating`, and `question` as an
-operator-applied read-only Q&A side branch. The `backlog` and `paused`
-control labels hold fresh or in-flight work without changing that
-workflow state.
+The fixed delivery lifecycle is wired end-to-end: pickup →
+`workflow:decomposing` → `workflow:ready` / `workflow:blocked` /
+`workflow:umbrella` → `workflow:implementing` → `workflow:validating` →
+`workflow:documenting` (final-docs handoff) → `in_review` → terminal
+`done` / `rejected`, with `workflow:fixing` and
+`workflow:resolving_conflict` as the review-side loops back to
+`workflow:validating`. The operator-applied `question` and `discussion`
+labels provide read-only Q&A and design-conversation side branches; a
+confirmed discussion publishes a plan PR. The `backlog` and `paused`
+control labels hold fresh or in-flight work without changing the workflow
+state.
 
 The orchestrator runs as a single long-lived Python process
-(`python -m orchestrator.main`, wrapped by `run.sh` for self-restart),
+(`python -m orchestrator`, wrapped by `run.sh` for self-restart),
 polls one or more configured repos, and delegates coding to `codex` /
 `claude` CLI subprocesses in per-issue git worktrees. State lives in
 GitHub Issues themselves (one workflow label plus one pinned JSON
@@ -52,9 +55,10 @@ The orchestrator is feature-complete against its original scope. Each
 shipped area below is a one-line pointer; behavior details live in the
 linked docs.
 
-- **Bootstrap and process model.** Polling loop with `--once` and
-  signal-clean shutdown, ancestry-aware self-update detection, `run.sh`
-  self-restart wrapper. See
+- **Bootstrap and process model.** Canonical `agent-orchestrator` and
+  `python -m orchestrator` launch forms, polling loop with `--once` and
+  signal-clean shutdown, ancestry-aware self-update detection, and the
+  `run.sh` self-restart wrapper. See
   [`docs/architecture.md#process-model`](../docs/architecture.md#process-model).
 - **Agent invocation.** `agents.run_agent` dispatches to `codex` /
   `claude`; `DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT` specs are
@@ -75,17 +79,26 @@ linked docs.
   CHANGES_REQUESTED), the conflict-only `resolving_conflict` route,
   `/orchestrator continue` retry / replay / refusal semantics across
   parked developer paths, and the read-only `question` side branch all
-  live under `orchestrator/stages/`. See
+  live under `orchestrator/workflow/stages/`. See
   [`docs/state-machine.md#stage-handlers`](../docs/state-machine.md#stage-handlers).
 - **Control labels.** `backlog` keeps not-yet work out of dispatch;
   `paused` freezes in-flight work across dispatch, base sync, and fresh
   post-agent checks without discarding durable state; and, when
   `ALLOWED_ISSUE_AUTHORS` is configured, `community_contribution` flags
-  non-allowlisted PR authors for human review. See
+  non-allowlisted PR authors for human review under the wire label
+  `workflow:community_contribution`. See
   [`docs/state-machine.md#workflow-labels`](../docs/state-machine.md#workflow-labels).
-- **Typed state machine.** `WorkflowLabel` / `ControlLabel` enums in
-  `orchestrator/state_machine.py`, with a typo guard and a configurable
-  transition guard at the single label-write chokepoint. See
+- **Discussion lifecycle.** The operator-applied `discussion` label runs
+  a resumable decomposer-led architecture conversation, publishes a
+  confirmed `plans/issue-<number>.md` as a plan PR, and finalizes the
+  issue from that PR's outcome without spawning an implementer. See
+  [`docs/workflow.md#discussion-stage--architecture-discussion-on-the-discussion-label`](../docs/workflow.md#discussion-stage--architecture-discussion-on-the-discussion-label).
+- **Typed, namespaced state machine.** `WorkflowLabel` / `ControlLabel`
+  enums in `orchestrator/workflow/state.py`, with a typo guard and a
+  configurable transition guard at the single label-write chokepoint.
+  Orchestrator-owned wire labels use the `workflow:` namespace, and the
+  startup bootstrap migrates legacy bare spellings while the read paths
+  remain compatible with live issues that still carry them. See
   [`docs/state-machine.md#typed-states-and-the-transition-guard`][typed-states].
 - **Multi-repo support.** `REPOS` drives per-repo fan-out across a
   `ThreadPoolExecutor` with per-repo exception isolation; worktrees are
@@ -104,23 +117,25 @@ linked docs.
   on a single worker; no-agent buckets (`blocked` / `umbrella`) run
   cap-exempt on a dedicated pool. See
   [`docs/architecture.md#per-tick-flow-workflowtick`](../docs/architecture.md#per-tick-flow-workflowtick)
-  and [`orchestrator/scheduler.py`](../orchestrator/scheduler.py).
-- **Compatibility-facade decomposition.** Runtime core, workflow,
-  stages, worktree subsystems, analytics reads, and dashboards expose
-  stable lazy facades backed by immutable export manifests and focused
-  responsibility-named leaves. Historical imports, object identity, and
-  test patch points remain intact. See
+  and [`orchestrator/scheduler/service.py`](../orchestrator/scheduler/service.py).
+- **Responsibility-owned package layout.** The former flat production and
+  test trees are split into domain packages with narrow explicit APIs,
+  responsibility-named owners, mirrored tests, and repository checks for
+  package layout, import direction, and public exports. The temporary
+  compatibility manifests and forwarding modules used during the move
+  have been removed. See
   [`docs/architecture.md#top-level-layout`](../docs/architecture.md#top-level-layout).
 - **Tests.** Large suites are split into focused per-behavior modules
   with subsystem-specific support harnesses; reusable GitHub behavior
-  stays in the in-memory fakes in `tests/fakes.py`. See
+  stays in the in-memory fakes under `tests/support/github/`, reached
+  through `tests/support/fakes.py`. See
   [`CLAUDE.md`](../CLAUDE.md).
 - **Project CI.** GitHub Actions runs Ruff, WPS-focused Flake8, and
   pytest on PRs under read-only token scope; the 120-column repository
   line-length limit is enforced by Ruff E501 for Python and
-  `tests/test_line_length.py` for tracked Markdown / text; Dependabot
-  opens weekly updates with a 30-day cooldown; `dependency-review`
-  blocks vulnerable PRs.
+  `tests/repository/test_line_length.py` for tracked Markdown / text;
+  Dependabot opens weekly updates with a 30-day cooldown;
+  `dependency-review` blocks vulnerable PRs.
 - **Audit event log.** Optional opt-in JSONL sink at `EVENT_LOG_PATH`,
   one record per workflow event, including opt-in `skill_triggered`
   events when `TRACK_SKILL_TRIGGERS` is enabled. See
@@ -128,38 +143,41 @@ linked docs.
 - **Analytics sink, database, and dashboard.** JSONL sink at
   `ANALYTICS_LOG_PATH` plus an operator-deployed Postgres aggregation
   target (`analytics-db/`), an operator-driven sync CLI
-  (`python -m orchestrator.analytics.sync`), a read model
-  (`orchestrator/analytics/read.py`), and a Streamlit dashboard
-  (`orchestrator/dashboard.py`) over the standalone analytics view.
-  Records include stage evaluations, agent exits, repo skill catalogs,
-  opt-in skill-observation fields, logical-session adoption, and
-  invocation-level trigger diagnostics. See
+  (`python -m orchestrator.observability.analytics.sync.cli`), a read
+  model under `orchestrator/observability/analytics/query/`, and the
+  `orchestrator/apps/analytics_dashboard.py` Streamlit app. Records
+  include stage evaluations, agent exits, repo skill catalogs, opt-in
+  skill-observation fields, logical-session adoption, and invocation-level
+  trigger diagnostics. See
   [`docs/observability.md`](../docs/observability.md).
 - **Trajectory sink and viewer.** Opt-in `TRAJECTORY_LOG_PATH` records
   redacted, head/tail-truncated `agent_trajectory` JSONL records for
-  tracked agent runs; `orchestrator/trajectory_reader.py` and
-  `orchestrator/trajectory_dashboard.py` render the file directly,
-  separate from Postgres and the analytics dashboard. See
+  tracked agent runs; the read and rendering owners under
+  `orchestrator/observability/trajectory_viewer/` are composed by
+  `orchestrator/apps/trajectory_dashboard.py`, separate from Postgres and
+  the analytics dashboard. See
   [`docs/observability.md#trajectory-sink-trajectory_log_path`][trajectory-sink].
-- **Agent usage / cost parser.** `orchestrator/usage.py` decodes JSONL
-  agent stdout into a `UsageMetrics` dataclass; CLI-reported cost wins,
-  otherwise a baked-in price table estimates and unknown SKUs yield
-  `unknown-price`. The same surface parses agent trajectories and
-  distinguishes confirmed Claude skill loads, inferred direct Codex
-  `SKILL.md` reads, and incidental path references. See
-  [`docs/observability.md#usage-parser-orchestratorusagepy`](../docs/observability.md#usage-parser-orchestratorusagepy).
+- **Agent usage / cost parser.** `orchestrator/observability/usage/`
+  decodes JSONL agent stdout into a `UsageMetrics` dataclass;
+  CLI-reported cost wins, otherwise a baked-in price table estimates and
+  unknown SKUs yield `unknown-price`. The same package parses agent
+  trajectories and distinguishes confirmed Claude skill loads, inferred
+  direct Codex `SKILL.md` reads, and incidental path references. See
+  [`docs/observability.md#usage-parser-orchestratorobservabilityusage`](../docs/observability.md#usage-parser-orchestratorobservabilityusage).
 - **Per-issue usage receipts.** Developer, reviewer, decomposer, and
-  question runs fold parsed `UsageMetrics` into pinned-state
+  question / discussion runs fold parsed `UsageMetrics` into pinned-state
   `issue_agent_runs` / `issue_total_tokens` / `issue_total_cost_usd` /
   `issue_cost_sources` counters; terminal done / rejected / closed
   routes surface those counters as a visible receipt comment. See
-  [`docs/state-machine.md#pinned-state-schema`](../docs/state-machine.md#pinned-state-schema)
+  [`docs/state-machine.md#pinned-state`](../docs/state-machine.md#pinned-state)
   and
-  [`docs/observability.md#usage-parser-orchestratorusagepy`](../docs/observability.md#usage-parser-orchestratorusagepy).
+  [`docs/observability.md#usage-parser-orchestratorobservabilityusage`](../docs/observability.md#usage-parser-orchestratorobservabilityusage).
 
 ## Future work
 
-Short actionable entries; expand into design docs only when picked up.
+Open as of 2026-08-19. None of these entries has an implementation or a
+public configuration surface yet. Expand one into a design document only
+when it is picked up.
 
 - **Spec-first split.** Insert a `specifying` stage between `ready` and
   `implementing` so a separate spec agent writes failing tests first
@@ -180,9 +198,6 @@ Short actionable entries; expand into design docs only when picked up.
 - **Architectural review at `validating`.** Optional reviewer pass that
   flags structural issues (oversized files, layering violations) that
   the correctness reviewer ignores.
-- **Dynamic workflow.** Planner agent that picks stages per issue
-  (extra architectural exploration; skip acceptance for trivial fixes).
-  Revisit once the static flow is fully dogfooded.
 - **Symphony-inspired hooks and policy overrides.** Narrow
   `<target_root>/.agent-orchestrator/policy.toml` overrides (verify
   commands, retry / review-round budgets) with hot-reload, plus three
@@ -193,14 +208,15 @@ Short actionable entries; expand into design docs only when picked up.
 
 ## Risks
 
-- **R1 — Codex / Claude CLI output format drift.** Isolated in
-  provider-specific agent and usage-parser leaves; failures surface as
+- **R1 — Codex / Claude CLI output format drift.** Isolated in the
+  provider-specific leaves under `orchestrator/agents/backends/` and
+  `orchestrator/observability/usage/`; failures surface as
   `session_id=None` (logged) or empty `last_message` (park with stderr
-  quoted via `_format_stderr_diagnostics`).
+  quoted via `workflow.engine.messages._format_stderr_diagnostics`).
 - **R2 — Self-mutation while running.** Per-issue worktrees +
   ancestry-aware self-update detection in
-  `main._self_modifying_merge_happened` + the `run.sh` self-restart
-  wrapper.
+  `runtime.self_update.self_modifying_merge_happened` + the `run.sh`
+  self-restart wrapper.
 - **R3 — Runaway agent loops / token cost.** Wall-clock timeouts
   (`AGENT_TIMEOUT`, `REVIEW_TIMEOUT`), per-issue retry budget
   (`MAX_RETRIES_PER_DAY`), review / fix cap (`MAX_REVIEW_ROUNDS`),
