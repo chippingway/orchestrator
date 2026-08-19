@@ -358,7 +358,12 @@ summary and a claude-only per-turn `turns` tuple (`TurnUsageView`), with conveni
 `usage_for_turn(idx)` lookup so a `TimelineEntry` (which now carries the producing step's `turn` index) can find its
 turn's usage while walking the timeline; `summarize` adds `total_cost_usd`, the summed run cost over runs that recorded
 one. A pre-usage record parses with `run_usage=None`, `turns=()`, and every `step.turn=None`, so it renders exactly as
-before. The same resilience contract the rest of the codebase honours holds: a missing / disabled path, a malformed
+before. The codex per-item accounting (`source_items` with its `source_item_counts` and `source_items_truncated`) is
+deliberately **not** projected onto `TrajectoryRun`: the viewer renders what a run *did*, while an id-by-id `item_N`
+coverage audit is a question for the JSONL file itself, so those three keys ride past the read model untouched. The
+`truncated` warning the run card draws speaks of dropped steps for the same reason — the accounting is drawn from the
+budget before the steps, so a record that lost accounting rows lost its steps first. The same resilience contract the
+rest of the codebase honours holds: a missing / disabled path, a malformed
 line, a non-`agent_trajectory` record, or a renamed field yields a smaller result, never an exception. A file that is
 there but cannot be read — anything raising an `OSError` other than `FileNotFoundError`, an unreadable file or a
 directory in the knob's place — takes the same empty result with a warning first, through the
