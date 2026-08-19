@@ -17,7 +17,12 @@ orchestrator process is stateless.
 ## Where the details live
 
 - User-facing overview: [`README.md`](README.md)
-- Architecture, module ownership, process / agent / push model: [`docs/architecture.md`](docs/architecture.md)
+- Architecture, module ownership, process / agent / push model:
+  [`docs/architecture.md`](docs/architecture.md) is the entry point, with
+  [`docs/architecture/platform-modules.md`](docs/architecture/platform-modules.md) for the package root,
+  runtime, config, GitHub, git, agents, scheduler, and skills owners, and
+  [`docs/architecture/workflow-modules.md`](docs/architecture/workflow-modules.md) for the workflow package
+  API, its engine owners, and the stage subpackages
 - Workflow state machine (labels, per-tick flow, stage handlers):
   [`docs/state-machine.md`](docs/state-machine.md) is the entry point, with
   [`docs/state-machine/labels-and-state.md`](docs/state-machine/labels-and-state.md) for the label vocabulary,
@@ -50,9 +55,9 @@ orchestrator process is stateless.
 
 ## Repository layout
 
-Top level only. Which module owns what — down to individual helpers — is in
-[`docs/architecture.md`](docs/architecture.md#top-level-layout), which is the single place that inventory is
-maintained.
+Top level only. Which module owns what is in
+[`docs/architecture.md`](docs/architecture.md#top-level-layout) and the focused pages under
+`docs/architecture/`, which are the single place that inventory is maintained.
 
 - `orchestrator/` — the Python package. The root carries the version, `cli.py` (the composition point the
   `agent-orchestrator` console script calls), and `__main__.py` (the `python -m orchestrator` form over it); every

@@ -43,7 +43,9 @@ Everything a stage borrows is named the same way. A cross-stage call names the o
 facade; the worktree, HEAD, fetch, push, and PR-title helpers live on owners under `orchestrator/git/`; and the
 tracked spawn every role goes through dispatches on `orchestrator/agents/runner.py`. Which owner defines which helper
 and which stage borrows it is the module map in
-[`../architecture.md#top-level-layout`](../architecture.md#top-level-layout); the per-stage behavior is in
+[`../architecture/platform-modules.md`](../architecture/platform-modules.md) for the git and agent owners and
+[`../architecture/workflow-modules.md`](../architecture/workflow-modules.md) for the stage tree; the
+per-stage behavior is in
 [`../state-machine.md#stage-handlers`](../state-machine.md#stage-handlers). What follows is the role-specific glue.
 
 ## Session lifecycles
