@@ -3502,8 +3502,10 @@ every surface is observation-only and safe to truncate, rotate, or delete. That 
 `orchestrator/observability/` — the destination and the rules its owners inherit are described under
 [Top-level layout](#top-level-layout).
 
-For the per-sink schema, event-kind tables, append / retention / rotation semantics, the analytics-DB compose layout,
-the sync / read-model / dashboard wiring, and the usage parser's cost-precedence rules, see
+For each sink's schema, event-kind tables, and append / retention / rotation semantics, see
+[`observability/event-streams.md`](observability/event-streams.md) and
+[`observability/trajectories.md`](observability/trajectories.md). For the analytics-DB compose layout, the sync /
+read-model / dashboard wiring, and the usage parser's cost-precedence rules, see
 [`observability.md`](observability.md).
 
 ## Summary of "what runs when"

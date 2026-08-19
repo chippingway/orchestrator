@@ -16,7 +16,8 @@ behavior belong to [`state-machine.md`](state-machine.md).
   `CLAUDE_BIN`, worked examples, and what pinning a spec buys.
 
 For the higher-level design (multi-repo dispatch, push hardening, agent subprocess shape), see
-[`architecture.md`](architecture.md). For the audit event log, analytics sink, and usage parser, see
+[`architecture.md`](architecture.md). For the audit event log and analytics sink, see
+[`observability/event-streams.md`](observability/event-streams.md); for the database and usage parser over them, see
 [`observability.md`](observability.md). For env vars and the operator runbooks beside them, see
 [`configuration.md`](configuration.md). For the user-facing summary, see [`../README.md`](../README.md).
 

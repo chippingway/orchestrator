@@ -29,8 +29,10 @@ orchestrator process is stateless.
   dashboards and [`docs/configuration/operations.md`](docs/configuration/operations.md) for CI, run modes, systemd,
   and applying `.env` changes; basic knobs in [`.env.example`](.env.example), common advanced overrides in
   [`.env.example.advanced`](.env.example.advanced)
-- Observability (audit event log, analytics sink / database, usage parser):
-  [`docs/observability.md`](docs/observability.md)
+- Observability: [`docs/observability.md`](docs/observability.md) is the entry point (analytics database, its read
+  model, the dashboard, the usage parser), with the audit and analytics JSONL sinks in
+  [`docs/observability/event-streams.md`](docs/observability/event-streams.md) and trajectory recording, transfer,
+  and viewing in [`docs/observability/trajectories.md`](docs/observability/trajectories.md)
 - Security checklist and operator-owned controls: [`docs/security.md`](docs/security.md)
 - Development conventions and the pre-push checklist:
   [`.agents/skills/develop/SKILL.md`](.agents/skills/develop/SKILL.md)
