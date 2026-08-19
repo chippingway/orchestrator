@@ -13,7 +13,8 @@ reference is inferred from (``shell_segments``, ``skill_commands``,
 ``skills_claude``, ``skills_codex``); and the records and per-provider
 reconstruction one timeline is rebuilt into (``trajectory_models``,
 ``trajectory_claude_blocks``, ``trajectory_claude_stream``,
-``trajectory_claude_turns``, ``trajectory_codex``).
+``trajectory_claude_turns``, ``trajectory_codex``,
+``trajectory_codex_items``).
 
 This initializer re-exports the narrow public surface (``__all__``): the nine
 parsers a caller dispatches through -- a per-backend trio each for token and

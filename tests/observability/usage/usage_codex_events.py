@@ -35,6 +35,27 @@ def task_complete(**fields: object) -> dict:
     return {_usage_cases.TYPE_FIELD: "task_complete", **fields}
 
 
+def stream_item(
+    item_id: str,
+    item_type: str,
+    *,
+    started: bool = False,
+    **extra_fields: object,
+) -> dict:
+    """One `item.started` / `item.completed` frame of any codex item type."""
+    event_type = (
+        _usage_cases.ITEM_STARTED_EVENT
+        if started
+        else _usage_cases.ITEM_COMPLETED_EVENT
+    )
+    record = {
+        _usage_cases.IDENTIFIER_FIELD: item_id,
+        _usage_cases.TYPE_FIELD: item_type,
+    }
+    record.update(extra_fields)
+    return {_usage_cases.TYPE_FIELD: event_type, _usage_cases.ITEM_FIELD: record}
+
+
 def command(
     item_id: str,
     command_text: str,
@@ -42,23 +63,19 @@ def command(
     started: bool = False,
     **extra_fields: object,
 ) -> dict:
-    event_type = "item.started" if started else "item.completed"
-    command_record = {
-        _usage_cases.IDENTIFIER_FIELD: item_id,
-        _usage_cases.TYPE_FIELD: "command_execution",
-        _usage_cases.COMMAND_FIELD: command_text,
-    }
-    command_record.update(extra_fields)
-    return {_usage_cases.TYPE_FIELD: event_type, "item": command_record}
+    return stream_item(
+        item_id,
+        "command_execution",
+        started=started,
+        **{_usage_cases.COMMAND_FIELD: command_text},
+        **extra_fields,
+    )
 
 
 def agent_message(item_id: str, message: object, *, started: bool = False) -> dict:
-    event_type = "item.started" if started else "item.completed"
-    return {
-        _usage_cases.TYPE_FIELD: event_type,
-        "item": {
-            _usage_cases.IDENTIFIER_FIELD: item_id,
-            _usage_cases.TYPE_FIELD: "agent_message",
-            _usage_cases.TEXT_FIELD: message,
-        },
-    }
+    return stream_item(
+        item_id,
+        "agent_message",
+        started=started,
+        **{_usage_cases.TEXT_FIELD: message},
+    )

@@ -24,7 +24,8 @@ vocabulary and `event_stream.py` the resilient line decoder, `prices.py` the fir
 `model_names.py` the nested model-name lookup, `claude_rows.py` / `claude_summary.py` and `codex_rows.py` /
 `codex_summary.py` the per-provider frame decoding and run summary, `shell_segments.py` / `skill_commands.py` /
 `skills_claude.py` / `skills_codex.py` the skill-evidence classification, and `trajectory_claude_blocks.py` /
-`trajectory_claude_stream.py` / `trajectory_claude_turns.py` plus `trajectory_codex.py` the timeline reconstruction. The
+`trajectory_claude_stream.py` / `trajectory_claude_turns.py` plus `trajectory_codex.py` and the per-item-type
+`trajectory_codex_items.py` under it the timeline reconstruction. The
 trajectory classifier reuses the same event decoder, pricing path, and skill evidence owners, so the resilience and
 cost-precedence contracts are defined once. Each published name is bound once at import to its owner's own object, and a
 binding does not follow a later patch, so a test intercepting a parser targets the module its caller imported — every
@@ -125,11 +126,30 @@ cache-creation buckets summed), and an always-*estimated* `cost_usd` / `cost_sou
 `"unknown-price"` with `cost_usd=None` for an unpriced SKU — a reported `total_cost_usd` is a run-level figure and
 never reaches a turn). The per-turn estimate reuses the same `claude_estimate_cost` price path on
 `observability/usage/prices.py` as the run aggregate, so the per-turn figures stay in lock-step with
-`parse_claude_usage`'s run totals. `parse_codex_trajectory(stdout)` treats each
-`command_execution` item as one call (its `command`) plus one result (its `aggregated_output`) and each `agent_message`
-item as one `assistant_message` turn (its `text`), collapsing each item's started/completed pair by the shared
-`item.id`, and reads the final answer from the last `agent_message` `text`; it leaves `turns` empty with every
-`step.turn` `None`, since codex usage frames are cumulative across the session rather than per-turn. Both reuse the
+`parse_claude_usage`'s run totals. `parse_codex_trajectory(stdout)` normalizes each
+operational item codex reports into one `tool_call` and, when the stream actually carried an outcome, one
+`tool_result` beneath it, and each `agent_message` item into one `assistant_message` turn (its `text`). Codex emits
+several frames per item — `item.started`, any `item.updated`, then `item.completed` — so every item is correlated by
+its `item.id` and a frame contributes only the fields it carried, which is what collapses a started/completed pair
+into a single pair of steps and lets the completing frame name what the started one had not resolved yet. The
+supported item types and the fields each pair is built from are: `command_execution` (its `command`, then the
+`aggregated_output` of the frame that completed it — a *running* command already reports that field, empty, so
+presence alone would credit a command still running with a result it never produced), `mcp_tool_call` (its
+`arguments`, then its `result` — or its `error` when the server filled that instead — under a `<server>.<tool>` step
+name), `web_search` (its `query`, then the `action` it resolved to), and `file_change` (its `changes`, then the
+status it settled on). That last one is codex's **custom** (freeform) tool surface: the model calls `apply_patch`,
+and the stream reports the call and its outcome as a `file_change` item, so a custom tool call normalizes to a pair
+like any other. `codex exec --json` publishes no separate custom / dynamic tool item type — its whole item vocabulary
+is `agent_message`, `reasoning`, `command_execution`, `file_change`, `mcp_tool_call`, `collab_tool_call`,
+`web_search`, `todo_list`, and `error` (verified against codex-cli 0.148.0), and `custom_tool_call` is a raw
+model-response / rollout spelling that never reaches this stream. A `web_search` item serializes `id` twice, the
+provider's own `exec-…` call id last, so that call id is what the decoder hands the parser and what a search is
+correlated and recorded under; every other item is correlated under the synthetic `item_N` the exec stream numbers
+its items with. The id is also what keeps one operation one item: a wrapper frame reporting the id of the call
+nested inside it merges into that call rather than doubling it, and a wrapper of a type nothing normalizes neither
+replaces the normalized pair with a placeholder nor adds one beside it. The final answer is read from the last
+`agent_message` `text`; `turns` stays empty with every `step.turn` `None`, since codex usage frames are cumulative
+across the session rather than per-turn. Both reuse the
 matching skill extractor for the `skills` field. `parse_agent_trajectory(backend, stdout)` dispatches by backend exactly
 as the usage / skill dispatchers do. `system_prompt` stays `None` and `tools` stays empty in the classifier whenever a
 backend's stream does not expose them (codex exposes neither); the analytics writer backfills codex `tools` out-of-band
@@ -142,5 +162,13 @@ or write any file. Those concerns belong to its downstream writer,
 truncation caps, and appends the `agent_trajectory` record to the
 [trajectory sink](trajectories.md#trajectory-sink-trajectory_log_path) — only when
 `TRAJECTORY_LOG_PATH` is enabled and always behind its own fail-open guard.
+
+**Codex item types beyond those four.** Nothing is dropped silently. An item type the classifier does not normalize —
+codex's `todo_list` plan updates and its `collab_tool_call` today, whatever a later release adds tomorrow — becomes one
+bounded `unsupported_item` placeholder step naming the item `type`, its id, and the `status` it reported, deduplicated
+by `item.id` the same way a tool pair is and carrying no payload of its own. `reasoning` is the one deliberate
+exclusion: its text is hidden model content that never enters a record, and a placeholder per reasoning item would be
+noise rather than a diagnostic. Nothing fabricates an outcome either — a call that failed, or one the stream never
+completed, keeps its `tool_call` with no `tool_result` under it unless a frame actually reported one.
 
 [pinned-state]: ../state-machine/labels-and-state.md#pinned-state

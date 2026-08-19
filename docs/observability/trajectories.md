@@ -46,8 +46,10 @@ since its stream carries no offered-tools frame), `skills_triggered` / `skills_a
 since its stream carries no
 offered-skills catalog), a `run_usage` summary, a claude-only per-turn `turns`
 array, an ordered `steps` array (each `{kind, name, tool_id, content}` plus a `turn` index on the billed steps, where
-`kind` is `tool_call` / `tool_result` / `assistant_message` / `user_message` and `content` is the redacted tool input,
-tool result, or text turn — `name` / `tool_id` are `null` on the message turns), and the final `output`. `run_usage`
+`kind` is `tool_call` / `tool_result` / `assistant_message` / `user_message` / `unsupported_item` and `content` is the
+redacted tool input, tool result, or text turn — `name` / `tool_id` are `null` on the message turns, and an
+`unsupported_item` is the metadata-only placeholder a codex item type the parser does not normalize leaves behind,
+naming the item type in `name` and its reported status in `content`), and the final `output`. `run_usage`
 is the denormalized `UsageMetrics` (`models`, `input_tokens`, `output_tokens`, `cached_tokens`, `cache_read_tokens`,
 `cache_write_tokens`, `turns` count, `cost_usd`, `cost_source`) minus `backend` (already on the record) — the run
 headline, and the codex surface too, since codex has no per-turn detail. Each `turns[]` entry is one claude assistant
@@ -322,7 +324,9 @@ opt-in `exclude_fixtures`), and `summarize`. Each run exposes a normalised, vint
 `user_input` prompt, then the ordered `steps[]`, then the final `output`, as one ordered `TimelineEntry` sequence — so
 an old steps-only record (only `tool_call` / `tool_result` steps) and a new record whose steps interleave
 `assistant_message` / `user_message` text turns render the same way; `tool_calls` still counts only `tool_call` steps,
-so the text turns never inflate the tally. `is_fixture` flags the synthetic test-suite records an inherited file may
+so neither the text turns nor an `unsupported_item` placeholder inflates the tally. A step kind the timeline has no
+badge for — `unsupported_item` today — falls back to rendering its own kind as the badge text, which is why a new
+kind needs no viewer change. `is_fixture` flags the synthetic test-suite records an inherited file may
 carry (the sentinel prompt `ignored`, a `sess-*` session id, or a `Skill`-only run), which
 `filter_runs(exclude_fixtures=True)` drops. Each run also exposes the record's usage: a `run_usage` (`RunUsageView`) run
 summary and a claude-only per-turn `turns` tuple (`TurnUsageView`), with convenience accessors `model` (first of

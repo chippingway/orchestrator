@@ -31,6 +31,7 @@ from tests.observability.analytics.analytics_jsonl_helpers import (
 
 from tests.observability.analytics.analytics_trajectory_cases import (
     claude_trajectory_stdout as _claude_trajectory_stdout,
+    codex_mcp_trajectory_stdout as _codex_mcp_trajectory_stdout,
 )
 
 
@@ -57,6 +58,9 @@ _REDACTION_MARKER = _support.REDACTION_MARKER
 
 
 _STEPS_KEY = _support.STEPS_KEY
+
+
+_TOOL_CALL_KIND = _support.TOOL_CALL_KIND
 
 
 _TOOL_RESULT_KIND = _support.TOOL_RESULT_KIND
@@ -148,6 +152,33 @@ class RecordAgentExitTrajectoryRedactionTest(_support.RecordAgentExitTrajectoryS
             # Both the dict input and the list content carry the mask.
             self.assertIn(_REDACTION_MARKER, rec[_STEPS_KEY][0][_CONTENT_KEY])
             self.assertIn(_REDACTION_MARKER, rec[_STEPS_KEY][1][_CONTENT_KEY])
+
+    def test_codex_nested_tool_payloads_are_redacted(self) -> None:
+        # A codex MCP call reports its arguments and its result as nested
+        # JSON, not as text, so the leaf-by-leaf walk is the only thing that
+        # can reach a secret inside them -- serializing first would leave the
+        # writer masking an already-escaped string.
+        secret = "sk-ant-CODEXLEAK-secret-value-0123456789"
+        with tempfile.TemporaryDirectory() as td, patch.dict(os.environ, {"CODEX_TOOL_SECRET_KEY": secret}):
+            t_path = Path(td) / _TRAJECTORY_FILENAME
+            self._emit(
+                backend=_support.CODEX,
+                stdout=_codex_mcp_trajectory_stdout(
+                    arguments={"url": f"https://example.invalid/?token={secret}"},
+                    result_content=[{_TYPE_KEY: _TEXT_KEY, _TEXT_KEY: f"saw {secret}"}],
+                ),
+                prompt=_PROMPT_TEXT,
+                traj_path=t_path,
+            )
+            rec = _read_records(t_path)[0]
+            self.assertNotIn(secret, json.dumps(rec))
+            self.assertEqual(
+                [step[_KIND_KEY] for step in rec[_STEPS_KEY]],
+                [_TOOL_CALL_KIND, _TOOL_RESULT_KIND],
+            )
+            for step in rec[_STEPS_KEY]:
+                with self.subTest(kind=step[_KIND_KEY]):
+                    self.assertIn(_REDACTION_MARKER, step[_CONTENT_KEY])
 
     def test_per_step_content_head_tail_truncated(self) -> None:
         # A long field is redacted then truncated to head + tail chars with

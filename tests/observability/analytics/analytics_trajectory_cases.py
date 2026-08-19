@@ -11,6 +11,9 @@ _TYPE_KEY = 'type'
 _CONTENT_KEY = 'content'
 _ID_KEY = 'id'
 _MESSAGE_KEY = 'message'
+_ITEM_KEY = 'item'
+_RESULT_KEY = 'result'
+_USAGE_KEY = 'usage'
 
 
 CLAUDE_TRAJECTORY_INPUT_TOKENS = 100
@@ -67,7 +70,7 @@ class ClaudeTrajectoryCase:
                             "input": self.tool_input or {_COMMAND_KEY: "ls"},
                         }
                     ],
-                    "usage": {
+                    _USAGE_KEY: {
                         _INPUT_TOKENS: self.input_tokens,
                         _OUTPUT_TOKENS: self.output_tokens,
                     },
@@ -86,9 +89,9 @@ class ClaudeTrajectoryCase:
                 },
             },
         ]
-        result_frame: dict = {_TYPE_KEY: "result", "num_turns": 1}
+        result_frame: dict = {_TYPE_KEY: _RESULT_KEY, "num_turns": 1}
         if self.final_output is not None:
-            result_frame["result"] = self.final_output
+            result_frame[_RESULT_KEY] = self.final_output
         frames.append(result_frame)
         return "\n".join(json.dumps(frame) for frame in frames)
 
@@ -120,7 +123,7 @@ def claude_multistep_stdout(*, n_steps: int, result_text: str) -> str:
                             "input": {_COMMAND_KEY: "x"},
                         }
                     ],
-                    "usage": {_INPUT_TOKENS: 1, _OUTPUT_TOKENS: 1},
+                    _USAGE_KEY: {_INPUT_TOKENS: 1, _OUTPUT_TOKENS: 1},
                 },
             }
         )
@@ -138,7 +141,7 @@ def claude_multistep_stdout(*, n_steps: int, result_text: str) -> str:
                 },
             }
         )
-    frames.append({_TYPE_KEY: "result", "num_turns": n_steps})
+    frames.append({_TYPE_KEY: _RESULT_KEY, "num_turns": n_steps})
     return "\n".join(json.dumps(frame) for frame in frames)
 
 
@@ -155,7 +158,7 @@ def codex_trajectory_stdout(
     frames: list[dict] = [
         {
             _TYPE_KEY: "item.started",
-            "item": {
+            _ITEM_KEY: {
                 _ID_KEY: "c1",
                 _TYPE_KEY: "command_execution",
                 _COMMAND_KEY: command,
@@ -163,7 +166,7 @@ def codex_trajectory_stdout(
         },
         {
             _TYPE_KEY: "item.completed",
-            "item": {
+            _ITEM_KEY: {
                 _ID_KEY: "c1",
                 _TYPE_KEY: "command_execution",
                 _COMMAND_KEY: command,
@@ -175,7 +178,7 @@ def codex_trajectory_stdout(
         frames.append(
             {
                 _TYPE_KEY: "item.completed",
-                "item": {
+                _ITEM_KEY: {
                     _ID_KEY: "a1",
                     _TYPE_KEY: "agent_message",
                     "text": final,
@@ -185,10 +188,50 @@ def codex_trajectory_stdout(
     frames.append(
         {
             _TYPE_KEY: "turn_complete",
-            "usage": {
+            _USAGE_KEY: {
                 _INPUT_TOKENS: input_tokens,
                 _OUTPUT_TOKENS: output_tokens,
             },
         }
     )
+    return "\n".join(json.dumps(frame) for frame in frames)
+
+
+def codex_mcp_trajectory_stdout(
+    *,
+    arguments: dict,
+    result_content: list,
+) -> str:
+    """A codex --json stdout whose one item is an MCP tool call.
+
+    The arguments and the result are the nested JSON codex reports them as,
+    which is the payload shape the trajectory writer has to redact leaf by
+    leaf rather than as text."""
+    call = {
+        _ID_KEY: "m1",
+        _TYPE_KEY: "mcp_tool_call",
+        "server": "docsServer",
+        "tool": "fetch_doc",
+        "arguments": arguments,
+        _RESULT_KEY: None,
+        "error": None,
+        "status": "in_progress",
+    }
+    completed = dict(call)
+    completed[_RESULT_KEY] = {
+        _CONTENT_KEY: result_content,
+        "structured_content": None,
+    }
+    completed["status"] = "completed"
+    frames = [
+        {_TYPE_KEY: "item.started", _ITEM_KEY: call},
+        {_TYPE_KEY: "item.completed", _ITEM_KEY: completed},
+        {
+            _TYPE_KEY: "turn_complete",
+            _USAGE_KEY: {
+                _INPUT_TOKENS: CODEX_TRAJECTORY_INPUT_TOKENS,
+                _OUTPUT_TOKENS: CODEX_TRAJECTORY_OUTPUT_TOKENS,
+            },
+        },
+    ]
     return "\n".join(json.dumps(frame) for frame in frames)
