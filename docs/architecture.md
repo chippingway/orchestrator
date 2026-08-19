@@ -3506,9 +3506,11 @@ every surface is observation-only and safe to truncate, rotate, or delete. That 
 
 For each sink's schema, event-kind tables, and append / retention / rotation semantics, see
 [`observability/event-streams.md`](observability/event-streams.md) and
-[`observability/trajectories.md`](observability/trajectories.md). For the analytics-DB compose layout, the sync /
-read-model / dashboard wiring, and the usage parser's cost-precedence rules, see
-[`observability.md`](observability.md).
+[`observability/trajectories.md`](observability/trajectories.md). For the analytics-DB compose layout and the sync,
+see [`observability/analytics-database.md`](observability/analytics-database.md); for the read-model and dashboard
+wiring, [`observability/analytics-dashboard.md`](observability/analytics-dashboard.md); and for the usage parser's
+cost-precedence rules, [`observability/usage.md`](observability/usage.md).
+[`observability.md`](observability.md) maps all five.
 
 ## Summary of "what runs when"
 

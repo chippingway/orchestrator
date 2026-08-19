@@ -383,8 +383,8 @@ Every sink path, retention window, and observability switch — `EVENT_LOG_PATH`
 `ANALYTICS_RETENTION_DAYS`, `ANALYTICS_DB_URL`, `TRAJECTORY_LOG_PATH`, `TRAJECTORY_RETENTION_DAYS`,
 `TRACK_SKILL_TRIGGERS`, and `DASHBOARD_PARALLEL_READS` — is documented in
 [`configuration/observability.md`](configuration/observability.md), together with where each is parsed and which
-process reads it. What the sinks record, and how the database, dashboards, and usage parser read them back, is in
-[`observability.md`](observability.md).
+process reads it. What the sinks record, and how the database, dashboards, and usage parser read them back, is on the
+pages [`observability.md`](observability.md) maps.
 
 ### Analytics dashboard quickstart
 
