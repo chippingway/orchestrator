@@ -157,11 +157,11 @@ orchestrator/
       decomposition.py  the decomposer scratch path, its detached creation, and its best-effort removal
       terminal.py       question-stage teardown and terminal local and remote branch cleanup
   skills/
-    catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions and the one `repo_skill_catalog`
-                        record it appends
+    catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
+                        classifies every one of them at, and the one `repo_skill_catalog` record it appends
     discovery.py        the per-run scan of what a codex run was loaded with and the `project` / `user` /
-                        `harness` level that defined each name, plus the skill roots and marker `catalog.py`
-                        reads back
+                        `harness` level that defined each name, plus the skill roots, marker, and level
+                        vocabulary `catalog.py` reads back
 ```
 
 ## Inside `git/`
