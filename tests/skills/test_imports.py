@@ -33,13 +33,20 @@ _OWNER_MODULES = MappingProxyType({
 
 _EMIT_CATALOG = "_emit_repo_skill_catalog"
 
-# What a live caller reaches each owner for: the per-tick catalog producer and
-# the two per-run codex collectors. `__module__` is what holds them here, so the
-# offered-tools baseline `discover_codex_tools` answers with -- a plain tuple
-# carrying no stamp -- is pinned by `tests/skills/test_discovery.py` instead.
+# What a caller reaches each owner for: the per-tick catalog producer, the two
+# per-run codex collectors, and the provenance-carrying scan the names-only one
+# projects, together with the pair type it hands back. `__module__` is what
+# holds them here, so the offered-tools baseline `discover_codex_tools` answers
+# with -- a plain tuple carrying no stamp -- is pinned by
+# `tests/skills/test_discovery.py` instead.
 _OWNED_CALLABLES = MappingProxyType({
     _CATALOG_OWNER: (_EMIT_CATALOG,),
-    _DISCOVERY_OWNER: ("discover_codex_tools", "discover_local_skills"),
+    _DISCOVERY_OWNER: (
+        "SkillSource",
+        "discover_codex_tools",
+        "discover_local_skill_sources",
+        "discover_local_skills",
+    ),
 })
 
 # The one pass that drives the catalog owner, and the only workflow module that
