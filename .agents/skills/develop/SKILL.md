@@ -138,7 +138,9 @@ Write every comment against the current state of the code, as if it had always b
 When you move a handler, helper, or constant, grep for the symbol across these files and update them in the same commit:
 
 - `docs/architecture.md` and the focused pages under `docs/architecture/` — the module-by-module inventory
-  lives here and nowhere else
+  lives here and nowhere else, with one exception:
+  `docs/architecture/observability-modules.md` maps `observability/` and `apps/` at the package boundary, so a
+  move inside those two trees updates the owner's own module docstring rather than a map entry
 - `docs/state-machine.md` and the focused pages under `docs/state-machine/`
 - `docs/workflow.md` and the focused pages under `docs/workflow/`
 - the module docstrings at the top of the owners the symbol moved between
