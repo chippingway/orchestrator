@@ -7,8 +7,8 @@ for the life of its session.
 For the full stage-by-stage state machine (label semantics, per-stage handler internals, per-tick flow), see
 [`state-machine.md`](state-machine.md). For the higher-level design (multi-repo dispatch, push hardening, agent
 subprocess shape), see [`architecture.md`](architecture.md). For the audit event log, analytics sink, and usage parser,
-see [`observability.md`](observability.md). For env vars and run modes, see [`configuration.md`](configuration.md). For
-the user-facing summary, see [`../README.md`](../README.md).
+see [`observability.md`](observability.md). For env vars and the operator runbooks beside them, see
+[`configuration.md`](configuration.md). For the user-facing summary, see [`../README.md`](../README.md).
 
 Stage and label names are spelled apart here as they are in
 [`state-machine.md`](state-machine.md#workflow-labels): a bare tag names the **stage** — the handler, the subpackage
