@@ -337,7 +337,9 @@ provenance as well as by name. A name no level map covers reads `unknown` — a 
 a claude run whose stream names no source directory — which is one spelling an operator can look up rather than a
 scattering of blanks; because both an offer and a load read it, a legacy session's load still counts as adoption of
 what it was offered. The one exception is the trigger matrix's catalog padding: a `repo_skill_catalog` name the record
-left unclassified pads at `project`, since that scan enumerates a repository's own checked-in definitions.
+left unclassified pads at `project`, since that scan enumerates a repository's own checked-in definitions. The level is
+a read-model field rather than a rendered column, so both tables can carry two rows whose Repo / Role / Backend / Skill
+read the same and whose counts differ.
 
 **Per-session availability denominator.** `sessions` (the denominator) is how many logical sessions in the cohort had
 the skill available — its reported `skills_available` union listed it, or the *legacy* fallback above implied it.
