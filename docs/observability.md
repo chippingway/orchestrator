@@ -1095,7 +1095,7 @@ parser exception is caught and downgraded to a `log.exception`.
 **Terminal verdict surface.** Beyond the analytics sink, `_accumulate_issue_usage` (in `workflow/engine/usage.py`,
 beside `_run_agent_tracked`) folds each run's
 `UsageMetrics` into per-issue counters on the pinned state (`issue_agent_runs` / `issue_total_tokens` /
-`issue_total_cost_usd` / `issue_cost_sources`; see [state-machine.md](state-machine.md#pinned-state)). When an
+`issue_total_cost_usd` / `issue_cost_sources`; see [state-machine/labels-and-state.md][pinned-state]). When an
 issue reaches a terminal, `_format_issue_usage_verdict` renders those counters into one visible receipt line
 posted on the issue thread — `:receipt: this issue: N agent runs · T tokens · $X.XX`, with `(est.)` appended when any
 run's cost was `estimated` and the figure collapsed to `unknown` when an `unknown-price` run leaves the total
@@ -1194,3 +1194,5 @@ truncation caps, and appends the `agent_trajectory` record to the
 - `scheduler.reap` (method call) — trigger: end of each `runtime.ticks.run_tick` after every configured repo drains,
   immediately before the analytics prune; cadence: exactly once per polling pass regardless of repo count; nonblocking
   drain of any worker completions since the last poll. `_dispatch_via_scheduler` deliberately does NOT call `reap`.
+
+[pinned-state]: state-machine/labels-and-state.md#pinned-state

@@ -131,7 +131,7 @@ examples.
   rebuilds the whole conversation for a round with no session to resume, and retains the orchestrator's *own* posted
   comments there — by the ids it recorded when it posted them — so a deployment that lists its humans and not the
   token's account still hands that agent both halves of the thread. No third-party comment is ever retained.
-  See [`state-machine.md`](state-machine.md#user-content-drift-detection) for the
+  See [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#user-content-drift-detection) for the
   full drift-hash filter list and
   [`security.md`](security.md#comment-trust-boundary-allowed_issue_authors) for the trust-boundary rationale
 
@@ -201,7 +201,7 @@ Two built-in mitigations reduce the floor without touching `POLL_INTERVAL`:
   automatically.
 - **A pre-namespace label the repository does not have is asked for rarely.** The sweep looks up each swept state
   under both its `workflow:`-namespaced name and its pre-namespace one, so an issue still carrying the old label is
-  not stranded (see [`state-machine.md`](state-machine.md#pollable-issues-and-finalization)). A lookup that comes back
+  not stranded (see [`state-machine/labels-and-state.md`][pollable-issues]). A lookup that comes back
   404 cannot be cached as a Label object, so it is instead thrown away for 20 sweeps before being asked again — on a
   repository the bootstrap rename already reached, the five legacy spellings therefore cost five `GET …/labels/<name>`
   requests every twentieth sweep and nothing in between. A 403 is never treated this way: rate-limit exhaustion is not
@@ -311,7 +311,7 @@ The two caps below are the levers:
   (`workflow:blocked` / `workflow:umbrella`) are cap-exempt and run on a dedicated executor.
 - `WORKFLOW_TRANSITION_GUARD` — default `warn`. governs the workflow-label transition-legality check in
   `set_workflow_label` against the declared `ALLOWED_TRANSITIONS` table (see
-  [`state-machine.md`](state-machine.md#typed-states-and-the-transition-guard)). `warn` logs an illegal transition and
+  [`state-machine/labels-and-state.md`][transition-guard]). `warn` logs an illegal transition and
   proceeds; `enforce` raises; `off` disables it. The label *typo* guard is always strict regardless of this setting.
   Invalid values abort at startup.
 
@@ -450,3 +450,6 @@ agent spec pinned into an in-flight session — are in
   are skipped. With the allowlist empty (the default), the sweep is a no-op. It carries the `workflow:` prefix — unlike
   the two controls above — because the orchestrator writes it itself; a PR still carrying the pre-namespace spelling
   counts as already labeled, so the migration cannot cost it a second HITL ping.
+
+[pollable-issues]: state-machine/labels-and-state.md#pollable-issues-and-finalization
+[transition-guard]: state-machine/labels-and-state.md#typed-states-and-the-transition-guard

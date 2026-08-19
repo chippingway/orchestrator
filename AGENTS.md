@@ -18,7 +18,14 @@ orchestrator process is stateless.
 
 - User-facing overview: [`README.md`](README.md)
 - Architecture, module ownership, process / agent / push model: [`docs/architecture.md`](docs/architecture.md)
-- Workflow state machine (labels, per-tick flow, stage handlers): [`docs/state-machine.md`](docs/state-machine.md)
+- Workflow state machine (labels, per-tick flow, stage handlers):
+  [`docs/state-machine.md`](docs/state-machine.md) is the entry point, with
+  [`docs/state-machine/labels-and-state.md`](docs/state-machine/labels-and-state.md) for the label vocabulary,
+  per-tick flow, and pinned-state keys,
+  [`docs/state-machine/delivery-stages.md`](docs/state-machine/delivery-stages.md) for pickup through the PR
+  loop, [`docs/state-machine/conversation-stages.md`](docs/state-machine/conversation-stages.md) for the
+  question / discussion handlers, and [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md) for
+  the label-lifecycle diagram
 - Agent roles, command specs, session lifecycles: [`docs/workflow.md`](docs/workflow.md) is the entry point, with
   [`docs/workflow/roles.md`](docs/workflow/roles.md) for the roles and the stages that spawn them,
   [`docs/workflow/conversations.md`](docs/workflow/conversations.md) for the question / discussion prompt and session

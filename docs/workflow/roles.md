@@ -5,7 +5,7 @@ use `codex` or `claude` and each carries its own optional CLI args, parsed from 
 [`command-specs.md`](command-specs.md).
 
 Stage and label names are spelled apart here as they are in
-[`../state-machine.md#workflow-labels`](../state-machine.md#workflow-labels): a bare tag names the **stage** — the
+[`../state-machine/labels-and-state.md#workflow-labels`][workflow-labels]: a bare tag names the **stage** — the
 handler, the subpackage under `orchestrator/workflow/stages/` holding it, and the identifier a session's analytics row
 is attributed to — while `workflow:<tag>` is the **wire label** the GitHub issue carries. `in_review`, `question`,
 `discussion`, and the `done` / `rejected` terminals were never namespaced, so those read the same on both sides.
@@ -79,3 +79,5 @@ flip. A clean run advances the issue; any failure parks on `workflow:validating`
 (`verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`). See
 [`../configuration.md#local-verification-gate`](../configuration.md#local-verification-gate) for the env-var
 reference.
+
+[workflow-labels]: ../state-machine/labels-and-state.md#workflow-labels

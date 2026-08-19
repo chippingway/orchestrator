@@ -68,7 +68,8 @@ Add a branch-protection rule for `main` (and any release branch) at `Settings �
   ([`architecture.md`](architecture.md)).
 - **Require status checks to pass before merging** — list the checks in [Required checks](#required-checks).
 - **Require branches to be up to date before merging** — keeps the per-tick base-sync auto rebase +
-  [`workflow:resolving_conflict`](state-machine.md#_handle_resolving_conflict-label-workflowresolving_conflict) (for
+  [`workflow:resolving_conflict`](state-machine/delivery-stages.md#_handle_resolving_conflict-label-workflowresolving_conflict)
+  (for
   actual rebase conflicts) flow honest.
 - **Do not allow force pushes.**
 - **Do not allow deletions.**
@@ -145,7 +146,7 @@ GitHub holds the durable state:
 
 - **Code and history** — the git repository on github.com.
 - **Per-issue workflow state** — the workflow label + pinned `<!--orchestrator-state ...-->` JSON comment on each
-  Issue (schema in [`state-machine.md`](state-machine.md#per-tick-flow-workflowtick)).
+  Issue (schema in [`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#pinned-state)).
 
 The orchestrator process is stateless; restoring an Issue restores progress.
 
@@ -169,7 +170,7 @@ Every PR opened by the orchestrator is AI-generated, so the policy is the workfl
 
 - **Independent reviewer agent.** The `validating` stage spawns a fresh reviewer against `git diff
   origin/<base>...HEAD`
-  ([`state-machine.md#_handle_validating`](state-machine.md#_handle_validating-label-workflowvalidating)). It uses a
+  ([`state-machine/delivery-stages.md#_handle_validating`](state-machine/delivery-stages.md#_handle_validating-label-workflowvalidating)). It uses a
   different agent role from the implementer (`REVIEW_AGENT` vs. `DEV_AGENT`) and starts with no shared session state.
 - **Local verify gate.** When the reviewer says `APPROVED`, the orchestrator runs `VERIFY_COMMANDS` in the per-issue
   worktree before relabeling to `workflow:documenting`
@@ -195,7 +196,7 @@ or re-triggers work. `ALLOWED_ISSUE_AUTHORS` is the operator's control. It defau
 logins turns the pickup allowlist into a comment trust boundary enforced by the shared `github/comments.py` helpers
 (`is_trusted_author` / `filter_trusted`). The env-var reference is in
 [`configuration.md#agent-roles`](configuration.md#agent-roles); the full per-surface filter list is in
-[`state-machine.md#user-content-drift-detection`](state-machine.md#user-content-drift-detection).
+[`state-machine/delivery-stages.md#user-content-drift-detection`](state-machine/delivery-stages.md#user-content-drift-detection).
 
 The security posture:
 

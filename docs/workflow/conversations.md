@@ -9,8 +9,8 @@ independently of any other conversation on the same issue (see
 [`command-specs.md#in-flight-session-lock`](command-specs.md#in-flight-session-lock)).
 
 Label transitions, park reasons, the checks a round's branch is read by, publication and crash recovery, and terminal
-cleanup are the state machine's — [`_handle_question`](../state-machine.md#_handle_question-label-question) and
-[`_handle_discussion`](../state-machine.md#_handle_discussion-label-discussion). What follows is what each prompt
+cleanup are the state machine's — [`_handle_question`][question-handler] and
+[`_handle_discussion`][discussion-handler]. What follows is what each prompt
 grants and forbids, where the agent is invoked, and how its session is continued.
 
 ## Question stage
@@ -24,7 +24,7 @@ opened and no branch is ever pushed. Subsequent human replies resume the locked 
 Violating that contract — commits, a dirty tree, a run that timed out — ends the round awaiting a human with the
 worktree kept for inspection rather than torn down. Closing the issue is the terminal signal. The park reason each
 outcome writes, and the guard a relabel to `workflow:implementing` has to pass, are in
-[`../state-machine.md#_handle_question-label-question`](../state-machine.md#_handle_question-label-question).
+[`../state-machine/conversation-stages.md#_handle_question-label-question`][question-handler].
 
 ## Discussion stage
 
@@ -69,7 +69,7 @@ Publishing it is the orchestrator's job, not the agent's, and it is not taken on
 that a human agreed to anything, so a round that moved HEAD has its branch read and has to prove that what it commits
 is the plan file and nothing else before the stage pushes it and opens the pull request. Which probes read that
 branch, what each failure parks as, and how a tick that died mid-publication recovers are in
-[`../state-machine.md#_handle_discussion-label-discussion`](../state-machine.md#_handle_discussion-label-discussion).
+[`../state-machine/conversation-stages.md#_handle_discussion-label-discussion`][discussion-handler].
 
 The plan is an artifact, not a specification anything downstream reads. Nothing in the workflow parses it: the relabel
 to `workflow:implementing` spawns the developer with the ordinary `_build_implement_prompt` built from the issue body
@@ -118,3 +118,6 @@ Which prompts carry it (every builder below lives in `workflow/engine/prompts.py
 The default single-repo deployment (or any host with `EXPOSE_TRACKED_REPOS=off`) gets an empty string here — **zero
 added prompt tokens and zero behavior change**. See
 [`../configuration.md#agent-roles`](../configuration.md#agent-roles) for the env var.
+
+[question-handler]: ../state-machine/conversation-stages.md#_handle_question-label-question
+[discussion-handler]: ../state-machine/conversation-stages.md#_handle_discussion-label-discussion

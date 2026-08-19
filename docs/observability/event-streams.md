@@ -35,8 +35,8 @@ called with `sort_keys=True` so on-disk order is stable across writers.
   — normalize the label it currently carries the same way.
 
 The namespace therefore stops at the GitHub boundary, so a grep or a dashboard filter matches on the tag. See
-[`state-machine.md#workflow-labels`](../state-machine.md#workflow-labels) for the two spellings and which labels have
-only one.
+[`state-machine/labels-and-state.md#workflow-labels`](../state-machine/labels-and-state.md#workflow-labels) for the
+two spellings and which labels have only one.
 
 **Event kinds.** Every kind is emitted through the single `GitHubClient.emit_event` chokepoint, which also appends to a
 capped in-memory tail (`recorded_events`, `_RECORDED_EVENTS_CAP = 500`) for tests and short-window debugging — the

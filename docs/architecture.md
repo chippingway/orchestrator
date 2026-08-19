@@ -8,7 +8,8 @@ state. The orchestrator process is stateless and can restart at any time.
 
 This file covers the high-level system: design constraints, the module map, the process model, the agent subprocess
 shape, the push path, and the observability surfaces. The label set, per-stage internals, per-tick flow, and
-pinned-state schema live in [`state-machine.md`](state-machine.md); agent roles, conversation contracts, and
+pinned-state schema live in [`state-machine.md`](state-machine.md) and the focused pages under it; agent
+roles, conversation contracts, and
 command-spec semantics live in [`workflow.md`](workflow.md) and the focused pages under it.
 
 ## Design constraints
@@ -2860,11 +2861,11 @@ missing. Wherever that rename does not run, three reads still take the bare spel
 sweep's dedup marker, and the closed-issue sweep's query. A namespaced label outranks a pre-namespace one on the same
 issue, and a label write takes off only what it owns, so a bare `blocked` or `ready` the repository uses for its own
 triage survives a relabel; see
-[`state-machine.md`](state-machine.md#legacy-labels-and-the-migration-off-them).
+[`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#legacy-labels-and-the-migration-off-them).
 
 Label names are part of the public contract because live GitHub issues already carry them. For the meaning of each
 label, the control-label semantics, and the per-stage transitions they trigger, see
-[`state-machine.md#workflow-labels`](state-machine.md#workflow-labels).
+[`state-machine/labels-and-state.md#workflow-labels`](state-machine/labels-and-state.md#workflow-labels).
 
 ## Process model
 
@@ -2925,7 +2926,7 @@ PR-having clean-rebase + push (with `workflow:resolving_conflict` reached on act
 `workflow:resolving_conflict` when the worktree is behind base or carries an unpushed rebase), the read-only skip
 the `question` and `discussion` labels take (and the parks and in-flight discussion records that keep taking it after
 the label is gone), the per-tick external-merge sweeps, and the complete pinned-state JSON schema), see
-[`state-machine.md#per-tick-flow-workflowtick`](state-machine.md#per-tick-flow-workflowtick).
+[`state-machine/labels-and-state.md#per-tick-flow-workflowtick`](state-machine/labels-and-state.md#per-tick-flow-workflowtick).
 
 ## Stage handlers
 
@@ -3353,7 +3354,8 @@ the locked dev session with the updated body (implementing, validating, in_revie
 back to `workflow:validating` without resuming dev (documenting). Both halves of that hook sit on the
 `workflow/engine/drift.py` owner the stage leaves import directly, so a patch aimed at the hook targets that owner.
 `_handle_fixing`, `_handle_question`, and `_handle_discussion` skip the drift hook — see
-[`state-machine.md#user-content-drift-detection`](state-machine.md#user-content-drift-detection) for the per-handler
+[`state-machine/delivery-stages.md#user-content-drift-detection`](state-machine/delivery-stages.md#user-content-drift-detection)
+for the per-handler
 routing.
 
 For per-stage internal flow — pickup, drift handling, decomposing, ready, blocked, umbrella, implementing,
@@ -3377,7 +3379,7 @@ result that never flowed through
 `workflow/engine/usage.py`, which each of those handlers binds directly — folds
 each run's `usage` into the per-issue `issue_agent_runs` / `issue_total_tokens` / `issue_total_cost_usd` /
 `issue_cost_sources` counters on the pinned state
-([`state-machine.md#pinned-state`](state-machine.md#pinned-state)); at each terminal (PR merge / reject, umbrella
+([`state-machine/labels-and-state.md#pinned-state`][pinned-state]); at each terminal (PR merge / reject, umbrella
 close, closed question, and both discussion endings — the verdict the humans leave on the plan PR, and a close of the
 issue before one exists) `_format_issue_usage_verdict` beside it reads those counters back into one visible receipt
 comment — the sole read-side consumer, and nothing gates on the figure. `CodexResult` is kept as a
@@ -3644,4 +3646,6 @@ read-model / dashboard wiring, and the usage parser's cost-precedence rules, see
 ## State transition (label lifecycle)
 
 The compact label-lifecycle diagram for every forward, fix-loop, terminal, and HITL-park transition lives in
-[`state-machine.md#state-transition-label-lifecycle`](state-machine.md#state-transition-label-lifecycle).
+[`state-machine/lifecycle.md`](state-machine/lifecycle.md).
+
+[pinned-state]: state-machine/labels-and-state.md#pinned-state
