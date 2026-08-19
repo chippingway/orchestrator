@@ -49,7 +49,8 @@ array, an ordered `steps` array (each `{kind, name, tool_id, content}` plus a `t
 `kind` is `tool_call` / `tool_result` / `assistant_message` / `user_message` / `unsupported_item` and `content` is the
 redacted tool input, tool result, or text turn — `name` / `tool_id` are `null` on the message turns, and an
 `unsupported_item` is the metadata-only placeholder a codex item type the parser does not normalize leaves behind,
-naming the item type in `name` and its reported status in `content`), and the final `output`. `run_usage`
+naming the item type in `name`, its id in `tool_id`, and its reported status in `content` — `null` for an item type
+that reports none), and the final `output`. `run_usage`
 is the denormalized `UsageMetrics` (`models`, `input_tokens`, `output_tokens`, `cached_tokens`, `cache_read_tokens`,
 `cache_write_tokens`, `turns` count, `cost_usd`, `cost_source`) minus `backend` (already on the record) — the run
 headline, and the codex surface too, since codex has no per-turn detail. Each `turns[]` entry is one claude assistant
@@ -94,7 +95,8 @@ name is in the secret-key set or ends in a secret suffix, plus the resolved `GIT
 replaced with `***`. It deliberately does **not** strip issue or repository content. The prompt (`user_input`), the
 `system_prompt`, every step's `content` in `steps` (tool inputs / results and the assistant / user text turns), and the
 final `output` can — and routinely will — carry issue titles and bodies, quoted source from the worktree, file
-paths, diffs, and the agent's own reasoning, all in cleartext after redaction. An enabled trajectory file therefore
+paths, diffs, the web-search queries and MCP tool arguments a codex run issued together with whatever those servers
+answered, and the agent's own reasoning, all in cleartext after redaction. An enabled trajectory file therefore
 carries the same sensitivity as the repositories the orchestrator works on; scope its filesystem permissions (and any
 retention) accordingly. This is why the sink is off by default and why it never leaves the local filesystem (next
 paragraphs).
@@ -364,8 +366,9 @@ skills — the triggered-skills row always renders, marked `none` when no skill 
 distinguishable from an omitted row, while the offered-tools and available-skills rows are dropped when empty — a
 run-level usage / cost row (model(s), token buckets, turn count, and the authoritative run cost tagged with
 its `cost_source` — the codex surface too), then walks the run's normalised `timeline` as one ordered sequence — the
-redacted prompt, then the interleaved assistant / user text turns and tool calls / results (each rendered by its
-`kind`), then the final output (rendered as markdown; every other entry is shown verbatim in a code block). For a claude
+redacted prompt, then the interleaved assistant / user text turns, tool calls / results, and any
+`unsupported_item` placeholder (each rendered by its `kind`), then the final output (rendered as markdown; every
+other entry is shown verbatim in a code block). For a claude
 run, a compact per-turn usage strip (model · in / out tokens · cache-read / cache-write · estimated cost, with a
 *cache hit* chip when the turn read from cache) is drawn at each assistant-turn boundary in the timeline; the copy
 states that per-turn figures are claude-only estimates that need not sum to the authoritative run total, and that

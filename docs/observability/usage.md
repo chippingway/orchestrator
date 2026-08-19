@@ -164,9 +164,10 @@ truncation caps, and appends the `agent_trajectory` record to the
 `TRAJECTORY_LOG_PATH` is enabled and always behind its own fail-open guard.
 
 **Codex item types beyond those four.** Nothing is dropped silently. An item type the classifier does not normalize —
-codex's `todo_list` plan updates and its `collab_tool_call` today, whatever a later release adds tomorrow — becomes one
-bounded `unsupported_item` placeholder step naming the item `type`, its id, and the `status` it reported, deduplicated
-by `item.id` the same way a tool pair is and carrying no payload of its own. `reasoning` is the one deliberate
+codex's `todo_list` plan updates, its non-fatal `error` items, and its `collab_tool_call` today, whatever a later
+release adds tomorrow — becomes one bounded `unsupported_item` placeholder step naming the item `type`, its id, and
+the `status` it reported (`null` for a type that reports none, `todo_list` and `error` among them), deduplicated by
+`item.id` the same way a tool pair is and carrying no payload of its own. `reasoning` is the one deliberate
 exclusion: its text is hidden model content that never enters a record, and a placeholder per reasoning item would be
 noise rather than a diagnostic. Nothing fabricates an outcome either — a call that failed, or one the stream never
 completed, keeps its `tool_call` with no `tool_result` under it unless a frame actually reported one.
