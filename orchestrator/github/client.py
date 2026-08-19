@@ -97,7 +97,11 @@ class GitHubClient(
         )
 
     def _cached_label(
-        self, name: str, *, throttle_absent: bool = False,
+        self,
+        name: str,
+        *,
+        throttle_absent: bool = False,
+        absent_names: Optional[list[str]] = None,
     ) -> Optional[Label]:
         """Resolve and cache a label, while leaving failures retryable.
 
@@ -115,6 +119,9 @@ class GitHubClient(
         primary rate limit is exhausted, and standing down on it would strand
         exactly the closed legacy-labeled issues the second query exists to
         reach.
+
+        ``absent_names`` is where a throttled miss is recorded for the caller
+        to summarize; a caller that passes none takes the miss silently.
         """
         cached_label = self._label_cache.get(name)
         if cached_label is not None:
@@ -124,27 +131,31 @@ class GitHubClient(
         try:
             label_object = self.repo.get_label(name)
         except GithubException as error:
-            self._report_label_lookup_failure(name, error, throttle_absent)
+            self._report_label_lookup_failure(
+                name, error, throttle_absent, absent_names,
+            )
             return None
         self._absent_after_sweep.pop(name, None)
         self._label_cache[name] = label_object
         return label_object
 
     def _report_label_lookup_failure(
-        self, name: str, error: GithubException, throttle_absent: bool,
+        self,
+        name: str,
+        error: GithubException,
+        throttle_absent: bool,
+        absent_names: Optional[list[str]],
     ) -> None:
         """Report a label the sweep could not resolve, and when to re-ask."""
         if throttle_absent and error.status == _HTTP_NOT_FOUND:
             self._absent_after_sweep[name] = (
                 self._closed_sweeps + _ABSENT_LABEL_RETRY_SWEEPS
             )
-            log.info(
-                "no %r label on this repository; the closed-issue sweep will "
-                "not ask again for %d sweeps. Nothing is stranded unless "
-                "issues still carry it.",
-                name,
-                _ABSENT_LABEL_RETRY_SWEEPS,
-            )
+            # Handed to the caller's summary rather than reported here: this
+            # answer is the expected one, and a line per spelling says nothing
+            # a line per repository does not.
+            if absent_names is not None:
+                absent_names.append(name)
             return
         log.warning(
             "could not look up %r label for closed-issue sweep "
@@ -153,6 +164,34 @@ class GitHubClient(
             name,
             error.status,
             name,
+        )
+
+    def _report_absent_legacy_labels(self, absent_names: list[str]) -> None:
+        """Summarize the legacy spellings one sweep confirmed absent.
+
+        Reported per repository, and only for the spellings this sweep asked
+        about: on a migrated host the alternative is a burst of near-identical
+        lines naming no repository -- once per legacy spelling per repo on
+        every fresh process, and again whenever the retry window expires --
+        that reads like broken configuration while saying only that the rename
+        landed.
+
+        The names come from the sweep that collected them, so a sweep that
+        raises partway through takes its own with it. Held on the client
+        instead, they would outlive the pass that asked, and the next sweep
+        would report a name it never re-asked -- a skip served from the retry
+        window, restated as a fresh miss with the window starting over.
+        """
+        if not absent_names:
+            return
+        log.info(
+            "repo=%s closed-issue sweep: %d legacy (pre-namespace) label "
+            "spelling(s) absent; not asked again for %d sweeps: %s. Nothing "
+            "is stranded unless issues still carry them.",
+            self._repo_slug,
+            len(absent_names),
+            _ABSENT_LABEL_RETRY_SWEEPS,
+            ", ".join(absent_names),
         )
 
     def _emit_stage_enter(self, issue: Issue, stage: str) -> None:
