@@ -76,7 +76,7 @@ After any handler or helper move, grep the PR for stale pointers and request fix
 
 - `docs/architecture.md` — the module-by-module inventory lives here and nowhere else
 - `docs/state-machine.md`
-- `docs/workflow.md`
+- `docs/workflow.md` and the focused pages under `docs/workflow/`
 - module docstrings at the top of the owners the symbol moved between, and of the package initializers
   above them that describe where a name answers
 

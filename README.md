@@ -134,7 +134,7 @@ is in [`docs/state-machine.md`](docs/state-machine.md#state-transition-label-lif
 
    To check configuration of agents see [`docs/configuration.md#agent-roles`](docs/configuration.md#agent-roles).
    Examples of advanced configuration of models and efforts to use could be found in
-   [`docs/workflow.md#examples`](docs/workflow.md#examples).
+   [`docs/workflow/command-specs.md#examples`](docs/workflow/command-specs.md#examples).
 
 5. **Run**
 
@@ -171,9 +171,9 @@ is in [`docs/state-machine.md`](docs/state-machine.md#state-transition-label-lif
 Apply the `question` label to any open issue to get a read-only answer instead of an implementation. The orchestrator
 spawns the configured `DECOMPOSE_AGENT` in the issue's worktree with a read-only prompt and posts the answer as an
 issue comment that pings `HITL_HANDLE`; subsequent human replies resume the same locked session, and closing the issue
-is the terminal signal. See
-[`docs/workflow.md#question-stage--read-only-qa-on-the-question-label`][qa-lifecycle]
-for the full lifecycle and the read-only-violation park reasons.
+is the terminal signal. See [`docs/workflow/conversations.md#question-stage`][qa-lifecycle] for the prompt and
+session contract, and [`docs/state-machine.md#_handle_question-label-question`][qa-handler] for the
+read-only-violation park reasons.
 
 ## Discussing an issue's architecture
 
@@ -188,7 +188,8 @@ validates that plan-only change and opens a pull request. Merge the PR to accept
 
 To send the plan straight to implementation, relabel the issue to `workflow:implementing` before deciding the plan
 PR. Do not simply remove the `discussion` label, because the issue could be picked up as new work. See the
-[discussion-stage lifecycle][discussion-lifecycle] for the full prompt, safety checks, and recovery steps.
+[discussion-stage contract][discussion-lifecycle] for the full prompt and what each round may write, and the
+[discussion handler][discussion-handler] for the safety checks and recovery steps.
 
 ## Holding and unsticking an issue
 
@@ -270,5 +271,7 @@ Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE) for the
 [ci-badge]: https://github.com/geserdugarov/agent-orchestrator/actions/workflows/ci.yml/badge.svg
 [ci-link]: https://github.com/geserdugarov/agent-orchestrator/actions/workflows/ci.yml
 [cfg-systemd]: docs/configuration.md#running-under-systemd-user-service
-[qa-lifecycle]: docs/workflow.md#question-stage--read-only-qa-on-the-question-label
-[discussion-lifecycle]: docs/workflow.md#discussion-stage--architecture-discussion-on-the-discussion-label
+[qa-lifecycle]: docs/workflow/conversations.md#question-stage
+[qa-handler]: docs/state-machine.md#_handle_question-label-question
+[discussion-lifecycle]: docs/workflow/conversations.md#discussion-stage
+[discussion-handler]: docs/state-machine.md#_handle_discussion-label-discussion

@@ -263,7 +263,7 @@ When more than one repo is configured (`REPOS`) and `EXPOSE_TRACKED_REPOS` is on
 carry a compact block naming the *other* tracked repos — each repo's slug, its local `target_root` checkout, and its
 base branch — so an agent reasoning about a sibling repo knows it is monitored and where its source lives. The env-var
 reference is in [`configuration.md#agent-roles`](configuration.md#agent-roles); the prompt content is in
-[`workflow.md`](workflow.md#tracked-repos-awareness-in-working-agent-prompts).
+[`workflow/conversations.md`](workflow/conversations.md#tracked-repository-awareness-in-working-agent-prompts).
 The security posture:
 
 - **Disclosure, not escalation.** Agents already run as the orchestrator's own OS user with sandbox bypass, so the host

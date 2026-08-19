@@ -15,9 +15,11 @@ import posixpath
 import re
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _MARKDOWN_LINK = re.compile(r"\]\(([^)\s]*?)#([^)\s]+)\)")
+_MARKDOWN_REFERENCE = re.compile(r"^\[[^\]]+\]:\s*(\S*?)#(\S+)\s*$", re.M)
 _MARKDOWN_HEADING = re.compile(r"^#{1,6}\s+(.*)$", re.M)
 _PUNCTUATION = re.compile(r"[^\w\s-]")
 _ENCODING = "utf-8"
@@ -66,9 +68,12 @@ def _anchor_links(name: str, path: Path) -> list[tuple[str, str]]:
     A relative target is resolved against the directory of the page that wrote
     it, so the `../` a nested page reaches a sibling directory with names the
     same key the flat page beside it writes directly. A same-page `#anchor`
-    link carries no target at all and stays on its own page.
+    link carries no target at all and stays on its own page. Both link forms
+    count, since a reference definition at the foot of a page is how the
+    longest anchors here are written.
     """
     directory = posixpath.dirname(name)
+    text = path.read_text(encoding=_ENCODING)
     return [
         (
             posixpath.normpath(posixpath.join(directory, target))
@@ -76,8 +81,9 @@ def _anchor_links(name: str, path: Path) -> list[tuple[str, str]]:
             else name,
             anchor,
         )
-        for target, anchor in _MARKDOWN_LINK.findall(
-            path.read_text(encoding=_ENCODING),
+        for target, anchor in (
+            *_MARKDOWN_LINK.findall(text),
+            *_MARKDOWN_REFERENCE.findall(text),
         )
     ]
 
@@ -98,10 +104,32 @@ def _dangling_links(docs: dict[str, Path]) -> list[str]:
 
 
 class DocumentAnchorTest(unittest.TestCase):
-    """No tracked document links to a heading anchor that does not exist."""
+    """The scan reaches every tracked page, and no link in one dangles."""
 
     def test_every_anchor_link_resolves(self) -> None:
         self.assertEqual(_dangling_links(_tracked_markdown()), [])
+
+    def test_discovery_reaches_documents_below_docs(self) -> None:
+        """A guide split into a subdirectory is scanned, not skipped.
+
+        A top-level-only scan leaves the nested pages passing by absence,
+        which reads exactly like coverage until a link there rots.
+        """
+        nested = [name for name in _tracked_markdown() if name.count("/") > 1]
+        self.assertTrue(nested, "no document below docs/ was discovered")
+
+    def test_reference_definitions_are_scanned(self) -> None:
+        """A foot-of-page definition is a link, and resolves like one."""
+        with TemporaryDirectory() as directory:
+            page = Path(directory) / "page.md"
+            page.write_text(
+                "[up](../landing.md#top)\n\n[ref]: ../landing.md#other\n",
+                encoding=_ENCODING,
+            )
+            self.assertEqual(
+                _anchor_links("docs/area/page.md", page),
+                [("docs/landing.md", "top"), ("docs/landing.md", "other")],
+            )
 
 
 class HeadingAnchorSlugTest(unittest.TestCase):
