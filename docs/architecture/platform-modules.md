@@ -159,8 +159,9 @@ orchestrator/
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions and the one `repo_skill_catalog`
                         record it appends
-    discovery.py        the per-run scan of what a codex run was loaded with, plus the skill roots and marker
-                        `catalog.py` reads back
+    discovery.py        the per-run scan of what a codex run was loaded with and the `project` / `user` /
+                        `harness` level that defined each name, plus the skill roots and marker `catalog.py`
+                        reads back
 ```
 
 ## Inside `git/`
