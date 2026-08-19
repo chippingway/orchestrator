@@ -440,6 +440,18 @@
 # nothing between a reader and the class it constructs, so WPS201 is waived for
 # that file.
 #
+# orchestrator/observability/usage/trajectory_codex_items.py is one owner for
+# what a codex stream item normalizes to -- the record the frames of one item
+# fold into, one normalizer per item type the exec stream reports, and the
+# dispatch over them -- so it carries 8 members past the WPS202 ceiling of 7.
+# Every normalizer answers the same three questions about that one record:
+# which of an item's own fields is the invocation, which is the outcome, and
+# which frame is allowed to contribute either -- the completing one for a
+# command or a plan, the terminal `status` for a patch, whichever filled the
+# field last for a search. Splitting them by item type would leave the record
+# they share and the dispatch that fills it in a module none of the answers is
+# readable from, so WPS202 is waived.
+#
 # orchestrator/agents/sessions.py is one owner for both JSONL parsing surfaces
 # -- session-id extraction and Claude final-message extraction -- and each
 # surface decomposes into small single-purpose helpers, so the module carries
@@ -547,6 +559,7 @@ per-file-ignores =
     orchestrator/workflow/stages/validating/reviewer.py:WPS201
     orchestrator/observability/analytics/config.py:WPS202
     orchestrator/observability/analytics/query/rollup_reads.py:WPS201
+    orchestrator/observability/usage/trajectory_codex_items.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/authentication.py:WPS202

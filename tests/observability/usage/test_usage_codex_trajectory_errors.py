@@ -114,6 +114,7 @@ class CodexTrajectoryErrorTest(unittest.TestCase):
 
 _MCP_SERVER = "docsServer"
 _MCP_TOOL = "fetch_doc"
+_ERROR_ITEM = "error"
 
 
 def _mcp_arguments() -> dict:
@@ -139,10 +140,10 @@ _UNCLAIMED_CASES = MappingProxyType({
     "no status field": (
         {
             _usage_cases.IDENTIFIER_FIELD: _usage_cases.ITEM_ONE_ID,
-            _usage_cases.TYPE_FIELD: "todo_list",
-            "items": [{_usage_cases.TEXT_FIELD: "rename calc.py"}],
+            _usage_cases.TYPE_FIELD: _ERROR_ITEM,
+            "message": "model metadata not found",
         },
-        [(_usage_cases.UNSUPPORTED_ITEM_STEP, "todo_list", None)],
+        [(_usage_cases.UNSUPPORTED_ITEM_STEP, _ERROR_ITEM, None)],
     ),
     "reasoning excluded": (
         {

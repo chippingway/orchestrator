@@ -10,17 +10,17 @@ which of its own fields are the invocation and the outcome. The builder in
 what comes back, which is what collapses a started/completed pair into one
 call and one result.
 
-Each family here is one externally observable operation: the shell command the
-agent ran, the web search it issued, the MCP tool it called, and the patch it
-applied. That last one is codex's *custom* (freeform) tool surface -- the model
-calls `apply_patch`, and the exec stream reports the call and its outcome as a
-`file_change` item -- so a custom tool call normalizes to a pair here like any
-other. `codex exec --json` publishes no separate custom / dynamic tool item
-type: its whole item vocabulary is `agent_message`, `reasoning`,
-`command_execution`, `file_change`, `mcp_tool_call`, `collab_tool_call`,
-`web_search`, `todo_list`, and `error` (verified against codex-cli 0.148.0);
-`custom_tool_call` is a raw model-response / rollout spelling that never
-reaches this stream.
+Each family here is one operation the run can be read back from: the shell
+command the agent ran, the web search it issued, the MCP tool it called, the
+patch it applied, and the plan it worked to. The patch is codex's *custom*
+(freeform) tool surface -- the model calls `apply_patch`, and the exec stream
+reports the call and its outcome as a `file_change` item -- so a custom tool
+call normalizes to a pair here like any other. `codex exec --json` publishes no
+separate custom / dynamic tool item type: its whole item vocabulary is
+`agent_message`, `reasoning`, `command_execution`, `file_change`,
+`mcp_tool_call`, `collab_tool_call`, `web_search`, `todo_list`, and `error`
+(verified against codex-cli 0.148.0); `custom_tool_call` is a raw
+model-response / rollout spelling that never reaches this stream.
 
 An item type nothing here claims becomes a metadata-only placeholder naming the
 type, the id, and the status, so an operational surface a later codex release
@@ -31,7 +31,10 @@ than a diagnostic.
 
 Nothing here fabricates an outcome. A result payload is contributed only by the
 frame that actually carries one, which is what leaves a call the stream failed
-or never completed visible as an invocation with no result beneath it.
+or never completed visible as an invocation with no result beneath it. Which
+frame that is differs by item: an item codex ends with `item.completed` is
+read from that frame, while a patch states how it ended in a `status` it
+carries either way, so the terminal status is what ends it.
 """
 
 from __future__ import annotations
@@ -52,6 +55,7 @@ COMMAND_EXECUTION = skills_codex.COMMAND_EXECUTION
 FILE_CHANGE = "file_change"
 MCP_TOOL_CALL = "mcp_tool_call"
 REASONING = "reasoning"
+TODO_LIST = "todo_list"
 WEB_SEARCH = "web_search"
 
 ITEM_COMPLETED = "item.completed"
@@ -67,12 +71,17 @@ ARGUMENTS = "arguments"
 CHANGES = "changes"
 COMMAND = "command"
 ERROR = "error"
+PLAN_STEPS = "items"
 QUERY = "query"
 SERVER = "server"
 STATUS = "status"
 TEXT = "text"
 TOOL = "tool"
 NAME_SEPARATOR = "."
+
+# A patch reports `in_progress` until it has ended, so these two are the whole
+# of what one says about its outcome -- and saying it is what ends it.
+TERMINAL_STATUSES = frozenset(("completed", "failed"))
 
 MISSING = object()
 
@@ -91,6 +100,21 @@ class CodexItemPayloads:
     name: str = ""
     call_payload: Any = MISSING
     result_payload: Any = MISSING
+    keeps_first_call: bool = False
+
+    def contributes_call(self, recorded_call: Any) -> bool:
+        """Whether this frame's invocation replaces the one already recorded.
+
+        An item codex republishes whole on every frame -- a plan, rewritten as
+        it is worked through -- is invoked once, by the frame that opened it,
+        so a later frame revises the outcome rather than the call. Every other
+        item is named by whichever frame filled the field last, which is how a
+        search that announces itself with an empty query is still recorded
+        under the one it ran.
+        """
+        if self.call_payload is MISSING:
+            return False
+        return not (self.keeps_first_call and recorded_call is not MISSING)
 
     def steps(self, tool_id: str) -> tuple[TrajectoryStep, ...]:
         """Order what this item accumulated into the steps it contributes."""
@@ -223,14 +247,48 @@ def _file_change(
     stream_item: dict[str, Any],
     completed: bool,
 ) -> CodexItemPayloads:
-    """A patch application: the paths it touched and the status it ended on."""
+    """A patch application: the paths it touched and how it ended.
+
+    The change list is recorded as the structure codex reports -- one entry
+    per path, each naming the kind of edit that path received -- so a
+    downstream walk reaches a path as a field rather than having to read it
+    back out of prose. The `status` is the whole of what a patch says about
+    its outcome, and it says `in_progress` until there is one, so a terminal
+    status is the result and nothing else is: that is what keeps a patch that
+    failed, which reports it on whichever frame ends the item, apart from one
+    the run left half applied.
+    """
+    status = stream_item.get(STATUS)
+    ended = isinstance(status, str) and status in TERMINAL_STATUSES
     return CodexItemPayloads(
         kind=TOOL_CALL,
         name=FILE_CHANGE,
         call_payload=stream_item.get(CHANGES, MISSING),
-        result_payload=(
-            stream_item.get(STATUS, MISSING) if completed else MISSING
-        ),
+        result_payload=status if ended else MISSING,
+    )
+
+
+def _todo_list(
+    stream_item: dict[str, Any],
+    completed: bool,
+) -> CodexItemPayloads:
+    """A plan: the list it opened with, and the state it ended in.
+
+    Codex republishes the whole plan on every revision, so one plan is one
+    operation however often it is rewritten: the opening frame's list is the
+    call, the frame that completes the item carries the state the plan settled
+    in, and the revisions between them fold into that same pair rather than
+    each becoming a step of its own. A plan the run never completed keeps its
+    call alone -- where a plan stood when the stream stopped is not where it
+    ended.
+    """
+    plan = stream_item.get(PLAN_STEPS, MISSING)
+    return CodexItemPayloads(
+        kind=TOOL_CALL,
+        name=TODO_LIST,
+        call_payload=plan,
+        result_payload=plan if completed else MISSING,
+        keeps_first_call=True,
     )
 
 
@@ -240,6 +298,7 @@ NORMALIZERS: Mapping[str, ItemNormalizer] = MappingProxyType({
     COMMAND_EXECUTION: _command_execution,
     FILE_CHANGE: _file_change,
     MCP_TOOL_CALL: _mcp_tool_call,
+    TODO_LIST: _todo_list,
     WEB_SEARCH: _web_search,
 })
 

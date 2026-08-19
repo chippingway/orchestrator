@@ -5,8 +5,9 @@
 Codex emits several frames per operation -- started, then any updates, then
 completed -- so this owner correlates them by `item.id` and keeps each item at
 the position its first frame took. `trajectory_codex_items` beside it decides
-what each item type contributes; everything here is the correlation, the
-ordering, and the frames a stream can carry without an id at all.
+what each item type contributes, down to which frame's invocation an item is
+recorded under; everything here is the correlation, the ordering, and the
+frames a stream can carry without an id at all.
 
 The id is what makes an operation one item rather than several, so a wrapper
 frame reporting the id of the call nested inside it merges into that call
@@ -111,7 +112,7 @@ class CodexTrajectoryBuilder:
             return
         recorded.kind = payloads.kind
         recorded.name = payloads.name or recorded.name
-        if payloads.call_payload is not codex_items.MISSING:
+        if payloads.contributes_call(recorded.call_payload):
             recorded.call_payload = payloads.call_payload
         if payloads.result_payload is not codex_items.MISSING:
             recorded.result_payload = payloads.result_payload
