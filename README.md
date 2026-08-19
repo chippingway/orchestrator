@@ -44,7 +44,7 @@ is in [`docs/state-machine.md`](docs/state-machine.md#state-transition-label-lif
 - The CLI agents you actually route to must be authenticated on the host. Defaults:
   [`claude`](https://docs.anthropic.com/en/docs/claude-code) for decomposition + implementation,
   [`codex`](https://github.com/openai/codex) for review; either can be remapped via `DEV_AGENT` / `REVIEW_AGENT` /
-  `DECOMPOSE_AGENT` (see [`docs/workflow.md`](docs/workflow.md)). They are spawned with
+  `DECOMPOSE_AGENT` (see [`docs/workflow/command-specs.md`](docs/workflow/command-specs.md)). They are spawned with
   `--dangerously-bypass-approvals-and-sandbox` / `--dangerously-skip-permissions`, so the host is the sandbox
   boundary.
 - A GitHub repository to manage plus a fine-grained personal access token scoped to that repository (read/write on
@@ -259,7 +259,7 @@ For deeper implementation details, use the references below.
 |---|---|---|
 | Architecture | [`docs/architecture.md`](docs/architecture.md) | Process model, agent model, push model, module map |
 | State machine | [`docs/state-machine.md`](docs/state-machine.md) | Labels, workflow states, stage handlers |
-| Workflow | [`docs/workflow.md`](docs/workflow.md) | Agent roles, command specs, session lifecycle |
+| Workflow | [`docs/workflow.md`](docs/workflow.md) | Agent roles, conversation contracts, command specs |
 | Configuration | [`docs/configuration.md`](docs/configuration.md) | Env vars, defaults, operator runbooks |
 | Observability | [`docs/observability.md`](docs/observability.md) | Audit log, analytics database, usage parser |
 | Security | [`docs/security.md`](docs/security.md) | Checklist, GitHub and org settings |

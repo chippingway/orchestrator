@@ -19,7 +19,11 @@ orchestrator process is stateless.
 - User-facing overview: [`README.md`](README.md)
 - Architecture, module ownership, process / agent / push model: [`docs/architecture.md`](docs/architecture.md)
 - Workflow state machine (labels, per-tick flow, stage handlers): [`docs/state-machine.md`](docs/state-machine.md)
-- Agent roles, command specs, session lifecycles: [`docs/workflow.md`](docs/workflow.md)
+- Agent roles, command specs, session lifecycles: [`docs/workflow.md`](docs/workflow.md) is the entry point, with
+  [`docs/workflow/roles.md`](docs/workflow/roles.md) for the roles and the stages that spawn them,
+  [`docs/workflow/conversations.md`](docs/workflow/conversations.md) for the question / discussion prompt and session
+  contracts, and [`docs/workflow/command-specs.md`](docs/workflow/command-specs.md) for the spec grammar and the
+  in-flight session lock
 - Configuration / env vars: [`docs/configuration.md`](docs/configuration.md) is the reference, with
   [`docs/configuration/observability.md`](docs/configuration/observability.md) for the observability sinks and
   dashboards and [`docs/configuration/operations.md`](docs/configuration/operations.md) for CI, run modes, systemd,
