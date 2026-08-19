@@ -843,8 +843,9 @@ so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
      `workflow:validating`. Exception: on a `review_cap` park the human reply does NOT wake the dev — the operator
      must post `/orchestrator add-review-rounds N` on its own line (honored only from an allowlisted author when
      `ALLOWED_ISSUE_AUTHORS` is set — an outsider's command is filtered out before the parse), which resets
-     `review_round` to `MAX_REVIEW_ROUNDS - N`, clears the park, and falls through to spawn the reviewer this same
-     tick. A second exception: a bare `/orchestrator continue` on a session-failure dev park (`agent_silent` /
+     `review_round` to `max(0, MAX_REVIEW_ROUNDS - N)`, clears the park, and falls through to spawn the reviewer this
+     same tick. Values at or above the configured maximum grant one full review budget rather than extending the
+     budget past it. A second exception: a bare `/orchestrator continue` on a session-failure dev park (`agent_silent` /
      `agent_timeout`) is intercepted (`_continue_command_action`) and retries the dev on the neutral
      `_CONTINUE_RETRY_PROMPT` — NOT the literal command, which the dev has no context for — while
      `_handle_dev_fix_result` still publishes any stranded commit; a bare continue on a park needing a real answer
