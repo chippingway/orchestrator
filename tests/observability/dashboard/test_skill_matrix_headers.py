@@ -24,7 +24,7 @@ _ASCENDING = "asc"
 
 _DESCENDING = "desc"
 
-# The seven columns in the order an operator reads them across, each with the
+# The eight columns in the order an operator reads them across, each with the
 # heading it carries and the direction a first click on it means: the interesting
 # end of a count is the busiest row, and of a name the top of the alphabet.
 _COLUMNS = (
@@ -32,6 +32,7 @@ _COLUMNS = (
     ("role", "Role", _ASCENDING),
     ("backend", "Backend", _ASCENDING),
     ("skill", "Skill", _ASCENDING),
+    ("level", "Level", _ASCENDING),
     ("runs", "Runs", _DESCENDING),
     ("skill_runs", "Runs with skill", _DESCENDING),
     ("rate", "Trigger rate", _DESCENDING),
@@ -67,7 +68,7 @@ def _unsorted_header_html() -> str:
 class SkillMatrixHeaderRowTest(unittest.TestCase):
     """What an untouched header row offers."""
 
-    def test_the_seven_headings_are_in_order(self) -> None:
+    def test_the_eight_headings_are_in_order(self) -> None:
         markup = _unsorted_header_html()
         positions = [
             markup.index(f">{label}</a>") for _key, label, _dir in _COLUMNS

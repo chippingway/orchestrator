@@ -278,7 +278,7 @@ _OWNERS = (
 # under, the row and base measurements the paired lifecycle bars are sized from
 # and the notice the backend cards beside that ranking answer a window with no
 # run with,
-# the nine columns the adoption table is read across and the seven the
+# the ten columns the adoption table is read across and the eight the
 # trigger matrix is, each with the two query parameters its headings write and
 # the counts among them a first click sorts down, the rules either scopes to
 # its own class and the notice each renders in place of a table, the notice the

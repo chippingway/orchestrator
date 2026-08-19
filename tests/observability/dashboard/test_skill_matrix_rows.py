@@ -6,8 +6,9 @@ The cases lead with the cohort that reached for a skill on none of its runs,
 because that cell is the reason the panel pairs a catalog with the triggers at
 all: it is toned down rather than dropped, and its denominator is not, since
 the cohort's own run total is what the zero is read against. Beside it are the
-whole-point rate a busy cell reports, the label an empty category is bucketed
-under, and the escaping every naming column arrives needing.
+whole-point rate a busy cell reports, the source level that keeps two
+definitions of one name apart, the label an empty category is bucketed under,
+and the escaping every naming column arrives needing.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import unittest
 from orchestrator.observability.dashboard import skill_matrix_rows
 from orchestrator.observability.dashboard.skill_trigger_table import UNKNOWN
 from tests.observability.dashboard.skill_matrix_test_support import (
+    LEVEL_USER,
     CellCase,
     cell,
     cell_fragment,
@@ -41,7 +43,7 @@ _NAME_WITH_MARKUP = "a/<r&>"
 _ESCAPED_NAME = "a/&lt;r&amp;&gt;"
 
 # Every naming column of a cell the sink recorded no categories for.
-_NAMING_COLUMNS = 4
+_NAMING_COLUMNS = 5
 
 
 def _rendered(case: CellCase) -> str:
@@ -71,8 +73,18 @@ class SkillMatrixCellReadingsTest(unittest.TestCase):
             _BUSY_RATE, _rendered(CellCase(skill_runs=_BUSY_SKILL_RUNS)),
         )
 
+    def test_the_source_level_is_its_own_column(self) -> None:
+        # A catalog-padded cell and a run that triggered the same name under no
+        # recorded level are two rows, so a row that dropped the level would
+        # report them as one another's duplicate.
+        self.assertIn(
+            cell_fragment(LEVEL_USER), _rendered(CellCase(level=LEVEL_USER)),
+        )
+
     def test_an_empty_category_reads_unknown(self) -> None:
-        markup = _rendered(CellCase(repo="", skill="", role="", backend=""))
+        markup = _rendered(
+            CellCase(repo="", skill="", role="", backend="", level=""),
+        )
         self.assertEqual(
             markup.count(cell_fragment(UNKNOWN)), _NAMING_COLUMNS,
         )
@@ -84,6 +96,7 @@ class SkillMatrixCellReadingsTest(unittest.TestCase):
                 skill=_NAME_WITH_MARKUP,
                 role=_NAME_WITH_MARKUP,
                 backend=_NAME_WITH_MARKUP,
+                level=_NAME_WITH_MARKUP,
             ),
         )
         self.assertEqual(markup.count(_ESCAPED_NAME), _NAMING_COLUMNS)

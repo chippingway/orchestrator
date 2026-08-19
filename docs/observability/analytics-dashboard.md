@@ -383,20 +383,21 @@ health a `clean` pill wherever nothing failed. `skill_trigger_table.py` is the s
 `(role, backend)` cohort's skill use is reported in, its rate bar a share of the busiest cohort in that table, and
 `unknown` the label a category the sink left empty is read under. The last two are the panels an operator can reorder,
 so each arrives across five owners. The third is the per-session adoption table, the page's primary skill metric:
-`skill_adoption_columns.py` for the nine columns it is read across, the key each is ordered by, and the `adopt_sort` /
+`skill_adoption_columns.py` for the ten columns it is read across, the key each is ordered by, and the `adopt_sort` /
 `adopt_dir` pair a heading writes — with the two invocation diagnostics among those columns counted apart from the
 session pair so neither can be read into the rate between them; `skill_adoption_sort.py` for the parse that reads the
 pair back and the repository-then-rate order a table nobody sorted opens in; `skill_adoption_headers.py` for the
-header row each column is an in-tab sort link in; `skill_adoption_rows.py` for what one cell says under its four
-naming columns, keeping the undefined rate of a skill nobody was offered apart from the real
+header row each column is an in-tab sort link in; `skill_adoption_rows.py` for what one cell says under its five
+naming columns — the source level among them, so two rows the other four read alike stay legible as the two
+definitions they are — keeping the undefined rate of a skill nobody was offered apart from the real
 zero of one nobody loaded; and `skill_adoption.py` for the panel those cells are sorted into and the
 `TRACK_SKILL_TRIGGERS`-naming notice a window with no session evidence renders instead. The fourth is the trigger
-matrix, split the same way: `skill_matrix_columns.py` for the seven columns it is read across, the key
+matrix, split the same way: `skill_matrix_columns.py` for the eight columns it is read across, the key
 each is ordered by, and the `mtx_sort` / `mtx_dir` pair a heading writes; `skill_matrix_sort.py` for the parse that
 reads that pair back — a stale column or a lone direction degrading to the default rather than raising — and the
 repository-then-rate order a matrix nobody sorted opens in; `skill_matrix_headers.py` for the header row each column
 is an in-tab sort link in, with the arrow only the active one carries; `skill_matrix_rows.py` for what one cell says
-under those same four naming columns, its zero and derived rate toned down together while the cohort's run total
+under those same five naming columns, its zero and derived rate toned down together while the cohort's run total
 stays plain; and `skill_matrix.py` for the panel those cells are sorted into and the `TRACK_SKILL_TRIGGERS`-naming
 notice a window with no catalog-backed cell renders instead.
 `skill_panel.py` and `skill_trigger_panel.py` are the two cards three of those four panels are reported on. The first
@@ -553,12 +554,12 @@ either wave surfaces as one `st.error` + `st.stop`.
    render the matching `UTC±N` label.
 8. "Skill adoption" panel — the primary per-session adoption matrix above a fold-out invocation-level diagnostic. The
    headline table (`_skill_adoption_html` over `get_skill_adoption`) renders one row per `(repo, agent_role, backend,
-   skill, level)` read-model cell with columns Repo / Role / Backend / Skill / Sessions / Sessions using skill /
-   Adoption rate / Invocation loads / Incidental references. The skill's source level keys the cell but is not one of
-   those columns, so two rows can carry the same four names and differ only in the definition behind them — a
-   repository's own `develop` beside a same-named global one, or the `unknown`-level loads of a claude run (whose
-   stream names no source directory) beside the catalog's `project` cell for that name. The table counts skill use by
-   **logical agent session** rather than by raw run:
+   skill, level)` read-model cell with columns Repo / Role / Backend / Skill / Level / Sessions / Sessions using skill /
+   Adoption rate / Invocation loads / Incidental references. `Level` is the source level the skill was defined at
+   (`project` / `user` / `harness`, or `unknown` where no record classified it), so two rows carrying the same four
+   names ahead of it are legible as the two definitions they are — a repository's own `develop` beside a same-named
+   global one, or the `unknown`-level loads of a claude run (whose stream names no source directory) beside the
+   catalog's `project` cell for that name. The table counts skill use by **logical agent session**, not by raw run:
    `Sessions` is how many sessions in the cohort had the skill available, `Sessions using skill` the subset that loaded
    it, and `Adoption rate` their share (`adopted / sessions`, once per session). The two trailing columns are the
    window-scoped invocation diagnostics: `Invocation loads` counts the window runs that loaded the skill and
@@ -573,9 +574,9 @@ either wave surfaces as one `st.error` + `st.stop`.
    carries the older per-run views as a clearly named diagnostic: the per-`(agent_role, backend)` aggregate table
    (`_skill_triggers_html` over `get_skill_trigger_rates`, showing runs, skill runs, a trigger-rate bar, and total
    trigger count) and, below it, the per-skill **trigger matrix** (`_skill_matrix_html` over
-   `get_skill_trigger_matrix`) with columns Repo / Role / Backend / Skill / Runs / Runs with skill / Trigger rate,
-   keyed by the same source level it does not render either — so a catalog-padded `project` row can sit beside an
-   `unknown`-level row for a skill some run loaded. The
+   `get_skill_trigger_matrix`) with columns Repo / Role / Backend / Skill / Level / Runs / Runs with skill / Trigger
+   rate — the same `Level` column the adoption table above it carries, so a catalog-padded `project` row can sit
+   beside an `unknown`-level row for a skill some run loaded. The
    matrix folds each repo's `repo_skill_catalog` into the observed triggers so a skill the repo offers but no cohort
    fired surfaces as an explicit (muted) `0` "Runs with skill" cell (and a matching muted `0%` trigger rate) rather
    than a missing row (the cohort `Runs` total is never muted); its headers write `mtx_sort` / `mtx_dir` params (parsed
@@ -709,12 +710,12 @@ Beside them, the insight banners, per-card header, and reliability-tile strip ar
 `observability/dashboard/backend_card.py` and
 `observability/dashboard/coverage_card.py`; the primary per-session skill-adoption table is
 `observability/dashboard/skill_adoption_columns.py`, `skill_adoption_sort.py`, `skill_adoption_headers.py`,
-`skill_adoption_rows.py`, and `skill_adoption.py` — its nine columns and the `adopt_sort` / `adopt_dir` pair its
+`skill_adoption_rows.py`, and `skill_adoption.py` — its ten columns and the `adopt_sort` / `adopt_dir` pair its
 headings write, the parse and the two orders behind a click, the header row those clicks come from, what one cell
 says, and the sorted panel with the notice a window carrying no session evidence renders instead. The
 invocation-level per-skill trigger matrix is
 `observability/dashboard/skill_matrix_columns.py`, `skill_matrix_sort.py`, `skill_matrix_headers.py`,
-`skill_matrix_rows.py`, and `skill_matrix.py` — its seven columns and the `mtx_sort` / `mtx_dir` pair its headings
+`skill_matrix_rows.py`, and `skill_matrix.py` — its eight columns and the `mtx_sort` / `mtx_dir` pair its headings
 write, the parse and the two orders behind a click, the header row those clicks come from, what one cell says, and
 the sorted panel with the notice a window carrying no catalog-backed cell renders instead. The two cards those
 tables are reported on are

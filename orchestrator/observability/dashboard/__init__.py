@@ -79,16 +79,16 @@ reported in, the busiest rate in the table its bar is drawn as a share of, and
 the label a cohort the sink named no role or backend for is read under.
 The last two are the ones an operator can reorder, so each arrives split by
 what a click moves. ``skill_adoption`` is the third: ``skill_adoption_columns``
-for the nine columns per-session adoption is read across and the two query
+for the ten columns per-session adoption is read across and the two query
 parameters a heading writes, ``skill_adoption_sort`` for the parse those
 parameters are read back through and the orders they select,
 ``skill_adoption_headers`` for the header row each heading is drawn as a sort
-control in, ``skill_adoption_rows`` for what one `(repo, role, backend,
-skill)` cell says -- including which of the two quiet cells reports an
+control in, ``skill_adoption_rows`` for what one `(repo, role, backend, skill,
+level)` cell says -- including which of the two quiet cells reports an
 undefined rate and which a real zero -- and ``skill_adoption`` itself for the
 sorted panel and the notice a window with no session evidence renders instead.
 ``skill_matrix`` is the fourth, split the same five ways:
-``skill_matrix_columns`` for the seven columns it is read across and its own
+``skill_matrix_columns`` for the eight columns it is read across and its own
 pair of query parameters, ``skill_matrix_sort`` for the parse and orders,
 ``skill_matrix_headers`` for the header row, ``skill_matrix_rows`` for what one
 cell triggered, and ``skill_matrix`` itself for the sorted panel and the notice

@@ -17,13 +17,14 @@ import unittest
 
 from orchestrator.observability.dashboard import skill_adoption_columns
 
-# The nine columns in the order an operator reads them across, each with the
+# The ten columns in the order an operator reads them across, each with the
 # heading it carries and whether it is right-aligned as a number.
 _COLUMNS = (
     ("repo", "Repo", False),
     ("role", "Role", False),
     ("backend", "Backend", False),
     ("skill", "Skill", False),
+    ("level", "Level", False),
     ("sessions", "Sessions", True),
     ("adopted", "Sessions using skill", True),
     ("rate", "Adoption rate", True),
@@ -43,7 +44,7 @@ _DIR_PARAM = "adopt_dir"
 class SkillAdoptionColumnsTest(unittest.TestCase):
     """The column set every heading, link, and ordering is drawn from."""
 
-    def test_the_nine_columns_are_in_order(self) -> None:
+    def test_the_ten_columns_are_in_order(self) -> None:
         self.assertEqual(
             tuple(
                 (column.key, column.label, column.right_aligned)
