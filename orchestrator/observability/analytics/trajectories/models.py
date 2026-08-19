@@ -4,9 +4,9 @@
 
 One owner for everything a record is measured against: the always-retained
 headline charged before any variable array, the running total those arrays are
-drawn from, and the three caps the whole thing is bounded by -- the per-field
-head and tail a single value is truncated to, and the serialized byte budget
-one record may not exceed.
+drawn from and the prefix of one that fits it, and the three caps the whole
+thing is bounded by -- the per-field head and tail a single value is truncated
+to, and the serialized byte budget one record may not exceed.
 
 The caps are defaults rather than environment knobs, so they are declared here
 rather than parsed, and this is where a caller shrinks one to bound a run it
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 TRAJECTORY_FIELD_HEAD = 2000
 TRAJECTORY_FIELD_TAIL = 2000
@@ -36,18 +36,56 @@ class TrajectoryLimits:
 
 @dataclass(frozen=True)
 class TrajectoryHeadline:
-    """Always-retained trajectory fields charged before variable arrays."""
+    """Always-retained trajectory fields charged before variable arrays.
+
+    The two summaries are fixed-size by construction -- a run's usage totals,
+    and one count per disposition the item accounting settled on -- which is
+    what lets them be charged and still kept whole. The item counts are the
+    reason a truncated accounting array cannot read as a complete one: they
+    state how many items the stream identified however few of them the budget
+    left room to name.
+    """
 
     user_input: Optional[str]
     system_prompt: Optional[str]
     output: Optional[str]
     run_usage: dict[str, Any]
+    source_item_counts: dict[str, int]
 
     @property
     def serialized_size(self) -> int:
+        """What the always-retained fields cost the record budget.
+
+        Only a summary the record actually writes is charged. A run that
+        identified no source items leaves the counts off entirely, so charging
+        their `{}` would take two bytes off the budget every variable array is
+        drawn from -- enough, at the boundary, to drop a step such a run would
+        otherwise keep and to flag it truncated.
+        """
         text_fields = (self.user_input, self.system_prompt, self.output)
         text_size = sum(len(text_field or "") for text_field in text_fields)
-        return text_size + len(json.dumps(self.run_usage, default=str))
+        summaries = (self.run_usage, self.source_item_counts)
+        return text_size + sum(
+            len(json.dumps(summary, default=str))
+            for summary in summaries
+            if summary
+        )
+
+
+@dataclass(frozen=True)
+class TrajectoryArrays:
+    """The variable arrays one record kept, in the order they were charged.
+
+    `source_items_truncated` is carried beside them because the record-level
+    `truncated` flag names no array: a run whose steps overflowed and a run
+    whose accounting did both set it, and only the accounting's own flag says
+    that the ids under it are a prefix rather than the whole set.
+    """
+
+    turns: list[dict[str, Any]]
+    source_items: list[dict[str, Any]]
+    steps: list[dict[str, Any]]
+    source_items_truncated: bool
 
 
 @dataclass
@@ -64,6 +102,22 @@ class TrajectoryBudget:
             return True
         self.truncated = True
         return False
+
+    def bounded(self, entries: Iterable[Any]) -> list[dict[str, Any]]:
+        """Keep the prefix of `entries` the remaining budget has room for.
+
+        The fixed-shape arrays -- the per-turn usage breakdown and the source
+        item accounting -- are drawn the same way, each entry charged its
+        whole serialized size before it is kept, so an array of thousands of
+        small entries is bounded exactly as an array of a few large ones is.
+        """
+        kept: list[dict[str, Any]] = []
+        for entry in entries:
+            entry_dict = entry.to_dict()
+            if not self.include(entry_dict):
+                break
+            kept.append(entry_dict)
+        return kept
 
 
 def current_limits() -> TrajectoryLimits:

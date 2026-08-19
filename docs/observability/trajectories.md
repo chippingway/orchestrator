@@ -45,7 +45,8 @@ since its stream carries no offered-tools frame), `skills_triggered` / `skills_a
 `skills_available` set is backfilled from the out-of-band
 `skills.discovery.discover_local_skill_sources(cwd)` filesystem scan, since its stream carries no offered-skills
 catalog; the source level that scan also reports rides the `agent_exit` record, not this one), a `run_usage` summary,
-a claude-only per-turn `turns` array, an ordered `steps` array (each `{kind, name, tool_id, content}` plus a `turn`
+a claude-only per-turn `turns` array, a codex-only `source_items` accounting with its `source_item_counts` summary and
+`source_items_truncated` flag, an ordered `steps` array (each `{kind, name, tool_id, content}` plus a `turn`
 index on the billed steps, where
 `kind` is `tool_call` / `tool_result` / `assistant_message` / `user_message` / `unsupported_item` and `content` is the
 redacted tool input, tool result, or text turn — `name` / `tool_id` are `null` on the message turns, and an
@@ -59,7 +60,19 @@ turn (`turn` index, `model`, `input_tokens`, `output_tokens`, `cache_read_tokens
 always-*estimated* `cost_usd` / `cost_source`); each billed `steps[]` entry (`assistant_message` / `tool_call`) carries
 the same `turn` index tying it to its turn, while a `tool_result` / `user_message` step is a turn *input* and omits
 `turn`. `build_record` drops every empty / `None` field, so an absent prompt, an empty system prompt, a no-trigger skill
-set, or codex's empty per-turn array simply leaves its key off.
+set, codex's empty per-turn array, or a claude run's absent item accounting simply leaves its key off.
+
+**Per-item accounting (`source_items`).** Beside the steps, a codex record carries the parser's
+[per-item accounting](usage.md): one `{item_id, item_type, disposition}` row per item the exec
+stream identified, in first-seen order, where `disposition` is `stored` / `unsupported` / `excluded` / `empty`. It is
+what an `item_N` coverage audit reads — an id that reached no step is a classification the record names rather than a
+silence — and it carries provider-assigned ids and item type names rather than agent-sourced content, so like `tools`
+and a step's `name` it is written unredacted; everything an item actually *said* is in the step it contributed and is
+redacted there. `source_item_counts` is the always-kept summary beside it: `identified`, then one count per
+disposition (zeros included, so the shape is fixed). `source_items_truncated: true` is written when the budget left
+room for only a prefix of the rows — or for none of them, in which case the `source_items` key is absent while the
+counts and the flag still say how many items the stream identified. A claude run identifies no codex items, so all
+three keys are simply absent from its record.
 
 **Join keys.** The envelope and correlation context double as join keys back to the numeric sinks. `session_id` (the
 live `result.session_id`) is the per-run key onto the
@@ -81,12 +94,18 @@ record — with an `...[N chars elided]...` marker in between; the head keeps th
 request/intent, the tail the
 result/answer. The whole record is additionally bounded: each step is charged its full **serialized** size — the JSON
 metadata (`kind` / `name` / `tool_id` / `turn`) plus its truncated content, not just `len(content)`, so even thousands
-of empty- or metadata-only steps still consume the budget — and the per-turn `turns` array is charged **and
-truncated** against the same budget (turns drawn down first, then steps), so a pathological claude run of thousands of
+of empty- or metadata-only steps still consume the budget — and the per-turn `turns` array and the `source_items`
+accounting are charged **and truncated** against the same budget (turns first, then the accounting, then the steps),
+so a pathological claude run of thousands of
 turns with no tool calls cannot write the whole array in full and blow the budget. Once the running total crosses
-`TRAJECTORY_RECORD_BUDGET` (`200_000`) bytes the remaining turns — then steps — are dropped and a `truncated: true`
-flag is set; only the small fixed `run_usage` summary is always kept whole, so one pathological run (thousands of turns
-or tool calls) cannot write an unbounded line. Non-string step content (claude tool inputs are dicts; `tool_result`
+`TRAJECTORY_RECORD_BUDGET` (`200_000`) bytes the remaining turns — then accounting rows, then steps — are dropped and a
+`truncated: true`
+flag is set; only the two small fixed summaries are always kept whole (`run_usage` and `source_item_counts`), so one
+pathological run (thousands of turns
+or tool calls) cannot write an unbounded line. The draw-down order is what keeps the accounting readable on exactly the
+runs that overran: the ids an `item_N` audit needs outlive the steps they account for, and when the budget reaches the
+rows themselves `source_items_truncated` says the surviving ids are a prefix rather than the whole set. Non-string step
+content (claude tool inputs are dicts; `tool_result`
 content a list) is redacted **leaf-by-leaf before** JSON serialization (`sanitize.redact_tree`) — serializing first
 would escape a multiline secret's newlines into `\n`, leaving the literal `str.replace` in `redact_secrets` unable to
 match the raw env value, so the secret would leak into the serialized content.

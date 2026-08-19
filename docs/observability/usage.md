@@ -198,7 +198,8 @@ nothing either and leaves no payload of its own behind. The accounting is also w
 id: a text turn is not a tool call, so its step's `tool_id` stays empty and the provider id lands here rather than in
 the field a downstream reader joins a result to its invocation by. A frame the stream left without an id is the one
 thing not accounted — there is no name to account it under, and every such frame would otherwise share one — so it
-contributes its steps and nothing else. `AgentTrajectory.to_dict()` carries the tuple as `source_items`; the
-`agent_trajectory` sink record's shape is unchanged.
+contributes its steps and nothing else. `AgentTrajectory.to_dict()` carries the tuple as `source_items`, and the
+`agent_trajectory` sink record serializes it under that same key — bounded, counted, and flagged when truncated, as
+[`trajectories.md`](trajectories.md#trajectory-sink-trajectory_log_path) describes.
 
 [pinned-state]: ../state-machine/labels-and-state.md#pinned-state
