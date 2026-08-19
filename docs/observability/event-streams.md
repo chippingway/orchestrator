@@ -10,8 +10,9 @@ The record shapes below are a compatibility contract: an operator's `jq` filter,
 `analytics_events` columns all key off them. Which module owns which piece of the write path is *not* repeated here —
 [`architecture.md`](../architecture.md#top-level-layout) is the single place that inventory is maintained. For the
 knobs themselves see [`configuration/observability.md`](../configuration/observability.md). The parser the analytics
-`agent_exit` counts come from, and the database, read model, and dashboard that sink is aggregated into afterwards,
-are on [`observability.md`](../observability.md).
+`agent_exit` counts come from is on [`usage.md`](usage.md), and the database, read model, and dashboard that sink is
+aggregated into afterwards are on [`analytics-database.md`](analytics-database.md) and
+[`analytics-dashboard.md`](analytics-dashboard.md).
 
 ## Audit event log (`EVENT_LOG_PATH`)
 
@@ -262,9 +263,9 @@ panel), which counts, for each `(repo, role, backend, skill)` cell, how many log
 available and how many loaded it — an incidental `SKILL.md` reference stays a separate diagnostic column and never
 raises the rate. The invocation-level views (`get_skill_trigger_rates` and `get_skill_trigger_matrix`) sit
 beneath it as a clearly named invocation-level diagnostic — see the
-[read model](../observability.md#read-model-orchestratorobservabilityanalyticsquery) and
-[dashboard](../observability.md#dashboard-orchestratorappsanalytics_dashboardpy) sections
-on the landing page. All are pure read-side additions over `extras JSONB` with no schema change. See
+[read model](analytics-dashboard.md#read-model-orchestratorobservabilityanalyticsquery) and
+[dashboard](analytics-dashboard.md#dashboard-orchestratorappsanalytics_dashboardpy) sections
+on that page. All are pure read-side additions over `extras JSONB` with no schema change. See
 [Session-aware skill adoption](#session-aware-skill-adoption) for the four evidence forms and the per-session adoption
 semantics that sit on top of these fields.
 
@@ -338,8 +339,8 @@ used for ordering and context, not a displayed column. A pre-window load counts 
 the three, since all three are window-scoped. The collapsed invocation-level diagnostic beneath the adoption table
 (`get_skill_trigger_rates` / `get_skill_trigger_matrix`) reports the same per-run granularity across roles / backends
 and per-skill cohorts. See the
-[read model](../observability.md#read-model-orchestratorobservabilityanalyticsquery) for the exact query shapes and
-the [dashboard](../observability.md#dashboard-orchestratorappsanalytics_dashboardpy) for the rendered columns.
+[read model](analytics-dashboard.md#read-model-orchestratorobservabilityanalyticsquery) for the exact query shapes and
+the [dashboard](analytics-dashboard.md#dashboard-orchestratorappsanalytics_dashboardpy) for the rendered columns.
 
 ### `repo_skill_catalog` records
 

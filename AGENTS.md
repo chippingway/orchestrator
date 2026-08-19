@@ -36,10 +36,14 @@ orchestrator process is stateless.
   dashboards and [`docs/configuration/operations.md`](docs/configuration/operations.md) for CI, run modes, systemd,
   and applying `.env` changes; basic knobs in [`.env.example`](.env.example), common advanced overrides in
   [`.env.example.advanced`](.env.example.advanced)
-- Observability: [`docs/observability.md`](docs/observability.md) is the entry point (analytics database, its read
-  model, the dashboard, the usage parser), with the audit and analytics JSONL sinks in
-  [`docs/observability/event-streams.md`](docs/observability/event-streams.md) and trajectory recording, transfer,
-  and viewing in [`docs/observability/trajectories.md`](docs/observability/trajectories.md)
+- Observability: [`docs/observability.md`](docs/observability.md) is the entry point mapping every surface, with the
+  audit and analytics JSONL sinks in [`docs/observability/event-streams.md`](docs/observability/event-streams.md),
+  trajectory recording, transfer, and viewing in
+  [`docs/observability/trajectories.md`](docs/observability/trajectories.md), the Postgres service, schema, and sync
+  CLI in [`docs/observability/analytics-database.md`](docs/observability/analytics-database.md), the read model and
+  Streamlit dashboard over it in
+  [`docs/observability/analytics-dashboard.md`](docs/observability/analytics-dashboard.md), and the usage / skill /
+  trajectory parsers in [`docs/observability/usage.md`](docs/observability/usage.md)
 - Security checklist and operator-owned controls: [`docs/security.md`](docs/security.md)
 - Development conventions and the pre-push checklist:
   [`.agents/skills/develop/SKILL.md`](.agents/skills/develop/SKILL.md)

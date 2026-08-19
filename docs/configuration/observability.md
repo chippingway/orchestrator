@@ -5,7 +5,9 @@ sink and the Postgres database it feeds, the trajectory sink, skill-trigger trac
 Every other setting is in [`../configuration.md`](../configuration.md); what the sinks record is in
 [`../observability/event-streams.md`](../observability/event-streams.md) and
 [`../observability/trajectories.md`](../observability/trajectories.md), and how the database, dashboards, and usage
-parser read them back is in [`../observability.md`](../observability.md).
+parser read them back is in [`../observability/analytics-database.md`](../observability/analytics-database.md),
+[`../observability/analytics-dashboard.md`](../observability/analytics-dashboard.md), and
+[`../observability/usage.md`](../observability/usage.md), which [`../observability.md`](../observability.md) maps.
 
 ## Settings
 
@@ -21,7 +23,7 @@ parser read them back is in [`../observability.md`](../observability.md).
   [`../../analytics-db/compose.yml`](../../analytics-db/compose.yml). NOT read by the polling loop — orchestrator
   correctness does not depend on database availability. Empty / `off` / `disabled` / `none` disables both the sync CLI
   and dashboard reads. See
-  [`../observability.md#analytics-database`](../observability.md#analytics-database-analytics-db).
+  [`analytics-database.md`](../observability/analytics-database.md).
 - `TRAJECTORY_LOG_PATH` — default _(unset, off)_. opt-in path switch for the trajectory sink — an independent JSONL
   file for per-run agent reasoning trajectories, separate from `ANALYTICS_LOG_PATH`. Defaults off: unset / empty / `off`
   / `disabled` / `none` (case-insensitive) all disable it; any other value is the explicit opt-in path. When enabled,
@@ -52,8 +54,8 @@ parser read them back is in [`../observability.md`](../observability.md).
   install's records and audit log stay shape-compatible with today's, and needs no Postgres DDL — the `extras JSONB`
   column absorbs the new fields. Both backends' triggered-skill shapes are now pinned against captured streams (claude
   `Skill` tool-use blocks; codex `skills/<name>/SKILL.md` reads, a heuristic file-open signal — see
-  [`../observability.md`](../observability.md#usage-parser-orchestratorobservabilityusage)). The offered-skills set
-  (`skills_available`) is read from claude's `system`/`init` frame `skills` array (confirmed against a real stream
+  [`usage.md`](../observability/usage.md)). The offered-skills set (`skills_available`) is read from claude's
+  `system`/`init` frame `skills` array (confirmed against a real stream
   capture); codex's stream carries no such frame, so it is backfilled out-of-band from the filesystem via
   `skills.discovery.discover_local_skills(cwd)` (a scan of the run's worktree `.agents/skills` / `.claude/skills` roots
   plus the global `$CODEX_HOME/skills`). Once on, the dashboard's "Skill adoption" panel leads with per-session adoption
@@ -109,7 +111,8 @@ Postgres or Streamlit, so deferring or disabling the dashboard never affects wor
 
    Inserts dedupe by `content_hash`, so re-running is idempotent. No-op when `ANALYTICS_DB_URL` is unset/disabled,
    `ANALYTICS_LOG_PATH` is explicitly disabled, or the JSONL file is absent. Schedule on whatever cadence you prefer;
-   see [`../observability.md#operator-workflow`](../observability.md#operator-workflow) for a sample `cron` entry.
+   see [`analytics-database.md#operator-workflow`](../observability/analytics-database.md#operator-workflow) for a
+   sample `cron` entry.
 5. **Launch the dashboard.** Install the optional `dashboard` group once, then run Streamlit:
 
    ```sh
@@ -123,5 +126,6 @@ Postgres or Streamlit, so deferring or disabling the dashboard never affects wor
    `orchestrator/apps/analytics_dashboard.py` is the only entrypoint the page has, and the one to name in shell
    history, scripts, and service units.
 
-See [`../observability.md#analytics-database`](../observability.md#analytics-database-analytics-db) for the schema, sync
-internals, read-model split, dashboard layout, and the in-app empty / error banners.
+See [`analytics-database.md`](../observability/analytics-database.md) for the schema and the sync internals, and
+[`analytics-dashboard.md`](../observability/analytics-dashboard.md) for the read-model split, the dashboard layout,
+and the in-app empty / error banners.
