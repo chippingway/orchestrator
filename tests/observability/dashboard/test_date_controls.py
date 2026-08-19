@@ -84,7 +84,7 @@ class PresetChoiceTest(unittest.TestCase):
                     len(date_controls.INLINE_PRESETS) - 1,
                 )
 
-    def test_the_radio_offers_three_presets(self) -> None:
+    def test_the_radio_offers_the_inline_presets(self) -> None:
         st = fakes.FakeStreamlit(preset=windows.PRESET_RECENT_THREE_DAYS)
         columns = date_controls.date_filter_columns(st)
 
@@ -97,6 +97,7 @@ class PresetChoiceTest(unittest.TestCase):
             (
                 windows.PRESET_RECENT_THREE_DAYS,
                 windows.PRESET_RECENT_WEEK,
+                windows.PRESET_RECENT_THIRTY_DAYS,
                 windows.PRESET_ALL,
             ),
         )
@@ -116,7 +117,7 @@ class PresetChoiceTest(unittest.TestCase):
         self.assertEqual(options["key"], "_preset_radio")
         self.assertEqual(
             [options["format_func"](preset) for preset in options["options"]],
-            ["3D", "7D", "All"],
+            ["3D", "7D", "30D", "All"],
         )
 
 

@@ -10,8 +10,8 @@ fifth is the room the caller writes its filter line into. A slot added here
 with no widget to fill it is a gap in the bar, and a widget drawn without a
 slot to hold it lands wherever the page last left off.
 
-The three presets offered inline are named once, because the options the radio
-lists and the position the current one is preselected at are read off the same
+The presets offered inline are named once, because the options the radio lists
+and the position the current one is preselected at are read off the same
 tuple. A preset offered by one and unknown to the other would fall to the last
 option, which is how a bar could reopen on `All` after every rerun.
 
@@ -27,12 +27,14 @@ from typing import Any
 from orchestrator.observability.dashboard import windows
 
 
-# The presets the bar exposes inline, in the order they are offered. `Custom`
-# is deliberately not among them: it names no window of its own, so it stays
-# the sidebar fallback rather than a fourth button that resolves to nothing.
+# The presets the bar exposes inline, widest last, since an unoffered one opens
+# the radio on the final button. `Custom` is deliberately not among them: it
+# names no window of its own, so it stays the sidebar fallback rather than one
+# more button that resolves to nothing.
 INLINE_PRESETS = (
     windows.PRESET_RECENT_THREE_DAYS,
     windows.PRESET_RECENT_WEEK,
+    windows.PRESET_RECENT_THIRTY_DAYS,
     windows.PRESET_ALL,
 )
 
@@ -75,7 +77,7 @@ def preset_radio_index(preset: str) -> int:
 
 
 def render_preset_choice(st: Any, column: Any) -> str:
-    """Offer the three inline presets, opened on the session's own choice."""
+    """Offer the inline presets, opened on the session's own choice."""
     with column:
         return st.radio(
             "Range preset",

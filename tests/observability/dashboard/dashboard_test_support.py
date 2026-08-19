@@ -19,6 +19,12 @@ from orchestrator.observability.analytics.query.overview_models import DataExten
 
 _YEAR = 2026
 
+_APRIL = 4
+
+# The day of the month a thirty-day span anchored at May 28 starts on, which
+# is why the calendar here reaches back into the month before May at all.
+_THIRTY_DAY_START = 29
+
 _MAY = 5
 
 # The final minute of a day, so an extent's max lands late inside its own date
@@ -28,6 +34,8 @@ _LAST_HOUR = 23
 _LAST_MINUTE = 59
 
 JAN01 = date(_YEAR, 1, 1)
+
+APR29 = date(_YEAR, _APRIL, _THIRTY_DAY_START)
 
 MAY01 = date(_YEAR, _MAY, 1)
 

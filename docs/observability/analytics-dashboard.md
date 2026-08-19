@@ -314,7 +314,7 @@ lives under
 `orchestrator/observability/dashboard/`, split by what it decides: `windows.py` for the reported span and the presets
 that name one, `filters.py` for the offset, issue, stage, and cache key it is narrowed and displayed by,
 `date_controls.py` for the five slots the bar that window is picked in is laid out across together with the label and
-the three inline presets drawn in the first two of them, `date_filter.py` for the bar itself — the window a preset
+the inline presets drawn in the first two of them, `date_filter.py` for the bar itself — the window a preset
 opens the pickers on, the inclusive days they hand back, and the half-open window plus the filter-line slot the caller
 leaves with — `page_controls.py` for the band that bar sits in and the load the choices made there open — the sidebar
 a run is narrowed in, the offset its timestamps are displayed against, the filters those raw selections normalize
@@ -490,10 +490,10 @@ uv run streamlit run orchestrator/apps/analytics_dashboard.py   # launches a loc
 ```
 
 **Page chrome.** A sticky topbar carries the page title with the data extent / repo / event summary on the left and the
-in-range spend pill on the right. A sticky filter bar exposes `3D` / `7D` / `All` inline presets (anchored at the data
-extent's max timestamp and clamped to its min) plus two date inputs for arbitrary windows within the extent. The sidebar
-surfaces a `Custom` preset fallback, a repo selector, event / stage multi-selects, and a `#123` / `123` issue-number
-input.
+in-range spend pill on the right. A sticky filter bar exposes `3D` / `7D` / `30D` / `All` inline presets (anchored at
+the data extent's max timestamp and clamped to its min) plus two date inputs for arbitrary windows within the extent.
+The sidebar surfaces a `Custom` preset fallback, a repo selector, event / stage multi-selects, and a `#123` / `123`
+issue-number input.
 
 **Caching.** Every per-filter read is wrapped in `st.cache_data` keyed by the immutable `DashboardCacheKey(start, end,
 repo, events, stages, issue)`, so a filter change invalidates every cached query in lockstep. `dashboard/read_plan.py`
@@ -675,7 +675,7 @@ filter-meta line, the delta pill one tile is annotated
 with, and the strip itself — is `observability/dashboard/summary_html.py`, which reaches the sparkline owner directly
 for the line a tile carries. The bar the filter line sits under is `observability/dashboard/date_controls.py` for
 the five slots it is laid
-out across, the label naming it, and the three presets it offers inline, and
+out across, the label naming it, and the presets it offers inline, and
 `observability/dashboard/date_filter.py` for the window a preset opens its pickers on, the inclusive days they hand
 back, and the bar assembling all of it; the page pipeline calls the bar on its
 owner, so a test intercepting it patches `date_filter`. The band that bar sits in and the load the choices made there
