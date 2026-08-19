@@ -1,6 +1,19 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Reconstruct ordered Codex command and message trajectory steps."""
+"""Reconstruct an ordered Codex trajectory from its stream items.
+
+Codex emits several frames per operation -- started, then any updates, then
+completed -- so this owner correlates them by `item.id` and keeps each item at
+the position its first frame took. `trajectory_codex_items` beside it decides
+what each item type contributes; everything here is the correlation, the
+ordering, and the frames a stream can carry without an id at all.
+
+The id is what makes an operation one item rather than several, so a wrapper
+frame reporting the id of the call nested inside it merges into that call
+instead of doubling it -- and, when the wrapper is of a type nothing
+normalizes, it neither replaces the normalized pair with a placeholder nor
+adds one beside it.
+"""
 
 from __future__ import annotations
 
@@ -9,14 +22,9 @@ from typing import Any, Iterable, Optional
 
 from orchestrator.observability.usage import (
     protocol,
-    skills_codex,
+    trajectory_codex_items as codex_items,
 )
 from orchestrator.observability.usage.trajectory_models import TrajectoryStep
-
-
-TEXT = "text"
-TOOL_RESULT = "tool_result"
-MISSING = object()
 
 
 def final_output(events: Iterable[dict[str, Any]]) -> Optional[str]:
@@ -25,9 +33,9 @@ def final_output(events: Iterable[dict[str, Any]]) -> Optional[str]:
         stream_item = event.get(protocol.ITEM_KEY)
         if not isinstance(stream_item, dict):
             continue
-        if stream_item.get(protocol.TYPE) != "agent_message":
+        if stream_item.get(protocol.TYPE) != codex_items.AGENT_MESSAGE:
             continue
-        candidate = stream_item.get(TEXT)
+        candidate = stream_item.get(codex_items.TEXT)
         if isinstance(candidate, str):
             final_text = candidate
     return final_text
@@ -44,119 +52,66 @@ def trajectory_steps(
 
 @dataclass
 class CodexTrajectoryBuilder:
+    """Frames folded into one record per item, in first-seen order."""
+
     order: list[str] = field(default_factory=list)
-    seen: set[str] = field(default_factory=set)
-    commands: dict[str, str] = field(default_factory=dict)
-    outputs: dict[str, Any] = field(default_factory=dict)
-    messages: dict[str, str] = field(default_factory=dict)
+    by_id: dict[str, codex_items.CodexItemPayloads] = field(default_factory=dict)
     anonymous: list[TrajectoryStep] = field(default_factory=list)
 
     def add_event(self, event: dict[str, Any]) -> None:
         stream_item = event.get(protocol.ITEM_KEY)
         if not isinstance(stream_item, dict):
             return
+        payloads = codex_items.normalize_item(
+            stream_item,
+            event.get(protocol.TYPE) == codex_items.ITEM_COMPLETED,
+        )
+        if payloads is None:
+            return
         item_id = self._item_id(stream_item)
-        if stream_item.get(protocol.TYPE) == skills_codex.COMMAND_EXECUTION:
-            self._add_command(stream_item, item_id)
-        elif stream_item.get(protocol.TYPE) == "agent_message":
-            self._add_message(stream_item, item_id)
+        if item_id:
+            self._absorb(item_id, payloads)
+            return
+        # Nothing correlates frames a stream left unidentified, so each one
+        # stands on its own and trails the ordered items rather than claiming
+        # a position between two of them.
+        self.anonymous.extend(payloads.steps(""))
 
     def build(self) -> tuple[TrajectoryStep, ...]:
-        step_groups = CodexStepGroups(
-            order=self.order,
-            commands=self.commands,
-            outputs=self.outputs,
-            messages=self.messages,
-            anonymous=self.anonymous,
-        )
-        return assemble_steps(step_groups)
+        steps: list[TrajectoryStep] = []
+        for item_id in self.order:
+            steps.extend(self.by_id[item_id].steps(item_id))
+        steps.extend(self.anonymous)
+        return tuple(steps)
 
     def _item_id(self, stream_item: dict[str, Any]) -> str:
         raw_id = stream_item.get(protocol.ID)
-        item_id = raw_id if isinstance(raw_id, str) and raw_id else ""
-        if item_id and item_id not in self.seen:
-            self.seen.add(item_id)
+        return raw_id if isinstance(raw_id, str) else ""
+
+    def _absorb(
+        self,
+        item_id: str,
+        payloads: codex_items.CodexItemPayloads,
+    ) -> None:
+        recorded = self.by_id.get(item_id)
+        if recorded is None:
             self.order.append(item_id)
-        return item_id
-
-    def _add_command(self, stream_item: dict[str, Any], item_id: str) -> None:
-        command = stream_item.get("command")
-        has_output = "aggregated_output" in stream_item
-        if item_id:
-            if isinstance(command, str):
-                self.commands[item_id] = command
-            if has_output:
-                self.outputs[item_id] = stream_item.get("aggregated_output")
+            self.by_id[item_id] = payloads
             return
-        if isinstance(command, str):
-            self.anonymous.append(
-                TrajectoryStep(
-                    kind="tool_call",
-                    name=skills_codex.COMMAND_EXECUTION,
-                    content=command,
-                )
-            )
-        if has_output:
-            self.anonymous.append(
-                TrajectoryStep(
-                    kind=TOOL_RESULT,
-                    content=stream_item.get("aggregated_output"),
-                )
-            )
-
-    def _add_message(self, stream_item: dict[str, Any], item_id: str) -> None:
-        message = stream_item.get(TEXT)
-        if not isinstance(message, str) or not message:
+        placeholder = codex_items.UNSUPPORTED_ITEM
+        if payloads.kind == placeholder and recorded.kind != placeholder:
+            # One operation is one item however many frames wrap it. A frame
+            # nothing claims -- an outer tool call the parser has no
+            # normalizer for, reporting the same id as the web search or MCP
+            # call nested inside it -- neither demotes the pair another frame
+            # already named nor becomes a second step beside it. The reverse
+            # order needs no rule of its own: a claimed frame arriving after
+            # the placeholder overwrites its kind, name, and payloads through
+            # the merge below.
             return
-        if item_id:
-            self.messages[item_id] = message
-            return
-        self.anonymous.append(
-            TrajectoryStep(
-                kind="assistant_message",
-                content=message,
-            )
-        )
-
-
-@dataclass(frozen=True)
-class CodexStepGroups:
-    order: list[str]
-    commands: dict[str, str]
-    outputs: dict[str, Any]
-    messages: dict[str, str]
-    anonymous: list[TrajectoryStep]
-
-
-def assemble_steps(groups: CodexStepGroups) -> tuple[TrajectoryStep, ...]:
-    steps: list[TrajectoryStep] = []
-    for item_id in groups.order:
-        command = groups.commands.get(item_id, MISSING)
-        if command is not MISSING:
-            steps.append(
-                TrajectoryStep(
-                    kind="tool_call",
-                    name=skills_codex.COMMAND_EXECUTION,
-                    tool_id=item_id,
-                    content=command,
-                )
-            )
-        output = groups.outputs.get(item_id, MISSING)
-        if output is not MISSING:
-            steps.append(
-                TrajectoryStep(
-                    kind=TOOL_RESULT,
-                    tool_id=item_id,
-                    content=output,
-                )
-            )
-        message = groups.messages.get(item_id, MISSING)
-        if message is not MISSING:
-            steps.append(
-                TrajectoryStep(
-                    kind="assistant_message",
-                    content=message,
-                )
-            )
-    steps.extend(groups.anonymous)
-    return tuple(steps)
+        recorded.kind = payloads.kind
+        recorded.name = payloads.name or recorded.name
+        if payloads.call_payload is not codex_items.MISSING:
+            recorded.call_payload = payloads.call_payload
+        if payloads.result_payload is not codex_items.MISSING:
+            recorded.result_payload = payloads.result_payload

@@ -1,0 +1,268 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""What one `codex exec --json` stream item normalizes to.
+
+Codex reports its whole operational surface as `item.started` / `item.updated`
+/ `item.completed` frames over a small set of typed items, so this owner
+decides, per item type, which trajectory step family an item belongs to and
+which of its own fields are the invocation and the outcome. The builder in
+`trajectory_codex` correlates the frames of one item by `item.id` and orders
+what comes back, which is what collapses a started/completed pair into one
+call and one result.
+
+Each family here is one externally observable operation: the shell command the
+agent ran, the web search it issued, the MCP tool it called, and the patch it
+applied. That last one is codex's *custom* (freeform) tool surface -- the model
+calls `apply_patch`, and the exec stream reports the call and its outcome as a
+`file_change` item -- so a custom tool call normalizes to a pair here like any
+other. `codex exec --json` publishes no separate custom / dynamic tool item
+type: its whole item vocabulary is `agent_message`, `reasoning`,
+`command_execution`, `file_change`, `mcp_tool_call`, `collab_tool_call`,
+`web_search`, `todo_list`, and `error` (verified against codex-cli 0.148.0);
+`custom_tool_call` is a raw model-response / rollout spelling that never
+reaches this stream.
+
+An item type nothing here claims becomes a metadata-only placeholder naming the
+type, the id, and the status, so an operational surface a later codex release
+adds stays visible in the timeline instead of dropping out of it silently.
+Reasoning is the one deliberate exclusion: its text is hidden model content no
+record may carry, and a placeholder per reasoning item would be noise rather
+than a diagnostic.
+
+Nothing here fabricates an outcome. A result payload is contributed only by the
+frame that actually carries one, which is what leaves a call the stream failed
+or never completed visible as an invocation with no result beneath it.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from types import MappingProxyType
+from typing import Any, Callable, Mapping, Optional
+
+from orchestrator.observability.usage import (
+    protocol,
+    skills_codex,
+)
+from orchestrator.observability.usage.trajectory_models import TrajectoryStep
+
+
+AGENT_MESSAGE = "agent_message"
+COMMAND_EXECUTION = skills_codex.COMMAND_EXECUTION
+FILE_CHANGE = "file_change"
+MCP_TOOL_CALL = "mcp_tool_call"
+REASONING = "reasoning"
+WEB_SEARCH = "web_search"
+
+ITEM_COMPLETED = "item.completed"
+
+ASSISTANT_MESSAGE = "assistant_message"
+TOOL_CALL = "tool_call"
+TOOL_RESULT = "tool_result"
+UNSUPPORTED_ITEM = "unsupported_item"
+
+ACTION = "action"
+AGGREGATED_OUTPUT = "aggregated_output"
+ARGUMENTS = "arguments"
+CHANGES = "changes"
+COMMAND = "command"
+ERROR = "error"
+QUERY = "query"
+SERVER = "server"
+STATUS = "status"
+TEXT = "text"
+TOOL = "tool"
+NAME_SEPARATOR = "."
+
+MISSING = object()
+
+
+@dataclass
+class CodexItemPayloads:
+    """The step family one item belongs to and the payloads it carries.
+
+    `MISSING` is what separates a field a frame did not carry from one it
+    carried empty: the builder merges frame by frame and only overwrites what
+    a frame actually reported, so a completed frame that omits a field leaves
+    the started frame's value standing.
+    """
+
+    kind: str
+    name: str = ""
+    call_payload: Any = MISSING
+    result_payload: Any = MISSING
+
+    def steps(self, tool_id: str) -> tuple[TrajectoryStep, ...]:
+        """Order what this item accumulated into the steps it contributes."""
+        if self.kind == ASSISTANT_MESSAGE:
+            if self.call_payload is MISSING:
+                return ()
+            return (
+                TrajectoryStep(
+                    kind=ASSISTANT_MESSAGE,
+                    content=self.call_payload,
+                ),
+            )
+        if self.kind == UNSUPPORTED_ITEM:
+            return (
+                TrajectoryStep(
+                    kind=UNSUPPORTED_ITEM,
+                    name=self.name,
+                    tool_id=tool_id,
+                    content=self.call_payload,
+                ),
+            )
+        return self._tool_steps(tool_id)
+
+    def _tool_steps(self, tool_id: str) -> tuple[TrajectoryStep, ...]:
+        tool_steps: list[TrajectoryStep] = []
+        if self.call_payload is not MISSING:
+            tool_steps.append(
+                TrajectoryStep(
+                    kind=TOOL_CALL,
+                    name=self.name,
+                    tool_id=tool_id,
+                    content=self.call_payload,
+                ),
+            )
+        if self.result_payload is not MISSING:
+            tool_steps.append(
+                TrajectoryStep(
+                    kind=TOOL_RESULT,
+                    tool_id=tool_id,
+                    content=self.result_payload,
+                ),
+            )
+        return tuple(tool_steps)
+
+
+def _agent_message(
+    stream_item: dict[str, Any],
+    completed: bool,
+) -> CodexItemPayloads:
+    """The agent's own text turn."""
+    message = stream_item.get(TEXT)
+    spoken = isinstance(message, str) and message
+    return CodexItemPayloads(
+        kind=ASSISTANT_MESSAGE,
+        call_payload=message if spoken else MISSING,
+    )
+
+
+def _command_execution(
+    stream_item: dict[str, Any],
+    completed: bool,
+) -> CodexItemPayloads:
+    """A shell command: what was run, and the output it aggregated.
+
+    A running command already carries the `aggregated_output` field, empty,
+    so it is the completing frame rather than the field's presence that says
+    there is an output to record -- a command still running, or one killed
+    before it exited, would otherwise be credited with an empty result it
+    never produced.
+    """
+    command = stream_item.get(COMMAND)
+    return CodexItemPayloads(
+        kind=TOOL_CALL,
+        name=COMMAND_EXECUTION,
+        call_payload=command if isinstance(command, str) else MISSING,
+        result_payload=(
+            stream_item.get(AGGREGATED_OUTPUT, MISSING) if completed else MISSING
+        ),
+    )
+
+
+def _web_search(
+    stream_item: dict[str, Any],
+    completed: bool,
+) -> CodexItemPayloads:
+    """A web search: the query it ran, and the action it resolved to.
+
+    A search announces itself with an empty query and an unresolved action and
+    only names itself on the frame that completes it, so the completed frame
+    is both what the call is read from -- it is merged last -- and the only one
+    that reports an outcome.
+    """
+    return CodexItemPayloads(
+        kind=TOOL_CALL,
+        name=WEB_SEARCH,
+        call_payload=stream_item.get(QUERY, MISSING),
+        result_payload=(
+            stream_item.get(ACTION, MISSING) if completed else MISSING
+        ),
+    )
+
+
+def _mcp_tool_call(
+    stream_item: dict[str, Any],
+    completed: bool,
+) -> CodexItemPayloads:
+    """An MCP tool call: its arguments, and the result or error it ended on.
+
+    A call that failed reports it either way -- the server's own error
+    payload, or a result the server marked as the failure -- so the outcome is
+    whichever of the two the frame filled in.
+    """
+    outcome = stream_item.get(protocol.RESULT_KEY)
+    if outcome is None:
+        outcome = stream_item.get(ERROR)
+    name_parts = [
+        part
+        for part in (stream_item.get(SERVER), stream_item.get(TOOL))
+        if isinstance(part, str) and part
+    ]
+    return CodexItemPayloads(
+        kind=TOOL_CALL,
+        name=NAME_SEPARATOR.join(name_parts) or MCP_TOOL_CALL,
+        call_payload=stream_item.get(ARGUMENTS, MISSING),
+        result_payload=MISSING if outcome is None else outcome,
+    )
+
+
+def _file_change(
+    stream_item: dict[str, Any],
+    completed: bool,
+) -> CodexItemPayloads:
+    """A patch application: the paths it touched and the status it ended on."""
+    return CodexItemPayloads(
+        kind=TOOL_CALL,
+        name=FILE_CHANGE,
+        call_payload=stream_item.get(CHANGES, MISSING),
+        result_payload=(
+            stream_item.get(STATUS, MISSING) if completed else MISSING
+        ),
+    )
+
+
+ItemNormalizer = Callable[[dict[str, Any], bool], CodexItemPayloads]
+NORMALIZERS: Mapping[str, ItemNormalizer] = MappingProxyType({
+    AGENT_MESSAGE: _agent_message,
+    COMMAND_EXECUTION: _command_execution,
+    FILE_CHANGE: _file_change,
+    MCP_TOOL_CALL: _mcp_tool_call,
+    WEB_SEARCH: _web_search,
+})
+
+
+def normalize_item(
+    stream_item: dict[str, Any],
+    completed: bool,
+) -> Optional[CodexItemPayloads]:
+    """Normalize one item frame, or `None` for one no record carries.
+
+    An unclaimed item type yields the placeholder rather than nothing, so the
+    only frames that leave no trace are reasoning and an item too malformed to
+    name a type.
+    """
+    item_type = stream_item.get(protocol.TYPE)
+    if not isinstance(item_type, str) or item_type == REASONING:
+        return None
+    normalizer = NORMALIZERS.get(item_type)
+    if normalizer is None:
+        status = stream_item.get(STATUS)
+        return CodexItemPayloads(
+            kind=UNSUPPORTED_ITEM,
+            name=item_type,
+            call_payload=status if isinstance(status, str) else None,
+        )
+    return normalizer(stream_item, completed)
