@@ -53,8 +53,9 @@ matching `ANALYTICS_LOG_PATH`.
   `repo`, `issue`, `event` are `NOT NULL`; everything else is nullable so any record across the three event kinds is a
   valid row. An `extras JSONB` column captures any field added to `build_record` before the DDL knows about it — the
   opt-in skill fields (`skills_triggered` / `skills_triggered_count` / `skills_available`, the per-load
-  `skills_evidence` tier map, and the `skills_incidental` / `skills_incidental_count` path-only references) are exactly
-  such additions, so they need **zero DDL**: an operator-deployed database ingests them the moment
+  `skills_evidence` tier map, the name-to-source-level `skill_levels` map, and the `skills_incidental` /
+  `skills_incidental_count` path-only references) are exactly such additions, so they need **zero DDL**: an
+  operator-deployed database ingests them the moment
   `TRACK_SKILL_TRIGGERS` is enabled, with no migration and no schema reapply. `source_path` / `source_line` are forensic
   context; the authoritative dedup key is `content_hash` — SHA-256 over the canonical (`sort_keys=True`) JSON form of
   the record.

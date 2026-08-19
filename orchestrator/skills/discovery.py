@@ -10,16 +10,17 @@ skill roots under the run's worktree plus the global `$CODEX_HOME/skills` codex
 loads -- including the built-in skills under that global root's `.system`
 container -- and pairs every name it finds with the source level that defined
 it: `project` for a worktree root, `user` for a direct global entry, `harness`
-for a `.system` built-in. `discover_local_skills` is the names-only projection
-of that scan. Both are fail-open (a missing root contributes nothing) and read
-only skill *names*, never `SKILL.md` contents. `discover_codex_tools` returns a
-best-effort static baseline of codex exec's offered tools (codex's stream,
-unlike its skill files, exposes no filesystem source for these).
+for a `.system` built-in. It is fail-open (a missing root contributes nothing)
+and reads only skill *names* and the directory that carried them, never
+`SKILL.md` contents. `discover_codex_tools` returns a best-effort static
+baseline of codex exec's offered tools (codex's stream, unlike its skill
+files, exposes no filesystem source for these).
 
-The roots and the marker file are defined here rather than beside the caller
-that scans them hardest: this owner reaches nothing outside the standard
-library, so `catalog` can read them back and the two enumerations cannot
-disagree about what a skill definition is.
+The roots, the marker file, and the level vocabulary are defined here rather
+than beside the caller that scans them hardest: this owner reaches nothing
+outside the standard library, so `catalog` can read them back and the two
+enumerations can disagree neither about what a skill definition is nor about
+what a repository definition is classified as.
 """
 from __future__ import annotations
 
@@ -118,18 +119,6 @@ def discover_local_skill_sources(cwd: Path) -> tuple[SkillSource, ...]:
     for skill_source in (*project_sources, *_global_codex_skill_sources()):
         seen_sources.setdefault(skill_source.name, skill_source)
     return tuple(seen_sources.values())
-
-
-def discover_local_skills(cwd: Path) -> tuple[str, ...]:
-    """Enumerate names available to a Codex run rooted at ``cwd``.
-
-    The names-only projection of `discover_local_skill_sources`, in that scan's
-    order, for the consumers that record availability without provenance.
-    """
-    return tuple(
-        skill_source.name
-        for skill_source in discover_local_skill_sources(cwd)
-    )
 
 
 _CODEX_OFFERED_TOOLS: tuple[str, ...] = (

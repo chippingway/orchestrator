@@ -57,8 +57,10 @@ parser read them back is in [`../observability/analytics-database.md`](../observ
   [`usage.md`](../observability/usage.md)). The offered-skills set (`skills_available`) is read from claude's
   `system`/`init` frame `skills` array (confirmed against a real stream
   capture); codex's stream carries no such frame, so it is backfilled out-of-band from the filesystem via
-  `skills.discovery.discover_local_skills(cwd)` (a scan of the run's worktree `.agents/skills` / `.claude/skills` roots
-  plus the global `$CODEX_HOME/skills`). Once on, the dashboard's "Skill adoption" panel leads with per-session adoption
+  `skills.discovery.discover_local_skill_sources(cwd)` (a scan of the run's worktree `.agents/skills` /
+  `.claude/skills` roots plus the global `$CODEX_HOME/skills`), whose per-name `project` / `user` / `harness` source
+  level is recorded beside the names as `skill_levels` — dropped for a claude run, whose stream names no source
+  directory to classify. Once on, the dashboard's "Skill adoption" panel leads with per-session adoption
   (`skill_reads.get_skill_adoption`, under `observability/analytics/query/`) — how many logical sessions had each skill
   available and how many loaded it, with incidental references kept as a separate column that never raises the rate —
   above a collapsed invocation-level diagnostic carrying the per-role/backend trigger rate

@@ -72,6 +72,7 @@ def build_agent_exit_record(
         skills_triggered=skill_fields.skills_triggered,
         skills_triggered_count=skill_fields.skills_triggered_count,
         skills_available=skill_fields.skills_available,
+        skill_levels=skill_fields.skill_levels,
         skills_evidence=skill_fields.skills_evidence,
         skills_incidental=skill_fields.skills_incidental,
         skills_incidental_count=skill_fields.skills_incidental_count,

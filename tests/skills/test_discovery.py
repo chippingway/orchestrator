@@ -58,7 +58,17 @@ def _make_harness_skill(home: Path, name: str) -> None:
     _make_skill(home / _SKILLS_DIR / _SYSTEM_DIR, name)
 
 
-class DiscoverLocalSkillsTest(unittest.TestCase):
+def _discovered_names(cwd: Path) -> tuple[str, ...]:
+    """The names one scan reports, for the cases no level varies across."""
+    return tuple(
+        skill_source.name
+        for skill_source in discovery.discover_local_skill_sources(cwd)
+    )
+
+
+class SkillScanMembershipTest(unittest.TestCase):
+    """Which definitions one scan reports, and in which order."""
+
     def test_scans_both_repo_roots_and_dedups(self) -> None:
         with tempfile.TemporaryDirectory() as repo_dir:
             cwd = Path(repo_dir)
@@ -70,7 +80,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
                 os.environ,
                 {_CODEX_HOME_ENV: str(cwd / "no-home")},
             ):
-                names = discovery.discover_local_skills(cwd)
+                names = _discovered_names(cwd)
         self.assertEqual(
             names,
             (_DEVELOP_SKILL, _REVIEW_SKILL, _EXTRA_SKILL),
@@ -84,7 +94,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
             _make_user_skill(home, _GLOBAL_SKILL)
             _make_harness_skill(home, _IMAGEGEN_SKILL)
             with patch.dict(os.environ, {_CODEX_HOME_ENV: str(home)}):
-                names = discovery.discover_local_skills(cwd)
+                names = _discovered_names(cwd)
         self.assertEqual(
             names,
             (_REVIEW_SKILL, _GLOBAL_SKILL, _IMAGEGEN_SKILL),
@@ -101,7 +111,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
             ):
                 _make_harness_skill(home, name)
             with patch.dict(os.environ, {_CODEX_HOME_ENV: str(home)}):
-                names = discovery.discover_local_skills(cwd)
+                names = _discovered_names(cwd)
         self.assertEqual(
             names,
             (_IMAGEGEN_SKILL, "openai-docs", "skill-installer"),
@@ -114,7 +124,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
             _make_project_skill(cwd, _REVIEW_SKILL)
             _make_user_skill(home, _REVIEW_SKILL)
             with patch.dict(os.environ, {_CODEX_HOME_ENV: str(home)}):
-                names = discovery.discover_local_skills(cwd)
+                names = _discovered_names(cwd)
         self.assertEqual(names, (_REVIEW_SKILL,))
 
     def test_only_direct_children_with_skill_md_count(self) -> None:
@@ -130,7 +140,7 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
                 os.environ,
                 {_CODEX_HOME_ENV: str(cwd / "no-home")},
             ):
-                names = discovery.discover_local_skills(cwd)
+                names = _discovered_names(cwd)
         self.assertEqual(names, (_DEVELOP_SKILL,))
 
     def test_missing_roots_yield_empty_not_error(self) -> None:
@@ -141,16 +151,12 @@ class DiscoverLocalSkillsTest(unittest.TestCase):
             }
             with patch.dict(os.environ, missing_home):
                 self.assertEqual(
-                    discovery.discover_local_skills(cwd),
-                    (),
-                )
-                self.assertEqual(
                     discovery.discover_local_skill_sources(cwd),
                     (),
                 )
 
 
-class DiscoverLocalSkillSourcesTest(unittest.TestCase):
+class SkillScanProvenanceTest(unittest.TestCase):
     """Every discovered name carries the level of the root that defined it."""
 
     def test_each_root_stamps_its_own_level(self) -> None:
@@ -194,9 +200,10 @@ class DiscoverLocalSkillSourcesTest(unittest.TestCase):
             ),
         )
 
-    def test_names_only_api_projects_the_same_scan(self) -> None:
-        # The names-only consumers read the projection of this scan, so the
-        # two enumerations cannot drift in membership or in order.
+    def test_global_levels_order_as_one_directory(self) -> None:
+        # The two global levels merge into a single name-sorted run, so a user
+        # skill whose name sorts last stays last instead of being grouped
+        # ahead of the built-ins.
         with tempfile.TemporaryDirectory() as project_dir:
             cwd = Path(project_dir) / _WORKTREE_DIR
             home = Path(project_dir) / _CODEX_HOME_DIR
@@ -205,13 +212,8 @@ class DiscoverLocalSkillSourcesTest(unittest.TestCase):
             _make_harness_skill(home, _IMAGEGEN_SKILL)
             with patch.dict(os.environ, {_CODEX_HOME_ENV: str(home)}):
                 sources = discovery.discover_local_skill_sources(cwd)
-                names = discovery.discover_local_skills(cwd)
         self.assertEqual(
-            names,
-            tuple(source.name for source in sources),
-        )
-        self.assertEqual(
-            names,
+            tuple(skill_source.name for skill_source in sources),
             (_REVIEW_SKILL, _IMAGEGEN_SKILL, _LAST_USER_SKILL),
         )
 

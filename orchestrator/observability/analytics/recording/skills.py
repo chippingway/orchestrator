@@ -11,6 +11,8 @@ so a parser failure costs the skill keys rather than the baseline event.
 
 from __future__ import annotations
 
+from typing import NamedTuple, Optional
+
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics import sink
 from orchestrator.observability.analytics.recording.models import (
@@ -19,6 +21,31 @@ from orchestrator.observability.analytics.recording.models import (
     CodexCatalog,
 )
 from orchestrator.observability.usage import skills as usage_skills
+
+
+class OfferedSkills(NamedTuple):
+    """An offered-skills set and the provenance, if any, that produced it."""
+
+    names: Optional[list[str]] = None
+    levels: Optional[dict[str, str]] = None
+
+
+def offered_skill_fields(
+    parsed_available: tuple[str, ...],
+    codex_catalog: CodexCatalog,
+) -> OfferedSkills:
+    """Pick the offered set and the provenance that belongs to it.
+
+    A stream-parsed set carries names only -- claude's `system`/`init` frame
+    reports no source directory -- so its levels stay unreported rather than
+    being borrowed from a scan that did not produce those names.
+    """
+    if parsed_available:
+        return OfferedSkills(list(parsed_available))
+    return OfferedSkills(
+        codex_catalog.available_skills,
+        codex_catalog.skill_levels,
+    )
 
 
 def normalize_agent_exit_skills(
@@ -30,17 +57,19 @@ def normalize_agent_exit_skills(
     Incidental references stay out of `skills_triggered` / the count (and thus
     the `skill_triggered` audit events) -- they ride the separate
     `skills_incidental` / `skills_incidental_count` keys. `skills_evidence`
-    persists the per-load tier the parser assigned.
+    persists the per-load tier the parser assigned, and `skill_levels` the
+    source level each offered name was defined at.
     """
     skills_triggered = list(parsed_skills.triggered) or None
     skills_triggered_count = sum(parsed_skills.trigger_counts.values()) if skills_triggered else None
-    skills_available = list(parsed_skills.available) or codex_catalog.available_skills
+    offered = offered_skill_fields(parsed_skills.available, codex_catalog)
     skills_incidental = list(parsed_skills.incidental) or None
     skills_incidental_count = sum(parsed_skills.incidental_counts.values()) if skills_incidental else None
     return AgentExitSkillFields(
         skills_triggered=skills_triggered,
         skills_triggered_count=skills_triggered_count,
-        skills_available=skills_available,
+        skills_available=offered.names,
+        skill_levels=offered.levels,
         skills_evidence=dict(parsed_skills.evidence) or None,
         skills_incidental=skills_incidental,
         skills_incidental_count=skills_incidental_count,

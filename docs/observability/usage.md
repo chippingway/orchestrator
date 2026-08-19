@@ -101,7 +101,8 @@ The offered-skills set (`SkillTriggers.available`) is
 stream — and
 stays **empty on codex** at the parser layer: a captured `codex exec --json` stream (v0.142.5) carries no offered-skills
 frame at all, so `record_agent_exit` backfills the codex offered set out-of-band from the filesystem via
-`skills.discovery.discover_local_skills(cwd)` instead. The *triggered* set does not
+`skills.discovery.discover_local_skill_sources(cwd)` instead — a scan that also reports the source level each name was
+defined at, which the `agent_exit` record keeps beside the names as `skill_levels`. The *triggered* set does not
 depend on it either way. As with the usage parsers, malformed JSONL lines are skipped and a missing / renamed field
 yields an empty result rather than an exception. Only the skill *name* is ever read — never the `Skill` tool's `args`
 (Privacy).

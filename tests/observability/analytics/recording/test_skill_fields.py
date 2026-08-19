@@ -96,6 +96,9 @@ _SKILLS_TRIGGERED_COUNT = "skills_triggered_count"
 _SKILLS_AVAILABLE = "skills_available"
 
 
+_SKILL_LEVELS = "skill_levels"
+
+
 _SKILLS_EVIDENCE = "skills_evidence"
 
 
@@ -109,6 +112,7 @@ _SKILL_FIELD_KEYS = (
     _SKILLS_TRIGGERED,
     _SKILLS_TRIGGERED_COUNT,
     _SKILLS_AVAILABLE,
+    _SKILL_LEVELS,
     _SKILLS_EVIDENCE,
     _SKILLS_INCIDENTAL,
     _SKILLS_INCIDENTAL_COUNT,
@@ -266,6 +270,8 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
         # The offered-set wiring exercised end-to-end through the real claude
         # extractor (no stub): a `system`/`init` frame carrying a `skills`
         # array lands as `skills_available`, independent of what triggered.
+        # That frame names no source directory, so the provenance key is
+        # dropped rather than guessed for the names it did report.
         with tempfile.TemporaryDirectory() as td:
             records = self._emit(
                 Path(td) / _ANALYTICS_FILENAME,
@@ -279,6 +285,7 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
         self.assertEqual(rec[_SKILLS_TRIGGERED], [_DEVELOP])
         self.assertEqual(rec[_SKILLS_TRIGGERED_COUNT], 1)
         self.assertEqual(rec[_SKILLS_AVAILABLE], [_DEVELOP, _REVIEW])
+        self.assertNotIn(_SKILL_LEVELS, rec)
 
     def test_available_independent_of_triggered(self) -> None:
         # Offered but nothing triggered: `skills_available` is written while

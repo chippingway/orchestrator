@@ -231,12 +231,18 @@ every tracked agent run, distinct from (and in addition to) the audit `agent_spa
   read from the dedicated `skills` array in the `system`/`init` stream frame — confirmed against a real captured
   `--output-format stream-json` run — so `skills_available` is populated for tracked claude runs independently of what
   they triggered. Codex's `codex exec --json` stream carries no such offered-skills catalog, so for **codex** the set is
-  instead discovered out-of-band from the filesystem by `skills.discovery.discover_local_skills(cwd)` — a scan of the
-  repo skill roots (`.agents/skills` / `.claude/skills`) under the run's worktree plus the global
+  instead discovered out-of-band from the filesystem by `skills.discovery.discover_local_skill_sources(cwd)` — a scan of
+  the repo skill roots (`.agents/skills` / `.claude/skills`) under the run's worktree plus the global
   `$CODEX_HOME/skills` codex
   loads, including the built-in skills under that global root's `.system` container (`imagegen`, `openai-docs`, …). It
   runs only for codex, never overrides the claude stream-parsed set, and is fail-open (a missing root leaves the field
-  empty). Each
+  empty). That scan also reports the *source level* each name was defined at, recorded beside the array as
+  `skill_levels` (name → `project` for a definition under one of the worktree's own skill roots, `user` for one
+  installed directly under the global `$CODEX_HOME/skills`, `harness` for a built-in under that root's `.system`
+  container). The map rides *beside* `skills_available` instead of reshaping it, so the array keeps the shape a reader
+  already knows and the addition is another `extras JSONB` key with **no DDL change**. Provenance is reported only
+  where the enumeration knows it: claude's `system`/`init` frame names no source directory for the skills it lists, so
+  a tracked claude run records `skills_available` with the `skill_levels` key dropped rather than a guessed level. Each
   field is dropped (its key absent) when empty, so a claude run that was offered skills but triggered none records
   `skills_available` while the triggered / evidence keys drop — the "offered but unused" vs "never available" signal —
   and a run with nothing to report keeps the record shape identical to the switch-off case. Parsed via
@@ -355,10 +361,13 @@ trigger anchor in `observability/usage/skill_commands.py`), and dedupes by skill
 preserving every source path. The catalog is read from the target repo's base ref, never the orchestrator's own
 working tree, so dashboard-local skill files are not scanned.
 
-Each record carries `base_branch`, `remote_name`, `skills_available` (the sorted deduped skill names), and the optional
-`skill_paths` (name → sorted source paths; dropped when empty). It is **not** issue-scoped, so its `issue` is the
-sentinel `0` — the record still satisfies the `ts` / `repo` / `issue` / `event` envelope the sink and the Postgres
-`analytics_events` schema require, and the four catalog fields all land in `extras JSONB` with **no DDL change**. The
-whole producer is fail-open: a missing clone, an unfetched ref, a git error, or a sink IO failure logs and is swallowed
-so catalog collection never disturbs the polling tick. An empty catalog still records `skills_available: []` (the
-"scanned, found none" signal).
+Each record carries `base_branch`, `remote_name`, `skills_available` (the sorted deduped skill names), and two
+optional per-name maps: `skill_paths` (name → sorted source paths) and `skill_levels` (name → source level), both
+dropped when empty. Everything this scan enumerates is a definition checked into the target repo itself, so every name
+is classified `project` — the same level `skills.discovery` stamps a worktree skill root with, read back from that
+owner so the two enumerations cannot disagree about what a repository definition is. It is **not** issue-scoped, so its
+`issue` is the sentinel `0` — the record still satisfies the `ts` / `repo` / `issue` / `event` envelope the sink and the
+Postgres `analytics_events` schema require, and the five catalog fields all land in `extras JSONB` with **no DDL
+change**. The whole producer is fail-open: a missing clone, an unfetched ref, a git error, or a sink IO failure logs and
+is swallowed so catalog collection never disturbs the polling tick. An empty catalog still records `skills_available:
+[]` (the "scanned, found none" signal) with both maps dropped.

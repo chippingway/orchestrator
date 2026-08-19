@@ -42,10 +42,11 @@ retention stays operator-driven for now.
 the redacted trajectory: `user_input` (the orchestrator prompt), `system_prompt`, `tools` (the offered-tools set — read
 from claude's stream, and for codex backfilled with the best-effort `skills.discovery.discover_codex_tools()` baseline
 since its stream carries no offered-tools frame), `skills_triggered` / `skills_available` (names-only — for codex the
-`skills_available` set is backfilled from the out-of-band `skills.discovery.discover_local_skills(cwd)` filesystem scan,
-since its stream carries no
-offered-skills catalog), a `run_usage` summary, a claude-only per-turn `turns`
-array, an ordered `steps` array (each `{kind, name, tool_id, content}` plus a `turn` index on the billed steps, where
+`skills_available` set is backfilled from the out-of-band
+`skills.discovery.discover_local_skill_sources(cwd)` filesystem scan, since its stream carries no offered-skills
+catalog; the source level that scan also reports rides the `agent_exit` record, not this one), a `run_usage` summary,
+a claude-only per-turn `turns` array, an ordered `steps` array (each `{kind, name, tool_id, content}` plus a `turn`
+index on the billed steps, where
 `kind` is `tool_call` / `tool_result` / `assistant_message` / `user_message` / `unsupported_item` and `content` is the
 redacted tool input, tool result, or text turn — `name` / `tool_id` are `null` on the message turns, and an
 `unsupported_item` is the metadata-only placeholder a codex item type the parser does not normalize leaves behind,
