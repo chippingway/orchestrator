@@ -139,7 +139,7 @@ When you move a handler, helper, or constant, grep for the symbol across these f
 
 - `docs/architecture.md` — the module-by-module inventory lives here and nowhere else
 - `docs/state-machine.md`
-- `docs/workflow.md`
+- `docs/workflow.md` and the focused pages under `docs/workflow/`
 - the module docstrings at the top of the owners the symbol moved between
 
 `AGENTS.md` (and its `CLAUDE.md` symlink) is deliberately not on that list. It carries no module, owner, or test

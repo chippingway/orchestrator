@@ -338,7 +338,7 @@ bot-authored comment that embeds the marker in prose can preempt state (see
 into a few groups:
 
 - **Agent identity.** `dev_agent` + `dev_session_id` (locked dev session — see
-  [in-flight session lock](workflow.md#in-flight-session-lock--pinned-full-spec-until-the-session-ends)),
+  [in-flight session lock](workflow/command-specs.md#in-flight-session-lock)),
   `review_agent` (traceability only; reviewer is fresh per round), `decomposer_agent` + `decomposer_session_id`
   (parents), `question_agent` + `question_session_id` (`question` stage), `discussion_agent` +
   `discussion_session_id` (`discussion` stage). The last three pairs are separate pins on purpose: each conversation

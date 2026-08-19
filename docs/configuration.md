@@ -95,8 +95,9 @@ Slugs whose repo name contains `.lock`, `..`, or a trailing `.` (all rejected by
 ## Agent roles
 
 The first token of each role spec selects the backend (`codex` / `claude`); any remaining tokens are forwarded as
-backend-CLI args (model, reasoning effort, etc.). See [`workflow.md`](workflow.md) for the spec format, in-flight
-session lock, and full examples.
+backend-CLI args (model, reasoning effort, etc.). See
+[`workflow/command-specs.md`](workflow/command-specs.md) for the spec format, in-flight session lock, and full
+examples.
 
 - `DEV_AGENT` — default `claude`. implementer command spec
 - `REVIEW_AGENT` — default `codex`. reviewer command spec

@@ -3383,8 +3383,10 @@ issue before one exists) `_format_issue_usage_verdict` beside it reads those cou
 comment — the sole read-side consumer, and nothing gates on the figure. `CodexResult` is kept as a
 transitional alias.
 
-The role command specs (`DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT`), their parsing, the durable per-issue session
-lock, and the resume mechanic are documented in [`workflow.md`](workflow.md). What follows is the subprocess shape only.
+The role command specs (`DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT`), their parsing, the durable per-session
+lock, and the resume mechanic are documented in
+[`workflow/command-specs.md`](workflow/command-specs.md). Which stage spawns which role is in
+[`workflow/roles.md`](workflow/roles.md). What follows is the subprocess shape only.
 
 - **Codex command**:
   `codex exec [-C cwd | resume <sid>] --dangerously-bypass-approvals-and-sandbox --json -o <tempfile> <prompt>`. The
