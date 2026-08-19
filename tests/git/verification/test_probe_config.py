@@ -455,11 +455,14 @@ class ReplacedObjectTest(_RealRepoMixin, unittest.TestCase):
 
     def test_a_grafted_base_hides_nothing(self) -> None:
         # The older mechanism, and the one `GIT_NO_REPLACE_OBJECTS` does not
-        # cover: a line in `info/grafts` rewrites the base's parents, which
+        # cover: lines in `info/grafts` rewrite a commit's parents, which
         # moves the merge base of the three-dot diff onto the code commit and
-        # leaves the same lie behind.
+        # leaves the same lie behind. The second line makes the code commit a
+        # grafted root, which keeps the rewritten history acyclic: base and
+        # code each claiming the other as a parent is a graph git can traverse
+        # to no merge base at all, depending on how their timestamps fall.
         code_sha, head_sha = self._code_then_plan()
-        self._plant_graft(f"{self.base_sha} {code_sha}")
+        self._plant_graft(f"{self.base_sha} {code_sha}", code_sha)
 
         hidden = self.git(
             GIT_DIFF, NAMES_ONLY, f"{self.base_sha}...{head_sha}",
@@ -501,11 +504,11 @@ class ReplacedObjectTest(_RealRepoMixin, unittest.TestCase):
         self.write(PLAN_PATH, PLAN_TEXT)
         return code_sha, self.commit(PLAN_PATH)
 
-    def _plant_graft(self, line: str) -> None:
+    def _plant_graft(self, *lines: str) -> None:
         """Write the graft file an agent with the git dir can write."""
         graft_file = self.work / GRAFT_FILE
         graft_file.parent.mkdir(parents=True, exist_ok=True)
-        graft_file.write_text(f"{line}\n")
+        graft_file.write_text("".join(f"{line}\n" for line in lines))
 
 
 if __name__ == "__main__":
