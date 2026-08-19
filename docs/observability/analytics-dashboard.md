@@ -556,52 +556,52 @@ either wave surfaces as one `st.error` + `st.stop`.
    before the second-wave fan-out so the heatmap query buckets in the chosen zone, and the card subtitle / x-axis title
    render the matching `UTC±N` label.
 8. "Skill adoption" panel — a fold-out invocation-level diagnostic above the primary per-session adoption matrix,
-   which is itself split into one collapsed section per source level. The adoption table (`_skill_adoption_html` over
-   `get_skill_adoption`) renders one row per `(repo, agent_role, backend, skill, level)` read-model cell with columns
-   Repo / Role / Backend / Skill / Level / Sessions / Sessions using skill / Adoption rate / Invocation loads /
-   Incidental references. `Level` is the source level the skill was defined at
-   (`project` / `user` / `harness`, or `unknown` where no record classified it), so two rows carrying the same four
-   names ahead of it are legible as the two definitions they are — a repository's own `develop` beside a same-named
-   global one, or the `unknown`-level loads of a claude run (whose stream names no source directory) beside the
-   catalog's `project` cell for that name. The table counts skill use by **logical agent session**, not by raw run:
-   `Sessions` is how many sessions in the cohort had the skill available, `Sessions using skill` the subset that loaded
-   it, and `Adoption rate` their share (`adopted / sessions`, once per session). The two trailing columns are the
-   window-scoped invocation diagnostics: `Invocation loads` counts the window runs that loaded the skill and
-   `Incidental references` the window runs that made a path-only reference to its `SKILL.md`. The load and incidental
-   buckets are independent, so a run that both loaded and inspected it increments both, and an incidental mention
-   is a separate column that can never raise the adoption rate (a cell with no available session renders a muted `—`
-   rate rather than a misleading `0%`). The read model caps the list at 100 rows (Sessions DESC then Sessions-using
-   DESC then Invocations DESC); by default rows display sorted by Repo ascending, then Adoption rate descending. Each
-   column header is a clickable sort control writing `adopt_sort` / `adopt_dir` query params (parsed by
-   `parse_skill_adoption_sort`), with a ▲ / ▼ indicator; an unknown / absent param falls back to that default order.
-   The card opens on a collapsed `st.expander` ("Invocation-level diagnostics · per-run skill triggers") carrying the
-   older per-run views as a clearly named diagnostic: the per-`(agent_role, backend)` aggregate table
-   (`_skill_triggers_html` over `get_skill_trigger_rates`, showing runs, skill runs, a trigger-rate bar, and total
-   trigger count) and, below it, the per-skill **trigger matrix** (`_skill_matrix_html` over
-   `get_skill_trigger_matrix`) with columns Repo / Role / Backend / Skill / Level / Runs / Runs with skill / Trigger
-   rate — the same `Level` column the adoption table beneath it carries, so a catalog-padded `project` row can sit
-   beside an `unknown`-level row for a skill some run loaded. The
-   matrix folds each repo's `repo_skill_catalog` into the observed triggers so a skill the repo offers but no cohort
-   fired surfaces as an explicit (muted) `0` "Runs with skill" cell (and a matching muted `0%` trigger rate) rather
-   than a missing row (the cohort `Runs` total is never muted); its headers write `mtx_sort` / `mtx_dir` params (parsed
-   by `parse_skill_matrix_sort`) and default to Repo ascending, then Trigger rate descending.
+   which is itself split into one collapsed section per source level. The card opens on a collapsed `st.expander`
+   ("Invocation-level diagnostics · per-run skill triggers") carrying the older per-run views as a clearly named
+   diagnostic: the per-`(agent_role, backend)` aggregate table (`_skill_triggers_html` over
+   `get_skill_trigger_rates`, showing runs, skill runs, a trigger-rate bar, and total trigger count) and, below it,
+   the per-skill **trigger matrix** (`_skill_matrix_html` over `get_skill_trigger_matrix`) with columns Repo / Role /
+   Backend / Skill / Level / Runs / Runs with skill / Trigger rate — the same `Level` column the adoption table
+   beneath it carries, so a catalog-padded `project` row can sit beside an `unknown`-level row for a skill some run
+   loaded. The matrix folds each repo's `repo_skill_catalog` into the observed triggers so a skill the repo offers but
+   no cohort fired surfaces as an explicit (muted) `0` "Runs with skill" cell (and a matching muted `0%` trigger rate)
+   rather than a missing row (the cohort `Runs` total is never muted); its headers write `mtx_sort` / `mtx_dir` params
+   (parsed by `parse_skill_matrix_sort`) and default to Repo ascending, then Trigger rate descending.
    Under that fold-out the adoption cells are drawn in one collapsed `st.expander` per source level, in the order one
    definition shadows another: "Project-level skills · defined in the repository", "User-level skills · installed for
    the operator", and "Harness-level skills · built into the CLI", each rendering the same sortable table over its own
    `level` rows. A fourth section ("Unclassified skills · no source level recorded") is drawn only when the window
    carries a cell no record classified — a claude run's load, whose stream names no source directory — so such a cell
-   is reported rather than dropped by the split. All four read the one `adopt_sort` / `adopt_dir` pair, so a click
-   reorders every section at once. A named level the window has no cell of renders a short line saying only that
-   (`No user-level skill was recorded in this window.`), never the switch-naming notice, since a sibling section's
-   rows already prove tracking is on. The three tables degrade
-   differently with the switch off: per-session adoption only carries signal once `TRACK_SKILL_TRIGGERS` has recorded
-   per-run skill fields, but the trigger-rate table still counts every `agent_exit` run and the matrix still shows
-   catalog-backed zero rows (the `runs` denominator and `repo_skill_catalog` records do not depend on the switch). When
-   rows are present a zero-adoption window
-   captions a neutral genuine-0% result beneath the level sections (a present row proves tracking is on), an adoption
-   window with no cell at all renders the adoption table's fallback notice naming the switch once, in place of those
-   sections rather than inside each of them, and the matrix shows its own fallback notice when no
-   catalog-backed matrix can be built (no catalog records matched and no run fired a skill).
+   is reported rather than dropped by the split. A named level the window has no cell of renders a short line saying
+   only that (`No user-level skill was recorded in this window.`), never the switch-naming notice, since a sibling
+   section's rows already prove tracking is on.
+   The table each section draws (`_skill_adoption_html` over `get_skill_adoption`) renders one row per `(repo,
+   agent_role, backend, skill, level)` read-model cell with columns Repo / Role / Backend / Skill / Level / Sessions /
+   Sessions using skill / Adoption rate / Invocation loads / Incidental references. `Level` is the source level the
+   skill was defined at (`project` / `user` / `harness`, or `unknown` where no record classified it) and is what
+   decides the section a row lands in, so two rows carrying the same four names ahead of it are legible as the two
+   definitions they are — a repository's own `develop` beside a same-named global one, or the `unknown`-level loads of
+   a claude run (whose stream names no source directory) beside the catalog's `project` cell for that name. The table
+   counts skill use by **logical agent session**, not by raw run: `Sessions` is how many sessions in the cohort had
+   the skill available, `Sessions using skill` the subset that loaded it, and `Adoption rate` their share
+   (`adopted / sessions`, once per session). The two trailing columns are the window-scoped invocation diagnostics:
+   `Invocation loads` counts the window runs that loaded the skill and `Incidental references` the window runs that
+   made a path-only reference to its `SKILL.md`. The load and incidental buckets are independent, so a run that both
+   loaded and inspected it increments both, and an incidental mention is a separate column that can never raise the
+   adoption rate (a cell with no available session renders a muted `—` rate rather than a misleading `0%`). The read
+   model caps the list at 100 rows (Sessions DESC then Sessions-using DESC then Invocations DESC) across the window's
+   cells as a whole, before the level split; by default rows display sorted by Repo ascending, then Adoption rate
+   descending. Each column header is a clickable sort control writing `adopt_sort` / `adopt_dir` query params (parsed
+   by `parse_skill_adoption_sort`), with a ▲ / ▼ indicator; an unknown / absent param falls back to that default
+   order, and every section reads that one pair, so a click reorders all of them at once.
+   The three tables degrade differently with the switch off: per-session adoption only carries signal once
+   `TRACK_SKILL_TRIGGERS` has recorded per-run skill fields, but the trigger-rate table still counts every
+   `agent_exit` run and the matrix still shows catalog-backed zero rows (the `runs` denominator and
+   `repo_skill_catalog` records do not depend on the switch). When rows are present a zero-adoption window captions a
+   neutral genuine-0% result beneath the level sections (a present row proves tracking is on), an adoption window with
+   no cell at all renders the adoption table's fallback notice naming the switch once, in place of those sections
+   rather than inside each of them, and the matrix shows its own fallback notice when no catalog-backed matrix can be
+   built (no catalog records matched and no run fired a skill).
 9. Recent agent-runs table as a collapsible expander; the `ts` column is shifted to the wall-clock of the selected UTC
    offset via `shift_ts`.
 10. Per-issue drill-down when a number is entered.
