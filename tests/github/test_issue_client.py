@@ -21,6 +21,7 @@ _SWEPT_LABEL_COUNT = len(CLOSED_SWEEP_LOOKUPS)
 _HTTP_NOT_FOUND = 404
 _PARENT_ISSUE_NUMBER = 42
 _LEGACY_SWEEP_NAME = "implementing"
+_REPO_SLUG = "owner/repo"
 _SWEPT_ISSUE_NUMBER = 77
 _SWEEP_CADENCE_ATTR = "CLOSED_ISSUE_SWEEP_EVERY_N_TICKS"
 
@@ -30,6 +31,7 @@ def _closed_sweep_fixture():
     # Bypass the networked __init__; wire only what the poll generator reads.
     client = GitHubClient.__new__(GitHubClient)
     client.repo = MagicMock()
+    client._repo_slug = _REPO_SLUG
     client._pollable_calls = 0
     client._closed_sweeps = 0
     client._label_cache = {}

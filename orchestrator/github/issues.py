@@ -175,26 +175,7 @@ class GitHubIssueMixin:
             and (self._pollable_calls - 1) % sweep_cadence != 0
         ):
             return
-        # Counted past the cadence gate, not beside `_pollable_calls`: the
-        # absent-label window is denominated in sweeps, and under `N>1` most
-        # polls never reach this loop at all.
-        self._closed_sweeps += 1
-        for label_name, absence_is_expected in CLOSED_SWEEP_LOOKUPS:
-            label_object = self._cached_label(
-                label_name, throttle_absent=absence_is_expected,
-            )
-            if label_object is None:
-                continue
-            yield from iter_new_non_pr_issues(
-                self.repo.get_issues(
-                    **issue_query_options(
-                        issue_state="closed",
-                        since=since,
-                        label=label_object,
-                    ),
-                ),
-                seen_numbers,
-            )
+        yield from self._iter_closed_sweep_issues(since, seen_numbers)
 
     def emit_event(
         self,
@@ -245,3 +226,41 @@ class GitHubIssueMixin:
             body=full_body,
             labels=validated_labels,
         )
+
+    def _iter_closed_sweep_issues(
+        self,
+        since: Optional[datetime],
+        seen_numbers: set[int],
+    ) -> Iterable[Issue]:
+        """Yield the closed issues still carrying a swept workflow label.
+
+        Reached only past the cadence gate, so the sweep count it keeps -- and
+        the absent-label window denominated in it -- advances once per sweep
+        rather than once per poll.
+        """
+        self._closed_sweeps += 1
+        # Scoped to this pass: the spellings it confirms absent are summarized
+        # at the end of it, and a sweep that raises before then takes them with
+        # it rather than leaving them for the next one to restate.
+        absent_legacy_names: list[str] = []
+        for label_name, absence_is_expected in CLOSED_SWEEP_LOOKUPS:
+            label_object = self._cached_label(
+                label_name,
+                throttle_absent=absence_is_expected,
+                absent_names=absent_legacy_names,
+            )
+            if label_object is None:
+                continue
+            yield from iter_new_non_pr_issues(
+                self.repo.get_issues(
+                    **issue_query_options(
+                        issue_state=_ISSUE_STATE_CLOSED,
+                        since=since,
+                        label=label_object,
+                    ),
+                ),
+                seen_numbers,
+            )
+        # After the loop, so every legacy spelling this sweep confirmed absent
+        # lands in one repository-qualified line instead of one line each.
+        self._report_absent_legacy_labels(absent_legacy_names)

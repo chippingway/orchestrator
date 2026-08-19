@@ -312,7 +312,9 @@ closed — a closed issue at those stages is a hard human stop until an operator
 The closed-issue sweep issues one closed-issue query per sweep label the repository actually carries, per repo, every
 tick — a fixed request cost that drives GitHub primary-rate-limit exhaustion on multi-repo hosts. A pre-namespace
 spelling the rename already retired costs only its `GET …/labels/<name>` miss, and even that is thrown away for
-twenty sweeps before being asked again rather than re-requested every pass.
+twenty sweeps before being asked again rather than re-requested every pass. Those confirmed misses are reported
+together, as one repo-qualified INFO line per sweep naming the absent legacy spellings, so a migrated multi-repo host
+does not open with a burst of near-identical lines that reads like broken configuration.
 `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` (default `1`) batches the whole sweep to once every N ticks; the open-issue poll is
 unaffected, so the only effect of `N>1` is that an externally-merged/closed issue can take up to `N-1` extra ticks to
 finalize. See [configuration.md#github-rate-limits](../configuration.md#github-rate-limits).
