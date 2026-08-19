@@ -23,7 +23,9 @@ on the answer.
 
 For the multi-repo dispatch, module map, and push model, see [`architecture.md`](architecture.md). For agent roles,
 prompt contracts, and command specs, see [`workflow.md`](workflow.md). For env vars and the operator runbooks beside
-them, see [`configuration.md`](configuration.md). For the audit event log, analytics sink, and usage parser, see
+them, see [`configuration.md`](configuration.md). For the audit event log and analytics sink, see
+[`observability/event-streams.md`](observability/event-streams.md); for the usage parser over them,
+[`observability/usage.md`](observability/usage.md); and for the map over every observability surface,
 [`observability.md`](observability.md). For the security checklist, see [`security.md`](security.md).
 
 ## Workflow labels
