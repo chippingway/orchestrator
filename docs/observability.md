@@ -27,9 +27,10 @@ summary that names that page — so a link written against this page still lands
   as the token / cost detail on the analytics `agent_exit` record and the `run_usage` summary on the trajectory
   record.
 
-Which module owns what across these four surfaces is in
-[`architecture.md`](architecture.md#top-level-layout), where that inventory is maintained; the packages beneath them
-are mapped on [`architecture/platform-modules.md`](architecture/platform-modules.md) and
+Which package owns what across these four surfaces — the responsibility each holds and the boundaries between
+them — is mapped in
+[`architecture/observability-modules.md`](architecture/observability-modules.md); the packages they observe are
+mapped on [`architecture/platform-modules.md`](architecture/platform-modules.md) and
 [`architecture/workflow-modules.md`](architecture/workflow-modules.md) beside it. The pages above name an owner only
 where the behavior under discussion turns on which module a caller reaches. Neither Streamlit page
 is one of those owners: both sit beside the tree, at `orchestrator/apps/analytics_dashboard.py` and

@@ -8,9 +8,10 @@ sync, or the analytics dashboard.
 
 Read the privacy contract under the [trajectory sink](#trajectory-sink-trajectory_log_path) before enabling it:
 redaction masks secret-shaped values, not repository content, so an enabled trajectory file carries the same
-sensitivity as the repositories the orchestrator works on. Which module owns which piece of the write, prune, and
-viewer paths is in [`architecture.md`](../architecture.md#top-level-layout); the knobs are in
-[`configuration/observability.md`](../configuration/observability.md).
+sensitivity as the repositories the orchestrator works on. Where the write, prune, and viewer paths sit in the
+package tree is in
+[`architecture/observability-modules.md`](../architecture/observability-modules.md), at the package boundary; the
+knobs are in [`configuration/observability.md`](../configuration/observability.md).
 
 ## Trajectory sink (`TRAJECTORY_LOG_PATH`)
 
