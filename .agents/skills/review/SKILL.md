@@ -75,7 +75,9 @@ and the predicate under it, the illegal-write exception, and the per-repo `tick`
 After any handler or helper move, grep the PR for stale pointers and request fixes in:
 
 - `docs/architecture.md` and the focused pages under `docs/architecture/` — the module-by-module inventory
-  lives here and nowhere else
+  lives here and nowhere else, except `docs/architecture/observability-modules.md`, which maps
+  `observability/` and `apps/` at the package boundary: flag a per-module entry grown back into that page
+  rather than asking for one
 - `docs/state-machine.md` and the focused pages under `docs/state-machine/`
 - `docs/workflow.md` and the focused pages under `docs/workflow/`
 - module docstrings at the top of the owners the symbol moved between, and of the package initializers
