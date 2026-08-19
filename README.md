@@ -36,7 +36,7 @@ this path:
 
 A PR branch that cannot be rebased cleanly onto the base branch detours through `workflow:resolving_conflict` and
 returns to validation. The operator-applied `question` and `discussion` flows are described below; the complete graph
-is in [`docs/state-machine.md`](docs/state-machine.md#state-transition-label-lifecycle).
+is in [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md).
 
 ## Requirements
 
@@ -146,7 +146,7 @@ is in [`docs/state-machine.md`](docs/state-machine.md#state-transition-label-lif
    every 60 seconds. Labels owned only by the orchestrator are namespaced `workflow:<name>`; labels a human applies or
    reads directly — `in_review`, `question`, `discussion`, `done`, `rejected`, `backlog`, and `paused` — keep their bare
    spelling. At startup, it migrates legacy labels when possible and recognizes any that remain. See
-   [the migration notes](docs/state-machine.md#legacy-labels-and-the-migration-off-them). The configuration docs cover
+   [the migration notes][label-migration]. The configuration docs cover
    [other run modes](docs/configuration.md#run-modes) and [systemd deployment][cfg-systemd].
 
 6. **File a first issue** and watch it go end-to-end. Start from something small enough to land in one round, for
@@ -261,7 +261,7 @@ For deeper implementation details, use the references below.
 | Topic | Link | Covers |
 |---|---|---|
 | Architecture | [`docs/architecture.md`](docs/architecture.md) | Process model, agent model, push model, module map |
-| State machine | [`docs/state-machine.md`](docs/state-machine.md) | Labels, workflow states, stage handlers |
+| State machine | [`docs/state-machine.md`](docs/state-machine.md) | Labels, states, stage handlers, lifecycle |
 | Workflow | [`docs/workflow.md`](docs/workflow.md) | Agent roles, conversation contracts, command specs |
 | Configuration | [`docs/configuration.md`](docs/configuration.md) | Env vars, defaults, operator runbooks |
 | Observability | [`docs/observability.md`](docs/observability.md) | Event sinks, trajectories, database, usage parser |
@@ -275,6 +275,7 @@ Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE) for the
 [ci-link]: https://github.com/geserdugarov/agent-orchestrator/actions/workflows/ci.yml
 [cfg-systemd]: docs/configuration.md#running-under-systemd-user-service
 [qa-lifecycle]: docs/workflow/conversations.md#question-stage
-[qa-handler]: docs/state-machine.md#_handle_question-label-question
+[label-migration]: docs/state-machine/labels-and-state.md#legacy-labels-and-the-migration-off-them
+[qa-handler]: docs/state-machine/conversation-stages.md#_handle_question-label-question
 [discussion-lifecycle]: docs/workflow/conversations.md#discussion-stage
-[discussion-handler]: docs/state-machine.md#_handle_discussion-label-discussion
+[discussion-handler]: docs/state-machine/conversation-stages.md#_handle_discussion-label-discussion

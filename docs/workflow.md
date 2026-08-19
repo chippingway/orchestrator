@@ -22,7 +22,7 @@ For the higher-level design (multi-repo dispatch, push hardening, agent subproce
 [`configuration.md`](configuration.md). For the user-facing summary, see [`../README.md`](../README.md).
 
 Stage and label names are spelled apart across this area as they are in
-[`state-machine.md`](state-machine.md#workflow-labels): a bare tag names the **stage** — the handler, the subpackage
+[`state-machine/labels-and-state.md`][workflow-labels]: a bare tag names the **stage** — the handler, the subpackage
 under `orchestrator/workflow/stages/` holding it, and the identifier a session's analytics row is attributed to —
 while `workflow:<tag>` is the **wire label** the GitHub issue carries. `in_review`, `question`, `discussion`, and the
 `done` / `rejected` terminals were never namespaced, so those read the same on both sides.
@@ -48,7 +48,7 @@ modifying, committing, or pushing files, posts the answer as a comment pinging `
 the session pinned to `question_agent` / `question_session_id` on every human reply. A read-only violation parks
 awaiting human and preserves the worktree; closing the issue flips it to `done`. Full contract:
 [`workflow/conversations.md#question-stage`](workflow/conversations.md#question-stage). Per-`park_reason` semantics:
-[`state-machine.md#_handle_question-label-question`](state-machine.md#_handle_question-label-question).
+[`state-machine/conversation-stages.md#_handle_question-label-question`][question-handler].
 
 ## Discussion stage — architecture discussion on the `discussion` label
 
@@ -59,7 +59,7 @@ way, the agent may commit `plans/issue-<number>.md` alone, and the stage publish
 whose verdict is the issue's ending — merged is `done`, closed unmerged is `rejected`. Full contract:
 [`workflow/conversations.md#discussion-stage`](workflow/conversations.md#discussion-stage). Publication, recovery, and
 park semantics:
-[`state-machine.md#_handle_discussion-label-discussion`](state-machine.md#_handle_discussion-label-discussion).
+[`state-machine/conversation-stages.md#_handle_discussion-label-discussion`][discussion-handler].
 
 ## Tracked-repos awareness in working-agent prompts
 
@@ -97,3 +97,6 @@ validating tick. Per-role keys, the resume path, and the legacy values still hon
 [tracked-repos]: workflow/conversations.md#tracked-repository-awareness-in-working-agent-prompts
 [disclosure]: security.md#cross-repo-awareness-disclosure-expose_tracked_repos
 [session-lock]: workflow/command-specs.md#in-flight-session-lock
+[workflow-labels]: state-machine/labels-and-state.md#workflow-labels
+[question-handler]: state-machine/conversation-stages.md#_handle_question-label-question
+[discussion-handler]: state-machine/conversation-stages.md#_handle_discussion-label-discussion
