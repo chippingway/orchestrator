@@ -39,9 +39,9 @@
 #   import-time logic.
 # * orchestrator/observability/usage/__init__.py is the usage-parsing API: it
 #   re-exports the nine parsers defined across the `metrics`, `skills`, and
-#   `trajectory` owners, a per-backend trio each, plus the five result types
+#   `trajectory` owners, a per-backend trio each, plus the six result types
 #   they hand back -- two from those same owners and the
-#   trajectory trio from `trajectory_models` -- and publishes that narrow
+#   trajectory quartet from `trajectory_models` -- and publishes that narrow
 #   public surface through an explicit __all__ (WPS410) so a caller reaches
 #   the parsers through the package. WPS412 is waived for that import-time
 #   logic.

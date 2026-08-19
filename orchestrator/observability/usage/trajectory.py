@@ -34,10 +34,15 @@ def parse_claude_trajectory(stdout: str) -> AgentTrajectory:
 def parse_codex_trajectory(stdout: str) -> AgentTrajectory:
     """Classify a Codex JSON run's trajectory."""
     events = event_stream.iter_events(stdout)
+    # The steps and the accounting of the items behind them come off one fold
+    # of the stream: which items reached a step is part of what that fold
+    # decides, so asking for them separately would re-derive it.
+    timeline = trajectory_codex.reconstruct(events)
     return AgentTrajectory(
         backend=protocol.CODEX,
         skills=parse_codex_skills(stdout),
-        steps=trajectory_codex.trajectory_steps(events),
+        steps=timeline.steps,
+        source_items=timeline.source_items,
         final_output=trajectory_codex.final_output(events),
     )
 

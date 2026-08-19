@@ -27,7 +27,10 @@ type, the id, and the status, so an operational surface a later codex release
 adds stays visible in the timeline instead of dropping out of it silently.
 Reasoning is the one deliberate exclusion: its text is hidden model content no
 record may carry, and a placeholder per reasoning item would be noise rather
-than a diagnostic.
+than a diagnostic. The exclusion is still named rather than silent --
+`trajectory_codex` accounts every identified item by id, so a reasoning item
+is a recorded classification there while neither its text nor any other field
+of it leaves this module.
 
 Nothing here fabricates an outcome. A result payload is contributed only by the
 frame that actually carries one, which is what leaves a call the stream failed

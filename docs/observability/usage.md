@@ -17,11 +17,11 @@ Where the parser sits in the package tree, and what it is responsible for beside
 [`configuration/observability.md`](../configuration/observability.md).
 
 **Module layout.** The package initializer is the public surface: under a narrow `__all__` it re-exports the nine
-parsers `metrics.py`, `skills.py`, and `trajectory.py` define, a per-backend trio each, plus the five result types they
+parsers `metrics.py`, `skills.py`, and `trajectory.py` define, a per-backend trio each, plus the six result types they
 hand back — `UsageMetrics` and `SkillTriggers` from the first two, and `AgentTrajectory` / `TrajectoryStep` /
-`TurnUsage` from `trajectory_models.py`. Provider payload handling is split behind them: `protocol.py` holds the JSONL
-vocabulary and `event_stream.py` the resilient line decoder, `prices.py` the first-party price tables and
-`model_names.py` the nested model-name lookup, `claude_rows.py` / `claude_summary.py` and `codex_rows.py` /
+`SourceItem` / `TurnUsage` from `trajectory_models.py`. Provider payload handling is split behind them: `protocol.py`
+holds the JSONL vocabulary and `event_stream.py` the resilient line decoder, `prices.py` the first-party price tables
+and `model_names.py` the nested model-name lookup, `claude_rows.py` / `claude_summary.py` and `codex_rows.py` /
 `codex_summary.py` the per-provider frame decoding and run summary, `shell_segments.py` / `skill_commands.py` /
 `skills_claude.py` / `skills_codex.py` the skill-evidence classification, and `trajectory_claude_blocks.py` /
 `trajectory_claude_stream.py` / `trajectory_claude_turns.py` plus `trajectory_codex.py` and the per-item-type
@@ -113,10 +113,11 @@ assistant / user text turns — into an `AgentTrajectory` dataclass: `backend`, 
 the names-only `skills` (`SkillTriggers`), an ordered `steps` tuple of `TrajectoryStep` (`kind` is `"tool_call"` /
 `"tool_result"` / `"assistant_message"` / `"user_message"`, with `name` / `tool_id` / raw `content` — `name` /
 `tool_id` empty on the text turns — plus a `turn` index tying each billed step back to the assistant turn that
-produced it), `final_output`, and a best-effort `turns` tuple of per-turn token usage (`TurnUsage`, parallel to `tools`
-/ `skills` and claude-only today). `parse_claude_trajectory(stdout)` reads the offered tools from the `system`/`init`
-frame's `tools` array, then the ordered timeline: assistant `text` blocks become `assistant_message` turns and
-`tool_use` blocks `tool_call` steps; user `text` blocks become `user_message` turns and `tool_result` blocks
+produced it), a `source_items` tuple of `SourceItem` accounting for every item the provider stream identified
+(codex-only today), `final_output`, and a best-effort `turns` tuple of per-turn token usage (`TurnUsage`, parallel to
+`tools` / `skills` and claude-only today). `parse_claude_trajectory(stdout)` reads the offered tools from the
+`system`/`init` frame's `tools` array, then the ordered timeline: assistant `text` blocks become `assistant_message`
+turns and `tool_use` blocks `tool_call` steps; user `text` blocks become `user_message` turns and `tool_result` blocks
 `tool_result` steps — calls / results joined by `tool_use_id` and de-duplicated per id the same way
 `parse_claude_skills` is, while id-less text blocks ride claude's per-completed-block framing — and the final answer
 from the `result` frame's `result` string. It also groups those assistant frames by `message.id` in first-seen order to
@@ -155,7 +156,10 @@ provider's own `exec-…` call id last, so that call id is what the decoder hand
 correlated and recorded under; every other item is correlated under the synthetic `item_N` the exec stream numbers
 its items with. The id is also what keeps one operation one item: a wrapper frame reporting the id of the call
 nested inside it merges into that call rather than doubling it, and a wrapper of a type nothing normalizes neither
-replaces the normalized pair with a placeholder nor adds one beside it. The final answer is read from the last
+replaces the normalized pair with a placeholder nor adds one beside it — nor survives inside one: a placeholder is
+named after the wrapper's own item type and payloaded with the wrapper's own `status`, so the normalized frame
+replaces it whole rather than merging into it, and an item that frame reported no invocation for is left with none
+instead of reading back as the wrapper's `in_progress`. The final answer is read from the last
 `agent_message` `text`; `turns` stays empty with every `step.turn` `None`, since codex usage frames are cumulative
 across the session rather than per-turn. Both reuse the
 matching skill extractor for the `skills` field. `parse_agent_trajectory(backend, stdout)` dispatches by backend exactly
@@ -177,7 +181,24 @@ bounded `unsupported_item` placeholder step naming the item `type`, its id, and 
 type that reports none, `error` among them), deduplicated by
 `item.id` the same way a tool pair is and carrying no payload of its own. `reasoning` is the one deliberate
 exclusion: its text is hidden model content that never enters a record, and a placeholder per reasoning item would be
-noise rather than a diagnostic. Nothing fabricates an outcome either — a call that failed, or one the stream never
+noise rather than a diagnostic — but the exclusion is named rather than silent, in the per-item accounting below.
+Nothing fabricates an outcome either — a call that failed, or one the stream never
 completed, keeps its `tool_call` with no `tool_result` under it unless a frame actually reported one.
+
+**Every identified codex item is accounted for.** Beside the steps, `parse_codex_trajectory` returns one `SourceItem`
+per `item.id` the stream carried, in first-seen order and deduplicated across the started / updated / completed frames
+the same way a tool pair is. Each names the `item_id`, the `item_type` the classification settled on, and a
+`disposition`: `stored` (the item's own steps are in `steps`), `unsupported` (nothing normalized its type, so the
+placeholder step above is what names it), `excluded` (the `reasoning` the classifier keeps out whole — the accounting
+records the id and the type and nothing else, never the hidden text or any other field of the item), or `empty` (its
+frames carried no payload to store — an `agent_message` with no text, a call whose fields never arrived, or an item
+too malformed to name a type at all, whose `item_type` is then the empty string). A normalized frame outranks an
+unsupported wrapper sharing its id whichever of the two arrives first, so the wrapper that adds no step renames
+nothing either and leaves no payload of its own behind. The accounting is also what carries an `agent_message` item's
+id: a text turn is not a tool call, so its step's `tool_id` stays empty and the provider id lands here rather than in
+the field a downstream reader joins a result to its invocation by. A frame the stream left without an id is the one
+thing not accounted — there is no name to account it under, and every such frame would otherwise share one — so it
+contributes its steps and nothing else. `AgentTrajectory.to_dict()` carries the tuple as `source_items`; the
+`agent_trajectory` sink record's shape is unchanged.
 
 [pinned-state]: ../state-machine/labels-and-state.md#pinned-state

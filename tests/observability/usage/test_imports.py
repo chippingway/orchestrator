@@ -73,12 +73,12 @@ _PUBLISHED = MappingProxyType({
     ),
 })
 
-# Three of the five result types are defined off an entry point, on the module
+# Four of the six result types are defined off an entry point, on the module
 # the trajectory parsers build them from; the other two sit beside the parser
 # that fills each and are grouped with it above.
 _RECORD_OWNER = "trajectory_models"
 
-_RECORDS = ("AgentTrajectory", "TrajectoryStep", "TurnUsage")
+_RECORDS = ("AgentTrajectory", "SourceItem", "TrajectoryStep", "TurnUsage")
 
 # Every module that meters a finished run, paired with the owner it has to
 # have imported to do so: the agent result `UsageMetrics` types, the tracked
@@ -165,9 +165,8 @@ class PublicSurfaceTest(unittest.TestCase):
                 self.assertNotIn("__all__", module.__dict__)
 
     def test_records_report_their_defining_module(self) -> None:
-        # The records carry a hand-built `__init__` and signature, so a
-        # relocated `__module__` would point a reader at a module whose source
-        # does not contain them.
+        # A relocated `__module__` would point a reader at a module whose
+        # source does not define the record it names.
         owner = _OWNER_MODULES[_RECORD_OWNER]
         for name in _RECORDS:
             with self.subTest(name=name):
