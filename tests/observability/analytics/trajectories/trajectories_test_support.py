@@ -66,9 +66,17 @@ BACKEND_KEY = "backend"
 
 CONTENT_KEY = "content"
 
+DISPOSITION_KEY = "disposition"
+
 EVENT_KEY = "event"
 
+IDENTIFIED_ITEMS_KEY = "identified"
+
 INPUT_TOKENS_KEY = "input_tokens"
+
+ITEM_ID_KEY = "item_id"
+
+ITEM_TYPE_KEY = "item_type"
 
 KIND_KEY = "kind"
 
@@ -80,7 +88,21 @@ OUTPUT_TOKENS_KEY = "output_tokens"
 
 RUN_USAGE_KEY = "run_usage"
 
+SOURCE_ITEMS_KEY = "source_items"
+
+SOURCE_ITEM_COUNTS_KEY = "source_item_counts"
+
+SOURCE_ITEMS_TRUNCATED_KEY = "source_items_truncated"
+
 STEPS_KEY = "steps"
+
+STORED_DISPOSITION = "stored"
+
+UNSUPPORTED_DISPOSITION = "unsupported"
+
+EXCLUDED_DISPOSITION = "excluded"
+
+EMPTY_DISPOSITION = "empty"
 
 TOOL_CALL_KIND = "tool_call"
 

@@ -29,6 +29,11 @@ from tests.observability.analytics.analytics_jsonl_helpers import (
 )
 
 
+from tests.observability.analytics.analytics_codex_item_cases import (
+    codex_structured_payload_stdout as _codex_structured_payload_stdout,
+)
+
+
 from tests.observability.analytics.analytics_trajectory_cases import (
     claude_trajectory_stdout as _claude_trajectory_stdout,
     codex_mcp_trajectory_stdout as _codex_mcp_trajectory_stdout,
@@ -85,6 +90,27 @@ _TRUNCATION_EDGE_CHARS = 5
 
 
 _LONG_TEXT_CHARS = 100
+
+
+_STRUCTURED_SECRET_KEY = "CODEX_STRUCTURED_SECRET_KEY"
+
+
+# A multiline value is what tells the two orders apart: serialize first and
+# `json.dumps` escapes the newline, leaving the redactor's literal replace
+# unable to match the raw env value.
+_STRUCTURED_SECRET_HEAD = "rotate-me"
+
+
+_STRUCTURED_SECRET_TAIL = "trailing-line-marker-0123456789"
+
+
+_STRUCTURED_SECRET = f"{_STRUCTURED_SECRET_HEAD}\n{_STRUCTURED_SECRET_TAIL}"
+
+
+# The plan call, the plan as it was left, and the patch's change list are the
+# three structured payloads; the patch's terminal status is the plain string
+# beside them.
+_STRUCTURED_STEPS_MASKED = (True, True, True, False)
 
 
 def _tool_result_body(record: dict) -> str:
@@ -213,6 +239,41 @@ class RecordAgentExitTrajectoryRedactionTest(_support.RecordAgentExitTrajectoryS
             self.assertTrue(body.startswith(edge))
             self.assertTrue(body.endswith(edge))
             self.assertIn("chars elided", body)
+
+    def test_codex_structured_payloads_redacted(self) -> None:
+        # A codex plan and a codex patch report lists of dicts rather than
+        # text, so only the leaf-by-leaf walk reaches a secret inside one --
+        # and the walk has to run before serialization, or the newline in the
+        # env value is already escaped by the time the redactor sees it.
+        with (
+            tempfile.TemporaryDirectory() as td,
+            patch.dict(os.environ, {_STRUCTURED_SECRET_KEY: _STRUCTURED_SECRET}),
+        ):
+            record = self._emit_structured_payload_record(td)
+        serialized = json.dumps(record)
+        self.assertNotIn(_STRUCTURED_SECRET_HEAD, serialized)
+        self.assertNotIn(_STRUCTURED_SECRET_TAIL, serialized)
+        self.assertEqual(
+            tuple(
+                _REDACTION_MARKER in (step[_CONTENT_KEY] or "")
+                for step in record[_STEPS_KEY]
+            ),
+            _STRUCTURED_STEPS_MASKED,
+        )
+
+    def _emit_structured_payload_record(self, sink_dir: str) -> dict:
+        trajectory_path = Path(sink_dir) / _TRAJECTORY_FILENAME
+        self._emit(
+            backend=_support.CODEX,
+            stdout=_codex_structured_payload_stdout(
+                plan_text=f"rotate {_STRUCTURED_SECRET}",
+                changed_path=f"config/{_STRUCTURED_SECRET}",
+            ),
+            prompt=_PROMPT_TEXT,
+            traj_path=trajectory_path,
+            analytics_path=Path(sink_dir) / _ANALYTICS_FILENAME_ALTERNATE,
+        )
+        return _read_records(trajectory_path)[0]
 
 
 if __name__ == "__main__":

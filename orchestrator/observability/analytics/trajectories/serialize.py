@@ -1,13 +1,14 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Trajectory usage, turn, step, and record serialization.
+"""Trajectory usage, turn, item-accounting, step, and record serialization.
 
 One owner for the shape an `agent_trajectory` record has: which run metadata
 rides along, which free-text fields are sanitized on the way in, and the order
 the variable arrays are charged to the record budget in. The budget order is
-part of the shape -- the per-turn array is drawn down before the steps, so a
-run with thousands of turns and no steps is bounded the same way a run with
-thousands of steps is.
+part of the shape -- the per-turn array and the source item accounting are
+drawn down before the steps, so a run with thousands of turns and no steps is
+bounded the same way a run with thousands of steps is, and the accounting a
+truncated timeline is audited against outlives the steps it accounts for.
 
 The caps are snapshotted from the `models` owner once per record, so a value
 patched between two writes bounds the second one, and the envelope is the
@@ -17,6 +18,7 @@ every other analytics record is decided in one place.
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import TYPE_CHECKING, Any
 
 from orchestrator.observability.analytics import sink
@@ -29,11 +31,47 @@ from orchestrator.observability.usage import (
 if TYPE_CHECKING:
     from orchestrator.observability.analytics.recording.models import AgentExitContext
 
+# The dispositions a parser assigns, spelled in a fixed order so one run's
+# counts are comparable to another's. They are exhaustive by construction --
+# exactly one per identified item -- which is what makes the totals below an
+# accounting rather than a sample.
+ITEM_DISPOSITIONS = (
+    usage_trajectory_models.ITEM_STORED,
+    usage_trajectory_models.ITEM_UNSUPPORTED,
+    usage_trajectory_models.ITEM_EXCLUDED,
+    usage_trajectory_models.ITEM_EMPTY,
+)
+
+IDENTIFIED_ITEMS = "identified"
+
 
 def trajectory_usage(metrics: usage_metrics.UsageMetrics) -> dict[str, Any]:
     run_usage = metrics.to_dict()
     run_usage.pop("backend", None)
     return run_usage
+
+
+def item_counts(
+    source_items: tuple[usage_trajectory_models.SourceItem, ...],
+) -> dict[str, int]:
+    """Total one run's identified items by the disposition each got.
+
+    Fixed-shape and fixed-size: how many items the stream identified, then one
+    count per disposition whether or not the run produced any of it. That is
+    what a reader audits `item_N` coverage against when the budget left room
+    for only a prefix of the ids -- or for none of them -- so it is charged as
+    part of the headline and kept whole. A run whose stream identified nothing
+    (every claude run, and a codex run that never got that far) is counted as
+    nothing rather than as four zeros, so the record simply leaves the field
+    off.
+    """
+    if not source_items:
+        return {}
+    counted = Counter(source_item.disposition for source_item in source_items)
+    counts = {IDENTIFIED_ITEMS: len(source_items)}
+    for disposition in ITEM_DISPOSITIONS:
+        counts[disposition] = counted[disposition]
+    return counts
 
 
 def trajectory_headline(
@@ -52,20 +90,8 @@ def trajectory_headline(
             trajectory.final_output, redact, limits,
         ),
         run_usage=trajectory_usage(metrics),
+        source_item_counts=item_counts(trajectory.source_items),
     )
-
-
-def bounded_trajectory_turns(
-    trajectory: usage_trajectory_models.AgentTrajectory,
-    budget: models.TrajectoryBudget,
-) -> list[dict[str, Any]]:
-    turns: list[dict[str, Any]] = []
-    for turn in trajectory.turns:
-        turn_dict = turn.to_dict()
-        if not budget.include(turn_dict):
-            break
-        turns.append(turn_dict)
-    return turns
 
 
 def trajectory_step(
@@ -101,6 +127,33 @@ def bounded_trajectory_steps(
     return steps
 
 
+def bounded_arrays(
+    trajectory: usage_trajectory_models.AgentTrajectory,
+    budget: models.TrajectoryBudget,
+    redact: sanitize.Redactor,
+    limits: models.TrajectoryLimits,
+) -> models.TrajectoryArrays:
+    """Draw one record's variable arrays in the order they are charged.
+
+    The order is the contract. The per-turn usage and the source item
+    accounting are small, fixed-shape rows a reader needs whole runs of, so
+    they are drawn first; the steps -- the one array whose entries carry
+    redacted free text and can be arbitrarily large -- are drawn from what is
+    left. That is what keeps an id-by-id audit of a codex run possible on the
+    very runs that overran the budget, where the timeline the ids account for
+    is exactly what got cut.
+    """
+    turns = budget.bounded(trajectory.turns)
+    source_items = budget.bounded(trajectory.source_items)
+    steps = bounded_trajectory_steps(trajectory, budget, redact, limits)
+    return models.TrajectoryArrays(
+        turns=turns,
+        source_items=source_items,
+        steps=steps,
+        source_items_truncated=len(source_items) < len(trajectory.source_items),
+    )
+
+
 def build_trajectory_record(
     context: AgentExitContext,
     trajectory: usage_trajectory_models.AgentTrajectory,
@@ -119,18 +172,30 @@ def build_trajectory_record(
     breakdown rides along as `turns` (empty on codex, whose usage frames are
     cumulative -- `build_record` then drops the key).
 
+    The parser's per-item accounting rides along as `source_items` (codex-only
+    today), one `{item_id, item_type, disposition}` row per item the stream
+    identified, in first-seen order. It carries provider-assigned ids and item
+    type names rather than agent-sourced content, so like `tools` and a step's
+    `name` it skips redaction; everything an item actually said is in the step
+    it contributed, and is redacted there.
+
     Each step is charged its full *serialized* size -- the JSON metadata
     (`kind` / `name` / `tool_id` / `turn`) plus its truncated content, not
     merely `len(content)` -- so steps with empty or tiny content still consume
-    the budget. The per-turn `turns` array is charged and truncated the same
-    way (a run with thousands of turns and no steps would otherwise write the
-    whole array in full and blow the budget); it is drawn down before the
-    steps, so once the running total crosses the record budget the remaining
-    turns -- then steps -- are dropped and `truncated` is set. Only the small
-    fixed `run_usage` summary is always kept whole. `build_record` drops every
+    the budget. The per-turn `turns` array and the `source_items` accounting
+    are charged and truncated the same way (a run with thousands of turns and
+    no steps would otherwise write the whole array in full and blow the
+    budget); both are drawn down before the steps, so once the running total
+    crosses the record budget the remaining turns -- then accounting rows,
+    then steps -- are dropped and `truncated` is set. Only the two small fixed
+    summaries are always kept whole: `run_usage`, and the
+    `source_item_counts` that state how many items were identified and how
+    they were disposed of however few of their ids survived. A dropped
+    accounting row also sets `source_items_truncated`, so a prefix of the ids
+    is never readable as the whole set. `build_record` drops every
     `None`-valued field, so an absent prompt, empty system prompt, no-trigger
-    skill set, or codex's empty per-turn array leaves its key off rather than
-    storing a null.
+    skill set, codex's empty per-turn array, or a claude run's absent item
+    accounting leaves its key off rather than storing a null.
     """
     limits = models.current_limits()
     headline = trajectory_headline(context, trajectory, metrics, redact, limits)
@@ -138,8 +203,7 @@ def build_trajectory_record(
         headline.serialized_size,
         limits.record_budget,
     )
-    turns = bounded_trajectory_turns(trajectory, budget)
-    steps = bounded_trajectory_steps(trajectory, budget, redact, limits)
+    arrays = bounded_arrays(trajectory, budget, redact, limits)
     return sink.build_record(
         repo=context.repo,
         issue=context.issue,
@@ -156,8 +220,11 @@ def build_trajectory_record(
         skills_triggered=list(trajectory.skills.triggered) or None,
         skills_available=list(trajectory.skills.available) or None,
         run_usage=headline.run_usage,
-        turns=turns or None,
-        steps=steps,
+        source_item_counts=headline.source_item_counts or None,
+        turns=arrays.turns or None,
+        source_items=arrays.source_items or None,
+        source_items_truncated=arrays.source_items_truncated or None,
+        steps=arrays.steps,
         output=headline.output,
         truncated=budget.truncated or None,
     )
