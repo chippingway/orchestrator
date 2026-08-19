@@ -20,9 +20,11 @@ orchestrator process is stateless.
 - Architecture, module ownership, process / agent / push model:
   [`docs/architecture.md`](docs/architecture.md) is the entry point, with
   [`docs/architecture/platform-modules.md`](docs/architecture/platform-modules.md) for the package root,
-  runtime, config, GitHub, git, agents, scheduler, and skills owners, and
+  runtime, config, GitHub, git, agents, scheduler, and skills owners,
   [`docs/architecture/workflow-modules.md`](docs/architecture/workflow-modules.md) for the workflow package
-  API, its engine owners, and the stage subpackages
+  API, its engine owners, and the stage subpackages, and
+  [`docs/architecture/observability-modules.md`](docs/architecture/observability-modules.md) for the analytics,
+  usage, dashboard, and trajectory-viewer owners and the two `streamlit run` targets over them
 - Workflow state machine (labels, per-tick flow, stage handlers):
   [`docs/state-machine.md`](docs/state-machine.md) is the entry point, with
   [`docs/state-machine/labels-and-state.md`](docs/state-machine/labels-and-state.md) for the label vocabulary,

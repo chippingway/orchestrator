@@ -9,9 +9,10 @@ not depend on database availability. The JSONL file on disk stays the authoritat
 is for aggregation and reporting.
 
 The read model over these tables and the Streamlit dashboard above it are on
-[`analytics-dashboard.md`](analytics-dashboard.md). Which module owns which piece of the sync path is in
-[`architecture.md`](../architecture.md#top-level-layout), where the observability inventory is maintained; the knobs
-themselves are in [`configuration/observability.md`](../configuration/observability.md).
+[`analytics-dashboard.md`](analytics-dashboard.md). Where the sync path sits in the package tree, and what the
+package holding it is responsible for, is in
+[`architecture/observability-modules.md`](../architecture/observability-modules.md); the knobs themselves are in
+[`configuration/observability.md`](../configuration/observability.md).
 
 ## Service layout
 

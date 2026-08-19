@@ -7,11 +7,11 @@ decision reads either back, and both are safe to truncate, rotate, or delete at 
 trajectory recorder, is documented in [`trajectories.md`](trajectories.md).
 
 The record shapes below are a compatibility contract: an operator's `jq` filter, a `logrotate` rule, and the Postgres
-`analytics_events` columns all key off them. Which module owns which piece of the write path is *not* repeated here —
-[`architecture.md`](../architecture.md#top-level-layout) is where that inventory is maintained. For the
-knobs themselves see [`configuration/observability.md`](../configuration/observability.md). The parser the analytics
-`agent_exit` counts come from is on [`usage.md`](usage.md), and the database, read model, and dashboard that sink is
-aggregated into afterwards are on [`analytics-database.md`](analytics-database.md) and
+`analytics_events` columns all key off them. Where the write path sits in the package tree is *not* repeated here —
+[`architecture/observability-modules.md`](../architecture/observability-modules.md) maps it at the package boundary.
+For the knobs themselves see [`configuration/observability.md`](../configuration/observability.md). The
+parser the analytics `agent_exit` counts come from is on [`usage.md`](usage.md), and the database, read model, and
+dashboard that sink is aggregated into afterwards are on [`analytics-database.md`](analytics-database.md) and
 [`analytics-dashboard.md`](analytics-dashboard.md).
 
 ## Audit event log (`EVENT_LOG_PATH`)
@@ -140,8 +140,9 @@ the Postgres target all live under `orchestrator/observability/analytics/`. Ever
 `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, `ANALYTICS_DB_URL`, the sibling trajectory pair
 `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, and `TRACK_SKILL_TRIGGERS` — is parsed by
 `analytics/config.py` rather than by `orchestrator/config/`, which keeps only the audit log's own
-`EVENT_LOG_PATH` because `GitHubClient.emit_event` is a general-purpose audit surface. Which owner holds which piece
-of that write path is in [`architecture.md`](../architecture.md#top-level-layout).
+`EVENT_LOG_PATH` because `GitHubClient.emit_event` is a general-purpose audit surface. What each package along that
+write path is responsible for is in
+[`architecture/observability-modules.md`](../architecture/observability-modules.md).
 
 **Filesystem only.** No PostgreSQL, Streamlit, or external services — the sink is one JSONL file under the project log
 area. Default path is `<LOG_DIR>/analytics.jsonl`, already covered by the `logs/` `.gitignore` rule. Set
