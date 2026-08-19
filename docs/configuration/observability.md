@@ -35,7 +35,7 @@ parser read them back is in [`../observability/analytics-database.md`](../observ
   `uv run streamlit run orchestrator/apps/trajectory_dashboard.py`) reads this JSONL file directly — no Postgres or sync
   — when you want to browse the recorded trajectories. **Privacy:** redaction masks only secret-shaped env values (and
   the GitHub token), **not** issue/repo content, so an enabled trajectory file can carry issue titles/bodies, quoted
-  source, and agent reasoning in cleartext; scope its permissions accordingly. See
+  source, and the agent's own text turns in cleartext; scope its permissions accordingly. See
   [`trajectories.md#trajectory-sink`](../observability/trajectories.md#trajectory-sink-trajectory_log_path).
 - `TRAJECTORY_RETENTION_DAYS` — default `90`. retention window for `TRAJECTORY_LOG_PATH`, same semantics as
   `ANALYTICS_RETENTION_DAYS`: `prune_trajectory_records()` removes older records and `0` (or any non-positive value)

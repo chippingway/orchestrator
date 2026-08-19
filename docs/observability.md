@@ -77,9 +77,9 @@ the analytics dashboard, because the free-text bodies do not belong in the numer
 produces it from the same stdout the usage parser reads, behind its own fail-open guard, so a trajectory failure can
 never cost the baseline `agent_exit` record. Every free-text field is redacted and head/tail truncated and the whole
 record is budget-bounded — but **redaction is not anonymization**: issue content, quoted source, diffs, and the
-agent's own reasoning survive in cleartext, so scope the file like the repositories it describes. That page carries
-the record shape, the join keys back to the numeric sinks, the caps, the privacy contract, and the file-backed
-trajectory viewer that reads it.
+agent's own text turns survive in cleartext (a run's hidden reasoning payloads never enter the record), so scope the
+file like the repositories it describes. That page carries the record shape, the join keys back to the numeric sinks,
+the caps, the privacy contract, and the file-backed trajectory viewer that reads it.
 
 ### Trajectory operator workflow
 

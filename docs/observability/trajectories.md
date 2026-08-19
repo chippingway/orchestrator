@@ -62,17 +62,24 @@ the same `turn` index tying it to its turn, while a `tool_result` / `user_messag
 `turn`. `build_record` drops every empty / `None` field, so an absent prompt, an empty system prompt, a no-trigger skill
 set, codex's empty per-turn array, or a claude run's absent item accounting simply leaves its key off.
 
-**Per-item accounting (`source_items`).** Beside the steps, a codex record carries the parser's
-[per-item accounting](usage.md): one `{item_id, item_type, disposition}` row per item the exec
-stream identified, in first-seen order, where `disposition` is `stored` / `unsupported` / `excluded` / `empty`. It is
-what an `item_N` coverage audit reads — an id that reached no step is a classification the record names rather than a
-silence — and it carries provider-assigned ids and item type names rather than agent-sourced content, so like `tools`
-and a step's `name` it is written unredacted; everything an item actually *said* is in the step it contributed and is
-redacted there. `source_item_counts` is the always-kept summary beside it: `identified`, then one count per
-disposition (zeros included, so the shape is fixed). `source_items_truncated: true` is written when the budget left
-room for only a prefix of the rows — or for none of them, in which case the `source_items` key is absent while the
-counts and the flag still say how many items the stream identified. A claude run identifies no codex items, so all
-three keys are simply absent from its record.
+**Per-item accounting (`source_items`).** Beside the steps, a codex record carries the parser's [per-item
+accounting](usage.md): one `{item_id, item_type, disposition}` row per item the exec stream identified, in first-seen
+order. Exactly one of four dispositions is assigned per identified id, which is what makes the rows an accounting
+rather than a sample: `stored` (the item's own steps are in `steps`), `unsupported` (nothing normalized its type, so
+the `unsupported_item` placeholder step is what names it), `excluded` (the parser holds the item out whole — codex's
+`reasoning` today, whose hidden text is exactly what the exclusion exists to keep out, so the row carries its id and
+type and nothing else), and `empty` (its frames carried no payload to store — an `agent_message` with no text, a call
+whose fields never arrived, or a frame too malformed to name a type at all, whose `item_type` is then the empty
+string). It is what an `item_N` coverage audit reads — an id that reached no step is a classification the record names
+rather than a silence — and it carries provider-assigned ids and item type names rather than agent-sourced content, so
+like `tools` and a step's `name` it is written unredacted; everything an item actually *said* is in the step it
+contributed and is redacted there. `source_item_counts` is the always-kept summary beside it: `identified`, then one
+count per disposition (zeros included, so the shape is fixed). `identified` counts the ids the stream carried, so a
+frame that arrived without one is outside the accounting altogether — nothing correlates it under a name, and its
+steps still ride `steps`. `source_items_truncated: true` is written when the budget left room for only a prefix of the
+rows — or for none of them, in which case the `source_items` key is absent while the counts and the flag still say how
+many items the stream identified. A claude run identifies no codex items, so all three keys are simply absent from its
+record.
 
 **Join keys.** The envelope and correlation context double as join keys back to the numeric sinks. `session_id` (the
 live `result.session_id`) is the per-run key onto the
@@ -115,9 +122,12 @@ name is in the secret-key set or ends in a secret suffix, plus the resolved `GIT
 replaced with `***`. It deliberately does **not** strip issue or repository content. The prompt (`user_input`), the
 `system_prompt`, every step's `content` in `steps` (tool inputs / results and the assistant / user text turns), and the
 final `output` can — and routinely will — carry issue titles and bodies, quoted source from the worktree, file
-paths, diffs, the web-search queries and MCP tool arguments a codex run issued together with whatever those servers
-answered, the plan a codex run wrote for itself and the paths each of its patches touched, and the agent's own
-reasoning, all in cleartext after redaction. An enabled trajectory file therefore
+paths, diffs, the MCP tool arguments a codex run issued together with whatever those servers answered, the
+web-search queries it ran, the plan a codex run wrote for itself and the paths each of its patches touched, and the
+agent's own text turns, all in cleartext after redaction. Two payloads a stream carries stay out of the record: a
+codex `reasoning` item never enters it — the accounting names that id and its type and nothing else, never the hidden
+text — and a web search records the query and the `action` it resolved to but no result body, because the stream
+carries none and nothing reconstructs one. An enabled trajectory file therefore
 carries the same sensitivity as the repositories the orchestrator works on; scope its filesystem permissions (and any
 retention) accordingly. This is why the sink is off by default and why it never leaves the local filesystem (next
 paragraphs).
@@ -164,7 +174,7 @@ There is no trajectory equivalent of `python -m orchestrator.observability.analy
 deliberately file-backed only, and the analytics Postgres schema does not ingest their free-text bodies. To browse
 trajectories on another host, mirror `TRAJECTORY_LOG_PATH` as a file and run the dedicated viewer on that host with
 `TRAJECTORY_LOG_PATH` pointing at the mirrored JSONL. Scope the remote path like source code or issue content:
-redaction masks secret-shaped values, not repository text or agent reasoning.
+redaction masks secret-shaped values, not repository text or the agent's own text turns.
 
 For an unattended deployment, mirror the file with SSH-based tooling such as `rsync`. Use a dedicated receiver account
 whose key can only write into the trajectory directory. On an Ubuntu receiver, use a neutral shared directory such as
