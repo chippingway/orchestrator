@@ -93,9 +93,11 @@ session lock, and full examples.
 - `DECOMPOSE_AGENT` — default `claude`. decomposer command spec (validated even when `DECOMPOSE=off`); also drives the
   `question` and `discussion` stages
 - `DECOMPOSE` — default `on`. enable the `decomposing` stage; `off` reverts to the legacy
-  "no label → `workflow:implementing`" pickup. It gates that pickup route only: the two operator-applied
-  conversation labels, `question` and `discussion`, still run on the decomposer's spec with `DECOMPOSE=off`, which is
-  why that spec is validated either way
+  "no label → `workflow:implementing`" pickup, and sends an issue already sitting on `workflow:decomposing` the same
+  way through that stage's own handler (once any half-finished split above it is settled) rather than spawning
+  another decomposer. What it does not gate is the two operator-applied conversation labels: `question` and
+  `discussion` still run on the decomposer's spec with `DECOMPOSE=off`, which is why that spec is validated either
+  way
 - `CODEX_BIN` — default `codex`. executable launched when a role's first token is `codex`; override only if `codex` is
   not on `$PATH`
 - `CLAUDE_BIN` — default `claude`. executable launched when a role's first token is `claude`; override only if

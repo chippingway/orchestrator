@@ -3554,7 +3554,8 @@ the sync / read-model / dashboard wiring, and the usage parser's cost-precedence
   having that plan built is an operator relabel to `workflow:implementing`.
 - **`git push`** — subprocess. Trigger: after dev produces clean commits, or after a discussion round commits the
   confirmed plan and the branch reads as exactly that one file. Cadence: per fix; per discussion, once the humans
-  have confirmed the design — retried on the reply to a failed push, never on a round of its own.
+  have confirmed the design — with a publication a tick died inside re-attempted on the next tick from the in-flight
+  marker, and one whose push itself failed re-attempted on the human's reply to that park.
 - **self-restart check** — git fetch + diff. Trigger: start of each tick. Cadence: every tick.
 
 ## Architecture schema
