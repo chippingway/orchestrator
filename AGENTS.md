@@ -16,41 +16,23 @@ orchestrator process is stateless.
 
 ## Where the details live
 
+[`docs/README.md`](docs/README.md) is the documentation landing page: it maps every page in the set, names the focused
+page under each area, and explains which addresses stay stable. Open it when the area below is not obviously the right
+one.
+
 - User-facing overview: [`README.md`](README.md)
-- Architecture, module ownership, process / agent / push model:
-  [`docs/architecture.md`](docs/architecture.md) is the entry point, with
-  [`docs/architecture/platform-modules.md`](docs/architecture/platform-modules.md) for the package root,
-  runtime, config, GitHub, git, agents, scheduler, and skills owners,
-  [`docs/architecture/workflow-modules.md`](docs/architecture/workflow-modules.md) for the workflow package
-  API, its engine owners, and the stage subpackages, and
-  [`docs/architecture/observability-modules.md`](docs/architecture/observability-modules.md) for the analytics,
-  usage, dashboard, and trajectory-viewer owners and the two `streamlit run` targets over them
-- Workflow state machine (labels, per-tick flow, stage handlers):
-  [`docs/state-machine.md`](docs/state-machine.md) is the entry point, with
-  [`docs/state-machine/labels-and-state.md`](docs/state-machine/labels-and-state.md) for the label vocabulary,
-  per-tick flow, and pinned-state keys,
-  [`docs/state-machine/delivery-stages.md`](docs/state-machine/delivery-stages.md) for pickup through the PR
-  loop, [`docs/state-machine/conversation-stages.md`](docs/state-machine/conversation-stages.md) for the
-  question / discussion handlers, and [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md) for
-  the label-lifecycle diagram
-- Agent roles, command specs, session lifecycles: [`docs/workflow.md`](docs/workflow.md) is the entry point, with
-  [`docs/workflow/roles.md`](docs/workflow/roles.md) for the roles and the stages that spawn them,
-  [`docs/workflow/conversations.md`](docs/workflow/conversations.md) for the question / discussion prompt and session
-  contracts, and [`docs/workflow/command-specs.md`](docs/workflow/command-specs.md) for the spec grammar and the
-  in-flight session lock
-- Configuration / env vars: [`docs/configuration.md`](docs/configuration.md) is the reference, with
-  [`docs/configuration/observability.md`](docs/configuration/observability.md) for the observability sinks and
-  dashboards and [`docs/configuration/operations.md`](docs/configuration/operations.md) for CI, run modes, systemd,
-  and applying `.env` changes; basic knobs in [`.env.example`](.env.example), common advanced overrides in
-  [`.env.example.advanced`](.env.example.advanced)
-- Observability: [`docs/observability.md`](docs/observability.md) is the entry point mapping every surface, with the
-  audit and analytics JSONL sinks in [`docs/observability/event-streams.md`](docs/observability/event-streams.md),
-  trajectory recording, transfer, and viewing in
-  [`docs/observability/trajectories.md`](docs/observability/trajectories.md), the Postgres service, schema, and sync
-  CLI in [`docs/observability/analytics-database.md`](docs/observability/analytics-database.md), the read model and
-  Streamlit dashboard over it in
-  [`docs/observability/analytics-dashboard.md`](docs/observability/analytics-dashboard.md), and the usage / skill /
-  trajectory parsers in [`docs/observability/usage.md`](docs/observability/usage.md)
+- Architecture, module ownership, process / agent / push model: [`docs/architecture.md`](docs/architecture.md), with
+  the per-package inventory on the pages under [`docs/architecture/`](docs/architecture/)
+- Workflow state machine (labels, per-tick flow, pinned state, stage handlers):
+  [`docs/state-machine.md`](docs/state-machine.md), with the label, delivery-stage, conversation-stage, and lifecycle
+  pages under [`docs/state-machine/`](docs/state-machine/)
+- Agent roles, conversation contracts, command specs, session lifecycles: [`docs/workflow.md`](docs/workflow.md), with
+  the role, conversation, and spec pages under [`docs/workflow/`](docs/workflow/)
+- Configuration / env vars: [`docs/configuration.md`](docs/configuration.md) is the reference, with the observability
+  settings and the operator runbooks under [`docs/configuration/`](docs/configuration/); basic knobs in
+  [`.env.example`](.env.example), common advanced overrides in [`.env.example.advanced`](.env.example.advanced)
+- Observability: [`docs/observability.md`](docs/observability.md) maps every surface, with the event-stream,
+  trajectory, database, dashboard, and usage-parser pages under [`docs/observability/`](docs/observability/)
 - Security checklist and operator-owned controls: [`docs/security.md`](docs/security.md)
 - Development conventions and the pre-push checklist:
   [`.agents/skills/develop/SKILL.md`](.agents/skills/develop/SKILL.md)

@@ -259,7 +259,8 @@ ticks fan out and the per-repo / global concurrency caps, see
 
 ## Reference documentation
 
-For deeper implementation details, use the references below.
+[`docs/README.md`](docs/README.md) is the documentation landing page: it maps every page in the set, names the focused
+page under each area, and says which addresses stay stable as an area grows. The six areas it opens onto:
 
 | Topic | Link | Covers |
 |---|---|---|
