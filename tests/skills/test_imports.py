@@ -34,18 +34,16 @@ _OWNER_MODULES = MappingProxyType({
 _EMIT_CATALOG = "_emit_repo_skill_catalog"
 
 # What a caller reaches each owner for: the per-tick catalog producer, the two
-# per-run codex collectors, and the provenance-carrying scan the names-only one
-# projects, together with the pair type it hands back. `__module__` is what
-# holds them here, so the offered-tools baseline `discover_codex_tools` answers
-# with -- a plain tuple carrying no stamp -- is pinned by
-# `tests/skills/test_discovery.py` instead.
+# per-run codex collectors, and the name/level pair type the provenance-carrying
+# scan hands back. `__module__` is what holds them here, so the offered-tools
+# baseline `discover_codex_tools` answers with -- a plain tuple carrying no
+# stamp -- is pinned by `tests/skills/test_discovery.py` instead.
 _OWNED_CALLABLES = MappingProxyType({
     _CATALOG_OWNER: (_EMIT_CATALOG,),
     _DISCOVERY_OWNER: (
         "SkillSource",
         "discover_codex_tools",
         "discover_local_skill_sources",
-        "discover_local_skills",
     ),
 })
 
@@ -226,7 +224,8 @@ class CallSiteTest(unittest.TestCase):
 
     def test_codex_backfill_reads_the_owner(self) -> None:
         # Patching the owner is what intercepts a codex run's offered skills
-        # and tools, which holds only while the writer names it.
+        # and tools, which holds only while the writer names it -- and the one
+        # scan it reaches for is what both catalog projections are read off.
         from orchestrator.observability.analytics.recording import (
             catalog as recording_catalog,
             models as recording_models,
@@ -237,9 +236,10 @@ class CallSiteTest(unittest.TestCase):
         )
 
         owner = _OWNER_MODULES[_DISCOVERY_OWNER]
+        scanned = (owner.SkillSource("scanned", "user"),)
         catalog = recording_models.CodexCatalog()
         with patch.object(
-            owner, "discover_local_skills", lambda _cwd: ("scanned",),
+            owner, "discover_local_skill_sources", lambda _cwd: scanned,
         ), patch.object(
             owner, "discover_codex_tools", lambda: ("offered",),
         ), patch.object(
@@ -249,6 +249,7 @@ class CallSiteTest(unittest.TestCase):
         ):
             recording_catalog.populate_codex_catalog(_CODEX_CONTEXT, catalog)
         self.assertEqual(catalog.available_skills, ["scanned"])
+        self.assertEqual(catalog.skill_levels, {"scanned": "user"})
         self.assertEqual(catalog.tools, ["offered"])
 
 

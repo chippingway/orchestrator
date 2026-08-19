@@ -28,6 +28,8 @@ _AGENT_SKILLS_ROOT = ".agents/skills"
 _AGENT_DEVELOP_SKILL_PATH = ".agents/skills/develop/SKILL.md"
 _AGENT_REVIEW_SKILL_PATH = ".agents/skills/review/SKILL.md"
 _CLAUDE_REVIEW_SKILL_PATH = ".claude/skills/review/SKILL.md"
+_PROJECT_LEVEL = "project"
+_SKILLS_AVAILABLE_FIELD = "skills_available"
 _LIST_SKILL_TREE_METHOD = "_list_skill_tree"
 _RECORD_CATALOG_METHOD = "record_repo_skill_catalog"
 _BAD_REF_EXIT_CODE = 128
@@ -124,6 +126,26 @@ class RecordRepoSkillCatalogShapeTest(unittest.TestCase):
     `repo_skill_catalog` record carrying the catalog in extras.
     """
 
+    def test_keyword_contract_is_enforced(self) -> None:
+        # The recorder binds through a declared signature rather than a
+        # parameter list, so a producer's spelling stays the contract: a
+        # required keyword left out and a keyword the record has no field
+        # for both still fail at the call.
+        catalog_call = {
+            "repo": _TEST_REPO_SLUG,
+            "base_branch": _TEST_BASE_BRANCH,
+            "remote_name": _TEST_REMOTE_NAME,
+            _SKILLS_AVAILABLE_FIELD: [],
+        }
+        for dropped, extra in (("remote_name", None), (None, "skill_level")):
+            with self.subTest(dropped=dropped, extra=extra):
+                call_kwargs = dict(catalog_call)
+                call_kwargs.pop(dropped, None)
+                if extra is not None:
+                    call_kwargs[extra] = {}
+                with self.assertRaises(TypeError):
+                    recording.record_repo_skill_catalog(**call_kwargs)
+
     def test_record_shape(self) -> None:
         captured = _capture_analytics_records(self)
         recording.record_repo_skill_catalog(
@@ -137,6 +159,10 @@ class RecordRepoSkillCatalogShapeTest(unittest.TestCase):
                     _AGENT_REVIEW_SKILL_PATH,
                     _CLAUDE_REVIEW_SKILL_PATH,
                 ],
+            },
+            skill_levels={
+                _DEVELOP_SKILL: _PROJECT_LEVEL,
+                _REVIEW_SKILL: _PROJECT_LEVEL,
             },
         )
         self.assertEqual(len(captured), 1)
@@ -152,7 +178,7 @@ class RecordRepoSkillCatalogShapeTest(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            record["skills_available"],
+            record[_SKILLS_AVAILABLE_FIELD],
             [_DEVELOP_SKILL, _REVIEW_SKILL],
         )
         self.assertEqual(
@@ -162,14 +188,22 @@ class RecordRepoSkillCatalogShapeTest(unittest.TestCase):
                 _CLAUDE_REVIEW_SKILL_PATH,
             ],
         )
+        self.assertEqual(
+            record["skill_levels"],
+            {
+                _DEVELOP_SKILL: _PROJECT_LEVEL,
+                _REVIEW_SKILL: _PROJECT_LEVEL,
+            },
+        )
         self.assertIsInstance(record["ts"], str)
         self.assertNotIn("stage", record)
 
-    def test_empty_catalog_keeps_skills_drops_paths(
+    def test_empty_catalog_keeps_skills_drops_maps(
         self,
     ) -> None:
         # An empty catalog still records `skills_available: []` (the
-        # "scanned, found none" signal); `skill_paths` is dropped when None.
+        # "scanned, found none" signal); both per-name maps are dropped
+        # when None.
         captured = _capture_analytics_records(self)
         recording.record_repo_skill_catalog(
             repo=_TEST_REPO_SLUG,
@@ -177,10 +211,12 @@ class RecordRepoSkillCatalogShapeTest(unittest.TestCase):
             remote_name=_TEST_REMOTE_NAME,
             skills_available=[],
             skill_paths=None,
+            skill_levels=None,
         )
         record = captured[0]
-        self.assertEqual(record["skills_available"], [])
+        self.assertEqual(record[_SKILLS_AVAILABLE_FIELD], [])
         self.assertNotIn("skill_paths", record)
+        self.assertNotIn("skill_levels", record)
 
 
 class ListSkillTreeTest(unittest.TestCase):
@@ -239,7 +275,8 @@ class ListSkillTreeTest(unittest.TestCase):
 
 class EmitRepoSkillCatalogTest(unittest.TestCase):
     """`_emit_repo_skill_catalog` wires spec fields into the analytics
-    record and never raises out of the producer.
+    record, classifies every name it enumerated as a `project` definition,
+    and never raises out of the producer.
     """
 
     def test_wires_spec_fields_into_record(self) -> None:
@@ -270,9 +307,13 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
                     _CLAUDE_REVIEW_SKILL_PATH,
                 ],
             },
+            skill_levels={
+                _DEVELOP_SKILL: _PROJECT_LEVEL,
+                _REVIEW_SKILL: _PROJECT_LEVEL,
+            },
         )
 
-    def test_empty_catalog_passes_none_skill_paths(self) -> None:
+    def test_empty_catalog_passes_none_per_name_maps(self) -> None:
         spec = _spec()
         record_mock = MagicMock()
         with patch.object(
@@ -282,8 +323,9 @@ class EmitRepoSkillCatalogTest(unittest.TestCase):
         ):
             catalog._emit_repo_skill_catalog(spec)
         _, kwargs = record_mock.call_args
-        self.assertEqual(kwargs["skills_available"], [])
+        self.assertEqual(kwargs[_SKILLS_AVAILABLE_FIELD], [])
         self.assertIsNone(kwargs["skill_paths"])
+        self.assertIsNone(kwargs["skill_levels"])
 
     def test_unavailable_tree_records_nothing(self) -> None:
         spec = _spec()

@@ -35,6 +35,7 @@ import typing
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics import sink
 from orchestrator.observability.analytics.recording.models import (
+    REPO_SKILL_CATALOG_SIGNATURE,
     STAGE_EVALUATION_SIGNATURE,
     bind_stage_evaluation,
 )
@@ -43,7 +44,6 @@ from orchestrator.observability.analytics.recording.models import (
 # here because this is the import site a producer reaches them at.
 build_record = sink.build_record
 log = sink.log
-_SkillPaths = dict[str, list[str]]
 
 
 def append_record(record: dict) -> None:
@@ -93,12 +93,8 @@ record_stage_evaluation.__signature__ = STAGE_EVALUATION_SIGNATURE
 
 
 def record_repo_skill_catalog(
-    *,
-    repo: str,
-    base_branch: str,
-    remote_name: str,
-    skills_available: list[str],
-    skill_paths: typing.Optional[_SkillPaths] = None,
+    *args: typing.Any,
+    **kwargs: typing.Any,
 ) -> None:
     """Append one `repo_skill_catalog` analytics record for a spec.
 
@@ -106,22 +102,27 @@ def record_repo_skill_catalog(
     record still satisfies the `ts` / `repo` / `issue` / `event` envelope
     that both the JSONL sink and the Postgres `analytics_events` schema
     require, with no DDL change -- `base_branch`, `remote_name`,
-    `skills_available`, and `skill_paths` all land in the `extras` JSONB
-    column. `skill_paths` is dropped when None (`build_record` drops None
-    extras), so an empty catalog records `skills_available: []` -- the
-    "scanned, found none" signal -- without an empty `skill_paths`.
+    `skills_available`, `skill_paths`, and the name-to-source-level
+    `skill_levels` all land in the `extras` JSONB column. The two maps are
+    dropped when None (`build_record` drops None extras), so an empty
+    catalog records `skills_available: []` -- the "scanned, found none"
+    signal -- without an empty `skill_paths` or `skill_levels`.
     Disabled-sink behavior is inherited from `append_record` (no-op when
     the sink is off). Centralized here so the producer in
     `orchestrator.skills.catalog` does not re-inline the record shape.
     """
+    # This family renames nothing, so the keywords a caller binds are already
+    # the record's own fields -- `repo` included, and both maps defaulted to
+    # the None `build_record` drops.
+    catalog_fields = REPO_SKILL_CATALOG_SIGNATURE.bind(*args, **kwargs)
+    catalog_fields.apply_defaults()
     append_record(
         build_record(
-            repo=repo,
             issue=0,
             event="repo_skill_catalog",
-            base_branch=base_branch,
-            remote_name=remote_name,
-            skills_available=skills_available,
-            skill_paths=skill_paths,
+            **catalog_fields.arguments,
         )
     )
+
+
+record_repo_skill_catalog.__signature__ = REPO_SKILL_CATALOG_SIGNATURE

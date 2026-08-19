@@ -15,7 +15,10 @@ Both skill roots `discovery` defines are scanned, and only *direct*
 ignored, mirroring the names-only trigger anchor in
 `observability/usage/skill_commands.py`. Skills are deduped by name across
 both roots; every source path that produced a name is preserved under
-`skill_paths`.
+`skill_paths`, and every name is classified `project` under `skill_levels` --
+what this scan reads is a repository's own checked-in definitions, so the
+level `discovery` stamps a worktree root with is the level this enumeration
+can report without inspecting anything further.
 
 Dashboard-local skill files are never scanned: enumeration reads the
 target repo's base ref via `git ls-tree`, not the orchestrator's own
@@ -33,7 +36,11 @@ from typing import Iterable, Optional
 from orchestrator.config import RepoSpec
 from orchestrator.git.commands import _git
 from orchestrator.observability.analytics import recording
-from orchestrator.skills.discovery import _SKILL_FILE, _SKILL_ROOTS
+from orchestrator.skills.discovery import (
+    _PROJECT_LEVEL,
+    _SKILL_FILE,
+    _SKILL_ROOTS,
+)
 
 # Spelled out literally so an operator log filter keeps matching the producer
 # across the module move it names.
@@ -144,12 +151,14 @@ def _collect_and_record_catalog(spec: RepoSpec) -> None:
     if paths is None:
         return
     skills_available, skill_paths = _extract_skill_catalog(paths)
+    skill_levels = {name: _PROJECT_LEVEL for name in skills_available}
     recording.record_repo_skill_catalog(
         repo=spec.slug,
         base_branch=spec.base_branch,
         remote_name=spec.remote_name,
         skills_available=skills_available,
         skill_paths=skill_paths or None,
+        skill_levels=skill_levels or None,
     )
     log.debug(
         "repo=%s skill catalog: recorded %d skill(s)",

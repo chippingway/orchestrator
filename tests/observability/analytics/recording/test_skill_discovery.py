@@ -115,10 +115,36 @@ _SKILLS_TRIGGERED = "skills_triggered"
 _SKILLS_AVAILABLE = "skills_available"
 
 
+_SKILL_LEVELS = "skill_levels"
+
+
+_PROJECT_LEVEL = "project"
+
+
+_USER_LEVEL = "user"
+
+
+_WORKTREE_DIR = "wt"
+
+
+_CODEX_HOME_DIR = "codexhome"
+
+
+_AGENT_SKILLS_ROOT = ".agents/skills"
+
+
+_GLOBAL_SKILLS_DIR = "skills"
+
+
 def _mk_skill(root: Path, name: str) -> None:
     skill_dir = root / name
     skill_dir.mkdir(parents=True, exist_ok=True)
     (skill_dir / "SKILL.md").write_text("# skill\n", encoding=_ENCODING)
+
+
+def _no_codex_home(temp_dir: str) -> dict[str, str]:
+    """Point `$CODEX_HOME` at a root that does not exist."""
+    return {_CODEX_HOME: str(Path(temp_dir) / _NONE_SENTINEL)}
 
 
 @dataclass(frozen=True)
@@ -133,22 +159,21 @@ class _SkillDiscoveryCase:
 class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
     """Codex has no offered-skills stream frame, so `record_agent_exit`
     backfills `skills_available` out-of-band from the worktree / `$CODEX_HOME`
-    skill roots (via `skills.discovery.discover_local_skills`) -- into both the
-    `agent_exit` record (behind `TRACK_SKILL_TRIGGERS`) and the trajectory
-    record (behind `TRAJECTORY_LOG_PATH`). Claude is untouched (its offered
-    set rides the stream), and a run with no worktree stays empty."""
+    skill roots (via `skills.discovery.discover_local_skill_sources`) -- into
+    both the `agent_exit` record (behind `TRACK_SKILL_TRIGGERS`) and the
+    trajectory record (behind `TRAJECTORY_LOG_PATH`). The `agent_exit` record
+    also carries the level each discovered name was defined at. Claude is
+    untouched (its offered set rides the stream, which names no source
+    directory), and a run with no worktree stays empty."""
 
     def test_agent_exit_records_discovered_skills(self) -> None:
         with (
             tempfile.TemporaryDirectory() as td,
-            patch.dict(
-                os.environ,
-                {_CODEX_HOME: str(Path(td) / _NONE_SENTINEL)},
-            ),
+            patch.dict(os.environ, _no_codex_home(td)),
         ):
-            cwd = Path(td, "wt")
-            _mk_skill(cwd / ".agents/skills", _DEVELOP)
-            _mk_skill(cwd / ".agents/skills", _REVIEW)
+            cwd = Path(td, _WORKTREE_DIR)
+            _mk_skill(cwd / _AGENT_SKILLS_ROOT, _DEVELOP)
+            _mk_skill(cwd / _AGENT_SKILLS_ROOT, _REVIEW)
             base, _ = self._emit(
                 backend=_CODEX,
                 cwd=cwd,
@@ -158,19 +183,44 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
         rec = base[0]
         self.assertEqual(rec["event"], _AGENT_EXIT)
         # No SKILL.md read in the stream -> nothing triggered, but the offered
-        # set is filled from the filesystem scan.
+        # set is filled from the filesystem scan, each name beside the level
+        # of the root that defined it.
         self.assertEqual(rec[_SKILLS_AVAILABLE], [_DEVELOP, _REVIEW])
+        self.assertEqual(
+            rec[_SKILL_LEVELS],
+            {_DEVELOP: _PROJECT_LEVEL, _REVIEW: _PROJECT_LEVEL},
+        )
         self.assertNotIn(_SKILLS_TRIGGERED, rec)
+
+    def test_agent_exit_keeps_each_root_level(self) -> None:
+        # The level is read off the scan rather than assumed, so a skill the
+        # operator installed globally records `user` while the worktree's own
+        # definition records `project`.
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td) / _CODEX_HOME_DIR
+            cwd = Path(td, _WORKTREE_DIR)
+            _mk_skill(cwd / _AGENT_SKILLS_ROOT, _DEVELOP)
+            _mk_skill(home / _GLOBAL_SKILLS_DIR, _REVIEW)
+            with patch.dict(os.environ, {_CODEX_HOME: str(home)}):
+                base, _ = self._emit(
+                    backend=_CODEX,
+                    cwd=cwd,
+                    td=td,
+                    track=True,
+                )
+        rec = base[0]
+        self.assertEqual(rec[_SKILLS_AVAILABLE], [_DEVELOP, _REVIEW])
+        self.assertEqual(
+            rec[_SKILL_LEVELS],
+            {_DEVELOP: _PROJECT_LEVEL, _REVIEW: _USER_LEVEL},
+        )
 
     def test_trajectory_records_discovered_skills(self) -> None:
         with (
             tempfile.TemporaryDirectory() as td,
-            patch.dict(
-                os.environ,
-                {_CODEX_HOME: str(Path(td) / _NONE_SENTINEL)},
-            ),
+            patch.dict(os.environ, _no_codex_home(td)),
         ):
-            cwd = Path(td) / "wt"
+            cwd = Path(td) / _WORKTREE_DIR
             _mk_skill(cwd / ".claude/skills", _REVIEW)
             _, traj = self._emit(
                 backend=_CODEX,
@@ -182,6 +232,9 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
         self.assertEqual(rec["event"], _AGENT_TRAJECTORY)
         self.assertEqual(rec[_BACKEND], _CODEX)
         self.assertEqual(rec[_SKILLS_AVAILABLE], [_REVIEW])
+        # The trajectory record stays names-only: provenance rides the
+        # `agent_exit` extras alone.
+        self.assertNotIn(_SKILL_LEVELS, rec)
         # The offered-tools baseline is backfilled onto the same record.
         from orchestrator.skills import discovery
 
@@ -192,10 +245,7 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
         # no worktree, so the trajectory record still carries `tools`.
         with (
             tempfile.TemporaryDirectory() as td,
-            patch.dict(
-                os.environ,
-                {_CODEX_HOME: str(Path(td) / _NONE_SENTINEL)},
-            ),
+            patch.dict(os.environ, _no_codex_home(td)),
         ):
             base, traj = self._emit(
                 backend=_CODEX,
@@ -205,6 +255,7 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
                 traj=True,
             )
         self.assertNotIn(_SKILLS_AVAILABLE, base[0])
+        self.assertNotIn(_SKILL_LEVELS, base[0])
         self.assertNotIn(_SKILLS_AVAILABLE, traj[0])
         from orchestrator.skills import discovery
 
@@ -216,13 +267,10 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
         # from the filesystem, so a stray scan can't invent a claude field.
         with (
             tempfile.TemporaryDirectory() as td,
-            patch.dict(
-                os.environ,
-                {_CODEX_HOME: str(Path(td) / _NONE_SENTINEL)},
-            ),
+            patch.dict(os.environ, _no_codex_home(td)),
         ):
-            cwd = Path(td) / "wt"
-            _mk_skill(cwd / ".agents/skills", _DEVELOP)
+            cwd = Path(td) / _WORKTREE_DIR
+            _mk_skill(cwd / _AGENT_SKILLS_ROOT, _DEVELOP)
             a_path = Path(td) / "a.jsonl"
             with (
                 patch.object(analytics_settings, _ANALYTICS_LOG_PATH, a_path),
@@ -245,7 +293,9 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
                     retry_count=0,
                     cwd=cwd,
                 )
-            self.assertNotIn(_SKILLS_AVAILABLE, _read_records(a_path)[0])
+            claude_record = _read_records(a_path)[0]
+        self.assertNotIn(_SKILLS_AVAILABLE, claude_record)
+        self.assertNotIn(_SKILL_LEVELS, claude_record)
 
     def _emit(self, **options) -> tuple[list[dict], list[dict]]:
         case = _SkillDiscoveryCase(

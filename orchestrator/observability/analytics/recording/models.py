@@ -3,10 +3,10 @@
 """Typed recording requests and the keyword signatures callers bind through.
 
 One owner for what a recorder is asked to write and what it carries while
-writing it: the request each of the two argument-bound event families is
-described by, the inputs one completed tracked agent run is summarized from,
-and the two optional groups an `agent_exit` folds in when the run offered
-them.
+writing it: the signature each of the three argument-bound event families is
+reached through, the request the two renaming ones bind into, the inputs one
+completed tracked agent run is summarized from, and the two optional groups an
+`agent_exit` folds in when the run offered them.
 
 The signatures are declared rather than written as parameter lists because the
 recorders they belong to are what a caller reaches, and the caller's spelling
@@ -15,6 +15,10 @@ field it lands in is named for what it holds. Binding through
 `inspect.Signature` keeps both -- the arity, the keyword-only rule, and the
 `TypeError` a missing argument raises stay exactly what a plain `def` would
 give, and the rename happens once, here, instead of at every call site.
+
+A catalog record renames nothing, so it declares a signature and no request:
+what a caller's keywords bind to is already the extras the record carries, and
+the field list stays free to grow without a producer's keywords moving.
 """
 
 from __future__ import annotations
@@ -63,9 +67,15 @@ class AgentExitContext:
 
 @dataclass
 class CodexCatalog:
-    """Out-of-band capabilities missing from Codex's JSON stream."""
+    """Out-of-band capabilities missing from Codex's JSON stream.
+
+    `available_skills` and `skill_levels` are two projections of one scan, so
+    they are filled together or not at all -- a level is only ever reported
+    for a name the same enumeration produced.
+    """
 
     available_skills: Optional[list[str]] = None
+    skill_levels: Optional[dict[str, str]] = None
     tools: Optional[list[str]] = None
 
 
@@ -75,14 +85,18 @@ class AgentExitSkillFields:
 
     `skills_evidence` maps each triggered name to why it counts as a load
     (`confirmed` / `inferred`); `skills_incidental` / `skills_incidental_count`
-    carry the path-only references the run made without loading a skill. All
-    are dropped (their key absent) when empty, so a run with nothing to report
-    keeps today's record shape.
+    carry the path-only references the run made without loading a skill.
+    `skill_levels` maps each offered name to the source level that defined it
+    (`project` / `user` / `harness`), and rides beside `skills_available`
+    rather than reshaping it, so a reader that knows only the names array is
+    unaffected. All are dropped (their key absent) when empty, so a run with
+    nothing to report keeps today's record shape.
     """
 
     skills_triggered: Optional[list[str]] = None
     skills_triggered_count: Optional[int] = None
     skills_available: Optional[list[str]] = None
+    skill_levels: Optional[dict[str, str]] = None
     skills_evidence: Optional[dict[str, str]] = None
     skills_incidental: Optional[list[str]] = None
     skills_incidental_count: Optional[int] = None
@@ -106,6 +120,16 @@ STAGE_EVALUATION_SIGNATURE = inspect.Signature(
         _parameter("stage"),
         _parameter("duration_s"),
         _parameter(RESULT_FIELD),
+    )
+)
+REPO_SKILL_CATALOG_SIGNATURE = inspect.Signature(
+    (
+        _parameter("repo"),
+        _parameter("base_branch"),
+        _parameter("remote_name"),
+        _parameter("skills_available"),
+        _parameter("skill_paths", None),
+        _parameter("skill_levels", None),
     )
 )
 AGENT_EXIT_SIGNATURE = inspect.Signature(
