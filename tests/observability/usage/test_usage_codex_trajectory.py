@@ -20,7 +20,8 @@ class CodexTrajectoryStepsTest(unittest.TestCase):
     the frame that completed it, an ``mcp_tool_call`` its ``arguments`` and
     its ``result``, a ``web_search`` its ``query`` and the ``action`` it
     resolved to, a ``file_change`` (codex's ``apply_patch`` custom tool) its
-    ``changes`` and the status it settled on. Each pair is deduped by the
+    ``changes`` and the status it settled on, a ``todo_list`` the plan it
+    opened with and the state that plan ended in. Each pair is deduped by the
     shared ``item.id`` across the started/updated/completed frames, and each
     ``agent_message`` is one ``assistant_message`` text turn (its ``text``),
     captured in stream order. The last ``agent_message`` ``text`` is also the
@@ -173,8 +174,8 @@ class CodexToolItemStepsTest(unittest.TestCase):
     def test_captured_run_normalizes_every_item(self) -> None:
         trajectory = _trajectory.parse_codex_trajectory(_tool_events.TOOL_RUN_STDOUT)
         # The reasoning item between the search and the MCP call leaves no
-        # step at all, and the plan updates codex reports as ``todo_list``
-        # collapse to one metadata-only placeholder instead of vanishing.
+        # step at all, and the plan codex republishes as a ``todo_list``
+        # collapses to one pair however many revisions it took.
         # The search pair is recorded under the provider's own ``exec-...``
         # call id rather than the synthetic ``item_N`` beside it: a web_search
         # frame serializes ``id`` twice and the provider's is written last, so
@@ -234,9 +235,15 @@ class CodexToolItemStepsTest(unittest.TestCase):
                     content=_usage_cases.COMPLETED_STATUS,
                 ),
                 _records.TrajectoryStep(
-                    kind=_usage_cases.UNSUPPORTED_ITEM_STEP,
+                    kind=_usage_cases.TOOL_CALL_STEP,
                     name="todo_list",
                     tool_id=_tool_events.TODO_ITEM_ID,
+                    content=_tool_events.plan_steps((_tool_events.TODO_TEXT, False)),
+                ),
+                _records.TrajectoryStep(
+                    kind=_usage_cases.TOOL_RESULT_STEP,
+                    tool_id=_tool_events.TODO_ITEM_ID,
+                    content=_tool_events.plan_steps((_tool_events.TODO_TEXT, True)),
                 ),
                 _records.TrajectoryStep(
                     kind=_usage_cases.ASSISTANT_MESSAGE_STEP,
