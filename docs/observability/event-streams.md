@@ -268,8 +268,9 @@ reuses the list `record_agent_exit` already parsed — `_run_agent_tracked` emit
 skill. The dashboard's primary skill metric is per-session **adoption** (`get_skill_adoption` + the "Skill adoption"
 panel), which counts, for each `(repo, role, backend, skill, level)` cell, how many logical agent sessions had the
 skill available and how many loaded it — an incidental `SKILL.md` reference stays a separate diagnostic column and never
-raises the rate. The invocation-level views (`get_skill_trigger_rates` and `get_skill_trigger_matrix`) sit
-beneath it as a clearly named invocation-level diagnostic — see the
+raises the rate. The invocation-level views (`get_skill_trigger_rates` and `get_skill_trigger_matrix`) open the card
+above it as a clearly named invocation-level diagnostic, and adoption itself is folded into one collapsed section per
+source level under them — see the
 [read model](analytics-dashboard.md#read-model-orchestratorobservabilityanalyticsquery) and
 [dashboard](analytics-dashboard.md#dashboard-orchestratorappsanalytics_dashboardpy) sections
 on that page. All are pure read-side additions over `extras JSONB` with no schema change. See
@@ -282,9 +283,10 @@ The dashboard's **primary** skill metric is per-session *adoption* — for each
 `(repo, agent_role, backend, skill, level)` cell, what share of the logical agent sessions that had the skill
 available actually loaded it. It is computed by
 `observability/analytics/query/skill_reads.py`'s `get_skill_adoption` and rendered by
-`observability/dashboard/skill_panel.py`'s "Skill adoption" card; the
+`observability/dashboard/skill_panel.py`'s "Skill adoption" card, in a collapsed section per source level; the
 older per-run trigger views
-(`get_skill_trigger_rates` / `get_skill_trigger_matrix`) sit beneath it as a clearly named invocation-level diagnostic.
+(`get_skill_trigger_rates` / `get_skill_trigger_matrix`) open that card above them as a clearly named
+invocation-level diagnostic.
 The per-session adoption metric reads the opt-in `agent_exit` skill fields above, so it only carries signal once
 `TRACK_SKILL_TRIGGERS` has recorded a session's available and loaded skills. The invocation-level views degrade more
 gently with the switch off: the trigger-rate table still counts every `agent_exit` run (a `0` trigger rate), and the
@@ -355,7 +357,7 @@ in both — so `incidental` is a parallel count, not a "did-not-load" complement
 rate. Of these three the adoption table renders only `Invocation loads` (`load_rows`) and `Incidental references`
 (`incidental`) as its two trailing columns; `invocations` (the cohort's total window run count) is a read-model field
 used for ordering and context, not a displayed column. A pre-window load counts toward `adopted` but toward none of
-the three, since all three are window-scoped. The collapsed invocation-level diagnostic beneath the adoption table
+the three, since all three are window-scoped. The collapsed invocation-level diagnostic above the adoption sections
 (`get_skill_trigger_rates` / `get_skill_trigger_matrix`) reports the same per-run granularity across roles / backends
 and per-skill cohorts. See the
 [read model](analytics-dashboard.md#read-model-orchestratorobservabilityanalyticsquery) for the exact query shapes and

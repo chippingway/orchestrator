@@ -86,7 +86,9 @@ parameters are read back through and the orders they select,
 control in, ``skill_adoption_rows`` for what one `(repo, role, backend, skill,
 level)` cell says -- including which of the two quiet cells reports an
 undefined rate and which a real zero -- and ``skill_adoption`` itself for the
-sorted panel and the notice a window with no session evidence renders instead.
+sorted panel, the notice a window with no session evidence renders instead,
+and the message a caller drawing one slice of a window's cells names in that
+notice's place.
 ``skill_matrix`` is the fourth, split the same five ways:
 ``skill_matrix_columns`` for the eight columns it is read across and its own
 pair of query parameters, ``skill_matrix_sort`` for the parse and orders,
@@ -94,15 +96,17 @@ pair of query parameters, ``skill_matrix_sort`` for the parse and orders,
 cell triggered, and ``skill_matrix`` itself for the sorted panel and the notice
 a window with no catalog-backed cell renders instead.
 ``skill_panel`` and ``skill_trigger_panel`` are the two cards three of those
-four are reported on. The first is the one the page draws: adoption leads it,
-the aggregate rates and the matrix fold into a collapsed expander beneath, one
-notice answers a window with no `agent_exit` row for the whole card, and the
-caption under the adoption table qualifies a window nobody adopted anything in
-rather than recommending a switch a present row already proves is on -- which
-is also what the fold beneath is handed, to tell a genuine no-trigger from
-tracking nobody turned on. The second is the card the section led with before
-that one and is kept for a caller that names it: its own notice, its
-unconditional prompt to enable tracking, and its own fold-out matrix.
+four are reported on. The first is the one the page draws: the aggregate rates
+and the matrix open it in one collapsed expander, adoption follows in a
+collapsed section per source level -- project, user, harness, and a fourth for
+a cell no record classified -- one notice answers a window with no `agent_exit`
+row for the whole card, and the caption under those sections qualifies a window
+nobody adopted anything in rather than recommending a switch a present row
+already proves is on -- which is also what the fold above is handed, to tell a
+genuine no-trigger from tracking nobody turned on. The second is the card the
+section led with before that one and is kept for a caller that names it: its
+own notice, its unconditional prompt to enable tracking, and its own fold-out
+matrix.
 ``recent_runs`` is the listing under those four panels rather than a fifth in
 that table: the rows behind the readings above it, projected into the columns
 one run is scanned by and the offset the sidebar picked, drawn in the collapsed

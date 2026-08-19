@@ -5,15 +5,20 @@
 Streamlit is in the optional `dashboard` group and a card is handed its `st`
 rather than reaching for one, so the cases drive a whole render against a
 stand-in that records what each call was given. What they read back is the
-markup, captions, and notices in the order they were written, and the label and
-open state of every expander, which is what makes the order two panels are
-drawn in and the flag one is folded behind observable rather than inferred from
-the source.
+markup, captions, and notices in the order they were written, and the label,
+open state, and own markup of every expander, which is what makes the order two
+panels are drawn in, the flag one is folded behind, and which table landed in
+which fold observable rather than inferred from the source.
+
+An expander records the markup written while it is open as well as appending
+it to the page, so a case reading one section's table apart from its siblings
+names the fold rather than counting payloads: several sections drawing the same
+panel class is exactly the shape a positional read would misattribute.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 
 from orchestrator.observability.analytics.query.skill_models import (
@@ -42,19 +47,36 @@ def rate_row(*, skill_runs: int = 2) -> SkillTriggerRateRow:
 
 @dataclass(frozen=True)
 class Expander:
-    """One fold-out the render opened, and whether it opened expanded."""
+    """One fold-out the render opened, how it opened, and what it drew."""
 
     label: str
     expanded: bool
+    markdowns: list[str] = field(default_factory=list)
 
 
 class NullContext:
-    """`with`-usable stand-in for `st.container(...)` / `st.expander(...)`."""
+    """`with`-usable stand-in for `st.container(...)` / `st.expander(...)`.
+
+    A container records nothing, while a fold-out names itself on the page for
+    as long as it is open, so what was written inside it is attributed to it.
+    """
+
+    def __init__(
+        self,
+        page: Optional["PanelStreamlit"] = None,
+        fold: Optional[Expander] = None,
+    ):
+        self.page = page
+        self.fold = fold
 
     def __enter__(self) -> "NullContext":
+        if self.page is not None:
+            self.page.open_fold = self.fold
         return self
 
     def __exit__(self, *exc: Any) -> bool:
+        if self.page is not None:
+            self.page.open_fold = None
         return False
 
 
@@ -67,16 +89,20 @@ class PanelStreamlit:
         self.captions: list[str] = []
         self.notices: list[str] = []
         self.expanders: list[Expander] = []
+        self.open_fold: Optional[Expander] = None
 
     def container(self, **kwargs: Any) -> NullContext:
         return NullContext()
 
     def expander(self, label: str, **kwargs: Any) -> NullContext:
-        self.expanders.append(Expander(label, bool(kwargs.get("expanded"))))
-        return NullContext()
+        fold = Expander(label, bool(kwargs.get("expanded")))
+        self.expanders.append(fold)
+        return NullContext(self, fold)
 
     def markdown(self, markup: str, **kwargs: Any) -> None:
         self.markdowns.append(markup)
+        if self.open_fold is not None:
+            self.open_fold.markdowns.append(markup)
 
     def caption(self, text: str) -> None:
         self.captions.append(text)
@@ -99,3 +125,13 @@ def all_markup(page: PanelStreamlit) -> str:
 def panel_markup(page: PanelStreamlit, marker: str) -> str:
     """The one payload carrying `marker`, so a case names its own table."""
     return next(markup for markup in page.markdowns if marker in markup)
+
+
+def fold_markup(page: PanelStreamlit, label_fragment: str) -> str:
+    """Everything drawn inside the fold-out whose label carries the words."""
+    fold = next(
+        opened
+        for opened in page.expanders
+        if label_fragment in opened.label
+    )
+    return "".join(fold.markdowns)
