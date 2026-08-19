@@ -17,6 +17,14 @@ restart recovery, sanitized workspace paths, structured logging,
 different but not-obviously-better design choice for the same problem.
 Two ideas survive critical review as real gaps.
 
+## Status as of 2026-08-19
+
+Neither proposal is implemented. Repository policy is still resolved from
+the process environment and `REPO` / `REPOS`, and the orchestrator recognizes
+no `policy.toml` or workspace lifecycle hook files. The proposals remain
+future-work candidates; the fixed label-driven stage dispatcher remains the
+current workflow model.
+
 ## Filter
 
 The issue asks for ideas to borrow, with the caveat that *more features
@@ -80,8 +88,9 @@ max_review_rounds = 5
 The file lives in the target repo, which an implementer agent can edit.
 Restrict the schema to values safe to flip from a PR (verify commands,
 budgets). Anything controlling agent identity, tokens, or git remotes
-stays env-only on the orchestrator host. Narrower than Symphony §15.4
-because our mutation channel is GitHub PRs, not a sysadmin commit.
+stays env-only on the orchestrator host. This is narrower than
+Symphony's general repo-owned `WORKFLOW.md` because our mutation channel
+is GitHub PRs, not a sysadmin commit.
 
 ### Cost
 
@@ -108,16 +117,17 @@ ignored. That asymmetry is right.
 ### Sketch
 
 Adopt three of the four — skip `before_remove`. Worktree removal today
-happens in several places (`_cleanup_decompose_worktree`,
-`_cleanup_question_worktree`, terminal cleanup), and a hook firing on
-every transient decomposer / question teardown is more surface than
-the use case justifies.
+happens across the decomposition and terminal owners under
+`orchestrator/git/worktrees/`, plus the question stage's teardown, and a
+hook firing on every transient decomposer / question teardown is more
+surface than the use case justifies.
 
 - **`after_create`** (`<target_root>/.agent-orchestrator/hooks/after_create.sh`) — first time a
   per-issue worktree is created. Failure: park run.
 - **`before_run`** (`…/hooks/before_run.sh`) — start of every agent invocation inside the
-  worktree — implementer, reviewer, decomposer, question, docs, fixing, and the
-  conflict-resolution dev run. Failure: park with `park_reason=hook_before_run_failed`.
+  worktree — implementer, reviewer, decomposer, question, discussion, docs,
+  fixing, and the conflict-resolution dev run. Failure: park with
+  `park_reason=hook_before_run_failed`.
 - **`after_run`** (`…/hooks/after_run.sh`) — agent exits, regardless of success. Failure: log only.
 
 Timeout: single `[hooks].timeout_seconds` key in `policy.toml`,
@@ -126,7 +136,7 @@ default 60s. Per-hook overrides can come later.
 ### Execution contract
 
 - `bash -lc <path>` with `cwd=<worktree>`.
-- Environment scrub via `agents._filter_agent_env(...,
+- Environment scrub via `agents.environment.filter_agent_env(...,
   allow_provider_auth=False)` — the same verify-style filter used for
   `VERIFY_COMMANDS` (see [`docs/configuration.md`](../docs/configuration.md)).
   Hooks are arbitrary target-repo shell, so the stricter form is
@@ -134,8 +144,8 @@ default 60s. Per-hook overrides can come later.
   (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, …) stay out of the hook
   environment. The default `allow_provider_auth=True` path is reserved
   for the agent subprocess itself.
-- `_git_hardened` today wraps `git` subprocesses only (no hooks /
-  fsmonitor / credential helper / detached global config — see
+- `git.commands._git_hardened` today wraps `git` subprocesses only (no
+  hooks / fsmonitor / credential helper / detached global config — see
   [`docs/architecture.md`](../docs/architecture.md) and
   [`docs/state-machine.md`](../docs/state-machine.md)). Shell hooks
   run outside that envelope, so before-run hooks need their own
@@ -144,7 +154,8 @@ default 60s. Per-hook overrides can come later.
   that omits `GIT_CONFIG*`, `GIT_DIR`, `GIT_WORK_TREE`,
   `GIT_EXEC_PATH`, and `GIT_HOOKS_PATH` so a hook script can't redirect
   the agent's later `git` calls into attacker-controlled config.
-- Output captured, truncated in logs via `_format_stderr_diagnostics`.
+- Output captured, redacted and truncated through
+  `workflow.engine.messages._format_stderr_diagnostics`.
 - Not advertised to the agent as a tool — orchestrator-side ritual.
 
 ### Cost
@@ -155,7 +166,7 @@ default 60s. Per-hook overrides can come later.
   `docs/architecture.md` that target-repo hooks run as the orchestrator
   UID; hosts wanting stricter isolation should run under a dedicated
   user (Symphony §15.2).
-- Pre-run hooks add per-dispatch latency. Document that hooks should
+- Pre-run hooks add per-agent-run latency. Document that hooks should
   be idempotent and cheap on the steady-state path.
 
 ## Considered but rejected
@@ -194,7 +205,8 @@ default 60s. Per-hook overrides can come later.
 
 ## Sequencing
 
-Land Proposal 1 first — covers the most-requested override
+Neither proposal is scheduled. If this work is picked up, land Proposal 1
+first — it covers the most-requested override
 (`verify.commands` per repo) and establishes the
 `.agent-orchestrator/policy.toml` precedent that Proposal 2 reuses for
 `hooks.timeout_seconds`. Both stay opt-in.
