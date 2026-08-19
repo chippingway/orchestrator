@@ -96,7 +96,8 @@ replaced with `***`. It deliberately does **not** strip issue or repository cont
 `system_prompt`, every step's `content` in `steps` (tool inputs / results and the assistant / user text turns), and the
 final `output` can — and routinely will — carry issue titles and bodies, quoted source from the worktree, file
 paths, diffs, the web-search queries and MCP tool arguments a codex run issued together with whatever those servers
-answered, and the agent's own reasoning, all in cleartext after redaction. An enabled trajectory file therefore
+answered, the plan a codex run wrote for itself and the paths each of its patches touched, and the agent's own
+reasoning, all in cleartext after redaction. An enabled trajectory file therefore
 carries the same sensitivity as the repositories the orchestrator works on; scope its filesystem permissions (and any
 retention) accordingly. This is why the sink is off by default and why it never leaves the local filesystem (next
 paragraphs).
@@ -326,7 +327,8 @@ opt-in `exclude_fixtures`), and `summarize`. Each run exposes a normalised, vint
 `user_input` prompt, then the ordered `steps[]`, then the final `output`, as one ordered `TimelineEntry` sequence — so
 an old steps-only record (only `tool_call` / `tool_result` steps) and a new record whose steps interleave
 `assistant_message` / `user_message` text turns render the same way; `tool_calls` still counts only `tool_call` steps,
-so neither the text turns nor an `unsupported_item` placeholder inflates the tally. A step kind the timeline has no
+so neither the text turns nor an `unsupported_item` placeholder inflates the tally, and a codex plan or patch counts
+once — as the single call its frames fold into — rather than once per frame. A step kind the timeline has no
 badge for — `unsupported_item` today — falls back to rendering its own kind as the badge text, which is why a new
 kind needs no viewer change. `is_fixture` flags the synthetic test-suite records an inherited file may
 carry (the sentinel prompt `ignored`, a `sess-*` session id, or a `Skill`-only run), which
