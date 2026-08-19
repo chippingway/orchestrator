@@ -8,8 +8,8 @@ state. The orchestrator process is stateless and can restart at any time.
 
 This file covers the high-level system: design constraints, the module map, the process model, the agent subprocess
 shape, the push path, and the observability surfaces. The label set, per-stage internals, per-tick flow, and
-pinned-state schema live in [`state-machine.md`](state-machine.md); agent roles and command-spec semantics live in
-[`workflow.md`](workflow.md).
+pinned-state schema live in [`state-machine.md`](state-machine.md); agent roles, conversation contracts, and
+command-spec semantics live in [`workflow.md`](workflow.md) and the focused pages under it.
 
 ## Design constraints
 
