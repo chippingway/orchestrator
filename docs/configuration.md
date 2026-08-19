@@ -12,7 +12,7 @@ files/paths outside the repo. Per-issue state lives in the issue's pinned JSON c
 ## Required
 
 - `GITHUB_TOKEN` — default _(required, env-only — not read from `.env`)_. fine-grained personal access token.
-  Putting it in `.env` is rejected at startup.
+  A token written into `.env` is ignored with a warning at startup.
 - `ORCHESTRATOR_TOKEN_FILE` — default `~/.config/<owner>/<repo>/token` (from `REPO`). path to the personal access
   token file (used when `GITHUB_TOKEN` is not in env)
 - `HITL_HANDLE` — default `geserdugarov`. comma-separated GitHub logins to @-mention when a human is needed
