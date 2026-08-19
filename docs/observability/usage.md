@@ -135,19 +135,29 @@ several frames per item — `item.started`, any `item.updated`, then `item.compl
 its `item.id` and a frame contributes only the fields it carried, which is what collapses a started/completed pair
 into a single pair of steps and lets the completing frame name what the started one had not resolved yet — except
 where the item type says otherwise: an item codex republishes whole on every frame is invoked once, by the frame that
-opened it, so a revision moves its result rather than its call. The supported item types and the fields each pair is
+opened it, so a revision moves its result rather than its call. Every item also keeps the position its *first* frame
+took, so folding a later frame into it fills that pair in place rather than moving it behind the operations that
+started after it, and the timeline reads in the order the run started its operations. A frame the stream left without
+an `item.id` correlates with nothing, so each one stands on its own and its steps trail the ordered items rather than
+claiming a position between two of them. The supported item types and the fields each pair is
 built from are: `command_execution` (its `command`, then the
 `aggregated_output` of the frame that completed it — a *running* command already reports that field, empty, so
 presence alone would credit a command still running with a result it never produced), `mcp_tool_call` (its
 `arguments`, then its `result` — or its `error` when the server filled that instead — under a `<server>.<tool>` step
-name), `web_search` (its `query`, then the `action` it resolved to), `file_change` (its `changes`, kept as the
-structured one-entry-per-path list codex reports them as, then the `status` once that status is terminal —
-`completed` or `failed`, on whichever frame carries it, since a patch reports `in_progress` until it has ended, so a
-patch that failed stays distinguishable from one the run left half applied), and `todo_list` (the plan `items` of the
+name), `web_search` (its `query`, then the `action` it resolved to — a search announces itself with an empty query
+and names itself only on the frame that completes it, so that frame is both what the query is read from and the only
+one that reports an outcome, and that `action` is the whole of the outcome the stream carries: the pages a search read
+and the answers it got are absent from the stream and are never reconstructed for the record), `file_change` (its
+`changes`, kept as the structured one-entry-per-path list codex reports them as, then the `status` once it is terminal
+— `completed` or `failed`, on whichever frame carries it, since a patch reports `in_progress` until it has ended, so a
+patch that failed stays distinguishable from one the run left half applied, and a patch still `in_progress` when the
+stream stopped keeps its call with no result under it), and `todo_list` (the plan `items` of the
 frame that opened it, then the plan `items` of the frame that completed it — codex republishes the whole plan on every
-revision, so one plan is one pair however often it is rewritten, and a plan the stream never completed keeps its call
-with no result under it). `file_change` is codex's **custom** (freeform) tool surface: the model calls `apply_patch`,
-and the stream reports the call and its outcome as a `file_change` item, so a custom tool call normalizes to a pair
+revision, so one plan is one pair however often it is rewritten: every `item.updated` between the two folds into that
+same pair instead of adding a step of its own, and a plan the stream never completed keeps its call with no result
+under it, since where a plan stood when the stream stopped is not where it ended). `file_change` is codex's
+**custom** (freeform) tool surface: the model calls `apply_patch`, and the stream reports the call and its outcome as
+a `file_change` item, so a custom tool call normalizes to a pair
 like any other. `codex exec --json` publishes no separate custom / dynamic tool item type — its whole item vocabulary
 is `agent_message`, `reasoning`, `command_execution`, `file_change`, `mcp_tool_call`, `collab_tool_call`,
 `web_search`, `todo_list`, and `error` (verified against codex-cli 0.148.0), and `custom_tool_call` is a raw
@@ -186,15 +196,17 @@ Nothing fabricates an outcome either — a call that failed, or one the stream n
 completed, keeps its `tool_call` with no `tool_result` under it unless a frame actually reported one.
 
 **Every identified codex item is accounted for.** Beside the steps, `parse_codex_trajectory` returns one `SourceItem`
-per `item.id` the stream carried, in first-seen order and deduplicated across the started / updated / completed frames
-the same way a tool pair is. Each names the `item_id`, the `item_type` the classification settled on, and a
+per `item.id` the stream carried, in first-seen order across every identified frame — the ones that contribute no
+step at all included — and deduplicated across the started / updated / completed frames the same way a tool pair is.
+Each names the `item_id`, the `item_type` the classification settled on, and a
 `disposition`: `stored` (the item's own steps are in `steps`), `unsupported` (nothing normalized its type, so the
 placeholder step above is what names it), `excluded` (the `reasoning` the classifier keeps out whole — the accounting
 records the id and the type and nothing else, never the hidden text or any other field of the item), or `empty` (its
 frames carried no payload to store — an `agent_message` with no text, a call whose fields never arrived, or an item
 too malformed to name a type at all, whose `item_type` is then the empty string). A normalized frame outranks an
-unsupported wrapper sharing its id whichever of the two arrives first, so the wrapper that adds no step renames
-nothing either and leaves no payload of its own behind. The accounting is also what carries an `agent_message` item's
+unsupported wrapper sharing its id whichever of the two arrives first — and renames it in place, since an id holds the
+position its first frame took either way — so the wrapper that adds no step renames nothing either and leaves no
+payload of its own behind. The accounting is also what carries an `agent_message` item's
 id: a text turn is not a tool call, so its step's `tool_id` stays empty and the provider id lands here rather than in
 the field a downstream reader joins a result to its invocation by. A frame the stream left without an id is the one
 thing not accounted — there is no name to account it under, and every such frame would otherwise share one — so it
