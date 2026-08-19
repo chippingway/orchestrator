@@ -107,8 +107,9 @@ therefore scan `analytics_events` and pin `conditions.py`'s `AGENT_EXIT_CONDITIO
 that excludes `agent_exit` returns without dialing rather than running a query whose two conditions contradict; the
 two capped reads pass a non-positive `limit` through as "every cell". One aggregate owner sits under each:
 `skill_trigger_rates.py` (the whole-cohort denominator, the key-presence probe, and the summed trigger count),
-`skill_matrices.py` (the repository-scoped catalog scan, the window-scoped runs scan, and the zero-padding between
-them), and `skill_adoption.py` (the per-session ratio and the invocation / load / incidental diagnostics beside it).
+`skill_matrices.py` (the repository-scoped catalog scan, the window-scoped runs scan, the zero-padding between
+them, and the ranking the cap keeps the top of), and `skill_adoption.py` (the per-session ratio and the invocation /
+load / incidental diagnostics beside it).
 Beneath the last, `skill_sessions.py` owns the resume-then-session-then-row-id session key and the two scans' scopes —
 the window one picks which sessions count, the history one drops the start bound and the stage filter while keeping
 the end bound. Beneath both aggregates, `skill_values.py` owns the two JSONB coercions (the name array and the
@@ -386,16 +387,16 @@ so each arrives across five owners. The third is the per-session adoption table,
 `adopt_dir` pair a heading writes — with the two invocation diagnostics among those columns counted apart from the
 session pair so neither can be read into the rate between them; `skill_adoption_sort.py` for the parse that reads the
 pair back and the repository-then-rate order a table nobody sorted opens in; `skill_adoption_headers.py` for the
-header row each column is an in-tab sort link in; `skill_adoption_rows.py` for what one
-`(repo, role, backend, skill)` cell says, keeping the undefined rate of a skill nobody was offered apart from the real
+header row each column is an in-tab sort link in; `skill_adoption_rows.py` for what one cell says under its four
+naming columns, keeping the undefined rate of a skill nobody was offered apart from the real
 zero of one nobody loaded; and `skill_adoption.py` for the panel those cells are sorted into and the
 `TRACK_SKILL_TRIGGERS`-naming notice a window with no session evidence renders instead. The fourth is the trigger
 matrix, split the same way: `skill_matrix_columns.py` for the seven columns it is read across, the key
 each is ordered by, and the `mtx_sort` / `mtx_dir` pair a heading writes; `skill_matrix_sort.py` for the parse that
 reads that pair back — a stale column or a lone direction degrading to the default rather than raising — and the
 repository-then-rate order a matrix nobody sorted opens in; `skill_matrix_headers.py` for the header row each column
-is an in-tab sort link in, with the arrow only the active one carries; `skill_matrix_rows.py` for what one
-`(repo, role, backend, skill)` cell says, its zero and derived rate toned down together while the cohort's run total
+is an in-tab sort link in, with the arrow only the active one carries; `skill_matrix_rows.py` for what one cell says
+under those same four naming columns, its zero and derived rate toned down together while the cohort's run total
 stays plain; and `skill_matrix.py` for the panel those cells are sorted into and the `TRACK_SKILL_TRIGGERS`-naming
 notice a window with no catalog-backed cell renders instead.
 `skill_panel.py` and `skill_trigger_panel.py` are the two cards three of those four panels are reported on. The first
@@ -552,8 +553,12 @@ either wave surfaces as one `st.error` + `st.stop`.
    render the matching `UTC±N` label.
 8. "Skill adoption" panel — the primary per-session adoption matrix above a fold-out invocation-level diagnostic. The
    headline table (`_skill_adoption_html` over `get_skill_adoption`) renders one row per `(repo, agent_role, backend,
-   skill)` cell with columns Repo / Role / Backend / Skill / Sessions / Sessions using skill / Adoption rate /
-   Invocation loads / Incidental references, counting skill use by **logical agent session** rather than by raw run:
+   skill, level)` read-model cell with columns Repo / Role / Backend / Skill / Sessions / Sessions using skill /
+   Adoption rate / Invocation loads / Incidental references. The skill's source level keys the cell but is not one of
+   those columns, so two rows can carry the same four names and differ only in the definition behind them — a
+   repository's own `develop` beside a same-named global one, or the `unknown`-level loads of a claude run (whose
+   stream names no source directory) beside the catalog's `project` cell for that name. The table counts skill use by
+   **logical agent session** rather than by raw run:
    `Sessions` is how many sessions in the cohort had the skill available, `Sessions using skill` the subset that loaded
    it, and `Adoption rate` their share (`adopted / sessions`, once per session). The two trailing columns are the
    window-scoped invocation diagnostics: `Invocation loads` counts the window runs that loaded the skill and
@@ -568,7 +573,9 @@ either wave surfaces as one `st.error` + `st.stop`.
    carries the older per-run views as a clearly named diagnostic: the per-`(agent_role, backend)` aggregate table
    (`_skill_triggers_html` over `get_skill_trigger_rates`, showing runs, skill runs, a trigger-rate bar, and total
    trigger count) and, below it, the per-skill **trigger matrix** (`_skill_matrix_html` over
-   `get_skill_trigger_matrix`) with columns Repo / Role / Backend / Skill / Runs / Runs with skill / Trigger rate. The
+   `get_skill_trigger_matrix`) with columns Repo / Role / Backend / Skill / Runs / Runs with skill / Trigger rate,
+   keyed by the same source level it does not render either — so a catalog-padded `project` row can sit beside an
+   `unknown`-level row for a skill some run loaded. The
    matrix folds each repo's `repo_skill_catalog` into the observed triggers so a skill the repo offers but no cohort
    fired surfaces as an explicit (muted) `0` "Runs with skill" cell (and a matching muted `0%` trigger rate) rather
    than a missing row (the cohort `Runs` total is never muted); its headers write `mtx_sort` / `mtx_dir` params (parsed
