@@ -61,7 +61,8 @@ parser read them back is in [`../observability/analytics-database.md`](../observ
   `.claude/skills` roots plus the global `$CODEX_HOME/skills`), whose per-name `project` / `user` / `harness` source
   level is recorded beside the names as `skill_levels` — dropped for a claude run, whose stream names no source
   directory to classify. Both per-skill read models file a cell under that level as well as the name, with a name no
-  recorded map covers reading `unknown`. Once on, the dashboard's "Skill adoption" panel leads with per-session adoption
+  recorded map covers reading `unknown`. Both skill tables render that level as a sortable `Level` column of their own.
+  Once on, the dashboard's "Skill adoption" panel leads with per-session adoption
   (`skill_reads.get_skill_adoption`, under `observability/analytics/query/`) — how many logical sessions had each skill
   available and how many loaded it, with incidental references kept as a separate column that never raises the rate —
   above a collapsed invocation-level diagnostic carrying the per-role/backend trigger rate
