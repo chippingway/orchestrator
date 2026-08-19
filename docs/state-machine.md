@@ -165,12 +165,13 @@ issue, since an umbrella has no implementation of its own. Full flow:
 ### `_handle_implementing` (label `workflow:implementing`)
 
 Spawns (or resumes) the locked dev session in the per-issue worktree at
-`<WORKTREES_DIR>/<owner>__<name>/issue-<n>` on branch `orchestrator/<owner>__<name>/issue-<n>`, gated by the 24h
-retry budget. New commits on a clean tree push the branch, open or reuse a PR, and set `workflow:validating`; a dirty
-tree or a no-commit reply parks. Recovered commits skip the agent, a `timed_out` run disposes on whether HEAD moved
-past `pre_implement_sha`, and `interrupted` or a mid-run `paused` returns without writing pinned state. The
-external-merge short-circuit, the `/orchestrator continue` retry, and the plan-PR question the merge terminal is
-reached past are in [`state-machine/delivery-stages.md`][implementing].
+`<WORKTREES_DIR>/<owner>__<name>/issue-<n>` on branch `orchestrator/<owner>__<name>/issue-<n>`. Only a fresh spawn is
+gated by the 24h retry budget (`MAX_RETRIES_PER_DAY`, shared with decomposing) — an awaiting-human resume and a
+recovered worktree, which skips the agent entirely, are carry-over work rather than retries. New commits on a clean
+tree push the branch, open or reuse a PR, and set `workflow:validating`; a dirty tree or a no-commit reply parks. A
+`timed_out` run disposes on whether HEAD moved past `pre_implement_sha`, and `interrupted` or a mid-run `paused`
+returns without writing pinned state. The external-merge short-circuit, the `/orchestrator continue` retry, and the
+plan-PR question the merge terminal is reached past are in [`state-machine/delivery-stages.md`][implementing].
 
 ### `_handle_documenting` (label `workflow:documenting`)
 
