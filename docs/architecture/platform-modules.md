@@ -81,7 +81,8 @@ orchestrator/
     repositories.py     `REPOS` entry parsing, validation, and default-spec construction
   github/               publishes `GitHubClient` and `PinnedState`
     client.py           the authenticated client over the mixin chain: PyGithub setup, the worker-thread clone, and
-                        the cached label reads with their confirmed-absent retry window
+                        the cached label reads with their confirmed-absent retry window and the one line a sweep's
+                        absent legacy spellings are reported in
     aliases.py          the descriptor a stateless helper is bound onto the client with, so class, instance, and
                         module access all answer alike
     checks.py           status / check-run normalization, failure-before-pending folding, and the fail-closed check
