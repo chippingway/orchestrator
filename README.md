@@ -235,8 +235,11 @@ uv sync --group dashboard
 uv run streamlit run orchestrator/apps/trajectory_dashboard.py
 ```
 
-See [`docs/observability.md`](docs/observability.md) for the event schemas, retention behavior, database setup,
-dashboard details, and the trajectory viewer.
+See [`docs/observability.md`](docs/observability.md) for the database setup, dashboard details, and usage parser,
+[`docs/observability/event-streams.md`](docs/observability/event-streams.md) for the audit and analytics event schemas
+and their retention behavior, and
+[`docs/observability/trajectories.md`](docs/observability/trajectories.md) for the trajectory sink, its operator
+workflow, and this viewer.
 
 ## Managing multiple repositories
 
@@ -261,7 +264,7 @@ For deeper implementation details, use the references below.
 | State machine | [`docs/state-machine.md`](docs/state-machine.md) | Labels, workflow states, stage handlers |
 | Workflow | [`docs/workflow.md`](docs/workflow.md) | Agent roles, conversation contracts, command specs |
 | Configuration | [`docs/configuration.md`](docs/configuration.md) | Env vars, defaults, operator runbooks |
-| Observability | [`docs/observability.md`](docs/observability.md) | Audit log, analytics database, usage parser |
+| Observability | [`docs/observability.md`](docs/observability.md) | Event sinks, trajectories, database, usage parser |
 | Security | [`docs/security.md`](docs/security.md) | Checklist, GitHub and org settings |
 
 ## License

@@ -1,0 +1,362 @@
+# Event streams
+
+The two JSONL sinks the polling tick writes as it drives issues: the **audit event log** (`EVENT_LOG_PATH`), an
+opt-in record of workflow events, and the **analytics sink** (`ANALYTICS_LOG_PATH`), the raw metric records the
+Postgres aggregation and the analytics dashboard over it are built from. Both are observation-only — no dispatch
+decision reads either back, and both are safe to truncate, rotate, or delete at any time. The third sink, the opt-in
+trajectory recorder, is documented in [`trajectories.md`](trajectories.md).
+
+The record shapes below are a compatibility contract: an operator's `jq` filter, a `logrotate` rule, and the Postgres
+`analytics_events` columns all key off them. Which module owns which piece of the write path is *not* repeated here —
+[`architecture.md`](../architecture.md#top-level-layout) is the single place that inventory is maintained. For the
+knobs themselves see [`configuration/observability.md`](../configuration/observability.md). The parser the analytics
+`agent_exit` counts come from, and the database, read model, and dashboard that sink is aggregated into afterwards,
+are on [`observability.md`](../observability.md).
+
+## Audit event log (`EVENT_LOG_PATH`)
+
+Optional, opt-in JSONL sink. When `config.EVENT_LOG_PATH` is set, `github.events.write_event_record` appends one JSON
+object per audit event to that file inside `GitHubClient.emit_event`; when unset (the default) the helper
+short-circuits to a no-op. The fake `GitHubClient` in `tests/support/github/` calls the same helper.
+
+**Schema.** Every record is built by `github.events.build_event_record` and carries `ts` (UTC ISO-8601 at second
+precision), `repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included
+when the emitter passes one (effectively always today). Extras whose value is `None` are dropped. `json.dumps` is
+called with `sort_keys=True` so on-disk order is stable across writers.
+
+`stage` always carries the **bare stage tag** — `implementing`, `fixing`, `resolving_conflict` — and never the
+`workflow:`-prefixed GitHub label the issue wears. Three shapes feed it here, and all three land on the tag:
+
+- **The tracked agent spawn** takes it as a literal from the stage that calls `_run_agent_tracked` (`stage="validating"`
+  in the reviewer owner, `stage="fixing"` in the fixing one), so `agent_spawn` / `agent_exit` read no label at all.
+- **`stage_enter`** is handed the label `set_workflow_label` is applying, normalized through
+  `workflow.state.stage_name` — the one emitter whose tag names where the issue is going rather than where it is.
+- **The events that describe an issue where it already sits** — the park funnel, the terminals, the base-sync writers
+  — normalize the label it currently carries the same way.
+
+The namespace therefore stops at the GitHub boundary, so a grep or a dashboard filter matches on the tag. See
+[`state-machine.md#workflow-labels`](../state-machine.md#workflow-labels) for the two spellings and which labels have
+only one.
+
+**Event kinds.** Every kind is emitted through the single `GitHubClient.emit_event` chokepoint, which also appends to a
+capped in-memory tail (`recorded_events`, `_RECORDED_EVENTS_CAP = 500`) for tests and short-window debugging — the
+file is the durable record.
+
+- `stage_enter` — `set_workflow_label` (via `_emit_stage_enter`) for every label flip; extras: `stage`.
+- `agent_spawn` / `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`) wraps every `run_agent` call
+  (decomposer, implementer, reviewer, dev-resume, conflict-resolution dev); extras: `agent` (backend), `agent_role`,
+  `review_round`, `retry_count`. `session_id` and `agent_exit`-only fields are described below.
+- `skill_triggered` — `_run_agent_tracked` after `agent_exit`, **only when `TRACK_SKILL_TRIGGERS` is on**
+  (default off); one event per distinct skill the run triggered; extras: `agent` (backend), `agent_role`,
+  `review_round`, `retry_count`, `skill` (the triggered skill name). Reuses the list `record_agent_exit` already parsed;
+  off-switch installs emit none.
+- `review_verdict` — `_handle_validating` after `_parse_review_verdict` reads the reviewer's last message; extras:
+  `verdict` (`approved` / `changes_requested` / `unknown`), `review_round`, `pr_number`, `session_id`.
+- `park_awaiting_human` — every `_park_awaiting_human` (in `workflow/engine/guards.py`) call site, plus
+  `_on_question`, `_on_dirty_worktree`,
+  `_park_verify_failure`, and the question- and discussion-stage `_park_question` / `_park_discussion` funnels;
+  extras: `stage` (read from the current
+  workflow label, not passed in), `reason` (e.g. `agent_timeout`, `push_failed`, `failed_checks`, `agent_question`,
+  `agent_session_limit` (a quota-exhausted agent message, parked retryably as `agent_silent`), `dirty_worktree`,
+  `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`, `question_*`,
+  `discussion_*`, ...).
+- `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The
+  `discussion` stage's plan publication emits the same event with `stage="discussion"` when it opens (never when it
+  reuses) a plan PR; it carries no `retry_count`, having no retry budget of its own.
+- `pr_merged` — External merge terminal arcs in `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict`;
+  plus `_finalize_if_pr_merged` (in `workflow/engine/terminals.py`, which also owns those arcs) from
+  `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks
+  and from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; plus the `discussion` stage's
+  plan-PR terminal (`workflow/stages/discussion/terminal.py`), which polls the recorded plan PR at handler entry and
+  drains the same `_finalize_merged_pr` arc when the humans merged it; extras: `pr_number`, `sha`,
+  `merge_method="external"`, `review_round`, `conflict_round`, `retry_count` — a plan PR carries none of those three
+  counters, so its record reports `review_round: 0` and drops the other two with the rest of the null extras;
+  `stage` names the stage the issue was in at finalize entry — spelled literally as `discussion` on that path, since
+  the stage attributes its own runs rather than re-reading the label.
+- `pr_closed_without_merge` — `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict` when the PR is
+  closed without merge; plus `_finalize_if_issue_closed` from `_handle_implementing` / `_handle_documenting` /
+  `_handle_validating` entry checks (only when the linked PR is also closed; an open PR with a manually-closed issue is
+  left alone); plus the same `discussion` plan-PR terminal with `stage="discussion"` when the humans closed the plan PR
+  unmerged. Two discussion endings deliberately emit NOTHING: a manually closed issue whose plan PR is still open (the
+  stage holds its terminal and keeps the label so the closed-issue sweep goes on yielding it), and a close before any
+  plan PR exists (finalized `rejected`, with no pull request for the payload to name); extras: `pr_number`, `sha`,
+  `review_round`, `conflict_round`, `retry_count`; `stage` names the stage the issue was in at finalize entry.
+- `merge_attempt` — Every `git rebase origin/<base>` inside `_handle_resolving_conflict`; extras:
+  `method="base_rebase"`, `result` (`success` / `failed` / `conflict`), `pr_number`, `sha`, `conflict_round`,
+  `review_round`, `retry_count`.
+- `conflict_round` — `_route_pr_worktree_to_resolving_conflict` emits `action="entered"` only when the refresh-time
+  rebase actually leaves conflicted files (a merely-behind-base clean rebase no longer emits this);
+  `_reconcile_parked_fixing` also emits `action="entered"` (with `stage="fixing"`) when a stuck validating-route
+  transient `workflow:fixing` park is routed to `workflow:resolving_conflict` because its worktree is out of sync with
+  the PR head (behind base, or an unpushed local rebase); every increment site (`_emit_conflict_round_incremented`)
+  emits `action="incremented"` with `outcome`; extras: `pr_number`, `conflict_round`, `review_round`, `retry_count`,
+  `outcome` (for increments), `sha`.
+- `base_rebased` — `_sync_pr_worktree_to_base` after a clean refresh-time rebase + push that routes the issue from
+  `workflow:validating` / `workflow:documenting` / `in_review` / `workflow:fixing` back to `workflow:validating`; also
+  `_recover_pending_auto_base_rebase` when a crashed prior tick is finalized; extras: `pr_number`, `sha` (new head),
+  `method` ∈ {`auto_clean_rebase`, `crash_recovery_pushed`, `crash_recovery_relabel_only`}, `review_round`
+  (post-reset, so 0), `retry_count`; `stage` names the stage the issue was in when the rebase started.
+
+**`agent_spawn` / `agent_exit` extras.** On top of the shared fields:
+
+- On `agent_spawn`, `session_id` is the resume session id and is OMITTED for fresh spawns (`resume_session_id=None` is
+  dropped by `build_event_record`).
+- On `agent_exit`, `session_id` is the result id from `AgentResult`. `agent_exit` additionally carries `duration_s`,
+  `exit_code`, and `timed_out`.
+
+**`skill_triggered` events (opt-in).** Gated behind `TRACK_SKILL_TRIGGERS` (default off; the same switch that adds the
+[`agent_exit` analytics skill fields](#agent_exit-records)). After the `agent_exit` audit event fires,
+`_run_agent_tracked` emits one `skill_triggered` event per distinct skill the run triggered, reusing the de-duplicated
+first-seen list `record_agent_exit` parsed from the same stdout rather than re-reading it. Each event carries `agent`
+(backend), `agent_role`, `review_round`, `retry_count`, and the `skill` name — and never the `Skill` tool's `args`
+(Privacy, same names-only contract as the analytics fields). A run that triggered nothing, or any install with the
+switch off, emits none, so the default audit log is unchanged. The emission rides its own fail-open guard: a bug here
+logs and is swallowed, never disturbing the baseline `agent_spawn` / `agent_exit` events. This is the per-invocation
+granularity surface; the rolled-up counts live in the `agent_exit` analytics record below.
+
+**No built-in rotation.** `write_event_record` reopens the file in append mode for every event after
+`path.parent.mkdir(parents=True, exist_ok=True)`; there is no long-lived file descriptor, no size cap, no rename, and no
+compression. External rotation is operator-managed — pair `EVENT_LOG_PATH` with `logrotate` (or equivalent). Because
+each append re-resolves the path, create/rename-style rotation is as safe as `copytruncate`: the next event picks up the
+new inode without any `SIGHUP` or restart.
+
+An `OSError` during the append is caught and downgraded to a `log.warning` so a misconfigured path (read-only mount,
+disk full, permission failure) cannot stop the per-issue tick from making progress; the missing record is silently
+dropped and the pinned state on GitHub remains correct.
+
+**Pinned state is authoritative.** The event log is append-only and observation-only. The orchestrator never reads it
+back; every dispatch decision keys off the pinned `<!--orchestrator-state ...-->` JSON comment on the issue (and the
+issue's workflow label). If the two disagree, trust pinned state. The append-only log is safe to truncate or delete at
+any time without affecting workflow correctness.
+
+## Analytics sink (`ANALYTICS_LOG_PATH`)
+
+Project-local JSONL sink for raw metric records, separate from `EVENT_LOG_PATH`. Opts in or out independently via
+`ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS`.
+
+**Ownership.** The recorders that append this sink, the by-age prune beside them, and the read and sync paths over
+the Postgres target all live under `orchestrator/observability/analytics/`. Every knob named on this page —
+`ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, `ANALYTICS_DB_URL`, the sibling trajectory pair
+`TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, and `TRACK_SKILL_TRIGGERS` — is parsed by
+`analytics/config.py` rather than by `orchestrator/config/`, which keeps only the audit log's own
+`EVENT_LOG_PATH` because `GitHubClient.emit_event` is a general-purpose audit surface. Which owner holds which piece
+of that write path is in [`architecture.md`](../architecture.md#top-level-layout).
+
+**Filesystem only.** No PostgreSQL, Streamlit, or external services — the sink is one JSONL file under the project log
+area. Default path is `<LOG_DIR>/analytics.jsonl`, already covered by the `logs/` `.gitignore` rule. Set
+`ANALYTICS_LOG_PATH=` (empty) or to `off` / `disabled` / `none` to disable writes entirely; in that mode `append_record`
+and `prune_old_records` are silent no-ops and no file is opened.
+
+**Schema.** Every record is built by `recording.build_record` and carries `ts` (UTC ISO-8601 at second precision),
+`repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included when the caller
+passes one, and carries the same bare stage tag the audit sink records rather than the `workflow:`-prefixed label — so
+`WHERE stage = 'validating'` is the form that matches, here and in the Postgres column the sync loads it into. The
+recorders with an audit twin are handed the tag their emitter already resolved; `stage_evaluation` has no twin, and
+the per-issue dispatcher that writes it alone normalizes the label it dispatched on the same way. Extras whose value
+is `None` are dropped. `json.dumps` uses `sort_keys=True` so on-disk order is stable. The JSONL file is the raw
+foundation layer for the Postgres aggregation step.
+
+**Event kinds written today:**
+
+- `stage_enter` — `GitHubClient._emit_stage_enter` alongside the audit `stage_enter`; one record per workflow label
+  transition; carries `stage`.
+- `stage_evaluation` — the `_process_issue` dispatcher (in `workflow/engine/dispatch.py`); written by its
+  try/except/finally wrapper; carries `stage`,
+  `duration_s` (handler wall-clock), `result` (`"ok"` / `"error"`); omitted for `backlog`- / `paused`-skipped issues
+  (no handler runs).
+- `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`); one record per tracked agent invocation; agent
+  context + parsed token / model / cost details (see below).
+- `repo_skill_catalog` — `orchestrator.skills.catalog._emit_repo_skill_catalog`, driven once per tick per spec by the
+  tick owner (in `workflow/engine/tick.py`, entered through `workflow.tick`); repo-level (not issue-scoped, so
+  `issue` is
+  the sentinel `0`); carries `base_branch`, `remote_name`, `skills_available` (deduped `SKILL.md` skill names on the
+  base ref), and optional `skill_paths` (name → source paths) — see below.
+
+**Append.** `recording.append_record(record)` reopens the file in append mode for every record after
+`path.parent.mkdir(parents=True, exist_ok=True)`. An `OSError` is caught and downgraded to a `log.warning`.
+
+**Retention pruning.** `retention.prune_old_records(*, now=None)` reads the file and removes records whose `ts` is older
+than `ANALYTICS_RETENTION_DAYS`. No-op (returns `0`) when the sink is disabled, retention is non-positive, or the file
+does not exist. The rewrite goes through a temp file in the sink's own directory followed by `os.replace` so a crash
+mid-prune cannot truncate the analytics file. Records with a missing / non-string / unparseable `ts` (and any line that
+is not valid JSON) are preserved verbatim so the prune step never silently drops data it cannot interpret.
+
+**Append/prune serialization.** Append and prune share one process-local `threading.Lock`, minted on
+`observability/analytics/sink.py` — one mint per process, so every reference to `append_record` takes the object the
+prune takes — so a concurrent `append_record` cannot land between the prune's read and its `os.replace`. Under the
+scheduler-driven dispatch, `workflow.tick` returns as soon as it has submitted per-issue callables, so scheduler
+workers may still be running — and calling `append_record` — when `runtime.ticks.run_tick` invokes
+`prune_with_retention_logging()`. Without the lock, an append that opened the old inode after the prune's read but
+before the replace would be silently lost. The lock is held only around the filesystem ops; JSON serialization happens
+outside the critical section.
+
+**Retention cadence.** `runtime.ticks.run_tick` calls `retention.prune_with_retention_logging()` exactly once per
+polling iteration after `workflow.tick` returns for every configured repo, regardless of how many repos are
+configured — the sink is process-wide, not per-repo. It names the owner inside the call, so the tick's own import never
+pays for the prune graph. Right before the prune, `run_tick` calls `scheduler.reap()` exactly once per polling pass so
+worker failure-completion records drain before the next iteration. `_dispatch_via_scheduler` deliberately does NOT
+reap. The wrapper catches exceptions and logs the `"removed N record(s)"` message so the call site in the tick stays a
+one-liner, and it dispatches `prune_old_records` on its own module so
+`patch.object(retention, "prune_old_records", ...)` still intercepts. Per-tick cost is bounded: the helper reads the
+file at most once and only rewrites it when at least one record is older than the retention window.
+
+**Pinned GitHub state is unaffected.** The prune touches only the local file — no issue comment, label, or other
+GitHub state is rewritten. The analytics sink is local-filesystem observability and is safe to truncate or delete at any
+time.
+
+### `agent_exit` records
+
+`_run_agent_tracked` (in `workflow/engine/usage.py`) appends a single `event="agent_exit"` analytics record after
+every tracked agent run, distinct from (and in addition to) the audit `agent_spawn` / `agent_exit` events on
+`EVENT_LOG_PATH`. Each record carries:
+
+- **Context** — `repo`, `issue`, `stage`, `agent_role`, `backend`, `review_round`, `retry_count`, `duration_s`,
+  `exit_code`, `timed_out`.
+- **Spec / session** — the configured `agent_spec` (the role's full `*_AGENT_SPEC` string, e.g. `claude --model
+  claude-opus-4-7`), both the `resume_session_id` passed into the spawn and the live `session_id` from the result.
+- **Usage parser output** — `input_tokens`, `output_tokens`, `cached_tokens`, `cache_read_tokens`,
+  `cache_write_tokens`, the distinct `models` observed in the stream, `turns`, `cost_usd`, and `cost_source`.
+- **Skill triggers (opt-in)** — only when `TRACK_SKILL_TRIGGERS` is on (default off): `skills_triggered` (distinct
+  skill names, first-seen order), `skills_triggered_count` (total trigger count, so three `develop` pulls read `3` while
+  the list carries `develop` once), `skills_evidence` (name → the per-load evidence tier: `confirmed` for a claude
+  `Skill` tool call, `inferred` for a codex command that directly reads the skill's `SKILL.md` with a reader verb such
+  as `cat` / `sed`), the incidental pair `skills_incidental` / `skills_incidental_count` (path-only references a codex
+  run made to a `SKILL.md` without reading it — a `git diff` / `git status` / `rg`, an env-prefixed inspection, a write
+  to the file (`>` redirect or `sed -i`), or any other non-reader command — kept out of `skills_triggered`, its count,
+  and the `skill_triggered` audit events so a bystander
+  mention is never miscounted as a load, but recorded independently: a skill both read *and* inspected appears in both
+  buckets), and `skills_available` (the offered-skills set). On **claude** the offered set is
+  read from the dedicated `skills` array in the `system`/`init` stream frame — confirmed against a real captured
+  `--output-format stream-json` run — so `skills_available` is populated for tracked claude runs independently of what
+  they triggered. Codex's `codex exec --json` stream carries no such offered-skills catalog, so for **codex** the set is
+  instead discovered out-of-band from the filesystem by `skills.discovery.discover_local_skills(cwd)` — a scan of the
+  repo skill roots (`.agents/skills` / `.claude/skills`) under the run's worktree plus the global
+  `$CODEX_HOME/skills` codex
+  loads, including the built-in skills under that global root's `.system` container (`imagegen`, `openai-docs`, …). It
+  runs only for codex, never overrides the claude stream-parsed set, and is fail-open (a missing root leaves the field
+  empty). Each
+  field is dropped (its key absent) when empty, so a claude run that was offered skills but triggered none records
+  `skills_available` while the triggered / evidence keys drop — the "offered but unused" vs "never available" signal —
+  and a run with nothing to report keeps the record shape identical to the switch-off case. Parsed via
+  `observability/usage/skills.py`'s `parse_agent_skills` under its own fail-open guard inside `record_agent_exit`: a
+  skill-parse failure logs and still emits the baseline usage / cost record, and reads only the skill *name* — never
+  the `Skill` tool's `args`, the surrounding codex command text, or a command's `aggregated_output` (the file's
+  contents). With the switch off the extractor never runs and none of the skill keys appear.
+
+The configured model is pulled out of the role's `extra_args` (via `_configured_model`; recognises `-m <model>` /
+`-m=<model>` for codex and `--model <model>` / `--model=<model>` for claude) and forwarded as the parser's
+`fallback_model` so a codex run whose stdout includes usage frames but omits the model still records the configured
+model and — when it matches a priced family — an estimated `cost_usd`. A stream-reported model always wins over the
+fallback.
+
+Prompts, raw stdout / stderr, secrets, and worktree contents are deliberately NOT stored — the sink is a usage / cost
+surface, not a debugging mirror. A parser exception or sink IO failure is swallowed so an analytics misconfiguration
+cannot stop the per-issue tick.
+
+**Skill-trigger surfaces (shipped).** Both skill-trigger follow-ups (the audit event and the dashboard widget) have now
+landed. The per-invocation `skill_triggered` audit event on [`EVENT_LOG_PATH`](#audit-event-log-event_log_path) (see the
+[audit event-kinds list](#audit-event-log-event_log_path)) is gated on the same `TRACK_SKILL_TRIGGERS` switch and
+reuses the list `record_agent_exit` already parsed — `_run_agent_tracked` emits one event per distinct triggered
+skill. The dashboard's primary skill metric is per-session **adoption** (`get_skill_adoption` + the "Skill adoption"
+panel), which counts, for each `(repo, role, backend, skill)` cell, how many logical agent sessions had the skill
+available and how many loaded it — an incidental `SKILL.md` reference stays a separate diagnostic column and never
+raises the rate. The invocation-level views (`get_skill_trigger_rates` and `get_skill_trigger_matrix`) sit
+beneath it as a clearly named invocation-level diagnostic — see the
+[read model](../observability.md#read-model-orchestratorobservabilityanalyticsquery) and
+[dashboard](../observability.md#dashboard-orchestratorappsanalytics_dashboardpy) sections
+on the landing page. All are pure read-side additions over `extras JSONB` with no schema change. See
+[Session-aware skill adoption](#session-aware-skill-adoption) for the four evidence forms and the per-session adoption
+semantics that sit on top of these fields.
+
+### Session-aware skill adoption
+
+The dashboard's **primary** skill metric is per-session *adoption* — for each `(repo, agent_role, backend, skill)`
+cell, what share of the logical agent sessions that had the skill available actually loaded it. It is computed by
+`observability/analytics/query/skill_reads.py`'s `get_skill_adoption` and rendered by
+`observability/dashboard/skill_panel.py`'s "Skill adoption" card; the
+older per-run trigger views
+(`get_skill_trigger_rates` / `get_skill_trigger_matrix`) sit beneath it as a clearly named invocation-level diagnostic.
+The per-session adoption metric reads the opt-in `agent_exit` skill fields above, so it only carries signal once
+`TRACK_SKILL_TRIGGERS` has recorded a session's available and loaded skills. The invocation-level views degrade more
+gently with the switch off: the trigger-rate table still counts every `agent_exit` run (a `0` trigger rate), and the
+matrix still renders each repo's catalog-backed skills as explicit zero rows, because the `runs` denominator and the
+`repo_skill_catalog` records do not depend on the switch. Records written while it was on stay queryable after it is
+turned off.
+
+**Four evidence forms.** A skill observation is classified into one of four forms. The first three are emitted on the
+`agent_exit` record; the fourth is a read-model inference and is never written to disk:
+
+- **confirmed** *(load)* — a claude `Skill` tool-use block, the firm signal. Recorded in `skills_triggered`, with tier
+  `confirmed` in `skills_evidence`.
+- **inferred** *(load)* — a codex `command_execution` whose leading verb is an established direct reader
+  (`cat` / `sed` / `head` / …) opening a `skills/<name>/SKILL.md`. A heuristic file-open signal. Recorded in
+  `skills_triggered`, with tier `inferred` in `skills_evidence`. A single run is homogeneous — claude only confirms,
+  codex only infers — so every `skills_evidence` entry on one record shares its tier.
+- **incidental** *(not a load)* — a codex *path-only* reference to a `SKILL.md`: a non-reader inspection / search
+  (`git diff` / `git status` / `rg`), an env-prefixed inspection (`GIT_PAGER=cat git diff …`), or a write to the file
+  (`>` redirect / `sed -i`). Recorded independently in `skills_incidental` / `skills_incidental_count`, deliberately
+  kept out of `skills_triggered`, `skills_triggered_count`, `skills_evidence`, and the `skill_triggered` audit events,
+  so a bystander mention is never miscounted as a load. A skill both read *and* inspected lands in both buckets.
+- **legacy** *(implied availability)* — not an emitted field. Inside `get_skill_adoption`, a load whose logical
+  session never reported any `skills_available` metadata (no row carried the `skills_available` *key*) is treated as
+  implied availability: the load itself implies the skill was offered, so it still counts in that session's
+  availability denominator. An explicit empty `skills_available: []` is metadata ("scanned, found none") and
+  **blocks** this fallback, so a load against a session that reported no offered skills does not fabricate availability.
+
+**Logical-session fallback.** Adoption counts by *logical agent session*, not by raw run, so a resume chain that pulled
+`develop` across several ticks counts as one adopting session, not several. A session is keyed by `resume_session_id`,
+then `session_id`, then the row's primary key — an ID-less row is its own session, never merged into one anonymous
+bucket, and the primary-key fallback is stable across both scans below.
+
+**Active window vs. historical lookback.** `get_skill_adoption` runs two `agent_exit` scans and combines them in Python:
+
+- The **active-window** scan applies the full reporting-window filters (date `[start, end)` / repo / stage / issue). It
+  selects the *active* sessions (those with a run in the window) and computes the window-scoped invocation diagnostics.
+- The **historical-lookback** scan (`WindowFilters.historical_scope`) gathers each active session's availability + load
+  evidence from every `agent_exit` row *before the window end*, deliberately dropping the window `start` bound and the
+  stage / events filters while keeping `end` / repo / issue — so a load or an availability report from a prior
+  stage, or from before the reporting window, still counts toward that session's denominator and `adopted`. History
+  rows for sessions that were not active in the window are ignored, so their evidence never leaks into the aggregate.
+
+The retained `end` bound is the **future-evidence cutoff**: evidence recorded *after* the window end never leaks
+backward into an earlier window's aggregate, so a later load cannot retroactively raise a past window's adoption.
+
+**Per-session availability denominator.** `sessions` (the denominator) is how many logical sessions in the cohort had
+the skill available — its reported `skills_available` union listed it, or the *legacy* fallback above implied it.
+`adopted` (the numerator) is how many of those sessions loaded it, counted once per session no matter how many runs
+reached for it; `adoption_rate` is `adopted / sessions`. A zero-session cell has an undefined rate that renders as a
+muted `—`, never a misleading `0%`.
+
+**Primary adoption vs. invocation-level diagnostics.** The read model carries three **window-scoped invocation** fields
+(raw `agent_exit` rows, not sessions, and not the historical evidence): `invocations` is every run in the cohort's
+window, `load_rows` the window runs that loaded the skill, and `incidental` the window runs that made a path-only
+(incidental) reference to its `SKILL.md`. The load and incidental buckets are independent — a single run can appear
+in both — so `incidental` is a parallel count, not a "did-not-load" complement, and it can never raise the adoption
+rate. Of these three the adoption table renders only `Invocation loads` (`load_rows`) and `Incidental references`
+(`incidental`) as its two trailing columns; `invocations` (the cohort's total window run count) is a read-model field
+used for ordering and context, not a displayed column. A pre-window load counts toward `adopted` but toward none of
+the three, since all three are window-scoped. The collapsed invocation-level diagnostic beneath the adoption table
+(`get_skill_trigger_rates` / `get_skill_trigger_matrix`) reports the same per-run granularity across roles / backends
+and per-skill cohorts. See the
+[read model](../observability.md#read-model-orchestratorobservabilityanalyticsquery) for the exact query shapes and
+the [dashboard](../observability.md#dashboard-orchestratorappsanalytics_dashboardpy) for the rendered columns.
+
+### `repo_skill_catalog` records
+
+`orchestrator/skills/catalog.py` appends one repo-level `event="repo_skill_catalog"` analytics record per tick per spec,
+driven from `workflow/engine/tick.py` after `_refresh_base_and_worktrees` has fetched `<remote_name>/<base_branch>`,
+before the scheduler / in-tick split so it fires once per tick on either dispatch path. It enumerates
+the `SKILL.md` definitions the *target repo* carries on its base ref via `git -C <target_root> ls-tree -r --name-only
+<remote_name>/<base_branch> .agents/skills .claude/skills`, keeps only direct `<root>/<name>/SKILL.md` definitions (a
+`SKILL.md` nested deeper — e.g. `.claude/skills/.system/<name>/SKILL.md` — is ignored, matching the names-only
+trigger anchor in `observability/usage/skill_commands.py`), and dedupes by skill name across the two roots while
+preserving every source path. The catalog is read from the target repo's base ref, never the orchestrator's own
+working tree, so dashboard-local skill files are not scanned.
+
+Each record carries `base_branch`, `remote_name`, `skills_available` (the sorted deduped skill names), and the optional
+`skill_paths` (name → sorted source paths; dropped when empty). It is **not** issue-scoped, so its `issue` is the
+sentinel `0` — the record still satisfies the `ts` / `repo` / `issue` / `event` envelope the sink and the Postgres
+`analytics_events` schema require, and the four catalog fields all land in `extras JSONB` with **no DDL change**. The
+whole producer is fail-open: a missing clone, an unfetched ref, a git error, or a sink IO failure logs and is swallowed
+so catalog collection never disturbs the polling tick. An empty catalog still records `skills_available: []` (the
+"scanned, found none" signal).

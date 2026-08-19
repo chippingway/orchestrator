@@ -2,16 +2,18 @@
 
 The settings that turn each observability sink on and point it somewhere: the audit event log, the analytics JSONL
 sink and the Postgres database it feeds, the trajectory sink, skill-trigger tracking, and the dashboard read mode.
-Every other setting is in [`../configuration.md`](../configuration.md); what the sinks record, and how the database,
-dashboards, and usage parser read them back, is in [`../observability.md`](../observability.md).
+Every other setting is in [`../configuration.md`](../configuration.md); what the sinks record is in
+[`../observability/event-streams.md`](../observability/event-streams.md) and
+[`../observability/trajectories.md`](../observability/trajectories.md), and how the database, dashboards, and usage
+parser read them back is in [`../observability.md`](../observability.md).
 
 ## Settings
 
 - `EVENT_LOG_PATH` — default _(unset)_. optional JSONL audit sink, one event per line, no built-in rotation. See
-  [`../observability.md#audit-event-log`](../observability.md#audit-event-log-event_log_path).
+  [`event-streams.md#audit-event-log`](../observability/event-streams.md#audit-event-log-event_log_path).
 - `ANALYTICS_LOG_PATH` — default `LOG_DIR/analytics.jsonl`. project-local analytics JSONL sink. Records `stage_enter`,
   `stage_evaluation`, and `agent_exit` events. Set to empty / `off` / `disabled` / `none` to disable. See
-  [`../observability.md#analytics-sink`](../observability.md#analytics-sink-analytics_log_path).
+  [`event-streams.md#analytics-sink`](../observability/event-streams.md#analytics-sink-analytics_log_path).
 - `ANALYTICS_RETENTION_DAYS` — default `90`. retention window for `ANALYTICS_LOG_PATH`. The polling loop calls
   `retention.prune_with_retention_logging()` once per tick. Set to `0` (or any non-positive value) to keep raw data
   indefinitely.
@@ -32,12 +34,13 @@ dashboards, and usage parser read them back, is in [`../observability.md`](../ob
   — when you want to browse the recorded trajectories. **Privacy:** redaction masks only secret-shaped env values (and
   the GitHub token), **not** issue/repo content, so an enabled trajectory file can carry issue titles/bodies, quoted
   source, and agent reasoning in cleartext; scope its permissions accordingly. See
-  [`../observability.md#trajectory-sink`](../observability.md#trajectory-sink-trajectory_log_path).
+  [`trajectories.md#trajectory-sink`](../observability/trajectories.md#trajectory-sink-trajectory_log_path).
 - `TRAJECTORY_RETENTION_DAYS` — default `90`. retention window for `TRAJECTORY_LOG_PATH`, same semantics as
   `ANALYTICS_RETENTION_DAYS`: `prune_trajectory_records()` removes older records and `0` (or any non-positive value)
   keeps trajectories indefinitely. Parsed from `.env`, but not yet called from the polling loop, so it affects the file
   only when an operator-driven prune process runs; do not overlap an external prune with live trajectory appends. See
-  the trajectory cron examples in [`../observability.md`](../observability.md#trajectory-operator-workflow).
+  the trajectory cron examples in
+  [`trajectories.md`](../observability/trajectories.md#trajectory-operator-workflow).
 - `TRACK_SKILL_TRIGGERS` — default _(unset, off)_. opt-in switch for skill-trigger tracking. `1` / `true` / `on` /
   `yes` (case-insensitive) makes `record_agent_exit` parse the agent's triggered skills and fold `skills_triggered` /
   `skills_triggered_count` / `skills_available`, the per-load evidence tier `skills_evidence` (`confirmed` for a claude
@@ -62,9 +65,9 @@ dashboards, and usage parser read them back, is in [`../observability.md`](../ob
   its runs triggered, over the accumulated fields. The `skills_evidence` tier carries only the emitted `confirmed` /
   `inferred` load values; the *incidental* bucket and the read-side *legacy* availability inference (a load whose
   session reported no `skills_available` metadata) are described alongside the per-session adoption semantics in
-  [`../observability.md#session-aware-skill-adoption`](../observability.md#session-aware-skill-adoption). See also
-  [`../observability.md#agent_exit-records`](../observability.md#agent_exit-records) and the
-  [audit event log](../observability.md#audit-event-log-event_log_path).
+  [`event-streams.md#session-aware-skill-adoption`](../observability/event-streams.md#session-aware-skill-adoption).
+  See also [`event-streams.md#agent_exit-records`](../observability/event-streams.md#agent_exit-records) and the
+  [audit event log](../observability/event-streams.md#audit-event-log-event_log_path).
 - `DASHBOARD_PARALLEL_READS` — default _(unset, off)_. opt-in switch for the Streamlit dashboard's parallel read
   fan-out. `1` / `true` / `on` / `yes` (case-insensitive) flips the dashboard's widget reads from sequential to a
   `ThreadPoolExecutor` (eight workers). Parsed once per Streamlit process, when the page's read-mode owner is first

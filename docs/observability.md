@@ -5,877 +5,87 @@ the polling tick — workflow correctness keys off the pinned `<!--orchestrator-
 (and the workflow label). Every observability surface here is observation-only and safe to truncate, rotate, or delete
 at any time.
 
-- **Audit event log** (`EVENT_LOG_PATH`) — opt-in JSONL audit of workflow events, written through
-  `GitHubClient.emit_event`.
-- **Analytics sink** (`ANALYTICS_LOG_PATH`) — project-local JSONL of raw metric records. The recorders that append it
-  are owned by `orchestrator/observability/analytics/recording/` and the by-age prune that bounds it by
-  `orchestrator/observability/analytics/retention.py`; the read models live beside them under
-  `orchestrator/observability/analytics/query/`, and the whole sync — the command that starts one included — under
-  `orchestrator/observability/analytics/sync/`.
-- **Trajectory sink** (`TRAJECTORY_LOG_PATH`) — opt-in, default-off JSONL sink for per-run agent reasoning
-  trajectories, a sibling sink whose writers live in `orchestrator/observability/analytics/trajectories/` and whose
-  by-age prune is the same `retention.py` owner, reading its own knobs. `record_agent_exit` is its
-  producer: when the sink is on it parses each tracked run's trajectory from the same stdout, redacts and head/tail
-  truncates every free-text field, and appends one `agent_trajectory` record — all behind its own fail-open guard. A
-  dedicated, file-backed **trajectory viewer** (`orchestrator/apps/trajectory_dashboard.py`) renders it as a separate
-  Streamlit page.
-- **Analytics database** (`analytics-db/`) — operator-deployed Postgres service that is the aggregation target for the
-  analytics sink, with an operator-driven sync CLI and a Streamlit dashboard on top.
-- **Usage parser** (`orchestrator/observability/usage/`) — decoder for the agent CLI JSONL stdout that produces the
-  token / cost detail the analytics `agent_exit` record carries.
+This page carries the surfaces around those sinks: the usage parser that meters a finished agent run on its way into
+the analytics and trajectory records, and everything *downstream* of the analytics sink — the operator-deployed
+database, its read model, and the analytics dashboard over it. The sinks themselves have pages of their own:
 
-Every module path in this document is the current one. `orchestrator/observability/` holds the usage parser's owners,
-the analytics configuration, recording, retention, trajectory-sink, read-path, and sync owners
-(`analytics/config.py`, `analytics/recording/`, `analytics/retention*.py`, `analytics/trajectories/`,
-`analytics/query/`, `analytics/sync/`), the visual theme both Streamlit pages are drawn in together with the one
-name a page hands it down under (`dashboard/palette.py`, `dashboard/tokens.py`, `dashboard/layout.py`,
-`dashboard/css.py`, `dashboard/formatting.py`, `dashboard/theme.py`), the window, filter, and
-read-mode state one run of the analytics page carries plus the bar that window is picked in, the band above the
-panels that bar sits in together with the load the choices made there open, the two waves its load is
-staged into, the fan-out each
-is issued through, and the dispatch that drives both, the seven a
-headline or lifecycle section is drawn from, the six a comparison panel is, the three a skill panel is, the
-connection, filter binding, and unfiltered metadata each read goes through, and the banners a window is interrupted
-with above all of them plus the four numbers it is summarized by beneath those, the per-day lines drawn under three
-of them, the strip all four are assembled into, where each day of one of those lines sits and the SVG it is written
-as, the banner, filter line, and delta pill that strip sits among, the markup the banners, the run-health tiles, and
-every card
-header are drawn as, and the two panels drawn as markup rather than as a figure — one backend's efficiency, and
-the share of a window's spend that could be priced (`dashboard/windows.py`,
-`dashboard/filters.py`, `dashboard/date_controls.py`, `dashboard/date_filter.py`,
-`dashboard/page_controls.py`,
-`dashboard/read_mode.py`, `dashboard/read_plan.py`, `dashboard/fanout.py`,
-`dashboard/dispatch.py`, `dashboard/rollups.py`,
-`dashboard/breakdowns.py`, `dashboard/skills.py`, `dashboard/scoped_reads.py`, `dashboard/filter_binding.py`,
-`dashboard/static_metadata.py`, `dashboard/insights.py`, `dashboard/kpis.py`, `dashboard/kpi_series.py`,
-`dashboard/kpi_strip.py`, `dashboard/sparkline_points.py`, `dashboard/sparkline_html.py`,
-`dashboard/summary_html.py`, `dashboard/card_html.py`, `dashboard/backend_card.py`,
-`dashboard/coverage_card.py`), the primitives every chart family on
-that page is drawn out of plus the frame the horizontal cost families share, the generic spend ranking, the
-per-repository one drawn through it, the per-stage cache split, the per-review-round one beside it, the
-weekday-by-hour grid, and the per-day throughput strip above them, and the usage family's own bands, day span, stack
-heights, aligned axes, traces, and hero figure
-(`dashboard/charts/primitives.py`, `dashboard/charts/cost_layout.py`, `dashboard/charts/cost_horizontal.py`,
-`dashboard/charts/cost_repo.py`, `dashboard/charts/cost_stage.py`, `dashboard/charts/cost_review.py`,
-`dashboard/charts/heatmap.py`,
-`dashboard/charts/throughput.py`, `dashboard/charts/usage_bands.py`, `dashboard/charts/usage_series.py`,
-`dashboard/charts/usage_axis.py`, `dashboard/charts/usage_traces.py`, `dashboard/charts/usage.py`), the compact
-table the panels beside those figures are drawn as, the ranking of a window's costliest issues that is the first
-of them, the aggregate skill-trigger rates that are the second, and the per-session adoption table and the
-invocation-level trigger matrix that are the last two — each split into the columns a click is expressed in, the parse
-and orders behind one, the header row it is clicked from, what one cell says, and the panel they assemble into — plus
-the two cards three of those panels are reported on, one leading with adoption and folding the invocation views under
-it and one kept for a caller reaching past that, the listing of the runs under all four, and the hero spend and
-token-usage card above every one of them
-(`dashboard/tables.py`, `dashboard/issue_table.py`, `dashboard/skill_trigger_table.py`,
-`dashboard/skill_adoption_columns.py`, `dashboard/skill_adoption_sort.py`,
-`dashboard/skill_adoption_headers.py`, `dashboard/skill_adoption_rows.py`, `dashboard/skill_adoption.py`,
-`dashboard/skill_matrix_columns.py`, `dashboard/skill_matrix_sort.py`, `dashboard/skill_matrix_headers.py`,
-`dashboard/skill_matrix_rows.py`, `dashboard/skill_matrix.py`, `dashboard/skill_panel.py`,
-`dashboard/skill_trigger_panel.py`, `dashboard/recent_runs.py`, `dashboard/usage_panel.py`), the per-issue trace
-beneath that listing together with the call shape it is still reachable under (`dashboard/drilldown.py`,
-`dashboard/drilldown_request.py`), the two states that page leaves through and the line it signs off with
-(`dashboard/page_states.py`), the three sections that
-window's spend is compared across — the paired lifecycle bars and the one height both are pinned to, the ranked
-issues beside the backends that ran them, and the per-repository ranking beside the tiles and days those runs are
-read for — together with the weekday-by-hour grid closing them and the zone selectbox inside its card
-(`dashboard/stage_cost_panel.py`, `dashboard/issue_cost_panel.py`,
-`dashboard/reliability_panel.py`, `dashboard/activity_panel.py`) — the banner, filter line, and four-tile strip drawn
-off the first of that page's two read waves together with the staged load all three are drawn inside, and the order
-every panel below them is reached in once the second wave answers, split into the five cards a figure is drawn on and
-the four panels beneath them with the single call the whole wave is drawn by
-(`dashboard/page_pipeline.py`, `dashboard/chart_sections.py`, `dashboard/page_sections.py`) — the
-seven frozen shapes one render of that page is
-threaded through and the Plotly configuration each of its figures is handed (`dashboard/page_models.py`,
-`dashboard/render_config.py`), the
-trajectory viewer's whole read model — its file
-read, record parse, run models, and the filtering and summary aggregation over them — plus the styling and every
-inline-HTML builder that read is drawn with, and the page state, setup, controls, picker, run card, and whole-page
-composition one run of it is driven by (`trajectory_viewer/`). Neither page that composes those owners is one of
-them: both sit
-beside the tree, at `orchestrator/apps/analytics_dashboard.py` and `orchestrator/apps/trajectory_dashboard.py`. See
-[`architecture.md`](architecture.md#top-level-layout) for that boundary and the rules those owners inherit.
+- **[Event streams](observability/event-streams.md)** — the **audit event log** (`EVENT_LOG_PATH`), an opt-in JSONL
+  audit of workflow events written through `GitHubClient.emit_event`, and the **analytics sink**
+  (`ANALYTICS_LOG_PATH`), the project-local JSONL of raw metric records the database and dashboard below aggregate.
+  Both record envelopes, every event kind, the `agent_exit` fields, and the by-age retention prune are documented
+  there.
+- **[Agent trajectories](observability/trajectories.md)** — the opt-in, default-off **trajectory sink**
+  (`TRAJECTORY_LOG_PATH`) of per-run agent reasoning, the operator workflow that mirrors and prunes that file, and the
+  file-backed **trajectory viewer** (`orchestrator/apps/trajectory_dashboard.py`) that renders it as its own Streamlit
+  page.
+- **[Analytics database](#analytics-database-analytics-db)** (`analytics-db/`) — operator-deployed Postgres service
+  that is the aggregation target for the analytics sink, with an operator-driven sync CLI and a Streamlit dashboard on
+  top.
+- **[Usage parser](#usage-parser-orchestratorobservabilityusage)** (`orchestrator/observability/usage/`) — decoder for
+  the agent CLI JSONL stdout. It runs once the audit `agent_exit` event has already fired, and `record_agent_exit`
+  writes what it returns as the token / cost detail on the analytics `agent_exit` record and the `run_usage` summary
+  on the trajectory record.
+
+Which module owns what — down to the individual helper — is in
+[`architecture.md`](architecture.md#top-level-layout), the single place that inventory is maintained; the pages here
+name an owner only where the behavior under discussion turns on which module a caller reaches. Neither Streamlit page
+is one of those owners: both sit beside the tree, at `orchestrator/apps/analytics_dashboard.py` and
+`orchestrator/apps/trajectory_dashboard.py`.
 
 ## Audit event log (`EVENT_LOG_PATH`)
 
-Optional, opt-in JSONL sink. When `config.EVENT_LOG_PATH` is set, `github.events.write_event_record` appends one JSON
-object per audit event to that file inside `GitHubClient.emit_event`; when unset (the default) the helper
-short-circuits to a no-op. The fake `GitHubClient` in `tests/support/github/` calls the same helper.
+Summarized here; the reference is
+[`observability/event-streams.md`](observability/event-streams.md#audit-event-log-event_log_path).
 
-**Schema.** Every record is built by `github.events.build_event_record` and carries `ts` (UTC ISO-8601 at second
-precision), `repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included
-when the emitter passes one (effectively always today). Extras whose value is `None` are dropped. `json.dumps` is
-called with `sort_keys=True` so on-disk order is stable across writers.
-
-`stage` always carries the **bare stage tag** — `implementing`, `fixing`, `resolving_conflict` — and never the
-`workflow:`-prefixed GitHub label the issue wears. Three shapes feed it here, and all three land on the tag:
-
-- **The tracked agent spawn** takes it as a literal from the stage that calls `_run_agent_tracked` (`stage="validating"`
-  in the reviewer owner, `stage="fixing"` in the fixing one), so `agent_spawn` / `agent_exit` read no label at all.
-- **`stage_enter`** is handed the label `set_workflow_label` is applying, normalized through
-  `workflow.state.stage_name` — the one emitter whose tag names where the issue is going rather than where it is.
-- **The events that describe an issue where it already sits** — the park funnel, the terminals, the base-sync writers
-  — normalize the label it currently carries the same way.
-
-The namespace therefore stops at the GitHub boundary, so a grep or a dashboard filter matches on the tag. See
-[`state-machine.md#workflow-labels`](state-machine.md#workflow-labels) for the two spellings and which labels have
-only one.
-
-**Event kinds.** Every kind is emitted through the single `GitHubClient.emit_event` chokepoint, which also appends to a
-capped in-memory tail (`recorded_events`, `_RECORDED_EVENTS_CAP = 500`) for tests and short-window debugging — the
-file is the durable record.
-
-- `stage_enter` — `set_workflow_label` (via `_emit_stage_enter`) for every label flip; extras: `stage`.
-- `agent_spawn` / `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`) wraps every `run_agent` call
-  (decomposer, implementer, reviewer, dev-resume, conflict-resolution dev); extras: `agent` (backend), `agent_role`,
-  `review_round`, `retry_count`. `session_id` and `agent_exit`-only fields are described below.
-- `skill_triggered` — `_run_agent_tracked` after `agent_exit`, **only when `TRACK_SKILL_TRIGGERS` is on**
-  (default off); one event per distinct skill the run triggered; extras: `agent` (backend), `agent_role`,
-  `review_round`, `retry_count`, `skill` (the triggered skill name). Reuses the list `record_agent_exit` already parsed;
-  off-switch installs emit none.
-- `review_verdict` — `_handle_validating` after `_parse_review_verdict` reads the reviewer's last message; extras:
-  `verdict` (`approved` / `changes_requested` / `unknown`), `review_round`, `pr_number`, `session_id`.
-- `park_awaiting_human` — every `_park_awaiting_human` (in `workflow/engine/guards.py`) call site, plus
-  `_on_question`, `_on_dirty_worktree`,
-  `_park_verify_failure`, and the question- and discussion-stage `_park_question` / `_park_discussion` funnels;
-  extras: `stage` (read from the current
-  workflow label, not passed in), `reason` (e.g. `agent_timeout`, `push_failed`, `failed_checks`, `agent_question`,
-  `agent_session_limit` (a quota-exhausted agent message, parked retryably as `agent_silent`), `dirty_worktree`,
-  `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`, `question_*`,
-  `discussion_*`, ...).
-- `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The
-  `discussion` stage's plan publication emits the same event with `stage="discussion"` when it opens (never when it
-  reuses) a plan PR; it carries no `retry_count`, having no retry budget of its own.
-- `pr_merged` — External merge terminal arcs in `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict`;
-  plus `_finalize_if_pr_merged` (in `workflow/engine/terminals.py`, which also owns those arcs) from
-  `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks
-  and from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; plus the `discussion` stage's
-  plan-PR terminal (`workflow/stages/discussion/terminal.py`), which polls the recorded plan PR at handler entry and
-  drains the same `_finalize_merged_pr` arc when the humans merged it; extras: `pr_number`, `sha`,
-  `merge_method="external"`, `review_round`, `conflict_round`, `retry_count` — a plan PR carries none of those three
-  counters, so its record reports `review_round: 0` and drops the other two with the rest of the null extras;
-  `stage` names the stage the issue was in at finalize entry — spelled literally as `discussion` on that path, since
-  the stage attributes its own runs rather than re-reading the label.
-- `pr_closed_without_merge` — `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict` when the PR is
-  closed without merge; plus `_finalize_if_issue_closed` from `_handle_implementing` / `_handle_documenting` /
-  `_handle_validating` entry checks (only when the linked PR is also closed; an open PR with a manually-closed issue is
-  left alone); plus the same `discussion` plan-PR terminal with `stage="discussion"` when the humans closed the plan PR
-  unmerged. Two discussion endings deliberately emit NOTHING: a manually closed issue whose plan PR is still open (the
-  stage holds its terminal and keeps the label so the closed-issue sweep goes on yielding it), and a close before any
-  plan PR exists (finalized `rejected`, with no pull request for the payload to name); extras: `pr_number`, `sha`,
-  `review_round`, `conflict_round`, `retry_count`; `stage` names the stage the issue was in at finalize entry.
-- `merge_attempt` — Every `git rebase origin/<base>` inside `_handle_resolving_conflict`; extras:
-  `method="base_rebase"`, `result` (`success` / `failed` / `conflict`), `pr_number`, `sha`, `conflict_round`,
-  `review_round`, `retry_count`.
-- `conflict_round` — `_route_pr_worktree_to_resolving_conflict` emits `action="entered"` only when the refresh-time
-  rebase actually leaves conflicted files (a merely-behind-base clean rebase no longer emits this);
-  `_reconcile_parked_fixing` also emits `action="entered"` (with `stage="fixing"`) when a stuck validating-route
-  transient `workflow:fixing` park is routed to `workflow:resolving_conflict` because its worktree is out of sync with
-  the PR head (behind base, or an unpushed local rebase); every increment site (`_emit_conflict_round_incremented`)
-  emits `action="incremented"` with `outcome`; extras: `pr_number`, `conflict_round`, `review_round`, `retry_count`,
-  `outcome` (for increments), `sha`.
-- `base_rebased` — `_sync_pr_worktree_to_base` after a clean refresh-time rebase + push that routes the issue from
-  `workflow:validating` / `workflow:documenting` / `in_review` / `workflow:fixing` back to `workflow:validating`; also
-  `_recover_pending_auto_base_rebase` when a crashed prior tick is finalized; extras: `pr_number`, `sha` (new head),
-  `method` ∈ {`auto_clean_rebase`, `crash_recovery_pushed`, `crash_recovery_relabel_only`}, `review_round`
-  (post-reset, so 0), `retry_count`; `stage` names the stage the issue was in when the rebase started.
-
-**`agent_spawn` / `agent_exit` extras.** On top of the shared fields:
-
-- On `agent_spawn`, `session_id` is the resume session id and is OMITTED for fresh spawns (`resume_session_id=None` is
-  dropped by `build_event_record`).
-- On `agent_exit`, `session_id` is the result id from `AgentResult`. `agent_exit` additionally carries `duration_s`,
-  `exit_code`, and `timed_out`.
-
-**`skill_triggered` events (opt-in).** Gated behind `TRACK_SKILL_TRIGGERS` (default off; the same switch that adds the
-[`agent_exit` analytics skill fields](#agent_exit-records)). After the `agent_exit` audit event fires,
-`_run_agent_tracked` emits one `skill_triggered` event per distinct skill the run triggered, reusing the de-duplicated
-first-seen list `record_agent_exit` parsed from the same stdout rather than re-reading it. Each event carries `agent`
-(backend), `agent_role`, `review_round`, `retry_count`, and the `skill` name — and never the `Skill` tool's `args`
-(Privacy, same names-only contract as the analytics fields). A run that triggered nothing, or any install with the
-switch off, emits none, so the default audit log is unchanged. The emission rides its own fail-open guard: a bug here
-logs and is swallowed, never disturbing the baseline `agent_spawn` / `agent_exit` events. This is the per-invocation
-granularity surface; the rolled-up counts live in the `agent_exit` analytics record below.
-
-**No built-in rotation.** `write_event_record` reopens the file in append mode for every event after
-`path.parent.mkdir(parents=True, exist_ok=True)`; there is no long-lived file descriptor, no size cap, no rename, and no
-compression. External rotation is operator-managed — pair `EVENT_LOG_PATH` with `logrotate` (or equivalent). Because
-each append re-resolves the path, create/rename-style rotation is as safe as `copytruncate`: the next event picks up the
-new inode without any `SIGHUP` or restart.
-
-An `OSError` during the append is caught and downgraded to a `log.warning` so a misconfigured path (read-only mount,
-disk full, permission failure) cannot stop the per-issue tick from making progress; the missing record is silently
-dropped and the pinned state on GitHub remains correct.
-
-**Pinned state is authoritative.** The event log is append-only and observation-only. The orchestrator never reads it
-back; every dispatch decision keys off the pinned `<!--orchestrator-state ...-->` JSON comment on the issue (and the
-issue's workflow label). If the two disagree, trust pinned state. The append-only log is safe to truncate or delete at
-any time without affecting workflow correctness.
+Opt-in JSONL audit of workflow events, appended through the single `GitHubClient.emit_event` chokepoint and a no-op
+when the knob is unset (the default). Every record carries the `ts` / `repo` / `issue` / `event` envelope with
+`sort_keys=True` ordering, and `stage` carries the **bare stage tag** (`implementing`, `fixing`, …) rather than the
+`workflow:`-prefixed GitHub label — so a grep or a dashboard filter matches on the tag. There is no built-in rotation
+and an append failure is downgraded to a warning; pinned GitHub state, never this file, is what the tick reads back.
+That page lists every emitted kind and its extras, the `agent_spawn` / `agent_exit` fields, and the opt-in
+`skill_triggered` event.
 
 ## Analytics sink (`ANALYTICS_LOG_PATH`)
 
-Project-local JSONL sink for raw metric records, separate from `EVENT_LOG_PATH`. Opts in or out independently via
-`ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS`; the recorders that write it live in
-`orchestrator/observability/analytics/recording/`, and the retention prune beside them in
-`orchestrator/observability/analytics/retention.py`.
+Summarized here; the reference is
+[`observability/event-streams.md`](observability/event-streams.md#analytics-sink-analytics_log_path).
 
-**Module layout.** The append side lives in `orchestrator/observability/analytics/recording/`, whose initializer
-publishes the six recorders a producer calls (`build_record`, `append_record`, `record_stage_enter`,
-`record_stage_evaluation`, `record_repo_skill_catalog`, `record_agent_exit`) as their owners' own objects: the
-analytics sink's append and the three recorders a producer calls directly are `events`, the sequenced
-`record_agent_exit` is `agent_exit`, and the envelope is the shared `sink.py` owner one directory up, republished on
-`events` because that is the import site a producer already names. Beside them are `models.py` (typed requests and the
-keyword signatures a call is bound through) and the three remaining steps one finished agent run is summarized by —
-`usage.py`, `skills.py`, and `catalog.py`. Every producer names that package:
-`orchestrator/github/client.py`, `orchestrator/workflow/engine/dispatch.py`,
-`orchestrator/workflow/engine/usage.py`, and `orchestrator/skills/catalog.py`.
-
-`events.py` is the bottom of that graph — it names `config.py`, `sink.py`, and `models.py`, and none of its siblings —
-which is what lets `agent_exit.py` own the producer-facing recorder and still reach the append through it. Each
-recorder dispatches its own `append_record` on `events`, so `patch.object(events, "append_record", ...)` is what
-intercepts an internal write.
-
-One directory up, `retention.py` publishes the three prune entry points — the polling tick's fail-open wrapper
-(`prune_with_retention_logging`) and one by-age prune per sink (`prune_old_records`,
-`prune_trajectory_records`) — over `retention_scan.py` (the timestamp a record is judged by, and the split of a file
-into kept lines and a removed count) and `retention_rewrite.py` (the same-directory temp file, the `os.replace` that
-swaps it in, and the lock held across the read and that swap). It sits beside `config.py` rather than inside either
-sink's package because both sinks are pruned through it. `runtime/ticks.py`'s `run_tick` names that owner directly.
-
-Each sink's lock — the object its append and its prune must share — is minted on
-`observability/analytics/sink.py`, once per process, so an append taken directly off its owner still serializes
-against the prune rather than writing into a file being rewritten under it. The read and sync surfaces are two more
-Postgres-facing families under the same destination. The column inventory both shapes meet on, the canonical encoding
-a content hash is taken over, the coercion each required field is narrowed by, the INSERT with the positional tuple
-that fills it, the counts a replay is read back as, the batched ingestion and its two dedup filters, the connection
-lifecycle and rollup refresh around them, the URL redaction, `sync_jsonl_to_postgres` itself, and the command that
-drives it — arguments, UTC-pinned logging, exit code, and stdout summary — all belong to
-`observability/analytics/sync/`. The filters a read is asked for, the binding of its keyword call, the connection
-lifecycle, the query execution, the frozen models a read answers with, the six reads that stay on the events table,
-the seven that scan the daily rollup above it, the four whose grouping key that rollup threw away, and the three
-answered from a run's `extras` blob all belong to `observability/analytics/query/`. Every caller names the owner it
-needs directly; there is no package in front of them to resolve a name through.
-
-**Settings ownership.** `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, and `ANALYTICS_DB_URL` (and the sibling
-trajectory-sink knobs `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, plus `TRACK_SKILL_TRIGGERS`) are parsed by
-`orchestrator/observability/analytics/config.py` — *not* in `orchestrator/config/`. That owner reads the environment
-inside the call, never at its own import, so every knob resolves against whatever environment the caller set up, and
-its `resolve_db_url` is the fallback a read's omitted `db_url=` resolves through. Where those parsed values are
-*bound* is `observability/analytics/settings.py`: one holder per process, read once at its import, and the surface
-tests patch directly via `patch.object(analytics_settings, "ANALYTICS_LOG_PATH", ...)`. Every adapter reads one back
-through the owner's `Settings` view, which reads its attribute on demand so a patch reaches the next read. The
-recorders in `recording/events.py`, the sink append in `trajectories/api.py`, the prune wrappers in `retention.py`,
-the skill readers, the trajectory writers, and the read and sync paths all reach that holder through
-`config.live_settings`, which imports it inside the call so nothing pays for the process configuration behind it until
-a knob is actually read. `config.settings_on` answers for whichever holder a caller hands it, which is what the
-viewer's `trajectory_viewer/log_paths.py` takes as an argument from the page that composes it. The
-audit event log (`config.EVENT_LOG_PATH`) stays in `config` because `GitHubClient.emit_event` is a general-purpose
-audit surface.
-
-**Filesystem only.** No PostgreSQL, Streamlit, or external services — the sink is one JSONL file under the project log
-area. Default path is `<LOG_DIR>/analytics.jsonl`, already covered by the `logs/` `.gitignore` rule. Set
-`ANALYTICS_LOG_PATH=` (empty) or to `off` / `disabled` / `none` to disable writes entirely; in that mode `append_record`
-and `prune_old_records` are silent no-ops and no file is opened.
-
-**Schema.** Every record is built by `recording.build_record` and carries `ts` (UTC ISO-8601 at second precision),
-`repo` (the slug `owner/name`), `issue` (issue number, int), and `event` (the kind). `stage` is included when the caller
-passes one, and carries the same bare stage tag the audit sink records rather than the `workflow:`-prefixed label — so
-`WHERE stage = 'validating'` is the form that matches, here and in the Postgres column the sync loads it into. The
-recorders with an audit twin are handed the tag their emitter already resolved; `stage_evaluation` has no twin, and
-the per-issue dispatcher that writes it alone normalizes the label it dispatched on the same way. Extras whose value
-is `None` are dropped. `json.dumps` uses `sort_keys=True` so on-disk order is stable. The JSONL file is the raw
-foundation layer for the Postgres aggregation step.
-
-**Event kinds written today:**
-
-- `stage_enter` — `GitHubClient._emit_stage_enter` alongside the audit `stage_enter`; one record per workflow label
-  transition; carries `stage`.
-- `stage_evaluation` — the `_process_issue` dispatcher (in `workflow/engine/dispatch.py`); written by its
-  try/except/finally wrapper; carries `stage`,
-  `duration_s` (handler wall-clock), `result` (`"ok"` / `"error"`); omitted for `backlog`- / `paused`-skipped issues
-  (no handler runs).
-- `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`); one record per tracked agent invocation; agent
-  context + parsed token / model / cost details (see below).
-- `repo_skill_catalog` — `orchestrator.skills.catalog._emit_repo_skill_catalog`, driven once per tick per spec by the
-  tick owner (in `workflow/engine/tick.py`, entered through `workflow.tick`); repo-level (not issue-scoped, so
-  `issue` is
-  the sentinel `0`); carries `base_branch`, `remote_name`, `skills_available` (deduped `SKILL.md` skill names on the
-  base ref), and optional `skill_paths` (name → source paths) — see below.
-
-**Append.** `recording.append_record(record)` reopens the file in append mode for every record after
-`path.parent.mkdir(parents=True, exist_ok=True)`. An `OSError` is caught and downgraded to a `log.warning`.
-
-**Retention pruning.** `retention.prune_old_records(*, now=None)` reads the file and removes records whose `ts` is older
-than `ANALYTICS_RETENTION_DAYS`. No-op (returns `0`) when the sink is disabled, retention is non-positive, or the file
-does not exist. The rewrite goes through a temp file in the sink's own directory followed by `os.replace` so a crash
-mid-prune cannot truncate the analytics file. Records with a missing / non-string / unparseable `ts` (and any line that
-is not valid JSON) are preserved verbatim so the prune step never silently drops data it cannot interpret.
-
-**Append/prune serialization.** Append and prune share one process-local `threading.Lock`, minted on
-`observability/analytics/sink.py` — one mint per process, so every reference to `append_record` takes the object the
-prune takes — so a concurrent `append_record` cannot land between the prune's read and its `os.replace`. Under the
-scheduler-driven dispatch, `workflow.tick` returns as soon as it has submitted per-issue callables, so scheduler
-workers may still be running — and calling `append_record` — when `runtime.ticks.run_tick` invokes
-`prune_with_retention_logging()`. Without the lock, an append that opened the old inode after the prune's read but
-before the replace would be silently lost. The lock is held only around the filesystem ops; JSON serialization happens
-outside the critical section.
-
-**Retention cadence.** `runtime.ticks.run_tick` calls `retention.prune_with_retention_logging()` exactly once per
-polling iteration after `workflow.tick` returns for every configured repo, regardless of how many repos are
-configured — the sink is process-wide, not per-repo. It names the owner inside the call, so the tick's own import never
-pays for the prune graph. Right before the prune, `run_tick` calls `scheduler.reap()` exactly once per polling pass so
-worker failure-completion records drain before the next iteration. `_dispatch_via_scheduler` deliberately does NOT
-reap. The wrapper catches exceptions and logs the `"removed N record(s)"` message so the call site in the tick stays a
-one-liner, and it dispatches `prune_old_records` on its own module so
-`patch.object(retention, "prune_old_records", ...)` still intercepts. Per-tick cost is bounded: the helper reads the
-file at most once and only rewrites it when at least one record is older than the retention window.
-
-**Pinned GitHub state is unaffected.** The prune touches only the local file — no issue comment, label, or other
-GitHub state is rewritten. The analytics sink is local-filesystem observability and is safe to truncate or delete at any
-time.
-
-### `agent_exit` records
-
-`_run_agent_tracked` (in `workflow/engine/usage.py`) appends a single `event="agent_exit"` analytics record after
-every tracked agent run, distinct from (and in addition to) the audit `agent_spawn` / `agent_exit` events on
-`EVENT_LOG_PATH`. Each record carries:
-
-- **Context** — `repo`, `issue`, `stage`, `agent_role`, `backend`, `review_round`, `retry_count`, `duration_s`,
-  `exit_code`, `timed_out`.
-- **Spec / session** — the configured `agent_spec` (the role's full `*_AGENT_SPEC` string, e.g. `claude --model
-  claude-opus-4-7`), both the `resume_session_id` passed into the spawn and the live `session_id` from the result.
-- **Usage parser output** — `input_tokens`, `output_tokens`, `cached_tokens`, `cache_read_tokens`,
-  `cache_write_tokens`, the distinct `models` observed in the stream, `turns`, `cost_usd`, and `cost_source`.
-- **Skill triggers (opt-in)** — only when `TRACK_SKILL_TRIGGERS` is on (default off): `skills_triggered` (distinct
-  skill names, first-seen order), `skills_triggered_count` (total trigger count, so three `develop` pulls read `3` while
-  the list carries `develop` once), `skills_evidence` (name → the per-load evidence tier: `confirmed` for a claude
-  `Skill` tool call, `inferred` for a codex command that directly reads the skill's `SKILL.md` with a reader verb such
-  as `cat` / `sed`), the incidental pair `skills_incidental` / `skills_incidental_count` (path-only references a codex
-  run made to a `SKILL.md` without reading it — a `git diff` / `git status` / `rg`, an env-prefixed inspection, a write
-  to the file (`>` redirect or `sed -i`), or any other non-reader command — kept out of `skills_triggered`, its count,
-  and the `skill_triggered` audit events so a bystander
-  mention is never miscounted as a load, but recorded independently: a skill both read *and* inspected appears in both
-  buckets), and `skills_available` (the offered-skills set). On **claude** the offered set is
-  read from the dedicated `skills` array in the `system`/`init` stream frame — confirmed against a real captured
-  `--output-format stream-json` run — so `skills_available` is populated for tracked claude runs independently of what
-  they triggered. Codex's `codex exec --json` stream carries no such offered-skills catalog, so for **codex** the set is
-  instead discovered out-of-band from the filesystem by `skills.discovery.discover_local_skills(cwd)` — a scan of the
-  repo skill roots (`.agents/skills` / `.claude/skills`) under the run's worktree plus the global
-  `$CODEX_HOME/skills` codex
-  loads, including the built-in skills under that global root's `.system` container (`imagegen`, `openai-docs`, …). It
-  runs only for codex, never overrides the claude stream-parsed set, and is fail-open (a missing root leaves the field
-  empty). Each
-  field is dropped (its key absent) when empty, so a claude run that was offered skills but triggered none records
-  `skills_available` while the triggered / evidence keys drop — the "offered but unused" vs "never available" signal —
-  and a run with nothing to report keeps the record shape identical to the switch-off case. Parsed via
-  `observability/usage/skills.py`'s `parse_agent_skills` under its own fail-open guard inside `record_agent_exit`: a
-  skill-parse failure logs and still emits the baseline usage / cost record, and reads only the skill *name* — never
-  the `Skill` tool's `args`, the surrounding codex command text, or a command's `aggregated_output` (the file's
-  contents). With the switch off the extractor never runs and none of the skill keys appear.
-
-The configured model is pulled out of the role's `extra_args` (via `_configured_model`; recognises `-m <model>` /
-`-m=<model>` for codex and `--model <model>` / `--model=<model>` for claude) and forwarded as the parser's
-`fallback_model` so a codex run whose stdout includes usage frames but omits the model still records the configured
-model and — when it matches a priced family — an estimated `cost_usd`. A stream-reported model always wins over the
-fallback.
-
-Prompts, raw stdout / stderr, secrets, and worktree contents are deliberately NOT stored — the sink is a usage / cost
-surface, not a debugging mirror. A parser exception or sink IO failure is swallowed so an analytics misconfiguration
-cannot stop the per-issue tick.
-
-**Skill-trigger surfaces (shipped).** Both skill-trigger follow-ups (the audit event and the dashboard widget) have now
-landed. The per-invocation `skill_triggered` audit event on [`EVENT_LOG_PATH`](#audit-event-log-event_log_path) (see the
-[audit event-kinds list](#audit-event-log-event_log_path)) is gated on the same `TRACK_SKILL_TRIGGERS` switch and
-reuses the list `record_agent_exit` already parsed — `_run_agent_tracked` emits one event per distinct triggered
-skill. The dashboard's primary skill metric is per-session **adoption** (`get_skill_adoption` + the "Skill adoption"
-panel), which counts, for each `(repo, role, backend, skill)` cell, how many logical agent sessions had the skill
-available and how many loaded it — an incidental `SKILL.md` reference stays a separate diagnostic column and never
-raises the rate. The invocation-level views (`get_skill_trigger_rates` and `get_skill_trigger_matrix`) sit
-beneath it as a clearly named invocation-level diagnostic — see the
-[read model](#read-model-orchestratorobservabilityanalyticsquery) and
-[dashboard](#dashboard-orchestratorappsanalytics_dashboardpy) sections
-below. All are pure read-side additions over `extras JSONB` with no schema change. See
-[Session-aware skill adoption](#session-aware-skill-adoption) for the four evidence forms and the per-session adoption
-semantics that sit on top of these fields.
-
-### Session-aware skill adoption
-
-The dashboard's **primary** skill metric is per-session *adoption* — for each `(repo, agent_role, backend, skill)`
-cell, what share of the logical agent sessions that had the skill available actually loaded it. It is computed by
-`observability/analytics/query/skill_reads.py`'s `get_skill_adoption` and rendered by
-`observability/dashboard/skill_panel.py`'s "Skill adoption" card; the
-older per-run trigger views
-(`get_skill_trigger_rates` / `get_skill_trigger_matrix`) sit beneath it as a clearly named invocation-level diagnostic.
-The per-session adoption metric reads the opt-in `agent_exit` skill fields above, so it only carries signal once
-`TRACK_SKILL_TRIGGERS` has recorded a session's available and loaded skills. The invocation-level views degrade more
-gently with the switch off: the trigger-rate table still counts every `agent_exit` run (a `0` trigger rate), and the
-matrix still renders each repo's catalog-backed skills as explicit zero rows, because the `runs` denominator and the
-`repo_skill_catalog` records do not depend on the switch. Records written while it was on stay queryable after it is
-turned off.
-
-**Four evidence forms.** A skill observation is classified into one of four forms. The first three are emitted on the
-`agent_exit` record; the fourth is a read-model inference and is never written to disk:
-
-- **confirmed** *(load)* — a claude `Skill` tool-use block, the firm signal. Recorded in `skills_triggered`, with tier
-  `confirmed` in `skills_evidence`.
-- **inferred** *(load)* — a codex `command_execution` whose leading verb is an established direct reader
-  (`cat` / `sed` / `head` / …) opening a `skills/<name>/SKILL.md`. A heuristic file-open signal. Recorded in
-  `skills_triggered`, with tier `inferred` in `skills_evidence`. A single run is homogeneous — claude only confirms,
-  codex only infers — so every `skills_evidence` entry on one record shares its tier.
-- **incidental** *(not a load)* — a codex *path-only* reference to a `SKILL.md`: a non-reader inspection / search
-  (`git diff` / `git status` / `rg`), an env-prefixed inspection (`GIT_PAGER=cat git diff …`), or a write to the file
-  (`>` redirect / `sed -i`). Recorded independently in `skills_incidental` / `skills_incidental_count`, deliberately
-  kept out of `skills_triggered`, `skills_triggered_count`, `skills_evidence`, and the `skill_triggered` audit events,
-  so a bystander mention is never miscounted as a load. A skill both read *and* inspected lands in both buckets.
-- **legacy** *(implied availability)* — not an emitted field. Inside `get_skill_adoption`, a load whose logical
-  session never reported any `skills_available` metadata (no row carried the `skills_available` *key*) is treated as
-  implied availability: the load itself implies the skill was offered, so it still counts in that session's
-  availability denominator. An explicit empty `skills_available: []` is metadata ("scanned, found none") and
-  **blocks** this fallback, so a load against a session that reported no offered skills does not fabricate availability.
-
-**Logical-session fallback.** Adoption counts by *logical agent session*, not by raw run, so a resume chain that pulled
-`develop` across several ticks counts as one adopting session, not several. A session is keyed by `resume_session_id`,
-then `session_id`, then the row's primary key — an ID-less row is its own session, never merged into one anonymous
-bucket, and the primary-key fallback is stable across both scans below.
-
-**Active window vs. historical lookback.** `get_skill_adoption` runs two `agent_exit` scans and combines them in Python:
-
-- The **active-window** scan applies the full reporting-window filters (date `[start, end)` / repo / stage / issue). It
-  selects the *active* sessions (those with a run in the window) and computes the window-scoped invocation diagnostics.
-- The **historical-lookback** scan (`WindowFilters.historical_scope`) gathers each active session's availability + load
-  evidence from every `agent_exit` row *before the window end*, deliberately dropping the window `start` bound and the
-  stage / events filters while keeping `end` / repo / issue — so a load or an availability report from a prior
-  stage, or from before the reporting window, still counts toward that session's denominator and `adopted`. History
-  rows for sessions that were not active in the window are ignored, so their evidence never leaks into the aggregate.
-
-The retained `end` bound is the **future-evidence cutoff**: evidence recorded *after* the window end never leaks
-backward into an earlier window's aggregate, so a later load cannot retroactively raise a past window's adoption.
-
-**Per-session availability denominator.** `sessions` (the denominator) is how many logical sessions in the cohort had
-the skill available — its reported `skills_available` union listed it, or the *legacy* fallback above implied it.
-`adopted` (the numerator) is how many of those sessions loaded it, counted once per session no matter how many runs
-reached for it; `adoption_rate` is `adopted / sessions`. A zero-session cell has an undefined rate that renders as a
-muted `—`, never a misleading `0%`.
-
-**Primary adoption vs. invocation-level diagnostics.** The read model carries three **window-scoped invocation** fields
-(raw `agent_exit` rows, not sessions, and not the historical evidence): `invocations` is every run in the cohort's
-window, `load_rows` the window runs that loaded the skill, and `incidental` the window runs that made a path-only
-(incidental) reference to its `SKILL.md`. The load and incidental buckets are independent — a single run can appear
-in both — so `incidental` is a parallel count, not a "did-not-load" complement, and it can never raise the adoption
-rate. Of these three the adoption table renders only `Invocation loads` (`load_rows`) and `Incidental references`
-(`incidental`) as its two trailing columns; `invocations` (the cohort's total window run count) is a read-model field
-used for ordering and context, not a displayed column. A pre-window load counts toward `adopted` but toward none of
-the three, since all three are window-scoped. The collapsed invocation-level diagnostic beneath the adoption table
-(`get_skill_trigger_rates` / `get_skill_trigger_matrix`) reports the same per-run granularity across roles / backends
-and per-skill cohorts. See the [read model](#read-model-orchestratorobservabilityanalyticsquery) for the exact query
-shapes and the [dashboard](#dashboard-orchestratorappsanalytics_dashboardpy) for the rendered columns.
-
-### `repo_skill_catalog` records
-
-`orchestrator/skills/catalog.py` appends one repo-level `event="repo_skill_catalog"` analytics record per tick per spec,
-driven from `workflow/engine/tick.py` after `_refresh_base_and_worktrees` has fetched `<remote_name>/<base_branch>`,
-before the scheduler / in-tick split so it fires once per tick on either dispatch path. It enumerates
-the `SKILL.md` definitions the *target repo* carries on its base ref via `git -C <target_root> ls-tree -r --name-only
-<remote_name>/<base_branch> .agents/skills .claude/skills`, keeps only direct `<root>/<name>/SKILL.md` definitions (a
-`SKILL.md` nested deeper — e.g. `.claude/skills/.system/<name>/SKILL.md` — is ignored, matching the names-only
-trigger anchor in `observability/usage/skill_commands.py`), and dedupes by skill name across the two roots while
-preserving every source path. The catalog is read from the target repo's base ref, never the orchestrator's own
-working tree, so dashboard-local skill files are not scanned.
-
-Each record carries `base_branch`, `remote_name`, `skills_available` (the sorted deduped skill names), and the optional
-`skill_paths` (name → sorted source paths; dropped when empty). It is **not** issue-scoped, so its `issue` is the
-sentinel `0` — the record still satisfies the `ts` / `repo` / `issue` / `event` envelope the sink and the Postgres
-`analytics_events` schema require, and the four catalog fields all land in `extras JSONB` with **no DDL change**. The
-whole producer is fail-open: a missing clone, an unfetched ref, a git error, or a sink IO failure logs and is swallowed
-so catalog collection never disturbs the polling tick. An empty catalog still records `skills_available: []` (the
-"scanned, found none" signal).
+Project-local JSONL of raw metric records — the raw foundation layer the Postgres aggregation below replays — opting
+in and out independently of the audit log via `ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS`. It shares the audit
+sink's envelope and bare-stage-tag spelling, so `WHERE stage = 'validating'` is the form that matches both here and in
+the Postgres column the sync loads it into. Four kinds are written today — `stage_enter`, `stage_evaluation`,
+[`agent_exit`](observability/event-streams.md#agent_exit-records), and
+[`repo_skill_catalog`](observability/event-streams.md#repo_skill_catalog-records) — and that page carries each
+one's fields, the opt-in `TRACK_SKILL_TRIGGERS` skill evidence on `agent_exit`, the
+[session-aware adoption model](observability/event-streams.md#session-aware-skill-adoption) built over it, and the
+once-per-tick retention prune that bounds the file.
 
 ## Trajectory sink (`TRAJECTORY_LOG_PATH`)
 
-A sibling, opt-in JSONL sink for agent *reasoning trajectories* — the ordered timeline of tool calls / results
-interleaved with the assistant / user text turns, plus the final output a run produced — written by
-`orchestrator/observability/analytics/trajectories/`, its two knobs parsed alongside the analytics ones by
-`observability/analytics/config.py`. It is kept deliberately
-**separate** from the analytics sink so the large free-text trajectory bodies never enter the numeric usage rollup, its
-Postgres aggregation, or the dashboard.
+Summarized here; the reference is
+[`observability/trajectories.md`](observability/trajectories.md#trajectory-sink-trajectory_log_path).
 
-**Module layout.** The writers divide by what one record passes through: `models.py` holds the head/tail and
-whole-record caps, the snapshot of them one record is measured against, and the headline and running
-budget a record is charged as; `sanitize.py` the leaf-by-leaf redaction and head/tail truncation; `serialize.py` the
-record's shape and the order its turn / step arrays are drawn from the budget in; `persistence.py` the opt-in gate, the
-stdout parse, the Codex backfill, and the fail-open guard around the write; and `api.py` the bare
-`append_trajectory_record` an operator reaches.
-`recording/agent_exit.py` names `persistence` directly and never the reverse, and no owner here names the recorders:
-the record envelope `serialize.py` builds and the channel `persistence.py` logs a failure on both come off
-`observability/analytics/sink.py` above both packages, which is what keeps that composition acyclic. Every knob is
-read off the `settings` holder inside the call. The by-age prune (`prune_trajectory_records`) lives one directory up in
-`orchestrator/observability/analytics/retention.py`, beside the analytics sink's, because the two are pruned through
-one scan and one rewrite; it and the append take the sink's dedicated lock, which is minted on `sink.py`
-beside the analytics one — see the append / prune discipline below for why it cannot live next to the append itself.
-
-**Producer: `record_agent_exit`.** After the baseline `agent_exit` analytics record (and the opt-in skill parse) are
-produced, `record_agent_exit` calls `trajectories.persistence.maybe_record_trajectory`, which — only when
-`TRAJECTORY_LOG_PATH` is enabled —
-parses the run's trajectory from the same stdout (`observability/usage/trajectory.py`'s `parse_agent_trajectory`),
-redacts and truncates it, and appends one `event="agent_trajectory"` record. `_run_agent_tracked` (in
-`workflow/engine/usage.py`) forwards its
-orchestrator-built `prompt` so it can land as the redacted `user_input`; `record_agent_exit` also threads through the
-`UsageMetrics` it already parsed for the baseline record so the trajectory can carry a denormalized `run_usage` summary
-without a re-parse. The whole block rides its **own** inner fail-open `try/except`: a parser, redactor, or sink
-failure logs (`log.exception`) and is swallowed, so it can never drop the baseline `agent_exit` usage / cost record or
-the `skill_triggered` audit events, all of which were already produced before it runs. With the sink off (the default)
-the block is a no-op before any parse work — the prompt is never read into a record and the `agent_exit` shape is
-byte-for-byte unchanged. `runtime.ticks.run_tick` does not yet call `prune_trajectory_records`, so trajectory
-retention stays operator-driven for now.
-
-**Record shape.** One `agent_trajectory` record per tracked run carries the standard envelope (`ts`, `repo`, `issue`,
-`event`, `stage`) plus correlation context (`agent_role`, `backend`, `session_id`, `review_round`, `retry_count`) and
-the redacted trajectory: `user_input` (the orchestrator prompt), `system_prompt`, `tools` (the offered-tools set — read
-from claude's stream, and for codex backfilled with the best-effort `skills.discovery.discover_codex_tools()` baseline
-since its stream carries no offered-tools frame), `skills_triggered` / `skills_available` (names-only — for codex the
-`skills_available` set is backfilled from the out-of-band `skills.discovery.discover_local_skills(cwd)` filesystem scan,
-since its stream carries no
-offered-skills catalog), a `run_usage` summary, a claude-only per-turn `turns`
-array, an ordered `steps` array (each `{kind, name, tool_id, content}` plus a `turn` index on the billed steps, where
-`kind` is `tool_call` / `tool_result` / `assistant_message` / `user_message` and `content` is the redacted tool input,
-tool result, or text turn — `name` / `tool_id` are `null` on the message turns), and the final `output`. `run_usage`
-is the denormalized `UsageMetrics` (`models`, `input_tokens`, `output_tokens`, `cached_tokens`, `cache_read_tokens`,
-`cache_write_tokens`, `turns` count, `cost_usd`, `cost_source`) minus `backend` (already on the record) — the run
-headline, and the codex surface too, since codex has no per-turn detail. Each `turns[]` entry is one claude assistant
-turn (`turn` index, `model`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, and an
-always-*estimated* `cost_usd` / `cost_source`); each billed `steps[]` entry (`assistant_message` / `tool_call`) carries
-the same `turn` index tying it to its turn, while a `tool_result` / `user_message` step is a turn *input* and omits
-`turn`. `build_record` drops every empty / `None` field, so an absent prompt, an empty system prompt, a no-trigger skill
-set, or codex's empty per-turn array simply leaves its key off.
-
-**Join keys.** The envelope and correlation context double as join keys back to the numeric sinks. `session_id` (the
-live `result.session_id`) is the per-run key onto the [`agent_exit`](#agent_exit-records) analytics record and the
-`agent_exit` audit event from the same run — both carry that same result id. The shared context `(repo, issue, stage,
-agent_role, backend, review_round, retry_count)` lines up field-for-field with the analytics `agent_exit` record (the
-audit events carry the same context under their own names, with backend as `agent`). The paired `agent_spawn` audit
-event is **not** keyed by this `session_id`: its `session_id` is the *resume* session id, which is omitted entirely on a
-fresh spawn and points at the prior session on a resume — so correlate the trajectory to the spawn through that shared
-context, not `session_id`. Either way the heavy free-text trajectory body can be correlated back to the usage / cost /
-token row for the same run without ever being stored alongside it — the whole point of keeping it in a separate file.
-
-**Redaction and truncation caps.** Every free-text field — `user_input`, `system_prompt`, each step's `content`, and
-`output` — is passed through `config.credentials.redact_secrets` (the same secret-shaped-env-value masker used on
-agent stderr) **before** truncation, so a secret straddling an elided boundary cannot survive as two halves. Each field
-is then head/tail truncated to its first `TRAJECTORY_FIELD_HEAD` (`2000`) and last `TRAJECTORY_FIELD_TAIL` (`2000`)
-characters — declared by `trajectories/models.py`, which is where a caller shrinks one, and snapshotted once per
-record — with an `...[N chars elided]...` marker in between; the head keeps the
-request/intent, the tail the
-result/answer. The whole record is additionally bounded: each step is charged its full **serialized** size — the JSON
-metadata (`kind` / `name` / `tool_id` / `turn`) plus its truncated content, not just `len(content)`, so even thousands
-of empty- or metadata-only steps still consume the budget — and the per-turn `turns` array is charged **and
-truncated** against the same budget (turns drawn down first, then steps), so a pathological claude run of thousands of
-turns with no tool calls cannot write the whole array in full and blow the budget. Once the running total crosses
-`TRAJECTORY_RECORD_BUDGET` (`200_000`) bytes the remaining turns — then steps — are dropped and a `truncated: true`
-flag is set; only the small fixed `run_usage` summary is always kept whole, so one pathological run (thousands of turns
-or tool calls) cannot write an unbounded line. Non-string step content (claude tool inputs are dicts; `tool_result`
-content a list) is redacted **leaf-by-leaf before** JSON serialization (`sanitize.redact_tree`) — serializing first
-would escape a multiline secret's newlines into `\n`, leaving the literal `str.replace` in `redact_secrets` unable to
-match the raw env value, so the secret would leak into the serialized content.
-
-**Privacy contract — redaction is not anonymization.** The redactor masks only *secret-shaped* values: env vars whose
-name is in the secret-key set or ends in a secret suffix, plus the resolved `GITHUB_TOKEN`, each verbatim occurrence
-replaced with `***`. It deliberately does **not** strip issue or repository content. The prompt (`user_input`), the
-`system_prompt`, every step's `content` in `steps` (tool inputs / results and the assistant / user text turns), and the
-final `output` can — and routinely will — carry issue titles and bodies, quoted source from the worktree, file
-paths, diffs, and the agent's own reasoning, all in cleartext after redaction. An enabled trajectory file therefore
-carries the same sensitivity as the repositories the orchestrator works on; scope its filesystem permissions (and any
-retention) accordingly. This is why the sink is off by default and why it never leaves the local filesystem (next
-paragraphs).
-
-**Opt-in, default off.** Unlike `ANALYTICS_LOG_PATH` (which defaults to `<LOG_DIR>/analytics.jsonl`),
-`TRAJECTORY_LOG_PATH` defaults *off*: unset, empty, or `off` / `disabled` / `none` (case-insensitive) all disable it;
-any other value is the explicit opt-in path. `TRAJECTORY_RETENTION_DAYS` defaults to `90` and mirrors
-`ANALYTICS_RETENTION_DAYS` (non-positive keeps trajectories indefinitely).
-
-**Append / prune discipline, dedicated lock.** `append_trajectory_record` reopens the file in append mode per record
-after `mkdir(parents=True, exist_ok=True)`, downgrading `OSError` to a `log.warning`; `prune_trajectory_records(*,
-now=None)` removes records older than `TRAJECTORY_RETENTION_DAYS` through a temp-file + `os.replace` rewrite, preserves
-malformed / unparseable lines verbatim, and no-ops when the sink is disabled, retention is non-positive, or the file is
-absent. Both reuse the shared append (`analytics/sink.py`) and prune (`retention_scan.py` / `retention_rewrite.py`)
-cores but hold a **dedicated**
-`threading.Lock`, so the trajectory file serializes its own append-vs-prune race without ever blocking against — or
-touching — `ANALYTICS_LOG_PATH`, the analytics Postgres sync, or the dashboard. That lock is minted on
-`analytics/sink.py`, beside the analytics sink's and for the same reason: an append and the prune that rewrites the
-file under it are safe only while both hold one object, and a caller is free to hold an `append_trajectory_record` it
-took off the owner rather than call through a package. A lock minted beside the append would leave that reference
-serializing against nothing while the prune took another, which is precisely the append-during-prune race the lock
-exists to close.
-
-**No built-in rotation.** As with the audit and analytics sinks, each append reopens the file after `mkdir`; there is no
-size cap, long-lived descriptor, or compression. `prune_trajectory_records` is **not yet wired into the polling loop**,
-so beyond the by-age prune (which only an in-process caller drives today) retention and rotation are entirely
-operator-managed — pair `TRAJECTORY_LOG_PATH` with `logrotate` (or equivalent). Because every append re-resolves the
-path, create/rename or `copytruncate` rotation is safe between writes.
-
-**Local filesystem only.** A trajectory record is never written to `ANALYTICS_LOG_PATH`, never replayed into Postgres by
-the sync (which only reads `ANALYTICS_LOG_PATH`), and never surfaced in the **analytics** dashboard
-(`orchestrator/apps/analytics_dashboard.py`), which renders only the Postgres rollup. The sink is one JSONL file on
-local disk; the
-only reader is the dedicated trajectory viewer below, which reads that file straight off disk.
-
-**Observation-only, like every surface here.** The polling tick never reads the trajectory file back and no dispatch
-decision keys off it; workflow state lives entirely in the pinned `<!--orchestrator-state ...-->` JSON comment and the
-workflow label. The file is therefore safe to truncate, rotate, or delete at any time without affecting workflow state
-or correctness.
+Opt-in, **default-off** sibling sink holding one `agent_trajectory` record per tracked run: the ordered timeline of
+tool calls / results interleaved with the assistant / user text turns, the offered tools and skills, a denormalized
+`run_usage` summary, and the final output. It is deliberately kept out of the analytics sink, its Postgres sync, and
+the analytics dashboard, because the free-text bodies do not belong in the numeric rollup. `record_agent_exit`
+produces it from the same stdout the usage parser reads, behind its own fail-open guard, so a trajectory failure can
+never cost the baseline `agent_exit` record. Every free-text field is redacted and head/tail truncated and the whole
+record is budget-bounded — but **redaction is not anonymization**: issue content, quoted source, diffs, and the
+agent's own reasoning survive in cleartext, so scope the file like the repositories it describes. That page carries
+the record shape, the join keys back to the numeric sinks, the caps, the privacy contract, and the file-backed
+trajectory viewer that reads it.
 
 ### Trajectory operator workflow
 
-There is no trajectory equivalent of `python -m orchestrator.observability.analytics.sync.cli`: trajectories are
-deliberately file-backed only, and the analytics Postgres schema does not ingest their free-text bodies. To browse
-trajectories on another host, mirror `TRAJECTORY_LOG_PATH` as a file and run the dedicated viewer on that host with
-`TRAJECTORY_LOG_PATH` pointing at the mirrored JSONL. Scope the remote path like source code or issue content:
-redaction masks secret-shaped values, not repository text or agent reasoning.
+Summarized here; the reference is
+[`observability/trajectories.md`](observability/trajectories.md#trajectory-operator-workflow).
 
-For an unattended deployment, mirror the file with SSH-based tooling such as `rsync`. Use a dedicated receiver account
-whose key can only write into the trajectory directory. On an Ubuntu receiver, use a neutral shared directory such as
-`/srv/orchestrator` instead of landing the file in the receiver user's home. That keeps `/home/forsync` out of the
-dashboard read path and lets the Streamlit user read through a shared group:
-
-```sh
-# On the remote VPS.
-sudo adduser --system --group --shell /bin/bash --home /home/forsync forsync
-sudo groupadd -f orchestrator
-sudo usermod -aG orchestrator forsync
-sudo usermod -aG orchestrator <dashboard-user>
-sudo mkdir -p /srv/orchestrator
-sudo chown forsync:orchestrator /srv/orchestrator
-sudo chmod 2750 /srv/orchestrator
-sudo install -d -m 700 -o forsync -g forsync /home/forsync/.ssh
-
-# Confirm rrsync is available; on current Ubuntu it is shipped by rsync.
-command -v rrsync
-```
-
-Generate a dedicated cron key on the source host:
-
-```sh
-ssh-keygen -t ed25519 -f ~/.ssh/forsync_ed25519 -C "trajectory-sync" -N ""
-```
-
-Then install the public key on the remote account as one `authorized_keys` line. Pick the network restriction that
-matches the deployment:
-
-- **Private overlay / Tailscale available.** Use the exact source host tailnet IP in `from=` when possible;
-  `100.64.0.0/10` is the broader Tailscale CGNAT range. A tailnet ACL that allows only the source device to reach SSH on
-  the VPS is stronger, with `from=` as defense-in-depth.
-- **Public SSH / no Tailscale.** Use the source host's stable public egress IP or CIDR in `from=` instead. If the source
-  IP is not stable, omit `from=` and restrict port 22 at the VPS firewall / cloud security group to the narrowest source
-  range you can. Keep the forced `rrsync` command and `restrict` either way.
-
-```text
-command="/usr/bin/rrsync -wo -no-del /srv/orchestrator",restrict,from="<source-ip-or-cidr>" ssh-ed25519 AAAA... trajectory-sync
-```
-
-Lock the SSH account down further with `/etc/ssh/sshd_config.d/forsync.conf`:
-
-```sshconfig
-Match User forsync
-    AuthenticationMethods publickey
-    PasswordAuthentication no
-    PermitTTY no
-    AllowTcpForwarding no
-    AllowAgentForwarding no
-    X11Forwarding no
-    PermitTunnel no
-```
-
-Validate and reload SSH:
-
-```sh
-sudo sshd -t
-sudo systemctl reload ssh
-```
-
-A small source-side wrapper is easier to test than a heavily-quoted crontab line, lets cron fail fast when SSH would
-otherwise prompt, and uses the same lock name as trajectory maintenance jobs so sync and prune never overlap each other.
-With the `rrsync` root above, `DEST=forsync@<host>:trajectories.jsonl` lands at `/srv/orchestrator/trajectories.jsonl`
-on the receiver. `rrsync` rejects absolute destination paths; keep the destination relative to its configured root:
-
-```sh
-#!/usr/bin/env bash
-set -euo pipefail
-
-SRC=/path/to/agent-orchestrator/logs/trajectories.jsonl
-DEST=forsync@<host>:trajectories.jsonl
-LOCK=/tmp/agent-orchestrator-trajectory.lock
-KEY=/home/<local-user>/.ssh/forsync_ed25519
-
-SSH_CMD="ssh -i $KEY -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new"
-
-echo "=== $(date -Is) trajectory sync start ==="
-if /usr/bin/flock -n -E 75 "$LOCK" \
-  /usr/bin/rsync -az --timeout=120 --chmod=F640 \
-    -e "$SSH_CMD" \
-    "$SRC" "$DEST"; then
-  echo "=== $(date -Is) trajectory sync done ==="
-else
-  rc=$?
-  if [ "$rc" -eq 75 ]; then
-    echo "=== $(date -Is) trajectory sync skipped: lock held ==="
-    exit 0
-  fi
-  exit "$rc"
-fi
-```
-
-Install it as executable before adding the cron entry:
-
-```sh
-chmod +x /path/to/agent-orchestrator/bin/sync-trajectories.sh
-```
-
-```cron
-10 * * * * /path/to/agent-orchestrator/bin/sync-trajectories.sh >> /path/to/agent-orchestrator/logs/trajectory-sync.cron.log 2>&1
-```
-
-- `rsync` is a file mirror, not an append-only archive. When local retention later rewrites or shrinks the JSONL, a
-  later mirror run will make the remote file match.
-- The default `rsync` destination update path already writes a temporary file and renames it into place for this
-  single-file mirror; avoid `--inplace`.
-- Do not use `--append` or `--append-verify` for this mirror: retention pruning can shrink or rewrite the source file,
-  and append-mode transfer would leave stale remote tail data or give remote readers partial in-place writes.
-- `StrictHostKeyChecking=accept-new` is convenient on a trusted private network because the first cron-run pins the host
-  key and later key changes still fail. The stricter alternative is to pre-seed once with `ssh-keyscan -H <host> >>
-  ~/.ssh/known_hosts` and drop that option.
-- `--chmod=F640` makes the mirrored file readable by the receiver owner and the shared `orchestrator` group. The setgid
-  bit on `/srv/orchestrator` (`2750`) keeps replaced files in that group, so the dashboard user can read them after a
-  fresh login / restarted service picks up its new group membership.
-- If you migrate from an older `/home/forsync/...` landing path, move the existing file once (`sudo mv
-  /home/forsync/agent-orchestrator/trajectories.jsonl /srv/orchestrator/`) and then apply `sudo chgrp orchestrator
-  /srv/orchestrator/trajectories.jsonl && sudo chmod 640 /srv/orchestrator/trajectories.jsonl`.
-- Verify dashboard readability before launching Streamlit: `id` for the dashboard user must show `orchestrator`, and
-  `sudo -u <dashboard-user> head /srv/orchestrator/trajectories.jsonl` should print JSONL.
-- If the remote host should keep a longer archive than the local machine, mirror to dated snapshots instead of one fixed
-  destination path.
-- Treat the remote SSH key as sensitive. For a write-only receiver, constrain it in `authorized_keys` with a forced
-  `rrsync` command, no PTY / forwarding, and either a `from=` source restriction or network-level SSH allowlist.
-- Rotate `trajectory-sync.cron.log`, or send the wrapper output to the journal with `logger`, so the cron log does not
-  grow forever.
-
-The mirror cron does not lock the source file against the running orchestrator. A record that is fully appended before
-`rsync` reads the file is copied; a record appended during or after the transfer may be absent until the next mirror
-run. If `rsync` ever catches a final line mid-write, the remote file may briefly end with a malformed JSON line after
-the destination rename; the trajectory reader skips malformed lines, and the next mirror run repairs the fixed
-destination because this command mirrors the whole file rather than using `--append`.
-
-Decide whether the remote file is a **mirror** or an **archive** before enabling retention. A fixed destination path is
-a mirror: after local retention prunes old records, the next sync shrinks the remote file too. That is correct for a
-remote viewer that should show only the retained window, but wrong if the remote host is meant to preserve history
-before the local file is pruned. For an archive, use a different strategy, such as dated snapshots, a never-pruned local
-archive file, or a custom high-water-mark shipper.
-
-Because `prune_trajectory_records()` is not called by the polling loop, drive trajectory retention explicitly when you
-want `TRAJECTORY_RETENTION_DAYS` to affect the file. The value may live in `.env` like the other non-secret knobs; it is
-parsed when the prune process first reads a knob off `observability/analytics/settings.py`, which the entry point
-below resolves inside the call. The cron entry relies on `.env` for both
-`TRAJECTORY_LOG_PATH` and `TRAJECTORY_RETENTION_DAYS`, runs the prune helper, and logs how many records were removed:
-
-```cron
-25 0 * * * cd /path/to/agent-orchestrator && /usr/bin/flock -n -E 75 /tmp/agent-orchestrator-trajectory.lock /home/<user>/.local/bin/uv run python -c 'from orchestrator.observability.analytics import retention; print(f"trajectory prune removed {retention.prune_trajectory_records()} record(s)")' >> /path/to/agent-orchestrator/logs/trajectory-prune.cron.log 2>&1
-```
-
-To make the same cron entry use a one-off retention window instead of `.env`, prefix the command with `env
-TRAJECTORY_LOG_PATH=/path/to/agent-orchestrator/logs/trajectories.jsonl TRAJECTORY_RETENTION_DAYS=30`.
-
-Only run this prune command while the orchestrator is stopped or otherwise guaranteed not to append trajectories. The
-shared `/tmp/agent-orchestrator-trajectory.lock` serializes operator cron jobs with each other, but not with the live
-orchestrator process: the lock the append and the prune share (minted on
-`observability/analytics/sink.py`) is a process-local `threading.Lock`, not an interprocess file lock. An
-external prune process can race with the live polling process and lose a record appended to
-the old inode between the prune read and `os.replace`. Schedule pruning after at least one mirror run if the remote
-fixed-path mirror should receive records before they age out locally. The prune rewrites only the trajectory JSONL
-through the same temp-file + `os.replace` path described above; it never touches GitHub workflow state,
-`ANALYTICS_LOG_PATH`, Postgres, or the analytics dashboard.
-
-### Trajectory viewer (`orchestrator/apps/trajectory_dashboard.py`)
-
-A deliberately **separate** Streamlit page from the analytics dashboard, launched the same way (`uv run streamlit run
-orchestrator/apps/trajectory_dashboard.py`, opt-in `dashboard` group). The two pages stay apart on purpose: the
-analytics dashboard reads the numeric usage / cost rollup from Postgres, while the viewer reads the JSONL trajectory
-file **directly** — the trajectory bodies are never in Postgres — so an operator can browse trajectories with nothing
-but the file on disk (no database, no sync).
-
-**Read model (`orchestrator/observability/trajectory_viewer/`).** A pure, import-light, Streamlit-free reader (the
-file-backed analogue of `observability/analytics/query/`). The record vocabulary (`constants`), the field coercion
-under it (`coercion`),
-the immutable sub-views (`models`), the run model (`runs`), the usage and timeline/label views bound onto it
-(`usage_views`, `timeline_views`), the parse above them (`parsing`), the file read that drives it (`reading`), the
-log-path resolution beside it (`log_paths`, over `analytics/config.py`), the filter shapes, values, and run matching
-over the runs it returns (`filter_models`, `filter_values`, `filtering`), and the headline counts they are totalled
-into (`summaries`) all live there, alongside the inline HTML that read is
-drawn with (`css`, `summary_html`, `run_html`, `usage_html`, `timeline_html`). Each name is reached on the owner that
-defines it and reports that owner, so a patch lands where a reader finds the code. A caller's world is bound one
-level up instead: the owners that read the trajectory knob take the analytics settings holder as an argument, and the
-page hands them the one it resolves at call time, so a patch on that holder intercepts every read the page
-makes. Together they read `TRAJECTORY_LOG_PATH`, parse each `agent_trajectory`
-record into a frozen `TrajectoryRun` (with a normalised `TrajectoryStepView` per step), and expose `read_trajectories`
-(newest first by `ts`, file order as the tie-break), `filter_options`, `filter_runs` (repo / backend / agent-role /
-stage / issue / free-text-search, every filter conjunctive and an empty multi-value meaning "no constraint", plus an
-opt-in `exclude_fixtures`), and `summarize`. Each run exposes a normalised, vintage-agnostic `timeline` — the leading
-`user_input` prompt, then the ordered `steps[]`, then the final `output`, as one ordered `TimelineEntry` sequence — so
-an old steps-only record (only `tool_call` / `tool_result` steps) and a new record whose steps interleave
-`assistant_message` / `user_message` text turns render the same way; `tool_calls` still counts only `tool_call` steps,
-so the text turns never inflate the tally. `is_fixture` flags the synthetic test-suite records an inherited file may
-carry (the sentinel prompt `ignored`, a `sess-*` session id, or a `Skill`-only run), which
-`filter_runs(exclude_fixtures=True)` drops. Each run also exposes the record's usage: a `run_usage` (`RunUsageView`) run
-summary and a claude-only per-turn `turns` tuple (`TurnUsageView`), with convenience accessors `model` (first of
-`run_usage.models`), `cost_usd` / `cost_source` (the authoritative run figure), `total_tokens`, and an O(1)
-`usage_for_turn(idx)` lookup so a `TimelineEntry` (which now carries the producing step's `turn` index) can find its
-turn's usage while walking the timeline; `summarize` adds `total_cost_usd`, the summed run cost over runs that recorded
-one. A pre-usage record parses with `run_usage=None`, `turns=()`, and every `step.turn=None`, so it renders exactly as
-before. The same resilience contract the rest of the codebase honours holds: a missing / disabled path, a malformed
-line, a non-`agent_trajectory` record, or a renamed field yields a smaller result, never an exception. A file that is
-there but cannot be read — anything raising an `OSError` other than `FileNotFoundError`, an unreadable file or a
-directory in the knob's place — takes the same empty result with a warning first, through the
-`orchestrator.trajectory_reader` logger. That name is spelled out literally in
-`observability/trajectory_viewer/reading.py` rather than derived from the module path, so an operator's log filter
-keeps selecting on it however far the module holding it moves. The records are
-already redacted and truncated by the sink, so the viewer is a read-only window onto an already-sanitised file — it
-adds no redaction of its own and must be scoped (filesystem permissions, who can reach the Streamlit port) with the same
-care as the trajectory file itself.
-
-**Page (`orchestrator/apps/trajectory_dashboard.py`).** Reuses the analytics dashboard's theme (CSS variables, fonts,
-`fmt_*` formatters) so the two pages read as one family — the owners under `observability/trajectory_viewer/` name
-`dashboard/tokens.py`, `dashboard/css.py`, and `dashboard/formatting.py` directly — and reuses `dashboard/filters.py`'s
-`parse_issue_number` for the
-issue filter, so `#123` and `123` mean the same thing on both pages. Streamlit is
-imported lazily inside `main()`, alongside every owner the page composes, and the repo-root `sys.path` shim comes
-from `orchestrator/apps/bootstrap.py` (`ensure_repo_root_on_path`). Importing that module (or the
-polling tick) therefore never needs the `dashboard` group — `tests/apps/` guards the lazy-import and the
-script-launch `sys.path` shape on the viewer's launch path. The layout is intentionally minimal-but-useful: a
-sidebar of filters (plus a *Hide synthetic fixtures*
-toggle that drives the reader's `exclude_fixtures`, off by default), a topbar + five-tile KPI strip (runs / issues /
-repos / tool calls / total cost, the last summed from `summarize`'s `total_cost_usd`), a foldable *Recorded runs*
-overview table (capped at the 200 most recent; collapse the expander to focus on a single run), three cascading run
-pickers (repo → issue → the run's `detail_label` cohort — stage/role · backend · round · timestamp) that
-together still reach every match, and a per-run detail card that lists the offered tools and triggered / available
-skills — the triggered-skills row always renders, marked `none` when no skill fired so a run that used no skill is
-distinguishable from an omitted row, while the offered-tools and available-skills rows are dropped when empty — a
-run-level usage / cost row (model(s), token buckets, turn count, and the authoritative run cost tagged with
-its `cost_source` — the codex surface too), then walks the run's normalised `timeline` as one ordered sequence — the
-redacted prompt, then the interleaved assistant / user text turns and tool calls / results (each rendered by its
-`kind`), then the final output (rendered as markdown; every other entry is shown verbatim in a code block). For a claude
-run, a compact per-turn usage strip (model · in / out tokens · cache-read / cache-write · estimated cost, with a
-*cache hit* chip when the turn read from cache) is drawn at each assistant-turn boundary in the timeline; the copy
-states that per-turn figures are claude-only estimates that need not sum to the authoritative run total, and that
-entries without a strip (tool results, user turns) are turn inputs billed on the next turn. A pre-usage record carries
-no usage, so the row and strips are absent and it renders exactly as before. The fixtures `is_fixture` flags are tagged
-in the overview table and the run-level picker (the `[fixture]` prefix rides the run option; and the detail card carries
-a notice) so the operator can tell the inherited test-suite records from real runs even with the toggle off. When the
-sink is off it renders the opt-in banner and stops; an empty file or an empty filter set renders an explanatory notice
-rather than a blank page. That app file is the only launch path the viewer has.
-The page state, setup, filters, picker, selected-run rendering, and whole-page composition are owned by
-`page_models`, `page_setup`, `controls`, `picker`, `run_render`, and `page_render` under
-`observability/trajectory_viewer/`; the five that draw take Streamlit in
-as an argument rather than importing it, so none of them puts the `dashboard` group behind an import, and
-`page_models` is plain frozen state that never sees it. `page_setup` is the one that reads the trajectory knob, off
-the analytics settings holder the app hands it, which is where a caller's world is bound for the page the same way it
-is for the read.
+Trajectories are file-backed only — there is no trajectory equivalent of the analytics sync CLI, and the Postgres
+schema never ingests their bodies. To browse them on another host, mirror the JSONL file (a locked, key-restricted
+`rsync` over SSH) and point the viewer at the copy; to bound it, drive `prune_trajectory_records` yourself, since the
+polling loop does not call it. That page carries the receiver setup, the `authorized_keys` restriction, the sync and
+prune cron entries, and the mirror-versus-archive decision retention forces.
 
 ## Analytics database (`analytics-db/`)
 
@@ -1879,8 +1089,8 @@ empty stream — or one with no usage frames at all — yields `"no-usage"`.
 **Resilience.** Malformed JSON lines (banner text, truncated frames, partial flushes) are silently skipped so a single
 bad line never invalidates the rest of the stream. `_run_agent_tracked` (in `workflow/engine/usage.py`) calls
 `parse_agent_usage` after every tracked agent run and appends the parsed counts to the
-[analytics sink](#analytics-sink-analytics_log_path) under `event="agent_exit"`; a parser exception is caught and
-downgraded to a `log.exception`.
+[analytics sink](observability/event-streams.md#analytics-sink-analytics_log_path) under `event="agent_exit"`; a
+parser exception is caught and downgraded to a `log.exception`.
 
 **Terminal verdict surface.** Beyond the analytics sink, `_accumulate_issue_usage` (in `workflow/engine/usage.py`,
 beside `_run_agent_tracked`) folds each run's
@@ -1895,9 +1105,10 @@ skipped when no run was ever counted.
 
 **Skill-trigger extractor (opt-in).** A sibling trio mirrors the usage parsers' two-parsers-one-dispatcher shape and
 resilience contract to record which agent *skills* a run loaded, gated behind `TRACK_SKILL_TRIGGERS` (default off;
-see [`agent_exit` records](#agent_exit-records)). The result is a names-only evidence model on `SkillTriggers`:
-`triggered` / `trigger_counts` are the loaded skills, `evidence` maps each to its tier (`confirmed` / `inferred`), and
-`incidental` / `incidental_counts` are path-only references that never become loads. The two buckets are independent —
+see [`agent_exit` records](observability/event-streams.md#agent_exit-records)). The result is a names-only
+evidence model on `SkillTriggers`: `triggered` / `trigger_counts` are the loaded skills, `evidence` maps each to its
+tier (`confirmed` / `inferred`), and `incidental` / `incidental_counts` are path-only references that never become
+loads. The two buckets are independent —
 a skill both read and inspected is recorded in both — the only exclusion is structural: an incidental reference never
 enters `triggered` / `trigger_counts` or the `skill_triggered` audit events. `parse_claude_skills(stdout)` reads the
 firm **confirmed** signal — `tool_use`
@@ -1972,8 +1183,8 @@ or write any file. Those concerns belong to its downstream writer,
 `observability/analytics/trajectories/`'s `persistence.maybe_record_trajectory`
 (called from `record_agent_exit`), which redacts every free-text field, applies the head/tail and total-record
 truncation caps, and appends the `agent_trajectory` record to the
-[trajectory sink](#trajectory-sink-trajectory_log_path) — only when `TRAJECTORY_LOG_PATH` is enabled and always behind
-its own fail-open guard.
+[trajectory sink](observability/trajectories.md#trajectory-sink-trajectory_log_path) — only when
+`TRAJECTORY_LOG_PATH` is enabled and always behind its own fail-open guard.
 
 ## Summary of "what runs when"
 
