@@ -19,6 +19,8 @@ import unittest
 
 from orchestrator.observability.dashboard import skill_matrix_sort
 from tests.observability.dashboard.skill_matrix_test_support import (
+    LEVEL_PROJECT,
+    LEVEL_USER,
     REPO_B,
     CellCase,
     cell,
@@ -34,6 +36,8 @@ _SORT_KEY_RUNS = "runs"
 _SORT_KEY_RATE = "rate"
 
 _SORT_KEY_REPO = "repo"
+
+_SORT_KEY_LEVEL = "level"
 
 _UNKNOWN_COLUMN = "bogus"
 
@@ -125,6 +129,20 @@ class SkillMatrixOrderTest(unittest.TestCase):
                 [plain, shouted], _SORT_KEY_REPO, False,
             ),
             [shouted, plain],
+        )
+
+    def test_the_level_orders_one_name_apart(self) -> None:
+        # The only column that separates a catalog-padded cell from a run that
+        # triggered the same name under no recorded level, so an ordering
+        # reading the name instead would leave both where the read put them.
+        user, project = cells(
+            CellCase(level=LEVEL_USER), CellCase(level=LEVEL_PROJECT),
+        )
+        self.assertEqual(
+            skill_matrix_sort.sort_skill_matrix_rows(
+                [user, project], _SORT_KEY_LEVEL, False,
+            ),
+            [project, user],
         )
 
     def test_the_default_key_is_repo_up_rate_down(self) -> None:

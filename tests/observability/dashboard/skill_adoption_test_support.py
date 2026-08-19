@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """The cells the per-session adoption cases are built out of.
 
-Every module here spells a cell the same way, because the four naming columns
+Every module here spells a cell the same way, because the five naming columns
 and the five counts are what each of them reads a different decision off: an
 ordering case and a projection case that built their cells differently would
 stop being comparable. The repositories are named apart so an assertion can
@@ -39,6 +39,10 @@ SKILL_BETA = "beta"
 
 SKILL_GAMMA = "gamma"
 
+LEVEL_PROJECT = "project"
+
+LEVEL_USER = "user"
+
 # A cohort the skill was available to in four sessions and loaded in one, so a
 # rounded rate is readable off the markup and the two counts stay distinct.
 AVAILABLE_SESSIONS = 4
@@ -52,6 +56,7 @@ class CellCase:
     skill: str = SKILL_ALPHA
     role: str = DEVELOPER
     backend: str = CLAUDE
+    level: str = LEVEL_PROJECT
     sessions: int = AVAILABLE_SESSIONS
     adopted: int = ADOPTED_SESSIONS
     load_rows: int = 0
@@ -59,12 +64,13 @@ class CellCase:
 
 
 def cell(case: CellCase) -> SkillAdoptionRow:
-    """One read row of the `(repo, skill, role, backend)` cell it names."""
+    """One read row of the `(repo, skill, level, role, backend)` cell it names."""
     return SkillAdoptionRow(
         repo=case.repo,
         skill=case.skill,
         agent_role=case.role,
         backend=case.backend,
+        level=case.level,
         sessions=case.sessions,
         adopted=case.adopted,
         invocations=case.sessions,

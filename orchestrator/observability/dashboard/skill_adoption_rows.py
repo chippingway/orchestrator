@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """What one cell of the adoption table says, and how it is drawn.
 
-A cell pairs one `(repo, role, backend, skill)` cohort with how many of its
-sessions had the skill available and how many loaded it, so the two ways of
+A cell pairs one `(repo, role, backend, skill, level)` cohort with how many of
+its sessions had the skill available and how many loaded it, so the two ways of
 being quiet are different answers and are drawn as different things. A cohort
 no session had the skill available in has no denominator, so its rate is
 undefined and reads as an em-dash; a cohort that was offered the skill and
@@ -18,11 +18,14 @@ table rather than read off a single row. The two diagnostic counts are drawn
 the same way as the session ones but stay their own columns, because a
 `SKILL.md` mentioned in passing is not adoption and must never be read as it.
 
-A category the sink recorded nothing for is labelled through the same `unknown`
-the aggregate panel reads a missing role or backend under, so every table on
-the page buckets an empty category the same way. All four naming columns arrive
-off the sink rather than out of this repository, so all four are escaped into
-the markup a browser is asked to interpret.
+The level beside the skill names the source a definition came from, so two
+cells the name alone would read as one row stay legible as the two definitions
+they are. A category the sink recorded nothing for -- including a level no
+record classified -- is labelled through the same `unknown` the aggregate panel
+reads a missing role or backend under, so every table on the page buckets an
+empty category the same way. All five naming columns arrive off the sink rather
+than out of this repository, so all five are escaped into the markup a browser
+is asked to interpret.
 """
 from __future__ import annotations
 
@@ -63,6 +66,7 @@ class SkillAdoptionRowView:
     role: str
     backend: str
     skill: str
+    level: str
     sessions_html: str
     adopted_html: str
     rate_html: str
@@ -71,12 +75,13 @@ class SkillAdoptionRowView:
 
 
 def skill_adoption_row_view(row: SkillAdoptionRow) -> SkillAdoptionRowView:
-    """Reduce one cell to the readings its nine columns are drawn from."""
+    """Reduce one cell to the readings its ten columns are drawn from."""
     return SkillAdoptionRowView(
         repo=row.repo or UNKNOWN,
         role=row.agent_role or UNKNOWN,
         backend=row.backend or UNKNOWN,
         skill=row.skill or UNKNOWN,
+        level=row.level or UNKNOWN,
         sessions_html=adoption_count_html(int(row.sessions)),
         adopted_html=adoption_count_html(int(row.adopted)),
         rate_html=adoption_rate_html(row),
@@ -94,6 +99,7 @@ def skill_adoption_row_html(row: SkillAdoptionRow) -> str:
         f"<td>{html.escape(row_view.role)}</td>"
         f"<td>{html.escape(row_view.backend)}</td>"
         f"<td>{html.escape(row_view.skill)}</td>"
+        f"<td>{html.escape(row_view.level)}</td>"
         f'<td class="r">{row_view.sessions_html}</td>'
         f'<td class="r">{row_view.adopted_html}</td>'
         f'<td class="r">{row_view.rate_html}</td>'

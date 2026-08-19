@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """The cells the invocation-level matrix cases are built out of.
 
-Every module here spells a cell the same way, because the four naming columns
+Every module here spells a cell the same way, because the five naming columns
 and the two counts are what each of them reads a different decision off: an
 ordering case and a projection case that built their cells differently would
 stop being comparable. The repositories are named apart so an assertion can
@@ -39,6 +39,10 @@ SKILL_BETA = "beta"
 
 SKILL_GAMMA = "gamma"
 
+LEVEL_PROJECT = "project"
+
+LEVEL_USER = "user"
+
 # A cohort that ran four times and reached for the skill on one of them, so a
 # rounded rate is readable off the markup and the two counts stay distinct.
 COHORT_RUNS = 4
@@ -52,17 +56,19 @@ class CellCase:
     skill: str = SKILL_ALPHA
     role: str = DEVELOPER
     backend: str = CLAUDE
+    level: str = LEVEL_PROJECT
     runs: int = COHORT_RUNS
     skill_runs: int = SKILL_RUNS
 
 
 def cell(case: CellCase) -> SkillTriggerMatrixRow:
-    """One read row of the `(repo, skill, role, backend)` cell it names."""
+    """One read row of the `(repo, skill, level, role, backend)` cell it names."""
     return SkillTriggerMatrixRow(
         repo=case.repo,
         skill=case.skill,
         agent_role=case.role,
         backend=case.backend,
+        level=case.level,
         runs=case.runs,
         skill_runs=case.skill_runs,
     )

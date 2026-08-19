@@ -8,8 +8,9 @@ was offered has no denominator and reports an undefined rate, while one that
 was offered and loaded by nobody reports a real zero -- the offered-but-ignored
 finding the panel exists to surface. Beside them are the whole-point rate a
 busy cell reports, the two diagnostics that are counted apart so neither can be
-read as adoption, the label an empty category is bucketed under, and the
-escaping every naming column arrives needing.
+read as adoption, the source level that keeps two definitions of one name
+apart, the label an empty category is bucketed under, and the escaping every
+naming column arrives needing.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import unittest
 from orchestrator.observability.dashboard import skill_adoption_rows
 from orchestrator.observability.dashboard.skill_trigger_table import UNKNOWN
 from tests.observability.dashboard.skill_adoption_test_support import (
+    LEVEL_USER,
     CellCase,
     cell,
     cell_fragment,
@@ -51,7 +53,7 @@ _NAME_WITH_MARKUP = "a/<r&>"
 _ESCAPED_NAME = "a/&lt;r&amp;&gt;"
 
 # Every naming column of a cell the sink recorded no categories for.
-_NAMING_COLUMNS = 4
+_NAMING_COLUMNS = 5
 
 
 def _rendered(case: CellCase) -> str:
@@ -96,8 +98,18 @@ class SkillAdoptionCellReadingsTest(unittest.TestCase):
         self.assertEqual(markup.count(_PLAIN_ONE), 2)
         self.assertIn(_MUTED_UNDEFINED_RATE, markup)
 
+    def test_the_source_level_is_its_own_column(self) -> None:
+        # Two cells can carry the same four other names and differ only in the
+        # definition behind them, so a row that dropped the level would report
+        # a repository's own skill and a global one as one another's duplicate.
+        self.assertIn(
+            cell_fragment(LEVEL_USER), _rendered(CellCase(level=LEVEL_USER)),
+        )
+
     def test_an_empty_category_reads_unknown(self) -> None:
-        markup = _rendered(CellCase(repo="", skill="", role="", backend=""))
+        markup = _rendered(
+            CellCase(repo="", skill="", role="", backend="", level=""),
+        )
         self.assertEqual(
             markup.count(cell_fragment(UNKNOWN)), _NAMING_COLUMNS,
         )
@@ -109,6 +121,7 @@ class SkillAdoptionCellReadingsTest(unittest.TestCase):
                 skill=_NAME_WITH_MARKUP,
                 role=_NAME_WITH_MARKUP,
                 backend=_NAME_WITH_MARKUP,
+                level=_NAME_WITH_MARKUP,
             ),
         )
         self.assertEqual(markup.count(_ESCAPED_NAME), _NAMING_COLUMNS)

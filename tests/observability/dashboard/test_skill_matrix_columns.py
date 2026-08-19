@@ -17,13 +17,14 @@ import unittest
 
 from orchestrator.observability.dashboard import skill_matrix_columns
 
-# The seven columns in the order an operator reads them across, each with the
+# The eight columns in the order an operator reads them across, each with the
 # heading it carries and whether it is right-aligned as a number.
 _COLUMNS = (
     ("repo", "Repo", False),
     ("role", "Role", False),
     ("backend", "Backend", False),
     ("skill", "Skill", False),
+    ("level", "Level", False),
     ("runs", "Runs", True),
     ("skill_runs", "Runs with skill", True),
     ("rate", "Trigger rate", True),
@@ -39,7 +40,7 @@ _DIR_PARAM = "mtx_dir"
 class SkillMatrixColumnsTest(unittest.TestCase):
     """The column set every heading, link, and ordering is drawn from."""
 
-    def test_the_seven_columns_are_in_order(self) -> None:
+    def test_the_eight_columns_are_in_order(self) -> None:
         self.assertEqual(
             tuple(
                 (column.key, column.label, column.right_aligned)

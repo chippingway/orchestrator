@@ -19,6 +19,8 @@ import unittest
 
 from orchestrator.observability.dashboard import skill_adoption_sort
 from tests.observability.dashboard.skill_adoption_test_support import (
+    LEVEL_PROJECT,
+    LEVEL_USER,
     REPO_B,
     CellCase,
     cell,
@@ -36,6 +38,8 @@ _SORT_KEY_RATE = "rate"
 _SORT_KEY_INCIDENTAL = "incidental"
 
 _SORT_KEY_REPO = "repo"
+
+_SORT_KEY_LEVEL = "level"
 
 _UNKNOWN_COLUMN = "bogus"
 
@@ -131,6 +135,20 @@ class SkillAdoptionOrderTest(unittest.TestCase):
                 [plain, shouted], _SORT_KEY_REPO, False,
             ),
             [shouted, plain],
+        )
+
+    def test_the_level_orders_one_name_apart(self) -> None:
+        # The only column that separates a repository's own skill from a
+        # same-named global one, so an ordering reading the name instead would
+        # leave the two rows in whatever order the read handed them back.
+        user, project = cells(
+            CellCase(level=LEVEL_USER), CellCase(level=LEVEL_PROJECT),
+        )
+        self.assertEqual(
+            skill_adoption_sort.sort_skill_adoption_rows(
+                [user, project], _SORT_KEY_LEVEL, False,
+            ),
+            [project, user],
         )
 
     def test_the_default_key_is_repo_up_rate_down(self) -> None:
