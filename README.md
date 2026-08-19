@@ -115,9 +115,12 @@ is in [`docs/state-machine.md`](docs/state-machine.md#state-transition-label-lif
    ignored with a warning at startup — the orchestrator reads only the two locations above.
 
    Basic settings live in [`.env.example`](.env.example); common advanced overrides and opt-in examples are in
-   [`.env.example.advanced`](.env.example.advanced). The full reference — every setting, every default, required
-   vars, target-repo config, agent role specs, cadence and budgets, parallel processing, in-review behavior,
-   observability, and run modes — is in [`docs/configuration.md`](docs/configuration.md).
+   [`.env.example.advanced`](.env.example.advanced). The full reference starts at
+   [`docs/configuration.md`](docs/configuration.md) — every setting, every default, required vars, target-repo
+   config, agent role specs, cadence and budgets, parallel processing, and in-review behavior — with the
+   observability sinks and dashboards split out into
+   [`docs/configuration/observability.md`](docs/configuration/observability.md) and CI, run modes, systemd, and
+   applying an edited `.env` into [`docs/configuration/operations.md`](docs/configuration/operations.md).
 
 4. **Verify the agents are authenticated**
 
@@ -256,7 +259,7 @@ For deeper implementation details, use the references below.
 | Architecture | [`docs/architecture.md`](docs/architecture.md) | Process model, agent model, push model, module map |
 | State machine | [`docs/state-machine.md`](docs/state-machine.md) | Labels, workflow states, stage handlers |
 | Workflow | [`docs/workflow.md`](docs/workflow.md) | Agent roles, command specs, session lifecycle |
-| Configuration | [`docs/configuration.md`](docs/configuration.md) | Env vars, run modes, CI |
+| Configuration | [`docs/configuration.md`](docs/configuration.md) | Env vars, defaults, operator runbooks |
 | Observability | [`docs/observability.md`](docs/observability.md) | Audit log, analytics database, usage parser |
 | Security | [`docs/security.md`](docs/security.md) | Checklist, GitHub and org settings |
 
