@@ -10,7 +10,7 @@ is for aggregation and reporting.
 
 The read model over these tables and the Streamlit dashboard above it are on
 [`analytics-dashboard.md`](analytics-dashboard.md). Which module owns which piece of the sync path is in
-[`architecture.md`](../architecture.md#top-level-layout), the single place that inventory is maintained; the knobs
+[`architecture.md`](../architecture.md#top-level-layout), where the observability inventory is maintained; the knobs
 themselves are in [`configuration/observability.md`](../configuration/observability.md).
 
 ## Service layout

@@ -8,8 +8,10 @@ transition it may produce — plus the drift hook the drift-sensitive handlers s
 The two operator-applied conversation stages are in [`conversation-stages.md`](conversation-stages.md); the labels,
 per-tick flow, and pinned-state keys these handlers are typed by are in
 [`labels-and-state.md`](labels-and-state.md); the compact lifecycle reference is in [`lifecycle.md`](lifecycle.md).
-Which module owns each handler is in [`../architecture.md#stage-handlers`](../architecture.md#stage-handlers), and
-what each agent role's prompt grants and forbids is in [`../workflow.md`](../workflow.md).
+Which module owns each handler is in
+[`../architecture/workflow-modules.md`](../architecture/workflow-modules.md) and the dispatch that reaches one in
+[`../architecture.md#stage-handlers`](../architecture.md#stage-handlers); what each agent role's prompt grants and
+forbids is in [`../workflow.md`](../workflow.md).
 
 ## `_handle_pickup` (no label → `workflow:decomposing` or `workflow:implementing`)
 - **Trigger**: open issue with no workflow label.

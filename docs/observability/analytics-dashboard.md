@@ -8,8 +8,8 @@ deployment.
 
 The tables these reads scan, the sync that fills them, and the operator cron around it are on
 [`analytics-database.md`](analytics-database.md). Which module owns which piece of the read and render paths is in
-[`architecture.md`](../architecture.md#top-level-layout), the single place that inventory is maintained; the knobs are
-in [`configuration/observability.md`](../configuration/observability.md). The Streamlit page itself sits beside the
+[`architecture.md`](../architecture.md#top-level-layout), where the observability inventory is maintained; the knobs
+are in [`configuration/observability.md`](../configuration/observability.md). The Streamlit page itself sits beside the
 package tree, at `orchestrator/apps/analytics_dashboard.py`.
 
 ## Read model (`orchestrator/observability/analytics/query/`)
