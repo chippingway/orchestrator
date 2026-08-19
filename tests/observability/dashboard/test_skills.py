@@ -60,7 +60,7 @@ _KEY_ONLY = ("key",)
 
 # Each skill-panel read and the query owner's read it names: the aggregate
 # rates an invocation-level table is drawn from, the per-repository trigger
-# cells beneath it, and the per-session adoption cells above both.
+# cells beneath it, and the per-session adoption cells under both.
 _SKILL_READS = (
     (skills.read_skill_trigger_rates, skill_reads.get_skill_trigger_rates),
     (skills.read_skill_trigger_matrix, skill_reads.get_skill_trigger_matrix),

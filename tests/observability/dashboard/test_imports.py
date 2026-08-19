@@ -225,10 +225,10 @@ _OWNERS = (
 # in the second, read a page URL back as the order the third or the fourth is
 # drawn in, head one of their columns as the control that writes that URL, say
 # what one of their cells was offered, loaded, or triggered, assemble either
-# panel those cells are sorted into, draw the card the adoption one leads and
-# the two invocation views fold under together with the caption that names what
-# a quiet window did record, draw the trigger-rate card a caller reaching past
-# that one still gets, pair the lifecycle bars a window's spend is split across
+# panel those cells are sorted into, draw the card the two invocation views
+# open and the adoption one folds under by source level together with the
+# caption that names what a quiet window did record, draw the trigger-rate card
+# a caller reaching past that one still gets, pair the lifecycle bars a window's spend is split across
 # at the one height both are drawn at, rank that window's issues beside the
 # backends that ran them, set that window's repositories beside the tiles and
 # days the runs behind them are read for, lay the tokens under all of those out
@@ -512,6 +512,7 @@ _SURFACES = MappingProxyType({
     ),
     _SKILL_PANEL_OWNER: (
         "render_skill_adoption",
+        "render_skill_adoption_levels",
         "render_skill_invocation_diagnostics",
         "skill_adoption_evidence_caption",
         "skill_adoption_zero_caption",

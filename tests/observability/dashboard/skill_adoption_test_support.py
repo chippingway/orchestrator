@@ -43,6 +43,12 @@ LEVEL_PROJECT = "project"
 
 LEVEL_USER = "user"
 
+LEVEL_HARNESS = "harness"
+
+# What a cell no record classified is filed under -- a claude run's load, whose
+# stream names no source directory to read a level off.
+LEVEL_UNKNOWN = "unknown"
+
 # A cohort the skill was available to in four sessions and loaded in one, so a
 # rounded rate is readable off the markup and the two counts stay distinct.
 AVAILABLE_SESSIONS = 4

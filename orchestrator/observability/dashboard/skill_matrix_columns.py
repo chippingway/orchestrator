@@ -23,7 +23,7 @@ against what a repository checks in sorts on.
 The two query parameters those headers write are settled here too: a sort
 survives a page rerun only while the link that writes it and the parse that
 reads it back spell it the same way. Both are prefixed rather than bare so the
-adoption matrix above this one can carry its own selection in the same URL
+adoption matrix beneath this one can carry its own selection in the same URL
 without either table reordering the other.
 """
 from __future__ import annotations

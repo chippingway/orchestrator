@@ -62,13 +62,14 @@ parser read them back is in [`../observability/analytics-database.md`](../observ
   level is recorded beside the names as `skill_levels` — dropped for a claude run, whose stream names no source
   directory to classify. Both per-skill read models file a cell under that level as well as the name, with a name no
   recorded map covers reading `unknown`. Both skill tables render that level as a sortable `Level` column of their own.
-  Once on, the dashboard's "Skill adoption" panel leads with per-session adoption
-  (`skill_reads.get_skill_adoption`, under `observability/analytics/query/`) — how many logical sessions had each skill
-  available and how many loaded it, with incidental references kept as a separate column that never raises the rate —
-  above a collapsed invocation-level diagnostic carrying the per-role/backend trigger rate
-  (`skill_reads.get_skill_trigger_rates`) and the per-skill trigger matrix
-  (`skill_reads.get_skill_trigger_matrix`) pairing each repo's offered-skill catalog with the skills
-  its runs triggered, over the accumulated fields. The `skills_evidence` tier carries only the emitted `confirmed` /
+  Once on, the dashboard's "Skill adoption" panel opens on a collapsed invocation-level diagnostic carrying the
+  per-role/backend trigger rate (`skill_reads.get_skill_trigger_rates`) and the per-skill trigger matrix
+  (`skill_reads.get_skill_trigger_matrix`) pairing each repo's offered-skill catalog with the skills its runs
+  triggered, and reports per-session adoption (`skill_reads.get_skill_adoption`, under
+  `observability/analytics/query/`) beneath it — how many logical sessions had each skill available and how many
+  loaded it, with incidental references kept as a separate column that never raises the rate — split into a collapsed
+  section per source level (project, user, harness, plus one for the cells no record classified), all over the
+  accumulated fields. The `skills_evidence` tier carries only the emitted `confirmed` /
   `inferred` load values; the *incidental* bucket and the read-side *legacy* availability inference (a load whose
   session reported no `skills_available` metadata) are described alongside the per-session adoption semantics in
   [`event-streams.md#session-aware-skill-adoption`](../observability/event-streams.md#session-aware-skill-adoption).

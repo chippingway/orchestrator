@@ -390,8 +390,9 @@ pair back and the repository-then-rate order a table nobody sorted opens in; `sk
 header row each column is an in-tab sort link in; `skill_adoption_rows.py` for what one cell says under its five
 naming columns — the source level among them, so two rows the other four read alike stay legible as the two
 definitions they are — keeping the undefined rate of a skill nobody was offered apart from the real
-zero of one nobody loaded; and `skill_adoption.py` for the panel those cells are sorted into and the
-`TRACK_SKILL_TRIGGERS`-naming notice a window with no session evidence renders instead. The fourth is the trigger
+zero of one nobody loaded; and `skill_adoption.py` for the panel those cells are sorted into, the
+`TRACK_SKILL_TRIGGERS`-naming notice a window with no session evidence renders instead, and the message a caller
+drawing one slice of a window's cells names in that notice's place. The fourth is the trigger
 matrix, split the same way: `skill_matrix_columns.py` for the eight columns it is read across, the key
 each is ordered by, and the `mtx_sort` / `mtx_dir` pair a heading writes; `skill_matrix_sort.py` for the parse that
 reads that pair back — a stale column or a lone direction degrading to the default rather than raising — and the
@@ -401,14 +402,16 @@ under those same five naming columns, its zero and derived rate toned down toget
 stays plain; and `skill_matrix.py` for the panel those cells are sorted into and the `TRACK_SKILL_TRIGGERS`-naming
 notice a window with no catalog-backed cell renders instead.
 `skill_panel.py` and `skill_trigger_panel.py` are the two cards three of those four panels are reported on. The first
-is the one the page draws: adoption leads it and the aggregate rates and the trigger matrix fold into a collapsed
-expander beneath, one notice answers a window with no `agent_exit` row for the whole card rather than for each table
-in it, and the caption under the adoption table qualifies a window nobody adopted anything in — naming whichever of
-availability, loads, or incidental references it did carry — instead of recommending a `TRACK_SKILL_TRIGGERS` the
-presence of a row already proves is on. Whether that evidence was there is what the fold beneath is handed, so a
-window where no run triggered reads as a genuine no-trigger or as a prompt to switch tracking on accordingly. The
-second is the card the section led with before adoption did; nothing in the render pipeline draws it now, and its
-prompt is unconditional, since trigger rates alone carry no per-session evidence to tell those two windows apart.
+is the one the page draws: the aggregate rates and the trigger matrix open it in one collapsed expander, adoption
+follows in a collapsed section per source level — project, user, harness, and a fourth section for the cells no record
+classified rather than a split that drops them — one notice answers a window with no `agent_exit` row for the whole
+card rather than for each table in it, and the caption under those sections qualifies a window nobody adopted anything
+in — naming whichever of availability, loads, or incidental references it did carry — instead of recommending a
+`TRACK_SKILL_TRIGGERS` the presence of a row already proves is on. Whether that evidence was there is what the fold
+above is handed, so a window where no run triggered reads as a genuine no-trigger or as a prompt to switch tracking
+on accordingly. The second is the card the section led with before adoption did; nothing in the render pipeline
+draws it now, and its prompt is unconditional, since trigger rates alone carry no per-session evidence to tell those
+two windows apart.
 `recent_runs.py` is the listing under those four panels rather than a fifth among them — the runs behind the readings
 above it, projected into the columns one is scanned by and the offset the sidebar picked, drawn as `st.dataframe`
 because a raw listing carries no bar, pill, or sortable heading Streamlit's own table cannot already handle. It opens
@@ -552,10 +555,11 @@ either wave surfaces as one `st.error` + `st.stop`.
    in the recent agent-runs table below. The widget binds to `st.session_state["tz_offset_hours"]`; the offset is read
    before the second-wave fan-out so the heatmap query buckets in the chosen zone, and the card subtitle / x-axis title
    render the matching `UTC±N` label.
-8. "Skill adoption" panel — the primary per-session adoption matrix above a fold-out invocation-level diagnostic. The
-   headline table (`_skill_adoption_html` over `get_skill_adoption`) renders one row per `(repo, agent_role, backend,
-   skill, level)` read-model cell with columns Repo / Role / Backend / Skill / Level / Sessions / Sessions using skill /
-   Adoption rate / Invocation loads / Incidental references. `Level` is the source level the skill was defined at
+8. "Skill adoption" panel — a fold-out invocation-level diagnostic above the primary per-session adoption matrix,
+   which is itself split into one collapsed section per source level. The adoption table (`_skill_adoption_html` over
+   `get_skill_adoption`) renders one row per `(repo, agent_role, backend, skill, level)` read-model cell with columns
+   Repo / Role / Backend / Skill / Level / Sessions / Sessions using skill / Adoption rate / Invocation loads /
+   Incidental references. `Level` is the source level the skill was defined at
    (`project` / `user` / `harness`, or `unknown` where no record classified it), so two rows carrying the same four
    names ahead of it are legible as the two definitions they are — a repository's own `develop` beside a same-named
    global one, or the `unknown`-level loads of a claude run (whose stream names no source directory) beside the
@@ -570,23 +574,33 @@ either wave surfaces as one `st.error` + `st.stop`.
    DESC then Invocations DESC); by default rows display sorted by Repo ascending, then Adoption rate descending. Each
    column header is a clickable sort control writing `adopt_sort` / `adopt_dir` query params (parsed by
    `parse_skill_adoption_sort`), with a ▲ / ▼ indicator; an unknown / absent param falls back to that default order.
-   Beneath the adoption table a collapsed `st.expander` ("Invocation-level diagnostics · per-run skill triggers")
-   carries the older per-run views as a clearly named diagnostic: the per-`(agent_role, backend)` aggregate table
+   The card opens on a collapsed `st.expander` ("Invocation-level diagnostics · per-run skill triggers") carrying the
+   older per-run views as a clearly named diagnostic: the per-`(agent_role, backend)` aggregate table
    (`_skill_triggers_html` over `get_skill_trigger_rates`, showing runs, skill runs, a trigger-rate bar, and total
    trigger count) and, below it, the per-skill **trigger matrix** (`_skill_matrix_html` over
    `get_skill_trigger_matrix`) with columns Repo / Role / Backend / Skill / Level / Runs / Runs with skill / Trigger
-   rate — the same `Level` column the adoption table above it carries, so a catalog-padded `project` row can sit
+   rate — the same `Level` column the adoption table beneath it carries, so a catalog-padded `project` row can sit
    beside an `unknown`-level row for a skill some run loaded. The
    matrix folds each repo's `repo_skill_catalog` into the observed triggers so a skill the repo offers but no cohort
    fired surfaces as an explicit (muted) `0` "Runs with skill" cell (and a matching muted `0%` trigger rate) rather
    than a missing row (the cohort `Runs` total is never muted); its headers write `mtx_sort` / `mtx_dir` params (parsed
-   by `parse_skill_matrix_sort`) and default to Repo ascending, then Trigger rate descending. The three tables degrade
+   by `parse_skill_matrix_sort`) and default to Repo ascending, then Trigger rate descending.
+   Under that fold-out the adoption cells are drawn in one collapsed `st.expander` per source level, in the order one
+   definition shadows another: "Project-level skills · defined in the repository", "User-level skills · installed for
+   the operator", and "Harness-level skills · built into the CLI", each rendering the same sortable table over its own
+   `level` rows. A fourth section ("Unclassified skills · no source level recorded") is drawn only when the window
+   carries a cell no record classified — a claude run's load, whose stream names no source directory — so such a cell
+   is reported rather than dropped by the split. All four read the one `adopt_sort` / `adopt_dir` pair, so a click
+   reorders every section at once. A named level the window has no cell of renders a short line saying only that
+   (`No user-level skill was recorded in this window.`), never the switch-naming notice, since a sibling section's
+   rows already prove tracking is on. The three tables degrade
    differently with the switch off: per-session adoption only carries signal once `TRACK_SKILL_TRIGGERS` has recorded
    per-run skill fields, but the trigger-rate table still counts every `agent_exit` run and the matrix still shows
    catalog-backed zero rows (the `runs` denominator and `repo_skill_catalog` records do not depend on the switch). When
    rows are present a zero-adoption window
-   captions a neutral genuine-0% result (a present row proves tracking is on), an empty adoption window renders the
-   adoption table's fallback notice naming the switch, and the matrix shows its own fallback notice when no
+   captions a neutral genuine-0% result beneath the level sections (a present row proves tracking is on), an adoption
+   window with no cell at all renders the adoption table's fallback notice naming the switch once, in place of those
+   sections rather than inside each of them, and the matrix shows its own fallback notice when no
    catalog-backed matrix can be built (no catalog records matched and no run fired a skill).
 9. Recent agent-runs table as a collapsible expander; the `ts` column is shifted to the wall-clock of the selected UTC
    offset via `shift_ts`.
@@ -719,8 +733,9 @@ invocation-level per-skill trigger matrix is
 write, the parse and the two orders behind a click, the header row those clicks come from, what one cell says, and
 the sorted panel with the notice a window carrying no catalog-backed cell renders instead. The two cards those
 tables are reported on are
-`observability/dashboard/skill_panel.py` — the adoption card, the caption qualifying a window nobody adopted anything
-in, and the invocation views folded collapsed under it — and `observability/dashboard/skill_trigger_panel.py` — the
+`observability/dashboard/skill_panel.py` — the adoption card, the invocation views it opens on, the per-level sections
+adoption is folded into beneath them, and the caption qualifying a window nobody adopted anything in — and
+`observability/dashboard/skill_trigger_panel.py` — the
 trigger-rate card the section led with before adoption did, and its own fold-out matrix. The listing under all four
 panels is
 `observability/dashboard/recent_runs.py` — the columns one run
