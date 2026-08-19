@@ -16,6 +16,10 @@ in passing -- a path mentioned, not a skill read. None of the three moves the
 adoption ratio; they exist so a cell showing one adopting session out of forty
 can be read as either a quiet skill or a busy one nobody keeps using.
 
+A cell is keyed by the skill's source level as well as its name, so a session
+offered a repository's own `develop` and one offered a global skill of that
+name are two cells rather than one blended ratio.
+
 Which cells exist is the union of three observations, not just the availability
 set: a purely incidental reference and a load whose session reported a
 different availability set each get a row too, so an observation is never
@@ -40,7 +44,7 @@ from orchestrator.observability.analytics.query.skill_sessions import (
     skill_window_rows,
 )
 from orchestrator.observability.analytics.query.skill_values import (
-    SkillAdoptionKey,
+    SkillCell,
     SkillCohort,
 )
 
@@ -49,7 +53,7 @@ SKILL_ADOPTION_ROW_LIMIT = 100
 
 @dataclass
 class SkillAdoption:
-    """Per-`(repo, role, backend, skill)` session counts and window diagnostics.
+    """Per-`(repo, role, backend, skill, level)` counts and diagnostics.
 
     `cohort_runs` is the window `agent_exit` invocation count per
     `(repo, role, backend)` cohort -- every run, whether or not it loaded a
@@ -59,10 +63,10 @@ class SkillAdoption:
     """
 
     cohort_runs: dict[SkillCohort, int] = field(default_factory=dict)
-    sessions: dict[SkillAdoptionKey, int] = field(default_factory=dict)
-    adopted: dict[SkillAdoptionKey, int] = field(default_factory=dict)
-    load_rows: dict[SkillAdoptionKey, int] = field(default_factory=dict)
-    incidental: dict[SkillAdoptionKey, int] = field(default_factory=dict)
+    sessions: dict[SkillCell, int] = field(default_factory=dict)
+    adopted: dict[SkillCell, int] = field(default_factory=dict)
+    load_rows: dict[SkillCell, int] = field(default_factory=dict)
+    incidental: dict[SkillCell, int] = field(default_factory=dict)
 
     @classmethod
     def build(
@@ -78,7 +82,7 @@ class SkillAdoption:
         counts._count_sessions(session_cohorts, evidence)
         return counts
 
-    def keys(self) -> set[SkillAdoptionKey]:
+    def keys(self) -> set[SkillCell]:
         # Every available cell plus any cell that only shows in the window
         # diagnostics (a purely incidental reference, or a load whose session
         # reported a different availability set) so no observation is dropped.
@@ -87,28 +91,26 @@ class SkillAdoption:
         keys.update(self.incidental)
         return keys
 
-    def order_key(self, key: SkillAdoptionKey) -> list:
-        repo, role, backend, skill = key
+    def order_key(self, key: SkillCell) -> list:
+        # Widest reach first -- sessions offered, then sessions adopting, then
+        # the busiest cohort -- with the cell's naming columns as the tiebreak.
         return [
             -self.sessions.get(key, 0),
             -self.adopted.get(key, 0),
-            -self.cohort_runs.get((repo, role, backend), 0),
-            repo,
-            role,
-            backend,
-            skill,
+            -self.cohort_runs.get(key.cohort, 0),
+            *key,
         ]
 
-    def as_row(self, key: SkillAdoptionKey) -> SkillAdoptionRow:
-        repo, role, backend, skill = key
+    def as_row(self, key: SkillCell) -> SkillAdoptionRow:
         return SkillAdoptionRow(
-            repo=repo,
-            skill=skill,
-            agent_role=role,
-            backend=backend,
+            repo=key.repo,
+            skill=key.skill,
+            agent_role=key.agent_role,
+            backend=key.backend,
+            level=key.level,
             sessions=self.sessions.get(key, 0),
             adopted=self.adopted.get(key, 0),
-            invocations=self.cohort_runs.get((repo, role, backend), 0),
+            invocations=self.cohort_runs.get(key.cohort, 0),
             load_rows=self.load_rows.get(key, 0),
             incidental=self.incidental.get(key, 0),
         )
@@ -116,11 +118,11 @@ class SkillAdoption:
     def _observe_window(self, run: SkillWindowRun) -> None:
         cohort = run.cohort
         self.cohort_runs[cohort] = self.cohort_runs.get(cohort, 0) + 1
-        for skill in run.triggered:
-            key = (*cohort, skill)
+        for loaded in run.triggered:
+            key = SkillCell(*cohort, *loaded)
             self.load_rows[key] = self.load_rows.get(key, 0) + 1
-        for skill in run.incidental:
-            key = (*cohort, skill)
+        for referenced in run.incidental:
+            key = SkillCell(*cohort, *referenced)
             self.incidental[key] = self.incidental.get(key, 0) + 1
 
     def _count_sessions(
@@ -141,10 +143,10 @@ class SkillAdoption:
     ) -> None:
         available = session.resolved_available()
         for cohort in cohorts:
-            for skill in available:
-                key = (*cohort, skill)
+            for offered in available:
+                key = SkillCell(*cohort, *offered)
                 self.sessions[key] = self.sessions.get(key, 0) + 1
-                if skill in session.adopted:
+                if offered in session.adopted:
                     self.adopted[key] = self.adopted.get(key, 0) + 1
 
 

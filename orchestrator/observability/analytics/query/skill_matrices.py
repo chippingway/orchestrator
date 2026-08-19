@@ -22,6 +22,13 @@ but is not in the catalog keeps its observed cell -- what ran is not discarded
 for disagreeing with what was offered -- it simply gets no zeros elsewhere.
 Ordering puts the most-triggered cells first, then the busiest cohort, then the
 name tiebreak, so the cap keeps the rows a reader would have looked at first.
+
+A cell is keyed by the source level a skill was defined at as well as by its
+name, so a repository's own `develop` and a same-named global one are padded
+and counted apart. A catalog name the record left unclassified pads at
+`project` rather than at the `unknown` an unclassified run row reads: the scan
+behind that record enumerates the repository's own checked-in definitions, so
+what it offers is a project definition even when the record classified none.
 """
 
 from __future__ import annotations
@@ -39,14 +46,18 @@ from orchestrator.observability.analytics.query.predicates import build_window_w
 from orchestrator.observability.analytics.query.row_cells import row_value
 from orchestrator.observability.analytics.query.skill_models import SkillTriggerMatrixRow
 from orchestrator.observability.analytics.query.skill_values import (
+    SkillCell,
     SkillCohort,
-    SkillMatrixKey,
-    as_skill_names,
+    SkillLevelPair,
+    leveled_skills,
     skill_cohort,
-    skill_matrix_order_key,
 )
 
 SKILL_MATRIX_ROW_LIMIT = 100
+
+# What a catalog name the record left unclassified is padded at, since that
+# scan enumerates a repository's own checked-in definitions.
+_CATALOG_LEVEL = "project"
 
 
 def skill_catalog_rows(
@@ -60,20 +71,27 @@ def skill_catalog_rows(
         "event = 'repo_skill_catalog'",
     )
     return query.select(
-        f"SELECT repo, extras -> 'skills_available' AS skills_available FROM analytics_events{clause}",
+        "SELECT repo, "
+        "extras -> 'skills_available' AS skills_available, "
+        "extras -> 'skill_levels' AS skill_levels "
+        f"FROM analytics_events{clause}",
         catalog_bindings,
     )
 
 
-def skill_catalog(rows: Sequence[tuple]) -> dict[str, set[str]]:
+def skill_catalog(rows: Sequence[tuple]) -> dict[str, set[SkillLevelPair]]:
     """Union every catalog record a repository reported into one offered set."""
-    catalog: dict[str, set[str]] = {}
+    catalog: dict[str, set[SkillLevelPair]] = {}
     for row in rows:
         if row[0] is None:
             continue
         repo = str(row[0])
-        names = as_skill_names(row_value(row, 1, None))
-        catalog.setdefault(repo, set()).update(names)
+        offered = leveled_skills(
+            row_value(row, 1, None),
+            row_value(row, 2, None),
+            default_level=_CATALOG_LEVEL,
+        )
+        catalog.setdefault(repo, set()).update(offered)
     return catalog
 
 
@@ -88,7 +106,8 @@ def skill_run_rows(
         "SELECT repo, "
         "COALESCE(agent_role, 'unknown') AS role_label, "
         "COALESCE(backend, 'unknown') AS backend_label, "
-        "extras -> 'skills_triggered' AS skills_triggered "
+        "extras -> 'skills_triggered' AS skills_triggered, "
+        "extras -> 'skill_levels' AS skill_levels "
         f"FROM analytics_events{clause}",
         run_bindings,
     )
@@ -99,7 +118,7 @@ class SkillMatrixCounts:
     """Run and trigger counts used to assemble the skill matrix."""
 
     cohort_runs: dict[SkillCohort, int] = field(default_factory=dict)
-    skill_runs: dict[SkillMatrixKey, int] = field(default_factory=dict)
+    skill_runs: dict[SkillCell, int] = field(default_factory=dict)
 
     @classmethod
     def from_rows(cls, rows: Sequence[tuple]) -> SkillMatrixCounts:
@@ -107,36 +126,38 @@ class SkillMatrixCounts:
         for row in rows:
             cohort = skill_cohort(row)
             counts.cohort_runs[cohort] = counts.cohort_runs.get(cohort, 0) + 1
-            for skill in set(as_skill_names(row_value(row, 3, None))):
-                key = (*cohort, skill)
+            for loaded in leveled_skills(row_value(row, 3, None), row_value(row, 4, None)):
+                key = SkillCell(*cohort, *loaded)
                 counts.skill_runs[key] = counts.skill_runs.get(key, 0) + 1
         return counts
 
     def matrix_keys(
         self,
-        catalog: dict[str, set[str]],
-    ) -> set[SkillMatrixKey]:
+        catalog: dict[str, set[SkillLevelPair]],
+    ) -> set[SkillCell]:
         keys = set(self.skill_runs)
         for cohort in self.cohort_runs:
-            for skill in catalog.get(cohort[0], ()):
-                keys.add((*cohort, skill))
+            for offered in catalog.get(cohort[0], ()):
+                keys.add(SkillCell(*cohort, *offered))
         return keys
 
-    def order_key(self, key: SkillMatrixKey) -> list:
-        return skill_matrix_order_key(
-            key,
-            counts=self.skill_runs,
-            cohort_runs=self.cohort_runs,
-        )
+    def order_key(self, key: SkillCell) -> list:
+        # Most-triggered cells first, then the busiest cohort, then the cell's
+        # own naming columns as the stable tiebreak.
+        return [
+            -self.skill_runs.get(key, 0),
+            -self.cohort_runs.get(key.cohort, 0),
+            *key,
+        ]
 
-    def as_row(self, key: SkillMatrixKey) -> SkillTriggerMatrixRow:
-        repo, role, backend, skill = key
+    def as_row(self, key: SkillCell) -> SkillTriggerMatrixRow:
         return SkillTriggerMatrixRow(
-            repo=repo,
-            skill=skill,
-            agent_role=role,
-            backend=backend,
-            runs=self.cohort_runs.get((repo, role, backend), 0),
+            repo=key.repo,
+            skill=key.skill,
+            agent_role=key.agent_role,
+            backend=key.backend,
+            level=key.level,
+            runs=self.cohort_runs.get(key.cohort, 0),
             skill_runs=self.skill_runs.get(key, 0),
         )
 

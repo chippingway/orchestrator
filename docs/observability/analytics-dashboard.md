@@ -111,8 +111,10 @@ two capped reads pass a non-positive `limit` through as "every cell". One aggreg
 them), and `skill_adoption.py` (the per-session ratio and the invocation / load / incidental diagnostics beside it).
 Beneath the last, `skill_sessions.py` owns the resume-then-session-then-row-id session key and the two scans' scopes —
 the window one picks which sessions count, the history one drops the start bound and the stage filter while keeping
-the end bound. Beneath both aggregates, `skill_values.py` owns the JSONB name-array coercion, the
-`(repo, role, backend)` cohort with its `"unknown"` bucketing, and the matrix ranking.
+the end bound. Beneath both aggregates, `skill_values.py` owns the two JSONB coercions (the name array and the
+name-to-source-level map), the pairing that reads each name's level off the same row and defaults an uncovered name to
+`unknown`, the `(repo, role, backend)` cohort with its `"unknown"` bucketing, and the
+`(repo, agent_role, backend, skill, level)` cell both aggregates accumulate under.
 
 Beneath the rollup and breakdown families, `cache_shares.py` owns the token-share SQL the cache / no-cache split is
 weighted by — spelled once for the rollup's `total_*` sums and once for the agent-run view's per-run columns — and
@@ -156,21 +158,28 @@ of the read path narrow a nullable duration the same way.
   not carry — no DDL. `event = 'agent_exit'` is pinned and the agent-exit event-filter short-circuit applies. NULL
   `agent_role` / `backend` bucket under `"unknown"`. A `0` rate is a real "no trigger observed" signal but cannot tell a
   tracked-but-quiet run from one whose `TRACK_SKILL_TRIGGERS` was off.
-- `get_skill_trigger_matrix` (base table) — per-skill × `(repo, agent_role, backend)` trigger-run matrix. Two
+- `get_skill_trigger_matrix` (base table) — per-`(skill, level)` × `(repo, agent_role, backend)` trigger-run matrix.
+  Two
   base-table reads combined in Python: the `repo_skill_catalog` records (the `skills_available` universe a repo offers;
   date/repo-filtered only, since those records are repo-level with `issue = 0` / NULL stage) and the filtered
-  `agent_exit` rows (each run's `skills_triggered` list). Each cell carries `skill_runs` (runs *containing* the skill,
+  `agent_exit` rows (each run's `skills_triggered` list). Both scans read the recorded `skill_levels` map beside the
+  names, so a name defined at two levels is two cells rather than one blended average: a catalog name the record left
+  unclassified pads at `project` (that scan enumerates a repository's own checked-in definitions), while an
+  unclassified run name — a record written before levels existed, or a claude run whose stream names no source
+  directory — reads `unknown`. Each cell carries `skill_runs` (runs *containing* the skill,
   one per run per distinct name — not total invocations) and `runs` (the total agent-exit runs in the cell's cohort,
   so a low/zero trigger count reads against the cohort size). Every catalog skill is zero-padded across the cohorts
   observed for its repo so the matrix carries explicit "offered but never triggered" cells (e.g. `developer / claude /
   review`, `skill_runs = 0`); with the catalog missing it degrades to just the observed-trigger cells. decomposer /
   question cohorts get the same catalog-backed zero rows as developer / reviewer whenever they have agent-exit runs.
-  Rows are ordered by `skill_runs` DESC, then cohort `runs` DESC, then a stable `(repo, agent_role, backend, skill)`
+  Rows are ordered by `skill_runs` DESC, then cohort `runs` DESC, then a stable
+  `(repo, agent_role, backend, skill, level)`
   tiebreak, and the list is capped at `limit` rows (default `SKILL_MATRIX_ROW_LIMIT` = 100; a non-positive `limit`
   disables the cap). The agent-exit event-filter short-circuit applies (no catalog read either). NULL `agent_role` /
   `backend` bucket under `"unknown"`. Same `extras JSONB` / no-DDL and `TRACK_SKILL_TRIGGERS`-off caveats as
   `get_skill_trigger_rates`.
-- `get_skill_adoption` (base table) — per-skill × `(repo, agent_role, backend)` adoption aggregated by **logical**
+- `get_skill_adoption` (base table) — per-`(skill, level)` × `(repo, agent_role, backend)` adoption aggregated by
+  **logical**
   agent session rather than by raw agent run, so a resume chain that pulled `develop` across several ticks counts as one
   adopting session, not several. Two `agent_exit` base-table scans combine in Python. The first applies the full
   reporting-window filters and selects the *active* sessions plus the window-scoped diagnostics; the second reads each
@@ -178,7 +187,11 @@ of the read path narrow a nullable duration the same way.
   and the stage filter (`WindowFilters.historical_scope`) so a load from a prior stage or from before the window stays
   visible, while the retained `end` bound stops a later load from leaking backward. A session is keyed by
   `resume_session_id`, then `session_id`, then the row's primary key (an ID-less row is its own session, never merged
-  into one anonymous bucket). `sessions` is the denominator — sessions in the cohort with the skill available (its
+  into one anonymous bucket). Both scans read each row's `skill_levels` map beside its names, so an offer and a load
+  are matched by source level as well as by name and a session offered a repository's own `develop` is counted apart
+  from one offered a global skill of that name; a name no level map covers reads `unknown` on both sides, so a legacy
+  session's load still counts as adoption of what it was offered. `sessions` is the denominator — sessions in the
+  cohort with the skill available (its
   `skills_available` listed it, or a legacy load with the `skills_available` key absent implied it — an explicit empty
   set does not) — and `adopted` counts the sessions that loaded it, once per session, with a derived `adoption_rate`.
   `invocations` is the cohort's window `agent_exit` run count (every run, so a low `load_rows` reads against it);
@@ -186,7 +199,8 @@ of the read path narrow a nullable duration the same way.
   reference to it — independent buckets, so a run that both loaded and inspected a `SKILL.md` increments both. All
   three are window-scoped, so a pre-window load counts toward `adopted` but not toward them. Rows are
   ordered by `sessions` DESC, then `adopted` DESC, then
-  `invocations` DESC, then a stable `(repo, agent_role, backend, skill)` tiebreak, and the list is capped at `limit`
+  `invocations` DESC, then a stable `(repo, agent_role, backend, skill, level)` tiebreak, and the list is capped at
+  `limit`
   (default `SKILL_ADOPTION_ROW_LIMIT` = 100; a non-positive `limit` disables the cap). The agent-exit event-filter
   short-circuit (no scans at all), NULL `"unknown"` bucketing, and `extras JSONB` / no-DDL / `TRACK_SKILL_TRIGGERS`-off
   caveats match `get_skill_trigger_matrix`.

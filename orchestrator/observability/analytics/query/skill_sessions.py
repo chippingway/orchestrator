@@ -23,6 +23,8 @@ belongs to a window nobody asked about.
 
 What a session accumulates is set-based on both sides, so folding a row twice
 -- a window row is also returned by the history scan -- never double counts.
+Every skill it accumulates is a name/level pair read off the row that reported
+it, so an offer and a load are matched by provenance as well as by name.
 Availability is tracked by JSON key presence rather than by a non-empty array,
 which is what separates "scanned, found none" from "never reported": the first
 is metadata that blocks the legacy fallback below, the second is not.
@@ -31,7 +33,7 @@ is metadata that blocks the legacy fallback below, the second is not.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any, Iterable, Sequence
 
 from orchestrator.observability.analytics.query.conditions import (
     AGENT_EXIT_CONDITION,
@@ -43,7 +45,8 @@ from orchestrator.observability.analytics.query.predicates import build_window_w
 from orchestrator.observability.analytics.query.row_cells import row_value
 from orchestrator.observability.analytics.query.skill_values import (
     SkillCohort,
-    as_skill_names,
+    SkillLevelPair,
+    leveled_skills,
     skill_cohort,
 )
 
@@ -83,31 +86,33 @@ class SessionEvidence:
     `skills_available` *key* at all -- tracked by JSON key presence, not by
     a non-empty array, so an explicit `skills_available: []` ("scanned,
     found none") still registers as metadata. `adopted` unions the skills
-    the session loaded across its rows. All three are set-based, so folding
-    the same row twice (a window row is also returned by the history scan)
-    never double-counts.
+    the session loaded across its rows. Both sets hold name/level pairs, so
+    a load is credited to the offer of the same provenance rather than to
+    a same-named skill from another level. All three are set-based, so
+    folding the same row twice (a window row is also returned by the
+    history scan) never double-counts.
     """
 
-    available: set[str] = field(default_factory=set)
-    adopted: set[str] = field(default_factory=set)
+    available: set[SkillLevelPair] = field(default_factory=set)
+    adopted: set[SkillLevelPair] = field(default_factory=set)
     has_availability_meta: bool = False
 
     def observe(
         self,
         *,
-        available: Sequence[str],
+        available: Iterable[SkillLevelPair],
         available_present: bool,
-        triggered: Sequence[str],
+        triggered: Iterable[SkillLevelPair],
     ) -> None:
         # `available_present` is the JSON key presence, kept apart from the
-        # parsed names: an explicit empty `skills_available` is metadata that
+        # parsed pairs: an explicit empty `skills_available` is metadata that
         # blocks the legacy-load fallback, while an absent key is not.
         if available_present:
             self.has_availability_meta = True
         self.available.update(available)
         self.adopted.update(triggered)
 
-    def resolved_available(self) -> set[str]:
+    def resolved_available(self) -> set[SkillLevelPair]:
         """Skills that count toward this session's denominator.
 
         The reported `skills_available` union when the session carried any
@@ -129,17 +134,18 @@ class SkillWindowRun:
 
     session_key: str
     cohort: SkillCohort
-    triggered: frozenset[str]
-    incidental: frozenset[str]
+    triggered: frozenset[SkillLevelPair]
+    incidental: frozenset[SkillLevelPair]
 
 
 def skill_window_run(row: Sequence[Any]) -> SkillWindowRun:
     """Project one window scan row onto its session, cohort, and skills."""
+    levels = row_value(row, 8, None)
     return SkillWindowRun(
         session_key=skill_session_key(row),
         cohort=skill_cohort(row),
-        triggered=frozenset(as_skill_names(row_value(row, 6, None))),
-        incidental=frozenset(as_skill_names(row_value(row, 7, None))),
+        triggered=leveled_skills(row_value(row, 6, None), levels),
+        incidental=leveled_skills(row_value(row, 7, None), levels),
     )
 
 
@@ -156,7 +162,8 @@ def skill_window_rows(
         "COALESCE(backend, 'unknown') AS backend_label, "
         "resume_session_id, session_id, id, "
         "extras -> 'skills_triggered' AS skills_triggered, "
-        "extras -> 'skills_incidental' AS skills_incidental "
+        "extras -> 'skills_incidental' AS skills_incidental, "
+        "extras -> 'skill_levels' AS skill_levels "
         f"FROM analytics_events{clause}",
         window_bindings,
     )
@@ -179,7 +186,8 @@ def skill_history_rows(
         "resume_session_id, session_id, id, "
         "extras -> 'skills_available' AS skills_available, "
         "(extras -> 'skills_available') IS NOT NULL AS has_skills_available, "
-        "extras -> 'skills_triggered' AS skills_triggered "
+        "extras -> 'skills_triggered' AS skills_triggered, "
+        "extras -> 'skill_levels' AS skill_levels "
         f"FROM analytics_events{clause}",
         history_bindings,
     )
@@ -211,9 +219,10 @@ def skill_session_evidence(
         session = evidence.get(skill_session_key(row))
         if session is None:
             continue
+        levels = row_value(row, 9, None)
         session.observe(
-            available=as_skill_names(row_value(row, 6, None)),
+            available=leveled_skills(row_value(row, 6, None), levels),
             available_present=bool(row_value(row, 7, False)),
-            triggered=as_skill_names(row_value(row, 8, None)),
+            triggered=leveled_skills(row_value(row, 8, None), levels),
         )
     return evidence
