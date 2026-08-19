@@ -1194,8 +1194,8 @@ modules' imports planted there, not what its initializer loaded, so naming the p
 second half is read from the initializer's source, because the namespace cannot tell an eager sibling import from
 somebody else's; what an initializer imports from outside the package for its own use is a helper rather than a
 surface, and is held to neither. The eight that publish are listed under
-[`configuration.md#continuous-integration`](configuration.md#continuous-integration), where each is also a scoped lint
-waiver.
+[`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration), where each
+is also a scoped lint waiver.
 
 The test tree mirrors this one, and two more checks hold it there: every package above has a mirrored tests package,
 and every directory the suite collects from carries an initializer of its own, with nothing at the tests root but the

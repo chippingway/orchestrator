@@ -11,6 +11,7 @@ dead link somebody has to notice by hand.
 """
 from __future__ import annotations
 
+import posixpath
 import re
 import unittest
 from pathlib import Path
@@ -33,7 +34,16 @@ def _heading_anchor(heading: str) -> str:
 
 
 def _tracked_markdown() -> dict[str, Path]:
-    docs = {path.name: path for path in (_REPO_ROOT / "docs").glob("*.md")}
+    """Every tracked page, keyed by the repo-relative path a link names it by.
+
+    `docs/` nests, so the key has to carry the directory: two pages named
+    `observability.md` sit one level apart, and a bare filename would resolve
+    a link into whichever of them the dictionary happened to keep.
+    """
+    docs = {
+        path.relative_to(_REPO_ROOT).as_posix(): path
+        for path in (_REPO_ROOT / "docs").rglob("*.md")
+    }
     docs["README.md"] = _REPO_ROOT / "README.md"
     return docs
 
@@ -51,9 +61,21 @@ def _anchors_by_document(docs: dict[str, Path]) -> dict[str, set[str]]:
 
 
 def _anchor_links(name: str, path: Path) -> list[tuple[str, str]]:
-    """Every `(target document, anchor)` one document links to."""
+    """Every `(target document, anchor)` one document links to.
+
+    A relative target is resolved against the directory of the page that wrote
+    it, so the `../` a nested page reaches a sibling directory with names the
+    same key the flat page beside it writes directly. A same-page `#anchor`
+    link carries no target at all and stays on its own page.
+    """
+    directory = posixpath.dirname(name)
     return [
-        (Path(target).name if target else name, anchor)
+        (
+            posixpath.normpath(posixpath.join(directory, target))
+            if target
+            else name,
+            anchor,
+        )
         for target, anchor in _MARKDOWN_LINK.findall(
             path.read_text(encoding=_ENCODING),
         )

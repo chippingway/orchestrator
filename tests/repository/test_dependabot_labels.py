@@ -39,7 +39,7 @@ _SERVICE_LABELS = frozenset(
     label for _, labels in _EXPECTED_LABELS for label in labels
 )
 _DOCUMENTING_PAGES = (
-    Path("docs") / "configuration.md",
+    Path("docs") / "configuration" / "operations.md",
     Path("docs") / "security.md",
 )
 
