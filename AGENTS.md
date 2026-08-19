@@ -20,8 +20,11 @@ orchestrator process is stateless.
 - Architecture, module ownership, process / agent / push model: [`docs/architecture.md`](docs/architecture.md)
 - Workflow state machine (labels, per-tick flow, stage handlers): [`docs/state-machine.md`](docs/state-machine.md)
 - Agent roles, command specs, session lifecycles: [`docs/workflow.md`](docs/workflow.md)
-- Configuration / env vars: [`docs/configuration.md`](docs/configuration.md) is the full reference; basic knobs in
-  [`.env.example`](.env.example), common advanced overrides in [`.env.example.advanced`](.env.example.advanced)
+- Configuration / env vars: [`docs/configuration.md`](docs/configuration.md) is the reference, with
+  [`docs/configuration/observability.md`](docs/configuration/observability.md) for the observability sinks and
+  dashboards and [`docs/configuration/operations.md`](docs/configuration/operations.md) for CI, run modes, systemd,
+  and applying `.env` changes; basic knobs in [`.env.example`](.env.example), common advanced overrides in
+  [`.env.example.advanced`](.env.example.advanced)
 - Observability (audit event log, analytics sink / database, usage parser):
   [`docs/observability.md`](docs/observability.md)
 - Security checklist and operator-owned controls: [`docs/security.md`](docs/security.md)
