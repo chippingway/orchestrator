@@ -24,28 +24,33 @@ from orchestrator.observability.analytics.query.overview_models import DataExten
 DEFAULT_WINDOW_DAYS = 7
 PRESET_RECENT_THREE_DAYS = "3d"
 PRESET_RECENT_WEEK = "7d"
+PRESET_RECENT_THIRTY_DAYS = "30d"
 PRESET_ALL = "All"
 PRESET_CUSTOM = "Custom"
 PRESET_OPTIONS = (
     PRESET_RECENT_THREE_DAYS,
     PRESET_RECENT_WEEK,
+    PRESET_RECENT_THIRTY_DAYS,
     PRESET_ALL,
     PRESET_CUSTOM,
 )
 PRESET_LABELS: Mapping[str, str] = MappingProxyType({
     PRESET_RECENT_THREE_DAYS: "Last 3 days",
     PRESET_RECENT_WEEK: "Last 7 days",
+    PRESET_RECENT_THIRTY_DAYS: "Last 30 days",
     PRESET_ALL: "All time",
     PRESET_CUSTOM: "Custom range",
 })
 PRESET_INLINE_LABELS: Mapping[str, str] = MappingProxyType({
     PRESET_RECENT_THREE_DAYS: "3D",
     PRESET_RECENT_WEEK: "7D",
+    PRESET_RECENT_THIRTY_DAYS: "30D",
     PRESET_ALL: "All",
 })
 PRESET_DAYS: Mapping[str, int] = MappingProxyType({
     PRESET_RECENT_THREE_DAYS: 3,
     PRESET_RECENT_WEEK: 7,
+    PRESET_RECENT_THIRTY_DAYS: 30,
 })
 DEFAULT_PRESET = PRESET_RECENT_WEEK
 

@@ -16,7 +16,7 @@ and cache key it is narrowed and displayed by, and ``read_mode`` for the knob
 its reads are issued under and the message an unconfigured database is refused
 with. ``date_controls`` and ``date_filter`` are where an operator picks that
 span: the five slots the filter bar is laid out across together with the label
-and the three inline presets drawn among them, and the bar itself -- the window
+and the inline presets drawn among them, and the bar itself -- the window
 a preset opens the pickers on, the inclusive days those pickers hand back, and
 the half-open window plus the placeholder for the filter line they leave with.
 ``page_controls`` is the band that bar sits in and the load the choices made
