@@ -8,6 +8,12 @@ guarded against a zero denominator, so a cell that exists only for its
 diagnostics still renders. The floor they share is the same one the recorder
 writes under: with `TRACK_SKILL_TRIGGERS` off no skill keys are written at all,
 so a `0` here cannot separate a quiet cohort from an untracked one.
+
+The two per-skill cells carry the source level they were filed under beside the
+skill itself. The `unknown` an unclassified one falls back to is spelled
+literally here rather than shared with the readers that resolve it, because a
+result model is a plain dataclass a page imports without paying for the query
+owners behind it.
 """
 
 from __future__ import annotations
@@ -57,7 +63,7 @@ class SkillTriggerRateRow:
 
 @dataclass(frozen=True)
 class SkillTriggerMatrixRow:
-    """One `(repo, skill, agent_role, backend)` cell of the trigger matrix.
+    """One `(repo, skill, level, agent_role, backend)` cell of the matrix.
 
     Powers the dashboard's opt-in per-skill trigger matrix.
     `get_skill_trigger_matrix` combines the repo's `repo_skill_catalog`
@@ -84,6 +90,15 @@ class SkillTriggerMatrixRow:
     because a cell only exists for a cohort that actually ran, always
     `>= 1`. This mirrors `SkillTriggerRateRow.runs` / `.skill_runs`.
 
+    `level` is the source level the skill was defined at (`project` /
+    `user` / `harness`), read from the recorded name-to-level map -- so a
+    name a repository checked in and a same-named one installed globally
+    are two cells rather than one blended average. A catalog-padded cell
+    the record left unclassified is `project`, since that scan enumerates
+    a repository's own definitions; anything else unclassified (a legacy
+    record, or a claude run whose stream names no source directory) is
+    `unknown`.
+
     `agent_role` / `backend` bucket NULLs under `"unknown"` so a cohort
     is never silently dropped. The same `TRACK_SKILL_TRIGGERS`-off
     caveat as `SkillTriggerRateRow` applies: a `0` cannot distinguish a
@@ -94,6 +109,7 @@ class SkillTriggerMatrixRow:
     skill: str
     agent_role: str
     backend: str
+    level: str = "unknown"
     runs: int = 0
     skill_runs: int = 0
 
@@ -112,8 +128,8 @@ class SkillTriggerMatrixRow:
 
 @dataclass(frozen=True)
 class SkillAdoptionRow:
-    """One `(repo, skill, agent_role, backend)` cell of skill adoption
-    aggregated by logical agent session rather than by raw agent run.
+    """One `(repo, skill, level, agent_role, backend)` cell of skill
+    adoption aggregated by logical agent session rather than by raw run.
 
     Powers the dashboard's opt-in per-session skill-adoption view.
     `get_skill_adoption` first identifies each logical session from the
@@ -148,6 +164,11 @@ class SkillAdoptionRow:
     counts the window runs that referenced the skill's `SKILL.md` without
     loading it.
 
+    `level` is the source level the skill was defined at, read from the
+    recorded name-to-level map and `unknown` where none was recorded, so a
+    session offered a repository's own `develop` and one offered a global
+    skill of that name are counted apart rather than averaged together.
+
     `agent_role` / `backend` bucket NULLs under `"unknown"` so a cohort is
     never silently dropped. The same `TRACK_SKILL_TRIGGERS`-off caveat as
     `SkillTriggerRateRow` applies: with tracking off no skill keys are
@@ -158,6 +179,7 @@ class SkillAdoptionRow:
     skill: str
     agent_role: str
     backend: str
+    level: str = "unknown"
     sessions: int = 0
     adopted: int = 0
     invocations: int = 0

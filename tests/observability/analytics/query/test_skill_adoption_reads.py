@@ -30,6 +30,8 @@ _WINDOW_SCAN = "skills_incidental"
 
 _HISTORY_SCAN = "skills_available"
 
+_LEVEL_FIELD = "extras -> 'skill_levels'"
+
 _UNKNOWN = "unknown"
 
 _CLAUDE = "claude"
@@ -43,6 +45,10 @@ _DEVELOP = "develop"
 _REVIEW = "review"
 
 _DEVELOP_ONLY = (_DEVELOP,)
+
+_PROJECT = "project"
+
+_USER = "user"
 
 _ANCHOR = "anchor"
 
@@ -80,7 +86,12 @@ _CHAIN_INVOCATIONS = 11
 
 
 def _window_row(**row_fields: object) -> tuple:
-    """A reporting-window `agent_exit` scan row (identity + skill names)."""
+    """A reporting-window `agent_exit` scan row (identity + skill names).
+
+    `levels` is the run's recorded name-to-source-level map -- a codex run
+    reports one level per offered skill. Omitting it models a run that
+    reported none, as a claude run does, whose names read `unknown`.
+    """
     row = [
         row_fields.get("repo", _REPO),
         row_fields.get("role", _DEVELOPER),
@@ -90,6 +101,7 @@ def _window_row(**row_fields: object) -> tuple:
         row_fields["row_id"],
         row_fields.get("triggered"),
         row_fields.get("incidental"),
+        row_fields.get("levels"),
     ]
     return tuple(row)
 
@@ -116,6 +128,7 @@ def _history_row(**row_fields: object) -> tuple:
         available,
         available_present,
         row_fields.get("triggered"),
+        row_fields.get("levels"),
     ]
     return tuple(row)
 
@@ -217,6 +230,9 @@ class SkillAdoptionScanTest(unittest.TestCase):
         for scan_sql, bindings in conn.executed:
             self.assertIn(_BASE_SCAN, scan_sql)
             self.assertIn(_EXIT_SCAN, scan_sql)
+            # Each scan reads the recorded levels beside the names it
+            # gathers, since a cell is filed under the two together.
+            self.assertIn(_LEVEL_FIELD, scan_sql)
             self.assertIn(_REPO, bindings)
             self.assertNotIn(_ROLLUP_SCAN, scan_sql)
             self.assertNotIn(_VIEW_SCAN, scan_sql)
@@ -332,7 +348,76 @@ class SkillAdoptionSessionTest(unittest.TestCase):
 
 
 class SkillAdoptionDenominatorTest(unittest.TestCase):
-    """Which sessions count as having been offered a skill at all."""
+    """Which sessions count as offered a skill, and which definition of it."""
+
+    def test_a_name_at_two_levels_stays_two_cells(self) -> None:
+        # A repository's own `develop` and a global one of that name are two
+        # definitions, so the session offered each is counted against the
+        # level it was offered at rather than into one blended ratio.
+        conn = FakeConnection(rows_for={
+            _WINDOW_SCAN: (
+                _window_row(
+                    row_id=1,
+                    session="project-side",
+                    triggered=_DEVELOP_ONLY,
+                    levels={_DEVELOP: _PROJECT},
+                ),
+                _window_row(
+                    row_id=2,
+                    session="user-side",
+                    triggered=_DEVELOP_ONLY,
+                    levels={_DEVELOP: _USER},
+                ),
+            ),
+            _HISTORY_SCAN: (
+                _history_row(
+                    row_id=1,
+                    session="project-side",
+                    available=_DEVELOP_ONLY,
+                    triggered=_DEVELOP_ONLY,
+                    levels={_DEVELOP: _PROJECT},
+                ),
+                _history_row(
+                    row_id=2,
+                    session="user-side",
+                    available=_DEVELOP_ONLY,
+                    triggered=_DEVELOP_ONLY,
+                    levels={_DEVELOP: _USER},
+                ),
+            ),
+        })
+        with configured_db_url():
+            rows = get_skill_adoption(connect=conn.as_connect)
+        by_level = {row.level: row for row in rows}
+        self.assertEqual(sorted(by_level), [_PROJECT, _USER])
+        for level, row in by_level.items():
+            with self.subTest(level=level):
+                assert_row_fields(
+                    self,
+                    row,
+                    {"skill": _DEVELOP, "sessions": 1, "adopted": 1, "load_rows": 1},
+                )
+
+    def test_an_unclassified_session_reads_unknown(self) -> None:
+        # A session that recorded no levels -- rows written before levels
+        # existed, or a claude run whose stream names no source directory --
+        # files its offer and its load under the same `unknown`, so the load
+        # still counts as adoption of what it was offered.
+        _assert_one_cell(
+            self,
+            (_window_row(row_id=1, session=_SESSION_ONE, triggered=_DEVELOP_ONLY),),
+            (
+                _history_row(
+                    row_id=1,
+                    session=_SESSION_ONE,
+                    available=_DEVELOP_ONLY,
+                    triggered=_DEVELOP_ONLY,
+                ),
+            ),
+            level=_UNKNOWN,
+            sessions=1,
+            adopted=1,
+        )
 
     def test_a_load_without_metadata_implies_offer(self) -> None:
         # A load recorded before availability metadata existed implies the

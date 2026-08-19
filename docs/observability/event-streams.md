@@ -266,8 +266,8 @@ landed. The per-invocation `skill_triggered` audit event on [`EVENT_LOG_PATH`](#
 [audit event-kinds list](#audit-event-log-event_log_path)) is gated on the same `TRACK_SKILL_TRIGGERS` switch and
 reuses the list `record_agent_exit` already parsed — `_run_agent_tracked` emits one event per distinct triggered
 skill. The dashboard's primary skill metric is per-session **adoption** (`get_skill_adoption` + the "Skill adoption"
-panel), which counts, for each `(repo, role, backend, skill)` cell, how many logical agent sessions had the skill
-available and how many loaded it — an incidental `SKILL.md` reference stays a separate diagnostic column and never
+panel), which counts, for each `(repo, role, backend, skill, level)` cell, how many logical agent sessions had the
+skill available and how many loaded it — an incidental `SKILL.md` reference stays a separate diagnostic column and never
 raises the rate. The invocation-level views (`get_skill_trigger_rates` and `get_skill_trigger_matrix`) sit
 beneath it as a clearly named invocation-level diagnostic — see the
 [read model](analytics-dashboard.md#read-model-orchestratorobservabilityanalyticsquery) and
@@ -278,8 +278,9 @@ semantics that sit on top of these fields.
 
 ### Session-aware skill adoption
 
-The dashboard's **primary** skill metric is per-session *adoption* — for each `(repo, agent_role, backend, skill)`
-cell, what share of the logical agent sessions that had the skill available actually loaded it. It is computed by
+The dashboard's **primary** skill metric is per-session *adoption* — for each
+`(repo, agent_role, backend, skill, level)` cell, what share of the logical agent sessions that had the skill
+available actually loaded it. It is computed by
 `observability/analytics/query/skill_reads.py`'s `get_skill_adoption` and rendered by
 `observability/dashboard/skill_panel.py`'s "Skill adoption" card; the
 older per-run trigger views
@@ -328,6 +329,15 @@ bucket, and the primary-key fallback is stable across both scans below.
 
 The retained `end` bound is the **future-evidence cutoff**: evidence recorded *after* the window end never leaks
 backward into an earlier window's aggregate, so a later load cannot retroactively raise a past window's adoption.
+
+**A cell is keyed by source level too.** Both per-skill read models file their counts under the skill's `skill_levels`
+level as well as its name, so a repository's own `develop` and a same-named global one stay two cells rather than one
+blended average. The level is read off the same row that named the skill, so an offer and a load are matched by
+provenance as well as by name. A name no level map covers reads `unknown` — a record written before levels existed, or
+a claude run whose stream names no source directory — which is one spelling an operator can look up rather than a
+scattering of blanks; because both an offer and a load read it, a legacy session's load still counts as adoption of
+what it was offered. The one exception is the trigger matrix's catalog padding: a `repo_skill_catalog` name the record
+left unclassified pads at `project`, since that scan enumerates a repository's own checked-in definitions.
 
 **Per-session availability denominator.** `sessions` (the denominator) is how many logical sessions in the cohort had
 the skill available — its reported `skills_available` union listed it, or the *legacy* fallback above implied it.

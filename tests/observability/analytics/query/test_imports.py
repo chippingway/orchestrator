@@ -412,11 +412,12 @@ _SURFACES = MappingProxyType({
         "skill_window_run",
     ),
     _SKILL_VALUES_OWNER: (
+        "SkillCell",
+        "as_skill_levels",
         "as_skill_names",
         "label_or_unknown",
-        "row_label",
+        "leveled_skills",
         "skill_cohort",
-        "skill_matrix_order_key",
     ),
     _CACHE_SHARES_OWNER: (),
     _ROW_CELLS_OWNER: (
