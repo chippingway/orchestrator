@@ -4,15 +4,17 @@
 
 Each name below is defined by the leaf beside it -- the event names, the two
 label vocabularies, the repo spec and backend values, the pinned-state keys and
-role names, the verdict messages, the value builders, and the hermetic patch
-context a stage handler runs inside. This module is the one import site the
-tests that span several of those leaves reach them through.
+role names, the verdict messages, the recovery-follow-up wording, the value
+builders, and the hermetic patch context a stage handler runs inside. This
+module is the one import site the tests that span several of those leaves reach
+them through.
 """
 from __future__ import annotations
 
 from tests.workflow import other_labels as _other_labels
 from tests.workflow import patch_models as _patch_models
 from tests.workflow import patch_runner as _patch_runner
+from tests.workflow import recovery_followup as _recovery_followup
 from tests.workflow import repo_values as _repo_values
 from tests.workflow import stage_labels as _stage_labels
 from tests.workflow import stage_names as _stage_names
@@ -74,6 +76,21 @@ KEY_PARENT_NUMBER = _state_values.KEY_PARENT_NUMBER
 KEY_PARK_REASON = _state_values.KEY_PARK_REASON
 ROLE_DEVELOPER = _state_values.ROLE_DEVELOPER
 ROLE_REVIEWER = _state_values.ROLE_REVIEWER
+
+AGENT_TIMEOUT_PARK = _recovery_followup.AGENT_TIMEOUT
+LAST_ACTION_COMMENT_ID = _recovery_followup.LAST_ACTION_COMMENT_ID
+NO_ACTION_LINE = _recovery_followup.NO_ACTION_LINE
+OUTCOME_CLEARED = _recovery_followup.OUTCOME_CLEARED
+OUTCOME_PUSHED = _recovery_followup.OUTCOME_PUSHED
+PUSH_FAILED_PARK = _recovery_followup.PUSH_FAILED
+PUSH_RETRIED_DETAIL = _recovery_followup.PUSH_RETRIED_DETAIL
+RECOVERED_PREFIX = _recovery_followup.RECOVERED_PREFIX
+REVIEWER_FAILED_PARK = _recovery_followup.REVIEWER_FAILED
+REVIEWER_RESPAWN_DETAIL = _recovery_followup.REVIEWER_RESPAWN_DETAIL
+REVIEWER_TIMEOUT_PARK = _recovery_followup.REVIEWER_TIMEOUT
+TIMEOUT_EMPTY_DETAIL = _recovery_followup.TIMEOUT_EMPTY_DETAIL
+TIMEOUT_PUSHED_DETAIL = _recovery_followup.TIMEOUT_PUSHED_DETAIL
+_RecoveryFollowupAssertions = _recovery_followup._RecoveryFollowupAssertions
 
 REVIEW_APPROVED_MESSAGE = _verdict_values.REVIEW_APPROVED_MESSAGE
 REVIEW_CHANGES_REQUESTED_MESSAGE = _verdict_values.REVIEW_CHANGES_REQUESTED_MESSAGE

@@ -387,7 +387,7 @@
 # would break the order that makes a crashed tick recoverable. WPS202 is
 # waived.
 #
-# Two fixing stage owners name more than the same WPS201 ceiling of 12.
+# Three fixing stage owners name more than the same WPS201 ceiling of 12.
 # `resume.py` names 22: it spans one dev run end to end, so it is typed by the
 # engine's comment, drift, message, prompt, and usage surfaces, the four
 # sibling owners it reads bookmarks, watermarks, records, and keys from, the
@@ -397,7 +397,12 @@
 # restore, and measure the worktree it resumes in. `handler.py` names 15 because
 # the order one tick asks its questions in is the contract, so it is typed by
 # every owner an answer can come from plus the engine's guard and terminal
-# surfaces its preflight runs first. Splitting either by import would put one
+# surfaces its preflight runs first. `parked.py` names 13 because a parked tick
+# is decided against every claimant of the reply at once: base-sync's park
+# reasons, the engine's comment and message surfaces, the four sibling owners
+# it reads bookmarks, the continue command, the drift reroute, and the keys
+# from, the validating recovery and its park vocabulary, and the label a
+# recovered park lands back on. Splitting any of them by import would put one
 # tick's decisions across two modules. WPS201 is waived for those files.
 #
 # Four conflicts stage owners name more than the same WPS201 ceiling of 12.
@@ -544,6 +549,7 @@ per-file-ignores =
     orchestrator/workflow/stages/discussion/run.py:WPS202
     orchestrator/workflow/stages/discussion/terminal.py:WPS202
     orchestrator/workflow/stages/fixing/handler.py:WPS201
+    orchestrator/workflow/stages/fixing/parked.py:WPS201
     orchestrator/workflow/stages/fixing/resume.py:WPS201
     orchestrator/workflow/stages/implementing/continue_command.py:WPS201
     orchestrator/workflow/stages/implementing/publication.py:WPS201,WPS202

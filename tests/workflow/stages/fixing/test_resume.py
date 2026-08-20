@@ -18,8 +18,10 @@ DEV_SESSION = support.DEV_SESSION
 DOCUMENTING = support.DOCUMENTING
 FakeComment = support.FakeComment
 FakeUser = support.FakeUser
+HISTORICAL_COMMENT_ID = support.HISTORICAL_COMMENT_ID
 HUMAN_REPLY_ID = support.HUMAN_REPLY_ID
 ISSUE = support.ISSUE
+LAST_ACTION_COMMENT_ID = support.LAST_ACTION_COMMENT_ID
 PARKED_COMMENT_WATERMARK = support.PARKED_COMMENT_WATERMARK
 PARK_AGENT_TIMEOUT = support.PARK_AGENT_TIMEOUT
 PARK_PUSH_FAILED = support.PARK_PUSH_FAILED
@@ -30,16 +32,22 @@ PRE_DEV_FIX_SHA = support.PRE_DEV_FIX_SHA
 PR_LAST_COMMENT_ID = support.PR_LAST_COMMENT_ID
 PUSHED_MESSAGE = support.PUSHED_MESSAGE
 PUSH_BRANCH = support.PUSH_BRANCH
+PUSH_RETRIED_DETAIL = support.PUSH_RETRIED_DETAIL
 REVIEW_ROUND = support.REVIEW_ROUND
 RUN_AGENT = support.RUN_AGENT
 SHA_AFTER = support.SHA_AFTER
 SHA_BEFORE = support.SHA_BEFORE
 TEMP_ROOT = support.TEMP_ROOT
+TIMEOUT_EMPTY_DETAIL = support.TIMEOUT_EMPTY_DETAIL
+TIMEOUT_PUSHED_DETAIL = support.TIMEOUT_PUSHED_DETAIL
 TRANSIENT_PARK_WATERMARK = support.TRANSIENT_PARK_WATERMARK
 UNCHANGED_SHA = support.UNCHANGED_SHA
 VALIDATING = support.VALIDATING
 WORKTREE_PATH = support.WORKTREE_PATH
+WRITE_FAILED = "pinned write rejected"
+WRITE_PINNED_STATE = "write_pinned_state"
 _FixingFixtureMixin = support._FixingFixtureMixin
+_RecoveryFollowupAssertions = support._RecoveryFollowupAssertions
 _agent = support._agent
 config = support.config
 datetime = support.datetime
@@ -181,6 +189,7 @@ class FixingAwaitingHumanResumeTest(unittest.TestCase, _FixingFixtureMixin):
 class FixingTransientParkRecoveryTest(
     unittest.TestCase,
     _FixingFixtureMixin,
+    _RecoveryFollowupAssertions,
 ):
     def test_push_failure_park_recovers_on_success(
         self,
@@ -202,6 +211,10 @@ class FixingTransientParkRecoveryTest(
                 AWAITING_HUMAN: True,
                 PARK_REASON: PARK_PUSH_FAILED,
                 PR_LAST_COMMENT_ID: TRANSIENT_PARK_WATERMARK,
+                # The push-failure park posted a HITL mention and stamped
+                # this watermark at it; that stamp is what tells the
+                # recovery a follow-up is owed.
+                LAST_ACTION_COMMENT_ID: TRANSIENT_PARK_WATERMARK,
                 # Validating route did not set pending_fix_at.
                 PENDING_FIX_AT: None,
                 PENDING_FIX_ISSUE_MAX_ID: None,
@@ -228,6 +241,8 @@ class FixingTransientParkRecoveryTest(
         # Recovery ran -- not a human-comment driven resume.
         mocks[RUN_AGENT].assert_not_called()
         mocks[PUSH_BRANCH].assert_called_once()
+        # The mention that parked the issue is retired on the same tick.
+        self._assert_recovery_followup(gh, PUSH_RETRIED_DETAIL)
         pinned_data = gh.pinned_data(ISSUE)
         self.assertFalse(pinned_data.get(AWAITING_HUMAN))
         self.assertIsNone(pinned_data.get(PARK_REASON))
@@ -235,6 +250,52 @@ class FixingTransientParkRecoveryTest(
         # on its `pushed` outcome).
         self.assertEqual(pinned_data.get(REVIEW_ROUND), 2)
         # Flipped back to validating so the reviewer reruns next tick.
+        self.assertIn((ISSUE, VALIDATING), gh.label_history)
+
+    def test_failed_write_announces_only_once(
+        self,
+    ) -> None:
+        # GitHub accepts the follow-up before the pinned write that clears the
+        # park, so a write that dies leaves the comment posted and the park
+        # standing. The next tick recovers again: it must recognize its own
+        # follow-up on the thread rather than post a second one, and must not
+        # rescan it as the fresh PR feedback that would resume the dev.
+        gh, issue = self._seed(
+            pr=self._open_pr(),
+            extra_state={
+                AWAITING_HUMAN: True,
+                PARK_REASON: PARK_PUSH_FAILED,
+                # Both watermarks sit BELOW the ids the fake hands out, so the
+                # follow-up lands inside the next tick's rescan window and
+                # above the park mention the recovery looks past for it.
+                PR_LAST_COMMENT_ID: HISTORICAL_COMMENT_ID,
+                LAST_ACTION_COMMENT_ID: HISTORICAL_COMMENT_ID,
+                PENDING_FIX_AT: None,
+                PENDING_FIX_ISSUE_MAX_ID: None,
+                REVIEW_ROUND: 1,
+            },
+        )
+
+        with patch.object(_worktree_paths, WORKTREE_PATH, return_value=TEMP_ROOT):
+            with patch.object(
+                gh, WRITE_PINNED_STATE, side_effect=RuntimeError(WRITE_FAILED),
+            ):
+                with self.assertRaises(RuntimeError):
+                    self._run_fixing(
+                        gh, issue, run_agent=_agent(), push_branch=True,
+                    )
+            # The comment really did land before the write blew up; without
+            # this the retry below would be a first announcement.
+            self.assertEqual(len(gh.posted_comments), 1)
+            mocks = self._run_fixing(
+                gh, issue, run_agent=_agent(), push_branch=True,
+            )
+
+        # The dev was NOT resumed on the orchestrator's own comment.
+        mocks[RUN_AGENT].assert_not_called()
+        self._assert_recovery_followup(gh, PUSH_RETRIED_DETAIL)
+        pinned_data = gh.pinned_data(ISSUE)
+        self.assertFalse(pinned_data.get(AWAITING_HUMAN))
         self.assertIn((ISSUE, VALIDATING), gh.label_history)
 
     def test_push_failure_park_stays_on_failure(
@@ -292,6 +353,7 @@ class FixingTransientParkRecoveryTest(
                 AWAITING_HUMAN: True,
                 PARK_REASON: PARK_AGENT_TIMEOUT,
                 PR_LAST_COMMENT_ID: TRANSIENT_PARK_WATERMARK,
+                LAST_ACTION_COMMENT_ID: TRANSIENT_PARK_WATERMARK,
                 PENDING_FIX_AT: None,
                 PENDING_FIX_ISSUE_MAX_ID: None,
                 REVIEW_ROUND: 1,
@@ -313,6 +375,7 @@ class FixingTransientParkRecoveryTest(
             )
 
         mocks[RUN_AGENT].assert_not_called()
+        self._assert_recovery_followup(gh, TIMEOUT_EMPTY_DETAIL)
         pinned_data = gh.pinned_data(ISSUE)
         self.assertFalse(pinned_data.get(AWAITING_HUMAN))
         self.assertIsNone(pinned_data.get(PARK_REASON))
@@ -336,6 +399,7 @@ class FixingTransientParkRecoveryTest(
                 AWAITING_HUMAN: True,
                 PARK_REASON: PARK_AGENT_TIMEOUT,
                 PR_LAST_COMMENT_ID: TRANSIENT_PARK_WATERMARK,
+                LAST_ACTION_COMMENT_ID: TRANSIENT_PARK_WATERMARK,
                 PENDING_FIX_AT: None,
                 PENDING_FIX_ISSUE_MAX_ID: None,
                 REVIEW_ROUND: 1,
@@ -358,6 +422,7 @@ class FixingTransientParkRecoveryTest(
             )
 
         mocks[PUSH_BRANCH].assert_called_once()
+        self._assert_recovery_followup(gh, TIMEOUT_PUSHED_DETAIL)
         pinned_data = gh.pinned_data(ISSUE)
         self.assertFalse(pinned_data.get(AWAITING_HUMAN))
         self.assertEqual(pinned_data.get(REVIEW_ROUND), 2)

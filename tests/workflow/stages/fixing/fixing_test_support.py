@@ -46,6 +46,15 @@ ROLE_DEVELOPER = fixtures.ROLE_DEVELOPER
 _PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
 _agent = fixtures._agent
 
+# The follow-up a recovered park posts is worded by a validating owner this
+# stage's parked branch calls, so its text and the assertion over it come from
+# the shared fixtures rather than from either stage's own support module.
+RECOVERED_PREFIX = fixtures.RECOVERED_PREFIX
+PUSH_RETRIED_DETAIL = fixtures.PUSH_RETRIED_DETAIL
+TIMEOUT_PUSHED_DETAIL = fixtures.TIMEOUT_PUSHED_DETAIL
+TIMEOUT_EMPTY_DETAIL = fixtures.TIMEOUT_EMPTY_DETAIL
+_RecoveryFollowupAssertions = fixtures._RecoveryFollowupAssertions
+
 # The dev-fix disposition is a validating owner the fixing resume imports
 # directly, so a test that has to wrap it patches that owner.
 dev_fix = _dev_fix
@@ -128,6 +137,7 @@ PARK_AGENT_QUESTION = "agent_question"
 
 AWAITING_HUMAN = "awaiting_human"
 PARK_REASON = "park_reason"
+LAST_ACTION_COMMENT_ID = fixtures.LAST_ACTION_COMMENT_ID
 REVIEW_ROUND = "review_round"
 USER_CONTENT_HASH = "user_content_hash"
 PRE_DEV_FIX_SHA = "pre_dev_fix_sha"

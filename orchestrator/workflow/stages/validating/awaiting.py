@@ -17,9 +17,12 @@ answered on the issue instead of guessed at.
 
 The transient reasons are the opposite shape: they fire only when NO comment
 arrived, because they exist for conditions that resolve on their own and the
-recovery has to stay silent. A reviewer timeout or crash with a reply is the
-third: the failure left no review output for the dev to act on, so the comment
-buys a fresh REVIEWER rather than a dev resume.
+retry has to stay silent while it is still failing. Succeeding is the one thing
+worth saying: the park mentioned a human, so the clear posts a follow-up
+retiring that mention rather than leaving it as the thread's last word. A
+reviewer timeout or crash with a reply is the third: the failure left no review
+output for the dev to act on, so the comment buys a fresh REVIEWER rather than
+a dev resume.
 
 `_run_awaiting_dev` is the fall-through the router uses when none of those
 match. It reads HEAD before the resume because that is the only watermark that
@@ -121,6 +124,17 @@ def _transient_awaiting_action(
         context.spec, context.issue, context.state,
     )
     if recovery != _state._OUTCOME_STUCK:
+        followup = _recovery._recovery_followup_comment(
+            context.gh,
+            context.issue,
+            context.state,
+            context.park_reason,
+            recovery,
+        )
+        if followup is not None:
+            _comments._post_issue_comment(
+                context.gh, context.issue, context.state, followup,
+            )
         context.clear_park()
         context.gh.write_pinned_state(context.issue, context.state)
     return _state._OUTCOME_RETURN

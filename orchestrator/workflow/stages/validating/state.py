@@ -14,8 +14,9 @@ awaiting-human route is what reads it back to honor
 `/orchestrator add-review-rounds`; the dev-fix timeout stamps
 `pre_dev_fix_sha` and the silent recovery is what compares HEAD against it.
 The outcome tokens are the same shape one level up -- a helper returns
-`"pushed"` / `"parked"` / `"stuck"` / `"return"` and a different owner
-switches on it -- so the strings are declared once rather than spelled twice.
+`"pushed"` / `"parked"` / `"cleared"` / `"stuck"` / `"return"` and a different
+owner switches on it -- so the strings are declared once rather than spelled
+twice.
 
 `_VERIFY_STATUS_TO_REASON` and `_VALIDATING_TRANSIENT_PARK_REASONS` are the
 two groupings that decide behavior on their own: the first turns a verify
@@ -54,6 +55,8 @@ _REASON_REVIEWER_FAILED = "reviewer_failed"
 _REASON_REVIEW_CAP = "review_cap"
 
 _OUTCOME_PARKED = "parked"
+
+_OUTCOME_CLEARED = "cleared"
 
 _OUTCOME_PUSHED = "pushed"
 

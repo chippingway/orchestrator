@@ -18,7 +18,10 @@ involvement -- the CHANGES_REQUESTED branch relabels before it spawns the dev
 -- and so is the only one that can clear without a human comment. Running it
 on the in_review route would advance the PR-feedback watermarks past a human
 comment on a timed-out resume and mis-account `review_round`, which that route
-resets rather than bumps. `pending_fix_at` is the discriminator.
+resets rather than bumps. `pending_fix_at` is the discriminator. It is silent
+only while it is failing: the park that filed it mentioned a human, so the tick
+that finally clears it says so once, in the same words the validating route
+uses.
 
 Everything else stays parked until a human replies. That default is the HITL
 contract, not a gap: an agent with a real question and an agent reporting
@@ -30,6 +33,7 @@ from __future__ import annotations
 from typing import Optional
 
 from orchestrator.git.base_sync import state as _base_sync_state
+from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
 from orchestrator.workflow.stages.fixing import continue_command as _continue_command
@@ -69,8 +73,9 @@ def _dispatch_validating_recovery(
 
     Returns a stop-decision when this branch owns the tick (a stuck transient
     rerouted to `resolving_conflict` on drift, or a resolved transient flipped
-    back to `validating`), or ``None`` to fall through to the stay-parked /
-    clear-park default.
+    back to `validating`, which also posts the one follow-up comment retiring
+    the mention the park was filed with), or ``None`` to fall through to the
+    stay-parked / clear-park default.
 
     Only fires when the park reason can resolve without a human comment AND the
     issue arrived via the validating route (CHANGES_REQUESTED dev fix). The
@@ -111,6 +116,15 @@ def _dispatch_validating_recovery(
         return _models._ParkedFixingDecision(stop=True)
 
     # Conditions resolved (either no fix landed or a deferred push finished).
+    # Post the follow-up BEFORE the clear, while `park_reason` still says what
+    # healed, so the operator the park mentioned reads that the system took
+    # care of it instead of having to diff remote SHAs to find out.
+    followup = _validating_recovery._recovery_followup_comment(
+        ctx.gh, ctx.issue, ctx.state, park_reason, recovery,
+    )
+    if followup is not None:
+        _comments._post_issue_comment(ctx.gh, ctx.issue, ctx.state, followup)
+
     # Clear the park flags and flip back to `validating` so the reviewer
     # re-evaluates the current head next tick. The helper has already bumped
     # `review_round` when a fix landed (push_failed, or agent_timeout that

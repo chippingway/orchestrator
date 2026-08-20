@@ -378,7 +378,10 @@ so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
   0. **External-merge / closed-issue short-circuit** (same chain as implementing / documenting). The reviewer is not
      spawned on either short-circuit.
   1. Awaiting-human path: resume on the dev's locked spec; on a successful pushed fix, bump `review_round` and stay on
-     `workflow:validating`. Exception: on a `review_cap` park the human reply does NOT wake the dev — the operator
+     `workflow:validating`. A transient park (`_VALIDATING_TRANSIENT_PARK_REASONS`) with NO new comment goes to
+     `_try_recover_validating_transient_park` instead, which retries silently and, on `cleared` / `pushed`, posts the
+     **Recovery follow-up** described below before clearing the park. Exception: on a `review_cap` park the human
+     reply does NOT wake the dev — the operator
      must post `/orchestrator add-review-rounds N` on its own line (honored only from an allowlisted author when
      `ALLOWED_ISSUE_AUTHORS` is set — an outsider's command is filtered out before the parse), which resets
      `review_round` to `max(0, MAX_REVIEW_ROUNDS - N)`, clears the park, and falls through to spawn the reviewer this
@@ -488,6 +491,31 @@ so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
   `workflow:validating` (drift; pushed fix OR ACK no-commit; both reset `review_round=0`), OR a HITL park
   (unmergeable, missing pr_number, drift-resume failure), OR a HITL ping (no relabel), OR a no-op tick.
 
+**Recovery follow-up.** Both callers of `_try_recover_validating_transient_park` — the `workflow:validating`
+awaiting-human branch and the `workflow:fixing` parked branch — post one short issue comment on a `cleared` /
+`pushed` outcome, before the pinned write that clears the park, so the HITL mention that filed the park is not the
+thread's last word after the system has healed itself. The wording is chosen by
+`_recovery_followup_comment(gh, issue, state, park_reason, outcome)` from the (reason, outcome) pair: the failed push
+retried, the timed-out run's commit pushed, the timed-out run having left nothing to publish, or the reviewer being
+re-spawned. It carries no @mention (closing the loop must not notify a second time), and it is skipped entirely when
+pinned state carries no `last_action_comment_id` — no mention was ever posted, so there is nothing to retire — or
+when the pair has no wording. A `stuck` outcome posts nothing at all, so a still-failing retry stays silent poll
+after poll.
+
+Exactly one lands per park episode, and the receipt for that is the thread rather than pinned state. The post and
+the write that clears the park are two operations, so a process that dies between them leaves GitHub holding a
+comment no local record names — any receipt written beside the clear would die with it. So every follow-up carries
+`_RECOVERY_FOLLOWUP_MARKER` (`<!--orchestrator-recovery-followup-->`), and `_episode_already_announced` looks for it
+among the comments past `last_action_comment_id` before wording a new one. That watermark is the park's own mention
+id, which scopes the search to this episode: a later park stamps a higher one, so an older follow-up sitting below it
+cannot silence the next recovery. A forged marker costs its author the notification they would have been spared
+anyway.
+
+The same failure window is why `_AwaitingValidation.build` drops the orchestrator's own comments — by recorded id
+AND by `_ORCH_COMMENT_MARKER`, the pair `_rescan_fixing_feedback` already uses. Every awaiting-human decision helper
+reads a non-empty batch as "a human replied", and a follow-up whose id-recording write never landed is still ours;
+the marker is what says so when the id ledger cannot.
+
 `_park_awaiting_human` posts on the issue (not the PR) so the HITL ping appears alongside the rest of orchestrator
 state. The PR comment that triggers a route to `workflow:fixing` is the human signal; awaiting-human is reserved for
 *unrecoverable* states (unmergeable / missing pr_number).
@@ -536,9 +564,10 @@ state. The PR comment that triggers a route to `workflow:fixing` is the human si
      Otherwise, when the rescan finds nothing new, branch on `park_reason` AND the route discriminator `pending_fix_at`:
      - **Transient reason** (`push_failed` / `agent_timeout` / `reviewer_timeout` / `reviewer_failed` — the
        `_VALIDATING_TRANSIENT_PARK_REASONS` set) **and `pending_fix_at` unset (validating route)** → call
-       `_try_recover_validating_transient_park`. On `cleared` or `pushed`, clear park, clear `pending_fix_*`, flip
-       back to `workflow:validating` (the helper bumps `review_round` on `pushed`). This closes the loop for
-       `_handle_validating`'s CHANGES_REQUESTED route. On `stuck`, fall through to the worktree-drift check below.
+       `_try_recover_validating_transient_park`. On `cleared` or `pushed`, post the recovery follow-up (see the
+       **Recovery follow-up** note above), clear park, clear `pending_fix_*`, flip back to `workflow:validating`
+       (the helper bumps `review_round` on `pushed`). This closes the loop for `_handle_validating`'s
+       CHANGES_REQUESTED route. On `stuck`, fall through to the worktree-drift check below.
      - **Any other awaiting-human shape** (transient reason on the in_review route, non-transient reason like a real
        agent question, dirty-worktree park, or silent-crash park) → return silently and keep waiting for a human
        reply. We cannot distinguish "agent has a real question" from "agent reported nothing to change" by inspection

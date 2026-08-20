@@ -357,8 +357,11 @@ machine fall into a few groups:
 - **HITL park.** `awaiting_human`, `last_action_comment_id`, `park_reason`. `_park_awaiting_human` (on the same
   `workflow/engine/guards.py` owner as the two run refusals) sets
   `awaiting_human=True` and clears `park_reason` to `None`; a handler that needs the reason to survive into the next
-  tick explicitly re-sets it after the park call. Park reasons that route via `_park_auto_rebase_failure`
-  (`auto_base_rebase_failed` / `auto_base_rebase_dirty` / `auto_base_rebase_push_failed`) are owned by the per-tick
+  tick explicitly re-sets it after the park call. `last_action_comment_id` doubles as the record that a mention was
+  posted: a transient park that later self-recovers reads it back to decide whether it owes the thread a follow-up
+  (see [`delivery-stages.md`](delivery-stages.md), **Recovery follow-up**). Park reasons that route via
+  `_park_auto_rebase_failure` (`auto_base_rebase_failed` / `auto_base_rebase_dirty` /
+  `auto_base_rebase_push_failed`) are owned by the per-tick
   base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`.
 - **In-review watermarks.** `pr_last_comment_id` (issue thread + PR conversation, shared IssueComment id space),
   `pr_last_review_comment_id` (inline PR review comments), `pr_last_review_summary_id` (PR review summary bodies). Only
