@@ -203,6 +203,11 @@ PR. Do not simply remove the `discussion` label, because the issue could be pick
 - `/orchestrator add-review-rounds N` — post this on its own line with a positive `N` on an issue parked at
   `MAX_REVIEW_ROUNDS`. It grants up to `N` more reviewer rounds, capped at the configured maximum.
 
+Some parks unstick themselves and say so. A push that failed on a network blip, or a dev or reviewer agent that timed
+out or crashed, is retried quietly on the next tick; when the retry works the orchestrator posts a short
+`Recovered automatically … No action needed.` comment so the @-mention that pinged you is not the thread's last word.
+A park that is still stuck stays silent, so a mention with no such follow-up under it is one that still wants you.
+
 See the [`backlog` / `paused` reference](docs/configuration.md#control-labels) and the
 [stage-handler lifecycle](docs/state-machine.md#stage-handlers) for the full semantics.
 

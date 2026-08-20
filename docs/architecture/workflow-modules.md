@@ -234,7 +234,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       awaiting_resume.py    the order those claims are asked in and the resume none of them wanted
       drift.py              a body edit mid-review, the three parks that defer, and the consumed-thread watermark
       drift_outcomes.py     the `ACK:` reply that must not park, over the shared fix disposition
-      recovery.py           the silent retry of a push race or dev timeout
+      recovery.py           the silent retry of a push race or dev timeout, and the one sentence a park that
+                            healed itself owes the thread
       models.py             the frozen records the owners hand each other
       state.py              the pinned-state keys, park reasons, and outcome tokens they share
 ```
