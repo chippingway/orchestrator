@@ -160,8 +160,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       models.py             the frozen records the owners hand each other
       state.py              the pinned-state keys they share
     fixing/                 `workflow:fixing`
-      handler.py            the order one tick asks its questions in, plus the preflight terminals and
-                            missing-`pr_number` park
+      handler.py            the order one tick asks its questions in, plus the preflight terminals, the
+                            missing-`pr_number` park, and the commit the no-feedback bounce publishes before it
+                            hands the PR back to the reviewer
       feedback.py           the rescan past the three in_review watermarks and the narrower ratchet a consumed batch
                             advances them by
       bookmarks.py          the `pending_fix_*` ids a replay rebuilds the triggering batch from, and the clear each

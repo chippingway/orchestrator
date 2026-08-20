@@ -56,8 +56,10 @@ def _stranded_fix_unpushed(
 
     Conservative by construction: a dirty tree, a failed fetch, or a
     remote that moved (`behind > 0` -- pushing would race a head we have
-    not reconciled) all report False so the caller falls back to the
-    question park instead of pushing blind.
+    not reconciled) all report False, so the caller takes whichever
+    no-publish path it owns -- the question park here, the bounce back to
+    `validating` in the fixing handler's no-feedback exit -- instead of
+    pushing blind.
     """
     if _verification_probes._worktree_dirty_files(wt):
         return False

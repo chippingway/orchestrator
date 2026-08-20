@@ -21,7 +21,12 @@ between them is the one that is easy to miss: nothing unread means a prior tick
 already consumed the batch (or an operator advanced the watermarks by hand), so
 the issue would otherwise sit in `fixing` with no work. It clears the route
 bookkeeping and bounces to `validating` for a fresh reviewer read of the
-current head.
+current head -- after publishing whatever an earlier run committed and never
+pushed, because on the validating route this exit is the only tick left that
+can. That route's feedback is a reviewer comment the orchestrator authored
+itself, which the rescan filters out, so a run whose outcome was discarded (a
+`paused` label applied mid-run) is never re-run: without the publish here the
+reviewer would read a head that is missing the fix it asked for.
 """
 from __future__ import annotations
 
@@ -31,6 +36,8 @@ from typing import Optional
 from github.Issue import Issue
 
 from orchestrator import config
+from orchestrator.git import authentication as _authentication
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import terminals as _terminals
@@ -40,6 +47,7 @@ from orchestrator.workflow.stages.fixing import models as _models
 from orchestrator.workflow.stages.fixing import parked as _parked
 from orchestrator.workflow.stages.fixing import resume as _resume
 from orchestrator.workflow.stages.fixing import state as _state
+from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
@@ -135,6 +143,59 @@ def _fixing_preflight(gh: GitHubClient, spec: config.RepoSpec, issue: Issue, sta
     return pr
 
 
+def _publish_stranded_fix(spec: config.RepoSpec, issue: Issue, state) -> bool:
+    """Push a fix an earlier run committed to the worktree but never published.
+
+    The live-pause guard promises that work committed while `paused` was on
+    reaches the PR once the label comes off, and on the validating route the
+    bounce below is the only tick left to keep it: the reviewer feedback that
+    started the round is orchestrator-authored, so the rescan filters it out
+    and no later run rediscovers it. Probing here is what makes the bounce
+    honor that promise instead of relabeling over a head the fix never reached.
+
+    Returns True only when the branch actually moved, so the caller counts a
+    reviewer round for a fix the reviewer can now see. The worktree may be gone
+    (a terminal cleanup, a fresh host), `_stranded_fix_unpushed` refuses every
+    shape it cannot vouch for, and a failed push leaves the commit on disk for
+    the next round's push to carry rather than claiming a publish that did not
+    happen.
+    """
+    wt = _worktree_paths._worktree_path(spec, issue.number)
+    if not wt.exists():
+        return False
+    if not _dev_fix._stranded_fix_unpushed(spec, wt, state, issue):
+        return False
+    branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
+    if _authentication._push_branch(spec, wt, branch):
+        return True
+    log.warning(
+        "repo=%s issue=#%s could not push the stranded fix on the "
+        "no-feedback bounce; leaving it on the branch",
+        spec.slug, issue.number,
+    )
+    return False
+
+
+def _bounce_without_feedback(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state,
+) -> None:
+    """Drop the route bookkeeping and hand the issue back to `validating`.
+
+    The stranded publish runs first because a commit that reaches the PR here
+    spends a reviewer round exactly like one a dev run pushed -- the head the
+    reviewer is about to read is not the head it rejected -- so it earns the
+    same `review_round` bookkeeping the pushed-fix exit applies. The route
+    discriminator is read BEFORE the clear below drops it, which is what keeps
+    the in_review route's reset apart from this route's bump.
+    """
+    pending_fix_at_was_set = state.get(_state._PENDING_FIX_AT) is not None
+    if _publish_stranded_fix(spec, issue, state):
+        _resume._apply_fix_review_round(state, pending_fix_at_was_set)
+    _bookmarks._clear_pending_fix_bookmarks(state)
+    gh.set_workflow_label(issue, WorkflowLabel.VALIDATING)
+    gh.write_pinned_state(issue, state)
+
+
 def _handle_fixing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
     state = gh.read_pinned_state(issue)
 
@@ -166,13 +227,11 @@ def _handle_fixing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> Non
 
     # Watermarks already cover the triggering bookmarks (a prior tick consumed
     # them, or an operator advanced them manually). Nothing left to address;
-    # clear the route bookkeeping and bounce back to `validating` so the
-    # reviewer re-evaluates against the current head instead of leaving the
-    # issue stuck in `fixing` with no work.
+    # publish whatever is stranded on the branch and bounce back to
+    # `validating` so the reviewer re-evaluates against the current head
+    # instead of leaving the issue stuck in `fixing` with no work.
     if not feedback.all_items:
-        _bookmarks._clear_pending_fix_bookmarks(state)
-        gh.set_workflow_label(issue, WorkflowLabel.VALIDATING)
-        gh.write_pinned_state(issue, state)
+        _bounce_without_feedback(gh, spec, issue, state)
         return
 
     if _resume._fixing_debounce_open(feedback, replay_batch):
