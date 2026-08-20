@@ -91,6 +91,7 @@ SHA_SAME = "same-sha"
 
 TRIGGER_ID = 2000
 FOLLOWUP_ID = 2001
+REVIEWER_FEEDBACK_ID = 2400
 CONCURRENT_COMMENT_ID = 2500
 PARKED_COMMENT_WATERMARK = 2500
 HUMAN_REPLY_ID = 2600
@@ -152,10 +153,12 @@ PENDING_FIX_REVIEW_IDS = "pending_fix_review_ids"
 PENDING_FIX_REVIEW_SUMMARY_MAX_ID = "pending_fix_review_summary_max_id"
 PENDING_FIX_REVIEW_SUMMARY_IDS = "pending_fix_review_summary_ids"
 PENDING_FIX_REVIEWER_COMMENT_ID = "pending_fix_reviewer_comment_id"
+ORCHESTRATOR_COMMENT_IDS = "orchestrator_comment_ids"
 
 RUN_AGENT = "run_agent"
 PUSH_BRANCH = "_push_branch"
 WORKTREE_PATH = "_worktree_path"
+AUTHED_FETCH = "_authed_fetch"
 
 CONTINUE_COMMAND = "/orchestrator continue"
 DEV_SESSION_ID = "dev_session_id"
@@ -166,6 +169,7 @@ PUSHED_MESSAGE = "pushed"
 RESUME_SESSION_ID = "resume_session_id"
 CONTINUE_WORD = "continue"
 FIX_FEEDBACK = "please address the typo"
+REVIEWER_FEEDBACK = ":eyes: review (round 1/3) requested changes"
 CHANGES_REQUESTED = "CHANGES_REQUESTED"
 STALE_PRE_COMMENT_HASH = "stale-hash-pre-comment"
 UNCHANGED_SHA = "aaa"
@@ -272,6 +276,47 @@ class _FixingFixtureMixin(_PatchedWorkflowMixin):
 
 
 class _StrandedFixingFixtureMixin(_FixingFixtureMixin):
+    def _seed_stranded_bounce(self):
+        """A validating-route `fixing` issue whose only unread PR comment is
+        the reviewer feedback the orchestrator posted itself.
+
+        The rescan drops that comment as the orchestrator's own, so the tick
+        reaches the no-feedback exit with the reviewer round still unanswered
+        -- the shape a dev run discarded by a live `paused` leaves behind. The
+        route is spelled by `pending_fix_at` being unset, with the reviewer
+        comment id as the round's only bookmark.
+        """
+        reviewer_feedback = FakeComment(
+            id=REVIEWER_FEEDBACK_ID,
+            body=REVIEWER_FEEDBACK,
+            user=FakeUser(ORCHESTRATOR),
+            created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        )
+        pr = self._open_pr()
+        pr.issue_comments.append(reviewer_feedback)
+        return self._seed(
+            pr=pr,
+            extra_state={
+                PENDING_FIX_AT: None,
+                PENDING_FIX_ISSUE_MAX_ID: None,
+                PENDING_FIX_REVIEWER_COMMENT_ID: REVIEWER_FEEDBACK_ID,
+                ORCHESTRATOR_COMMENT_IDS: [REVIEWER_FEEDBACK_ID],
+                REVIEW_ROUND: 2,
+            },
+        )
+
+    def _run_stranded_bounce(self, gh, issue, worktree, **run_options):
+        """One fixing tick with the worktree probe answering `worktree`.
+
+        The path is patched rather than seeded because the handler reads it to
+        decide whether there is a checkout to probe at all, and the default
+        patch set leaves that read real.
+        """
+        with patch.object(worktree_paths, WORKTREE_PATH, return_value=worktree):
+            return self._run_fixing(
+                gh, issue, run_agent=_agent(), **run_options,
+            )
+
     def _seed_stranded(self, *, reply_id: int = HUMAN_REPLY_ID):
         long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         reply = FakeComment(

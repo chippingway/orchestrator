@@ -431,7 +431,9 @@ so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
      On a hit the handler returns WITHOUT running its result handler (`_post_user_content_change_result` /
      `_handle_dev_fix_result`), so no comment posts, no push, no `review_round` bump, no relabel, and no pinned-state
      write. The committed work stays on the branch; the CHANGES_REQUESTED path leaves the pre-spawn `workflow:fixing`
-     flip standing and `_handle_fixing` owns the resume once the label is removed.
+     flip standing and `_handle_fixing` owns the issue once the label is removed — its no-feedback exit (step 6 there)
+     is what publishes the discarded run's commit, since the reviewer comment that started the round is filtered out
+     of every later rescan.
 - **Output**: label moved to `workflow:documenting` (approval after verify + squash) OR `workflow:fixing`
   (CHANGES_REQUESTED) OR no label change with `review_round` bumped (awaiting-human resume, drift, transient-park
   recovery push) OR a HITL park.
@@ -591,8 +593,16 @@ state. The PR comment that triggers a route to `workflow:fixing` is the human si
      awaiting a human. An operator who wants to freeze this reconciliation applies `paused`, which hard-skips the
      issue at dispatch so the breaker never runs. The `pending_fix_*` bookmarks and in_review watermarks are left
      untouched so the eventual in_review re-entry still re-discovers the feedback.
-  6. If no unread feedback at all (watermarks already cover the bookmarks), clear `pending_fix_*` and bounce back to
-     `workflow:validating`.
+  6. If no unread feedback at all (watermarks already cover the bookmarks), publish any **stranded fix** first —
+     `_stranded_fix_unpushed` against the worktree the issue already has on disk, i.e. a commit an earlier run left
+     unpushed (a dev run whose outcome the live-pause guard discarded, a run killed before its push) — and on a
+     successful push adjust `review_round` per the same route discriminator the pushed-fix exit uses (`pending_fix_at`
+     read BEFORE the clear: in_review route resets to 0, validating route bumps by 1). Then clear `pending_fix_*` and
+     bounce back to `workflow:validating`. A worktree that is not on disk, a probe refusal (dirty tree, failed fetch,
+     a remote that moved), or a failed push bounces without pushing and without touching the round — the commit stays
+     on the branch for a later push to carry. This exit is the validating route's LAST chance at that commit: the
+     reviewer feedback that started the round is orchestrator-authored, so the step-3 rescan filters it out and no
+     later tick re-runs the dev on it.
   7. **Quiet window**: compute the newest `created_at` (or `submitted_at` for review summaries); if younger than
      `IN_REVIEW_DEBOUNCE_SECONDS`, return.
   8. **Resume**: build a `_build_pr_comment_followup` prompt over ALL unread surfaces, resume the locked dev via

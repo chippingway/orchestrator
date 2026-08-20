@@ -8,12 +8,20 @@ snapshot, and on a hit the handler returns without posting the ack, pushing,
 bumping `review_round`, relabeling, or writing pinned state -- so once the
 label is removed a later tick republishes the committed work normally. Covers
 the three validating dev resumes: the user-content drift resume, the
-awaiting-human resume, and the CHANGES_REQUESTED reviewer-feedback fix."""
+awaiting-human resume, and the CHANGES_REQUESTED reviewer-feedback fix.
+
+The reviewer-feedback route carries its promise one tick further than the
+other two, which is why it is followed past the pause here: the round it
+discarded is anchored on a comment the orchestrator authored, so nothing
+re-runs the dev on it and the first `fixing` tick after the label comes off is
+the one that has to publish what the discarded run committed."""
 
 from __future__ import annotations
 
+import tempfile
 import unittest
 from dataclasses import dataclass
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from orchestrator.github.labels import PAUSED_LABEL
@@ -31,6 +39,7 @@ from tests.workflow.fixtures import (
     _PatchedWorkflowMixin,
     _agent,
 )
+from tests.workflow.git_owners import seam_patch
 
 DRIFT_ISSUE = 80
 DRIFT_PR = 800
@@ -41,8 +50,12 @@ ACTION_WATERMARK = 4000
 CHANGES_REQUESTED_ISSUE = 82
 CHANGES_REQUESTED_PR = 820
 LABEL_VALIDATING = "workflow:validating"
+LABEL_FIXING = "workflow:fixing"
 DEV_SESSION = "dev-sess"
 REVIEW_ROUND = "review_round"
+REVIEWER_ANCHOR = "pending_fix_reviewer_comment_id"
+WORKTREE_PATH = "_worktree_path"
+PUSH_BRANCH = "_push_branch"
 
 
 def _branch(number: int) -> str:
@@ -145,8 +158,23 @@ class _ValidatingPauseFixtureMixin(_PatchedWorkflowMixin):
                 head_shas=["before-sha", "after-sha"],
             )
 
+    def _run_unpaused_fixing(self, github, issue, worktree):
+        """The first `fixing` tick after the operator removes the label.
+
+        `paused` is gone, so nothing is patched over the issue fetch; the
+        worktree probe is answered with `worktree` because the handler reads it
+        to decide whether there is a checkout holding the discarded commit.
+        """
+        with seam_patch(WORKTREE_PATH, MagicMock(return_value=worktree)):
+            return self._run_fixing(
+                github,
+                issue,
+                run_agent=_agent(),
+                branch_ahead_behind=(1, 0),
+            )
+
     def _assert_drift_paused(self, github, mocks, before_writes: int) -> None:
-        mocks["_push_branch"].assert_not_called()
+        mocks[PUSH_BRANCH].assert_not_called()
         self.assertEqual(github.label_history, [])
         self.assertEqual(github.posted_pr_comments, [])
         self.assertFalse(
@@ -162,7 +190,7 @@ class _ValidatingPauseFixtureMixin(_PatchedWorkflowMixin):
 
     def _assert_resume_paused(self, github, mocks, before_writes: int) -> None:
         mocks["run_agent"].assert_called_once()
-        mocks["_push_branch"].assert_not_called()
+        mocks[PUSH_BRANCH].assert_not_called()
         self.assertEqual(github.label_history, [])
         self.assertEqual(github.posted_comments, [])
         self.assertEqual(github.posted_pr_comments, [])
@@ -178,14 +206,14 @@ class _ValidatingPauseFixtureMixin(_PatchedWorkflowMixin):
     def _assert_fix_paused(self, github, mocks, before_writes: int) -> None:
         self.assertEqual(mocks["run_agent"].call_count, 2)
         self.assertIn(
-            (CHANGES_REQUESTED_ISSUE, "workflow:fixing"),
+            (CHANGES_REQUESTED_ISSUE, LABEL_FIXING),
             github.label_history,
         )
         self.assertNotIn(
             (CHANGES_REQUESTED_ISSUE, LABEL_VALIDATING),
             github.label_history,
         )
-        mocks["_push_branch"].assert_not_called()
+        mocks[PUSH_BRANCH].assert_not_called()
         self.assertEqual(github.write_state_calls, before_writes + 1)
         state = github.pinned_data(CHANGES_REQUESTED_ISSUE)
         self.assertEqual(state.get(REVIEW_ROUND), 0)
@@ -292,6 +320,37 @@ class ValidatingLivePauseChangesRequestedTest(
 
         # Reviewer + dev both ran; the pre-spawn flip to `fixing` is durable.
         self._assert_fix_paused(gh, mocks, before_writes)
+
+    def test_unpause_publishes_the_discarded_fix(self) -> None:
+        # The dev committed under the pause and the guard threw the outcome
+        # away. Once the label comes off, the `fixing` tick finds no unread
+        # feedback -- the reviewer comment that started the round is
+        # orchestrator-authored, so the rescan drops it -- and would otherwise
+        # hand a head missing the fix straight back to the reviewer. It has to
+        # publish the commit the paused run left in the worktree, count the
+        # round that fix spends, and drop the reviewer anchor with it.
+        gh, issue, _ = self._pause_fixture(
+            _PauseCase(
+                issue_number=CHANGES_REQUESTED_ISSUE,
+                pr_number=CHANGES_REQUESTED_PR,
+                state={REVIEW_ROUND: 0},
+            ),
+        )
+        self._run_paused_fix(gh, issue)
+
+        with tempfile.TemporaryDirectory() as worktree:
+            mocks = self._run_unpaused_fixing(gh, issue, Path(worktree))
+
+        # No third agent run: the tick publishes what the paused one committed.
+        mocks["run_agent"].assert_not_called()
+        mocks[PUSH_BRANCH].assert_called_once()
+        self.assertIn(
+            (CHANGES_REQUESTED_ISSUE, LABEL_VALIDATING),
+            gh.label_history,
+        )
+        state = gh.pinned_data(CHANGES_REQUESTED_ISSUE)
+        self.assertEqual(state.get(REVIEW_ROUND), 1)
+        self.assertIsNone(state.get(REVIEWER_ANCHOR))
 
 
 if __name__ == "__main__":
