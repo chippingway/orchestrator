@@ -21,6 +21,12 @@ HTTP_PROXY_KEY = "http.proxy"
 PROXY_URL = "http://evil.example:8080"
 WORKTREE = Path("/tmp/orchestrator-test-git-commands")
 
+WORK_TREE_FLAG = "--work-tree"
+
+# A worktree path in the shape `WORKTREES_DIR` produces when it is configured
+# relative -- as the default derived from a relative `TARGET_ROOT` is.
+RELATIVE_WORKTREE = Path("../wt-orchestrator/owner__name/issue-7")
+
 # The `-c` overrides that keep an agent-writable `.git/config` from executing
 # code or rewriting transport during a local git operation.
 HARDENING_OVERRIDES = (
@@ -103,6 +109,23 @@ class GitExecutionTest(unittest.TestCase):
         env = subprocess_run.call_args.kwargs["env"]
         self.assertEqual(env.get("GIT_NO_REPLACE_OBJECTS"), "1")
         self.assertEqual(env.get("GIT_GRAFT_FILE"), os.devnull)
+
+
+class WorkTreeArgumentTest(unittest.TestCase):
+    """The tree a command acts on is named absolutely."""
+
+    def test_a_relative_worktree_is_named_absolutely(self) -> None:
+        # Every caller runs its command with `cwd` inside the worktree, and git
+        # resolves a relative `--work-tree` against that cwd rather than this
+        # process's -- so a relative path would name a directory beneath the
+        # worktree itself, which does not exist, and git would refuse to run
+        # the command at all.
+        argument = commands._work_tree_arg(RELATIVE_WORKTREE)
+
+        flag, _, named = argument.partition("=")
+        self.assertEqual(flag, WORK_TREE_FLAG)
+        self.assertTrue(Path(named).is_absolute())
+        self.assertEqual(named, os.path.realpath(RELATIVE_WORKTREE))
 
 
 class TransportConfigProbeTest(unittest.TestCase):

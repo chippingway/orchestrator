@@ -87,13 +87,6 @@ _NUL_SEPARATOR = "\0"
 # a bare path for a status line and cut three bytes off the front of it.
 _RENAMED_STATUS = frozenset(("R", "C"))
 
-# The working tree these reads answer about, stated rather than discovered.
-# `core.worktree` set in the per-worktree config points the discovery at any
-# directory the agent likes -- and unlike the knobs above, a `-c` override does
-# not win against it, so the flag is the only thing that pins the answer to the
-# tree the caller asked about.
-_WORK_TREE_FLAG = "--work-tree"
-
 # What `git ls-files -v` tags an index entry with when git has been told to
 # stop comparing it against the working tree: `S` for skip-worktree, and a
 # LOWERCASE tag of any letter for assume-unchanged.
@@ -209,7 +202,7 @@ def _worktree_status(worktree: Path) -> _WorktreeStatus:
     nothing here can call empty.
     """
     status_result = _commands._git_hardened(
-        f"{_WORK_TREE_FLAG}={worktree}",
+        _commands._work_tree_arg(worktree),
         "status", "--porcelain", _NUL_DELIMITED,
         _UNTRACKED_ALL, _IGNORE_SUBMODULES_NONE,
         cwd=worktree,
@@ -279,7 +272,7 @@ def _suppressed_index_paths(worktree: Path) -> Optional[tuple[str, ...]]:
     beside it, since it answers half of the same question.
     """
     listed = _commands._git_hardened(
-        f"{_WORK_TREE_FLAG}={worktree}",
+        _commands._work_tree_arg(worktree),
         "ls-files", "-v", _NUL_DELIMITED, "--full-name",
         cwd=worktree,
     )

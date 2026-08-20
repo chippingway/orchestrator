@@ -59,6 +59,7 @@ GITLINK_MODE = "160000"
 REMOTE_BASE_REF = f"refs/remotes/origin/{TEST_BASE_BRANCH}"
 GRAFT_FILE = ".git/info/grafts"
 GIT_STATUS = "status"
+WORK_TREE_FLAG = "--work-tree"
 PORCELAIN = "--porcelain"
 UPDATE_INDEX = "update-index"
 AT_PATH = "-C"
@@ -129,6 +130,11 @@ class StatusFlagOverrideTest(_RealRepoMixin, unittest.TestCase):
     is reported ON, and an index bit that stops the comparison happening at all
     -- and each of them leaves a publication reading a branch as the plan file
     alone while the checkout carries the agent's own work beside it.
+
+    Naming the tree is not free, and one read here answers for that rather
+    than for a planted knob: the path a caller holds is relative whenever
+    `WORKTREES_DIR` is, so the flag has to name the tree in terms the command
+    running inside it agrees with.
     """
 
     def test_an_untracked_file_survives_the_knob(self) -> None:
@@ -155,10 +161,15 @@ class StatusFlagOverrideTest(_RealRepoMixin, unittest.TestCase):
         # agent's edits, and the publication pushes over them.
         linked = self._linked_worktree()
         (linked / SEED_FILE).write_text(AGENT_EDIT)
+        # Every tracked path present with the content the index has, so the
+        # read the redirect captures reports a clean tree.
+        shadow = self.work.parent / SHADOW_DIR
+        shadow.mkdir()
+        (shadow / SEED_FILE).write_text(SEED_TEXT)
         self.git(GIT_CONFIG, "extensions.worktreeConfig", "true")
         self.git(
             AT_PATH, str(linked), GIT_CONFIG, WORKTREE_SCOPE,
-            "core.worktree", str(self._shadow_checkout()),
+            "core.worktree", str(shadow),
         )
 
         self.assertEqual(self.git(AT_PATH, str(linked), GIT_STATUS, PORCELAIN), "")
@@ -167,6 +178,28 @@ class StatusFlagOverrideTest(_RealRepoMixin, unittest.TestCase):
 
         self.assertTrue(status.readable)
         self.assertIn(SEED_FILE, status.paths)
+
+    def test_a_relative_worktree_is_read(self) -> None:
+        # The path the caller holds is relative whenever `WORKTREES_DIR` is
+        # configured that way, and the command runs with its cwd set to the
+        # worktree -- so a flag naming the tree relatively names a directory
+        # BENEATH it, git refuses to run at all, and the exit code reads as a
+        # checkout nothing can be read from. That verdict is about the tree, so
+        # the caller parks the issue and promises a later tick will resume it
+        # once the tree reads again -- which a failure this deterministic never
+        # lets happen.
+        self.write(LEFTOVER_FILE, "left behind\n")
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(str(self.work.parent))
+        relative = Path(self.work.name)
+
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.git(f"{WORK_TREE_FLAG}={relative}", GIT_STATUS, PORCELAIN)
+
+        status = probes._worktree_status(relative)
+
+        self.assertTrue(status.readable)
+        self.assertIn(LEFTOVER_FILE, status.paths)
 
     def test_an_unwatched_entry_is_not_clean(self) -> None:
         # The last way out, and the one no envelope reaches: the bit lives on
@@ -223,17 +256,6 @@ class StatusFlagOverrideTest(_RealRepoMixin, unittest.TestCase):
         linked = self.work.parent / LINKED_DIR
         self.git("worktree", "add", QUIET_FLAG, "-b", FEATURE_BRANCH, str(linked))
         return linked
-
-    def _shadow_checkout(self) -> Path:
-        """A directory holding what the committed tree holds, and nothing else.
-
-        What the redirect points at: every tracked path present with the
-        content the index has, so the read it captures reports a clean tree.
-        """
-        shadow = self.work.parent / SHADOW_DIR
-        shadow.mkdir()
-        (shadow / SEED_FILE).write_text(SEED_TEXT)
-        return shadow
 
 
 class CommittedPathFlagOverrideTest(_RealRepoMixin, unittest.TestCase):

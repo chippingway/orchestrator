@@ -359,6 +359,9 @@ by `verification/probes._worktree_status`, which would otherwise report on a cle
 `reset --hard` in `worktrees/creation._move_branch_onto`, which would otherwise report success and move the ref while
 writing the reviewed commit's files into that other directory -- leaving the issue's checkout on the plan it had, the
 handoff baseline naming a tip the tree is not on, and whatever was in the redirected directory overwritten.
+Both build the flag through `commands._work_tree_arg`, which spells the path absolutely: every command carrying it
+runs with its cwd set to the worktree, and git resolves a relative `--work-tree` against THAT cwd — so a relative
+`WORKTREES_DIR` would name a directory beneath the worktree, and git would refuse to run the command at all.
 And `assume-unchanged` / `skip-worktree` are bits on an index entry: git honours them by not comparing the file, so a
 tracked path the agent rewrote reports clean. Those entries are read separately (`git ls-files -v`) and answered as
 paths AND as a withheld `readable`, so a caller refusing on what git listed and one that has to prove the tree empty
