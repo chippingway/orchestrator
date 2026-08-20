@@ -17,6 +17,7 @@ from tests.support.fakes import (
     FakeUser,
     make_issue,
 )
+from tests.workflow import fixtures as _fixtures
 from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
     _PatchedWorkflowMixin,
@@ -29,14 +30,21 @@ VALIDATING_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-170"
 BODY_DRIFT_ISSUE = 70
 BODY_DRIFT_PR = 700
 REVIEWER_RETRY_COMMENT_ID = 4000
+PARK_MENTION_ID = 500
+WRITE_PINNED_STATE = "write_pinned_state"
+WRITE_FAILED = "pinned write rejected"
+# The baseline a `_parked_issue` thread already hashes to. Seeding it is what
+# keeps the drift check from writing one itself, ahead of the recovery write a
+# test is simulating the failure of.
+UNCHANGED_CONTENT_HASH = _drift._compute_user_content_hash(
+    make_issue(VALIDATING_ISSUE), set(),
+)
 REVIEWER_DRIFT_PR = 10000
 ACTION_WATERMARK = 10_000
 HUMAN_REPLY_ID = 10_500
 DEV_SESSION = "dev-sess"
 HUMAN_LOGIN = "alice"
 PRE_FIX_SHA = "cafe1234"
-PUSH_FAILED = "push_failed"
-AGENT_TIMEOUT = "agent_timeout"
 REBASE_REQUEST = "please rebase first"
 WORKTREE_ROOT = "/tmp"
 WORKTREE_PATH = "_worktree_path"
@@ -46,8 +54,20 @@ AWAITING_HUMAN = "awaiting_human"
 PARK_REASON = "park_reason"
 REVIEW_ROUND = "review_round"
 
+AGENT_TIMEOUT = _fixtures.AGENT_TIMEOUT_PARK
+PUSH_FAILED = _fixtures.PUSH_FAILED_PARK
+PUSH_RETRIED_DETAIL = _fixtures.PUSH_RETRIED_DETAIL
+REVIEWER_FAILED = _fixtures.REVIEWER_FAILED_PARK
+REVIEWER_RESPAWN_DETAIL = _fixtures.REVIEWER_RESPAWN_DETAIL
+REVIEWER_TIMEOUT = _fixtures.REVIEWER_TIMEOUT_PARK
+TIMEOUT_EMPTY_DETAIL = _fixtures.TIMEOUT_EMPTY_DETAIL
+TIMEOUT_PUSHED_DETAIL = _fixtures.TIMEOUT_PUSHED_DETAIL
 
-class _TransientParkFixtureMixin(_PatchedWorkflowMixin):
+
+class _TransientParkFixtureMixin(
+    _PatchedWorkflowMixin,
+    _fixtures._RecoveryFollowupAssertions,
+):
     def _parked_issue(self, *, park_reason: str, **extra_state):
         gh = FakeGitHubClient()
         # `last_action_comment_id` is well above any existing comment id, so
@@ -109,10 +129,11 @@ class ValidatingTransientParkRecoveryTest(
             push_branch=True,
         )
 
-        # Recovery must NOT spawn the agent or post any comment -- it is a
-        # silent retry.
+        # Recovery must NOT spawn the agent -- it is a silent retry that
+        # speaks only once it has worked, and only on the issue thread the
+        # park's mention is sitting on.
         mocks[RUN_AGENT].assert_not_called()
-        self.assertEqual(gh.posted_comments, [])
+        self._assert_recovery_followup(gh, PUSH_RETRIED_DETAIL)
         self.assertEqual(gh.posted_pr_comments, [])
         # Push retried and succeeded: park flags cleared, review_round
         # incremented so the next reviewer run starts a fresh round.
@@ -124,6 +145,45 @@ class ValidatingTransientParkRecoveryTest(
         # Stays on `validating` (no documenting hop) so the reviewer
         # re-evaluates the recovered head on the next tick.
         self._assert_stays_validating(gh)
+
+    def test_failed_write_announces_only_once(self) -> None:
+        # GitHub accepts the follow-up before the pinned write that clears
+        # the park, so a write that dies leaves the comment posted and the
+        # park standing. The next tick recovers again and must neither read
+        # its own follow-up as the human reply the park is waiting for nor
+        # post a second one.
+        gh, issue = self._parked_issue(
+            park_reason=PUSH_FAILED,
+            # Below the ids the fake hands out, so the follow-up lands ABOVE
+            # the park's mention -- where the next tick looks for it.
+            last_action_comment_id=PARK_MENTION_ID,
+            user_content_hash=UNCHANGED_CONTENT_HASH,
+        )
+
+        with patch.object(
+            gh, WRITE_PINNED_STATE, side_effect=RuntimeError(WRITE_FAILED),
+        ):
+            with self.assertRaises(RuntimeError):
+                self._run_parked_validating(
+                    gh, issue, run_agent=_agent(), push_branch=True,
+                )
+        # The comment really did land before the write blew up; without this
+        # the retry below would be exercising a first announcement.
+        self.assertEqual(len(gh.posted_comments), 1)
+
+        mocks = self._run_parked_validating(
+            gh, issue, run_agent=_agent(), push_branch=True,
+        )
+
+        # The dev was NOT resumed on the orchestrator's own comment.
+        mocks[RUN_AGENT].assert_not_called()
+        self._assert_recovery_followup(gh, PUSH_RETRIED_DETAIL)
+        state = gh.pinned_data(VALIDATING_ISSUE)
+        self.assertFalse(state.get(AWAITING_HUMAN))
+        self.assertIsNone(state.get(PARK_REASON))
+        # The discarded write took the first tick's bump with it, so the
+        # round advances exactly once for the one fix that landed.
+        self.assertEqual(state.get(REVIEW_ROUND), 2)
 
     def test_repeat_push_failure_stays_parked(self) -> None:
         # Recovery must not re-post the park message when the push still
@@ -198,12 +258,12 @@ class ValidatingReviewerParkRecoveryTest(
 ):
     """Recover reviewer-side transient parks or rerun on a human reply."""
 
-    def test_reviewer_timeout_park_recovers_silently(self) -> None:
+    def test_reviewer_timeout_park_self_recovers(self) -> None:
         # A previous tick parked because the reviewer agent timed out.
         # The next tick must clear the flags so the reviewer re-runs --
         # nothing in `_resume_developer_on_human_reply` would unstick this
         # otherwise (no comment ever lands from a timeout).
-        reviewer_gh, issue = self._parked_issue(park_reason="reviewer_timeout")
+        reviewer_gh, issue = self._parked_issue(park_reason=REVIEWER_TIMEOUT)
 
         reviewer_mocks = self._run_parked_validating(
             reviewer_gh,
@@ -212,13 +272,13 @@ class ValidatingReviewerParkRecoveryTest(
             push_branch=True,
         )
 
-        # Recovery is silent on this tick: the agent is NOT re-spawned
-        # here (next tick does that, on the cleared awaiting_human flag),
-        # no push is attempted (no fix landed), and no new comment is
-        # posted.
+        # The agent is NOT re-spawned here (next tick does that, on the
+        # cleared awaiting_human flag) and no push is attempted (no fix
+        # landed); the only visible trace is the follow-up retiring the
+        # timeout mention.
         reviewer_mocks[RUN_AGENT].assert_not_called()
         reviewer_mocks[PUSH_BRANCH].assert_not_called()
-        self.assertEqual(reviewer_gh.posted_comments, [])
+        self._assert_recovery_followup(reviewer_gh, REVIEWER_RESPAWN_DETAIL)
         reviewer_state = reviewer_gh.pinned_data(VALIDATING_ISSUE)
         self.assertFalse(reviewer_state.get(AWAITING_HUMAN))
         self.assertIsNone(reviewer_state.get(PARK_REASON))
@@ -226,13 +286,13 @@ class ValidatingReviewerParkRecoveryTest(
         # bumping would burn through MAX_REVIEW_ROUNDS without progress.
         self.assertEqual(reviewer_state.get(REVIEW_ROUND), 1)
 
-    def test_reviewer_failed_park_recovers_silently(self) -> None:
+    def test_reviewer_failed_park_self_recovers(self) -> None:
         # The reviewer crashed with empty stdout + non-zero exit on the
         # previous tick. Recovery must clear the flags so the next tick
         # re-spawns the reviewer with a fresh budget -- without this,
         # the issue waits for a human comment that the codex / network
         # blip cannot produce.
-        reviewer_gh, issue = self._parked_issue(park_reason="reviewer_failed")
+        reviewer_gh, issue = self._parked_issue(park_reason=REVIEWER_FAILED)
 
         reviewer_mocks = self._run_parked_validating(
             reviewer_gh,
@@ -243,7 +303,7 @@ class ValidatingReviewerParkRecoveryTest(
 
         reviewer_mocks[RUN_AGENT].assert_not_called()
         reviewer_mocks[PUSH_BRANCH].assert_not_called()
-        self.assertEqual(reviewer_gh.posted_comments, [])
+        self._assert_recovery_followup(reviewer_gh, REVIEWER_RESPAWN_DETAIL)
         reviewer_state = reviewer_gh.pinned_data(VALIDATING_ISSUE)
         self.assertFalse(reviewer_state.get(AWAITING_HUMAN))
         self.assertIsNone(reviewer_state.get(PARK_REASON))
@@ -257,7 +317,7 @@ class ValidatingReviewerParkRecoveryTest(
         # the comment to `_resume_developer_on_human_reply`, which woke
         # the dev session; the dev correctly answered "nothing to do,
         # the reviewer should re-run" and the issue wedged.
-        reviewer_gh, issue = self._parked_issue(park_reason="reviewer_failed")
+        reviewer_gh, issue = self._parked_issue(park_reason=REVIEWER_FAILED)
         issue.comments.append(
             FakeComment(
                 id=HUMAN_REPLY_ID,
@@ -292,7 +352,7 @@ class ValidatingReviewerParkRecoveryTest(
     def test_timeout_comment_reruns_reviewer(self) -> None:
         # Same routing rule for the reviewer_timeout park reason: a
         # human nudge must reach the reviewer, not the dev session.
-        reviewer_gh, issue = self._parked_issue(park_reason="reviewer_timeout")
+        reviewer_gh, issue = self._parked_issue(park_reason=REVIEWER_TIMEOUT)
         issue.comments.append(
             FakeComment(
                 id=HUMAN_REPLY_ID,
@@ -360,7 +420,7 @@ class ValidatingDevParkRecoveryTest(
         followup = call.args[1]
         self.assertIn(REBASE_REQUEST, followup)
 
-    def test_clean_timeout_recovers_silently(self) -> None:
+    def test_clean_timeout_recovers_without_a_push(self) -> None:
         # Common timeout shape: the dev burned the budget without
         # producing a new commit. Recovery clears flags and does not
         # bump the round (no fix landed); next tick re-runs the reviewer.
@@ -382,7 +442,7 @@ class ValidatingDevParkRecoveryTest(
 
         developer_mocks[RUN_AGENT].assert_not_called()
         developer_mocks[PUSH_BRANCH].assert_not_called()
-        self.assertEqual(developer_gh.posted_comments, [])
+        self._assert_recovery_followup(developer_gh, TIMEOUT_EMPTY_DETAIL)
         developer_state = developer_gh.pinned_data(VALIDATING_ISSUE)
         self.assertFalse(developer_state.get(AWAITING_HUMAN))
         self.assertIsNone(developer_state.get(PARK_REASON))
@@ -418,7 +478,7 @@ class ValidatingDevParkRecoveryTest(
 
         developer_mocks[RUN_AGENT].assert_not_called()
         developer_mocks[PUSH_BRANCH].assert_not_called()
-        self.assertEqual(developer_gh.posted_comments, [])
+        self._assert_recovery_followup(developer_gh, TIMEOUT_EMPTY_DETAIL)
         developer_state = developer_gh.pinned_data(VALIDATING_ISSUE)
         self.assertFalse(developer_state.get(AWAITING_HUMAN))
         self.assertIsNone(developer_state.get(PARK_REASON))
@@ -447,7 +507,7 @@ class ValidatingDevParkRecoveryTest(
 
         developer_mocks[RUN_AGENT].assert_not_called()
         developer_mocks[PUSH_BRANCH].assert_called_once()
-        self.assertEqual(developer_gh.posted_comments, [])
+        self._assert_recovery_followup(developer_gh, TIMEOUT_PUSHED_DETAIL)
         developer_state = developer_gh.pinned_data(VALIDATING_ISSUE)
         self.assertFalse(developer_state.get(AWAITING_HUMAN))
         self.assertIsNone(developer_state.get(PARK_REASON))
@@ -710,7 +770,7 @@ class ValidatingDriftDefersToReviewerRecoveryTest(
             review_round=1,
             branch="orchestrator/geserdugarov__agent-orchestrator/issue-1000",
             awaiting_human=True,
-            park_reason="reviewer_timeout",
+            park_reason=REVIEWER_TIMEOUT,
             last_action_comment_id=100,
             user_content_hash=seed_hash,
         )

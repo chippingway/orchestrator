@@ -18,7 +18,12 @@ reason and the trusted comments that arrived since the last consumed one, and
 its two mutators are the pair every route through that park owes -- clearing
 the flags, and ratcheting `last_action_comment_id` past the comments it just
 fed to an agent. Reading both once at build time is what keeps the three
-decision helpers agreeing on the same batch. `_RequestedChanges` and
+decision helpers agreeing on the same batch. The orchestrator's own comments
+are dropped from that batch by recorded id AND by the hidden body marker,
+because every helper here reads a non-empty batch as "a human replied": a
+comment this process posted and then failed to record -- the pinned write that
+would have named it never landed -- is still ours, and the marker is what says
+so when the id ledger cannot. `_RequestedChanges` and
 `_AwaitingDevAttempt` bracket the fix that follows a verdict: the first
 freezes what the CHANGES_REQUESTED route needs, the second reports whether
 the resume that ran was cut short by a live pause.
@@ -41,6 +46,7 @@ from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.validating import state as _state
 
 
@@ -96,15 +102,27 @@ class _AwaitingValidation:
     def build(
         cls, gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
     ) -> _AwaitingValidation:
+        # Filtered by recorded id AND by `_ORCH_COMMENT_MARKER`, the same
+        # pair `_rescan_fixing_feedback` uses and for the same two reasons:
+        # the id ledger is capped and evicts on long-lived issues, and a
+        # comment posted by a tick whose pinned write then failed was never
+        # recorded at all. Either one left in reads as a human reply.
+        orchestrator_ids = _comments._orchestrator_ids(state)
+        unread = [
+            issue_comment
+            for issue_comment in gh.comments_after(
+                issue, state.get("last_action_comment_id"),
+            )
+            if issue_comment.id not in orchestrator_ids
+            and _comments._ORCH_COMMENT_MARKER not in (issue_comment.body or "")
+        ]
         return cls(
             gh,
             spec,
             issue,
             state,
             state.get(_state._PARK_REASON),
-            filter_trusted(
-                gh.comments_after(issue, state.get("last_action_comment_id")),
-            ),
+            filter_trusted(unread),
         )
 
     def clear_park(self) -> None:
