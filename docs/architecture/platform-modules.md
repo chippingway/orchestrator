@@ -111,7 +111,8 @@ orchestrator/
   git/
     authentication.py   the per-repo token and askpass session, the authenticated fetches, the remote-ref read that
                         answers what a branch is at without a local one, and the lease-pinned push
-    commands.py         plain / hardened git execution, the argv hardening and no-prompt environment, and the unsafe
+    commands.py         plain / hardened git execution, the argv hardening and no-prompt environment, the absolute
+                        `--work-tree` argument a working-tree operation names its tree with, and the unsafe
                         local-transport probe
     locks.py            the per-target-root re-entrant lock registry and its accessor
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
