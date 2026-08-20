@@ -218,7 +218,10 @@ The security posture:
   those. The evidence is the `orchestrator_comment_ids` recorded at post time, never the `_ORCH_COMMENT_MARKER` in
   the body: the marker identifies the same comments to the scans that DROP them, where anyone pasting it costs only
   themselves their own comment, whereas admitting a comment on it would be an allowlist bypass any author could write.
-  No third-party comment is retained anywhere, and no other prompt retains anything.
+  No third-party comment is retained anywhere, and no other prompt retains anything. The recovery follow-up's own
+  `<!--orchestrator-recovery-followup-->` marker is read the same drop-only way, and is bounded the same way: it is
+  how a self-recovered park recognizes the notice it already posted, so pasting it suppresses one "no action needed"
+  follow-up and leaves the operator's original @-mention standing — noisier, never more permissive.
 - **Filtering is fail-safe.** A comment whose author failed to load (empty login) is untrusted. On the awaiting-human
   resume paths (and the auto-rebase retry-unpark) the filter runs on the whole comment batch up front, so an untrusted
   comment there never advances the consumed-watermark nor is marked read — it is re-filtered on each later tick
