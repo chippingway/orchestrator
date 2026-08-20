@@ -34,6 +34,8 @@ _GIT = "git"
 
 _GIT_CONFIG_FLAG = "-c"
 
+_WORK_TREE_FLAG = "--work-tree"
+
 # How git's own output is turned into text. Paths are bytes on this platform
 # and nothing guarantees they are UTF-8, so a byte that is not decodable is
 # carried as a surrogate instead of raising out of `subprocess.run`.
@@ -70,6 +72,29 @@ _NO_OBJECT_REPLACEMENT_ENV: Mapping[str, str] = MappingProxyType({
 _UNSAFE_TRANSPORT_CONFIG_RE = (
     r"^(url\..*\.(insteadof|pushinsteadof)|http\..*)$"
 )
+
+
+def _work_tree_arg(worktree: Path) -> str:
+    """The argument naming `worktree` as the tree a command acts on.
+
+    Working-tree operations state their tree rather than let git discover it,
+    because `core.worktree` in a linked worktree's own `config.worktree` --
+    which an agent enables by writing `extensions.worktreeConfig` into the
+    clone it shares -- points discovery at any directory it likes, and a `-c
+    core.worktree=` override does not win against it. A read left to discovery
+    reports on that other directory and a reset writes into it.
+
+    The path is spelled absolutely because git resolves a relative one against
+    the cwd of the command carrying it, and every caller here runs with `cwd`
+    set to the worktree itself. `config.WORKTREES_DIR` is relative whenever it
+    is configured that way -- as the default derived from a relative
+    `TARGET_ROOT` is -- so the flag would name a path under the worktree that
+    does not exist, and git would answer "this operation must be run in a work
+    tree" for every command carrying it. The probes read that exit code as an
+    unreadable checkout, which is a verdict about the tree rather than about
+    the flag, so a healthy one gets parked with no tick able to un-park it.
+    """
+    return f"{_WORK_TREE_FLAG}={worktree.resolve()}"
 
 
 def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess:

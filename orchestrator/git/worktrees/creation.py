@@ -48,12 +48,6 @@ _WORKTREE_ADD = ("worktree", "add")
 
 _WORKTREE_REMOVE_FORCE = ("worktree", "remove", "--force")
 
-# The tree a checkout-moving operation is aimed at, stated rather than
-# discovered. `core.worktree` in the per-worktree config redirects every path
-# operation at another directory, and a `-c` override does not win against it,
-# so this flag is the only thing that keeps a reset in the checkout it names.
-_WORK_TREE_FLAG = "--work-tree"
-
 
 def _ensure_worktree(
     spec: config.RepoSpec, issue_number: int, *, branch: str | None = None,
@@ -499,7 +493,7 @@ def _move_branch_onto(
     worktree = paths._worktree_path(spec, issue_number)
     if worktree.exists():
         moved = commands._git_hardened(
-            f"{_WORK_TREE_FLAG}={worktree}",
+            commands._work_tree_arg(worktree),
             "reset", "--hard", head_sha, cwd=worktree,
         )
     else:
