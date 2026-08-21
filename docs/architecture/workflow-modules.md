@@ -30,9 +30,10 @@ see, and is called out as such.
   stage tree imports `engine/`, so a module-scope bind would point that edge back at itself.
   `tests/workflow/engine/test_dispatch.py` pins that the handler is read off its owner per call rather than bound at
   import, and `tests/workflow/stages/test_imports.py` that every labelled target lands on a stage package here.
-- **Two operator log channels, spelled literally.** The engine and stage owners report on `orchestrator.workflow`,
-  and `workflow/state.py` on `orchestrator.state_machine`. A module moved between packages does not take its channel
-  with it — `tests/workflow/test_imports.py` walks the package and checks every owner that declares a logger.
+- **Two operator log channels, spelled literally.** The engine, `late_split/`, and stage owners report on
+  `orchestrator.workflow`, and `workflow/state.py` on `orchestrator.state_machine`. A module moved between packages
+  does not take its channel with it — `tests/workflow/test_imports.py` walks the package and checks every owner that
+  declares a logger.
 - **Nothing sits flat beside the package.** The retired spellings — `orchestrator.state_machine`,
   `orchestrator.workflow_drift`, `orchestrator.workflow_messages`, and the export and dependency manifests — resolve
   to nothing (`tests/workflow/test_imports.py`), and the repo-wide naming rule in
@@ -44,11 +45,11 @@ see, and is called out as such.
 
 ## The map
 
-`engine/` and every stage package publish nothing, so naming one costs no owner behind it. Each stage package is
-listed with the labels its handlers answer for: eight own one label each, and `decomposition/` owns four — `run.py`
-for `workflow:decomposing`, `blocked.py` for both `workflow:ready` and `workflow:blocked`, and `umbrella.py` for
-`workflow:umbrella`. That is twelve of the dispatch table's thirteen targets; the thirteenth is the unlabeled entry,
-which `engine/pickup.py` answers rather than a stage package.
+`engine/`, `late_split/`, and every stage package publish nothing, so naming one costs no owner behind it. Each
+stage package is listed with the labels its handlers answer for: eight own one label each, and `decomposition/` owns
+four — `run.py` for `workflow:decomposing`, `blocked.py` for both `workflow:ready` and `workflow:blocked`, and
+`umbrella.py` for `workflow:umbrella`. That is twelve of the dispatch table's thirteen targets; the thirteenth is the
+unlabeled entry, which `engine/pickup.py` answers rather than a stage package.
 
 ```
 workflow/                   publishes the two label vocabularies, `guard_transition` and `is_allowed_transition`,
