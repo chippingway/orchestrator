@@ -502,9 +502,10 @@ once, on [`orchestrator/workflow/late_split/state.py`](../../orchestrator/workfl
 `LATE_STATE_KEYS` is the whole of what this domain owns inside the pinned comment, `read_late_generation` /
 `write_late_generation` are the round trip through them, and `clear_late_generation` is defined as dropping exactly
 that list and nothing else. The typed record they round-trip through is `LateGeneration` on the `models` owner beside
-it. A write with no `late_cycle_id` clears the group instead of recording a half-record no audit line or child lineage
-could be correlated to, and every field is read defensively: a hand-edited or older value that cannot be typed reads
-back as absent rather than raising on a tick that has committed work to reconcile. Which reader a field goes through
+it. A write with no `late_cycle_id` records only what the issue still owes — the two external ledgers, if either
+holds anything — and drops the rest rather than keeping a half-record no audit line or child lineage could be
+correlated to. Every field is read defensively: a hand-edited or older value that cannot be typed reads back as
+absent rather than raising on a tick that has committed work to reconcile. Which reader a field goes through
 is the field's own contract rather than its Python type — an identity has to be positive, a measurement non-negative,
 a depth inside the lineage, a flag literally `true`, and a restart target one of the two labels a restart may apply.
 The hex fields are read at their exact lengths: a frozen commit is a whole git object id (40 or 64), because nothing
@@ -572,6 +573,5 @@ rather than preserving.
   `retire_restart` raises while any obligation is still pending, retained, failed, or of a shape this binary could
   not read — restart is reachable only from a cancellation whose cleanup completed, and retiring over an unsettled
   ledger would discharge the obligation by forgetting it. `restart.obligations_settled` is the same question a caller
-  can ask first.
-  Retiring the marker projects a fresh cycle keeping only the identities that link it to the one before: the cycle it
-  is, the issue and root it belongs to, and the cycle it succeeds.
+  can ask first. What it projects when it does retire is a fresh cycle keeping only the identities that link it to
+  the one before: the cycle it is, the issue and root it belongs to, and the cycle it succeeds.

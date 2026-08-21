@@ -462,11 +462,12 @@ event — and every field that could otherwise smuggle text through is closed at
   two children's cleanups apart without being told which children they were.
 - **The generation's own fields** are checked by `workflow/late_split/validation.py` before anything is built, because
   `candidate_sha`, `base_sha`, `phase`, and `restart_target` are typed `str` and would otherwise be written verbatim.
-  A commit field must be spelled like a git object id, a phase must be a member, a restart target must be one of the
-  two labels a restart may apply, and every count must be a real non-negative integer. The four correlating
-  identities — `cycle_id`, `generation`, `root_issue`, `current_issue` — are **required**: a record nothing can be
-  joined to is not one this domain writes. A refusal names the field and the type it arrived as, never the value, so
-  a field rejected for carrying prose does not put that prose in the log line instead of the sink.
+  A commit field must be a whole git object id — 40 or 64 hex, since nothing here records an abbreviation — a phase
+  must be a member, a restart target must be one of the two labels a restart may apply, and every count must be a
+  real non-negative integer. The four correlating identities — `cycle_id`, `generation`, `root_issue`,
+  `current_issue` — are **required**: a record nothing can be joined to is not one this domain writes. A refusal
+  names the field and the type it arrived as, never the value, so a field rejected for carrying prose does not put
+  that prose in the log line instead of the sink.
 - **`stage`** is resolved against the workflow label vocabulary rather than passed through. A caller may name either
   spelling — `workflow:decomposing` or the bare `decomposing` — and what reaches both sinks is always the tag, which
   is what every other emitter on this page records. Anything outside that closed set, prose included, is refused with
