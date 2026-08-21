@@ -137,11 +137,13 @@ contaminated the one artifact every later step acts on: the issue parks for a hu
 check sits ahead of the interruption refusal for the same reason the initial decomposer's dirty check does — a run the
 shutdown sweep killed can have written before it died.
 
-None of it starts on a generation that cannot be acted on. The prompt names both frozen commits and tells the agent
-to diff between them, the hold marks a pull request in the generation's name, and the verdict is reported under its
-identities — so the identities and both SHAs are proved before the plan PR is touched or an agent is started. A
-candidate whose base was never recorded would otherwise produce a `git diff` against nothing and a record two sinks
-refuse afterwards, with the run already paid for; instead the issue parks and says which field is missing.
+None of it starts on a generation that cannot be acted on. The prompt names both frozen commits and tells the agent to
+diff between them, the hold marks a pull request in the generation's name, and the verdict is reported under its
+identities — so the identities and both SHAs are proved before the plan PR is touched or an agent is started. That
+includes the generation naming THIS issue, which a positive `late_current_issue` on its own does not say. A candidate
+whose base was never recorded would otherwise produce a `git diff` against nothing and a record two sinks refuse
+afterwards, with the run already paid for; one carrying somebody else's number would show the agent a prompt naming two
+issues and file the verdict against the one it names. Either parks instead, saying which field is wrong.
 
 Before any of that runs, a reusable open plan PR is put under a generation-marked hold (`late_hold.py`). *Plan* is
 checked, not assumed: `pr_number` names whichever pull request the issue currently records, and that is an
