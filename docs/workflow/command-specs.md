@@ -84,7 +84,10 @@ How it works per role:
   (not the same session) also drives the question stage — `_handle_question` reads `DECOMPOSE_AGENT_SPEC` as the
   *fallback* on the first-ever question spawn, then pins what it ran under to `question_agent` (a separate key, parsed
   by `_read_question_session`). The discussion stage pins its own pair the same way (see
-  [`conversations.md`](conversations.md)).
+  [`conversations.md`](conversations.md)), and the late adjudication of an oversized committed candidate pins a fourth
+  to `late_agent`, read back by `_read_late_run`. That fourth pin locks the backend the way the others do but resumes
+  nothing yet — every late run is a fresh conversation (see
+  [`roles.md`](roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)).
 - **Reviewer (`REVIEW_AGENT`).** Spawned **fresh every round** by `_handle_validating`, so changes to `REVIEW_AGENT`
   take effect on the next validating tick (no migration step needed). The current value is recorded in `review_agent`
   for traceability only; it is not used for resumes.
@@ -92,7 +95,7 @@ How it works per role:
 **Net effect:** a flip of `DEV_AGENT` or `DECOMPOSE_AGENT` reaches a spawn that has no pin to read yet, and nothing
 else — the unit the lock protects is the session, not the issue. A live dev session keeps the backend AND args it was
 started with until the issue reaches a terminal label (`done` / `rejected`), since every dev-side resume reads the one
-`dev_agent` key. The three decomposer-role pins are independent, so an issue whose decomposing session is already
+`dev_agent` key. The four decomposer-role pins are independent, so an issue whose decomposing session is already
 locked can still open its first question or discussion round under the new spec; what a flip cannot do is retarget a
 conversation that already pinned one. Flipping `REVIEW_AGENT` takes effect on the next round of any issue in
 `workflow:validating`.

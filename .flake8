@@ -514,6 +514,65 @@
 # carries 11 methods past the WPS214 ceiling of 7. Splitting the merge-side
 # mutations out would hand the composed client two mixins for one owner, so
 # WPS214 is waived here.
+# orchestrator/workflow/stages/decomposition/late_coordinator.py drives one
+# late adjudication in order -- the live-generation gate, the frozen-evidence
+# proof, the plan-PR hold, the completed-result short circuit, the
+# retry-budgeted spawn, the accounting a pre-spawn write holds back, the
+# shared post-run pause / timeout / interruption contract, and the read-only
+# proof over the candidate worktree -- so it carries 12 members past the
+# WPS202 ceiling of 7 and reaches 23 imports past the WPS201 ceiling of 12. The members are the steps of one
+# ordered contract in which each persists what it reached before it acts, and
+# the imports are what that order costs: the late domain's state and
+# vocabularies, the engine's guards and usage accounting, the git worktree the
+# frozen candidate lives in and the probes that prove it unmoved, and the late
+# owners beside it. What one finished reply BECOMES is already split off onto
+# `late_outcome.py`; splitting the order itself would put the
+# persist-before-side-effect sequence in two places to drift apart, so WPS201
+# and WPS202 are waived.
+#
+# orchestrator/workflow/stages/decomposition/late_outcome.py is the other half
+# of that pair -- what a finished reply becomes, the announcement a recorded
+# question is reconciled by, and the parks every late exit hands the issue
+# back through, including the retirement of one an attempt has answered -- so
+# it carries 12 members past the WPS202 ceiling of 7 and names 13 imports past
+# the WPS201 ceiling of 12. They share
+# one ordering rule, that the durable write goes out before the external
+# effect, and the parks are where that rule is kept; separating a park from
+# the record it commits is exactly the drift the rule exists to prevent. The
+# imports are the union of what the rule touches: the late domain's state,
+# events, and telemetry, the reply parser, the run record, and the engine
+# guard a park goes through. WPS201 and WPS202 are waived.
+#
+# orchestrator/workflow/stages/decomposition/late_hold.py owns the whole
+# generation-marked hold -- the marker and the body it is written as, the
+# discussion provenance that decides whether a recorded pull request may be
+# touched at all, the fetch that fails closed, and the take / re-apply /
+# refuse reconciliation over them -- so it carries 9 members past the WPS202
+# ceiling of 7 and names 13 imports past the WPS201 ceiling of 12. Each is one
+# question the one before it makes safe to ask, and the persist-before-mutate
+# order runs through all of them; the ninth is the single read every one of
+# those questions is answered from, since a lazy pull request fails on its
+# first attribute rather than on its fetch. The last import is the run
+# record's own budget, since what a hold may preserve is decided by what the
+# record that starts the run still has to fit beside it. WPS201 and WPS202
+# are waived.
+#
+# orchestrator/workflow/stages/decomposition/late_session.py owns the late
+# run's whole pinned record -- the identity half and the completed-outcome
+# half, each read back through the rules it was written under -- and the
+# tracked spawn over it -- plus the budget that decides whether the comment
+# could still hold the run's record beside a preserved pull-request body -- so
+# it carries 12 members past the WPS202 ceiling of 7 and reaches 17 imports
+# past the WPS201 ceiling of 12: the late domain's defensive field readers and
+# the two vocabularies a recorded result is typed by, the split validator a
+# recorded manifest is held to, the pinned-state owner that renders the body
+# being measured, the configured agent spec the first run falls back to, the
+# tracked-run and trusted-thread owners the spawn goes through, and the prompt
+# built beside it. Reading a key
+# somewhere other than where it is written, or holding a recorded manifest to
+# rules other than the ones the reply was held to, is what puts one contract
+# in two places, so WPS201 and WPS202 are waived.
+#
 per-file-ignores =
     orchestrator/__init__.py:WPS412,WPS410
     orchestrator/config/__init__.py:WPS412,WPS410
@@ -540,6 +599,10 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/outcomes.py:WPS201
     orchestrator/workflow/stages/decomposition/run.py:WPS201
     orchestrator/workflow/stages/decomposition/session.py:WPS201
+    orchestrator/workflow/stages/decomposition/late_coordinator.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_hold.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_outcome.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_session.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS201
     orchestrator/workflow/stages/decomposition/validation.py:WPS202

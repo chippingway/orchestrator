@@ -15,6 +15,12 @@ or from an earlier draft the agent talked itself out of -- override the answer
 it actually settled on, so more than one fence is an error rather than a
 choice; and content after the closing fence means the block was not the reply's
 conclusion.
+
+Both of those rules are answered by `_fenced_payload`, which the late mode's
+parser beside this one asks about its own fence. What differs between the two
+modes is not the envelope but what an ABSENT block means -- a question here, a
+protocol failure there -- so the rule they share is spelled once and the
+meaning each takes from it stays with its own caller.
 """
 from __future__ import annotations
 
@@ -24,35 +30,54 @@ from typing import Optional, Tuple
 
 from orchestrator.workflow.stages.decomposition import validation as _validation
 
+_MANIFEST_BLOCK = "orchestrator-manifest"
+
 _MANIFEST_RE = re.compile(
     r"```orchestrator-manifest\s*\n(.*?)\n```",
     re.DOTALL,
 )
 
 
-def _extract_manifest_payload(
+def _fenced_payload(
     last_message: str,
+    fence: re.Pattern,
+    block_name: str,
 ) -> Tuple[Optional[str], Optional[str]]:
-    """Extract the one final fenced manifest payload from an agent reply."""
+    """Extract the one final fenced payload of `block_name` from a reply.
+
+    The envelope rules are the pattern's caller's, not the pattern's, so they
+    are answered once here and the late mode beside this one asks the same
+    question of its own fence: one block, and nothing after it.
+
+    `(None, None)` is "no fence at all", which is not the same answer as a
+    malformed one -- what each caller does with it is the caller's contract.
+    """
     if not last_message:
         return None, None
     # The prompt requires exactly one final fenced block. Accepting the first
     # match would let a quoted sample manifest override the agent's answer.
-    matches = list(_MANIFEST_RE.finditer(last_message))
+    matches = list(fence.finditer(last_message))
     if not matches:
         return None, None
     if len(matches) > 1:
         return None, (
-            f"expected exactly one orchestrator-manifest block, "
+            f"expected exactly one {block_name} block, "
             f"found {len(matches)}"
         )
     manifest_match = matches[0]
     if last_message[manifest_match.end():].strip():
         return None, (
-            "orchestrator-manifest must be the final block; "
+            f"{block_name} must be the final block; "
             "found content after the closing fence"
         )
     return manifest_match.group(1), None
+
+
+def _extract_manifest_payload(
+    last_message: str,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Extract the one final fenced manifest payload from an agent reply."""
+    return _fenced_payload(last_message, _MANIFEST_RE, _MANIFEST_BLOCK)
 
 
 def _decode_manifest(

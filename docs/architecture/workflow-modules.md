@@ -149,6 +149,27 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             consumed-comment ratchet
       umbrella.py           the `workflow:umbrella` poll and the close its all-done branch earns instead of an
                             implementation pass
+      late_coordinator.py   the additive late mode's order: the live-generation gate, the frozen-evidence proof, the
+                            plan-PR hold before any spawn, the completed-result short circuit, the retry-budgeted run
+                            whose pre-spawn write holds the accounting back, and the read-only proof over the
+                            candidate worktree
+      late_session.py       the late run's pinned record -- role, locked spec, session, cycle, source commit,
+                            generation, and the whole of what a verdict decided -- the whole-comment budget it is
+                            refused past, the rules it is read back through, and the tracked spawn in the candidate's
+                            own worktree
+      late_hold.py          the generation-marked hold a reusable open plan PR wears: the one guarded read every
+                            decision is made from, the discussion provenance that decides whether that snapshot may be
+                            touched at all, the original body persisted (and proved persisted) before the edit, and
+                            the retry, the refusal, and the settled pull request it reconciles to
+      late_outcome.py       what one finished reply becomes: the lineage-bound refusal, the durable write that precedes
+                            every external effect, the announcement a recorded question is reconciled by, and the parks
+                            and emissions every late exit shares
+      late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
+                            lineage, and the three outcomes with the bounds they are judged against
+      late_reply.py         the late reply's own fence, its three structured decisions, and the split rules it borrows
+                            from the initial validator
+      late_models.py        the carriers the late owners hand each other: the tick's subject, the hold, the run, the
+                            adjudication, and what one call did
       models.py             the run plan and its worktree policy, the locked session, the split plan, and the child
                             scan
       state.py              the pinned-state field names the owners share, the held-child alias, and the
