@@ -33,10 +33,33 @@ _ENGINE_OWNERS = (
     "usage",
 )
 
+# The late-split domain's owners. They sit beside the engine rather than under
+# it: the state round trip reaches the GitHub pinned-state model and the
+# telemetry reaches the analytics recorders, both of which import the `state`
+# owner's vocabulary back, so each has to load on its own.
+_LATE_SPLIT_OWNERS = (
+    "events",
+    "formats",
+    "identity",
+    "ledgers",
+    "models",
+    "payloads",
+    "records",
+    "restart",
+    "state",
+    "telemetry",
+    "validation",
+)
+
 _MODULES = (
     "orchestrator.workflow",
     "orchestrator.workflow.engine",
     *(f"orchestrator.workflow.engine.{owner}" for owner in _ENGINE_OWNERS),
+    "orchestrator.workflow.late_split",
+    *(
+        f"orchestrator.workflow.late_split.{owner}"
+        for owner in _LATE_SPLIT_OWNERS
+    ),
     "orchestrator.workflow.state",
 )
 

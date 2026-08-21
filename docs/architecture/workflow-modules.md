@@ -1,7 +1,8 @@
 # Workflow modules
 
 This page maps `orchestrator/workflow/`: the package API, the state owner beside it, the `engine/` owners one tick is
-composed of, and the stage subpackages the label dispatch routes into. It is split out of
+composed of, the `late_split/` domain the late size gate is defined by, and the stage subpackages the label dispatch
+routes into. It is split out of
 [`../architecture.md#top-level-layout`](../architecture.md#top-level-layout), which keeps the top-level map and the
 naming rules that hold for the tree as a whole. The packages this one decides with are in
 [`platform-modules.md`](platform-modules.md).
@@ -76,6 +77,34 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     usage.py                the tracked agent run: the request model, the audit spawn / exit pair, the analytics
                             record, the `skill_triggered` emission, and the per-issue counters a terminal receipt is
                             read off
+  late_split/               the late size gate's own domain: what one generation IS, apart from anything that drives
+                            one
+    formats.py              what any late value has to look like -- a real integer, a git object id, a bounded
+                            single-line target -- and the one refusal every owner raises over it
+    models.py               the phase / verdict / failure / resource vocabularies, the frozen generation record
+                            with the transforms that return a new one, and the lineage bound it is read against
+    identity.py             the monotonic cycle and generation identities, the child depth the bound still allows,
+                            the two local content fingerprints a scope edit and a trusted answer are told apart by,
+                            and the bounded name-free print one ledger entry is reported under
+    payloads.py             what one hand-edited or older pinned late field reads back as: one reader per field
+                            contract -- identity, count, depth, object id, literal flag, member, free text
+    ledgers.py              what the two external ledgers read back as, the exact entry shape one of ours has, and
+                            the verbatim copy anything else is preserved through
+    state.py                the `late_*` pinned keys and the round trip through them that leaves a legacy comment
+                            untouched and an unreadable obligation intact
+    restart.py              the two-phase restart marker: the closed pair of labels it may apply, the cycle it
+                            mints, the whole-marker check that decides whether the one a crash left may still be
+                            believed, the settled-ledger precondition retirement refuses without, and the fresh
+                            cycle it projects
+    events.py               the seven families, the per-family schema an event is refused against, the member each
+                            detail has to actually be, and the closed vocabulary a verdict category is chosen from
+    validation.py           what a generation has to prove before a record of it may be written: the required
+                            identity, the format of every field a sink would carry, and what each family's own
+                            record has to be readable without
+    records.py              the bounded payload both sinks carry and the fields a duplicate record is deduplicated on
+    telemetry.py            the dual audit / analytics emission, the stage tag resolved against the label
+                            vocabulary, the refusal turned into a logged non-emission, and the guard on each half
+                            that keeps a sink from reaching workflow
   stages/
     conflicts/              `workflow:resolving_conflict`
       handler.py            the order one tick asks its questions in: the missing-`pr_number` park, the terminal arcs,

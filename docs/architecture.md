@@ -57,8 +57,8 @@ The map is split by area, and each page below is where the owners of the package
 - [`architecture/platform-modules.md`](architecture/platform-modules.md) — the package root and both launch forms,
   `runtime/`, `config/`, `github/`, `agents/`, `scheduler/`, `git/`, and `skills/`.
 - [`architecture/workflow-modules.md`](architecture/workflow-modules.md) — `workflow/`: the package API and the state
-  owner beside it, the `engine/` owners one tick is composed of, and the nine stage subpackages the label dispatch
-  routes into.
+  owner beside it, the `engine/` owners one tick is composed of, the `late_split/` domain the late size gate is
+  defined by, and the nine stage subpackages the label dispatch routes into.
 - [`architecture/observability-modules.md`](architecture/observability-modules.md) — `observability/`: the analytics
   sink and everything downstream of it, the usage parser, the Streamlit analytics page, and the file-backed
   trajectory viewer, together with the two `streamlit run` targets under `apps/` that compose the pages.
@@ -92,8 +92,10 @@ orchestrator/
                         submissions it takes
   workflow/             the state machine: the label vocabularies and the
                         transition guard, the `engine/` owners one tick is
-                        composed of, and nine stage subpackages holding the
-                        twelve labelled handlers the dispatch routes into
+                        composed of, the `late_split/` domain a late generation
+                        is recorded and reported by, and nine stage subpackages
+                        holding the twelve labelled handlers the dispatch
+                        routes into
   git/                  local git: execution, locks, and authenticated
                         transport, under the worktree lifecycle, the per-tick
                         base sync, branch publication, and verify runs
