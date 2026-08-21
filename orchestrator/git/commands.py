@@ -22,7 +22,7 @@ import os
 import subprocess
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping
+from typing import Mapping, Optional
 
 from orchestrator import config
 
@@ -108,7 +108,11 @@ def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess:
     )
 
 
-def _git_hardened(*args: str, cwd: Path) -> subprocess.CompletedProcess:
+def _git_hardened(
+    *args: str,
+    cwd: Path,
+    env_extra: Optional[Mapping[str, str]] = None,
+) -> subprocess.CompletedProcess:
     """`_git` plus the agent-hostile-environment hardening from `_push_branch`.
 
     Used for local git operations inside a worktree the agent can write to: a
@@ -138,6 +142,13 @@ def _git_hardened(*args: str, cwd: Path) -> subprocess.CompletedProcess:
     a synthetic stand-in, the push carrying the real commits. Refs and the
     graft file are not config, so nothing above disables them; the two env
     vars here do.
+
+    `env_extra` is applied last, over both the process environment and the
+    hardening above, and exists for what git reads from the environment rather
+    than from config -- where a `-c` on the command line does not win. A caller
+    that has to PIN one of those (which tree `.gitattributes` are read from,
+    whether the system-wide ones are consulted at all) states it here, so what
+    this process happened to inherit cannot answer for it instead.
     """
     env = {
         **os.environ,
@@ -150,6 +161,7 @@ def _git_hardened(*args: str, cwd: Path) -> subprocess.CompletedProcess:
         "GIT_CONFIG_GLOBAL": os.devnull,
         "GIT_CONFIG_SYSTEM": os.devnull,
         "GIT_CONFIG_NOSYSTEM": "1",
+        **(env_extra or {}),
     }
     return subprocess.run(
         [*_HARDENED_GIT_PREFIX, *args],

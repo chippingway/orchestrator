@@ -88,6 +88,7 @@ __all__ = [
     "ORCHESTRATOR_BASE_BRANCH",
     "IN_REVIEW_DEBOUNCE_SECONDS",
     "DECOMPOSE",
+    "MAX_ADDED_LINES",
     "SQUASH_ON_APPROVAL",
     "EXPOSE_TRACKED_REPOS",
     "VERIFY_COMMANDS",
@@ -357,6 +358,22 @@ IN_REVIEW_DEBOUNCE_SECONDS: int = _RESOLVED["IN_REVIEW_DEBOUNCE_SECONDS"]
 # rollout safety valve so the user can disable decomposition if manifest
 # output proves unreliable, without redeploying old binaries.
 DECOMPOSE: bool = _RESOLVED["DECOMPOSE"]
+
+# The size ceiling one implementation candidate may publish under, counted in
+# textual lines the prospective pull-request diff ADDS -- the frozen remote
+# base against the exact committed candidate, across every path, with binary
+# content contributing nothing and no path, generated-file, or vendored-tree
+# exemption. A candidate at or below it publishes the way it always has; only
+# one STRICTLY past it is oversized and goes to late adjudication, so retuning
+# the ceiling cannot move the trigger by a line and a candidate landing exactly
+# on the configured value is accepted. Positive integer, validated at import
+# like the parallelism caps: 0 or a negative would call every candidate
+# oversized and route the whole repository into adjudication. The default is
+# deliberately generous -- it is a bound on what one reviewer is asked to read
+# in a sitting, not a target -- and is global on purpose, because a per-repo
+# override before there is telemetry to justify one is a knob nobody can set
+# honestly.
+MAX_ADDED_LINES: int = _RESOLVED["MAX_ADDED_LINES"]
 
 # After the reviewer agent emits VERDICT: APPROVED, squash the dev's commits
 # on the PR branch into a single conventional-commit-shaped commit and

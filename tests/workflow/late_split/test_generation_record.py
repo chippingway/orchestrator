@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator import config
 from orchestrator.workflow.late_split.formats import InvalidLateValue
 from orchestrator.workflow.late_split.models import (
     MAX_LINEAGE_DEPTH,
@@ -48,6 +49,17 @@ class MeasurementTest(unittest.TestCase):
         for additions, oversized in cases:
             with self.subTest(additions=additions):
                 measured = _generation(threshold=threshold, additions=additions)
+                self.assertEqual(measured.is_oversized, oversized)
+
+    def test_the_configured_ceiling_is_a_ceiling(self) -> None:
+        # `MAX_ADDED_LINES` is what an operator tunes and what a generation
+        # records, and a candidate landing exactly on it publishes as one
+        # change: the trigger is strictly past the value, so retuning the
+        # setting cannot move it by a line.
+        ceiling = config.MAX_ADDED_LINES
+        for additions, oversized in ((ceiling, False), (ceiling + 1, True)):
+            with self.subTest(additions=additions):
+                measured = _generation(threshold=ceiling, additions=additions)
                 self.assertEqual(measured.is_oversized, oversized)
 
     def test_an_unmeasured_candidate_is_not_oversized(self) -> None:

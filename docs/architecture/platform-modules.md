@@ -111,9 +111,9 @@ orchestrator/
   git/
     authentication.py   the per-repo token and askpass session, the authenticated fetches, the remote-ref read that
                         answers what a branch is at without a local one, and the lease-pinned push
-    commands.py         plain / hardened git execution, the argv hardening and no-prompt environment, the absolute
-                        `--work-tree` argument a working-tree operation names its tree with, and the unsafe
-                        local-transport probe
+    commands.py         plain / hardened git execution, the argv hardening and no-prompt environment, the per-call
+                        environment pin a caller adds over it, the absolute `--work-tree` argument a working-tree
+                        operation names its tree with, and the unsafe local-transport probe
     locks.py            the per-target-root re-entrant lock registry and its accessor
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, worktree discovery, the sync gates, and the per-worktree route
@@ -140,6 +140,14 @@ orchestrator/
                         post-reset failure takes
       squash.py         the plan-then-rewrite entry point a stage handler calls
       titles.py         subject-prefix inference and PR-title selection
+    measurement/        how large a committed candidate is, and why a size is sometimes unknown
+      models.py         the typed failure vocabulary, one frozen end of a diff, and the measurement record
+      commits.py        the remote-authoritative base freeze (fetched once when the object is missing) and the
+                        candidate proof that an id resolves, is held here, and peels to the commit it names
+      additions.py      the `--numstat` added-line count over the frozen pair — read under the candidate's own
+                        attributes and a named algorithm, pinned where git consults the environment last, and
+                        refusing outright on the attribute file and diff-driver config no pin reaches — and the
+                        measurement composing the three steps
     verification/       what a verify run is, and the reads a checkout is judged by
       models.py         the `VerifyResult` statuses and fields, and the output budget
       output.py         the redact-then-truncate pass over captured verify output
@@ -167,13 +175,16 @@ orchestrator/
 
 ## Inside `git/`
 
-The four subpackages bind their collaborators directly, so the dependency direction reads off the owner rather than
+The five subpackages bind their collaborators directly, so the dependency direction reads off the owner rather than
 off a facade:
 
 - `publication/` — `probes` calls `commands`; `titles` calls `probes`; `planning` calls `commands`, both siblings,
   and the verification probes; `rewrite` calls `commands`, `authentication`, and those probes; `squash` calls
   `planning` and `rewrite`.
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
+- `measurement/` — `models` carries only data. `commits` calls `commands`, `authentication`, and the verification
+  probes for the two object reads; `additions` calls `commands` and `commits`. Nothing here reaches the workflow
+  layer, so the ceiling a count is compared against, and the verdict that comparison earns, stay with the caller.
 - `worktrees/` — the creators call `commands`, `locks`, `authentication`, and their `paths` / `recovery` siblings;
   `decomposition` resolves its own path helper; `terminal` composes its local teardown from `cleanup`.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
