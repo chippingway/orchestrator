@@ -103,7 +103,13 @@ _FORWARD: Mapping[
     WorkflowLabel.UMBRELLA: frozenset(
         (WorkflowLabel.DONE, WorkflowLabel.DECOMPOSING),
     ),
-    WorkflowLabel.IMPLEMENTING: frozenset((WorkflowLabel.VALIDATING,)),
+    # `decomposing` is the late gate's edge: a clean committed candidate
+    # measured past the size threshold is adjudicated before anything is
+    # pushed, and the adjudication runs under the decomposing label rather
+    # than a state of its own.
+    WorkflowLabel.IMPLEMENTING: frozenset(
+        (WorkflowLabel.VALIDATING, WorkflowLabel.DECOMPOSING),
+    ),
     WorkflowLabel.VALIDATING: frozenset(
         (WorkflowLabel.DOCUMENTING, WorkflowLabel.FIXING),
     ),
@@ -147,6 +153,10 @@ _INTERRUPT_SOURCES: Mapping[
             WorkflowLabel.RESOLVING_CONFLICT,
         ),
     ),
+    # The last two are the late gate's cancellation: an issue whose owner is
+    # observed closed mid-adjudication finishes its external cleanup and stops
+    # there, under whichever of the two labels the adjudication had reached --
+    # `decomposing` before a split, `umbrella` once one converted it.
     WorkflowLabel.REJECTED: frozenset(
         (
             WorkflowLabel.IMPLEMENTING,
@@ -155,6 +165,8 @@ _INTERRUPT_SOURCES: Mapping[
             WorkflowLabel.IN_REVIEW,
             WorkflowLabel.FIXING,
             WorkflowLabel.RESOLVING_CONFLICT,
+            WorkflowLabel.DECOMPOSING,
+            WorkflowLabel.UMBRELLA,
         ),
     ),
     WorkflowLabel.RESOLVING_CONFLICT: _DETOUR_TO_RESOLVING,

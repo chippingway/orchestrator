@@ -72,6 +72,28 @@ class IsAllowedTransitionTest(unittest.TestCase):
             )
         )
 
+    def test_late_gate_edges_are_declared(self) -> None:
+        # The late size gate's own three: an oversized committed candidate
+        # goes back to adjudication instead of publishing, and an adjudication
+        # whose owner is closed cancels from either label it can be wearing.
+        for cur, nxt in (
+            (WorkflowLabel.IMPLEMENTING, WorkflowLabel.DECOMPOSING),
+            (WorkflowLabel.DECOMPOSING, WorkflowLabel.REJECTED),
+            (WorkflowLabel.UMBRELLA, WorkflowLabel.REJECTED),
+        ):
+            self.assertTrue(is_allowed_transition(cur, nxt), (cur, nxt))
+
+    def test_a_restart_re_enters_from_unlabeled(self) -> None:
+        # A restart after a completed cancellation is authorized by the
+        # operator REMOVING `rejected`, so the label it writes starts from the
+        # unlabeled entry -- which is why the terminal keeps no outgoing edge
+        # and a rejected issue left labeled stays inert.
+        self.assertEqual(
+            ALLOWED_TRANSITIONS[WorkflowLabel.REJECTED], frozenset(),
+        )
+        for target in (WorkflowLabel.DECOMPOSING, WorkflowLabel.IMPLEMENTING):
+            self.assertTrue(is_allowed_transition(None, target), target)
+
     def test_same_label_is_allowed(self) -> None:
         # Idempotent re-set, even on a terminal.
         self.assertTrue(
@@ -106,11 +128,15 @@ class TerminalTransitionTest(unittest.TestCase):
             )
 
     def test_rejected_only_from_exact_sources(self) -> None:
+        # `decomposing` and `umbrella` are the late gate's cancellation: an
+        # adjudication whose owner is closed reconciles its external cleanup
+        # and stops, under whichever of the two it had reached.
         sources = {
             WorkflowLabel.IMPLEMENTING, WorkflowLabel.VALIDATING,
             WorkflowLabel.DOCUMENTING, WorkflowLabel.IN_REVIEW,
             WorkflowLabel.FIXING, WorkflowLabel.RESOLVING_CONFLICT,
-            WorkflowLabel.DISCUSSION,
+            WorkflowLabel.DISCUSSION, WorkflowLabel.DECOMPOSING,
+            WorkflowLabel.UMBRELLA,
         }
         for state in WorkflowLabel:
             if state in (WorkflowLabel.DONE, WorkflowLabel.REJECTED):
@@ -142,15 +168,19 @@ class TerminalTransitionTest(unittest.TestCase):
         )
 
     def test_pre_pr_states_are_not_terminalizable(self) -> None:
-        # decomposing / ready / blocked have no PR and no terminal writer.
+        # ready / blocked have no PR and no terminal writer at all;
+        # `decomposing` reaches exactly one terminal, the late gate's
+        # cancellation, and still has no way to finish successfully.
         for state in (
             WorkflowLabel.DECOMPOSING, WorkflowLabel.READY, WorkflowLabel.BLOCKED,
         ):
             self.assertFalse(
                 is_allowed_transition(state, WorkflowLabel.DONE), state,
             )
+        for pre_pr_state in (WorkflowLabel.READY, WorkflowLabel.BLOCKED):
             self.assertFalse(
-                is_allowed_transition(state, WorkflowLabel.REJECTED), state,
+                is_allowed_transition(pre_pr_state, WorkflowLabel.REJECTED),
+                pre_pr_state,
             )
 
 

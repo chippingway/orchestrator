@@ -97,6 +97,10 @@ file is the durable record.
   `_recover_pending_auto_base_rebase` when a crashed prior tick is finalized; extras: `pr_number`, `sha` (new head),
   `method` ∈ {`auto_clean_rebase`, `crash_recovery_pushed`, `crash_recovery_relabel_only`}, `review_round`
   (post-reset, so 0), `retry_count`; `stage` names the stage the issue was in when the rebase started.
+- `late_measurement` / `late_verdict` / `late_failure` / `late_snapshot` / `late_cleanup` / `late_cancellation` /
+  `late_restart` — the late size gate's seven families, each emitted by `workflow/late_split/telemetry.py` together
+  with an identical analytics record; extras: the bounded correlation payload in
+  [Late-split records](#late-split-records-both-sinks).
 
 **`agent_spawn` / `agent_exit` extras.** On top of the shared fields:
 
@@ -173,6 +177,10 @@ foundation layer for the Postgres aggregation step.
   `issue` is
   the sentinel `0`); carries `base_branch`, `remote_name`, `skills_available` (deduped `SKILL.md` skill names on the
   base ref), and optional `skill_paths` (name → source paths) — see below.
+- `late_measurement` / `late_verdict` / `late_failure` / `late_snapshot` / `late_cleanup` / `late_cancellation` /
+  `late_restart` — `workflow/late_split/telemetry.py`, one record per late event beside the audit event of the same
+  kind; carries `stage` plus the same bounded payload — see
+  [Late-split records](#late-split-records-both-sinks).
 
 **Append.** `recording.append_record(record)` reopens the file in append mode for every record after
 `path.parent.mkdir(parents=True, exist_ok=True)`. An `OSError` is caught and downgraded to a `log.warning`.
@@ -385,3 +393,114 @@ Postgres `analytics_events` schema require, and the five catalog fields all land
 change**. The whole producer is fail-open: a missing clone, an unfetched ref, a git error, or a sink IO failure logs and
 is swallowed so catalog collection never disturbs the polling tick. An empty catalog still records `skills_available:
 []` (the "scanned, found none" signal) with both maps dropped.
+
+## Late-split records (both sinks)
+
+The late size gate writes to **both** streams, deliberately: the audit copy has to answer offline what the database
+answers, so an operator with only the JSONL file can tell whether depth 3 is being approached, which repositories keep
+producing artifact-dominated `single` verdicts, and whether the configured threshold creates more adjudication than it
+prevents. One call on `workflow/late_split/telemetry.py` emits both — `GitHubClient.emit_event` for the audit record
+and the recording package's `build_record` / `append_record` pair for the analytics record — so the two carry the same
+fields under their own envelopes.
+
+**Families.** `late_measurement` (a clean committed candidate was measured), `late_verdict` (an adjudication decided),
+`late_failure` (a typed step could not be completed), `late_snapshot` and `late_cleanup` (what happened to one
+external resource), `late_cancellation` (the owner was observed closed), and `late_restart` (a restart after a
+completed cancellation). The kind is the family; `stage` is the bare stage tag the issue sat in, spelled by the
+emitter like every other event on this page.
+
+**Family-typed events.** A record is built from a `LateEvent` on `workflow/late_split/events.py`, and each family
+declares which detail fields it requires and which it may carry (`_FAMILY_FIELDS`). Anything else raises
+`InvalidLateValue` where the event is constructed, so a measurement claiming a verdict, a verdict with no verdict on
+it, or a cleanup with no resource cannot reach either sink at all:
+
+| Family | Requires | May also carry |
+| --- | --- | --- |
+| `late_measurement`, `late_cancellation` | — | — |
+| `late_verdict` | `verdict`; `category` too when `question` | `category` on any verdict, `child_count` with `split` |
+| `late_failure` | `failure` | — |
+| `late_snapshot`, `late_cleanup` | `resource` | — |
+| `late_restart` | `restart_step` | — |
+
+A category is allowed on **every** verdict and required only of a `question`: a `single` verdict that explains itself
+as `generated_artifacts` is exactly the artifact-dominated signal this page promises, so the schema has to be able to
+carry it. A child count is a split's and nobody else's, in both directions.
+
+**Types are enforced, not annotated.** A `StrEnum` member and the string that spells it compare equal, so a raw
+`verdict="question"` would satisfy every comparison the schema makes and be written verbatim — and so would a
+`category` carrying an agent's rationale. Each detail is therefore checked for being an actual member (a resource
+through to its own `kind`, `state`, and bounded target), and a count for being a real non-negative integer. The same
+`check` runs again inside the payload builder, so an event that reached it without passing through the constructor is
+refused there.
+
+**Payload.** Assembled by `workflow/late_split/records.build_late_payload` from the frozen `LateGeneration` and that
+typed event, then filtered through the declared `LATE_PAYLOAD_FIELDS`, so widening a record is an edit to that tuple
+rather than a keyword somebody passed:
+
+- **Correlation** — `cycle_id`, `generation`, `root_issue`, `lineage_depth`, `phase`. A lineage depth the pinned state
+  could not read is absent rather than reported as the root's 0.
+- **The commits** — `source_sha` (the frozen candidate) and `base_sha` (the exact remote base it was measured against).
+- **The measurement** — `threshold` and `additions`.
+- **Family fields** — `verdict` (`single` / `split` / `question`), `category`, `child_count`, `failure` (the typed
+  reason), `resource` (`snapshot_ref` / `branch` / `plan_pr` / `child`) with `resource_id` and `outcome` (`pending` /
+  `retained` / `reconciled` / `failed`), `restart_step` (`pending` / `reconciled`), and `restart_target` +
+  `predecessor_cycle_id`.
+
+Extras whose value is `None` are dropped by both envelope builders, so each family carries only what applies to it.
+
+**What is deliberately absent.** No file paths, no diff content, no prompt, no agent rationale, and no agent output.
+The payload has no argument any of those could arrive through — it is built from a frozen record and a family-typed
+event — and every field that could otherwise smuggle text through is closed at the boundary:
+
+- **A verdict `category`** is a member of `LateVerdictCategory` (`generated_artifacts`, `scope_ambiguous`,
+  `unsafe_split`, `lineage_bound`, `unknown`), not a label an agent writes. `events.verdict_category` maps a parsed
+  answer onto it and answers `unknown` for everything it does not recognize, so an adjudication's rationale — the
+  sentences, the file names in them — has no path into a record. Widening the vocabulary is an edit here, in review.
+- **A resource's own name** — a ref, a branch, an issue number — is not recorded. What identifies it is `resource_id`,
+  the bounded 12-character fingerprint `identity.resource_fingerprint` takes over the entry's kind and target. It is
+  stable across retries of one resource and distinct between two of the same kind, which is what lets a consumer tell
+  two children's cleanups apart without being told which children they were.
+- **The generation's own fields** are checked by `workflow/late_split/validation.py` before anything is built, because
+  `candidate_sha`, `base_sha`, `phase`, and `restart_target` are typed `str` and would otherwise be written verbatim.
+  A commit field must be spelled like a git object id, a phase must be a member, a restart target must be one of the
+  two labels a restart may apply, and every count must be a real non-negative integer. The four correlating
+  identities — `cycle_id`, `generation`, `root_issue`, `current_issue` — are **required**: a record nothing can be
+  joined to is not one this domain writes. A refusal names the field and the type it arrived as, never the value, so
+  a field rejected for carrying prose does not put that prose in the log line instead of the sink.
+- **`stage`** is resolved against the workflow label vocabulary rather than passed through. A caller may name either
+  spelling — `workflow:decomposing` or the bare `decomposing` — and what reaches both sinks is always the tag, which
+  is what every other emitter on this page records. Anything outside that closed set, prose included, is refused with
+  the record it came with: it is the one envelope field this domain supplies, and the sinks would carry whatever they
+  were handed.
+
+**Self-contained by family.** Beyond the shared fields, `late_measurement` and `late_verdict` must carry
+`source_sha`, `base_sha`, `threshold`, `additions`, and `phase` — the commits that were frozen and the measurement
+taken against them. A record of either reporting only an identity would be a row no threshold study could use, so it
+is not written. The other five families describe reconciliation rather than size, and a restart's fresh cycle has
+deliberately let its commits go, so none of them is held to it.
+
+**A refused record is a non-emission, not an exception.** `telemetry.emit_late_event` runs the build inside the same
+fail-open guard as the two writes: the refusal is logged on the `orchestrator.workflow` channel, the call returns an
+empty payload, neither sink is touched, and the tick that asked carries on. The log line is held to the same boundary
+the record is — an issue number that is not one and a family that is not a member are reported as `?` rather than as
+they arrived, since a log is the same surface one step over from the sinks it was protecting. That extends to why the
+record was refused: this domain's own refusals are built from field names, vocabularies, and type names, so their
+message is repeated, while an exception raised anywhere below is named by its type alone. Nothing renders the
+exception itself — `log.exception` would append its text and traceback, and only a refusal this domain built is
+guaranteed safe to repeat.
+
+**Duplicates.** Records are emitted before the step they describe is durable, so a crash can produce the same record
+twice. Consumers deduplicate on `records.CORRELATION_FIELDS`, which is **the whole record apart from `ts`**: the four
+envelope fields (`repo`, `issue`, `event`, `stage`) plus every field in `LATE_PAYLOAD_FIELDS`. A retried step writes
+every field again identically, so the timestamp is the only thing that can differ between one step's two emissions,
+and any other difference is a different step by construction — one candidate split into two children and into seven,
+two questions asked under different categories, two cleanups of two children, two restarts aimed at different states,
+two measurements against different bases. Naming the distinguishing fields one at a time instead is what let pairs
+like those collide, because the list has to be remembered every time the payload grows. Nothing about workflow
+disposition may depend on delivery, which is the other half of the same rule.
+
+**Fail-open, twice.** Both sinks already swallow a filesystem refusal, and each emission additionally rides its own
+guard on the `orchestrator.workflow` channel, so a failing sink costs the record and nothing else — and a failure on
+one side does not skip the other. A late generation is reconciled from its pinned state
+([`state-machine/labels-and-state.md#late-generation-state`](../state-machine/labels-and-state.md#late-generation-state)),
+never from what a sink accepted.

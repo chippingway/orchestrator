@@ -1,0 +1,167 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""One late event reaching both sinks, and neither sink reaching the workflow."""
+from __future__ import annotations
+
+import unittest
+from unittest.mock import patch
+
+from orchestrator.workflow.late_split import events as _events
+from orchestrator.workflow.late_split import records as _records
+from orchestrator.workflow.late_split import telemetry as _telemetry
+from orchestrator.workflow.late_split.models import LateVerdict
+
+from tests.support.fakes import FakeGitHubClient
+from tests.workflow.late_split import generation_test_support as _support
+
+_STAGE = "decomposing"
+_STAGE_KEY = "stage"
+_EVENT_KEY = "event"
+_EMIT_EVENT = "emit_event"
+_LATE_VERDICT = "late_verdict"
+_WORKFLOW_CHANNEL = "orchestrator.workflow"
+_ERROR = "ERROR"
+_ANALYTICS_APPEND = _support.ANALYTICS_APPEND
+
+_VERDICT_EVENT = _events.LateEvent(
+    family=_events.LateEventFamily.VERDICT,
+    verdict=LateVerdict.SINGLE,
+)
+# An agent's rationale, naming a path, offered as the state an issue was in.
+_PROSE = "rationale: inspect /srv/private/key before splitting"
+
+
+def _emit_verdict(gh) -> dict:
+    """Emit one late verdict for the shared generation."""
+    return _telemetry.emit_late_event(
+        gh, _VERDICT_EVENT, _support.measured_generation(), stage=_STAGE,
+    )
+
+
+def _emit(gh, appended: list) -> dict:
+    """Emit one late verdict, collecting what the analytics sink was handed."""
+    with patch(_ANALYTICS_APPEND, appended.append):
+        return _emit_verdict(gh)
+
+
+def _sink_records(gh, appended: list) -> dict:
+    """The last record each of the two sinks was handed, by sink."""
+    return {"audit": gh.recorded_events[-1], "analytics": appended[-1]}
+
+
+class DualEmissionTest(unittest.TestCase):
+    """Both sinks receive the same event, under the same correlation."""
+
+    def test_each_sink_records_family_and_stage(self) -> None:
+        gh = FakeGitHubClient()
+        appended: list = []
+        _emit(gh, appended)
+        for sink, record in _sink_records(gh, appended).items():
+            with self.subTest(sink=sink):
+                self.assertEqual(record[_EVENT_KEY], _LATE_VERDICT)
+                self.assertEqual(record[_STAGE_KEY], _STAGE)
+                self.assertEqual(record["repo"], _support.REPO)
+                self.assertEqual(record["issue"], _support.CURRENT_ISSUE)
+
+    def test_the_two_records_correlate(self) -> None:
+        # The audit copy has to answer offline what the database answers, so
+        # the two are joinable without reading the pinned comment back.
+        gh = FakeGitHubClient()
+        appended: list = []
+        _emit(gh, appended)
+        self.assertEqual(
+            _records.correlation_key(gh.recorded_events[-1]),
+            _records.correlation_key(appended[-1]),
+        )
+
+    def test_neither_record_exceeds_the_contract(self) -> None:
+        gh = FakeGitHubClient()
+        appended: list = []
+        _emit(gh, appended)
+        allowed = {"ts", "repo", "issue", _EVENT_KEY, _STAGE_KEY}
+        allowed.update(_records.LATE_PAYLOAD_FIELDS)
+        for sink, record in _sink_records(gh, appended).items():
+            with self.subTest(sink=sink):
+                self.assertLessEqual(set(record), allowed)
+
+    def test_the_returned_payload_is_what_landed(self) -> None:
+        gh = FakeGitHubClient()
+        appended: list = []
+        payload = _emit(gh, appended)
+        self.assertEqual(
+            payload,
+            _records.build_late_payload(
+                _VERDICT_EVENT, _support.measured_generation(),
+            ),
+        )
+        self.assertLessEqual(payload.items(), appended[-1].items())
+
+
+class StageTest(unittest.TestCase):
+    """The stage a record carries is a workflow state and nothing else."""
+
+    def test_either_spelling_records_the_bare_tag(self) -> None:
+        for named in ("decomposing", "workflow:decomposing"):
+            with self.subTest(stage=named):
+                gh = FakeGitHubClient()
+                appended: list = []
+                with patch(_ANALYTICS_APPEND, appended.append):
+                    _telemetry.emit_late_event(
+                        gh,
+                        _VERDICT_EVENT,
+                        _support.measured_generation(),
+                        stage=named,
+                    )
+                self.assertEqual(appended[-1][_STAGE_KEY], _STAGE)
+                self.assertEqual(gh.recorded_events[-1][_STAGE_KEY], _STAGE)
+
+    def test_a_stage_that_is_not_a_state_is_refused(self) -> None:
+        # The envelope's own field is the last one an emitter supplies, and
+        # the sinks would carry anything: prose naming a path, offered as the
+        # state an issue was in.
+        gh = FakeGitHubClient()
+        appended: list = []
+        with patch(_ANALYTICS_APPEND, appended.append):
+            with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
+                payload = _telemetry.emit_late_event(
+                    gh,
+                    _VERDICT_EVENT,
+                    _support.measured_generation(),
+                    stage=_PROSE,
+                )
+        self.assertEqual(payload, {})
+        self.assertEqual(gh.recorded_events, [])
+        self.assertEqual(appended, [])
+
+
+class FailingSinkTest(unittest.TestCase):
+    """A sink that refuses costs the record and nothing else."""
+
+    def test_a_failed_audit_still_records_metrics(self) -> None:
+        gh = FakeGitHubClient()
+        appended: list = []
+        with patch.object(gh, _EMIT_EVENT, side_effect=OSError):
+            with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
+                _emit(gh, appended)
+        self.assertEqual(appended[-1][_EVENT_KEY], _LATE_VERDICT)
+
+    def test_a_failed_analytics_still_audits(self) -> None:
+        gh = FakeGitHubClient()
+        with patch(_ANALYTICS_APPEND, side_effect=RuntimeError):
+            with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
+                _emit_verdict(gh)
+        self.assertEqual(gh.recorded_events[-1][_EVENT_KEY], _LATE_VERDICT)
+
+    def test_both_sinks_failing_does_not_raise(self) -> None:
+        # Workflow disposition is reconciled from pinned state, never from
+        # what a sink accepted, so the emission cannot raise into a tick.
+        gh = FakeGitHubClient()
+        with patch.object(gh, _EMIT_EVENT, side_effect=OSError):
+            with patch(_ANALYTICS_APPEND, side_effect=OSError):
+                with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
+                    payload = _emit_verdict(gh)
+        self.assertEqual(payload["verdict"], "single")
+
+
+if __name__ == "__main__":
+    unittest.main()

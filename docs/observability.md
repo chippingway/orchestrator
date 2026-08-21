@@ -59,7 +59,9 @@ in and out independently of the audit log via `ANALYTICS_LOG_PATH` / `ANALYTICS_
 sink's envelope and bare-stage-tag spelling, so `WHERE stage = 'validating'` is the form that matches both here and in
 the Postgres column the sync loads it into. Four kinds are written today — `stage_enter`, `stage_evaluation`,
 [`agent_exit`](observability/event-streams.md#agent_exit-records), and
-[`repo_skill_catalog`](observability/event-streams.md#repo_skill_catalog-records) — and that page carries each
+[`repo_skill_catalog`](observability/event-streams.md#repo_skill_catalog-records) — beside the late size gate's seven
+[late-split families](observability/event-streams.md#late-split-records-both-sinks), which are written to this sink
+and the audit log alike so the JSONL copy answers offline what the database answers. That page carries each
 one's fields, the opt-in `TRACK_SKILL_TRIGGERS` skill evidence on `agent_exit`, the
 [session-aware adoption model](observability/event-streams.md#session-aware-skill-adoption) built over it, and the
 once-per-tick retention prune that bounds the file.

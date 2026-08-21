@@ -108,6 +108,17 @@ plus interrupt / detour edges declared per-target. It is keyed by `WorkflowLabel
 resolves to its member before the guard sees it and is checked against the same edges. Operator relabels via the
 GitHub UI bypass both guards, so the guard never fights a human.
 
+Three of those edges belong to the late size gate and are declared ahead of the handlers that write them.
+`workflow:implementing → workflow:decomposing` is the route a clean committed candidate measured past the threshold
+takes instead of publishing — adjudication runs under the existing decomposing label rather than a state of its own.
+`workflow:decomposing → rejected` and `workflow:umbrella → rejected` are the one terminal a late generation whose
+owner was closed mid-adjudication reaches, once its external cleanup is reconciled, under whichever of the two labels
+it had reached; they are also the only way a pre-PR state reaches a terminal at all. A restart after such a
+cancellation needs no edge of its own: the operator authorizes it by *removing* `rejected`, so the label a restart
+applies is written from the unlabeled entry, and both terminals keep their empty edge set — a rejected issue left
+labeled stays inert. The pinned state those transitions move an issue through is
+[below](#late-generation-state).
+
 - _(none)_ — Open issue not yet picked up by the orchestrator.
 - `workflow:decomposing` — The decomposer is deciding whether the issue is single-context or should become child
   issues.
@@ -473,6 +484,94 @@ machine fall into a few groups:
   composes those same three arcs directly rather than through either entry point. Reusing `_post_issue_comment`
   keeps the receipt's comment id tracked in
   `orchestrator_comment_ids`. This is a read-only verdict — no budget breaker or control behavior gates on it.
+- **Late generation.** The additive `late_*` group an oversized committed candidate is adjudicated under — cycle and
+  generation identity, root / current issue and lineage depth, the declared scope, the frozen candidate and base SHAs,
+  the measurement, the reconciliation phase, the local content fingerprints, the held plan PR, the external-resource
+  ledgers, the cancellation marker, and the pending-restart marker. Every key, and what an absent one means, is in
+  [Late generation state](#late-generation-state) below.
 
 The legacy `codex_session_id` key (written before `dev_agent` existed) is still honored on read by `_read_dev_session`:
 it round-trips to `spec="codex"` with no args so an older orchestrator's pin keeps running on codex.
+
+### Late generation state
+
+The `late_*` keys are the late size gate's own group, and they are **additive**: an issue that never entered the gate
+carries none of them and reads back as an absent generation, so no migration reaches a live issue and a handler that
+reads and writes late state on every issue leaves a legacy pinned comment exactly as it found it. The keys are spelled
+once, on [`orchestrator/workflow/late_split/state.py`](../../orchestrator/workflow/late_split/state.py) —
+`LATE_STATE_KEYS` is the whole of what this domain owns inside the pinned comment, `read_late_generation` /
+`write_late_generation` are the round trip through them, and `clear_late_generation` is defined as dropping exactly
+that list and nothing else. The typed record they round-trip through is `LateGeneration` on the `models` owner beside
+it. A write with no `late_cycle_id` clears the group instead of recording a half-record no audit line or child lineage
+could be correlated to, and every field is read defensively: a hand-edited or older value that cannot be typed reads
+back as absent rather than raising on a tick that has committed work to reconcile. Which reader a field goes through
+is the field's own contract rather than its Python type — an identity has to be positive, a measurement non-negative,
+a depth inside the lineage, a flag literally `true`, and a restart target one of the two labels a restart may apply.
+The hex fields are read at their exact lengths: a frozen commit is a whole git object id (40 or 64), because nothing
+here ever records an abbreviation, and a local fingerprint is a whole SHA-256 digest (64), because a truncated one is
+not a hash anything could be compared against. Only a real integer counts as a number at all: a bool, a float, and
+a numeric string are each a value nothing wrote. So a `late_threshold` of `-1` beside a `late_additions` of `0` does
+not make an unmeasured candidate report as oversized, a `"false"` string does not arm a cancellation or a pending
+restart, and prose in a `late_candidate_sha` never becomes live state — and what a read refuses, the next write drops
+rather than preserving.
+
+- **Identity.** `late_cycle_id` and `late_generation` are monotonic and never reused, so a record naming cycle 2
+  always names the same attempt; `late_root_issue` and `late_current_issue` place the issue in its lineage; and
+  `late_lineage_depth` is 0 at the root and bounded by `MAX_LINEAGE_DEPTH` (3, a safety invariant no configuration
+  reads). A depth at or past the bound — including one an edit put there — reads as "may not split", so the deepest
+  child a split can create must resolve as one change or ask a human. A depth that cannot be read *at all* is the
+  same answer rather than the root's 0: it reads back as unknown, an unknown depth may not split, and the write
+  leaves it unknown, so a damaged field on a lineage already at the bound cannot buy it another generation and the
+  next pass cannot normalize the gap away. The only thing that puts a depth back to 0 is a restart, whose fresh cycle
+  is a root again.
+- **Frozen evidence.** `late_scope` is the declared scope this generation owns; `late_candidate_sha` and
+  `late_base_sha` are the exact commits a reconciliation may act on (a recorded SHA is the evidence, never the current
+  HEAD or base); `late_threshold` and `late_additions` are the measurement, which trips strictly above the threshold,
+  so a candidate exactly at the configured value is accepted. `late_phase` names the reconciliation boundary reached —
+  `measuring`, `holding_plan_pr`, `adjudicating`, `owner_check`, `snapshotting`, `splitting`, `superseding`,
+  `cleaning_up`, `cancelling`, `restarting` — so a tick that crashed mid-step reconciles that step rather than
+  starting a new one.
+- **Local fingerprints.** `late_title_body_hash`, and `late_comment_hash` beside the `late_comment_watermark_id` it
+  covers from, are what tell a scope edit apart from a trusted answer arriving after the late baseline. They are
+  local by design: the global `user_content_hash` above keeps its single baseline and its meaning unchanged.
+- **Held plan PR.** `late_plan_pr_number` and `late_plan_pr_body` — the pull request whose body a generation-marked
+  hold replaced, and the body it replaced, kept so the original can be restored.
+- **External-resource ledgers.** `late_resources` holds one `{kind, target, state}` entry per obligation the remote is
+  owed — kind `snapshot_ref` / `branch` / `plan_pr` / `child`, state `pending` / `retained` / `reconciled` / `failed`
+  — keyed on kind and target, so a reconciliation repeated after a crash updates the entry it already wrote instead
+  of appending a second one. `late_consumers` is the direct snapshot consumers, deduplicated and ordered, since the
+  reclamation rule asks about each of them once, and only a positive whole number is one — `True`, `2.5`, and `"7"`
+  are not issues anything can ask GitHub about, and neither the reader nor `with_consumers` will convert one into a
+  consumer id. Neither ledger is ever *reduced* to what this binary understood: an entry it cannot type, or a
+  consumer list it cannot read, is carried through verbatim beside the typed view and written back exactly as it
+  came, and `LateGeneration.has_opaque_ledger` says so — and while it does, `with_resource` and `with_consumers`
+  refuse an update to that ledger rather than returning a record the next write would silently drop back to the
+  verbatim copy. "Typed" is strict there, because the alternative to
+  preserving an entry is rewriting it from what was understood — an entry counts as one this binary wrote only when
+  it carries exactly the three fields it writes, each holding a value this vocabulary knows, so a state it cannot
+  read is **not** `pending`, a field it never wrote is not noise to drop, and a target that is not a usable
+  identifier is not one to re-encode. The damaged-identity case is preserved the same way: a record whose
+  `late_cycle_id` cannot be read writes its two ledgers and nothing else, because an obligation does not stop being
+  owed when the identity beside it is damaged. Dropping any of it would be an obligation deleted from the issue that
+  still owes it — a cleanup that looks complete, or a snapshot reclaimed as though nobody were waiting on it — so a
+  generation holding an opaque ledger is one nothing may treat as settled.
+- **Cancellation.** `late_cancelled` and `late_cancelled_at` are irreversible within a cycle: once the owner has been
+  observed closed, a later tick that sees it reopened re-marks the same cancellation and keeps the first stamp.
+- **Pending restart.** `late_restart_pending`, `late_restart_target`, `late_restart_cycle_id`, and
+  `late_restart_predecessor` are written before the restart's own external effects by the
+  [`restart`](../../orchestrator/workflow/late_split/restart.py) owner, and beginning a restart is create-or-keep — a
+  marker already names the cycle it intends, so a crash between the write and the label resumes that cycle rather
+  than minting a second one. *Believable* is the condition on both halves, and it takes the whole marker: the pending
+  flag is set, the target is one of the two labels a restart may apply (`workflow:decomposing` /
+  `workflow:implementing`), the predecessor is exactly the cycle the record is on, and the pending cycle is exactly
+  the next one after it. A marker failing any of those is a damaged field rather than a restart in flight and is
+  re-minted from the current cycle — honoring one would hand the fresh attempt a number an audit record never issued
+  (cycle 2 with a pending 99), an ancestry nothing wrote (a predecessor of 500 under cycle 2), or a label nobody
+  chose. The *requested* target is checked before any of that, so a marker already standing never excuses an argument
+  outside the pair. Retiring is the one step that refuses instead of re-deriving: the fresh cycle keeps no ledger, so
+  `retire_restart` raises while any obligation is still pending, retained, failed, or of a shape this binary could
+  not read — restart is reachable only from a cancellation whose cleanup completed, and retiring over an unsettled
+  ledger would discharge the obligation by forgetting it. `restart.obligations_settled` is the same question a caller
+  can ask first.
+  Retiring the marker projects a fresh cycle keeping only the identities that link it to the one before: the cycle it
+  is, the issue and root it belongs to, and the cycle it succeeds.
