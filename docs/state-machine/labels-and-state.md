@@ -528,7 +528,10 @@ rather than preserving.
 - **Frozen evidence.** `late_scope` is the declared scope this generation owns; `late_candidate_sha` and
   `late_base_sha` are the exact commits a reconciliation may act on (a recorded SHA is the evidence, never the current
   HEAD or base); `late_threshold` and `late_additions` are the measurement, which trips strictly above the threshold,
-  so a candidate exactly at the configured value is accepted. `late_phase` names the reconciliation boundary reached —
+  so a candidate exactly at the configured value is accepted. The threshold is `MAX_ADDED_LINES`
+  ([`configuration.md`](../configuration.md#cadence-and-budgets)) as it stood when the generation was recorded, and
+  the additions are what `git/measurement/` counted between those two commits, so a retuned setting cannot re-judge a
+  generation already under adjudication. `late_phase` names the reconciliation boundary reached —
   `measuring`, `holding_plan_pr`, `adjudicating`, `owner_check`, `snapshotting`, `splitting`, `superseding`,
   `cleaning_up`, `cancelling`, `restarting` — so a tick that crashed mid-step reconciles that step rather than
   starting a new one.

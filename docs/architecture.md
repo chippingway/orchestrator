@@ -98,7 +98,8 @@ orchestrator/
                         routes into
   git/                  local git: execution, locks, and authenticated
                         transport, under the worktree lifecycle, the per-tick
-                        base sync, branch publication, and verify runs
+                        base sync, branch publication, verify runs, and the
+                        added-line measurement of a committed candidate
   observability/        the four surfaces that watch a run without steering
                         it: the analytics sink and everything downstream of
                         it, the parser that meters one finished agent run, the

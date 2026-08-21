@@ -153,3 +153,49 @@ class MaxConflictRoundsConfigTest(unittest.TestCase):
     def test_env_override(self) -> None:
         config = _reload.load_config({"MAX_CONFLICT_ROUNDS": "7"})
         self.assertEqual(config.MAX_CONFLICT_ROUNDS, 7)
+
+
+class MaxAddedLinesConfigTest(unittest.TestCase):
+    """The size ceiling a committed candidate publishes under.
+
+    A positive integer validated at import like the parallelism caps, because
+    zero or a negative one would call every candidate oversized and route a
+    whole repository into adjudication rather than merely mis-sizing one issue.
+    """
+
+    def test_default_is_four_thousand(self) -> None:
+        config = _reload.load_config()
+        self.assertEqual(
+            config.MAX_ADDED_LINES, _config_cases._DEFAULT_MAX_ADDED_LINES,
+        )
+
+    def test_env_override(self) -> None:
+        config = _reload.load_config(
+            {
+                _config_cases._MAX_ADDED_LINES_ENV: str(
+                    _config_cases._OVERRIDE_MAX_ADDED_LINES,
+                ),
+            }
+        )
+        self.assertEqual(
+            config.MAX_ADDED_LINES, _config_cases._OVERRIDE_MAX_ADDED_LINES,
+        )
+
+    def test_blank_value_keeps_the_default(self) -> None:
+        # An operator who commented the value out but left the key behind gets
+        # the shipped ceiling rather than an abort.
+        config = _reload.load_config({_config_cases._MAX_ADDED_LINES_ENV: "  "})
+        self.assertEqual(
+            config.MAX_ADDED_LINES, _config_cases._DEFAULT_MAX_ADDED_LINES,
+        )
+
+    def test_an_invalid_ceiling_aborts_at_import(self) -> None:
+        for spelling in ("plenty", _config_cases._DISABLED_ENV, "-1", "4_000.5"):
+            with self.subTest(value=spelling):
+                error_message = _reload.config_error_message(
+                    {_config_cases._MAX_ADDED_LINES_ENV: spelling},
+                )
+                self.assertIn(
+                    _config_cases._MAX_ADDED_LINES_ENV, error_message,
+                )
+                self.assertIn(spelling, error_message)

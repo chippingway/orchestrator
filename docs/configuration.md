@@ -161,6 +161,21 @@ examples.
   durable state (issue body + recent comments + the committed branch), so a growing `--resume` transcript cannot creep
   into a `Prompt is too long` context overflow. `0` = resume forever. The reactive overflow handler still recovers a
   session that blows the window in fewer resumes.
+- `MAX_ADDED_LINES` — default `4000`. size ceiling one implementation candidate may publish under, counted in the
+  textual lines its prospective pull request **adds**: the frozen remote base commit against the exact committed
+  candidate commit, across every path. Binary content contributes nothing (git has no lines to report for it), a
+  moved file counts where it lands (rename detection is off, so relocating work cannot buy a smaller number), and
+  there is no exemption for lockfiles, generated code, migrations, snapshots, golden fixtures, i18n catalogs,
+  notebooks, or vendored trees — an exemption list is a bypass anybody can move work into, and the number has to be
+  reproducible from the diff a reviewer opens. What decides which paths have lines, and how many, is pinned to the
+  commit rather than to the checkout — attributes are read from the candidate's own tree, so an uncommitted
+  `.gitattributes` cannot make textual work report as binary, and the diff algorithm is named, so the same two
+  commits cannot count differently on two hosts — and a reading that cannot be pinned (an `info/attributes` file, a
+  diff driver in the repository's config) is a typed failure, never a count of zero. The
+  comparison is **strictly greater than**: a candidate landing exactly on the configured value publishes the way it
+  always has, and only one past it is oversized. Positive integer, validated at import like the parallelism caps —
+  `0` or a negative would call every candidate oversized. Global on purpose; a per-repository override waits on
+  telemetry that shows repository skew
 - `ORCHESTRATOR_BASE_BRANCH` — default `main`. base branch of the orchestrator's own repo, used by the self-update
   path
 - `SQUASH_ON_APPROVAL` — default `on`. after the reviewer emits `VERDICT: APPROVED`, squash the dev's commits on the

@@ -34,6 +34,11 @@ _CODEX = "codex"
 _DEFAULT_REPO = "geserdugarov/agent-orchestrator"
 _DEFAULT_HITL = "geserdugarov"
 
+# Added lines a candidate may carry and still publish as one change. Spelled
+# here beside the other defaults; what a value at or past it means is on the
+# setting itself in `orchestrator/config/__init__.py`.
+_DEFAULT_MAX_ADDED_LINES = 4000
+
 
 def parse_agent_spec(
     setting_name: str,
@@ -191,6 +196,7 @@ class _SettingsResolver:
 
     def _controls(self) -> dict[str, Any]:
         env = self._environ
+        positive_int = PositiveIntParser(self._config_error)
         raw_guard = env.get("WORKFLOW_TRANSITION_GUARD", "")
         guard = raw_guard.strip().lower() or "warn"
         if guard not in ("off", "warn", "enforce"):
@@ -209,6 +215,11 @@ class _SettingsResolver:
                 env.get("IN_REVIEW_DEBOUNCE_SECONDS", "600"),
             ),
             "VERIFY_TIMEOUT": int(env.get("VERIFY_TIMEOUT", "600")),
+            "MAX_ADDED_LINES": positive_int(
+                "MAX_ADDED_LINES",
+                env.get("MAX_ADDED_LINES", ""),
+                _DEFAULT_MAX_ADDED_LINES,
+            ),
             "VERIFY_COMMANDS": parse_verify_commands(env.get("VERIFY_COMMANDS", "")),
             "ORCHESTRATOR_BASE_BRANCH": env.get("ORCHESTRATOR_BASE_BRANCH", "main"),
             "WORKFLOW_TRANSITION_GUARD": guard,
