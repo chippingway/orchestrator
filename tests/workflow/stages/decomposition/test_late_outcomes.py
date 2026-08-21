@@ -1,0 +1,217 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""What one finished late run is read as, and what a verdict earns."""
+from __future__ import annotations
+
+import unittest
+
+from orchestrator.workflow.late_split.events import LateVerdictCategory
+from orchestrator.workflow.late_split.models import (
+    MAX_LINEAGE_DEPTH,
+    LateVerdict,
+)
+from orchestrator.workflow.stages.decomposition.late_models import (
+    _LateDisposition,
+)
+
+from tests.support.fakes import FakeLabel
+from tests.workflow.fixtures import LABEL_DECOMPOSING
+from tests.workflow.stages.decomposition.late_run_support import (
+    LateCase,
+    agent_reply,
+)
+from tests.workflow.stages.decomposition.late_test_support import (
+    ADDITIONS,
+    CANDIDATE_SHA,
+    EVENT_LATE_VERDICT,
+    KEYS,
+    NEXT_GENERATION,
+    NO_BLOCK_REPLY,
+    QUESTION_ASKED,
+    THRESHOLD,
+)
+from tests.workflow.stages.decomposition.late_test_support import (
+    LATE_FENCE,
+    LATE_SESSION_ID,
+    QUESTION_REPLY,
+    SINGLE_REPLY,
+    SPLIT_REPLY,
+    generation_state,
+    late_generation,
+)
+
+PAUSED_LABEL = "paused"
+
+SPLIT_CHILDREN = 2
+
+
+class _PausedDuringRun:
+    """An operator applying `paused` while the agent is still running."""
+
+    def __init__(self, issue, agent_result) -> None:
+        self._issue = issue
+        self._agent_result = agent_result
+
+    def __call__(self, *_args, **_kwargs):
+        self._issue.labels.append(FakeLabel(PAUSED_LABEL))
+        return self._agent_result
+
+
+class DeclinedRunTest(LateCase, unittest.TestCase):
+    """The outcomes a finished spawn is not allowed to be read as."""
+
+    def test_a_mid_run_pause_writes_no_result(self) -> None:
+        # A declined run costs the issue's daily budget nothing, exactly as a
+        # declined run in every other stage does: the pre-spawn write carries
+        # the late identity and leaves the counters as it found them.
+        paused = _PausedDuringRun(self.issue, agent_reply(SINGLE_REPLY))
+
+        outcome, _ = self._adjudicate(paused)
+
+        self.assertEqual(outcome.disposition, _LateDisposition.DEFERRED)
+        self.assertNotIn(KEYS.verdict, self._pinned())
+        self.assertNotIn(KEYS.session_id, self._pinned())
+        self.assertNotIn(KEYS.retry_count, self._pinned())
+
+    def test_an_interrupted_run_is_not_read(self) -> None:
+        outcome, _ = self._adjudicate(
+            agent_reply(SINGLE_REPLY, interrupted=True),
+        )
+
+        self.assertEqual(outcome.disposition, _LateDisposition.DEFERRED)
+        self.assertNotIn(KEYS.verdict, self._pinned())
+        # A shutdown sweep landing here over and over must not exhaust the
+        # cap without ever producing an answer.
+        self.assertNotIn(KEYS.retry_count, self._pinned())
+        # The spawn record is deliberately durable: it is what the retry
+        # measures itself against.
+        self.assertEqual(self._pinned().get(KEYS.source_sha), CANDIDATE_SHA)
+
+    def test_a_timeout_parks_and_keeps_its_session(self) -> None:
+        # A timed-out run still opened a session a later resume has to land
+        # on, and it did spend the retry slot the park now records.
+        outcome, _ = self._adjudicate(
+            agent_reply("", session_id=LATE_SESSION_ID, timed_out=True),
+        )
+
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
+        self.assertIn("timed out", self.github.posted_comments[-1][1])
+        self.assertNotIn(KEYS.verdict, self._pinned())
+        self.assertEqual(self._pinned().get(KEYS.session_id), LATE_SESSION_ID)
+        self.assertEqual(outcome.run.session_id, LATE_SESSION_ID)
+        self.assertEqual(self._pinned().get(KEYS.retry_count), 1)
+
+    def test_a_reply_with_no_block_parks(self) -> None:
+        outcome, _ = self._adjudicate(agent_reply(NO_BLOCK_REPLY))
+
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
+        self.assertIn(LATE_FENCE, self.github.posted_comments[-1][1])
+        self.assertNotIn(KEYS.verdict, self._pinned())
+
+
+class DecidedOutcomeTest(LateCase, unittest.TestCase):
+    """What a verdict records, and what it deliberately does not do."""
+
+    def test_a_finished_run_records_its_result(self) -> None:
+        outcome, spawn = self._adjudicate(
+            agent_reply(SINGLE_REPLY, session_id=LATE_SESSION_ID),
+        )
+
+        spawn.assert_called_once()
+        self.assertEqual(outcome.disposition, _LateDisposition.DECIDED)
+        self.assertEqual(outcome.adjudication.verdict, LateVerdict.SINGLE)
+        self.assertEqual(self._pinned().get(KEYS.session_id), LATE_SESSION_ID)
+        self.assertEqual(self._pinned().get(KEYS.verdict), LateVerdict.SINGLE)
+        # What is reported is read back off pinned state, so a caller asking
+        # the run for its session gets the one a later resume would land on.
+        self.assertEqual(outcome.run.session_id, LATE_SESSION_ID)
+        self.assertEqual(outcome.run.verdict, LateVerdict.SINGLE)
+
+    def test_a_question_parks_with_what_it_asks(self) -> None:
+        outcome, _ = self._adjudicate(agent_reply(QUESTION_REPLY))
+
+        self.assertEqual(outcome.disposition, _LateDisposition.DECIDED)
+        self.assertIn(QUESTION_ASKED, self.github.posted_comments[-1][1])
+        self.assertTrue(self._pinned().get(KEYS.awaiting))
+        self.assertEqual(
+            self._pinned().get(KEYS.category),
+            LateVerdictCategory.SCOPE_AMBIGUOUS,
+        )
+
+    def test_a_split_at_the_bound_becomes_a_question(self) -> None:
+        # The bound is a safety invariant, so the outcome is the question the
+        # workflow now owes a human -- and the next tick asks the human rather
+        # than paying for the same forbidden split again.
+        self.github.seed_state(
+            self.issue.number,
+            **_bounded_state(),
+        )
+
+        outcome, _ = self._adjudicate(agent_reply(SPLIT_REPLY))
+
+        self.assertEqual(outcome.adjudication.verdict, LateVerdict.QUESTION)
+        self.assertEqual(
+            self._pinned().get(KEYS.category),
+            LateVerdictCategory.LINEAGE_BOUND,
+        )
+        self.assertEqual(self._pinned().get(KEYS.verdict), LateVerdict.QUESTION)
+
+    def test_the_verdict_carries_its_measurement(self) -> None:
+        self._adjudicate(agent_reply(SINGLE_REPLY))
+
+        recorded = self._events_named(EVENT_LATE_VERDICT)
+        self.assertEqual(len(recorded), 1)
+        decided = recorded[0]
+        self.assertEqual(decided.get("verdict"), LateVerdict.SINGLE)
+        self.assertEqual(
+            decided.get("category"),
+            LateVerdictCategory.GENERATED_ARTIFACTS,
+        )
+        self.assertEqual(decided.get("additions"), ADDITIONS)
+        self.assertEqual(decided.get("threshold"), THRESHOLD)
+        self.assertEqual(decided.get("source_sha"), CANDIDATE_SHA)
+
+    def test_an_accepted_candidate_publishes_nothing(self) -> None:
+        # The coordinator adjudicates; relabeling, creating children, and
+        # publishing all belong to the steps that act on the verdict.
+        self._adjudicate(agent_reply(SINGLE_REPLY))
+
+        self.assertEqual(self.github.label_history, [])
+        self.assertEqual(self.github.created_child_issues, [])
+        self.assertEqual(
+            self.github.workflow_label(self.issue), LABEL_DECOMPOSING,
+        )
+
+    def test_a_later_generation_re_adjudicates(self) -> None:
+        # A recorded answer names the generation it answered, so the next
+        # frozen candidate is a new question rather than a settled one.
+        self._adjudicate(agent_reply(SINGLE_REPLY))
+        self.github.seed_state(
+            self.issue.number,
+            **_nextgeneration_state(self._pinned()),
+        )
+
+        outcome, spawn = self._adjudicate(agent_reply(QUESTION_REPLY))
+
+        spawn.assert_called_once()
+        self.assertEqual(outcome.disposition, _LateDisposition.DECIDED)
+        self.assertEqual(
+            self._pinned().get(KEYS.run_generation), NEXT_GENERATION,
+        )
+
+
+def _bounded_state() -> dict:
+    """The seeded pinned state of a generation at the lineage bound."""
+    return generation_state(late_generation(lineage_depth=MAX_LINEAGE_DEPTH))
+
+
+def _nextgeneration_state(recorded: dict) -> dict:
+    """The same issue's state once a second candidate has been frozen."""
+    return {
+        **recorded,
+        **generation_state(late_generation(generation=NEXT_GENERATION)),
+    }
+
+
+if __name__ == "__main__":
+    unittest.main()

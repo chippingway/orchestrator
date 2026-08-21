@@ -24,6 +24,13 @@ _BLOCKED = "blocked"
 _OWNERS = (
     "activation",
     _BLOCKED,
+    "late_coordinator",
+    "late_hold",
+    "late_models",
+    "late_outcome",
+    "late_prompt",
+    "late_reply",
+    "late_session",
     "manifest",
     "models",
     "outcomes",

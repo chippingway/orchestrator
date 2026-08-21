@@ -94,7 +94,8 @@ orchestrator/
     events.py           audit event record construction and the optional JSONL sink
     issues.py           issue polling and writes, the query options, and the wire issue-state vocabulary
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
-    pinned_state.py     the pinned durable-state model, its parser, and the comment watermarks beside it
+    pinned_state.py     the pinned durable-state model, the comment body it is written as and the length GitHub
+                        takes, its parser, and the comment watermarks beside it
     pull_requests.py    PR lookup by open state, by commit, and when GitHub could not be asked at all, plus creation,
                         comments, body, labels, SHA-pinned merge, and remote-branch delete
     reviews.py          current-head review aggregation: approval verdicts and unread-feedback watermarks

@@ -26,6 +26,14 @@ PINNED_STATE_BODY_RE = re.compile(
     re.DOTALL,
 )
 PINNED_STATE_TEMPLATE = "<!--orchestrator-state {payload}-->"
+
+# How long a comment body GitHub accepts. A write past it is refused, so a
+# caller about to add something large to the pinned state -- a preserved pull
+# request body, a recorded child manifest -- asks `pinned_state_body` what the
+# comment would become and measures it against this rather than finding out
+# from a failed request after the work it was recording has been paid for.
+MAX_PINNED_BODY = 65536
+
 _MISSING_STATE = object()
 
 
@@ -78,6 +86,17 @@ class PinnedState:
     def set(self, key: str, state_value: Any) -> None:
         """Set one workflow-state field."""
         self.state_data[key] = state_value
+
+
+def pinned_state_body(state_data: dict) -> str:
+    """Return the comment body one pinned state is written as.
+
+    The one rendering of it, so a caller measuring what a write would produce
+    measures the write rather than an approximation of it.
+    """
+    return PINNED_STATE_TEMPLATE.format(
+        payload=json.dumps(state_data, sort_keys=True),
+    )
 
 
 def pinned_state_from_comment(
@@ -133,9 +152,7 @@ class GitHubStateMixin(GitHubIssueMixin):
         state: PinnedState,
     ) -> PinnedState:
         """Create or replace the issue's authoritative state-only comment."""
-        body = PINNED_STATE_TEMPLATE.format(
-            payload=json.dumps(state.data, sort_keys=True),
-        )
+        body = pinned_state_body(state.data)
         if state.comment_id is None:
             created_comment = issue.create_comment(body)
             state.comment_id = created_comment.id

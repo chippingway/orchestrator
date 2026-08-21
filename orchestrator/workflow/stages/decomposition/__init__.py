@@ -19,6 +19,19 @@ that died mid-split left behind, `split` owns the crash-safe order children are
 created in, and `parents`, `activation`, `blocked`, and `umbrella` own the
 parent-side polling that drives the tree to completion.
 
+The `late_*` owners are an additive second mode under the same `decomposing`
+label, for the issue whose implementation is already committed and turns out
+to be oversized. They are named apart rather than folded in because what a
+missing or malformed INITIAL manifest means may not change: `late_prompt` and
+`late_reply` are the question that mode asks and the fence it is answered on,
+`late_hold` owns the generation-marked hold a reusable plan PR wears while the
+question is open, `late_session` owns the run's pinned record and the tracked
+spawn over it, `late_coordinator` owns the order those are asked in and
+`late_outcome` what one finished reply becomes, and `late_models` carries what
+they hand each other. Nothing dispatches into them yet -- the seam that
+decides a candidate is oversized is a later change -- so the four labels above
+are still the whole of what this package answers for.
+
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per label, and an eager binding here would
 charge the `blocked` walk for the manifest parser and the split writer it

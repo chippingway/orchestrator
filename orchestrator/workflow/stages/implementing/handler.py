@@ -55,7 +55,10 @@ log = logging.getLogger("orchestrator.workflow")
 
 
 def _recorded_pr_is_the_plan(
-    gh: GitHubClient, issue: Issue, state: PinnedState,
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    head_sha: Optional[str] = None,
 ) -> Optional[bool]:
     """True while the PR this issue records still carries only the plan.
 
@@ -89,6 +92,14 @@ def _recorded_pr_is_the_plan(
     plan" and the second "merged", and close the issue as `done` on the
     strength of a design document. What a failed fetch actually establishes is
     nothing, which is what the third answer says.
+
+    `head_sha` is for the caller that already holds the snapshot it is about
+    to ACT on, and it is the only thing that snapshot is asked for. The head
+    is a mutable thing -- a human can push to a plan PR at any moment -- so a
+    caller that classified one read and then mutated another has classified
+    something it did not touch. Given the head it read, the answer is about
+    that read, and there is no fetch left to fail: the third answer cannot
+    arise.
     """
     pr_number = state.get(_state._PR_NUMBER)
     if pr_number is None:
@@ -98,15 +109,17 @@ def _recorded_pr_is_the_plan(
     plan_sha = state.get(_DISCUSSION_PLAN_SHA)
     if not plan_sha:
         return False
-    try:
-        recorded_pr = gh.get_pr(int(pr_number))
-    except Exception:
-        log.exception(
-            "issue=#%s could not fetch PR #%s while telling a plan from an "
-            "implementation; deferring the tick", issue.number, pr_number,
-        )
-        return None
-    return getattr(recorded_pr.head, "sha", None) == plan_sha
+    if head_sha is None:
+        try:
+            head_sha = getattr(gh.get_pr(int(pr_number)).head, "sha", None)
+        except Exception:
+            log.exception(
+                "issue=#%s could not fetch PR #%s while telling a plan from "
+                "an implementation; deferring the tick",
+                issue.number, pr_number,
+            )
+            return None
+    return head_sha == plan_sha
 
 
 def _recorded_pr_holds_the_tick(

@@ -1,0 +1,424 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""One late adjudication, from the plan-PR hold to the run it settles.
+
+The coordinator an oversized committed candidate is adjudicated by. It is
+callable and complete, and nothing calls it yet: the seam that decides a
+candidate is oversized -- the clean-committed pre-publication boundary -- is
+wired separately, so this owner can be exercised on its own before any real
+publication depends on it. What a finished reply then becomes is the
+`late_outcome` owner beside it.
+
+The order is the contract, and each step persists what it reached before it
+acts. A generation that is not a live oversized one is not this owner's
+business at all. Past that, the plan PR is held BEFORE anything is spawned,
+because the hold is what stops a human from merging a change while the
+question of whether it should exist as one issue is still open -- so a hold
+that could not be reconciled parks and spawns nothing, and every retry
+re-reconciles the same pull request rather than mutating it again. Then a
+result already recorded for this cycle, generation, and exact commit short
+circuits the spawn entirely: an agent that finished is not paid for twice
+because the tick that read its answer died before acting on it, and a second
+run is free to decide differently. Either way, the park a previous attempt
+left is retired the moment the hold reconciles -- that attempt is the answer
+to it, and a stale `awaiting_human` would go on to silence the announcement a
+question verdict earns, whether the question came from this run or from a
+recorded one whose own announcement never landed. What comes back is the whole outcome
+rebuilt from the record -- the children a split named included -- and whatever
+that answer still owed the issue is reconciled instead of re-earned.
+
+Nothing gets that far on a generation that cannot be acted on. The prompt, the
+hold, and every record afterwards are derived from the frozen fields, so the
+identities and both commits are proved before the plan PR is touched or an
+agent is started: a candidate whose base was never recorded produces a diff
+against nothing, and finding that out from a refused telemetry record means
+the run has already been paid for.
+
+Everything after the spawn is the shared post-run contract every other stage
+runs: a `paused` label applied mid-run wins over the whole disposition and
+leaves durable state exactly as the prior tick left it, a timeout parks, and
+an interrupted run is dropped without being interpreted. The usage fold, the
+retry budget, and the tracked spawn are the ones the rest of the workflow
+already uses -- late adjudication spends the same per-issue budget as any
+other decomposing run and is attributed to the same stage. "Leaves durable
+state exactly as the prior tick left it" is what makes the pre-spawn write
+the one place accounting is held back: the late identity goes out before the
+agent starts, the retry slot does not, and a declined run therefore costs the
+issue nothing.
+
+One check has no counterpart in the initial mode, because the initial
+decomposer runs in a scratch checkout and this one does not. The late
+adjudicator reads the frozen candidate in the developer's OWN worktree, and
+the CLI it runs under can write whatever it likes there whatever the prompt
+says. So the candidate is proved unmoved and the tree proved clean before the
+reply is read at all: an agent that committed over the evidence, or left
+changes beside it, has contaminated the one artifact every later step acts on,
+and its verdict is worth nothing next to that.
+"""
+from __future__ import annotations
+
+import logging
+from dataclasses import replace
+from pathlib import Path
+from typing import Optional
+
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.agents import AgentResult
+from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.late_split import formats as _formats
+from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import validation as _late_validation
+from orchestrator.workflow.late_split.models import (
+    LateFailure,
+    LateGeneration,
+    LatePhase,
+)
+from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
+from orchestrator.workflow.stages.decomposition import (
+    late_outcome as _late_outcome,
+)
+from orchestrator.workflow.stages.decomposition import (
+    late_session as _late_session,
+)
+from orchestrator.workflow.stages.decomposition.late_models import (
+    _LateAdjudicationRun,
+    _LateContext,
+    _LateDisposition,
+    _LateRun,
+)
+from orchestrator.workflow.stages.implementing import session as _dev_session
+
+log = logging.getLogger("orchestrator.workflow")
+
+_DECOMPOSING_STAGE = "decomposing"
+
+_LAST_AGENT_ACTION_AT = "last_agent_action_at"
+
+# The per-issue accounting the pre-spawn write leaves exactly as it found it.
+# Both fields move together -- an expired window is reopened at zero before it
+# is incremented -- so a write that carried one without the other would record
+# a count against a window nothing opened.
+_ACCOUNTING_FIELDS = ("retry_count", "retry_window_start")
+
+_HOLD_FAILED_PARK = (
+    "could not put the adjudication hold on this issue's plan PR, so no late "
+    "decomposer was spawned and the committed candidate stays unpublished. "
+    "Settle the pull request, then the next tick retries the same "
+    "reconciliation against the same frozen commit."
+)
+
+_INCOMPLETE_PARK = (
+    "this issue records an oversized committed candidate that cannot be "
+    "adjudicated: {reason}. Nothing was spawned and no pull request was "
+    "touched. The recorded generation has to be repaired -- what an agent "
+    "would be shown is derived from those fields, and a diff taken against a "
+    "commit nobody froze is not a reading of this candidate."
+)
+
+_MISSING_WORKTREE_PARK = (
+    "the committed candidate for this issue is not on this host: its "
+    "worktree is gone, and the frozen commit cannot be adjudicated without "
+    "it. Restore the worktree on this host rather than re-running the "
+    "developer -- the recorded commit is the evidence, not the current head."
+)
+
+_TIMEOUT_PARK = "late decomposer timed out after {seconds}s"
+
+_MOVED_HEAD_PARK = (
+    "the late decomposer was read-only, but the candidate worktree is no "
+    "longer on the frozen commit {frozen}. Its verdict is not being used. "
+    "Put the worktree back on that commit before resuming -- the recorded "
+    "SHA is the evidence every later step acts on, and whatever HEAD points "
+    "at now is not it."
+)
+
+_DIRTY_TREE_PARK = (
+    "the late decomposer was read-only, but it left changes in the candidate "
+    "worktree (or the tree could not be read). Its verdict is not being "
+    "used. Clean the worktree back to the frozen commit {frozen} before "
+    "resuming, so the candidate a later step publishes is the one that was "
+    "measured."
+)
+
+
+def _adjudicate_late_generation(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+) -> _LateAdjudicationRun:
+    """Adjudicate this issue's recorded late generation, if it has a live one.
+
+    The whole late question in one call: hold the plan PR, reuse a completed
+    answer or spawn for a new one, and record what it decided. Nothing is
+    published here and no label is written -- the caller owns what a verdict
+    earns.
+    """
+    context = _LateContext(
+        gh=gh,
+        spec=spec,
+        issue=issue,
+        state=state,
+        generation=_late_state.read_late_generation(state),
+    )
+    if not _is_adjudicable(context.generation):
+        return _late_outcome._finished(context, _LateDisposition.NOT_LATE)
+    if not _has_frozen_evidence(context):
+        return _late_outcome._finished(context, _LateDisposition.PARKED)
+    if not _hold_plan_pr(context):
+        return _late_outcome._finished(context, _LateDisposition.PARKED)
+    retired = _late_outcome._retire_park(context)
+    recorded = _late_session._read_late_run(state)
+    if recorded.answers(context.generation):
+        log.info(
+            "issue=#%d late generation %d already decided as %s; not "
+            "spawning a second adjudication",
+            issue.number, context.generation.generation, recorded.verdict,
+        )
+        return _late_outcome._reused(context, recorded, retired=retired)
+    return _run_and_decide(context)
+
+
+def _is_adjudicable(generation: LateGeneration) -> bool:
+    """Whether this issue carries a live oversized generation to adjudicate.
+
+    An absent generation is an issue that never entered the gate, a measured
+    candidate at or below its ceiling is one that publishes as it always did,
+    and a cancelled cycle is cleanup-only -- none of the three may spawn.
+    """
+    return (
+        generation.is_present
+        and generation.is_oversized
+        and not generation.cancelled
+    )
+
+
+def _has_frozen_evidence(context: _LateContext) -> bool:
+    """Prove this generation is one that may be acted on, or park loudly.
+
+    Everything past this point is derived from the record: the prompt names
+    both commits and tells the agent to diff between them, the hold marks a
+    pull request in the generation's name, and the verdict is reported under
+    its identities. A generation missing one of those does not produce a
+    smaller reading of the candidate -- it produces a `git diff` against
+    nothing and a record two sinks would refuse afterwards, having already
+    paid for the run that made it.
+
+    Nothing is emitted for the refusal. A record with no usable identity is
+    exactly what the sinks may not carry, so the report is the park and the
+    log line, which name the field and not its content.
+    """
+    unusable = _incomplete_evidence(context.generation, context.issue.number)
+    if unusable is None:
+        return True
+    log.error(
+        "issue=#%d has an oversized late generation that cannot be "
+        "adjudicated (%s); parking rather than spawning",
+        context.issue.number, unusable,
+    )
+    _late_outcome._park(
+        context,
+        _INCOMPLETE_PARK.format(reason=unusable),
+        reason=_late_outcome.PARK_INCOMPLETE,
+    )
+    return False
+
+
+def _incomplete_evidence(
+    generation: LateGeneration, issue_number: int,
+) -> Optional[str]:
+    """Why this generation may not be adjudicated here, or None if it may.
+
+    The domain's own record gate answers the first part -- the identities a
+    later record is correlated by, and the shape of every field one would
+    carry. Both frozen commits are required beside it: they are optional to
+    that gate because a restart's fresh cycle has deliberately let them go,
+    and they are not optional here, because they are the two ends of the diff
+    this whole adjudication is about.
+
+    The last part is the one the gate cannot ask, because it does not know
+    which issue is being adjudicated. A generation is a record ABOUT an issue,
+    and a positive `late_current_issue` is not the same claim as one naming
+    THIS issue: a record carrying somebody else's number would show the agent
+    a prompt that names two issues, mark a pull request in a foreign
+    generation's name, and file the verdict against the issue it names rather
+    than the one it ran on.
+    """
+    try:
+        _late_validation.check_generation(generation)
+    except _formats.InvalidLateValue as refused:
+        return str(refused)
+    if not generation.candidate_sha or not generation.base_sha:
+        return "the frozen candidate and base commits are not both recorded"
+    if generation.current_issue != issue_number:
+        return f"it was recorded against issue #{generation.current_issue}"
+    return None
+
+
+def _hold_plan_pr(context: _LateContext) -> bool:
+    """Reconcile the generation-marked hold, or park without spawning."""
+    context.generation = replace(
+        context.generation, phase=LatePhase.HOLDING_PLAN_PR,
+    )
+    hold = _late_hold._reconcile_plan_pr_hold(
+        context.gh, context.issue, context.state, context.generation,
+    )
+    context.generation = hold.generation
+    if not hold.failed:
+        return True
+    _late_outcome._emit_failure(context, LateFailure.PLAN_PR_HOLD_FAILED)
+    _late_outcome._park(
+        context, _HOLD_FAILED_PARK, reason=_late_outcome.PARK_HOLD_FAILED,
+    )
+    return False
+
+
+def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
+    """Spend a retry slot on one adjudication of the frozen candidate."""
+    worktree = _worktree_paths._worktree_path(
+        context.spec, context.issue.number,
+    )
+    if not worktree.exists():
+        _late_outcome._park(
+            context, _MISSING_WORKTREE_PARK,
+            reason=_late_outcome.PARK_WORKTREE_MISSING,
+        )
+        return _late_outcome._finished(context, _LateDisposition.PARKED)
+    unspent = _accounting(context.state)
+    if not _dev_session._check_and_increment_retry_budget(
+        context.gh, context.issue, context.state, stage=_DECOMPOSING_STAGE,
+    ):
+        _late_outcome._persist(context)
+        return _late_outcome._finished(context, _LateDisposition.PARKED)
+    started = _late_session._spawn_record_for(
+        context.state, context.generation,
+    )
+    _begin(context, started, unspent)
+    return _settle(
+        context,
+        _late_session._spawn_late_adjudicator(context, started, worktree),
+        worktree,
+    )
+
+
+def _begin(
+    context: _LateContext, run: _LateRun, unspent: dict,
+) -> None:
+    """Record what this run IS, and the phase it reached, before it starts.
+
+    Deliberately NOT the accounting. The identity of the attempt has to be
+    durable before the agent starts -- it is what a crashed tick reads back
+    instead of paying for a second run -- but the retry slot this run holds
+    must not be, because a run the tick then declines is one every other stage
+    drops by returning without writing. Flushing the slot here would spend the
+    issue's daily budget on a run whose outcome nothing kept, so a shutdown
+    sweep landing on late adjudication over and over could exhaust the cap
+    without ever producing an answer. So the write goes out with the counters
+    as they stood, and the increment becomes durable only on a path that
+    records what the run decided.
+    """
+    context.generation = replace(
+        context.generation, phase=LatePhase.ADJUDICATING,
+    )
+    _late_session._record_late_spawn(context.state, run)
+    spent = _accounting(context.state)
+    _apply_accounting(context.state, unspent)
+    _late_outcome._persist(context)
+    _apply_accounting(context.state, spent)
+
+
+def _settle(
+    context: _LateContext, agent_result: AgentResult, worktree: Path,
+) -> _LateAdjudicationRun:
+    """Fold this run's usage and decline the outcomes that are not answers."""
+    if _guards._paused_during_agent_run(context.gh, context.issue):
+        return _late_outcome._finished(context, _LateDisposition.DEFERRED)
+    context.state.set(_LAST_AGENT_ACTION_AT, _usage._now_iso())
+    if not agent_result.interrupted:
+        _usage._accumulate_issue_usage(context.state, agent_result.usage)
+    declined = _declined_run(context, agent_result, worktree)
+    if declined is not None:
+        return declined
+    _late_session._record_late_session(context.state, agent_result)
+    return _late_outcome._decide(context, agent_result.last_message)
+
+
+def _declined_run(
+    context: _LateContext, agent_result: AgentResult, worktree: Path,
+) -> Optional[_LateAdjudicationRun]:
+    """The refusals a finished run earns before its reply is read at all.
+
+    The mutation check sits ahead of the interruption refusal for the reason
+    the initial decomposer's dirty check does: a run the shutdown sweep killed
+    can have written before it died, and a contaminated candidate is a thing
+    an operator has to be told about whether or not the run that caused it
+    counted.
+    """
+    if agent_result.timed_out:
+        return _late_outcome._parked_run(
+            context,
+            agent_result,
+            _TIMEOUT_PARK.format(seconds=config.AGENT_TIMEOUT),
+            reason=_late_outcome.PARK_TIMEOUT,
+        )
+    mutated = _candidate_mutation(context.generation, worktree)
+    if mutated is not None:
+        log.error(
+            "issue=#%d the late decomposer left the candidate worktree "
+            "changed; refusing its verdict",
+            context.issue.number,
+        )
+        return _late_outcome._parked_run(
+            context, agent_result, mutated,
+            reason=_late_outcome.PARK_WORKTREE_MUTATED,
+        )
+    if _guards._ignore_if_interrupted(context.issue, agent_result):
+        return _late_outcome._finished(context, _LateDisposition.DEFERRED)
+    return None
+
+
+def _candidate_mutation(
+    generation: LateGeneration, worktree: Path,
+) -> Optional[str]:
+    """The park a worktree the read-only agent changed earns, or None.
+
+    Both halves are proved rather than assumed. HEAD has to still BE the
+    frozen commit -- not merely to contain it -- because a commit made on top
+    of the candidate is what a later publication would push, and an unreadable
+    HEAD proves nothing and reads the same way. The tree is asked through the
+    status form for the same reason: a caller whose next step ends in a push
+    has to prove the tree is clean, and a read that established nothing is not
+    that proof.
+    """
+    head = _verification_probes._head_sha(worktree)
+    if head != generation.candidate_sha:
+        return _MOVED_HEAD_PARK.format(frozen=generation.candidate_sha)
+    tree = _verification_probes._worktree_status(worktree)
+    if not tree.readable or tree.paths:
+        return _DIRTY_TREE_PARK.format(frozen=generation.candidate_sha)
+    return None
+
+
+def _accounting(state: PinnedState) -> dict:
+    """The per-issue retry accounting as it stands, for a write to leave out."""
+    return {name: state.get(name) for name in _ACCOUNTING_FIELDS}
+
+
+def _apply_accounting(state: PinnedState, accounting: dict) -> None:
+    """Put the retry accounting back to exactly the values captured.
+
+    A field that was absent is dropped rather than written as null, so a
+    round trip through here leaves the pinned comment as it found it.
+    """
+    for name, counted in accounting.items():
+        if counted is None:
+            state.data.pop(name, None)
+        else:
+            state.set(name, counted)

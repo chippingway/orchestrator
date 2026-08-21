@@ -350,10 +350,14 @@ machine fall into a few groups:
   [in-flight session lock](../workflow/command-specs.md#in-flight-session-lock)),
   `review_agent` (traceability only; reviewer is fresh per round), `decomposer_agent` + `decomposer_session_id`
   (parents), `question_agent` + `question_session_id` (`question` stage), `discussion_agent` +
-  `discussion_session_id` (`discussion` stage). The last three pairs are separate pins on purpose: each conversation
-  seeds from `DECOMPOSE_AGENT` on its own first spawn and is then locked independently of the others on the same issue,
-  and each resumes its own session id on a human reply, so a flip of `DECOMPOSE_AGENT` between two rounds can neither
-  move a conversation onto a backend that never ran it nor hand that backend a session id it never issued.
+  `discussion_session_id` (`discussion` stage), `late_agent` + `late_session_id` (the late adjudication of an
+  oversized committed candidate — see [the late run](#the-late-run) below). The last four pairs are separate pins on
+  purpose: each seeds from `DECOMPOSE_AGENT` on its own first spawn and is then locked independently of the others on
+  the same issue, so a flip of `DECOMPOSE_AGENT` between two rounds can neither move a conversation onto a backend
+  that never ran it nor hand that backend a session id it never issued. The three conversation pairs also *resume*
+  their own session id on a human reply. The late pair does not yet: every late run this binary makes is a fresh
+  conversation against the frozen candidate, and the session is pinned so the resume the late lifecycle will land can
+  find the CLI that issued it.
 - **Decomposition.** `children`, `dep_graph` (`{child_idx_str: [child_idx, ...]}` — GitHub has no first-class blocks
   relation), `decomposed_at`, `pickup_comment_id`.
 - **PR / branch.** `branch`, `pr_number`, `review_round`, `conflict_round`. The first two are also what a published
@@ -373,7 +377,11 @@ machine fall into a few groups:
   (see [`delivery-stages.md`](delivery-stages.md), **Recovery follow-up**). Park reasons that route via
   `_park_auto_rebase_failure` (`auto_base_rebase_failed` / `auto_base_rebase_dirty` /
   `auto_base_rebase_push_failed`) are owned by the per-tick
-  base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`.
+  base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`. The late
+  size gate re-sets its own reasons for the same kind of reason: `late_plan_pr_hold_failed`,
+  `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,
+  `late_manifest_invalid`, `late_result_unrecordable`, and `late_question` — see
+  [the late run](#the-late-run) for which of them the next attempt retires.
 - **In-review watermarks.** `pr_last_comment_id` (issue thread + PR conversation, shared IssueComment id space),
   `pr_last_review_comment_id` (inline PR review comments), `pr_last_review_summary_id` (PR review summary bodies). Only
   non-empty `CHANGES_REQUESTED` or `COMMENTED` review IDs ever advance the summary watermark; `APPROVED`, `DISMISSED`,
@@ -578,3 +586,83 @@ rather than preserving.
   ledger would discharge the obligation by forgetting it. `restart.obligations_settled` is the same question a caller
   can ask first. What it projects when it does retire is a fresh cycle keeping only the identities that link it to
   the one before: the cycle it is, the issue and root it belongs to, and the cycle it succeeds.
+
+### The late run
+
+The keys above are the late-split DOMAIN's, and they describe the generation. Beside them sit the `decomposing`
+stage's own, which describe the RUN that adjudicates one:
+
+- `late_agent` and `late_session_id` — the locked spec and the session it opened.
+- `late_agent_role` — the role the run was recorded under (`decomposer` for the adjudication itself).
+- `late_run_cycle_id`, `late_run_generation`, and `late_source_sha` — the cycle, the generation, and the exact commit
+  the run was spawned against.
+- `late_result_verdict`, `late_result_category`, `late_result_question`, and `late_result_children` — what it
+  completed with: the verdict, the category beside it, the sentence a `question` asked, and the ordered child
+  manifest a `split` decided on.
+
+They are written by [`late_session.py`](../../orchestrator/workflow/stages/decomposition/late_session.py) and are
+deliberately NOT in `LATE_STATE_KEYS`: clearing late mode drops exactly the domain's group, and a locked backend
+outlives that reset the same way `decomposer_agent` outlives a drift-driven session reset.
+
+How much of a plan PR's description may be preserved is decided by what the run still has to record beside it. The
+write that starts the run has no safe failure — parking is another write of the same oversized comment — so before a
+description is replaced, the whole prospective comment is rendered with the run's record already in it: the spec this
+issue is locked to (an operator's command line, bounded by nothing here), the identities, and the bounded session id
+a finished run pins. A description too long to hold with that beside it is refused while nothing has been touched.
+
+The identity fields are written before the agent starts, and that write deliberately carries the retry accounting
+unchanged. `retry_count` and `retry_window_start` are incremented in memory to gate the spawn, but they become
+durable only on a path that records what the run decided — so a run the tick then declines (an operator's `paused`
+label, a shutdown sweep) costs the issue's daily budget nothing, exactly as a declined run in every other stage does.
+The session id is pinned at the two exits that persist, a timeout and a completed reply, and at neither of the two
+that do not.
+
+The three identities beside the result are what makes a recorded verdict believable. A run's answer decides the
+candidate it names — its own cycle, its own generation, AND its own source commit. The cycle is required because the
+generation counter is not unique without one: a restart mints a fresh cycle and puts the counter back where it
+started, and these run keys are outside `LATE_STATE_KEYS`, so they survive the clear that ends the old cycle. Without
+it, generation 1 of a restarted cycle would read generation 1 of the cancelled one's verdict as its own. A result
+taken against a commit that has since been replaced is not this candidate's either, and a fresh spawn drops the
+previous result before it starts. Together they are what keeps a tick that crashed after a finished agent run from
+paying for a second one — a second run is not free, and it is free to decide differently — and what keeps it from
+acting on the wrong answer instead.
+
+A result records the WHOLE of what its verdict decided, and is read back as an answer only while it does. A `single`
+needs nothing beside itself. A `question` carries the category it was asked under and the sentence it asked, because
+announcing it is that outcome's own external effect. A `split` carries the ordered child manifest, because the
+manifest *is* what a split decided — a marker without it would refuse to re-run the adjudicator while the answer it
+stood for was gone. The agent's rationale is the one part deliberately not kept: it is prose, it belongs on the issue
+thread, and nothing acts on it. A recorded manifest is rewritten from the three fields a child issue is created out
+of, so nothing an agent put beside them travels into the comment humans read.
+
+Half of an outcome is not one, in either direction. On the way in, what is measured is the whole comment the write would
+produce — the preserved plan-PR body and every other stage's keys included, since a result small on its own can still be
+the one that pushes the comment past what GitHub accepts — and an outcome past that budget (`MAX_RECORDED_BODY`,
+GitHub's limit less headroom for the keys other stages still write) is refused *whole* rather than shortened: a
+truncated question asks something nobody said and a truncated manifest names children nobody proposed. The issue parks
+instead of being left decided in a way no later tick could see, and learning the same thing from a failed write would
+mean the agent had already been paid for. On the way out, an incomplete record reads back unanswered: a `question` with
+no sentence or no category, and a `split` with no manifest or one the split validator refuses, would each suppress the
+next spawn and then have nothing to announce or create. Every field is read through the same defensive readers the
+domain's are, so a damaged `late_result_verdict` reads back the same way — unanswered — because publishing on a verdict
+nobody recorded is not recoverable.
+
+A park this mode leaves is attributed durably, because the next attempt has to tell its own park from another stage's.
+All of them but one are *superseded* by the attempt that follows: a hold that failed has been reconciled by the time the
+retry gets there, a missing worktree is back, a run that timed out or answered unusably is about to be re-run. Those are
+retired — `awaiting_human` and `park_reason` cleared — the moment the hold reconciles, ahead of both the spawn and the
+reuse of a recorded answer, because `awaiting_human` is exactly what suppresses the announcement a question verdict
+earns. A stale one would silence a question durably recorded and never said out loud — whether this attempt produced it
+or a crashed run recorded one whose comment never reached the issue. `late_question` is not retired: it is not a step
+that failed, it is the announcement itself, and the issue really is waiting on the human it names. The same attribution
+is what keeps a park idempotent: reconciliation is retried on every eligible tick, so a park already standing for the
+reason being taken again — including one this tick retired and is re-taking unchanged — is written but not announced a
+second time. What is suppressed is the notice, not the park. A retirement is a state change like any other, so the one
+branch that would otherwise return without writing — the reuse of a recorded answer that owes no announcement — persists
+it rather than clearing a park only in memory.
+
+The record goes out before the effect it earns. A question is written and persisted BEFORE the comment announcing it,
+so a crash between them costs one repeated comment — the window every park in this repository has — and never a
+second run of an agent that already answered. The next tick reconciles the announcement from `awaiting_human`: a
+recorded question the issue is not yet waiting on a human for is posted from the question the record kept, rather
+than re-earned.
