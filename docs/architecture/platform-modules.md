@@ -33,12 +33,14 @@ last is held by the loader itself rather than by a check.
   setting as a module attribute, which is the reload and patch target every caller reads one through. Each package's
   own tests hold its surface — a `test_imports.py` in the domains, `tests/config/test_surface.py` for the settings
   module — and `tests/repository/test_package_exports.py` holds the publish-or-front-nothing rule over the tree.
-- **No second site.** No domain here sits behind a facade. Where a package replaced flat modules — `git/` and each
-  of its four subpackages, `runtime/`, `skills/` — its own `test_imports.py` asserts that nothing resolves at the
+- **No second site.** No domain here sits behind a facade. Where a package replaced flat modules — `git/` and four
+  of its five subpackages, `runtime/`, `skills/` — its own `test_imports.py` asserts that nothing resolves at the
   retired spelling, that no inventory or resolver hook names one as a target, and that no aggregate over the git
-  domains sits above them — `tests/git/publication/test_imports.py` carries that last one.
+  domains sits above them — `tests/git/publication/test_imports.py` carries that last one. `git/measurement/`
+  replaced nothing and holds the same assertion anyway, against a flat spelling that has never existed.
 - **Operator log channels.** Four names are spelled literally rather than derived from `__name__`, because an
-  operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/authentication.py`),
+  operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/authentication.py` and
+  the two `git/measurement/` owners that log, which report on the same `ls-remote`, fetch, and diff plumbing),
   `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the four `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —

@@ -370,6 +370,26 @@ tracked path the agent rewrote reports clean. Those entries are read separately 
 paths AND as a withheld `readable`, so a caller refusing on what git listed and one that has to prove the tree empty
 both fail closed on them.
 
+One more class sits on the individual call, and for the opposite reason: these ARE settings git reads, but it reads
+them from the environment, where a `-c` on the command line does not win. `_git_hardened` therefore takes an
+`env_extra` a caller applies over both the process environment and the hardening above, and the added-line
+measurement (`git/measurement/additions.py`) is what spends it — `GIT_ATTR_SOURCE` pinned to the candidate commit, so
+the `.gitattributes` the count honours are the ones inside what is being measured rather than whatever the agent left
+uncommitted in the checkout (an inherited value beats the `attr.tree` config a `-c` could set, and a `* -diff` planted
+either way makes a textual candidate measure as zero), plus `GIT_ATTR_NOSYSTEM=1` so the host's own attributes stay
+out of a number two hosts have to agree on. On the argv beside them the same reading pins what config CAN answer for:
+`core.attributesFile` at `/dev/null`, `core.bigFileThreshold` at git's default, `--diff-algorithm=myers`,
+`--no-renames`, `--no-relative`, and `--ignore-submodules=none` — the algorithm because git's algorithms pair a change
+with repeated lines in it differently and disagree by whole lines, which would let a `git config` beside the work
+retune the size ceiling from below it.
+
+What no pin reaches is refused rather than reported on. `$GIT_DIR/info/attributes` is a file rather than a setting, so
+nothing on the command line overrides it and it outranks every attribute source; a diff driver declared in the shared
+repository's own config turns a path binary the moment any attribute assigns it. Both are writable from the agent's
+worktree, so a measurement that finds either records a typed `diff_unpinnable` failure instead of a count — and it
+inspects that path without opening it (`lstat`, no link followed, anything but a regular file refused), since a FIFO
+or a `/dev/zero` symlink planted there would otherwise block or exhaust the tick that read it.
+
 ## Push path (`git.authentication._push_branch`)
 
 The orchestrator (not the agent) pushes. The push is hardened against the agent-controlled worktree:
