@@ -8,7 +8,8 @@ behavior belong to [`state-machine.md`](state-machine.md).
 ## The pages in this area
 
 - [`workflow/roles.md`](workflow/roles.md) — the three roles and the stages that spawn each one, where a handler and
-  its spawn live, the session-reuse rules per role, and the local verify gate that is a stage step rather than a role.
+  its spawn live, the session-reuse rules per role, what the late adjudication of an oversized committed candidate is
+  asked and may answer, and the local verify gate that is a stage step rather than a role.
 - [`workflow/conversations.md`](workflow/conversations.md) — the two operator-applied conversation labels: what the
   `question` and `discussion` prompts grant and forbid, what a round may leave behind, the plan PR a confirmed design
   earns, and the tracked-repository awareness block the working-agent prompts carry.

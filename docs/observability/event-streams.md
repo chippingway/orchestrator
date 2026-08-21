@@ -409,6 +409,13 @@ external resource), `late_cancellation` (the owner was observed closed), and `la
 completed cancellation). The kind is the family; `stage` is the bare stage tag the issue sat in, spelled by the
 emitter like every other event on this page.
 
+**What a stream carries today.** The gate is not wired into publication yet, so the only producer that exists is the
+late adjudication under `workflow:decomposing`
+([`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)): it writes
+one `late_verdict` per completed adjudication and a `late_failure` carrying `plan_pr_hold_failed` when the plan-PR
+hold cannot be reconciled. The other five families are the contract the remaining steps emit under, and no record of
+them can appear in either stream until those steps land.
+
 **Family-typed events.** A record is built from a `LateEvent` on `workflow/late_split/events.py`, and each family
 declares which detail fields it requires and which it may carry (`_FAMILY_FIELDS`). Anything else raises
 `InvalidLateValue` where the event is constructed, so a measurement claiming a verdict, a verdict with no verdict on

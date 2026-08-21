@@ -132,8 +132,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             pause, dirty-worktree, and interruption checks after it
       session.py            the locked decomposer session: the spec read, the fresh spawn that pins it, the
                             human-reply resume, and the drift reset that retires it
-      manifest.py           the fenced-block envelope rules, the JSON decode, and the parse entry point the stage
-                            routes on
+      manifest.py           the fenced-block envelope rules both modes are held to, the JSON decode, and the parse entry
+                            point the stage routes on
       validation.py         what a `split` payload must satisfy: the child cap, each child's shape, and the acyclicity
                             of the graph they declare
       outcomes.py           the three dispositions of a finished reply: the unparsed park, the `single` finalize, and
@@ -166,8 +166,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             and emissions every late exit shares
       late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
                             lineage, and the three outcomes with the bounds they are judged against
-      late_reply.py         the late reply's own fence, its three structured decisions, and the split rules it borrows
-                            from the initial validator
+      late_reply.py         the late reply's own fence, its three structured decisions, and the envelope and split rules
+                            it borrows from the initial mode
       late_models.py        the carriers the late owners hand each other: the tick's subject, the hold, the run, the
                             adjudication, and what one call did
       models.py             the run plan and its worktree policy, the locked session, the split plan, and the child
