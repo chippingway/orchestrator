@@ -8,7 +8,9 @@ by a separate set of owners that share these records. They sit together
 because each of them crosses a boundary the call stack alone would lose it
 across -- the tick's own subject, which advances as the generation is
 persisted; what reconciling the plan-PR hold left behind; the run this issue is
-locked to as the pinned comment records it; what one late reply decided; what
+locked to as the pinned comment records it; what one late reply decided; what a
+fresh read said about the issue that reply belongs to; the split that reading
+cleared for the transaction which creates its children; what
 the requirements behind the frozen candidate currently hash to and what the
 humans have said about them since; and what the whole call did with the tick it
 was given.
@@ -59,6 +61,24 @@ class _LateDisposition(Enum):
     DEFERRED = "deferred"
     DECIDED = "decided"
     REVISED = "revised"
+    SETTLED = "settled"
+    CANCELLED = "cancelled"
+
+
+class _OwnerState(Enum):
+    """What a fresh read said about the issue an adjudication belongs to.
+
+    Three answers rather than two, because "could not ask" is not "still
+    open". A run finishes minutes to hours after the issue was fetched, and
+    everything a verdict earns -- a publication, a snapshot, a supersession,
+    an activation -- is an effect on an issue somebody may have closed in
+    between. `UNREADABLE` is what the tick fails closed to: it costs one
+    poll, while treating it as open costs work done on an issue nobody wants.
+    """
+
+    OPEN = "open"
+    CLOSED = "closed"
+    UNREADABLE = "unreadable"
 
 
 @dataclass(frozen=True)
@@ -204,24 +224,50 @@ class _PlanPr:
 
 @dataclass(frozen=True)
 class _PlanPrHold:
-    """What reconciling the generation-marked plan-PR hold left behind.
+    """What reconciling the cycle-marked plan-PR hold left behind.
 
     `held` and `failed` are not opposites. A generation with no reusable open
     plan PR is neither -- there is nothing to hold and nothing went wrong --
-    and the caller spawns exactly as it would have. Only `failed` stops a
-    spawn.
+    and the caller spawns exactly as it would have.
+
+    `displaced` is the third answer, and it is the one that looks like the
+    second and is not: an open plan pull request this generation DID hold,
+    wearing a description a human wrote over the notice. Their words are left
+    alone -- overwriting them is what the release below already refuses -- but
+    the change is now mergeable with nothing on it saying an adjudication is
+    open, which is exactly the state the hold exists to prevent. So it stops a
+    spawn as `failed` does, while a result already recorded may still be
+    settled: settling releases a hold that is already gone, and starting a new
+    agent would leave a human free to merge under it.
     """
 
     generation: LateGeneration
     held: bool = False
     failed: bool = False
+    displaced: bool = False
+
+
+@dataclass(frozen=True)
+class _StagedPark:
+    """A park recorded but not yet said out loud.
+
+    What every exit a COMPLETED run takes hands forward. The park itself has
+    to be durable before anything is posted -- a comment GitHub refuses would
+    otherwise take the run's result down with it and buy a second run of an
+    agent that already finished -- and the owner read between the write and
+    the notice is what decides whether the notice is owed at all, since
+    nothing is said to a thread whose issue this tick could not prove is open.
+    """
+
+    message: str
+    reason: str
 
 
 @dataclass
 class _LateContext:
     """The one tick a late adjudication runs inside.
 
-    Mutable in three fields. `generation` is replaced as each step persists
+    Mutable in five fields. `generation` is replaced as each step persists
     what it reached, so every owner after that step reads the record the pinned
     comment now holds rather than the one the tick opened on. `retired_park`
     is what this tick cleared, kept because clearing a park is not the same as
@@ -237,6 +283,19 @@ class _LateContext:
     this call and not about the issue -- and a tick that dies before the spawn
     simply pays for a fresh conversation, which still reads the answer in the
     thread its prompt quotes.
+
+    `staged_park` is the fourth: the notice a park this tick recorded still
+    owes the issue, held between the durable write and the owner read that
+    decides whether it may be posted. It rides the tick for the same reason
+    `answering` does -- a tick that dies before releasing it leaves the park
+    itself standing, and whatever re-takes that park announces it then.
+
+    `displaced_hold` is the fifth, and it travels the length of the call: the
+    hold is reconciled at the top and what it found only matters at the spawn,
+    several steps down. An open plan pull request whose notice a human removed
+    may not have an agent started under it, but may still have an answer this
+    issue already recorded settled -- so the fact is carried rather than acted
+    on where it is learned.
     """
 
     gh: GitHubClient
@@ -246,6 +305,29 @@ class _LateContext:
     generation: LateGeneration
     retired_park: Optional[str] = None
     answering: bool = False
+    staged_park: Optional[_StagedPark] = None
+    displaced_hold: bool = False
+
+
+@dataclass(frozen=True)
+class _GuardedSplit:
+    """A split outcome that has passed the post-agent owner guard.
+
+    The handoff to the transaction that creates the children, and the only
+    shape that transaction accepts one in: a split reaches it having been
+    decided AND having been re-checked against an owner read taken after the
+    agent finished, so nothing can create children under an issue somebody
+    closed while the adjudication ran.
+
+    Both fields are carried rather than re-read. The generation is the record
+    as the guard left it -- the phase it reached included -- and the children
+    are the manifest the verdict decided on, so the transaction acts on the
+    exact answer that was guarded rather than on whatever the pinned comment
+    says by the time it looks.
+    """
+
+    generation: LateGeneration
+    children: tuple[dict, ...]
 
 
 @dataclass(frozen=True)
@@ -262,12 +344,18 @@ class _LateAdjudicationRun:
     rebuilt from the record, which carries the whole of what each verdict
     decided. Only the agent's own rationale is missing from a rebuilt one --
     prose the pinned comment deliberately does not keep.
+
+    `guarded_split` is set on exactly one path: a `split` verdict that a fresh
+    owner read found open. It is absent everywhere else, so a caller cannot
+    reach the child-creating transaction from an outcome the guard never
+    cleared.
     """
 
     disposition: _LateDisposition
     generation: LateGeneration
     run: _LateRun
     adjudication: Optional[_LateAdjudication] = None
+    guarded_split: Optional[_GuardedSplit] = None
 
 
 @dataclass(frozen=True)

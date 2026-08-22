@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The generation-marked hold a plan PR wears while adjudication runs.
+"""The cycle-marked hold a plan PR wears while adjudication runs.
 
 An issue that reached its implementation through a design discussion can have
 an open plan pull request standing when its committed candidate turns out to
@@ -35,11 +35,43 @@ before it is made, and asked about the record that STARTS the run as well --
 built from the spec this issue is locked to, since that spec is an operator's
 command line and bounded by nothing here. That record's own write has no safe
 failure, parking being another write of the same comment, so the room for it
-is proved rather than reserved. That ordering is also what makes the
-marker readable: a body already carrying THIS generation's marker has been
-held, so the retry does nothing rather than editing a second time, and a body
-carrying a hold with no preserved original beside it is refused outright
-rather than captured as though the hold text were somebody's description.
+is proved rather than reserved. The prefix is still what the capture reads:
+a body carrying a hold with no preserved original beside it is refused
+outright rather than captured as though the hold text were somebody's
+description.
+
+What a retry and a release are allowed to touch is decided by the WHOLE body,
+not by the hidden marker inside it. Exactly two bodies are this issue's to
+replace -- the hold it wrote, verbatim, and the description recorded beside
+the identity, which is what a crash between the persist and the edit leaves
+and what the first application starts from. Anything else is somebody writing
+over the notice, the marker they happened to leave in place included: a
+sentence changed inside the hold is their edit as surely as a wholesale
+rewrite is, and treating the marker as proof of an unchanged body would have
+the release put a stale copy back over their words a step later.
+
+That comparison is only affordable because the hold body is exactly
+reconstructible, which is why it is scoped to the CYCLE and quotes nothing
+that moves inside one. The generation counter advances on every reconciliation
+that lands, so a body keyed to it would leave every re-measured candidate
+wearing a notice its own record could no longer recognize -- and the
+measurement belongs on the issue thread, where each new reading is announced
+anyway.
+
+Being reconstructible is a property of a SPELLING, though, and a hold outlives
+the binary that wrote it: an orchestrator restarted mid-adjudication meets
+descriptions its predecessor left on somebody's pull request. So the spelling
+before this one is kept as something to recognize and never to write, and a
+body found in it is rewritten in the current one by the same edit that would
+have applied a fresh hold. A hold a binary cannot reconstruct is a "do not
+merge" notice nothing can ever take back off.
+
+Leaving a body alone is not the same as being held, and the answer says so. An
+OPEN pull request whose notice a human rewrote is a change they can merge with
+nothing on it saying an adjudication is open -- the precise state the hold
+exists to prevent -- so the reconciliation reports it DISPLACED and the caller
+starts no new agent under it. What it may still do is settle an answer it
+already has, since that releases a hold which is already gone.
 
 The hold reads pull-request state and never writes the candidate. A human who
 merges or closes the plan PR while the agent runs has decided something about
@@ -54,6 +86,25 @@ this point spawns an agent against work a human might be looking at through
 the pull request this failed to mark, so the caller stops before the spawn and
 a later tick retries the same reconciliation -- which is why every branch here
 is idempotent.
+
+The release is the same reconciliation read backwards, and it is here rather
+than beside the outcome that asks for it because what a hold is allowed to
+touch is one question with one answer. A body that IS this cycle's hold,
+verbatim, is one this issue displaced, so the description it replaced is
+written back over it. Everything else is left exactly as it stands -- a body a
+human rewrote or edited while the hold stood is theirs, and a preserved copy
+of what it replaced is stale beside it. What those cases leave is the ordinary path: the
+publication that follows reconciles this issue's pull request against the
+exact committed candidate the way it does for any other change.
+
+What a failed release may STOP is narrower than what the hold's own failure
+stops, and for the reason the hold exists: the danger is a change a human can
+merge while it still wears a notice saying not to, which is a property of an
+OPEN pull request. So only a reusable one can hold the accepted candidate
+back. A plan PR somebody has already merged or closed is tidied where the
+edit lands and stepped over where it does not -- refusing to publish an
+adjudicated candidate over the description of a settled pull request would be
+a permanent block bought for nothing.
 """
 from __future__ import annotations
 
@@ -88,25 +139,73 @@ _OPEN_PR_STATE = "open"
 
 # The marker every late hold opens with. The prefix is what identifies a body
 # as held at all -- by any cycle, including one an older binary wrote -- and
-# the identity after it is what tells THIS generation's hold from another's.
-# Both halves are load-bearing: the prefix decides whether capturing the
-# current body would preserve somebody's description or a hold, and the
-# identity decides whether the retry has anything left to do.
+# it is what decides whether capturing the current body would preserve
+# somebody's description or a hold.
 _HOLD_PREFIX = "<!--orchestrator-late-hold"
 
 
 def _hold_marker(generation: LateGeneration) -> str:
-    """The marker identifying one generation's hold on a plan PR body."""
-    return (
-        f"{_HOLD_PREFIX}:cycle={generation.cycle_id}"
-        f":generation={generation.generation}-->"
-    )
+    """The marker identifying one CYCLE's hold on a plan PR body.
+
+    Scoped to the cycle and not to the generation inside it, because what the
+    hold says is true of the whole adjudication rather than of one attempt at
+    it: the generation counter advances on every reconciliation that lands,
+    and a marker that moved with it would leave every re-measured candidate
+    wearing a notice its own record no longer recognized.
+    """
+    return f"{_HOLD_PREFIX}:cycle={generation.cycle_id}-->"
 
 
 def _hold_body(generation: LateGeneration) -> str:
-    """The temporary description a held plan PR carries."""
+    """The temporary description a held plan PR carries.
+
+    Every part of it is derived from fields that do not move inside a cycle,
+    which is the property both the retry and the release are built on: the
+    body this issue wrote is reconstructible EXACTLY, so "is this still ours?"
+    is one comparison rather than a guess from a hidden marker somebody could
+    have left in place while rewriting the sentence around it. What the
+    candidate currently measures is deliberately not in here for that reason
+    -- it moves with every revision, and the issue thread is where each new
+    measurement is announced.
+    """
     return (
         f"{_hold_marker(generation)}\n"
+        ":hourglass: **Held by the orchestrator.** The committed "
+        f"implementation for issue #{generation.current_issue} measured past "
+        "the size ceiling, so it is being adjudicated before anything is "
+        "published. Do not merge this pull request while the hold "
+        "stands.\n\n"
+        "This description is temporary. The original is preserved in the "
+        "issue's pinned orchestrator state and is restored when adjudication "
+        "finishes."
+    )
+
+
+def _superseded_hold_body(generation: LateGeneration) -> str:
+    """The same hold as an earlier binary of ours spelled it.
+
+    A hold is bytes on somebody else's pull request, which makes its wording a
+    compatibility contract rather than a detail: an orchestrator upgraded
+    mid-adjudication meets descriptions its predecessor wrote, and a spelling
+    it cannot reconstruct is one it reads as a human's own words -- refusing
+    to restore the preserved copy and refusing to start anything under the
+    pull request, for good.
+
+    So the older spelling is kept, exactly, as something to RECOGNIZE. It is
+    never written: a body found in it is rewritten in the current one by the
+    same reconciliation that would have applied a fresh hold, which is one
+    edit and leaves every later comparison with a single answer to make.
+
+    It is marked by generation as well as cycle and quotes the measurement,
+    which is why it was replaced -- both move inside a cycle, so a
+    re-measurement left the pull request wearing a notice the next tick could
+    no longer rebuild. Reconstructible here for the generation that is
+    actually recorded, which is the upgrade this exists for: the binary
+    changed under a hold, and nothing about the candidate did.
+    """
+    return (
+        f"{_HOLD_PREFIX}:cycle={generation.cycle_id}"
+        f":generation={generation.generation}-->\n"
         ":hourglass: **Held by the orchestrator.** The committed "
         f"implementation for issue #{generation.current_issue} measures "
         f"{generation.additions} added lines against a ceiling of "
@@ -117,6 +216,18 @@ def _hold_body(generation: LateGeneration) -> str:
         "issue's pinned orchestrator state and is restored when adjudication "
         "finishes."
     )
+
+
+def _wears_our_hold(generation: LateGeneration, body: str) -> bool:
+    """Whether this description is a hold THIS generation wrote, any spelling.
+
+    The one question both the retry and the release ask, so an upgrade is
+    handled in one place rather than in two that could disagree about it. Two
+    spellings are reconstructible and no others: what this binary writes, and
+    what the binary before it wrote. Anything else is a human's, whatever
+    hidden marker it happens to carry.
+    """
+    return body in (_hold_body(generation), _superseded_hold_body(generation))
 
 
 def _reconcile_plan_pr_hold(
@@ -158,6 +269,84 @@ def _reconcile_plan_pr_hold(
         )
         return _PlanPrHold(generation=generation)
     return _reconciled_hold(gh, issue, state, generation, plan_pr)
+
+
+def _release_plan_pr_hold(
+    gh: GitHubClient, issue: Issue, generation: LateGeneration,
+) -> _PlanPrHold:
+    """Take this generation's hold off the plan PR it marked, if it still is.
+
+    Which pull request is asked is the generation's own record, not whichever
+    one the issue currently points at: the hold was taken on exactly the
+    pull request `plan_pr_number` names, the body beside it is the only copy
+    of the description that hold displaced, and a `pr_number` the issue has
+    since been re-pointed at is a different change nothing here marked.
+
+    Provenance is deliberately NOT re-asked. It decided whether the
+    description could be replaced, and it was decided on the snapshot that was
+    replaced; asking again means a human pushing onto the plan branch while
+    the adjudication ran would leave the "do not merge" notice standing
+    forever on a pull request nothing is adjudicating any more. What proves
+    the current text is this generation's to overwrite is the marker in it,
+    which is a fact about the body rather than about the head above it.
+
+    Only a REUSABLE pull request can hold the caller up. `failed` is what
+    parks it, and what parking is for is a change a human can still merge
+    while it wears a "do not merge" notice this generation put there -- which
+    is a description of an OPEN pull request and of no other kind. One a human
+    has already merged or closed is settled, so its description is tidied on a
+    best-effort basis and an edit GitHub refuses is logged and stepped over
+    rather than being allowed to hold an accepted candidate back for good. A
+    pull request that could not be read at all fails closed with the open
+    ones: what could not be read might be open.
+
+    Everything else leaves the generation exactly as it arrived with nothing
+    touched -- nothing recorded, a body somebody rewrote while the hold stood,
+    and one already released, since a preserved copy that is no longer what
+    the description says is stale and a human's own words are not this
+    generation's to replace.
+    """
+    pr_number = generation.plan_pr_number
+    if pr_number is None or generation.plan_pr_body is None:
+        return _PlanPrHold(generation=generation)
+    plan_pr = _readable_plan_pr(gh, issue, pr_number)
+    if plan_pr is None:
+        return _PlanPrHold(generation=generation, failed=True)
+    if not _wears_our_hold(generation, plan_pr.body):
+        log.info(
+            "issue=#%d plan PR #%d does not carry this cycle's hold "
+            "verbatim; leaving its description alone",
+            issue.number, pr_number,
+        )
+        return _PlanPrHold(generation=generation)
+    return _restored_body(gh, issue, generation, plan_pr)
+
+
+def _restored_body(
+    gh: GitHubClient,
+    issue: Issue,
+    generation: LateGeneration,
+    plan_pr: _PlanPr,
+) -> _PlanPrHold:
+    """Write the preserved description back, and say whether it had to land.
+
+    The reusability of the pull request is what decides that, and it is read
+    off the same snapshot the edit is made against. A refused edit on an open
+    plan PR is a hold still standing on a change somebody can merge, so the
+    caller parks; a refused edit on one already merged or closed is untidy and
+    nothing more, so the accepted candidate goes on publishing.
+    """
+    reusable = plan_pr.pr_state == _OPEN_PR_STATE
+    try:
+        gh.edit_pr_body(plan_pr.pull_request, generation.plan_pr_body)
+    except Exception:
+        log.exception(
+            "issue=#%d could not restore the description of plan PR #%d "
+            "(state=%s)",
+            issue.number, plan_pr.number, plan_pr.pr_state,
+        )
+        return _PlanPrHold(generation=generation, failed=reusable)
+    return _PlanPrHold(generation=generation)
 
 
 def _plan_provenance(
@@ -319,15 +508,45 @@ def _applied_hold(
     generation: LateGeneration,
     plan_pr: _PlanPr,
 ) -> _PlanPrHold:
-    """Write the hold body unless this generation's marker is already there.
+    """Write the hold over a body this issue wrote or preserved, and no other.
 
-    The one place the retry is made idempotent. A body a human replaced while
-    the hold stood is re-marked -- the preserved original stays the one
-    captured first, since the replacement is not a description this generation
-    ever displaced.
+    The one place the retry is made idempotent, and the one place a crash is
+    told apart from a human. Three bodies can be on the pull request when this
+    runs, and each answers differently:
+
+    * this cycle's hold, VERBATIM -- the edit already landed, so the retry
+      does nothing rather than editing a second time. Verbatim and not "wears
+      the marker", because a sentence somebody changed inside the notice is
+      their edit, and calling it held is what would have the release put the
+      preserved copy back over their words;
+    * the description recorded beside the identity -- exactly what a crash
+      between the persist and the edit leaves behind, and the first
+      application besides;
+    * the same hold in the spelling an earlier binary used, which is the
+      upgrade case: the notice is ours and stands, so it is rewritten in the
+      current spelling by the very edit that would have applied a fresh one;
+    * anything else -- a human writing over the notice. That body is theirs,
+      the preserved copy is no longer a description of it, and the release
+      beside this one already refuses to overwrite it.
+
+    A generation that advanced needs no case of its own: the hold is keyed to
+    the cycle and quotes nothing that moves inside one, so a re-measured
+    candidate leaves its pull request wearing the same body this reconstructs.
     """
-    if _hold_marker(generation) in plan_pr.body:
+    if plan_pr.body == _hold_body(generation):
         return _PlanPrHold(generation=generation, held=True)
+    if not _wears_our_hold(generation, plan_pr.body) and (
+        plan_pr.body != generation.plan_pr_body
+    ):
+        log.warning(
+            "issue=#%d plan PR #%d carries a description this issue did not "
+            "displace; leaving it alone and reporting the hold displaced",
+            issue.number, plan_pr.number,
+        )
+        return _PlanPrHold(
+            generation=generation,
+            displaced=plan_pr.pr_state == _OPEN_PR_STATE,
+        )
     try:
         gh.edit_pr_body(plan_pr.pull_request, _hold_body(generation))
     except Exception:

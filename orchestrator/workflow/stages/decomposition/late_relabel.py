@@ -35,6 +35,13 @@ operator really wants gone is cancelled through the late domain's own
 cancellation, which records what was owed; coercing it through a label or a
 switch would leave the plan-PR hold, the frozen commit, and the external
 ledgers behind with nothing on the issue pointing at them.
+
+What counts as in-flight is deliberately wider than "oversized". A read this
+generation still owes is a question as open as the size one, and it is the
+one an undersized revision leaves behind: the candidate no longer trips the
+ceiling, so every gate keyed to size waves it through while nobody has
+established that the issue is still there. Both doors are shut on it until
+that read is reconciled or the cycle is cancelled.
 """
 from __future__ import annotations
 
@@ -64,16 +71,23 @@ _RESTORED_NOTICE = (
 def _adjudication_is_live(generation: LateGeneration) -> bool:
     """Whether a generation is one nothing outside this mode may decide.
 
-    The same three conditions the adjudicator itself runs on. An issue that
-    never entered the gate, a candidate measured at or below its ceiling, and
-    a cancelled cycle are all free to be routed and relabelled like any other
-    -- there is no open question about any of them.
+    An issue that never entered the gate and a cancelled cycle are free to be
+    routed and relabelled like any other -- there is no open question about
+    either. Everything else turns on two answers, and a candidate measured at
+    or below its ceiling is only the first of them.
+
+    The second is an owner read this generation still owes. A revision that
+    came back UNDER the ceiling is exactly that case: it is no longer
+    oversized, so the size question is closed, and yet nobody has established
+    whether the issue it belongs to is still open. Routing it out of this mode
+    on the strength of the first answer alone hands another stage a candidate
+    the guard has not cleared -- which is the same publication the gate exists
+    to stop, reached by a different door. So the read outstanding keeps the
+    generation live until it is reconciled or the cycle is cancelled.
     """
-    return (
-        generation.is_present
-        and generation.is_oversized
-        and not generation.cancelled
-    )
+    if not generation.is_present or generation.cancelled:
+        return False
+    return generation.is_oversized or generation.owner_check_pending
 
 
 def _refuses_disabled_route(state: PinnedState) -> bool:
@@ -82,8 +96,9 @@ def _refuses_disabled_route(state: PinnedState) -> bool:
     Asked of the pinned record rather than of the switch, because the switch
     is about whether NEW candidates enter the gate and this is about one
     already in it. A live generation means the issue is carrying a committed
-    candidate measured past the ceiling with no verdict on it, and the legacy
-    route publishes exactly that.
+    candidate measured past the ceiling with no verdict on it -- or one whose
+    owner nobody has been able to read since the run that produced it -- and
+    the legacy route publishes exactly that.
     """
     return _adjudication_is_live(_late_state.read_late_generation(state))
 

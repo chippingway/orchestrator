@@ -95,11 +95,17 @@ class _StateKeys:
     candidate_sha: str = "late_candidate_sha"
     base_sha: str = "late_base_sha"
     phase: str = "late_phase"
+    cancelled: str = "late_cancelled"
+    cancelled_at: str = "late_cancelled_at"
+    resources: str = "late_resources"
+    owner_check_pending: str = "late_owner_check_pending"
+    exempt_sha: str = "late_exempt_sha"
     retry_count: str = "retry_count"
     retry_window: str = "retry_window_start"
     agent_runs: str = "issue_agent_runs"
     awaiting: str = "awaiting_human"
     park_reason: str = "park_reason"
+    park_notice: str = "late_park_notice"
 
 
 KEYS = _StateKeys()

@@ -116,6 +116,9 @@ GitHub UI bypass both guards, so the guard never fights a human.
 Three of those edges belong to the late size gate and are declared ahead of the handlers that write them.
 `workflow:implementing → workflow:decomposing` is the route a clean committed candidate measured past the threshold
 takes instead of publishing — adjudication runs under the existing decomposing label rather than a state of its own.
+The existing `workflow:decomposing → workflow:implementing` edge beside it is the way back that a `single` verdict
+takes, carrying the exemption naming the adjudicated commit, so the ordinary publication reconciles that exact commit
+the way it does for any other change.
 `workflow:decomposing → rejected` and `workflow:umbrella → rejected` are the one terminal a late generation whose
 owner was closed mid-adjudication reaches, once its external cleanup is reconciled, under whichever of the two labels
 it had reached; they are also the only way a pre-PR state reaches a terminal at all. A restart after such a
@@ -386,9 +389,36 @@ machine fall into a few groups:
   base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`. The late
   size gate re-sets its own reasons for the same kind of reason: `late_plan_pr_hold_failed`,
   `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,
-  `late_manifest_invalid`, `late_result_unrecordable`, `late_content_drift`, `late_revision_dirty`,
-  `late_revision_unmeasured`, `late_revision_unanswered`, and `late_question` — see
-  [the late run](#the-late-run) for which of them the next attempt retires.
+  `late_manifest_invalid`, `late_result_unrecordable`, `late_owner_unreadable`, `late_pr_unreconciled`,
+  `late_content_drift`,
+  `late_revision_dirty`, `late_revision_unmeasured`, `late_revision_unanswered`, and `late_question` — see
+  [the late run](#the-late-run) for which of them the next attempt retires. `late_owner_unreadable` is the one of
+  them that recovers on its own: it is a GitHub read that failed after the agent had already answered, so the retry
+  re-reads rather than re-running anything, and the tick that finds the issue readable again posts the same one-time
+  follow-up a transient `validating` park does — before the write that clears the park, so a crash between them loses
+  the write and not the sentence. What drives that retry is `late_owner_check_pending` on the generation rather than
+  the park itself, which is also why this reason is taken only when the issue is not already parked on something a
+  human has to answer. On an issue that already is, the notice that other park staged is still said when the reason
+  it stands on is one no later attempt supersedes — the four revision and drift parks — since nothing else ever
+  would, and an `awaiting_human` with no sentence behind it stands for as long as the read keeps failing.
+- **Undelivered park notice.** `late_park_notice` is the `{reason, message}` a late park has recorded and not yet
+  said. The flag is durable before the comment is posted — a comment GitHub refuses must not take a finished run's
+  result with it — so without this field a refused post leaves an `awaiting_human` nothing can tell from one whose
+  comment landed, and every later tick reads the flag, takes the human as told, and says nothing. It is written
+  beside the flag on the same write and dropped by the post that discharges it, so a park whose sentence is still
+  owed is never counted as a repeat and is re-said at the top of the next eligible tick. It is matched against the
+  standing `park_reason` (a notice for a park something has replaced or answered is dropped rather than said), left
+  to the fresh attempt for the reasons that attempt supersedes, dropped when the cycle is cancelled, and refused
+  whole — loudly — when it would not fit the pinned comment, the same budget a recorded outcome is refused past. Not
+  one of `LATE_STATE_KEYS`: a park outlives the generation that took it. Owned by
+  [`late_notice`](../../orchestrator/workflow/stages/decomposition/late_notice.py).
+  It is a claim about the thread, so the thread settles a disagreement with it. The post and the write recording it
+  cannot be one operation, so a write that failed after a post that landed leaves the field claiming a sentence is
+  owed to an issue that already has it — and the first thing a tick does is look for that sentence among the comments
+  above `last_action_comment_id` (the mark a park's own mention ratchets, and only on a write that landed, which is
+  what scopes the search to this episode). One found there discharges the obligation and repairs the watermark to it.
+  Without that step the redelivery would repeat a comment, and — worse — the owner guard would read the standing
+  obligation as proof nobody was told and clear its park without the recovery follow-up it promises.
 - **In-review watermarks.** `pr_last_comment_id` (issue thread + PR conversation, shared IssueComment id space),
   `pr_last_review_comment_id` (inline PR review comments), `pr_last_review_summary_id` (PR review summary bodies). Only
   non-empty `CHANGES_REQUESTED` or `COMMENTED` review IDs ever advance the summary watermark; `APPROVED`, `DISMISSED`,
@@ -514,9 +544,12 @@ The `late_*` keys are the late size gate's own group, and they are **additive**:
 carries none of them and reads back as an absent generation, so no migration reaches a live issue and a handler that
 reads and writes late state on every issue leaves a legacy pinned comment exactly as it found it. The keys are spelled
 once, on [`orchestrator/workflow/late_split/state.py`](../../orchestrator/workflow/late_split/state.py) —
-`LATE_STATE_KEYS` is the whole of what this domain owns inside the pinned comment, `read_late_generation` /
+`LATE_STATE_KEYS` is the whole of what one GENERATION owns inside the pinned comment, `read_late_generation` /
 `write_late_generation` are the round trip through them, and `clear_late_generation` is defined as dropping exactly
-that list and nothing else. The typed record they round-trip through is `LateGeneration` on the `models` owner beside
+that list and nothing else. One late key deliberately sits outside it, on the
+[`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner beside it: `late_exempt_sha`, described
+below, is written so the generation CAN be cleared and would be worthless if the clear took it. The typed record the
+group round-trips through is `LateGeneration` on the `models` owner beside
 it. A write with no `late_cycle_id` records only what the issue still owes — the two external ledgers, if either
 holds anything — and drops the rest rather than keeping a half-record no audit line or child lineage could be
 correlated to. Every field is read defensively: a hand-edited or older value that cannot be typed reads back as
@@ -577,8 +610,13 @@ rather than preserving.
   to it, so a park that fires while somebody is mid-sentence is not resolved on the next tick by the sentence they had
   already sent. What each comparison earns is in
   [`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer).
-- **Held plan PR.** `late_plan_pr_number` and `late_plan_pr_body` — the pull request whose body a generation-marked
-  hold replaced, and the body it replaced, kept so the original can be restored.
+- **Held plan PR.** `late_plan_pr_number` and `late_plan_pr_body` — the pull request whose body a cycle-marked hold
+  replaced, and the body it replaced, kept so the original can be restored. What restores it is the release the
+  `single` reconciliation runs: the identity says which pull request this cycle marked, and the body has to BE that
+  hold verbatim before it is written over, so a description a human rewrote — or edited a sentence of, leaving the
+  hidden marker in place — is left as theirs. The hold text is keyed to the cycle and quotes nothing that moves
+  inside one precisely so that comparison is possible: the generation counter advances on every reconciliation that
+  lands, and a body keyed to it could never be reconstructed after a re-measurement.
 - **External-resource ledgers.** `late_resources` holds one `{kind, target, state}` entry per obligation the remote is
   owed — kind `snapshot_ref` / `branch` / `plan_pr` / `child`, state `pending` / `retained` / `reconciled` / `failed`
   — keyed on kind and target, so a reconciliation repeated after a crash updates the entry it already wrote instead
@@ -598,8 +636,39 @@ rather than preserving.
   owed when the identity beside it is damaged. Dropping any of it would be an obligation deleted from the issue that
   still owes it — a cleanup that looks complete, or a snapshot reclaimed as though nobody were waiting on it — so a
   generation holding an opaque ledger is one nothing may treat as settled.
+- **Pending owner check.** `late_owner_check_pending` says a completed run's outcome has not yet been cleared by a
+  fresh read of the issue it belongs to. It is written *before* that read is taken and dropped when one succeeds or
+  the cycle is cancelled, and while it is set no later tick may treat the generation as settled, however small,
+  decided, or parked it looks: reconciling it is the FIRST thing a tick does, ahead of the size gate, the plan-PR
+  hold, and any spawn — and while it is set the generation counts as live for the kill switch and the hand-relabel
+  guard too, since an undersized revision is exactly the state a size-keyed gate would route out of this mode with
+  the read still owed.
+  It is durable because nothing else would bring the workflow back to that read — a revision that came back under the
+  ceiling routes past the gate and an issue parked for a human routes past everything, so a retry hung off either
+  would never run — and it is written ahead of the read rather than out of its failure because a process killed
+  mid-read never sees the failure at all. It is written by the COMPLETION rather than by the guard, in the one write
+  that records what the run left, and that holds for every completion: a verdict, a re-measured candidate, a timeout,
+  an unusable reply, an outcome too large to record, a moved candidate, and a developer reconciliation nobody could
+  make. A tick dying on the way to the guard therefore leaves the park standing and the read owed, rather than a
+  generation still reading as `adjudicating` that the next tick pays for another agent against. That same write
+  carries whatever else the completion staged, which is how the
+  durable half of a park gets out ahead of the comment announcing it. See
+  [`../workflow/roles.md`](../workflow/roles.md#the-owner-read-a-finished-run-has-to-pass).
+- **Accepted candidate.** `late_exempt_sha` is the one commit a `single` verdict let past the size gate, and it is
+  the whole of what that verdict is worth durably: the gate measures whatever a stage is about to publish, so a
+  candidate handed back with its generation cleared and nothing else would be measured past the ceiling again and
+  adjudicated again. It names exactly the commit that was measured, which is also the whole invalidation rule —
+  anything committed on top of it is work nobody adjudicated, does not match, and is measured as the fresh candidate
+  it is. There is no clearing step to remember and no window in which a stale exemption covers a moved head. Read and
+  written fail-closed like every other late field: only a whole git object id is one, a `record_exemption` handed
+  anything else refuses rather than writing a value the gate would read as a bypass, and a hand-edited field reads
+  back as no exemption at all.
 - **Cancellation.** `late_cancelled` and `late_cancelled_at` are irreversible within a cycle: once the owner has been
-  observed closed, a later tick that sees it reopened re-marks the same cancellation and keeps the first stamp.
+  observed closed, a later tick that sees it reopened re-marks the same cancellation and keeps the first stamp. What
+  observes it is the post-agent owner guard — a fresh read taken after every completed late run, before anything it
+  earns happens — which writes the mark durably and emits `late_cancellation` from it, leaving what the remote is
+  still owed on the two ledgers for the cleanup path to settle. A cancelled cycle is nobody's to adjudicate, relabel,
+  or route, so a reopened issue starts a fresh cycle rather than resuming this one.
 - **Pending restart.** `late_restart_pending`, `late_restart_target`, `late_restart_cycle_id`, and
   `late_restart_predecessor` are written before the restart's own external effects by the
   [`restart`](../../orchestrator/workflow/late_split/restart.py) owner, and beginning a restart is create-or-keep — a
@@ -687,7 +756,8 @@ nobody recorded is not recoverable.
 
 A park this mode leaves is attributed durably, because the next attempt has to tell its own park from another stage's.
 Most of them are *superseded* by the attempt that follows: a hold that failed has been reconciled by the time the
-retry gets there, a missing worktree is back, a run that timed out or answered unusably is about to be re-run. Those are
+retry gets there, a missing worktree is back, a run that timed out or answered unusably is about to be re-run. Those
+are
 retired — `awaiting_human` and `park_reason` cleared — the moment the hold reconciles, ahead of both the spawn and the
 reuse of a recorded answer, because `awaiting_human` is exactly what suppresses the announcement a question verdict
 earns. A stale one would silence a question durably recorded and never said out loud — whether this attempt produced it
@@ -696,7 +766,11 @@ step that failed. `late_question` is the announcement itself, and the issue real
 `late_content_drift`, `late_revision_dirty`, `late_revision_unmeasured`, and `late_revision_unanswered` are the
 workflow waiting to be told what an edited scope, a worktree the developer left changed, a candidate nobody could
 measure, or a developer that changed nothing and vouched for nothing now means. Retiring one of
-those would drop the very state the next tick reads to tell a human's answer from the silence before it — and what
+those would drop the very state the next tick reads to tell a human's answer from the silence before it.
+`late_owner_unreadable` is left out for a different reason again: it IS answered by a retry, but by the pending-check
+reconciliation that runs ahead of all of this, and that step reads the standing reason to decide whether it owes the
+thread a follow-up — so retiring it here would erase the only durable evidence that this mode had said anything to
+retire — and what
 each of those answers earns is in
 [`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen).
 The same attribution is what keeps a park idempotent: reconciliation is retried on every eligible tick, so a park
@@ -710,8 +784,9 @@ loud. A retirement is a state
 change like any other, so the one branch that would otherwise return without writing — the reuse of a recorded
 answer that owes no announcement — persists it rather than clearing a park only in memory.
 
-The record goes out before the effect it earns. A question is written and persisted BEFORE the comment announcing it,
-so a crash between them costs one repeated comment — the window every park in this repository has — and never a
-second run of an agent that already answered. The next tick reconciles the announcement from `awaiting_human`: a
-recorded question the issue is not yet waiting on a human for is posted from the question the record kept, rather
-than re-earned.
+The record goes out before the effect it earns, and the owner read goes out between them. A question is written and
+persisted BEFORE the comment announcing it, so a crash between them costs one repeated comment — the window every
+park in this repository has — and never a second run of an agent that already answered; and the announcement itself
+is made past the guard, so a question is not posted to a thread somebody closed while the agent was answering it. The
+next tick reconciles the announcement from `awaiting_human`: a recorded question the issue is not yet waiting on a
+human for is posted from the question the record kept, rather than re-earned.

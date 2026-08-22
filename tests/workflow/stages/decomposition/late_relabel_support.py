@@ -28,6 +28,22 @@ SETTLED_GENERATIONS = (
     ("cancelled cycle", late_generation(cancelled=True)),
 )
 
+# The one that LOOKS settled and is not: a revision that came back under the
+# ceiling while the read its own run owes has still to be taken. Every gate
+# keyed to size waves it through, and nobody has established that the issue it
+# would be published under is still open.
+OWED_READ_GENERATION = late_generation(
+    additions=UNDERSIZED_ADDITIONS, owner_check_pending=True,
+)
+
+# The same read owed on a cycle somebody cancelled: the cleanup path owns what
+# is left, and nothing about it is in flight any more.
+CANCELLED_OWED_READ = late_generation(
+    additions=UNDERSIZED_ADDITIONS,
+    owner_check_pending=True,
+    cancelled=True,
+)
+
 
 def relabelled(issue, label) -> None:
     """Move an issue's workflow label the way a human's click would."""

@@ -164,7 +164,7 @@ whose base was never recorded would otherwise produce a `git diff` against nothi
 afterwards, with the run already paid for; one carrying somebody else's number would show the agent a prompt naming two
 issues and file the verdict against the one it names. Either parks instead, saying which field is wrong.
 
-Before any of that runs, a reusable open plan PR is put under a generation-marked hold (`late_hold.py`). *Plan* is
+Before any of that runs, a reusable open plan PR is put under a cycle-marked hold (`late_hold.py`). *Plan* is
 checked, not assumed: `pr_number` names whichever pull request the issue currently records, and that is an
 implementation as often as a plan, so the hold reads the discussion provenance through the implementing stage's own
 `_recorded_pr_is_the_plan` — about the one snapshot it read, since past the handoff a plan is told from an
@@ -174,7 +174,26 @@ attribute access rather than the fetch itself; anything unreadable parks rather 
 left alone — rewriting an implementation PR's description would replace a human's account of a change under review with
 a notice about a different one. A provenance that could not be established is not the same answer and fails closed. Past
 that gate, the original body is written to pinned state BEFORE the pull request is edited, so a crash can lose the edit
-— which the next tick re-applies, since every branch is idempotent — but never the only copy of the description. A write
+— which the next tick re-applies, since every branch is idempotent — but never the only copy of the description.
+What the retry re-applies over is decided by the WHOLE body, not by the hidden marker inside it: exactly two bodies
+are this issue's to replace — the hold it wrote, **verbatim**, and the description recorded beside the identity, which
+is what a crash between the persist and the edit leaves and what the first application starts from. Anything else is a
+human writing over the notice, the marker they happened to leave in place included: a sentence changed inside the hold
+is their edit as surely as a wholesale rewrite is, and calling that held would have the release put the preserved copy
+back over their words a step later. That comparison is only affordable because the hold body is exactly
+reconstructible, which is why the marker is scoped to the **cycle** and the notice quotes nothing that moves inside
+one — the generation counter advances on every reconciliation that lands, so a body keyed to it would leave every
+re-measured candidate wearing a notice its own record no longer recognized, and the measurement belongs on the issue
+thread, where each reading is announced anyway. Being reconstructible is a property of a *spelling*, and a hold
+outlives the binary that wrote it, so the spelling before this one — marked by generation as well as cycle, and
+quoting the measurement — is kept as something to **recognize** and never to write: a body found in it is ours, and
+the same edit that would have applied a fresh hold rewrites it in the current spelling, so every later comparison has
+one answer to make. A hold a binary cannot reconstruct is a "do not merge" notice nothing can ever take back off, on
+a pull request nothing can start an agent under. Leaving it alone is
+not the same as being *held*, though, and the answer says so: an open plan PR whose notice a human removed is a change
+they can merge with nothing on it saying an adjudication is running, so the reconciliation reports it **displaced** and
+no late decomposer is started under it. An answer already recorded may still be settled — settling releases a hold
+that is already gone, and only a NEW run would leave a human free to merge under one. A write
 that *refuses* is the same rule read the other way: with no preserved copy there is no hold to take, so nothing is
 edited and the issue parks. How long a description may be preserved is decided the same way, before it is replaced: the
 whole prospective comment is rendered with the run's record already in it — the spec this issue is locked to, an
@@ -187,6 +206,147 @@ merged or closed meanwhile is simply not held, and nothing re-anchors the frozen
 commit is the evidence every later step acts on, never the pull request's current head. What the run itself records —
 role, locked spec, session, cycle, source commit, generation, and the whole of what the verdict decided — is in
 [`../state-machine/labels-and-state.md#the-late-run`][late-run].
+
+## The owner read a finished run has to pass
+
+Everything above is about the candidate. This is about the issue the candidate belongs to, and it exists because of
+how long a late run takes: the issue was fetched when the tick began, an agent then ran for minutes to hours, and
+everything a completed run leads to — publishing an accepted candidate, taking a snapshot, superseding a plan pull
+request, activating children, even announcing a question — lands on an issue somebody may have closed in between. So
+after **every** completed late run, the adjudicator's and the developer revision's alike, the result is persisted and
+then the owner is read again, once, before any of that happens (`late_owner.py`).
+
+Every completion, not only the ones that decided something. A `question`, a timeout, an unusable reply, a candidate
+the adjudicator moved, an outcome too large to record, and a developer reconciliation that could not be made are all
+runs the issue paid for, and a closure during any of them strands the same generation and the same plan-PR hold as a
+closure during a `single` would. The one exception is a
+run the tick *declined* — an operator's `paused` label, a shutdown sweep — which is not a completion at all and must
+leave durable state exactly as the prior tick left it.
+
+The ordering is the same at every one of them: **persist, then read, then speak.** What the run produced — a recorded
+verdict, a re-measured candidate, the park a failed reconciliation earns — is durable before the read; the read
+decides whether anything is said at all; and the sentence goes out only past an open answer. So a closed or
+unreadable owner receives no completion notice, and no comment failure can cost a run that already finished.
+
+Three answers, and each is a different obligation.
+
+- **Open** lets the tick carry on, and is also where a check owed from an earlier tick is retired.
+- **Closed** ends the cycle rather than the tick. The generation is marked cancelled — irreversibly within the cycle,
+  so a human who reopens the issue gets a fresh cycle rather than this one resumed — the mark is durable before the
+  `late_cancellation` record of it is emitted, and nothing is reclaimed here: what the remote is owed stays on the
+  generation's ledgers for the cleanup path to settle. Nothing is announced either: a question recorded on an issue
+  whose owner has just closed it is not asked.
+- **Unreadable** leaves the check owed on the generation itself (`late_owner_check_pending`), and fails
+  closed twice over: an exception is unreadable, and so is a state that is neither of the two GitHub reports, since
+  defaulting a read that established nothing to "open" would act on the strength of it.
+
+That marker is the load-bearing half, because nothing else would bring a tick back to the read. A revision that came
+back under the ceiling is not adjudicable and an issue parked for a human is not adjudicating, so a retry hanging off
+either would never run — which is why reconciling a pending check is the **first** thing a tick does, ahead of the
+size gate, the plan-PR hold, and any spawn. The retry costs no agent: the run has already been paid for and its
+result is already recorded, so the recorded answer is what settles the candidate once the read succeeds.
+
+It is written **before** the read rather than derived from its failure, because a read that fails is not the only one
+that does not come back: a process killed mid-read would leave nothing at all behind, on exactly the two routes above
+that carry the next tick past the point a retry could hang off.
+
+And it is written by the **completion**, not by the guard — in the one write that records what the run left. That is
+the same rule for a verdict, a re-measured candidate, a timeout, an unusable reply, an outcome too large to record, a
+worktree the read-only agent moved, and a developer reconciliation nobody could make: each is a finished run the
+issue has already paid for, and each is durable, park and claim together, before the tick does anything that might
+not come back. Taking the claim on the way into the read instead would leave a tick that died in between with no
+park, no claim, and a generation still reading as `adjudicating` — so the next tick would pay for another agent
+against a candidate this one had answered, and a human who closed the issue in that window would never be found out
+about. The guard asks whether the claim is standing and reads only past it; a caller whose own write did not carry
+one gets it there rather than a read nothing would bring a tick back to. Everything a completion staged rides that
+same write — which is what puts the durable half of a
+park out ahead of any comment, so a comment GitHub refuses can no longer take a finished run's result with it and buy
+a second run of an agent that had already answered.
+
+The park beside the marker is the visible half, and it is taken only when the issue is not **already** stopped on
+something a human has to answer. Replacing a question, a timeout, or a stalled revision with "the owner could not be
+read" would swap out the thing the human is actually being asked for one they cannot answer; on those the marker
+alone carries the retry.
+
+What happens to the sentence that park staged turns on whether anything will ever say it instead. Holding one back is
+a *deferral*, and only where a later attempt supersedes the park: that attempt re-takes it and announces the reason it
+fails for *then*, which is the current one. A park no attempt supersedes — a stalled revision waiting to be told what
+a dirty checkout now means — has no such tick coming, and its sentence is the only thing that will ever say what the
+human has to do. So an unreadable owner releases that one anyway, on a thread it could not prove is open: a stray
+comment costs less than an `awaiting_human` standing unexplained for as long as the read keeps failing.
+
+A park still stuck repeats no notice; a park that clears itself posts one
+follow-up saying so, at most once per episode. The follow-up goes out **before** the write that clears the park, so
+the window a crash can land in loses the write and not the sentence, and "at most once" is answered from the thread
+past `last_action_comment_id` rather than from a receipt — the comment and the clear cannot be made one operation.
+
+**A park is not delivered until its comment is.** Persisting the flag ahead of the notice leaves one gap: GitHub
+refuses the comment, and every later tick reads an `awaiting_human` it cannot tell from one whose comment landed, so
+it takes the human as told and says nothing. For a park a fresh attempt supersedes that costs one tick; for a
+question, a content-drift hold, or a stalled revision it is unbounded, since those parks *are* what the issue is
+waiting on. So the sentence is written down beside the flag (`late_park_notice`) and dropped only by the post that
+discharges it: a park whose sentence is still owed never counts as a repeat, is re-said at the top of the next
+eligible tick — ahead of every gate a parked issue routes past — and, on the guard's own park, rides out on whichever
+answer the owed read gets. A notice too long for the pinned comment is refused whole and loudly, since a record that
+broke the write would take the park it explains down with it.
+
+## What a verdict the read cleared earns
+
+A **question** earns exactly one thing: the announcement. It is posted here rather than where the question was
+recorded, and that is the whole reason it moved — the record has to go out before anything is said and the owner read
+has to go out between them, so a question is not posted to a thread somebody closed while the agent was still
+answering it.
+
+A **split** is handed on rather than acted on. Creating the children, taking the snapshot they are cut from, and
+superseding the plan pull request are one transaction; what the guard owes it is the guarantee it cannot check for
+itself, that the outcome was re-checked against an owner read taken after the agent finished. Nothing is created here.
+
+A **single** is reconciled as an EXEMPTION for the measured commit (`late_settlement.py`). The
+candidate is already committed in the developer's own worktree, and the ordinary implementing publication is what
+pushes it and hands it to review — so what this step
+owes is a durable record that this exact commit has been adjudicated, or the gate would measure the same candidate
+past the same ceiling and adjudicate it again forever. `late_exempt_sha` names the measured commit and only it, which
+is the whole invalidation rule: work committed on top of an accepted candidate is work nobody adjudicated, and it is
+measured as the fresh candidate it is
+([`../state-machine/labels-and-state.md#late-generation-state`][late-state]).
+
+Beside the exemption goes the **exact-commit reconciliation** of the pull request the issue records, and it is the
+half the ordinary publication cannot do: that one searches for an OPEN pull request on the branch, while `pr_number`
+by this point may name a plan PR a human merged, or the commit may already be sitting on a pull request a crashed
+publication opened and never recorded. Neither is cosmetic. `implementing` asks its recorded pull request first, and
+a **merged** one that is no longer the plan ends the issue as `done` — with the adjudicated candidate never
+published; and a commit already on a pull request nobody records is published a second time, since the reuse looks
+for an open one and finds none. So the commit is what the pull request is found by, in any state
+(`find_pr_for_commit`): one that carries it is recorded whatever state it is in, and when nothing carries it the
+recorded number is kept only while it is still open — a settled one is dropped rather than handed on. A lookup, or a
+recorded pull request, that could not be read parks (`late_pr_unreconciled`) rather than publishing on an answer
+nobody gave.
+
+Two things the reconciliation deliberately does not do. It creates **no snapshot** — a snapshot exists so children
+can be cut from a candidate about to be superseded, and an accepted candidate supersedes nothing, so preserving a
+copy of it would record an obligation with nothing on the other end. And it does not rewrite the held plan PR: the
+description this generation replaced is restored over the hold text, and what happens to that pull request afterwards
+is the ordinary reconciliation's — the publication that follows reuses it and rewrites its body when the push lands
+on it, and leaves it alone when it does not. Only a body that IS this cycle's hold, verbatim, in either spelling
+this orchestrator can reconstruct, is restored — so a description a human rewrote, or edited a sentence of, marker
+and all, while the hold stood stays theirs, and a settled plan PR still wearing an older binary's hold is still put
+back. That settled case is the one release the retry above cannot have migrated first: a pull request nobody can
+merge is left exactly as it is by the reconciliation, so what the release meets there is whichever spelling wrote it.
+
+What a failed release may *stop* is narrower than what a failed hold stops, and for the reason the hold exists: the
+danger is a change a human can still merge while it wears a notice saying not to, which is a property of an **open**
+pull request. So only a reusable one parks the candidate (`late_plan_pr_hold_failed`), with the generation untouched,
+which is what makes that retry free. One a human has already merged or closed is tidied where the edit lands and
+stepped over where it does not — refusing to publish an adjudicated candidate over the description of a settled pull
+request would be a permanent block bought for nothing, and the ordinary exact-commit reconciliation is what the
+candidate goes on to.
+
+The order is chosen so every window a crash can land in is one the next tick repairs. The hold is released first,
+while nothing else has moved; the exemption is written next, with the generation still live behind it; only then is
+`workflow:implementing` handed back; and only after that is the generation retired. A `decomposing` issue with no
+generation on it is one the INITIAL decomposer would pick up and re-decompose, and an `implementing` issue with a
+live generation is one the relabel guard puts back and the next tick re-settles — so the ordering is what keeps the
+first of those from ever existing.
 
 ## What the humans can still change while a candidate is frozen
 
@@ -267,9 +427,13 @@ bare continue may not: a question is not a step that failed, and "proceed" is no
 in scope". The command is consumed, the refusal is posted once, and the issue stays parked on the question it is
 really waiting on.
 
-**Nothing outside the adjudication may decide it either.** While a generation is live — recorded, oversized, and not
-cancelled — `workflow:decomposing` is the label it sits on, and both ways that can be taken away amount to publishing
-an unadjudicated candidate. `DECOMPOSE=off` routes a `decomposing` issue into the legacy implementing flow, which is
+**Nothing outside the adjudication may decide it either.** While a generation is live — recorded, not cancelled, and
+either oversized or still owing an owner read — `workflow:decomposing` is the label it sits on, and both ways that can
+be taken away amount to publishing an unadjudicated candidate. The owed read is the half that is easy to miss: a
+revision that came back UNDER the ceiling closes the size question and leaves the owner one open, so every gate keyed
+to size would wave it through while nobody had established that the issue is still there.
+
+`DECOMPOSE=off` routes a `decomposing` issue into the legacy implementing flow, which is
 right for an issue only waiting to be decomposed and wrong for one whose implementation is already committed and
 measured past the ceiling, so the route is refused while a generation is live — the switch still keeps NEW candidates
 out of the gate, it just does not decide the ones already in it. A hand relabel is caught a step later, since the

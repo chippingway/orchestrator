@@ -109,8 +109,8 @@ Per-issue durable state is a single **pinned comment** on the issue (`<!--orches
 trusted as state only when the orchestrator's own account authored it and its whole body is the marker. Its keys group
 into agent identity, decomposition, PR / branch, the drift baseline, the HITL park, the in-review watermarks, the
 final-docs handoff, fix routing, the crash-recovery anchors, counters and timestamps, the per-issue usage meter, the
-additive `late_*` group a late generation is adjudicated under, and the `decomposing` stage's own record of the run
-that adjudicates one.
+additive `late_*` group a late generation is adjudicated under, the one commit an accepted candidate publishes
+under, and the `decomposing` stage's own record of the run that adjudicates one.
 Every key, what writes it, what spends it, and the legacy `codex_session_id` still honored on read are in
 [`state-machine/labels-and-state.md#pinned-state`](state-machine/labels-and-state.md#pinned-state).
 

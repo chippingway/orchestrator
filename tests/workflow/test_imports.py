@@ -39,6 +39,7 @@ _ENGINE_OWNERS = (
 # owner's vocabulary back, so each has to load on its own.
 _LATE_SPLIT_OWNERS = (
     "events",
+    "exemption",
     "formats",
     "identity",
     "ledgers",

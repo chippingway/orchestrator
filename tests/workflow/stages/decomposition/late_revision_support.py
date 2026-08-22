@@ -70,6 +70,16 @@ REMEASURED = AdditionMeasurement(
     additions=REVISED_ADDITIONS,
 )
 
+# The same revision coming back past the ceiling instead of under it. The two
+# read the same until the size gate looks, and they route the next tick
+# completely differently -- one is adjudicated again, the other is not
+# adjudicable at all.
+REMEASURED_OVERSIZED = AdditionMeasurement(
+    base_sha=REVISED_BASE_SHA,
+    candidate_sha=REVISED_SHA,
+    additions=ADDITIONS,
+)
+
 # What an unchanged commit measures to: the candidate that went in, re-read
 # against a base that may well have moved under it.
 ACKNOWLEDGED = AdditionMeasurement(
@@ -84,6 +94,13 @@ UNMEASURED = AdditionMeasurement(
 )
 
 DIRTY_TREE = ("orchestrator/left_over.py",)
+
+# What each of the two notices a finished revision can owe says, in the one
+# phrase that tells it from every other comment on the thread. Asserted on
+# rather than the whole sentence, because what these tests are about is
+# whether it was said at all.
+REMEASURED_NOTICE = "adjudicating it as generation"
+DIRTY_NOTICE = "left changes in the"
 
 PAUSED_LABEL = "paused"
 

@@ -21,6 +21,7 @@ from tests.workflow.stages.decomposition.late_content_support import (
 from tests.workflow.stages.decomposition.late_test_support import (
     KEYS,
     OTHER_SHA,
+    SINGLE_REPLY,
     late_block,
 )
 
@@ -42,9 +43,9 @@ class RecordedQuestionTest(LateContentCase):
         self._seed(**ASKED_STATE)
         reply(self.issue)
 
-        outcome, spawn = self._run()
+        outcome, spawn = self._run(SINGLE_REPLY)
 
-        self.assertEqual(outcome.disposition, _LateDisposition.DECIDED)
+        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         spawn.assert_called_once()
         pinned = self._pinned()
         self.assertEqual(pinned[KEYS.verdict], str(LateVerdict.SINGLE))
@@ -123,9 +124,9 @@ class RecordedQuestionTest(LateContentCase):
         self._run()
         reply(self.issue, BARE_CONTINUE)
 
-        outcome, spawn = self._run()
+        outcome, spawn = self._run(SINGLE_REPLY)
 
-        self.assertEqual(outcome.disposition, _LateDisposition.DECIDED)
+        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         spawn.assert_called_once()
         self.assertEqual(
             self._pinned()[KEYS.verdict], str(LateVerdict.SINGLE),
