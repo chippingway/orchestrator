@@ -519,35 +519,81 @@
 # proof, the plan-PR hold, the completed-result short circuit, the
 # retry-budgeted spawn, the accounting a pre-spawn write holds back, the
 # shared post-run pause / timeout / interruption contract, and the read-only
-# proof over the candidate worktree -- so it carries 12 members past the
-# WPS202 ceiling of 7 and reaches 23 imports past the WPS201 ceiling of 12. The members are the steps of one
+# proof over the candidate worktree, the gates that stop a tick before any
+# agent could run, and the guard every completion passes before anything acts
+# on what it left -- so it carries 14 members past the
+# WPS202 ceiling of 7 and reaches 26 imports past the WPS201 ceiling of 12. The members are the steps of one
 # ordered contract in which each persists what it reached before it acts, and
 # the imports are what that order costs: the late domain's state and
 # vocabularies, the engine's guards and usage accounting, the git worktree the
 # frozen candidate lives in and the probes that prove it unmoved, and the late
 # owners beside it. What one finished reply BECOMES is already split off onto
-# `late_outcome.py`; splitting the order itself would put the
+# `late_outcome.py`, and what a guarded verdict EARNS onto
+# `late_settlement.py`; splitting the order itself would put the
 # persist-before-side-effect sequence in two places to drift apart, so WPS201
 # and WPS202 are waived.
 #
 # orchestrator/workflow/stages/decomposition/late_outcome.py is the other half
 # of that pair -- what a finished reply becomes, the announcement a recorded
-# question is reconciled by, and the parks every late exit hands the issue
-# back through, including the retirement of one an attempt has answered -- so
-# it carries 12 members past the WPS202 ceiling of 7 and names 13 imports past
+# question is reconciled by, the parks every late exit hands the issue
+# back through -- staged for the owner read to release, said at once where
+# nothing has been paid for yet, released anyway where no later attempt
+# would ever say them, or re-said at the top of a later tick when the comment
+# that should have said them was refused -- including the retirement of one an
+# attempt has answered, the one write that closes a completion by making what
+# it left durable together with the owner read it now owes, the reconciliation
+# that discharges an obligation the thread shows was already met, and the three
+# emissions that report a verdict, a typed failure, and a cancellation -- so
+# it carries 23 members past the WPS202 ceiling of 7 and names 15 imports past
 # the WPS201 ceiling of 12. They share
 # one ordering rule, that the durable write goes out before the external
-# effect, and the parks are where that rule is kept; separating a park from
-# the record it commits is exactly the drift the rule exists to prevent. The
+# effect, and the parks and emissions are where that rule is kept; separating a
+# park from the record it commits is exactly the drift the rule exists to
+# prevent. Which park is standing, whether its sentence was ever said, and
+# whether anything will supersede it are three readings of that same rule, so
+# they are asked here rather than beside the field they read. The
 # imports are the union of what the rule touches: the late domain's state,
-# events, and telemetry, the reply parser, the run record, and the engine
+# events, telemetry, and the phase a completion's own write stamps, the reply
+# parser, the run record, the undelivered notice a park owes, and the engine
 # guard a park goes through. WPS201 and WPS202 are waived.
 #
+# orchestrator/workflow/stages/decomposition/late_settlement.py is what a
+# guarded verdict earns -- the announcement a question owes the issue, the
+# handoff a split makes to the transaction that creates its children, and the
+# whole of a `single`: the plan-PR hold released, the pull request reconciled
+# against the measured commit (with the settled pointer that would otherwise
+# end the issue dropped, and the refusal both of those fail closed to), the
+# exemption written, and the generation retired behind the hand-back -- so it
+# carries 8 members past the WPS202 ceiling of 7 and names 13 imports past the
+# WPS201 ceiling of 12. They are one ordered reconciliation in which each step
+# is what makes the next one safe, and the imports are what that order costs:
+# the branch the exact-commit lookup is taken on, the lookup's own unreadable
+# sentinel, the domain's exemption and defensive field readers, the hold owner
+# and the outcome owner beside it, and the label the candidate is handed back
+# under. Splitting it would put the persist-before-effect sequence in two
+# modules, so WPS201 and WPS202 are waived.
+#
+# orchestrator/workflow/stages/decomposition/late_owner.py owns the whole
+# post-agent owner read -- the question of whether the claim the read may not
+# be taken without is already standing, the reconciliation that takes an owed
+# one again, the guarded read itself, the
+# fetch and the state behind it, the three answers it can give (retire the
+# check and say so, cancel the cycle, leave the read owed), and the one
+# follow-up a park that healed owes the thread -- so it carries 10 members
+# past the WPS202
+# ceiling of 7. They are one contract read end to end: what the pending marker
+# means is decided by what writes it, what a follow-up is owed for is decided
+# by which park was taken, and splitting the read away from either would put
+# the fail-closed rule in two modules. WPS202 is waived.
+#
 # orchestrator/workflow/stages/decomposition/late_hold.py owns the whole
-# generation-marked hold -- the marker and the body it is written as, the
-# discussion provenance that decides whether a recorded pull request may be
-# touched at all, the fetch that fails closed, and the take / re-apply /
-# refuse reconciliation over them -- so it carries 9 members past the WPS202
+# cycle-marked hold -- the marker and the body it is written as, the spelling
+# an earlier binary wrote and the one question that recognizes either as ours,
+# the discussion provenance that decides whether a recorded pull request may be
+# touched at all, the fetch that fails closed, the take / re-apply /
+# refuse reconciliation over them, and the release that reads the same
+# reconciliation backwards, with the reusability of the pull request deciding
+# what a refused release may stop -- so it carries 13 members past the WPS202
 # ceiling of 7 and names 13 imports past the WPS201 ceiling of 12. Each is one
 # question the one before it makes safe to ask, and the persist-before-mutate
 # order runs through all of them; the ninth is the single read every one of
@@ -575,9 +621,11 @@
 #
 # orchestrator/workflow/stages/decomposition/late_models.py carries every
 # record the late owners hand each other -- the tick's own subject, the hold,
-# the run, one reply's verdict, what the requirements behind the frozen
+# the run, one reply's verdict, what a fresh owner read said, the park a
+# completion recorded but has not said yet, the split that reading cleared,
+# what the requirements behind the frozen
 # candidate hash to, what the humans have said since, and what the whole call
-# did with its tick -- so it reaches 10 members past the WPS202 ceiling of 7.
+# did with its tick -- so it reaches 13 members past the WPS202 ceiling of 7.
 # They sit together because each crosses a boundary the call stack alone would
 # lose it across, and splitting them by which owner happens to build one would
 # make the shared vocabulary two vocabularies free to drift. WPS202 is waived.
@@ -594,16 +642,19 @@
 # orchestrator/workflow/stages/decomposition/late_revision.py runs the whole
 # developer revision a human's guidance buys -- consume the guidance, resume
 # the locked session under the decomposing stage, prove the tree it left
-# clean, freeze what it ends on, and measure that commit again under the
-# current ceiling -- so it names 20 imports past the WPS201 ceiling of 12.
+# clean, freeze what it ends on, measure that commit again under the
+# current ceiling, and read the owner once more past whatever the
+# reconciliation made durable -- so it names 22 imports past the WPS201
+# ceiling of 12.
 # The imports are what that arc costs and nothing else: the shared developer
 # resume and the prompt notes it is built from, the engine's comment, guard,
 # and usage owners, the worktree path and the two probes that prove the
 # checkout, the size measurement, the late domain's phase and typed failure
 # with the telemetry they are reported on, and the late owners beside it.
 # Splitting the arc would put the consume-before-spawn and prove-before-freeze
-# orders in two modules, so WPS201 is waived. It carries 9 members past the
-# WPS202 ceiling of 7 for the same reason: the arc's own steps, plus the two
+# orders in two modules, so WPS201 is waived. It carries 10 members past the
+# WPS202 ceiling of 7 for the same reason: the arc's own steps, one of which
+# is the owner read every end of it passes, plus the two
 # that decide what an UNCHANGED commit means -- whether the run vouched for it
 # with the marker the prompt asks for, and what the run said instead when it
 # did not, which the park quotes to the human. Reading a commit nobody changed
@@ -641,6 +692,8 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/late_hold.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_models.py:WPS202
     orchestrator/workflow/stages/decomposition/late_outcome.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_owner.py:WPS202
+    orchestrator/workflow/stages/decomposition/late_settlement.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_revision.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_session.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202

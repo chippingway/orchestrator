@@ -94,8 +94,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             contract -- identity, count, depth, object id, literal flag, member, free text
     ledgers.py              what the two external ledgers read back as, the exact entry shape one of ours has, and
                             the verbatim copy anything else is preserved through
-    state.py                the `late_*` pinned keys and the round trip through them that leaves a legacy comment
-                            untouched and an unreadable obligation intact
+    state.py                the `late_*` pinned keys -- the frozen evidence, the ledgers, and the cancellation and
+                            pending-owner-check markers -- and the round trip through them that leaves a legacy
+                            comment untouched and an unreadable obligation intact
+    exemption.py            the one commit an accepted candidate publishes under -- written, read, and compared
+                            fail-closed, and deliberately outside the group a cleared generation drops
     restart.py              the two-phase restart marker: the closed pair of labels it may apply, the cycle it
                             mints, the whole-marker check that decides whether the one a crash left may still be
                             believed, the settled-ledger precondition retirement refuses without, and the fresh
@@ -161,13 +164,33 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             refused past, the rules it is read back through, and the tracked spawn in the candidate's
                             own worktree, resuming the pinned session only for the run that carries a human's answer
                             to the question it asked
-      late_hold.py          the generation-marked hold a reusable open plan PR wears: the one guarded read every
+      late_hold.py          the cycle-marked hold a reusable open plan PR wears: the one guarded read every
                             decision is made from, the discussion provenance that decides whether that snapshot may be
-                            touched at all, the original body persisted (and proved persisted) before the edit, and
+                            touched at all, the original body persisted (and proved persisted) before the edit, the
+                            spelling an earlier binary wrote and the one question that recognizes either as ours, and
                             the retry, the refusal, and the settled pull request it reconciles to
       late_outcome.py       what one finished reply becomes: the lineage-bound refusal, the durable write that precedes
-                            every external effect, the announcement a recorded question is reconciled by, and the parks
-                            and emissions every late exit shares
+                            every external effect and closes a completion by carrying the owner read it now owes, the
+                            announcement a recorded question is reconciled by, and the parks
+                            and emissions every late exit shares -- staged for the owner read to release, released
+                            anyway where nothing would ever say them, and re-said at the top of a later tick when the
+                            comment that should have said them was refused
+      late_notice.py        the sentence a park owes the issue until it is actually on the thread: the durable
+                            `{reason, message}` beside the flag, matched against the park it explains, the thread
+                            read that discharges one a failed write left claiming the opposite of what GitHub holds,
+                            and the pinned budget a notice too long to write down is refused past
+      late_owner.py         the fresh tri-state read EVERY completed run passes before anything acts on what it
+                            left: the standing claim it is entered past rather than makes (written by the completion's
+                            own write, so a tick that died on the way here still left a park and an owed read), the
+                            reconciliation that takes an owed read again ahead of every gate, the
+                            cancellation a closed owner earns, the park an unreadable one takes only where nothing
+                            else already holds the issue, and the one follow-up that park owes the thread --
+                            posted before the write that clears it
+      late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the exemption
+                            naming the measured commit, the plan-PR hold released and the pull request reconciled
+                            against that commit in any state -- with a settled pointer dropped rather than handed on
+                            -- before the candidate goes back to the ordinary publication, and the split passed
+                            on to the transaction that creates its children
       late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
                             lineage, and the three outcomes with the bounds they are judged against
       late_reply.py         the late reply's own fence, its three structured decisions, and the envelope and split rules

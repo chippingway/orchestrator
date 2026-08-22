@@ -50,6 +50,31 @@ any of it is the one the reconciliation itself makes. A mid-run pause and a
 shutdown sweep therefore leave the issue exactly as the prior tick did, with
 the human's guidance still unread -- which costs one repeated developer run
 and never a dropped instruction.
+
+Every reconciliation of a developer run ends where a finished adjudication
+does: the owner is read again. The developer has just run for as long as it
+ran, and a human who closed the issue in between has ended the whole cycle
+rather than this tick -- which is as true of a reconciliation that parked as
+of one that landed, so both are read past. The read sits after everything the
+reconciliation made durable and before anything it would SAY: the re-measured
+candidate and the park are written whatever the answer turns out to be, so a
+comment GitHub refuses costs neither, and the notice each of them owes is
+posted only once the issue is known to still be there.
+
+The obligation to take that read is part of what is written, not something
+the step after it adds. A re-measured candidate is the one result that can
+route a later tick past the read entirely -- under the ceiling it is not
+adjudicable, and over it the advanced generation has no recorded answer to
+short-circuit the spawn -- so the two go down together and a tick that dies
+between them leaves an issue that still owes the read.
+
+A reconciliation that PARKED writes on the same terms and for a sharper
+reason. The developer finished, and the guidance that bought it was consumed
+in memory on the way in -- so a park left staged until the guard would, on a
+tick that died before it, take the consumed reply down with it: the next tick
+would find the same comment unread and resume the developer a second time,
+against a checkout nobody has cleaned. The park, the consumption, and the
+owed read are therefore one write, made here, before the read.
 """
 from __future__ import annotations
 
@@ -77,11 +102,13 @@ from orchestrator.workflow.stages.decomposition import (
 from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
 )
+from orchestrator.workflow.stages.decomposition import late_owner as _late_owner
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateContentSettlement,
     _LateContentSignal,
     _LateContext,
     _LateDisposition,
+    _OwnerState,
 )
 from orchestrator.workflow.stages.implementing import resume as _dev_resume
 
@@ -342,18 +369,16 @@ def _remeasured(
         threshold=config.MAX_ADDED_LINES,
         additions=measured.additions,
         phase=LatePhase.MEASURING,
+        # The owner read this run still owes goes down WITH the result, in the
+        # one write. Claimed a step later by the guard, a tick that died in
+        # between would leave a re-measured candidate nothing brings a later
+        # tick back to: under the ceiling it is not adjudicable, and over it
+        # the advanced generation has no recorded answer, so the next tick
+        # pays for an agent before finding out whether anybody still wants
+        # the issue.
+        owner_check_pending=True,
     )
     _late_outcome._answer_park(context)
-    _comments._post_issue_comment(
-        context.gh, context.issue, context.state,
-        _REMEASURED_NOTICE.format(
-            revised=measured.candidate_sha,
-            additions=measured.additions,
-            base=measured.base_sha,
-            threshold=config.MAX_ADDED_LINES,
-            generation=context.generation.generation,
-        ),
-    )
     _late_outcome._persist(context)
     _telemetry.emit_late_event(
         context.gh,
@@ -361,9 +386,63 @@ def _remeasured(
         context.generation,
         stage=_DECOMPOSING_STAGE,
     )
-    return _LateContentSettlement(
-        disposition=_LateDisposition.REVISED, persisted=True,
+    return _guarded_revision(
+        context,
+        _LateDisposition.REVISED,
+        announce=_REMEASURED_NOTICE.format(
+            revised=measured.candidate_sha,
+            additions=measured.additions,
+            base=measured.base_sha,
+            threshold=config.MAX_ADDED_LINES,
+            generation=context.generation.generation,
+        ),
     )
+
+
+def _guarded_revision(
+    context: _LateContext,
+    settled: _LateDisposition,
+    *,
+    announce: str = "",
+) -> _LateContentSettlement:
+    """Read the owner again now the developer has finished, and report it.
+
+    The same guard a finished adjudication passes, for the same reason and at
+    the same point: the developer ran for as long as it ran, and the next
+    thing this candidate is worth is an adjudication that ends in a
+    publication or a split. A human who closed the issue while it ran has
+    said the whole cycle is over, and the mark this leaves is what the
+    cleanup path settles it from.
+
+    Asked of a reconciliation that PARKED as well as one that landed, because
+    the run was paid for either way and a closure during it strands the same
+    generation and the same plan-PR hold. What the answers change differs:
+    a park keeps its own reason and records the read as still owed, since
+    replacing what a human is being asked about with a read failure they
+    cannot answer would cost them the question.
+
+    Taken AFTER whatever this reconciliation made durable and BEFORE anything
+    it would say. An owner that turns out to be gone therefore costs no
+    developer run -- the candidate the run produced is frozen and recorded
+    whatever the read says, and a reopened issue starts from a fresh cycle
+    rather than from work nobody kept -- and it costs no comment either, since
+    `announce` is what the issue is told only once the read comes back open.
+    """
+    owner = _late_owner._guarded_owner(context)
+    if owner == _OwnerState.CLOSED:
+        return _LateContentSettlement(
+            disposition=_LateDisposition.CANCELLED, persisted=True,
+        )
+    if owner == _OwnerState.UNREADABLE:
+        return _LateContentSettlement(
+            disposition=_LateDisposition.PARKED, persisted=True,
+        )
+    if announce:
+        _comments._post_issue_comment(
+            context.gh, context.issue, context.state, announce,
+        )
+        _late_outcome._persist(context)
+    return _LateContentSettlement(disposition=settled, persisted=True)
 
 
 def _consume(context: _LateContext, signal: _LateContentSignal) -> None:
@@ -417,12 +496,31 @@ def _revision_prompt(issue: Issue, guidance: tuple) -> str:
 def _parked(
     context: _LateContext, message: str, *, reason: str,
 ) -> _LateContentSettlement:
-    """Hand the issue back with the generation exactly as it arrived."""
+    """Hand the issue back with the generation exactly as it arrived.
+
+    The owner is read past the park for the same reason it is read past a
+    landed revision: the developer run this is reconciling has finished, and
+    a human who closed the issue while it ran has ended the cycle rather than
+    handed it back.
+
+    The park is STAGED rather than said, so the write below is what makes it
+    durable and the notice waits for a read that proves the issue is still
+    there. A comment refused halfway would otherwise take the whole
+    reconciliation down with it -- the consumed guidance included -- and buy a
+    second developer run of one that had already finished.
+
+    That write is this step's own, and it goes down BEFORE the guard for the
+    same reason the re-measurement's does: a reconciliation that failed is a
+    developer run that finished. The guidance is consumed, the checkout has
+    been read, and what came of it is a park -- so a tick that died on the way
+    to the guard would leave a generation still reading as adjudicating, with
+    the human's instruction spent and nothing on the issue saying why, and the
+    next tick would resume the developer on a reply it had already acted on.
+    """
     log.error(
         "issue=#%d the revised candidate could not be reconciled (%s)",
         context.issue.number, reason,
     )
-    _late_outcome._park(context, message, reason=reason)
-    return _LateContentSettlement(
-        disposition=_LateDisposition.PARKED, persisted=True,
-    )
+    _late_outcome._stage_park(context, message, reason=reason)
+    _late_outcome._completed(context)
+    return _guarded_revision(context, _LateDisposition.PARKED)

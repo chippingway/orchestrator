@@ -172,6 +172,7 @@ def full_generation() -> LateGeneration:
         plan_pr_body=PLAN_PR_BODY,
         resources=(SNAPSHOT,),
         consumers=(21, 22),
+        owner_check_pending=True,
         cancelled=True,
         cancelled_at=CANCELLED_AT,
         restart_pending=True,

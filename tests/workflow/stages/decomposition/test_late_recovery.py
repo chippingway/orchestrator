@@ -31,6 +31,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     PLAN_PATH,
+    PLAN_PR_BODY,
     PLAN_PR_NUMBER,
     QUESTION_ASKED,
     seed_plan_pr,
@@ -241,7 +242,7 @@ class RetriedHoldTest(LateCase, unittest.TestCase):
         # otherwise never write, so a park retired into memory there is a
         # park still standing on the issue -- durably claiming a human is
         # owed something on an issue already decided.
-        adjudicate(self.github, self.issue, agent_reply(SINGLE_REPLY))
+        adjudicate(self.github, self.issue, agent_reply(SPLIT_REPLY))
         self._fail_the_hold()
 
         reused, unspawned = adjudicate(self.github, self.issue)
@@ -307,10 +308,12 @@ class RetriedHoldTest(LateCase, unittest.TestCase):
     def _fail_the_hold(self) -> None:
         """Leave the issue parked the way a refused PR edit does.
 
-        The description is put back to something unmarked first, so the
-        reconciliation reaches the edit whether or not a hold already stands.
+        The description is put back to the one the hold preserved first, which
+        is what a crash between the persist and the edit leaves: that is the
+        body the reconciliation re-applies over, so the edit is reached
+        whether or not a hold already stands.
         """
-        self.plan_pr.body = HUMAN_REWRITE
+        self.plan_pr.body = PLAN_PR_BODY
         refused = patch.object(
             self.github, EDIT_PR_BODY, side_effect=RuntimeError,
         )

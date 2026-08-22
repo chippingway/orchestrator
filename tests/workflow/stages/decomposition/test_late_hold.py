@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
 from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
@@ -14,17 +15,21 @@ from orchestrator.workflow.stages.decomposition import (
 from tests.support.fakes import FakeGitHubClient, FakePRRef
 from tests.workflow.stages.decomposition.late_run_support import HoldSnapshot
 from tests.workflow.stages.decomposition.late_test_support import (
+    ADDITIONS,
     BASE_SHA,
     CANDIDATE_SHA,
+    CYCLE_ID,
     HOLD_MARKER_PREFIX,
     KEYS,
     KEY_PLAN_PATH,
     PLAN_PATH,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
+    GENERATION_NUMBER,
     LATE_ISSUE_NUMBER,
     PLAN_PR_BODY,
     PLAN_PR_NUMBER,
+    THRESHOLD,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     late_generation,
@@ -32,11 +37,43 @@ from tests.workflow.stages.decomposition.late_test_support import (
     seed_plan_pr,
 )
 
+# What a re-measured candidate reports, and therefore what the notice a
+# re-marked hold quotes. Any number but the first generation's does.
+REVISED_ADDITIONS = 5150
+
 FOREIGN_HOLD = (
     "<!--orchestrator-late-hold:cycle=1:generation=0-->\nan older hold"
 )
 
 HUMAN_REPLACEMENT = "a human rewrote the description mid-hold"
+
+# The hold exactly as the binary before this one wrote it: marked by
+# generation as well as cycle, and quoting what the candidate measured.
+# Spelled out here rather than built from the owner under test, because what
+# it pins is the bytes a running orchestrator left on somebody's pull request
+# -- an upgrade meets them unchanged, and a spelling this binary cannot
+# recognize is a hold it can never take back off.
+SUPERSEDED_HOLD = (
+    "<!--orchestrator-late-hold:cycle={cycle}:generation={generation}-->\n"
+    ":hourglass: **Held by the orchestrator.** The committed implementation "
+    "for issue #{issue} measures {additions} added lines against a ceiling "
+    "of {threshold}, so it is being adjudicated before anything is "
+    "published. Do not merge this pull request while the hold "
+    "stands.\n\n"
+    "This description is temporary. The original is preserved in the "
+    "issue's pinned orchestrator state and is restored when adjudication "
+    "finishes."
+).format(
+    cycle=CYCLE_ID,
+    generation=GENERATION_NUMBER,
+    issue=LATE_ISSUE_NUMBER,
+    additions=ADDITIONS,
+    threshold=THRESHOLD,
+)
+
+# What a human editing the notice rather than replacing it leaves behind:
+# the hidden marker survives, and so do words nothing here wrote.
+HUMAN_ADDITION = "\n\nand a note of my own."
 
 CLOSED = "closed"
 
@@ -131,17 +168,119 @@ class PlanPrHoldTest(_HoldCase):
         self.assertTrue(second.held)
         self.assertEqual(len(self.github.edited_pr_bodies), 1)
 
-    def test_a_replaced_body_is_remarked_once(self) -> None:
-        # A description a human wrote over the hold is not one this generation
-        # displaced, so the preserved original stays the one captured first.
+    def test_a_replaced_body_is_left_alone(self) -> None:
+        # A description a human wrote over the hold is theirs, and the
+        # preserved copy has stopped being a description of this pull request.
+        # Re-marking it would hand the release a body it believed was this
+        # generation's, to restore that stale copy over their words.
         first = self._reconcile()
         self.plan_pr.body = HUMAN_REPLACEMENT
+
+        second = self._reconcile(first.generation)
+
+        self.assertFalse(second.held)
+        self.assertFalse(second.failed)
+        self.assertTrue(second.displaced)
+        self.assertEqual(self.plan_pr.body, HUMAN_REPLACEMENT)
+        self.assertEqual(len(self.github.edited_pr_bodies), 1)
+
+
+class ReappliedHoldTest(_HoldCase):
+    """The bodies a retry writes over, and the one it never does.
+
+    A hold this orchestrator wrote -- in this spelling or the one before it --
+    and the description it recorded beside the identity are all its own to
+    replace; anything else is somebody's words.
+    """
+
+    def test_an_older_spelling_is_ours_and_migrated(self) -> None:
+        # The upgrade case: an orchestrator restarted under a hold its
+        # predecessor took. Read as somebody's words it would be a "do not
+        # merge" notice nothing could ever take back off, on a pull request
+        # nothing could start an agent under -- so it is recognized, and the
+        # same edit that would have applied a fresh hold rewrites it in the
+        # spelling every later comparison is made against.
+        held = late_generation(
+            plan_pr_number=PLAN_PR_NUMBER, plan_pr_body=PLAN_PR_BODY,
+        )
+        self.plan_pr.body = SUPERSEDED_HOLD
+
+        hold = self._reconcile(held)
+
+        self.assertTrue(hold.held)
+        self.assertFalse(hold.displaced)
+        self.assertFalse(hold.failed)
+        self.assertEqual(self.plan_pr.body, _late_hold._hold_body(held))
+        self.assertEqual(hold.generation.plan_pr_body, PLAN_PR_BODY)
+
+    def test_an_advanced_generation_needs_no_re_mark(self) -> None:
+        # The counter advances on every reconciliation that lands, and the
+        # hold is keyed to the CYCLE -- so a re-measured candidate leaves the
+        # pull request wearing exactly the body this reconstructs, and there
+        # is nothing to re-mark and nothing to mistake for somebody's words.
+        first = self._reconcile()
+        advanced = replace(
+            first.generation,
+            generation=first.generation.generation + 1,
+            additions=REVISED_ADDITIONS,
+        )
+
+        second = self._reconcile(advanced)
+
+        self.assertTrue(second.held)
+        self.assertFalse(second.displaced)
+        self.assertEqual(self.plan_pr.body, _late_hold._hold_body(advanced))
+        self.assertEqual(len(self.github.edited_pr_bodies), 1)
+
+    def test_an_edited_hold_is_left_alone(self) -> None:
+        # The marker is hidden, so a human editing one sentence of the notice
+        # leaves it in place. Reading its presence as proof the body is
+        # unchanged is what would call this held -- and have the release put
+        # the preserved copy back over what they wrote.
+        first = self._reconcile()
+        self.plan_pr.body = self.plan_pr.body + HUMAN_ADDITION
+
+        second = self._reconcile(first.generation)
+
+        self.assertFalse(second.held)
+        self.assertTrue(second.displaced)
+        self.assertIn(HUMAN_ADDITION.strip(), self.plan_pr.body)
+        self.assertEqual(len(self.github.edited_pr_bodies), 1)
+
+    def test_a_lost_edit_is_re_applied(self) -> None:
+        # The one body the retry writes over: a crash between the persist and
+        # the edit leaves the description recorded beside the identity, and
+        # nothing on the pull request says the hold was ever taken.
+        first = self._reconcile()
+        self.plan_pr.body = PLAN_PR_BODY
 
         second = self._reconcile(first.generation)
 
         self.assertTrue(second.held)
         self.assertEqual(second.generation.plan_pr_body, PLAN_PR_BODY)
         self.assertIn(HOLD_MARKER_PREFIX, self.plan_pr.body)
+
+
+class SettledPlanPrTest(_HoldCase):
+    """A pull request a human has decided about is not held."""
+
+    def test_an_older_spelling_is_still_released(self) -> None:
+        # The one release the retry cannot have migrated first: a settled
+        # pull request is left exactly as it is by the reconciliation above,
+        # so the spelling the release meets is whichever binary wrote it.
+        # Refusing it would leave a merged plan describing a hold that ended.
+        self.plan_pr.state = CLOSED
+        self.plan_pr.body = SUPERSEDED_HOLD
+        held = late_generation(
+            plan_pr_number=PLAN_PR_NUMBER, plan_pr_body=PLAN_PR_BODY,
+        )
+
+        release = _late_hold._release_plan_pr_hold(
+            self.github, self.issue, held,
+        )
+
+        self.assertFalse(release.failed)
+        self.assertEqual(self.plan_pr.body, PLAN_PR_BODY)
 
     def test_a_settled_plan_pr_re_anchors_nothing(self) -> None:
         # A human merging or closing the plan PR has decided something about

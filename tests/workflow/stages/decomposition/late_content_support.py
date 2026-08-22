@@ -14,6 +14,11 @@ pair a live issue would carry and the three modules beside this one seed the
 same ones. Comment ids stay well below the fake client's own counter (which
 starts at 1000), so a seeded human comment is never confused with one the
 orchestrator posted during the call under test.
+
+A park's own comment being REFUSED is described here for the same reason: it
+is a thing that happens to this thread, every family of these tests has a park
+that can hit it, and matching the refusal by content is what lets a tick whose
+notice fails still say the other things it says.
 """
 from __future__ import annotations
 
@@ -50,7 +55,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     SHA_LENGTH,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
-    SINGLE_REPLY,
+    SPLIT_REPLY,
     late_generation,
     seed_plan_pr,
 )
@@ -94,6 +99,10 @@ PARK_REVISION_DIRTY = "late_revision_dirty"
 PARK_REVISION_UNMEASURED = "late_revision_unmeasured"
 PARK_REVISION_UNANSWERED = "late_revision_unanswered"
 PARK_QUESTION = "late_question"
+
+# What a refused comment fails with. GitHub's own refusals are typed, but what
+# every caller here does with one is let it out, so the type is not the point.
+COMMENT_REFUSED = "the comment was refused"
 
 EVENT_LATE_MEASUREMENT = "late_measurement"
 EVENT_AGENT_SPAWN = "agent_spawn"
@@ -141,6 +150,38 @@ def reply(issue: FakeIssue, body: str = GUIDANCE_BODY) -> FakeComment:
     )
     issue.comments.append(posted)
     return posted
+
+
+class RefusedComment:
+    """GitHub refusing one of the comments this tick is about to post.
+
+    Matched on content rather than aimed at the client as a whole, because a
+    tick that resumes a developer says two things -- that it is resuming, and
+    later what stopped it -- and only the second is the park's own. An empty
+    match refuses every comment, which is what a tick with one thing to say
+    needs.
+
+    Both the replacement and the scope it holds for, so a test says `with
+    RefusedComment(github):` and the poster it displaces is the one put back.
+    """
+
+    def __init__(self, github: FakeGitHubClient, containing: str = "") -> None:
+        self._github = github
+        self._taken = github.comment
+        self._containing = containing
+
+    def __call__(self, issue: FakeIssue, body: str) -> FakeComment:
+        if self._containing in body:
+            raise RuntimeError(COMMENT_REFUSED)
+        return self._taken(issue, body)
+
+    def __enter__(self) -> "RefusedComment":
+        self._github.comment = self
+        return self
+
+    def __exit__(self, *unused_error) -> bool:
+        self._github.comment = self._taken
+        return False
 
 
 def baselined(
@@ -256,9 +297,17 @@ class LateContentCase(unittest.TestCase):
         self._seed(
             pr_number=PLAN_PR_NUMBER, **{KEY_PLAN_PATH: PLAN_PATH}, **state,
         )
-        seed_plan_pr(self.github)
+        self.plan_pr = seed_plan_pr(self.github)
 
-    def _run(self, reply=SINGLE_REPLY, **run_fields):
+    def _run(self, reply=SPLIT_REPLY, **run_fields):
+        """One adjudication, defaulting to the verdict that leaves state put.
+
+        These modules are about what a human's content does to a candidate,
+        not about what a verdict earns, so the default reply is the one whose
+        settlement neither posts nor rewrites: a split is handed to the
+        transaction that creates its children and leaves the generation, its
+        fingerprints, and the thread exactly as this tick left them.
+        """
         return adjudicate(
             self.github,
             self.issue,

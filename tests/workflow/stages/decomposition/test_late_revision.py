@@ -34,6 +34,7 @@ from tests.workflow.stages.decomposition.late_content_support import (
 )
 from tests.workflow.stages.decomposition.late_content_support import (
     BARE_CONTINUE,
+    PARK_QUESTION,
     RECORDED_SINGLE,
     reply,
 )
@@ -43,6 +44,7 @@ from tests.workflow.stages.decomposition.late_revision_support import (
     DEV_SESSION,
     DIRTY_TREE,
     PausedDuringRun,
+    REMEASURED_OVERSIZED,
     RevisionCase,
     UNMEASURED,
 )
@@ -56,6 +58,8 @@ from tests.workflow.stages.decomposition.late_test_support import (
     GENERATION_NUMBER,
     KEYS,
     NEXT_GENERATION,
+    PLAN_PR_BODY,
+    QUESTION_REPLY,
 )
 
 
@@ -198,6 +202,53 @@ class RevisedCandidateTest(RevisionCase):
         )
 
 
+class RolledOverHoldTest(RevisionCase):
+    """A still-oversized revision leaves its plan PR a generation behind.
+
+    The counter advances on every reconciliation that lands, so the notice the
+    pull request wears names the generation before the one now running. It is
+    the orchestrator's own last edit, and the next tick has to re-mark it
+    rather than read it as a description somebody wrote over the hold.
+    """
+
+    def test_the_next_tick_re_marks_and_spawns(self) -> None:
+        self._seed_with_plan_pr(**DEV_PIN)
+        reply(self.issue)
+        revised, _resumed = self._revise(measurement=REMEASURED_OVERSIZED)
+
+        adjudicated, spawn = self._adjudicate_revised()
+
+        self.assertEqual(revised.disposition, _LateDisposition.REVISED)
+        spawn.assert_called_once()
+        self.assertEqual(adjudicated.disposition, _LateDisposition.DECIDED)
+        # Parked on what the agent asked, not on a hold read as a human's.
+        self.assertEqual(self._pinned().get(KEYS.park_reason), PARK_QUESTION)
+
+    def test_the_notice_is_left_exactly_as_it_was(self) -> None:
+        # The hold is the cycle's, so an advanced generation asks for the same
+        # body it already wrote: one edit for the whole rollover.
+        self._seed_with_plan_pr(**DEV_PIN)
+        reply(self.issue)
+        self._revise(measurement=REMEASURED_OVERSIZED)
+        held = self.plan_pr.body
+
+        self._adjudicate_revised()
+
+        self.assertEqual(self.plan_pr.body, held)
+        self.assertEqual(len(self.github.edited_pr_bodies), 1)
+        # The description the first hold displaced is still the only copy of
+        # what this issue owes that pull request back.
+        self.assertEqual(
+            self._pinned().get(KEYS.plan_pr_body), PLAN_PR_BODY,
+        )
+
+    def _adjudicate_revised(self):
+        """The tick after a revision, run against the commit it left."""
+        return self._run(
+            QUESTION_REPLY, worktree=WorktreeSeed(head=REVISED_SHA),
+        )
+
+
 class StalledRevisionTest(RevisionCase):
     """A bare continue re-reads a finished run rather than paying again."""
 
@@ -300,6 +351,8 @@ class UnparkedGuidanceTest(RevisionCase):
 
         reused, resumed = self._revise()
 
-        self.assertEqual(reused.disposition, _LateDisposition.DECIDED)
+        self.assertEqual(reused.disposition, _LateDisposition.SETTLED)
         resumed.assert_not_called()
-        self.assertEqual(self._pinned()[KEY_GENERATION], GENERATION_NUMBER)
+        # The exemption names the candidate the record was taken against, so
+        # nothing re-froze and no second developer run was paid for.
+        self.assertEqual(self._pinned()[KEYS.exempt_sha], CANDIDATE_SHA)

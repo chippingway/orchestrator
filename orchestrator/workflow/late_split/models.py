@@ -91,6 +91,7 @@ class LateFailure(StrEnum):
     MEASUREMENT_FAILED = "measurement_failed"
     PLAN_PR_HOLD_FAILED = "plan_pr_hold_failed"
     OWNER_READ_FAILED = "owner_read_failed"
+    PR_RECONCILE_FAILED = "pr_reconcile_failed"
     SNAPSHOT_FAILED = "snapshot_failed"
     CHILD_CREATE_FAILED = "child_create_failed"
     SUPERSESSION_FAILED = "supersession_failed"
@@ -152,6 +153,14 @@ class LateGeneration:
     write, and a snapshot whose consumer ledger was silently emptied reads as
     one nobody is waiting on -- so what cannot be typed is carried through
     untouched and `has_opaque_ledger` says so out loud.
+
+    `owner_check_pending` is the one field that records an unfinished READ
+    rather than a fact about the candidate: a completed run whose owner could
+    not be re-read leaves it set, and while it is set no later tick may treat
+    this generation as settled, however small, decided, or parked it looks.
+    It is durable because nothing else would bring the workflow back to that
+    read -- a below-threshold revision and an issue parked for a human both
+    stop the tick long before the guard would run again.
     """
 
     cycle_id: int = 0
@@ -174,6 +183,7 @@ class LateGeneration:
     consumers: tuple[int, ...] = ()
     opaque_resources: Optional[str] = None
     opaque_consumers: Optional[str] = None
+    owner_check_pending: bool = False
     cancelled: bool = False
     cancelled_at: Optional[str] = None
     restart_pending: bool = False

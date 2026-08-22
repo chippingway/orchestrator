@@ -7,8 +7,9 @@ carries none of them, reads back as an absent generation, and is written back
 untouched, so no migration reaches a live issue and an older pinned comment
 stays exactly as valid as it was. The key spellings are the compatibility
 contract live issues would carry, so they are spelled once here and named
-nowhere else -- `LATE_STATE_KEYS` is the whole of what this domain owns inside
-the pinned comment, and clearing late mode is defined as dropping exactly it.
+nowhere else -- `LATE_STATE_KEYS` is the whole of what one GENERATION owns
+inside the pinned comment, and clearing late mode is defined as dropping
+exactly it.
 
 A record with no cycle identity is not a generation, so the write clears the
 late fields rather than recording a half-record no later tick could correlate
@@ -19,7 +20,7 @@ snapshot or a branch with nothing on the issue to reclaim it by. So an
 uncorrelatable record still writes what it owes, and nothing else. Past that
 gate each field says for itself what "unset" means: an identity or a SHA at
 its empty value is dropped, a lineage depth of 0 is a root and is kept, and
-the two flags are written only while they are set. What survives the round
+the three flags are written only while they are set. What survives the round
 trip is therefore exactly what a caller put in.
 
 The two external ledgers are the one pair of fields this owner does not
@@ -29,7 +30,11 @@ an obligation an older or newer binary recorded is still owed, and a write
 that reduced the ledger to the entries this binary understood would delete it
 -- leaving a cleanup looking complete and a snapshot looking reclaimable. The
 `restart` owner beside this one moves the pending marker; the marker is a
-pinned field, but minting and validating an identity is its own contract.
+pinned field, but minting and validating an identity is its own contract. The
+`exemption` owner beside it holds the one late key that is deliberately NOT in
+this group: the commit an accepted candidate publishes under has to survive
+the clear that ends the generation which earned it, so it is spelled there and
+this list drops it no more than it drops another stage's keys.
 """
 from __future__ import annotations
 
@@ -61,6 +66,7 @@ _PLAN_PR_NUMBER = "late_plan_pr_number"
 _PLAN_PR_BODY = "late_plan_pr_body"
 _RESOURCES = "late_resources"
 _CONSUMERS = "late_consumers"
+_OWNER_CHECK_PENDING = "late_owner_check_pending"
 _CANCELLED = "late_cancelled"
 _CANCELLED_AT = "late_cancelled_at"
 _RESTART_PENDING = "late_restart_pending"
@@ -87,6 +93,7 @@ LATE_STATE_KEYS = (
     _PLAN_PR_BODY,
     _RESOURCES,
     _CONSUMERS,
+    _OWNER_CHECK_PENDING,
     _CANCELLED,
     _CANCELLED_AT,
     _RESTART_PENDING,
@@ -156,6 +163,9 @@ def read_late_generation(state: PinnedState) -> LateGeneration:
         consumers=consumers,
         opaque_resources=opaque_resources,
         opaque_consumers=opaque_consumers,
+        owner_check_pending=_payloads.as_flag(
+            state.get(_OWNER_CHECK_PENDING),
+        ),
         cancelled=_payloads.as_flag(state.get(_CANCELLED)),
         cancelled_at=_payloads.as_text(state.get(_CANCELLED_AT)),
         restart_pending=_payloads.as_flag(state.get(_RESTART_PENDING)),
@@ -231,6 +241,7 @@ def _written_fields(generation: LateGeneration) -> dict[str, Any]:
         _PLAN_PR_NUMBER: generation.plan_pr_number,
         _PLAN_PR_BODY: generation.plan_pr_body,
         **ledgers,
+        _OWNER_CHECK_PENDING: generation.owner_check_pending or None,
         _CANCELLED: generation.cancelled or None,
         _CANCELLED_AT: generation.cancelled_at,
         _RESTART_PENDING: generation.restart_pending or None,

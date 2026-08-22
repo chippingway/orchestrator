@@ -16,6 +16,8 @@ from orchestrator.workflow.state import WorkflowLabel
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_content_support import late_issue
 from tests.workflow.stages.decomposition.late_relabel_support import (
+    CANCELLED_OWED_READ,
+    OWED_READ_GENERATION,
     SETTLED_GENERATIONS,
     relabelled,
 )
@@ -78,6 +80,46 @@ class DisabledRouteTest(_LateLabelCase):
                     self._labels(github),
                     [(LATE_ISSUE_NUMBER, WorkflowLabel.IMPLEMENTING)],
                 )
+
+
+class OwedReadTest(_LateLabelCase):
+    """A read this generation still owes keeps both doors shut.
+
+    An undersized revision closes the size question and leaves the owner one
+    open, so a gate that asked only about size would route the candidate out
+    of this mode before the guard had cleared it.
+    """
+
+    def setUp(self) -> None:
+        self._seed(OWED_READ_GENERATION)
+
+    def test_the_kill_switch_does_not_route_it(self) -> None:
+        self.assertTrue(self._route(self.github, self.issue))
+        self.assertEqual(self._labels(self.github), [])
+        self.assertEqual(self.github.posted_comments, [])
+
+    def test_a_hand_relabel_is_put_back(self) -> None:
+        relabelled(self.issue, WorkflowLabel.IMPLEMENTING)
+
+        self.assertTrue(self._restore(self.github, self.issue))
+        self.assertEqual(
+            self.github.workflow_label(self.issue), WorkflowLabel.DECOMPOSING,
+        )
+
+    def test_a_cancelled_cycle_owes_nothing(self) -> None:
+        # The cleanup path owns what a cancelled cycle left, so the read it
+        # was owed stops being a reason to hold the label.
+        self._seed(CANCELLED_OWED_READ)
+        relabelled(self.issue, WorkflowLabel.READY)
+
+        self.assertFalse(self._restore(self.github, self.issue))
+        self.assertTrue(self._route(self.github, self.issue))
+
+    def _seed(self, generation) -> None:
+        """One late issue carrying the generation named."""
+        seeded = late_issue(generation=generation)
+        self.github = seeded[0]
+        self.issue = seeded[1]
 
 
 class LabelRestorationTest(_LateLabelCase):

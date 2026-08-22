@@ -518,6 +518,17 @@ id, which scopes the search to this episode: a later park stamps a higher one, s
 cannot silence the next recovery. A forged marker costs its author the notification they would have been spared
 anyway.
 
+The late size gate's `late_owner_unreadable` park heals the same way and by the same rules, from its own owner
+(`late_owner.py`) and under its own marker (`<!--orchestrator-late-owner-recovery-->`), so a follow-up from one
+mode's episode cannot silence the other's. Two things differ. Its retry hangs off a durable
+`late_owner_check_pending` on the generation rather than off the park, since the routes it has to survive skip the
+park entirely; and its follow-up is posted *before* the write that clears the park rather than after, so the crash
+window loses the write instead of the sentence — which the thread-marker check then makes free to repeat. A park
+whose own notice GitHub refused (`late_park_notice` still owed) heals silently: it told nobody anything, so there is
+no alarming last word to retire and a follow-up would be the first thing the episode said. What that park is and why
+its retry re-reads rather than re-running anything is in
+[`../workflow/roles.md`](../workflow/roles.md#the-owner-read-a-finished-run-has-to-pass).
+
 The same failure window is why `_AwaitingValidation.build` drops the orchestrator's own comments — by recorded id
 AND by `_ORCH_COMMENT_MARKER`, the pair `_rescan_fixing_feedback` already uses. Every awaiting-human decision helper
 reads a non-empty batch as "a human replied", and a follow-up whose id-recording write never landed is still ours;

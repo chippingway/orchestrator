@@ -44,7 +44,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     LATE_ISSUE_NUMBER,
     PLAN_PR_BODY,
     ROLE_DECOMPOSER,
-    SINGLE_REPLY,
+    SPLIT_REPLY,
     UNDERSIZED_ADDITIONS,
     late_generation,
     seed_late_issue,
@@ -138,7 +138,7 @@ class HoldBeforeSpawnTest(LateCase, unittest.TestCase):
         recorder = HoldSnapshot(self.github)
 
         with patch.object(self.github, "edit_pr_body", recorder):
-            self._adjudicate(agent_reply(SINGLE_REPLY))
+            self._adjudicate(agent_reply(SPLIT_REPLY))
 
         self.assertEqual(
             [held.get(KEYS.plan_pr_body) for held in recorder.snapshots],
@@ -220,7 +220,7 @@ class HoldBeforeSpawnTest(LateCase, unittest.TestCase):
     def test_a_merge_mid_run_re_anchors_nothing(self) -> None:
         # The pull request is settled by a human; the commit under
         # adjudication is not, and stays the evidence every later step reads.
-        merged = _MergedDuringRun(self.plan_pr, agent_reply(SINGLE_REPLY))
+        merged = _MergedDuringRun(self.plan_pr, agent_reply(SPLIT_REPLY))
 
         self._adjudicate(merged)
 
@@ -233,7 +233,7 @@ class SpawnPersistenceTest(LateCase, unittest.TestCase):
     """What is durable before the run, and what the run adds to it."""
 
     def test_the_run_is_recorded_before_the_spawn(self) -> None:
-        recorder = SpawnSnapshot(self.github, agent_reply(SINGLE_REPLY))
+        recorder = SpawnSnapshot(self.github, agent_reply(SPLIT_REPLY))
 
         self._adjudicate(recorder)
 
@@ -252,7 +252,7 @@ class SpawnPersistenceTest(LateCase, unittest.TestCase):
         self.assertNotIn(KEYS.retry_count, recorded)
 
     def test_it_spends_the_shared_retry_and_usage(self) -> None:
-        self._adjudicate(agent_reply(SINGLE_REPLY))
+        self._adjudicate(agent_reply(SPLIT_REPLY))
 
         self.assertEqual(self._pinned().get(KEYS.retry_count), 1)
         self.assertEqual(self._pinned().get(KEYS.agent_runs), 1)
@@ -286,7 +286,7 @@ class SpawnPersistenceTest(LateCase, unittest.TestCase):
         self.assertIn("not on this host", self.github.posted_comments[-1][1])
 
     def test_a_recorded_answer_is_not_paid_for_twice(self) -> None:
-        self._adjudicate(agent_reply(SINGLE_REPLY))
+        self._adjudicate(agent_reply(SPLIT_REPLY))
 
         outcome, spawn = self._adjudicate()
 
@@ -295,7 +295,7 @@ class SpawnPersistenceTest(LateCase, unittest.TestCase):
         self.assertEqual(outcome.run.source_sha, CANDIDATE_SHA)
         # Rebuilt from the record, so the caller acts on the same answer the
         # first tick got rather than on a second run's.
-        self.assertEqual(outcome.adjudication.verdict, LateVerdict.SINGLE)
+        self.assertEqual(outcome.adjudication.verdict, LateVerdict.SPLIT)
 
 
 class FrozenEvidenceTest(unittest.TestCase):
@@ -373,7 +373,7 @@ class MutationGuardTest(LateCase, unittest.TestCase):
 
     def _refused(self, seed) -> None:
         """Run against `seed` and assert the verdict was not accepted."""
-        outcome, _ = self._adjudicate(agent_reply(SINGLE_REPLY), worktree=seed)
+        outcome, _ = self._adjudicate(agent_reply(SPLIT_REPLY), worktree=seed)
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertNotIn(KEYS.verdict, self._pinned())

@@ -15,7 +15,6 @@ from orchestrator.workflow.stages.decomposition.late_models import (
 )
 
 from tests.support.fakes import FakeLabel
-from tests.workflow.fixtures import LABEL_DECOMPOSING
 from tests.workflow.stages.decomposition.late_run_support import (
     LateCase,
     agent_reply,
@@ -144,7 +143,7 @@ class DecidedOutcomeTest(LateCase, unittest.TestCase):
         )
 
         spawn.assert_called_once()
-        self.assertEqual(outcome.disposition, _LateDisposition.DECIDED)
+        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(outcome.adjudication.verdict, LateVerdict.SINGLE)
         self.assertEqual(self._pinned().get(KEYS.session_id), LATE_SESSION_ID)
         self.assertEqual(self._pinned().get(KEYS.verdict), LateVerdict.SINGLE)
@@ -196,17 +195,6 @@ class DecidedOutcomeTest(LateCase, unittest.TestCase):
         self.assertEqual(decided.get("additions"), ADDITIONS)
         self.assertEqual(decided.get("threshold"), THRESHOLD)
         self.assertEqual(decided.get("source_sha"), CANDIDATE_SHA)
-
-    def test_an_accepted_candidate_publishes_nothing(self) -> None:
-        # The coordinator adjudicates; relabeling, creating children, and
-        # publishing all belong to the steps that act on the verdict.
-        self._adjudicate(agent_reply(SINGLE_REPLY))
-
-        self.assertEqual(self.github.label_history, [])
-        self.assertEqual(self.github.created_child_issues, [])
-        self.assertEqual(
-            self.github.workflow_label(self.issue), LABEL_DECOMPOSING,
-        )
 
     def test_a_later_generation_re_adjudicates(self) -> None:
         # A recorded answer names the generation it answered, so the next

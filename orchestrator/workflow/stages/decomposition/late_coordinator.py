@@ -40,6 +40,20 @@ Past all of that, what comes back is the whole outcome rebuilt from the record
 -- the children a split named included -- and whatever that answer still owed
 the issue is reconciled instead of re-earned.
 
+Every completed run goes through one more gate before anything acts on what
+it left: the owner is read again. This call began by fetching an issue and
+then spent minutes to hours running an agent, so the snapshot it is holding
+cannot say whether a human has closed the issue since -- and publishing,
+snapshotting, superseding, activating, or even announcing on the strength of
+it would act on an issue nobody wants. It is asked of every completion, a
+question and a timeout included, since a closure during one of those strands
+the same generation and the same plan-PR hold. A read that fails records
+itself on the generation, which is why the very first thing this call does is
+reconcile one an earlier tick left owed -- ahead of the live-generation gate,
+because the state that gate routes past is exactly where such a read gets
+stranded. What the read costs each of the three answers is the `late_owner`
+owner's; what a verdict past it EARNS is `late_settlement`'s.
+
 Nothing gets that far on a generation that cannot be acted on. The prompt, the
 hold, and every record afterwards are derived from the frozen fields, so the
 identities and both commits are proved before the plan PR is touched or an
@@ -100,14 +114,19 @@ from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
 from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
 )
+from orchestrator.workflow.stages.decomposition import late_owner as _late_owner
 from orchestrator.workflow.stages.decomposition import (
     late_session as _late_session,
+)
+from orchestrator.workflow.stages.decomposition import (
+    late_settlement as _late_settlement,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateAdjudicationRun,
     _LateContext,
     _LateDisposition,
     _LateRun,
+    _OwnerState,
 )
 from orchestrator.workflow.stages.implementing import session as _dev_session
 
@@ -128,6 +147,15 @@ _HOLD_FAILED_PARK = (
     "decomposer was spawned and the committed candidate stays unpublished. "
     "Settle the pull request, then the next tick retries the same "
     "reconciliation against the same frozen commit."
+)
+
+_HOLD_DISPLACED_PARK = (
+    "this issue's plan PR carries a description this orchestrator did not "
+    "write, so the adjudication hold cannot be put back without overwriting "
+    "it -- and no late decomposer is started while that pull request is open "
+    "with nothing on it saying the committed candidate is still being "
+    "adjudicated. Settle the pull request, or put its description back, and "
+    "the next tick continues against the same frozen commit."
 )
 
 _INCOMPLETE_PARK = (
@@ -185,13 +213,9 @@ def _adjudicate_late_generation(
         state=state,
         generation=_late_state.read_late_generation(state),
     )
-    if not _is_adjudicable(context.generation):
-        return _late_outcome._finished(context, _LateDisposition.NOT_LATE)
-    # Both proofs park on their own and both stop the tick, so they are asked
-    # as one short circuit -- the hold is still only reached by a generation
-    # whose evidence was proved first.
-    if not _has_frozen_evidence(context) or not _hold_plan_pr(context):
-        return _late_outcome._finished(context, _LateDisposition.PARKED)
+    blocked = _blocked_before_running(context)
+    if blocked is not None:
+        return _late_outcome._finished(context, blocked)
     retired = _late_outcome._retire_park(context)
     settled = _late_guidance._reconcile_late_content(context)
     if settled.disposition is not None:
@@ -204,8 +228,75 @@ def _adjudicate_late_generation(
             "spawning a second adjudication",
             issue.number, context.generation.generation, recorded.verdict,
         )
-        return _late_outcome._reused(context, recorded, retired=retired)
+        return _guarded(
+            context, _late_outcome._reused(context, recorded, retired=retired),
+        )
     return _run_and_decide(context)
+
+
+def _blocked_before_running(
+    context: _LateContext,
+) -> Optional[_LateDisposition]:
+    """What stops this tick before any agent could run, if anything does.
+
+    The owner read this generation still owes is asked ahead of every other
+    gate, because a read that is owed is owed whether or not the candidate is
+    adjudicable: a revision that came back under the ceiling routes past the
+    size gate, and an issue parked for a human routes past everything, so a
+    retry hung off either would never run at all.
+
+    A park notice a refused comment stranded is redelivered next, for the
+    same reason and one step later: it is owed whether or not the candidate
+    is adjudicable, and every gate below this one is a gate a parked issue
+    routes past. One step later because the read comes first -- an owner that
+    turns out to be closed cancels the cycle, and a cancelled cycle's parks
+    explain a candidate nobody is adjudicating any more.
+
+    What comes before BOTH is reconciling that obligation against the thread,
+    since the read is one of the steps that would otherwise read it wrong: a
+    notice whose post landed and whose write did not is owed by the record and
+    not by the issue, and the guard would take it as proof that nobody was
+    told and clear its park without the follow-up it promised.
+
+    The evidence and the hold are asked as one short circuit past all of it.
+    Both park on their own and both stop the tick, and the hold is still only
+    reached by a generation whose evidence was proved first.
+    """
+    _late_outcome._reconcile_notice_delivery(context)
+    owed = _late_owner._reconcile_pending_owner_check(context)
+    if owed is not None:
+        return owed
+    _late_outcome._redeliver_park_notice(context)
+    if not _is_adjudicable(context.generation):
+        return _LateDisposition.NOT_LATE
+    if not _has_frozen_evidence(context) or not _hold_plan_pr(context):
+        return _LateDisposition.PARKED
+    return None
+
+
+def _guarded(
+    context: _LateContext, finished: _LateAdjudicationRun,
+) -> _LateAdjudicationRun:
+    """Read the owner again now this run is over, then act on what it left.
+
+    Every completion comes through here, not only the ones that decided
+    something: a question, a timeout, an unusable reply, and a reply refused
+    for a moved candidate are all runs the issue paid for, and a closure
+    during any of them strands the same generation and the same plan-PR hold.
+
+    A run the tick DECLINED is the one exception, and it is not a completion:
+    an operator's `paused` label and a shutdown sweep both mean this tick did
+    not happen, and durable state has to be left exactly as the prior tick
+    left it -- which a write here would break.
+    """
+    if finished.disposition == _LateDisposition.DEFERRED:
+        return finished
+    reading = _late_owner._guarded_owner(context)
+    if reading == _OwnerState.CLOSED:
+        return _late_outcome._finished(context, _LateDisposition.CANCELLED)
+    if reading == _OwnerState.UNREADABLE:
+        return _late_outcome._finished(context, _LateDisposition.PARKED)
+    return _late_settlement._settle_adjudication(context, finished)
 
 
 def _is_adjudicable(generation: LateGeneration) -> bool:
@@ -285,7 +376,7 @@ def _incomplete_evidence(
 
 
 def _hold_plan_pr(context: _LateContext) -> bool:
-    """Reconcile the generation-marked hold, or park without spawning."""
+    """Reconcile the cycle-marked hold, or park without spawning."""
     context.generation = replace(
         context.generation, phase=LatePhase.HOLDING_PLAN_PR,
     )
@@ -293,6 +384,7 @@ def _hold_plan_pr(context: _LateContext) -> bool:
         context.gh, context.issue, context.state, context.generation,
     )
     context.generation = hold.generation
+    context.displaced_hold = hold.displaced
     if not hold.failed:
         return True
     _late_outcome._emit_failure(context, LateFailure.PLAN_PR_HOLD_FAILED)
@@ -303,7 +395,23 @@ def _hold_plan_pr(context: _LateContext) -> bool:
 
 
 def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
-    """Spend a retry slot on one adjudication of the frozen candidate."""
+    """Spend a retry slot on one adjudication of the frozen candidate.
+
+    A hold a human displaced stops this the way a failed one does. Their words
+    are left where they wrote them, but the pull request is now open with
+    nothing on it saying an adjudication is running -- so no agent is started
+    under it. This refusal is here rather than beside the hold because an
+    answer already recorded is still allowed to settle: settling releases a
+    hold that is already gone, and only a NEW run would leave a human free to
+    merge under one.
+    """
+    if context.displaced_hold:
+        _late_outcome._emit_failure(context, LateFailure.PLAN_PR_HOLD_FAILED)
+        _late_outcome._park(
+            context, _HOLD_DISPLACED_PARK,
+            reason=_late_outcome.PARK_HOLD_FAILED,
+        )
+        return _late_outcome._finished(context, _LateDisposition.PARKED)
     worktree = _worktree_paths._worktree_path(
         context.spec, context.issue.number,
     )
@@ -372,9 +480,11 @@ def _settle(
         _usage._accumulate_issue_usage(context.state, agent_result.usage)
     declined = _declined_run(context, agent_result, worktree)
     if declined is not None:
-        return declined
+        return _guarded(context, declined)
     _late_session._record_late_session(context.state, agent_result)
-    return _late_outcome._decide(context, agent_result.last_message)
+    return _guarded(
+        context, _late_outcome._decide(context, agent_result.last_message),
+    )
 
 
 def _declined_run(

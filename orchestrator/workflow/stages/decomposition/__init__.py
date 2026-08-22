@@ -24,13 +24,15 @@ label, for the issue whose implementation is already committed and turns out
 to be oversized. They are named apart rather than folded in because what a
 missing or malformed INITIAL manifest means may not change: `late_prompt` and
 `late_reply` are the question that mode asks and the fence it is answered on,
-`late_hold` owns the generation-marked hold a reusable plan PR wears while the
+`late_hold` owns the cycle-marked hold a reusable plan PR wears while the
 question is open, `late_session` owns the run's pinned record and the tracked
 spawn over it, `late_content` fingerprints the requirements the candidate was
 frozen against and `late_guidance` decides what a change to them or an answer
 about them earns, `late_revision` owns the developer run guidance buys and the
 re-measured candidate it comes back with, `late_relabel` owns the label a live
-generation pins against the kill switch and a hand relabel, `late_coordinator`
+generation pins against the kill switch and a hand relabel, `late_owner` owns
+the fresh read that stands between a finished run and anything it earns,
+`late_settlement` owns what a guarded verdict becomes, `late_coordinator`
 owns the order those are asked in and `late_outcome` what one finished reply
 becomes, and `late_models` carries what they hand each other. Only the kill
 switch dispatches into them -- an in-flight generation is what stops
