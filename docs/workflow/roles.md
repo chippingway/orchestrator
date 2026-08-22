@@ -343,10 +343,13 @@ candidate goes on to.
 
 The order is chosen so every window a crash can land in is one the next tick repairs. The hold is released first,
 while nothing else has moved; the exemption is written next, with the generation still live behind it; only then is
-`workflow:implementing` handed back; and only after that is the generation retired. A `decomposing` issue with no
-generation on it is one the INITIAL decomposer would pick up and re-decompose, and an `implementing` issue with a
-live generation is one the relabel guard puts back and the next tick re-settles — so the ordering is what keeps the
-first of those from ever existing.
+`workflow:implementing` handed back; and only after that is the generation retired — behind the one comment naming the
+accepted commit and the measurement it was judged on, posted immediately before the write that drops the generation,
+so a crash between them costs at most a repeated comment. What that write keeps is the two external ledgers: an
+obligation the remote is owed does not stop being owed because the adjudication that recorded it ended well. A
+`decomposing` issue with no generation on it is one the INITIAL decomposer would pick up and re-decompose, and an
+`implementing` issue with a live generation is one the relabel guard puts back and the next tick re-settles — so the
+ordering is what keeps the first of those from ever existing.
 
 ## What the humans can still change while a candidate is frozen
 

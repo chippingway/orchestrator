@@ -157,10 +157,12 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   3. **DECOMPOSE kill switch.** If `config.DECOMPOSE` is off when this handler runs, clear decomposer-side park flags,
      ratchet `last_action_comment_id` past every visible comment, flip the label to `workflow:implementing`, and fall
      into `_handle_implementing`. Step 2 runs first so orphan children are not abandoned. An issue carrying a live
-     late generation — recorded, oversized, and not cancelled — takes neither branch: the tick returns leaving it
-     exactly where it is, because the legacy route would publish a committed candidate measured past the ceiling as
-     though a `single` verdict had been recorded for it. The same issue relabelled by hand never reaches this handler
-     — or any other — at all: the dispatcher puts the label back first. See
+     late generation — recorded, not cancelled, and either oversized or still owing the post-agent owner read — takes
+     neither branch: the tick returns leaving it exactly where it is, because the legacy route would publish a
+     committed candidate measured past the ceiling as though a `single` verdict had been recorded for it. The owed
+     read is the half a size-keyed gate misses: a revision that came back UNDER the ceiling is no longer oversized,
+     and nobody has established that the issue it belongs to is still open. The same issue relabelled by hand never
+     reaches this handler — or any other — at all: the dispatcher puts the label back first. See
      [`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen).
   4. **Awaiting-human resume OR fresh spawn.** Resume on a new comment; otherwise gate on the per-issue retry budget
      (shared with `implementing`), ensure a read-only worktree, resolve the spec via `_read_decomposer_session`, persist
