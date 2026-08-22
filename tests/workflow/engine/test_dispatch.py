@@ -10,6 +10,8 @@ from unittest.mock import Mock, patch
 
 from orchestrator.workflow.engine import dispatch
 
+from tests.support.fakes import FakeGitHubClient, make_issue
+
 _ISSUE_NUMBER = 17
 _READY_LABEL = "workflow:ready"
 
@@ -31,15 +33,17 @@ class StageHandlerLookupTest(unittest.TestCase):
         # The handler is read off its owner per call rather than bound when
         # this module imports, so a patch installed after import intercepts
         # the dispatch -- which is what every stage's routing test relies on.
-        module_name, handler_name = dispatch._STAGE_HANDLER_TARGETS[_READY_LABEL]
-        issue = SimpleNamespace(number=_ISSUE_NUMBER)
+        target = dispatch._STAGE_HANDLER_TARGETS[_READY_LABEL]
+        github = FakeGitHubClient()
+        issue = make_issue(_ISSUE_NUMBER, label=_READY_LABEL)
+        github.add_issue(issue)
         spec = SimpleNamespace(slug="owner/repo")
         ready_handler = Mock()
         with patch.object(
-            importlib.import_module(module_name), handler_name, ready_handler,
+            importlib.import_module(target[0]), target[1], ready_handler,
         ):
-            dispatch._route_issue_to_handler(None, spec, issue, _READY_LABEL)
-        ready_handler.assert_called_once_with(None, spec, issue)
+            dispatch._route_issue_to_handler(github, spec, issue, _READY_LABEL)
+        ready_handler.assert_called_once_with(github, spec, issue)
 
 
 if __name__ == "__main__":

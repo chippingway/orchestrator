@@ -38,9 +38,11 @@ def _set_workflow_label(
     client,
     issue: FakeIssue,
     new_label: Optional[str],
+    *,
+    guarded: bool = True,
 ) -> None:
     resolved_label = coerce_workflow_label(new_label) if new_label else None
-    if resolved_label is not None:
+    if resolved_label is not None and guarded:
         guard_transition(
             client.workflow_label(issue),
             resolved_label,

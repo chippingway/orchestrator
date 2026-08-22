@@ -16,6 +16,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from orchestrator.git.measurement.models import (
+    AdditionMeasurement,
+    MeasurementFailure,
+)
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
@@ -49,6 +53,14 @@ PLAN_BRANCH = "orchestrator/plan"
 # stage tells the two apart by and the late hold reads through it.
 KEY_PLAN_PATH = "discussion_plan_path"
 PLAN_PATH = "plans/issue-41.md"
+
+# What a re-measurement answers when a test did not ask for one. Every path
+# that reaches the real counter shells out to git in the scratch worktree, so
+# the seam is always held -- and held at a failure, because a test that
+# reaches it without saying what it expects has not decided anything.
+UNASKED_MEASUREMENT = AdditionMeasurement(
+    failure=MeasurementFailure.DIFF_FAILED,
+)
 
 LATE_SESSION_ID = "late-sess"
 LATE_SPEC = "claude --effort high"

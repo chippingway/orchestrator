@@ -101,7 +101,12 @@ Two guards run at `GitHubClient.set_workflow_label` (the single label-write chok
   `current → new` relabel is checked against `ALLOWED_TRANSITIONS`. `warn` logs the rejected edge through the
   `orchestrator.state_machine` logger and proceeds; `enforce` raises `IllegalTransition`; `off` disables the check. A
   same-label re-set is always allowed. That logger name is spelled out literally in the owner, so an operator log
-  filter selects on it regardless of which module the guard lives in.
+  filter selects on it regardless of which module the guard lives in. One write asks to skip it (`guarded=False`), and
+  only one: the late size gate putting a label back where a human moved it from. The graph describes the moves this
+  orchestrator makes, so it has no edge for repairing one it never made — a guarded `workflow:validating →
+  workflow:decomposing` restoration would raise under `enforce` and strand the generation under the wrong label for as
+  long as the operator kept the guard on, which is the opposite of what the guard is for. See
+  [`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen).
 
 `ALLOWED_TRANSITIONS` is a forward spine (e.g. `workflow:implementing → workflow:validating → workflow:documenting`)
 plus interrupt / detour edges declared per-target. It is keyed by `WorkflowLabel` members, so a pre-namespace label
@@ -355,9 +360,10 @@ machine fall into a few groups:
   purpose: each seeds from `DECOMPOSE_AGENT` on its own first spawn and is then locked independently of the others on
   the same issue, so a flip of `DECOMPOSE_AGENT` between two rounds can neither move a conversation onto a backend
   that never ran it nor hand that backend a session id it never issued. The three conversation pairs also *resume*
-  their own session id on a human reply. The late pair does not yet: every late run this binary makes is a fresh
-  conversation against the frozen candidate, and the session is pinned so the resume the late lifecycle will land can
-  find the CLI that issued it.
+  their own session id on a human reply, and the late pair resumes on exactly one: a substantive trusted answer to the
+  categorized question the adjudicator asked, which is a reply to the agent that asked it. Every other late run is a
+  fresh conversation against the frozen candidate — see [the late run](#the-late-run) for the two conditions a resume
+  takes.
 - **Decomposition.** `children`, `dep_graph` (`{child_idx_str: [child_idx, ...]}` — GitHub has no first-class blocks
   relation), `decomposed_at`, `pickup_comment_id`.
 - **PR / branch.** `branch`, `pr_number`, `review_round`, `conflict_round`. The first two are also what a published
@@ -380,7 +386,8 @@ machine fall into a few groups:
   base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`. The late
   size gate re-sets its own reasons for the same kind of reason: `late_plan_pr_hold_failed`,
   `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,
-  `late_manifest_invalid`, `late_result_unrecordable`, and `late_question` — see
+  `late_manifest_invalid`, `late_result_unrecordable`, `late_content_drift`, `late_revision_dirty`,
+  `late_revision_unmeasured`, `late_revision_unanswered`, and `late_question` — see
   [the late run](#the-late-run) for which of them the next attempt retires.
 - **In-review watermarks.** `pr_last_comment_id` (issue thread + PR conversation, shared IssueComment id space),
   `pr_last_review_comment_id` (inline PR review comments), `pr_last_review_summary_id` (PR review summary bodies). Only
@@ -545,7 +552,31 @@ rather than preserving.
   starting a new one.
 - **Local fingerprints.** `late_title_body_hash`, and `late_comment_hash` beside the `late_comment_watermark_id` it
   covers from, are what tell a scope edit apart from a trusted answer arriving after the late baseline. They are
-  local by design: the global `user_content_hash` above keeps its single baseline and its meaning unchanged.
+  local by design: the global `user_content_hash` above keeps its single baseline and its meaning unchanged, so
+  nothing here moves a baseline the re-decompose and dev-resume routes read. Who counts is that hash's own trust
+  filter, asked through the same predicate — the pinned-state comment, the orchestrator's marker and its recorded
+  ids, third-party bots, and every author outside `ALLOWED_ISSUE_AUTHORS` are dropped before anything is digested, so
+  nothing an outsider posts shifts a fingerprint, becomes guidance, or moves the watermark. A comment with no usable
+  id is dropped beside them, because the watermark is the only thing that ever consumes one. The three fields move
+  together or not at all: advancing the watermark without the digest would leave a prefix nothing had hashed, and
+  advancing the digest alone would let the comments it covers arrive as fresh guidance a second time. The watermark
+  only ever rises, so a deleted comment cannot lower it and replay conversation an agent already answered, and the
+  digest is taken over the counted prefix rather than trusted to the watermark — a comment rewritten in place moves
+  no id at all, and reading that as drift is what keeps an edit with no new comment behind it from being lost. Both
+  fingerprints absent is a generation whose baseline has still to be taken, which is why "no baseline" is a separate
+  answer from "the requirements moved": an absent digest equals nothing, and reading that as an edit would park the
+  first tick of every adjudication. Every path that ACTS on a reply moves the shared `last_action_comment_id` with
+  the local watermark, because two readers walk the same thread: a question answered, a candidate certified, a
+  stalled revision re-read, or a developer resumed are all comments this mode has spent, and leaving the shared one
+  behind would hand them to the later validating → in_review handoff as fresh PR feedback — routing the pull request
+  to `fixing`, or resuming the developer on input it already handled. It moves to the highest *trusted* comment
+  folded in, so an untrusted one sitting above it stays unconsumed exactly as it does on every other resume, and it
+  is a one-way ratchet. What counts as a *reply* is a third reading again, taken against the higher of
+  `late_comment_watermark_id` and the shared `last_action_comment_id` above — which every announced park advances past
+  the notice it posted, making it the response boundary a park needs. A comment written before a park is not an answer
+  to it, so a park that fires while somebody is mid-sentence is not resolved on the next tick by the sentence they had
+  already sent. What each comparison earns is in
+  [`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer).
 - **Held plan PR.** `late_plan_pr_number` and `late_plan_pr_body` — the pull request whose body a generation-marked
   hold replaced, and the body it replaced, kept so the original can be restored.
 - **External-resource ledgers.** `late_resources` holds one `{kind, target, state}` entry per obligation the remote is
@@ -610,6 +641,13 @@ description is replaced, the whole prospective comment is rendered with the run'
 issue is locked to (an operator's command line, bounded by nothing here), the identities, and the bounded session id
 a finished run pins. A description too long to hold with that beside it is refused while nothing has been touched.
 
+`late_session_id` is dropped by a fresh spawn and KEPT by a resume. One late run in three is a resume: a human's
+substantive answer to a categorized question continues the conversation that asked it, so the pinned id survives the
+pre-spawn write and is passed to the CLI. Every other run drops it, so a backend that surfaces no id of its own
+cannot leave the next tick resuming the run this one replaced. Which it is takes both halves — the caller says it is
+carrying an answer, and the record says that session really ran against this cycle, generation, and commit, since a
+session opened before a revision replaced the candidate holds a conversation about work nobody is adjudicating.
+
 The identity fields are written before the agent starts, and that write deliberately carries the retry accounting
 unchanged. `retry_count` and `retry_window_start` are incremented in memory to gate the spawn, but they become
 durable only on a path that records what the run decided — so a run the tick then declines (an operator's `paused`
@@ -648,18 +686,29 @@ domain's are, so a damaged `late_result_verdict` reads back the same way — una
 nobody recorded is not recoverable.
 
 A park this mode leaves is attributed durably, because the next attempt has to tell its own park from another stage's.
-All of them but one are *superseded* by the attempt that follows: a hold that failed has been reconciled by the time the
+Most of them are *superseded* by the attempt that follows: a hold that failed has been reconciled by the time the
 retry gets there, a missing worktree is back, a run that timed out or answered unusably is about to be re-run. Those are
 retired — `awaiting_human` and `park_reason` cleared — the moment the hold reconciles, ahead of both the spawn and the
 reuse of a recorded answer, because `awaiting_human` is exactly what suppresses the announcement a question verdict
 earns. A stale one would silence a question durably recorded and never said out loud — whether this attempt produced it
-or a crashed run recorded one whose comment never reached the issue. `late_question` is not retired: it is not a step
-that failed, it is the announcement itself, and the issue really is waiting on the human it names. The same attribution
-is what keeps a park idempotent: reconciliation is retried on every eligible tick, so a park already standing for the
-reason being taken again — including one this tick retired and is re-taking unchanged — is written but not announced a
-second time. What is suppressed is the notice, not the park. A retirement is a state change like any other, so the one
-branch that would otherwise return without writing — the reuse of a recorded answer that owes no announcement — persists
-it rather than clearing a park only in memory.
+or a crashed run recorded one whose comment never reached the issue. Five are not retired, because none of them is a
+step that failed. `late_question` is the announcement itself, and the issue really is waiting on the human it names;
+`late_content_drift`, `late_revision_dirty`, `late_revision_unmeasured`, and `late_revision_unanswered` are the
+workflow waiting to be told what an edited scope, a worktree the developer left changed, a candidate nobody could
+measure, or a developer that changed nothing and vouched for nothing now means. Retiring one of
+those would drop the very state the next tick reads to tell a human's answer from the silence before it — and what
+each of those answers earns is in
+[`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen).
+The same attribution is what keeps a park idempotent: reconciliation is retried on every eligible tick, so a park
+already standing for the reason being taken again — including one this tick retired and is re-taking unchanged — is
+written but not announced a second time. What is suppressed is the notice, not the park. "Unchanged" is the whole
+claim, so the two things that could change it end the suppression: an agent RUN, after which a second categorized
+question or a second unusable reply says something the first notice did not, and a human's ANSWER, after which
+whatever parks next is news even under the same reason. Only the reconciliation retries that spawn nothing and find
+the same wall stay quiet — suppressing the others would leave an outcome recorded, durable, and never said out
+loud. A retirement is a state
+change like any other, so the one branch that would otherwise return without writing — the reuse of a recorded
+answer that owes no announcement — persists it rather than clearing a park only in memory.
 
 The record goes out before the effect it earns. A question is written and persisted BEFORE the comment announcing it,
 so a crash between them costs one repeated comment — the window every park in this repository has — and never a

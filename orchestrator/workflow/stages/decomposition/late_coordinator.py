@@ -23,9 +23,22 @@ run is free to decide differently. Either way, the park a previous attempt
 left is retired the moment the hold reconciles -- that attempt is the answer
 to it, and a stale `awaiting_human` would go on to silence the announcement a
 question verdict earns, whether the question came from this run or from a
-recorded one whose own announcement never landed. What comes back is the whole outcome
-rebuilt from the record -- the children a split named included -- and whatever
-that answer still owed the issue is reconciled instead of re-earned.
+recorded one whose own announcement never landed.
+
+What the humans have said since the candidate was frozen is settled next, and
+deliberately before that short circuit rather than after it: an answer to a
+categorized question has to be able to drop the recorded outcome, and a
+recorded outcome consulted first would suppress the very spawn the answer
+earns. It is also where the whole tick can end -- requirements that moved park
+the candidate without discarding it, and guidance that resumes the developer
+re-freezes and re-measures the candidate this call was about, so there is
+nothing left for the same tick to adjudicate. Everything that owner stages, it
+persists, which is what lets the retired park be handed on rather than written
+twice.
+
+Past all of that, what comes back is the whole outcome rebuilt from the record
+-- the children a split named included -- and whatever that answer still owed
+the issue is reconciled instead of re-earned.
 
 Nothing gets that far on a generation that cannot be acted on. The prompt, the
 hold, and every record afterwards are derived from the frozen fields, so the
@@ -79,6 +92,9 @@ from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateGeneration,
     LatePhase,
+)
+from orchestrator.workflow.stages.decomposition import (
+    late_guidance as _late_guidance,
 )
 from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
 from orchestrator.workflow.stages.decomposition import (
@@ -156,8 +172,9 @@ def _adjudicate_late_generation(
 ) -> _LateAdjudicationRun:
     """Adjudicate this issue's recorded late generation, if it has a live one.
 
-    The whole late question in one call: hold the plan PR, reuse a completed
-    answer or spawn for a new one, and record what it decided. Nothing is
+    The whole late question in one call: hold the plan PR, settle what the
+    humans have said since the candidate was frozen, then reuse a completed
+    answer or spawn for a new one and record what it decided. Nothing is
     published here and no label is written -- the caller owns what a verdict
     earns.
     """
@@ -170,11 +187,16 @@ def _adjudicate_late_generation(
     )
     if not _is_adjudicable(context.generation):
         return _late_outcome._finished(context, _LateDisposition.NOT_LATE)
-    if not _has_frozen_evidence(context):
-        return _late_outcome._finished(context, _LateDisposition.PARKED)
-    if not _hold_plan_pr(context):
+    # Both proofs park on their own and both stop the tick, so they are asked
+    # as one short circuit -- the hold is still only reached by a generation
+    # whose evidence was proved first.
+    if not _has_frozen_evidence(context) or not _hold_plan_pr(context):
         return _late_outcome._finished(context, _LateDisposition.PARKED)
     retired = _late_outcome._retire_park(context)
+    settled = _late_guidance._reconcile_late_content(context)
+    if settled.disposition is not None:
+        return _late_outcome._finished(context, settled.disposition)
+    retired = retired and not settled.persisted
     recorded = _late_session._read_late_run(state)
     if recorded.answers(context.generation):
         log.info(
@@ -298,7 +320,7 @@ def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
         _late_outcome._persist(context)
         return _late_outcome._finished(context, _LateDisposition.PARKED)
     started = _late_session._spawn_record_for(
-        context.state, context.generation,
+        context.state, context.generation, resuming=context.answering,
     )
     _begin(context, started, unspent)
     return _settle(
@@ -324,6 +346,11 @@ def _begin(
     as they stood, and the increment becomes durable only on a path that
     records what the run decided.
     """
+    # Past this point the tick has an agent's answer to report, so a park it
+    # takes is news even when it carries the reason the last one did: a second
+    # question is a different question. What the retired-park memory quiets is
+    # the reconciliation retry that spawned nothing and found the same wall.
+    context.retired_park = None
     context.generation = replace(
         context.generation, phase=LatePhase.ADJUDICATING,
     )

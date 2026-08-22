@@ -44,6 +44,15 @@ PAUSED_LABEL = "paused"
 
 SPLIT_CHILDREN = 2
 
+# Two unusable replies, malformed in different ways. They park for the same
+# reason and say different things, which is what a retried run's park has to
+# be able to tell apart.
+FIRST_UNPARSED = "no fenced block at all, just prose."
+
+SECOND_UNPARSED = f"```{LATE_FENCE}\nnot json\n```"
+
+PARK_UNPARSED = "late_manifest_invalid"
+
 
 class _PausedDuringRun:
     """An operator applying `paused` while the agent is still running."""
@@ -55,6 +64,23 @@ class _PausedDuringRun:
     def __call__(self, *_args, **_kwargs):
         self._issue.labels.append(FakeLabel(PAUSED_LABEL))
         return self._agent_result
+
+
+class RetriedRunParkTest(LateCase, unittest.TestCase):
+    """A park the run before it already took is not always the same park."""
+
+    def test_a_second_unusable_reply_is_announced(self) -> None:
+        # The first park is retired as superseded, the retry spawns, and the
+        # reply is unusable in a NEW way. Quieting that because the reason
+        # matched would tell the human nothing about what actually came back.
+        self._adjudicate(agent_reply(FIRST_UNPARSED))
+
+        outcome, spawn = self._adjudicate(agent_reply(SECOND_UNPARSED))
+
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
+        spawn.assert_called_once()
+        self.assertEqual(self._pinned()[KEYS.park_reason], PARK_UNPARSED)
+        self.assertEqual(len(self.github.posted_comments), 2)
 
 
 class DeclinedRunTest(LateCase, unittest.TestCase):

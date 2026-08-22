@@ -47,9 +47,17 @@ back, a recorded manifest is read through the same split rules the reply was
 held to, so a shape this binary would not have written is read as no manifest
 at all rather than as half a split to create.
 
-Nothing here resumes a session. The pin is written so the resume the late
-lifecycle will land can find the CLI that issued it, and every late run this
-binary makes is a fresh conversation against the frozen candidate.
+One late run in three resumes. A human answering the categorized question the
+adjudicator asked is answering an agent that ASKED it, so that run continues
+the pinned session rather than opening a conversation which would have to be
+told what it had asked before it could be told the answer -- which is what the
+pin was written for. Every other late run is fresh: a first adjudication has
+no conversation to continue, and a candidate the developer revised is a
+different question, so a session opened against the commit it replaced would
+hand the agent a transcript about work nobody is adjudicating. Both halves of
+that are proved rather than assumed -- the caller says it is carrying an
+answer, and the record says its session really ran against THIS cycle,
+generation, and commit.
 """
 from __future__ import annotations
 
@@ -202,7 +210,7 @@ def _locked_spec(state: PinnedState) -> tuple[str, str, tuple[str, ...]]:
 
 
 def _record_late_spawn(state: PinnedState, run: _LateRun) -> None:
-    """Record what a fresh late run IS, before that run can fail.
+    """Record what a late run IS, before that run can fail.
 
     Written ahead of the spawn for the reason the initial decomposer's spec
     is: a backend that produces an answer without surfacing a session id would
@@ -210,13 +218,36 @@ def _record_late_spawn(state: PinnedState, run: _LateRun) -> None:
     retarget its resume at a CLI that never ran here. The identity of the
     attempt goes with it, so the result recorded when the run returns cannot
     be read as an answer to a different generation or a different commit.
+
+    The session goes only when the run is not continuing it. A resume keeps
+    the pinned id so a tick that crashes mid-run resumes the same conversation
+    rather than opening a second one; a fresh run drops it so a backend that
+    surfaces none of its own cannot leave the next tick resuming the run this
+    one replaced. The result is dropped either way -- what a new run decides
+    replaces what the last one did, and a half-read record is not an answer.
     """
     state.set(_LATE_AGENT_ROLE, run.role)
     state.set(_LATE_AGENT, run.spec)
     state.set(_LATE_RUN_CYCLE_ID, run.cycle_id)
     state.set(_LATE_SOURCE_SHA, run.source_sha)
     state.set(_LATE_RUN_GENERATION, run.generation)
-    state.data.pop(_LATE_SESSION_ID, None)
+    if run.session_id:
+        state.set(_LATE_SESSION_ID, run.session_id)
+    else:
+        state.data.pop(_LATE_SESSION_ID, None)
+    for recorded in _RESULT_KEYS:
+        state.data.pop(recorded, None)
+
+
+def _drop_late_result(state: PinnedState) -> None:
+    """Forget the outcome a completed run recorded, keeping its identity.
+
+    What a human's answer to a categorized question earns. The record is what
+    suppresses the next spawn, so a question the human has now answered has to
+    stop being an answer before the adjudicator will run again -- and only the
+    result goes, because the spec this issue is locked to and the session it
+    opened are not what the human replied to.
+    """
     for recorded in _RESULT_KEYS:
         state.data.pop(recorded, None)
 
@@ -323,7 +354,10 @@ def _recovered_adjudication(run: _LateRun) -> _LateAdjudication:
 
 
 def _spawn_record_for(
-    state: PinnedState, generation: LateGeneration,
+    state: PinnedState,
+    generation: LateGeneration,
+    *,
+    resuming: bool = False,
 ) -> _LateRun:
     """The record a run over this generation would be started under.
 
@@ -332,12 +366,23 @@ def _spawn_record_for(
     pull-request body, and the spawn writes it. A locked spec is an operator's
     command line and is not bounded by anything here, so measuring anything
     other than the real one would be measuring the wrong write.
+
+    `resuming` is the caller saying this run carries a human's answer to the
+    question the pinned session asked. It is not enough on its own: the record
+    also has to say that session really ran against THIS cycle, generation,
+    and commit, because a session pinned before a revision replaced the
+    candidate holds a conversation about work nobody is adjudicating. A run
+    that fails either test opens a fresh conversation, and the session id goes
+    with the record it belonged to.
     """
+    recorded = _read_late_run(state)
+    continues = resuming and recorded.ran_against(generation)
     return replace(
-        _read_late_run(state),
+        recorded,
         cycle_id=generation.cycle_id,
         source_sha=generation.candidate_sha,
         generation=generation.generation,
+        session_id=recorded.session_id if continues else None,
     )
 
 
@@ -370,6 +415,11 @@ def _spawn_late_adjudicator(
     between two commits this host holds and nothing has been pushed: a
     scratch checkout of the base branch could not show the agent the work it
     is being asked about.
+
+    A session id on the record is one this run continues -- the record decided
+    that, not this call -- so an answer to a categorized question reaches the
+    agent that asked it. `None` opens a fresh conversation, which is what
+    every run that is not answering one gets.
     """
     return _usage._run_agent_tracked(
         context.gh, context.issue.number,
@@ -385,6 +435,7 @@ def _spawn_late_adjudicator(
         ),
         cwd=worktree,
         agent_spec=run.spec,
+        resume_session_id=run.session_id,
         extra_args=run.extra_args,
         retry_count=context.state.get(_RETRY_COUNT),
     )

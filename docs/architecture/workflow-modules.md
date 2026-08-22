@@ -29,7 +29,9 @@ see, and is called out as such.
   lives on and imports it when it dispatches, as `engine/pickup.py` does for the stage it starts an issue on: the
   stage tree imports `engine/`, so a module-scope bind would point that edge back at itself.
   `tests/workflow/engine/test_dispatch.py` pins that the handler is read off its owner per call rather than bound at
-  import, and `tests/workflow/stages/test_imports.py` that every labelled target lands on a stage package here.
+  import, and `tests/workflow/stages/test_imports.py` that every labelled target lands on a stage package here. The
+  late size gate's own refusal is resolved the same way and for the same reason — it lives on a stage owner, so the
+  dispatcher imports it when it routes.
 - **Two operator log channels, spelled literally.** The engine, `late_split/`, and stage owners report on
   `orchestrator.workflow`, and `workflow/state.py` on `orchestrator.state_machine`. A module moved between packages
   does not take its channel with it — `tests/workflow/test_imports.py` walks the package and checks every owner that
@@ -60,7 +62,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     comments.py             the orchestrator marker, the capped id ledger both posters write, and the trusted-author
                             thread read every prompt quotes
     dispatch.py             one tick's pollable issues turned into handler calls: the hard-skip filter, the family /
-                            fanout partition and its cap exemptions, the per-worker refetch, and the timed dispatch
+                            fanout partition and its cap exemptions, the per-worker refetch, the refusal that keeps a
+                            relabelled late adjudication off every other stage's handler, and the timed dispatch
     drift.py                the user-content hash and the six filters that keep content nobody wrote out of it, the
                             dev resume a drift earns, and the decomposition reset the pre-implementation route takes
     guards.py               what a finished agent run may leave behind: the shutdown-interruption and freshly-read
@@ -150,13 +153,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       umbrella.py           the `workflow:umbrella` poll and the close its all-done branch earns instead of an
                             implementation pass
       late_coordinator.py   the additive late mode's order: the live-generation gate, the frozen-evidence proof, the
-                            plan-PR hold before any spawn, the completed-result short circuit, the retry-budgeted run
-                            whose pre-spawn write holds the accounting back, and the read-only proof over the
-                            candidate worktree
+                            plan-PR hold before any spawn, the content settlement that can end the tick, the
+                            completed-result short circuit, the retry-budgeted run whose pre-spawn write holds the
+                            accounting back, and the read-only proof over the candidate worktree
       late_session.py       the late run's pinned record -- role, locked spec, session, cycle, source commit,
                             generation, and the whole of what a verdict decided -- the whole-comment budget it is
                             refused past, the rules it is read back through, and the tracked spawn in the candidate's
-                            own worktree
+                            own worktree, resuming the pinned session only for the run that carries a human's answer
+                            to the question it asked
       late_hold.py          the generation-marked hold a reusable open plan PR wears: the one guarded read every
                             decision is made from, the discussion provenance that decides whether that snapshot may be
                             touched at all, the original body persisted (and proved persisted) before the edit, and
@@ -168,8 +172,24 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             lineage, and the three outcomes with the bounds they are judged against
       late_reply.py         the late reply's own fence, its three structured decisions, and the envelope and split rules
                             it borrows from the initial mode
+      late_content.py       WHICH content the two late-local fingerprints are taken over -- the title and body, and
+                            the trusted-thread run the ratcheting watermark covers -- what a comparison against a
+                            recorded baseline says moved, and the floor a comment has to clear to be a REPLY rather
+                            than conversation the issue was already carrying. The digests themselves are the
+                            `late_split/identity` owner's
+      late_guidance.py      what that comparison earns: the baseline a first tick takes, the park an edit wins over
+                            every concurrent answer, the certificate a bare continue writes, the question a real
+                            answer reopens, and the continue that answers none
+      late_revision.py      the developer run guidance buys -- the locked session resumed under `agent_role=developer`
+                            and `stage=decomposing` -- and the clean tree, re-frozen commit, and fresh measurement its
+                            result is reconciled through, with the `ACK:` marker an UNCHANGED commit needs before it
+                            counts as an answer
+      late_relabel.py       the `workflow:decomposing` label a live generation pins: the kill-switch route it refuses,
+                            and the dispatch it refuses -- with the hand relabel it repairs -- when a human has moved
+                            the label out from under an open adjudication
       late_models.py        the carriers the late owners hand each other: the tick's subject, the hold, the run, the
-                            adjudication, and what one call did
+                            adjudication, the content fingerprint and what the humans have said since, and what one
+                            call did
       models.py             the run plan and its worktree policy, the locked session, the split plan, and the child
                             scan
       state.py              the pinned-state field names the owners share, the held-child alias, and the

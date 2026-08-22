@@ -75,14 +75,31 @@ per-stage behavior is in
   the same per-issue retry budget and folds its usage into the same counters, and the initial decomposer's prompt,
   fence, and missing-manifest handling are untouched. What it does not share is the pin or the conversation:
   `late_agent` + `late_session_id` are a fourth independent pair, seeded from `DECOMPOSE_AGENT` on an issue's first
-  late run and locked from then on. Unlike the three conversation pins, this one does not resume anything yet: every
-  late run is a fresh conversation against the frozen candidate, and the session id is pinned — at the two exits that
-  persist, a timeout and a completed reply — so the resume the late lifecycle will land can find the CLI that issued
-  it. The run happens in the issue's OWN worktree rather than a scratch checkout of the base branch, because the diff
-  it is asked about is between two commits nothing has pushed. The coordinator is callable and complete, and **nothing
-  calls it**: `_adjudicate_late_generation` has no caller in the tree, so no live issue reaches it. Wiring it into the
-  clean-committed pre-publication seam — the point at which a candidate is measured and found oversized — is a
-  separate change.
+  late run and locked from then on. One late run in three resumes it: a human answering the categorized question the
+  adjudicator asked is answering the agent that ASKED it, so that run continues the pinned session rather than opening
+  a conversation which would have to be told the question before it could be told the answer. Every other late run is
+  fresh — a first adjudication has none to continue, and a candidate the developer revised is a different question, so
+  a session opened against the commit it replaced would hand the agent a transcript about work nobody is adjudicating.
+  Both halves are proved rather than assumed: the caller says it is carrying an answer, and the record says its
+  session really ran against this cycle, generation, and commit. The id is pinned at the two exits that persist, a
+  timeout and a completed reply. The run happens in the issue's OWN worktree rather than a scratch checkout of the
+  base branch, because the diff
+  it is asked about is between two commits nothing has pushed. The coordinator is callable and complete, and **almost
+  nothing calls it**: `_adjudicate_late_generation` has no caller in the tree, so no live issue reaches it, and the
+  one wired seam is the refusal below — a live generation stops `DECOMPOSE=off` from routing an unadjudicated
+  candidate to implementation. Wiring the adjudication itself into the clean-committed pre-publication seam — the
+  point at which a candidate is measured and found oversized — is a separate change.
+- **Late developer revision.** Guidance a human writes about an oversized candidate is not a decomposition question,
+  so it does not go to the late adjudicator: the work itself has to change, and the session that wrote it is resumed
+  against the guidance in the worktree the candidate already lives in
+  (`workflow/stages/decomposition/late_revision.py`). It runs under `agent_role=developer` and `stage=decomposing`,
+  because that is what it is and where it happened — the issue never leaves `workflow:decomposing`. The prompt quotes
+  the issue's CURRENT title and body beside the guidance, because a resume is exactly the case that cannot see them:
+  the replayed transcript holds the issue as it read when the work started, and the commonest reason to be here is
+  that a human edited it since. The budgets are
+  the ones that already exist: the resume budget and the session rotation behind it belong to the shared developer
+  resume this goes through rather than around, and the per-issue daily retry cap counts fresh spawns, so a resume
+  driven by a human's reply is an unblock signal rather than a retry exactly as it is in every other stage.
 
 What a resume re-parses, and why the pin is the full spec rather than the backend alone, is in
 [`command-specs.md#in-flight-session-lock`](command-specs.md#in-flight-session-lock). The two conversation stages'
@@ -169,6 +186,109 @@ commit is the evidence every later step acts on, never the pull request's curren
 role, locked spec, session, cycle, source commit, generation, and the whole of what the verdict decided — is in
 [`../state-machine/labels-and-state.md#the-late-run`][late-run].
 
+## What the humans can still change while a candidate is frozen
+
+Adjudication takes minutes to hours, and the issue is a live thread the whole time. Two local fingerprints watch it —
+`late_title_body_hash` over the title and body, and `late_comment_hash` beside the `late_comment_watermark_id` it
+covers from — and they are deliberately separate from the global `user_content_hash`, which keeps its single baseline
+and its meaning so nothing here fires the re-decompose or dev-resume routes that read it. What counts as a human's
+words is that hash's own trust filter all the same, so an outsider, a third-party bot, and the orchestrator's own
+comments shift nothing. The fields themselves are in
+[`../state-machine/labels-and-state.md#late-generation-state`][late-state].
+
+The first tick of an adjudication takes the baseline: whatever the issue says then is what the candidate was frozen
+against, and nothing on the thread counts as an answer to it. Every tick after that compares.
+
+**Drift outranks every answer.** An edit to the title, the body, or a comment already counted into the baseline
+changes what the candidate is supposed to BE, and an answer that arrived in the same window was written about the scope
+as it stood before — applying it would adjudicate a reply against requirements it never saw. So the tick that first
+sees drift parks (`late_content_drift`) and consumes nothing: the frozen commit, the late session, the recorded
+generation, and any plan-PR hold are all left exactly as they were, because none of them is wrong, only unadjudicable
+until a human says what the edit meant. A comment rewritten in place is drift for the same reason a title edit is —
+it moves no comment id, so there is no new comment to read the change out of.
+
+The park is a *response boundary*, not a one-tick delay. What counts as a reply is read against the higher of the
+generation's own comment watermark and the issue-wide `last_action_comment_id`, which every announced park advances
+past the notice it just posted — so an answer written before the human was told anything cannot resolve the park on
+the next poll either. Nothing advances that watermark without consuming what it advances past, so the conservative
+reading costs no real reply.
+
+**Then the reply resolves it, and the two kinds of reply mean opposite things.** A bare `/orchestrator continue` is a
+certificate: the committed work still answers the updated issue, so the fingerprints are re-baselined onto the content
+as it now reads and the SAME frozen candidate goes on to be adjudicated — against the updated requirements, which is
+why a verdict recorded before the edit is dropped rather than reused. The certificate covers the commit, not an answer
+taken against a scope that has since moved: acting on one would be the drift rule refused a step later, with a split
+creating children that describe requirements nobody is asking for any more. What it does buy is everything else —
+the candidate is not re-derived and no developer is paid for. Substantive guidance is not a certificate — it says the
+work has to change, so the developer session is resumed against it (above) and the candidate is re-frozen from what
+comes back.
+
+An edit taken back needs no reply at all: the candidate matches the issue again, so the park is cleared and the
+adjudication resumes. Leaving it standing would not be harmless — `awaiting_human` is exactly the flag that
+suppresses the announcement a question verdict earns, so a reverted edit would silence a question recorded and never
+said out loud. Guidance that came with the revert is still guidance, though, and it is routed before any of that:
+taking the edit back decides which requirements the change is asked against, not whether it was asked for. Absorbing
+it into the baseline instead would consume a human's instruction without acting on it, and then reuse a verdict
+nobody re-earned.
+
+**A revised candidate is proved, not trusted.** The tree has to be clean before anything is read off it — a candidate
+measured beside uncommitted changes is not the one a publication would push — and the commit the checkout ends on is
+frozen and measured again from scratch under the ceiling as it stands now. What is not allowed is
+skipping the measurement, which is why the generation counter advances on every reconciliation that lands — a recorded
+verdict answers a cycle, a generation, AND a commit, so an acknowledged candidate is adjudicated against the
+requirements that changed rather than answered from the record taken before they did.
+
+The resulting SHA is allowed to be the one that went in, but only when the developer *said* so. The prompt asks for
+the same `ACK: <justification>` marker every other drift resume asks for, and that marker is what an unchanged commit
+needs before it is re-measured. Without one, an unchanged commit is not an acknowledgment — it is a run that said
+nothing, asked a question, or timed out before it could do either, and all three look identical from the checkout.
+Reading any of them as "the work already covers it" would advance a generation and adjudicate a candidate nobody
+vouched for, so they park (`late_revision_unanswered`) with whatever the developer *did* say quoted, so a question
+reaches the human it was meant for. A commit that MOVED needs no marker: work that changed HEAD speaks for itself. The
+one path where an unchanged commit passes without one is the human's own `/orchestrator continue` on a stalled
+revision — they have read the park and accepted the commit as it stands, which is the same thing the marker says.
+
+A reconciliation that could not
+be completed parks (`late_revision_dirty` / `late_revision_unmeasured`) with the generation exactly as it was, and a
+bare continue re-runs that reconciliation alone rather than paying for a second developer run that already finished.
+
+**Guidance means the same thing with nothing parked.** An adjudication in flight, or one that already recorded a
+verdict, is still work a human can ask to be different — so the developer is resumed there too, and the re-measured
+candidate that comes back advances the generation, which is what stops a verdict taken over the old work from
+applying to the new. Folding the comment into the baseline instead would consume an instruction without acting on it.
+The one reply that lands here with nothing to do is a bare `/orchestrator continue`: no park is waiting on it and no
+candidate needs certifying.
+
+**A categorized question is reopened only by a real answer.** Substantive trusted guidance drops the recorded outcome
+— the record is exactly what suppresses the next spawn — so the adjudicator runs again against what the human said. A
+bare continue may not: a question is not a step that failed, and "proceed" is not an answer to "which half of this is
+in scope". The command is consumed, the refusal is posted once, and the issue stays parked on the question it is
+really waiting on.
+
+**Nothing outside the adjudication may decide it either.** While a generation is live — recorded, oversized, and not
+cancelled — `workflow:decomposing` is the label it sits on, and both ways that can be taken away amount to publishing
+an unadjudicated candidate. `DECOMPOSE=off` routes a `decomposing` issue into the legacy implementing flow, which is
+right for an issue only waiting to be decomposed and wrong for one whose implementation is already committed and
+measured past the ceiling, so the route is refused while a generation is live — the switch still keeps NEW candidates
+out of the gate, it just does not decide the ones already in it. A hand relabel is caught a step later, since the
+label is
+already gone by the time anything reads it: the dispatcher asks before it routes anything, and an issue whose label a
+human moved is put back on `workflow:decomposing`, told why, and left for the next tick rather than handed to the
+stage the new label named (`late_relabel.py`). The refusal is the safety property and the relabel only the repair, so
+a label write that cannot land still stops the dispatch, and so does a pinned read that cannot be taken. The
+restoration itself goes out UNGUARDED and posts its notice only after the label lands: the transition graph describes
+the moves this orchestrator makes, and putting back one a human made is not among them, so under
+`WORKFLOW_TRANSITION_GUARD=enforce` a guarded `validating → decomposing` repair would raise every tick and strand the
+generation under the wrong label — announcing itself again each time. That last
+one is the single place this guard does not follow the additive-safety-net convention the pause probe reads by,
+because the costs are not symmetric: failing open publishes an unadjudicated candidate — the handler behind it reads
+the same pinned comment, and a first read that failed transiently is followed by a second that may well succeed —
+while failing closed costs one tick of one issue, retried on the next poll, during an outage in which nothing else
+was going to make progress either. Neither
+clears, cancels, or decides anything — a
+generation an operator really wants gone goes through the late domain's own cancellation, which records what the
+remote is still owed.
+
 ## Local verify gate (not an agent)
 
 After the reviewer emits `VERDICT: APPROVED`, `_handle_validating` runs the configured `VERIFY_COMMANDS` directly in
@@ -181,3 +301,4 @@ reference.
 
 [workflow-labels]: ../state-machine/labels-and-state.md#workflow-labels
 [late-run]: ../state-machine/labels-and-state.md#the-late-run
+[late-state]: ../state-machine/labels-and-state.md#late-generation-state

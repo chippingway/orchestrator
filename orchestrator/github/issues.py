@@ -120,12 +120,24 @@ def set_workflow_label(
     client: Any,
     issue: Issue,
     new_label: Optional[str],
+    *,
+    guarded: bool = True,
 ) -> None:
-    """Replace only the workflow label and emit its stage-enter event."""
+    """Replace only the workflow label and emit its stage-enter event.
+
+    `guarded=False` is for the one write that is not a transition: putting a
+    label back where a human moved it from. The graph describes the moves this
+    orchestrator makes, so under `enforce` it would refuse a repair of a move
+    it never made -- `validating -> decomposing` is not a step the workflow
+    takes, and the whole reason to write it is that the issue is not on the
+    label it should be. Refusing there would strand the issue under the wrong
+    one for as long as the operator kept the guard on, which is the opposite
+    of what the guard is for.
+    """
     new_workflow_label = (
         coerce_workflow_label(new_label) if new_label else None
     )
-    if new_workflow_label is not None:
+    if new_workflow_label is not None and guarded:
         guard_transition(
             client.workflow_label(issue),
             new_workflow_label,
