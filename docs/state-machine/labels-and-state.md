@@ -532,7 +532,9 @@ machine fall into a few groups:
 - **Late generation.** The additive `late_*` group an oversized committed candidate is adjudicated under — cycle and
   generation identity, root / current issue and lineage depth, the declared scope, the frozen candidate and base SHAs,
   the measurement, the reconciliation phase, the local content fingerprints, the held plan PR, the external-resource
-  ledgers, the cancellation marker, and the pending-restart marker. Every key, and what an absent one means, is in
+  ledgers, the owner read a finished run still owes, the cancellation marker, and the pending-restart marker. The one
+  commit an accepted candidate publishes under sits beside that group rather than in it, since clearing the generation
+  is exactly what it has to survive. Every key, and what an absent one means, is in
   [Late generation state](#late-generation-state) below.
 
 The legacy `codex_session_id` key (written before `dev_agent` existed) is still honored on read by `_read_dev_session`:

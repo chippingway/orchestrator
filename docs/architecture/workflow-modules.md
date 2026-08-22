@@ -155,10 +155,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             consumed-comment ratchet
       umbrella.py           the `workflow:umbrella` poll and the close its all-done branch earns instead of an
                             implementation pass
-      late_coordinator.py   the additive late mode's order: the live-generation gate, the frozen-evidence proof, the
-                            plan-PR hold before any spawn, the content settlement that can end the tick, the
-                            completed-result short circuit, the retry-budgeted run whose pre-spawn write holds the
-                            accounting back, and the read-only proof over the candidate worktree
+      late_coordinator.py   the additive late mode's order: the owed owner read and the undelivered park notice both
+                            reconciled ahead of every gate, the live-generation gate, the frozen-evidence proof, the
+                            plan-PR hold before any spawn -- and the displaced one no new agent is started under --
+                            the content settlement that can end the tick, the completed-result short circuit, the
+                            retry-budgeted run whose pre-spawn write holds the accounting back, the read-only proof
+                            over the candidate worktree, and the fresh owner read every completion but a declined
+                            run passes through on its way to settlement
       late_session.py       the late run's pinned record -- role, locked spec, session, cycle, source commit,
                             generation, and the whole of what a verdict decided -- the whole-comment budget it is
                             refused past, the rules it is read back through, and the tracked spawn in the candidate's
@@ -207,12 +210,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             and `stage=decomposing` -- and the clean tree, re-frozen commit, and fresh measurement its
                             result is reconciled through, with the `ACK:` marker an UNCHANGED commit needs before it
                             counts as an answer
-      late_relabel.py       the `workflow:decomposing` label a live generation pins: the kill-switch route it refuses,
-                            and the dispatch it refuses -- with the hand relabel it repairs -- when a human has moved
-                            the label out from under an open adjudication
+      late_relabel.py       the `workflow:decomposing` label a live generation pins -- one still oversized, or one
+                            whose owner read is still owed: the kill-switch route it refuses, and the dispatch it
+                            refuses -- with the hand relabel it repairs -- when a human has moved the label out from
+                            under an open adjudication
       late_models.py        the carriers the late owners hand each other: the tick's subject, the hold, the run, the
-                            adjudication, the content fingerprint and what the humans have said since, and what one
-                            call did
+                            adjudication, the tri-state owner reading and the park staged for it to release, the
+                            split that reading cleared for the transaction which creates its children, the content
+                            fingerprint and what the humans have said since, and what one call did
       models.py             the run plan and its worktree policy, the locked session, the split plan, and the child
                             scan
       state.py              the pinned-state field names the owners share, the held-child alias, and the
