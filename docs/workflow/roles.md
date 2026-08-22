@@ -85,9 +85,11 @@ per-stage behavior is in
   timeout and a completed reply. The run happens in the issue's OWN worktree rather than a scratch checkout of the
   base branch, because the diff
   it is asked about is between two commits nothing has pushed. The coordinator is callable and complete, and **almost
-  nothing calls it**: `_adjudicate_late_generation` has no caller in the tree, so no live issue reaches it, and the
-  one wired seam is the refusal below — a live generation stops `DECOMPOSE=off` from routing an unadjudicated
-  candidate to implementation. Wiring the adjudication itself into the clean-committed pre-publication seam — the
+  nothing calls it**: `_adjudicate_late_generation` has no caller in the tree, so no live issue reaches it. What IS
+  wired is the pair of refusals below, both of which keep something else from deciding a live generation: one stops
+  `DECOMPOSE=off` from routing an unadjudicated candidate to implementation, and one stops the dispatcher handing a
+  hand-relabelled issue to whichever stage the new label named. Wiring the adjudication itself into the
+  clean-committed pre-publication seam — the
   point at which a candidate is measured and found oversized — is a separate change.
 - **Late developer revision.** Guidance a human writes about an oversized candidate is not a decomposition question,
   so it does not go to the late adjudicator: the work itself has to change, and the session that wrote it is resumed

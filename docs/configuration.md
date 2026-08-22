@@ -328,7 +328,9 @@ The two caps below are the levers:
   `set_workflow_label` against the declared `ALLOWED_TRANSITIONS` table (see
   [`state-machine/labels-and-state.md`][transition-guard]). `warn` logs an illegal transition and
   proceeds; `enforce` raises; `off` disables it. The label *typo* guard is always strict regardless of this setting.
-  Invalid values abort at startup.
+  One write is exempt even under `enforce`: the late size gate putting a label back where a human moved it from,
+  which is a repair of a move the transition graph never declared an edge for — enforcing there would strand the
+  issue under the wrong label for as long as the guard stayed on. Invalid values abort at startup.
 
 Both caps are enforced by a single `IssueScheduler` (`orchestrator/scheduler/`) built once at startup and threaded
 through every `workflow.tick` call. New callers may pass a frozen `SubmissionRequest`; the historical

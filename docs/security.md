@@ -225,12 +225,16 @@ The security posture:
 - **Filtering is fail-safe.** A comment whose author failed to load (empty login) is untrusted. On the awaiting-human
   resume paths (and the auto-rebase retry-unpark) the filter runs on the whole comment batch up front, so an untrusted
   comment there never advances the consumed-watermark nor is marked read — it is re-filtered on each later tick
-  rather than silently absorbed as a new baseline. The `in_review` drift path instead excludes untrusted
+  rather than silently absorbed as a new baseline. The late size gate's own content fingerprints read the same way:
+  they are taken over the trusted thread alone, and both the watermark they advance and the shared
+  `last_action_comment_id` they mark read stop at the highest TRUSTED comment, so an outsider posting above one is
+  neither folded into a baseline nor marked read on their behalf. The `in_review` drift path instead excludes untrusted
   PR-conversation comments from the drift prompt but still advances its watermarks past them, so a later tick does
   not re-scan them as fresh feedback.
-- **Third-party Bot/App handling is deliberate.** Two distinct mechanisms apply. The `user_content_hash` drift hash and
-  the community-contribution PR sweep exclude Bot / GitHub-App accounts (Dependabot, Renovate, CI bots) structurally via
-  GitHub's `user.type == "Bot"` flag, independent of the allowlist. The comment trust boundary itself does not: on the
+- **Third-party Bot/App handling is deliberate.** Two distinct mechanisms apply. The `user_content_hash` drift hash,
+  the late size gate's local content fingerprints beside it, and the community-contribution PR sweep exclude Bot /
+  GitHub-App accounts (Dependabot, Renovate, CI bots) structurally via GitHub's `user.type == "Bot"` flag, independent
+  of the allowlist. The comment trust boundary itself does not: on the
   prompt / resume / PR-feedback surfaces a bot is gated like any other author — trusted while the allowlist is empty
   (legacy behavior), and under a populated allowlist trusted only when its own login is explicitly listed. So an
   intentionally allowlisted automation account still works; an unlisted one does not.
