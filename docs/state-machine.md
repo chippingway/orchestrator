@@ -55,9 +55,11 @@ both vocabularies once; because `StrEnum` members *are* their wire strings, a me
 Two guards run at `GitHubClient.set_workflow_label`, the single label-write chokepoint: an always-strict **typo
 guard** that raises on a name outside `WorkflowLabel`, and the **transition guard**
 (`WORKFLOW_TRANSITION_GUARD` = `off` / `warn` / `enforce`, default `warn`) checking `current → new` against
-`ALLOWED_TRANSITIONS`. Operator relabels through the GitHub UI bypass both, so the guard never fights a human. The
-edge set, the `orchestrator.state_machine` logger a rejection is filtered by, and how `create_child_issue` shares the
-typo guard for its direct write are in [`state-machine/labels-and-state.md`][typed-states].
+`ALLOWED_TRANSITIONS`. Operator relabels through the GitHub UI bypass both, so the guard never fights a human — and
+one orchestrator write skips the transition guard for the same reason: the late size gate putting a label back where
+a human moved it from is repairing a move the graph has no edge for. The edge set, that one exemption, the
+`orchestrator.state_machine` logger a rejection is filtered by, and how `create_child_issue` shares the typo guard for
+its direct write are in [`state-machine/labels-and-state.md`][typed-states].
 
 ### Legacy labels and the migration off them
 
