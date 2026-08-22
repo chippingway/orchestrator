@@ -85,9 +85,10 @@ How it works per role:
   *fallback* on the first-ever question spawn, then pins what it ran under to `question_agent` (a separate key, parsed
   by `_read_question_session`). The discussion stage pins its own pair the same way (see
   [`conversations.md`](conversations.md)), and the late adjudication of an oversized committed candidate pins a fourth
-  to `late_agent`, read back by `_read_late_run`. That fourth pin locks the backend the way the others do but resumes
-  nothing yet — every late run is a fresh conversation (see
-  [`roles.md`](roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)).
+  to `late_agent`, read back by `_read_late_run`. That fourth pin locks the backend the way the others do, and
+  resumes its session for one run in three: a substantive trusted answer to the categorized question the adjudicator
+  asked continues the conversation that asked it, while every other late run is a fresh one against the frozen
+  candidate (see [`roles.md`](roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)).
 - **Reviewer (`REVIEW_AGENT`).** Spawned **fresh every round** by `_handle_validating`, so changes to `REVIEW_AGENT`
   take effect on the next validating tick (no migration step needed). The current value is recorded in `review_agent`
   for traceability only; it is not used for resumes.

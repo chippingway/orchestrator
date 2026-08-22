@@ -13,11 +13,12 @@ told apart from each other rather than collapsed into one "something changed".
 The fingerprints are deliberately local. The global `user_content_hash` on
 `workflow/engine/drift.py` keeps its meaning and its single baseline; these
 hash smaller inputs the late gate chooses -- the title and body alone, and the
-trusted comment bodies past a watermark the generation carries -- so reading
-one of them tells the late coordinator WHICH kind of guidance arrived. The
-hashing discipline is the drift owner's: SHA-256 over the parts joined by a
-NUL, which no comment body can contain, so two pieces of content cannot be
-concatenated into a third that hashes the same.
+trusted comment bodies a watermark the generation carries covers -- so reading
+one of them tells the late coordinator WHICH kind of guidance arrived. Which
+content goes in is the caller's; both digests are taken here, so one contract
+has one implementation. The hashing discipline is the drift owner's: SHA-256
+over the parts joined by a NUL, which no comment body can contain, so two
+pieces of content cannot be concatenated into a third that hashes the same.
 
 The lineage bound is enforced here at the one place a child's depth is
 computed. `MAX_LINEAGE_DEPTH` is the record's invariant, so a caller asking
@@ -99,11 +100,15 @@ def title_body_fingerprint(title: str, body: str) -> str:
 
 
 def comment_fingerprint(bodies: Iterable[str]) -> str:
-    """Return the fingerprint of trusted conversation past the late baseline.
+    """Return the fingerprint of the trusted conversation a baseline covers.
 
-    Paired with the watermark the generation carries, so what it covers is
-    exactly the comments added after the baseline: a fingerprint that moved
-    means a human answered, which is what resumes the late decomposer.
+    Paired with the watermark the generation carries, which names the last
+    comment counted into it: a fingerprint that moved without that watermark
+    moving means a comment already folded in was rewritten or deleted, which
+    is a change to the requirements with no new comment to read it out of.
+    Which bodies those are is the caller's to decide -- this owner is what a
+    fingerprint IS, so the two the late gate keeps cannot drift apart in how
+    they are taken.
     """
     return _digest(tuple(bodies))
 

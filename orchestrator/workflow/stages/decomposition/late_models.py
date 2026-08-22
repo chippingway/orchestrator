@@ -8,8 +8,10 @@ by a separate set of owners that share these records. They sit together
 because each of them crosses a boundary the call stack alone would lose it
 across -- the tick's own subject, which advances as the generation is
 persisted; what reconciling the plan-PR hold left behind; the run this issue is
-locked to as the pinned comment records it; what one late reply decided; and
-what the whole call did with the tick it was given.
+locked to as the pinned comment records it; what one late reply decided; what
+the requirements behind the frozen candidate currently hash to and what the
+humans have said about them since; and what the whole call did with the tick it
+was given.
 
 `_LateRun` is the durable half. It records what the failure contract calls the
 late agent's own facts -- the role it ran as, the backend spec it is locked
@@ -56,6 +58,7 @@ class _LateDisposition(Enum):
     PARKED = "parked"
     DEFERRED = "deferred"
     DECIDED = "decided"
+    REVISED = "revised"
 
 
 @dataclass(frozen=True)
@@ -138,11 +141,11 @@ class _LateRun:
             return bool(self.children)
         return False
 
-    def answers(self, generation: LateGeneration) -> bool:
-        """Whether a recorded result already decides THIS candidate.
+    def ran_against(self, generation: LateGeneration) -> bool:
+        """Whether this record's run was the one spawned for THIS candidate.
 
         All three parts of the identity are required, because any of them
-        alone would let a stale answer through. The generation counter is not
+        alone would let a stale record through. The generation counter is not
         unique on its own: a restart mints a fresh CYCLE and puts the counter
         back to where it started, so generation 1 of cycle 4 is a different
         attempt from generation 1 of cycle 3 -- and these run fields survive a
@@ -150,18 +153,30 @@ class _LateRun:
         would be read in. The commit is required beside them because a
         candidate replaced within one generation is a different question.
 
-        A record that is not actionable is unanswered whatever identity it
-        carries: re-adjudicating costs one more agent run, while acting on a
-        verdict whose substance nothing kept would cost whatever that verdict
-        was about.
+        Asked of two things, which is why it is separate from the verdict. A
+        recorded ANSWER is this candidate's only when the run that produced it
+        was; and a pinned SESSION may be resumed only when the conversation it
+        holds is about this candidate, since resuming one opened against a
+        commit that has since been replaced would hand the agent a transcript
+        describing work nobody is adjudicating.
         """
-        if not self.is_actionable or not self.source_sha:
+        if not self.source_sha:
             return False
         return (
             self.cycle_id == generation.cycle_id
             and self.generation == generation.generation
             and self.source_sha == generation.candidate_sha
         )
+
+    def answers(self, generation: LateGeneration) -> bool:
+        """Whether a recorded result already decides THIS candidate.
+
+        A record that is not actionable is unanswered whatever identity it
+        carries: re-adjudicating costs one more agent run, while acting on a
+        verdict whose substance nothing kept would cost whatever that verdict
+        was about.
+        """
+        return self.is_actionable and self.ran_against(generation)
 
 
 
@@ -206,13 +221,22 @@ class _PlanPrHold:
 class _LateContext:
     """The one tick a late adjudication runs inside.
 
-    Mutable in two fields. `generation` is replaced as each step persists what
-    it reached, so every owner after that step reads the record the pinned
+    Mutable in three fields. `generation` is replaced as each step persists
+    what it reached, so every owner after that step reads the record the pinned
     comment now holds rather than the one the tick opened on. `retired_park`
     is what this tick cleared, kept because clearing a park is not the same as
     the human it named never having been told: a park retired here and re-taken
     for the same reason is the same park, and repeating its notice would say
     the same thing to the same thread again.
+
+    `answering` is set by the step that reopens a categorized question and read
+    by the spawn several steps later: a run carrying a human's answer RESUMES
+    the conversation that asked, rather than opening a fresh one that would
+    have to be told what it had asked before it could be told the answer. It
+    rides the tick rather than the pinned comment because it is a fact about
+    this call and not about the issue -- and a tick that dies before the spawn
+    simply pays for a fresh conversation, which still reads the answer in the
+    thread its prompt quotes.
     """
 
     gh: GitHubClient
@@ -221,6 +245,7 @@ class _LateContext:
     state: PinnedState
     generation: LateGeneration
     retired_park: Optional[str] = None
+    answering: bool = False
 
 
 @dataclass(frozen=True)
@@ -243,3 +268,79 @@ class _LateAdjudicationRun:
     generation: LateGeneration
     run: _LateRun
     adjudication: Optional[_LateAdjudication] = None
+
+
+@dataclass(frozen=True)
+class _LateFingerprint:
+    """What the requirements behind a frozen candidate currently hash to.
+
+    Two digests and the watermark one of them covers from, because the two
+    questions a late generation asks about content are different questions. A
+    title or body edit changes what the candidate is supposed to BE. Trusted
+    conversation arriving after the baseline is a human answering, and which
+    comments are new is a thing only an identifier can say -- so the watermark
+    travels with the digest rather than being re-derived from it.
+
+    The watermark is a ratchet the reader maintains rather than a maximum
+    recomputed from the thread: a comment a human deleted must not put it back
+    down and let already-consumed conversation read as fresh guidance.
+    """
+
+    title_body_hash: str
+    comment_hash: str
+    comment_watermark_id: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class _LateContentSignal:
+    """What the human's content says about a candidate under adjudication.
+
+    `guidance` is the trusted comments past the watermark that carry something
+    to act on, in thread order, so the developer resume quotes what a human
+    actually wrote. A bare `/orchestrator continue` is deliberately not one of
+    them -- it is an operator control with no answer in it -- which is why it
+    is reported separately rather than as one more comment.
+
+    Untrusted authors, bots, and the orchestrator's own comments are not here
+    at all: they are filtered out where the thread is read, so nothing an
+    outsider posts becomes guidance, moves the watermark, or shifts a digest.
+
+    `baselined` is what keeps "nothing to compare against" apart from "the
+    requirements moved". A generation whose baseline has still to be taken
+    reports both drift flags -- an absent digest equals nothing -- and reading
+    that as a scope edit would park the very first tick of every late
+    adjudication.
+    """
+
+    fingerprint: _LateFingerprint
+    baselined: bool = False
+    title_body_drifted: bool = False
+    conversation_drifted: bool = False
+    guidance: tuple = ()
+    bare_continue: bool = False
+
+    @property
+    def drifted(self) -> bool:
+        """Whether the requirements themselves moved under the candidate.
+
+        Either fingerprint answers it. A title or body edit is the obvious
+        one; a counted comment edited or deleted after the fact is the same
+        event with no new comment to read it out of, so it is answered the
+        same way rather than being lost.
+        """
+        return self.title_body_drifted or self.conversation_drifted
+
+
+@dataclass(frozen=True)
+class _LateContentSettlement:
+    """What reconciling the human's content did with this tick.
+
+    A `disposition` of None is the only answer that lets adjudication carry
+    on; every other one is the whole of what the tick did and the coordinator
+    returns it. `persisted` says whether this owner already wrote what it
+    staged, so a caller holding a staged retirement of its own knows whether
+    it still owes a write.
+    """
+
+    disposition: Optional[_LateDisposition] = None
+    persisted: bool = False

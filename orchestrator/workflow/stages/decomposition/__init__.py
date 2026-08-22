@@ -26,11 +26,17 @@ missing or malformed INITIAL manifest means may not change: `late_prompt` and
 `late_reply` are the question that mode asks and the fence it is answered on,
 `late_hold` owns the generation-marked hold a reusable plan PR wears while the
 question is open, `late_session` owns the run's pinned record and the tracked
-spawn over it, `late_coordinator` owns the order those are asked in and
-`late_outcome` what one finished reply becomes, and `late_models` carries what
-they hand each other. Nothing dispatches into them yet -- the seam that
-decides a candidate is oversized is a later change -- so the four labels above
-are still the whole of what this package answers for.
+spawn over it, `late_content` fingerprints the requirements the candidate was
+frozen against and `late_guidance` decides what a change to them or an answer
+about them earns, `late_revision` owns the developer run guidance buys and the
+re-measured candidate it comes back with, `late_relabel` owns the label a live
+generation pins against the kill switch and a hand relabel, `late_coordinator`
+owns the order those are asked in and `late_outcome` what one finished reply
+becomes, and `late_models` carries what they hand each other. Only the kill
+switch dispatches into them -- an in-flight generation is what stops
+`DECOMPOSE=off` from routing an unadjudicated candidate to implementation --
+and the seam that decides a candidate is oversized is a later change, so the
+four labels above are still the whole of what this package answers for.
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per label, and an eager binding here would

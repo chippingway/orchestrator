@@ -573,6 +573,43 @@
 # rules other than the ones the reply was held to, is what puts one contract
 # in two places, so WPS201 and WPS202 are waived.
 #
+# orchestrator/workflow/stages/decomposition/late_models.py carries every
+# record the late owners hand each other -- the tick's own subject, the hold,
+# the run, one reply's verdict, what the requirements behind the frozen
+# candidate hash to, what the humans have said since, and what the whole call
+# did with its tick -- so it reaches 10 members past the WPS202 ceiling of 7.
+# They sit together because each crosses a boundary the call stack alone would
+# lose it across, and splitting them by which owner happens to build one would
+# make the shared vocabulary two vocabularies free to drift. WPS202 is waived.
+#
+# orchestrator/workflow/stages/decomposition/late_guidance.py is one ordered
+# decision table -- take a baseline, park requirements that moved, certify a
+# frozen candidate, resume a stalled revision, reopen a categorized question,
+# refuse a bare continue that answers none, and fold consumed conversation
+# into the baseline -- so it carries 9 members past the WPS202 ceiling of 7.
+# Each branch is one row of the same table and every row shares the rule that
+# drift outranks an answer; separating them would put that precedence in two
+# places to disagree. WPS202 is waived.
+#
+# orchestrator/workflow/stages/decomposition/late_revision.py runs the whole
+# developer revision a human's guidance buys -- consume the guidance, resume
+# the locked session under the decomposing stage, prove the tree it left
+# clean, freeze what it ends on, and measure that commit again under the
+# current ceiling -- so it names 20 imports past the WPS201 ceiling of 12.
+# The imports are what that arc costs and nothing else: the shared developer
+# resume and the prompt notes it is built from, the engine's comment, guard,
+# and usage owners, the worktree path and the two probes that prove the
+# checkout, the size measurement, the late domain's phase and typed failure
+# with the telemetry they are reported on, and the late owners beside it.
+# Splitting the arc would put the consume-before-spawn and prove-before-freeze
+# orders in two modules, so WPS201 is waived. It carries 9 members past the
+# WPS202 ceiling of 7 for the same reason: the arc's own steps, plus the two
+# that decide what an UNCHANGED commit means -- whether the run vouched for it
+# with the marker the prompt asks for, and what the run said instead when it
+# did not, which the park quotes to the human. Reading a commit nobody changed
+# as an acknowledgment is the failure those two exist to prevent, and they
+# belong beside the freeze that would otherwise accept it.
+#
 per-file-ignores =
     orchestrator/__init__.py:WPS412,WPS410
     orchestrator/config/__init__.py:WPS412,WPS410
@@ -600,8 +637,11 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/run.py:WPS201
     orchestrator/workflow/stages/decomposition/session.py:WPS201
     orchestrator/workflow/stages/decomposition/late_coordinator.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_guidance.py:WPS202
     orchestrator/workflow/stages/decomposition/late_hold.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_models.py:WPS202
     orchestrator/workflow/stages/decomposition/late_outcome.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_revision.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_session.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS201

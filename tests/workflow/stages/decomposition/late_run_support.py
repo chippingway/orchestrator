@@ -32,6 +32,7 @@ from tests.workflow.git_owners import seam_patch
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     LATE_ISSUE_NUMBER,
+    UNASKED_MEASUREMENT,
     seeded_late_issue,
 )
 
@@ -59,13 +60,17 @@ def agent_reply(message: str, **result_fields):
 
 
 @contextlib.contextmanager
-def late_run_context(spawn, seed: WorktreeSeed):
+def late_run_context(spawn, seed: WorktreeSeed, measurement=None):
     """Point the coordinator at a real worktree and a mocked spawn."""
     with contextlib.ExitStack() as stack:
         scratch = Path(stack.enter_context(tempfile.TemporaryDirectory()))
         worktree = scratch / WORKTREE_NAME
         if seed.exists:
             worktree.mkdir()
+        stack.enter_context(seam_patch(
+            "_measure_candidate",
+            MagicMock(return_value=measurement or UNASKED_MEASUREMENT),
+        ))
         stack.enter_context(
             seam_patch("_worktree_path", MagicMock(return_value=worktree)),
         )
@@ -82,13 +87,15 @@ def late_run_context(spawn, seed: WorktreeSeed):
         yield
 
 
-def adjudicate(github, issue, agent_result=None, *, worktree=None):
+def adjudicate(
+    github, issue, agent_result=None, *, worktree=None, measurement=None,
+):
     """Run one late adjudication and report the spawn it went through."""
     if callable(agent_result):
         spawn = MagicMock(side_effect=agent_result)
     else:
         spawn = MagicMock(return_value=agent_result)
-    with late_run_context(spawn, worktree or WorktreeSeed()):
+    with late_run_context(spawn, worktree or WorktreeSeed(), measurement):
         outcome = _coordinator._adjudicate_late_generation(
             github, _TEST_SPEC, issue, github.read_pinned_state(issue),
         )
@@ -133,9 +140,10 @@ class LateCase:
         self.github = github
         self.issue = issue
 
-    def _adjudicate(self, agent_result=None, *, worktree=None):
+    def _adjudicate(self, agent_result=None, *, worktree=None, measurement=None):
         return adjudicate(
-            self.github, self.issue, agent_result, worktree=worktree,
+            self.github, self.issue, agent_result,
+            worktree=worktree, measurement=measurement,
         )
 
     def _pinned(self) -> dict:

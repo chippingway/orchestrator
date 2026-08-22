@@ -20,6 +20,7 @@ from orchestrator.git.base_sync import (
     pre_pr as _base_sync_pre_pr,
     refresh as _base_sync_refresh,
 )
+from orchestrator.git.measurement import additions as _measurement
 from orchestrator.git.publication import (
     probes as _publication_probes,
     squash as _squash,
@@ -61,6 +62,7 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_head_on_branch": _verification_probes,
     "_head_sha": _verification_probes,
     "_infer_subject_prefix": _publication_titles,
+    "_measure_candidate": _measurement,
     "_push_branch": _authentication,
     "_rebase_base_into_worktree": _base_sync_pre_pr,
     "_rebase_in_progress": _base_sync_pre_pr,

@@ -94,6 +94,7 @@ _FAMILY_BUCKET_ISSUE: int = 0
 
 _CONFLICTS_PACKAGE = "orchestrator.workflow.stages.conflicts"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
+_LATE_RELABEL_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_relabel"
 _DISCUSSION_PACKAGE = "orchestrator.workflow.stages.discussion"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _FIXING_PACKAGE = "orchestrator.workflow.stages.fixing"
@@ -126,6 +127,38 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
 })
 
 
+def _late_adjudication_holds_the_label(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, label: Optional[str],
+) -> bool:
+    """True when a live late adjudication forbids this label's handler.
+
+    An oversized committed candidate is adjudicated under
+    ``workflow:decomposing``, and while that question is open the label is not
+    a state anything else may set. A hand relabel cannot be refused where it is
+    written -- the orchestrator never sees that write -- so it is caught here,
+    the one place a label becomes a handler call: the issue is put back and
+    left for the next tick rather than dispatched to whichever stage the new
+    label named, which for ``ready`` or ``implementing`` would publish a
+    candidate nobody adjudicated.
+
+    The pinned read this costs is skipped for the label the adjudication
+    actually sits on, which is where every one of its own ticks is spent; the
+    owner beside it explains what the rest is paid for. Imported at call time
+    like the handlers below, since the stage tree imports this module.
+    """
+    if label == WorkflowLabel.DECOMPOSING:
+        return False
+    late_relabel = importlib.import_module(_LATE_RELABEL_OWNER)
+    if not late_relabel._refuses_dispatch(gh, issue):
+        return False
+    log.warning(
+        "repo=%s issue=#%s was relabelled %r while its committed candidate "
+        "was under adjudication; not dispatching it",
+        spec.slug, issue.number, label,
+    )
+    return True
+
+
 def _route_issue_to_handler(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, label: Optional[str],
 ) -> None:
@@ -138,7 +171,12 @@ def _route_issue_to_handler(
     logged and left alone for a human. Timing and the ``stage_evaluation``
     analytics record stay in ``_process_issue``, which wraps this call in its
     try / except / finally.
+
+    An issue whose label a human moved out from under a live late adjudication
+    is put back instead of dispatched -- see the owner above.
     """
+    if _late_adjudication_holds_the_label(gh, spec, issue, label):
+        return
     target = _STAGE_HANDLER_TARGETS.get(label)
     if target is not None:
         module_name, handler_name = target

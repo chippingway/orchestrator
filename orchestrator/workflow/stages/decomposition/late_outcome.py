@@ -63,6 +63,12 @@ _AWAITING_HUMAN = "awaiting_human"
 
 _PARK_REASON = "park_reason"
 
+# The issue-wide record of what the workflow has already acted on. Shared with
+# every other stage, which is why this mode has to keep it moving: a reply this
+# mode read and acted on is one the later validating -> in_review handoff must
+# not find again as fresh PR feedback.
+_LAST_ACTION_COMMENT_ID = "last_action_comment_id"
+
 # Every way this mode hands an issue back, spelled once because each is a
 # durable pinned value and because the set below is read against them.
 PARK_HOLD_FAILED = "late_plan_pr_hold_failed"
@@ -73,13 +79,21 @@ PARK_TIMEOUT = "late_adjudicator_timeout"
 PARK_UNPARSED = "late_manifest_invalid"
 PARK_UNRECORDABLE = "late_result_unrecordable"
 PARK_QUESTION = "late_question"
+PARK_CONTENT_DRIFT = "late_content_drift"
+PARK_REVISION_DIRTY = "late_revision_dirty"
+PARK_REVISION_UNMEASURED = "late_revision_unmeasured"
+PARK_REVISION_UNANSWERED = "late_revision_unanswered"
 
-# The parks a fresh attempt answers, and therefore retires before it runs. All
-# of them but one: a hold that failed has now been reconciled, a worktree that
-# was gone is back, a run that timed out or answered unusably is about to be
-# re-run. `PARK_QUESTION` is not among them, because it is not a step that
-# failed -- it is the announcement itself, and the issue really is waiting on
-# the human it names.
+# The parks a fresh attempt answers, and therefore retires before it runs. A
+# hold that failed has now been reconciled, a worktree that was gone is back, a
+# run that timed out or answered unusably is about to be re-run. The five left
+# out are the ones no retry answers, because none of them is a step that
+# failed: `PARK_QUESTION` is the announcement itself, and the four content
+# parks are the workflow waiting to be told what an edited scope, a worktree
+# the developer left changed, a candidate nobody could measure, or a developer
+# that changed nothing and vouched for nothing now means. Retiring one of those
+# would drop the very state the next tick reads to tell a human's answer from
+# the silence before it.
 _SUPERSEDED_PARKS = frozenset((
     PARK_HOLD_FAILED,
     PARK_INCOMPLETE,
@@ -340,6 +354,14 @@ def _stands_already(context: _LateContext, reason: str) -> bool:
     same park -- the step it named failed again, nothing about the issue moved
     between them, and the human it mentioned has already been told.
 
+    "Nothing moved between them" is what the memory really claims, which is why
+    the run that could move something clears it. Past a spawn the reason is no
+    longer enough to call two parks the same: an agent answered, and a second
+    categorized question or a second unusable reply says something the first
+    notice did not. Suppressing those would leave an outcome recorded, durable,
+    and never announced -- so only the reconciliation retries that spawn
+    nothing keep the memory that quiets them.
+
     A park somebody cleared is not standing, whatever reason it carried, so an
     issue a human un-parked is announced to again rather than silently
     re-parked.
@@ -383,6 +405,48 @@ def _retire_park(context: _LateContext) -> bool:
     context.state.set(_AWAITING_HUMAN, False)
     context.state.set(_PARK_REASON, None)
     return True
+
+
+def _mark_replies_read(context: _LateContext, through) -> None:
+    """Record the trusted conversation this tick acted on as read, issue-wide.
+
+    The late fingerprints are this mode's own bookkeeping; the watermark moved
+    here is everybody's. A reply that resolved a park, certified a candidate,
+    or reopened a question has been ACTED on, and leaving the shared watermark
+    behind would let the validating -> in_review handoff read the same comment
+    as fresh PR feedback -- routing the pull request to `fixing` over an answer
+    this mode already spent, or resuming the developer on input it handled.
+
+    `through` is the highest TRUSTED comment folded in, so an untrusted comment
+    sitting above it stays unconsumed exactly as it does on every other resume:
+    nothing an outsider posts is marked read on their behalf. A one-way ratchet,
+    because a park notice or another stage may already have moved it further.
+    """
+    if not _formats.whole_number(through):
+        return
+    prior = context.state.get(_LAST_ACTION_COMMENT_ID)
+    if not _formats.whole_number(prior) or through > prior:
+        context.state.set(_LAST_ACTION_COMMENT_ID, through)
+
+
+def _answer_park(context: _LateContext) -> None:
+    """Clear the park a human has now answered.
+
+    The counterpart to `_retire_park` for the parks no retry supersedes. Those
+    stand until somebody says something, so what clears them is an answer
+    rather than another attempt -- and the caller that took the answer is the
+    only thing that knows one arrived.
+
+    Deliberately NOT remembered on the tick the way a retirement is. That
+    memory exists to recognize a park re-taken unchanged, and an answered park
+    is never that: the human said something, something ran because they did,
+    and whatever it parks on next is news even when it carries the same reason.
+    A second question is a different question, and remembering the first would
+    leave it recorded, durable, and never said out loud. The write belongs to
+    the caller, as it does for every other state this mode stages.
+    """
+    context.state.set(_AWAITING_HUMAN, False)
+    context.state.set(_PARK_REASON, None)
 
 
 def _persist(context: _LateContext) -> None:

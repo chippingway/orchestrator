@@ -55,8 +55,9 @@ spellings and pinned-state JSON keys are a compatibility contract, so this area 
 and forbids, and how a role's command spec is parsed and pinned.
 
 - [`workflow/roles.md`](workflow/roles.md) — the three roles, the stages that spawn each, the session-reuse rules, the
-  late adjudication an oversized committed candidate earns under the decomposer's own role, and the local verify gate
-  that is a stage step rather than a role.
+  late adjudication an oversized committed candidate earns under the decomposer's own role, what a human editing the
+  issue or answering under it changes while that candidate is frozen, and the local verify gate that is a stage step
+  rather than a role.
 - [`workflow/conversations.md`](workflow/conversations.md) — the `question` and `discussion` prompt contracts, what a
   round may leave behind, and the tracked-repository awareness block.
 - [`workflow/command-specs.md`](workflow/command-specs.md) — the spec grammar, backend selection, worked examples, and

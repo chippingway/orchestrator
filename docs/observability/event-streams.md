@@ -412,9 +412,12 @@ emitter like every other event on this page.
 **What a stream carries today.** The gate is not wired into publication yet, so the only producer that exists is the
 late adjudication under `workflow:decomposing`
 ([`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)): it writes
-one `late_verdict` per completed adjudication and a `late_failure` carrying `plan_pr_hold_failed` when the plan-PR
-hold cannot be reconciled. The other five families are the contract the remaining steps emit under, and no record of
-them can appear in either stream until those steps land.
+one `late_verdict` per completed adjudication, one `late_measurement` per candidate a developer revision re-froze and
+re-measured
+([`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen)), and a
+`late_failure` carrying `plan_pr_hold_failed` when the plan-PR hold cannot be reconciled or `measurement_failed` when
+a revised candidate could not be measured. The other four families are the contract the remaining steps emit under,
+and no record of them can appear in either stream until those steps land.
 
 **Family-typed events.** A record is built from a `LateEvent` on `workflow/late_split/events.py`, and each family
 declares which detail fields it requires and which it may carry (`_FAMILY_FIELDS`). Anything else raises

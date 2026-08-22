@@ -24,6 +24,7 @@ path after it -- including one that raises -- has to honor the decision.
 """
 from __future__ import annotations
 
+import logging
 from contextlib import ExitStack
 
 from github.Issue import Issue
@@ -38,6 +39,9 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.stages.decomposition import (
+    late_relabel as _late_relabel,
+)
 from orchestrator.workflow.stages.decomposition import outcomes as _outcomes
 from orchestrator.workflow.stages.decomposition import recovery as _recovery
 from orchestrator.workflow.stages.decomposition import session as _session
@@ -49,15 +53,18 @@ from orchestrator.workflow.stages.decomposition.models import (
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.state import WorkflowLabel
 
+log = logging.getLogger("orchestrator.workflow")
+
 
 def _route_disabled_to_implementing(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
 ) -> bool:
     """DECOMPOSE kill-switch bailout.
 
-    Returns True when decomposition is disabled and the issue was routed
-    to implementation (caller must return); False when decomposition is
-    enabled and the caller should proceed to spawn the decomposer.
+    Returns True when the caller must return: decomposition is disabled, and
+    the issue was either routed to implementation or left exactly where it is
+    because a live late generation may not be routed. False means the caller
+    should proceed to spawn the decomposer.
 
     Every path after this point spawns the decomposer (fresh or via the
     awaiting_human resume), so an operator who restarts with DECOMPOSE=off
@@ -69,9 +76,24 @@ def _route_disabled_to_implementing(
     regardless of the flag: abandoning orphan children (already on GitHub)
     because new decompositions are now disabled would strand work, which
     is not what a kill switch should do.
+
+    A live late generation stops the route for that same reason, one step
+    further on. Such an issue is not waiting to be decomposed -- its
+    implementation is already committed and measured past the ceiling -- so
+    the legacy route would publish an oversized candidate as though a `single`
+    verdict had been recorded for it, which is the one outcome the size gate
+    exists to prevent. The switch still keeps new candidates out of the gate;
+    it does not decide the ones already in it.
     """
     if config.DECOMPOSE:
         return False
+    if _late_relabel._refuses_disabled_route(state):
+        log.info(
+            "issue=#%d carries a live oversized candidate; DECOMPOSE=off "
+            "leaves it under adjudication rather than routing it to "
+            "implementation", issue.number,
+        )
+        return True
     _comments._post_issue_comment(
         gh, issue, state,
         ":robot: decomposition is disabled; routing this issue "
