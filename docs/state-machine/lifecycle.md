@@ -111,6 +111,78 @@ than a second source of truth: where the two disagree, the handler pages are aut
      conflict_round >= MAX_CONFLICT_ROUNDS ─► park awaiting human
      pr merged externally / closed unmerged ─► done / rejected (terminal)
 
+   any dispatched issue, ahead of every handler (the reuse guard):
+     ancestry names a snapshot ─► the RECEIPT first, and it is authoritative:
+       ref                         one comment of ours on this child marked
+                                   with the owner|cycle|generation its
+                                   ancestry names. It outranks every reading
+                                   of the ref -- a mirror nobody dropped and a
+                                   ref pushed again at the same commit both
+                                   look untouched -- so a thread that could
+                                   not be READ holds the dispatch rather than
+                                   falling through to them. Where the thread
+                                   answered and carries none, ask this
+                                   host's mirror, resolved and compared
+                                   against the recorded commit (free: a
+                                   reclamation drops it BEFORE the remote ref
+                                   and refuses to take the remote while it
+                                   survives; a copy at another commit is an
+                                   agent's write and reads as no copy) -- and
+                                   only
+                                   where the ancestry carries
+                                   late_ancestry_mirror_first, since a pointer
+                                   written before that ordering may have a
+                                   mirror standing beside a reclaimed ref --
+                                   and then one read-only ls-remote for the
+                                   exact ref and commit. Three answers: absent
+                                   is reclaimed and parks; mismatch is the ref
+                                   under somebody else's commit and parks
+                                   (late_snapshot_repointed), touching the ref
+                                   itself no more than the reclamation would;
+                                   unreadable is an outage, which parks
+                                   nothing and writes nothing -- the dispatch
+                                   is HELD and asked again next tick.
+                                   A park -> drop the pointer, say so
+                                   (late_snapshot_reclaimed) naming the ref
+                                   and the owner, and return before the
+                                   label's handler is reached -- INCLUDING a
+                                   reopened done|rejected child, which is
+                                   otherwise a dispatch no-op, and a relabel
+                                   straight to another stage. Evaluated on the
+                                   child's own dispatch, so no other writer
+                                   can undo it
+     no ancestry, but the body ─► the same receipt, matched against the lineage
+       carries the split's own      the BODY claims: the split records a child
+       child marker                 before it seeds one, so a failed seed
+                                    leaves exactly this. No receipt is not
+                                    permission -- the ref goes before any
+                                    receipt does -- but a body is not
+                                    authority either, so the OWNER's
+                                    generation is read fresh and has to vouch:
+                                    same cycle and generation, this issue
+                                    among late_consumers. Unvouched -> nothing
+                                    (a marker anyone can paste parks nobody);
+                                    unreadable, opaque, or no recorded
+                                    candidate -> HOLD; vouched -> the ref that
+                                    identity names, asked against the commit
+                                    the owner recorded, and the same four
+                                    answers as above. A park -> write the
+                                    claimed lineage back (never the pointer),
+                                    which repairs the record and stops it
+                                    being asked again
+     no ancestry and no marker ─► nothing, and no request
+       in the body
+     ancestry present, no ref  ─► nothing: this guard has already answered for
+       on it                       this child
+     label=workflow:decomposing ─► stepped aside, with the adjudication guard
+       AND a live generation on    beside it: an issue under adjudication is
+       the record                  working from its own candidate, not an
+                                   ancestor's. The label alone is not enough
+                                   -- a consumer closed while it was being
+                                   decomposed reopens on it with no
+                                   generation at all, and is asked like any
+                                   other child
+
    workflow:blocked (per tick):
      all children = done       ─► parent=workflow:ready
      any child = rejected      ─► park HITL on parent
@@ -118,11 +190,85 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                ─► child=workflow:ready
 
    workflow:umbrella (per tick):
-     all children = done       ─► parent=done, issue closed
-                                  (no implementation)
-     any child = rejected      ─► park HITL on parent
+     all children = done       ─► settle what the late split still owes the
+                                  remote, THEN parent=done, issue closed
+                                  (no implementation). The branch is retried
+                                  unconditionally; a held snapshot ref is
+                                  deleted once every recorded direct consumer
+                                  has ENDED -- read off the consumer's issue
+                                  state, not its label, since reopening keeps
+                                  done/rejected. Whether the list names ALL of
+                                  them is read off the record's PHASE: while
+                                  `splitting` stands it may be short by a
+                                  child already on GitHub, empty or not, so
+                                  nothing is reclaimed; either side of the
+                                  loop it is whole, which is also what lets an
+                                  EMPTY list settle a ref no child was cut
+                                  from.
+                                  EVERY obligation that is not
+                                  `reconciled` holds the terminal (a RETAINED
+                                  ref included), as does an opaque RESOURCE
+                                  ledger or a damaged cycle identity -- the
+                                  label stays, which IS the retry, and the
+                                  reason is logged on every tick that holds.
+                                  An opaque CONSUMER list keeps the ref and
+                                  frees the branch: the two ledgers are
+                                  written apart and refused apart
+     snapshot delete           ─► entry=`reclaiming` BEFORE the delete, then
+                                  RE-READ every recorded consumer past that
+                                  write and act only if all still ended (a
+                                  reopen inside the window keeps the ref and
+                                  leaves the entry `reclaiming`); delete --
+                                  this host's MIRROR first, and one that will
+                                  not go leaves the remote ref alone, so a
+                                  surviving mirror can never mean a reclaimed
+                                  remote (a transport that raises reads as
+                                  REFUSED and emits snapshot_delete_failed);
+                                  TELL every consumer, then
+                                  entry=`reconciled`. The ref
+                                  is never recreated; a refused delete tells
+                                  nobody
+     telling one consumer      ─► one COMMENT and nothing else, carrying a
+                                  marker naming this owner/cycle/generation so
+                                  it is said once. This owner never writes a
+                                  consumer's pinned state: that is written
+                                  whole by whoever writes it, a finalize sets
+                                  its terminal label BEFORE its last write,
+                                  and closed ready|blocked are swept by
+                                  nothing. A consumer it could not reach
+                                  leaves the entry `reclaiming`
+     `reclaiming` | `failed`   ─► retried past the consumer proof ONLY for a
+       whose consumers are no      ref the remote no longer has: one read-only
+       longer all ended            ask decides, and a surviving ref is kept
+     any child = rejected      ─► park HITL on parent -- and settle the same
+       | closed without a          ledger on the way out, from the same fresh
+       terminal label              scan: both dispositions CLOSED the child
+                                   they name, which is what the reclamation
+                                   rule reads, and nothing revisits an OPEN
+                                   umbrella either. It decides no terminal:
+                                   the park stands, and the issue stays open
+                                   on the label that brings the next tick back
      dep_graph walk: any workflow:blocked child with all deps=done
                                ─► child=workflow:ready
+
+   closed on workflow:decomposing | workflow:umbrella (cleanup sweep, on the
+   CLOSED_ISSUE_SWEEP_EVERY_N_TICKS cadence; the ONE case where the label does
+   not choose the handler -- routed by being closed, fanned out cap-exempt so
+   an open decomposer cannot starve it, with that route BOUND into the submit
+   so a reopen before the worker refetches cannot reach a stage handler):
+     every obligation          ─► nothing: the pinned read, and no consumer
+       reconciled                   read at all
+     opaque ledger             ─► nothing but a warning; no entry on it may be
+                                   reclaimed around one nobody can type
+     otherwise                 ─► the umbrella terminal's rules, verbatim, on
+                                   a scan this pass takes itself: retry the
+                                   branch, and delete a held ref once every
+                                   consumer has ended, releasing each as the
+                                   ref goes. Reopened-before-delete or an
+                                   unreadable consumer keeps the ref; the
+                                   branch settles either way. Never spawns,
+                                   relabels, activates a child, or closes
+                                   anything
 
    question (operator-applied; no automatic in/out transitions):
      fresh spawn          ─► DECOMPOSE_AGENT runs read-only in issue-N

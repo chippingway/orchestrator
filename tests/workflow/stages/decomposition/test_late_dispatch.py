@@ -8,6 +8,9 @@ import unittest
 from unittest.mock import Mock, patch
 
 from orchestrator.workflow.engine import dispatch as _dispatch
+from orchestrator.workflow.stages.decomposition import (
+    late_reuse as _late_reuse,
+)
 from orchestrator.workflow.state import WorkflowLabel
 
 from tests.workflow.fixtures import _TEST_SPEC
@@ -25,6 +28,10 @@ READY_OWNER, READY_HANDLER = _dispatch._STAGE_HANDLER_TARGETS[
 ]
 
 READ_PINNED_STATE = "read_pinned_state"
+
+# The last of the two questions the dispatcher asks that one read, and the one
+# a `decomposing` issue either reaches or is proved not to need.
+REFUSES_REUSE = "_refuses_reuse"
 
 SET_WORKFLOW_LABEL = "set_workflow_label"
 
@@ -86,21 +93,6 @@ class DispatchRefusalTest(unittest.TestCase):
 
         dispatched.assert_not_called()
 
-    def test_the_label_it_pins_is_never_read_for(self) -> None:
-        # An adjudication spends every one of its own ticks on `decomposing`,
-        # so the guard must cost that label nothing at all -- asked of the
-        # guard itself, since the handler behind it reads state of its own.
-        github, issue = late_issue()
-        pinned_read = Mock()
-
-        with patch.object(github, READ_PINNED_STATE, pinned_read):
-            held = _dispatch._late_adjudication_holds_the_label(
-                github, _TEST_SPEC, issue, WorkflowLabel.DECOMPOSING,
-            )
-
-        self.assertFalse(held)
-        pinned_read.assert_not_called()
-
     def _route(self, github, issue):
         """Route one issue the way a tick does, reporting the handler call."""
         dispatched = Mock()
@@ -109,3 +101,44 @@ class DispatchRefusalTest(unittest.TestCase):
         with patch.object(owner, READY_HANDLER, dispatched):
             _dispatch._route_issue_to_handler(github, _TEST_SPEC, issue, label)
         return dispatched
+
+
+class AdjudicatedLabelTest(unittest.TestCase):
+    """The label the dispatcher's guards step aside for, and what proves it.
+
+    `workflow:decomposing` is where an adjudication spends every one of its own
+    ticks, and an issue in one is working from its own candidate rather than an
+    ancestor's snapshot. What decides that is the record, not the label.
+    """
+
+    def test_the_label_it_pins_is_asked_no_more(self) -> None:
+        # The ordinary case, and the reason the step-aside exists at all:
+        # neither question the read answers is about an issue under
+        # adjudication, and the handler behind it reads state of its own.
+        held, asked = self._guarded(*late_issue())
+
+        self.assertFalse(held)
+        asked.assert_not_called()
+
+    def test_the_label_alone_is_no_bypass(self) -> None:
+        # What the label cannot say on its own. A child of a split closed while
+        # it was being decomposed comes back with `decomposing` exactly where
+        # it was and no generation of its own -- so an issue with nothing live
+        # on it is asked the reuse question like any other.
+        for label, generation in SETTLED_GENERATIONS:
+            with self.subTest(generation=label):
+                held, asked = self._guarded(
+                    *late_issue(generation=generation),
+                )
+
+                self.assertFalse(held)
+                asked.assert_called_once()
+
+    def _guarded(self, github, issue):
+        """Ask the guards, holding the reuse question the read ends in."""
+        asked = Mock(return_value=False)
+        with patch.object(_late_reuse, REFUSES_REUSE, asked):
+            held = _dispatch._pinned_state_refuses(
+                github, _TEST_SPEC, issue, WorkflowLabel.DECOMPOSING,
+            )
+        return held, asked

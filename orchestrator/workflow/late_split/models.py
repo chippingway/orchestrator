@@ -115,10 +115,22 @@ class LateResourceState(StrEnum):
     `RETAINED` is not a failure: a snapshot whose direct consumers are still
     live is deliberately kept, and saying so is what keeps a retained ref
     apart from one whose deletion was refused.
+
+    `RECLAIMING` is the decision, written before the delete that carries it
+    out, so a tick that died between the delete landing and the record of it
+    has something durable to come back to. It is not a pass on the proof: the
+    consumers are read again on every visit that would delete, and one that
+    came back keeps the ref with the entry left here. What the state buys is
+    the retry of a delete that may already have happened -- a ref the remote
+    no longer has is finished without re-proving anything, since what is left
+    is the record and the receipts rather than the deletion. Every state but
+    `RECONCILED` is still owed, so a record left here holds a terminal exactly
+    as `RETAINED` does.
     """
 
     PENDING = "pending"
     RETAINED = "retained"
+    RECLAIMING = "reclaiming"
     RECONCILED = "reconciled"
     FAILED = "failed"
 

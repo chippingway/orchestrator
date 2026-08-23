@@ -167,8 +167,16 @@ orchestrator/
                         because configuration bounds a slug at nothing
       refs.py           create-or-verify against the exact commit with no overwrite, the fetch-and-resolve that
                         proves a child could obtain it (one locked step, onto this repository's own local name),
-                        and the absent-is-success delete -- leased at the preserved commit, so a re-pointed ref is
-                        refused rather than reclaimed, and taking this host's copy down with the remote one
+                        the read-only ask a caller spends when it must know whether a ref is still there without
+                        being allowed to take it, named against the commit it was promised like every other read
+                        here, and the absent-is-success delete -- leased at the preserved
+                        commit, so a re-pointed ref is refused rather than reclaimed, and taking this host's copy
+                        down BEFORE the remote one, since a mirror is what a child reads as "nothing has been
+                        reclaimed": one that will not go -- or that a failed read cannot tell from one already
+                        gone -- refuses the whole reclamation rather than outliving the ref it mirrors. The read a
+                        child spends on that copy is published here too, and it is an identity rather than an
+                        existence: the store is one the agents write, so the copy is resolved and compared against
+                        the commit the caller was promised
     verification/       what a verify run is, and the reads a checkout is judged by
       models.py         the `VerifyResult` statuses and fields, and the output budget
       output.py         the redact-then-truncate pass over captured verify output

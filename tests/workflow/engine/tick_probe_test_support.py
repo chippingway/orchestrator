@@ -23,7 +23,7 @@ class _ConcurrencyProbe:
         self._delay = delay
         self._lock = threading.Lock()
 
-    def __call__(self, _gh, _spec, issue) -> None:
+    def __call__(self, _gh, _spec, issue, **_route) -> None:
         with self._lock:
             self.in_flight += 1
             self.max_in_flight = max(self.max_in_flight, self.in_flight)
@@ -43,7 +43,7 @@ class _BlockingConcurrencyProbe:
         self.release = threading.Event()
         self._lock = threading.Lock()
 
-    def __call__(self, _gh, _spec, _issue) -> None:
+    def __call__(self, _gh, _spec, _issue, **_route) -> None:
         with self._lock:
             self.in_flight += 1
             self.max_in_flight = max(self.max_in_flight, self.in_flight)
@@ -75,7 +75,7 @@ class _BarrierProcessRecorder:
         self._record_thread = record_thread
         self._lock = threading.Lock()
 
-    def __call__(self, _gh, _spec, issue) -> None:
+    def __call__(self, _gh, _spec, issue, **_route) -> None:
         self._barrier.wait()
         record = (
             (issue.number, threading.get_ident())
@@ -109,7 +109,7 @@ class _IssueProcessRecorder:
         self._failing_issue = failing_issue
         self._lock = threading.Lock()
 
-    def __call__(self, _gh, _spec, issue) -> None:
+    def __call__(self, _gh, _spec, issue, **_route) -> None:
         if issue.number == self._failing_issue:
             raise RuntimeError(f"simulated issue #{issue.number} failure")
         with self._lock:
@@ -122,7 +122,7 @@ class _RefreshOrderRecorder:
         self._refresh_mock = refresh_mock
         self._lock = threading.Lock()
 
-    def __call__(self, _gh, _spec, _issue) -> None:
+    def __call__(self, _gh, _spec, _issue, **_route) -> None:
         with self._lock:
             self.calls.append(self._refresh_mock.call_count)
 
@@ -138,7 +138,7 @@ class _FamilyOverlapProbe:
         self._fanout_issue = fanout_issue
         self._lock = threading.Lock()
 
-    def __call__(self, _gh, _spec, issue) -> None:
+    def __call__(self, _gh, _spec, issue, **_route) -> None:
         if issue.number == self._fanout_issue:
             self._run_fanout()
         else:
@@ -176,7 +176,7 @@ class _FamilySlotProbe:
         self._fanout_done = threading.Event()
         self._lock = threading.Lock()
 
-    def process(self, _gh, _spec, issue) -> None:
+    def process(self, _gh, _spec, issue, **_route) -> None:
         with self._lock:
             self.observed_order.append(issue.number)
         if issue.number == 1:

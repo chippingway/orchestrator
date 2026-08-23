@@ -41,9 +41,10 @@ _RECORDED_EVENTS_CAP = 500
 # agent, or -- on the two operator-applied conversation labels -- the close
 # itself being the whole signal. The in-memory double sweeps this same set.
 #
-# What is absent is the decomposition family (`decomposing` / `ready` /
-# `blocked` / `umbrella`): a closed issue there is a hard human stop with
-# nothing to finalize, and it stays out until an operator relabels it.
+# What is absent is the decomposition family: a closed issue on `ready` or
+# `blocked` is a hard human stop with nothing to finalize, and it stays out
+# until an operator relabels it. The other two are swept for cleanup only --
+# see `CLEANUP_SWEEP_LABELS` -- and never enter the arcs this set drives.
 #
 # A label leaves this set by being written off the issue, which every terminal
 # arc does as it fires -- so in steady state the sweep costs one pass per
@@ -64,8 +65,29 @@ CLOSED_SWEEP_LABELS: tuple[WorkflowLabel, ...] = (
     WorkflowLabel.DISCUSSION,
 )
 
+# The two states an issue that owns a preserved candidate can be closed on,
+# and the only closed issues outside the set above that any pass revisits.
+# They are queried apart because what they earn is different in kind: nothing
+# here resumes a workflow, spawns an agent, or activates a child. The one
+# reason to come back is that a split records obligations on the remote --
+# the branch its superseded candidate sat on, and the immutable ref the
+# children were cut from -- and an issue a human closed mid-cycle is one no
+# other pass would ever bring a tick back to.
+#
+# `decomposing` is where a candidate is adjudicated and where the split
+# transaction runs, and `umbrella` is what the parent is handed on to once it
+# lands; between them they cover every state in which a generation ledger can
+# hold something the remote still owes. `ready` and `blocked` are absent
+# because an issue on either has published nothing to preserve or supersede.
+CLEANUP_SWEEP_LABELS: tuple[WorkflowLabel, ...] = (
+    WorkflowLabel.DECOMPOSING,
+    WorkflowLabel.UMBRELLA,
+)
 
-def _closed_sweep_lookups() -> tuple[tuple[str, bool], ...]:
+
+def _sweep_lookups(
+    sweep_labels: tuple[WorkflowLabel, ...],
+) -> tuple[tuple[str, bool], ...]:
     """Pair every swept label spelling with whether a miss on it is expected.
 
     The pre-namespace spelling is queried beside the namespaced one because a
@@ -79,7 +101,7 @@ def _closed_sweep_lookups() -> tuple[tuple[str, bool], ...]:
     remembered, because the label can still come back by hand.
     """
     lookups: list[tuple[str, bool]] = []
-    for sweep_label in CLOSED_SWEEP_LABELS:
+    for sweep_label in sweep_labels:
         lookups.append((str(sweep_label), False))
         legacy_name = legacy_label_name(sweep_label)
         if legacy_name is not None:
@@ -87,7 +109,14 @@ def _closed_sweep_lookups() -> tuple[tuple[str, bool], ...]:
     return tuple(lookups)
 
 
-CLOSED_SWEEP_LOOKUPS = _closed_sweep_lookups()
+CLOSED_SWEEP_LOOKUPS = _sweep_lookups(CLOSED_SWEEP_LABELS)
+
+CLEANUP_SWEEP_LOOKUPS = _sweep_lookups(CLEANUP_SWEEP_LABELS)
+
+# One walk over both, because both are the same request against the same
+# cadence and the same label cache, and the dispatcher tells the two apart by
+# what it finds on the issue rather than by which query produced it.
+SWEEP_LOOKUPS = CLOSED_SWEEP_LOOKUPS + CLEANUP_SWEEP_LOOKUPS
 
 
 def issue_is_closed(issue: Any) -> bool:
@@ -196,7 +225,12 @@ class GitHubIssueMixin:
         self,
         since: Optional[datetime] = None,
     ) -> Iterable[Issue]:
-        """Yield open issues plus recoverable closed workflow issues."""
+        """Yield open issues, plus the closed ones a sweep still owes a pass.
+
+        Two kinds of closed issue, on one cadence: the recoverable ones whose
+        terminal arc has not drained, and the cleanup owners whose ledger may
+        still hold the remote to a branch or a snapshot ref.
+        """
         seen_numbers: set[int] = set()
         self._pollable_calls += 1
         yield from iter_new_non_pr_issues(
@@ -313,13 +347,18 @@ class GitHubIssueMixin:
         Reached only past the cadence gate, so the sweep count it keeps -- and
         the absent-label window denominated in it -- advances once per sweep
         rather than once per poll.
+
+        The two cleanup states ride the same walk, the same cadence, and the
+        same label cache: an extra pass over them would double the fixed cost
+        the cadence exists to amortize while asking the identical question one
+        tick apart.
         """
         self._closed_sweeps += 1
         # Scoped to this pass: the spellings it confirms absent are summarized
         # at the end of it, and a sweep that raises before then takes them with
         # it rather than leaving them for the next one to restate.
         absent_legacy_names: list[str] = []
-        for label_name, absence_is_expected in CLOSED_SWEEP_LOOKUPS:
+        for label_name, absence_is_expected in SWEEP_LOOKUPS:
             label_object = self._cached_label(
                 label_name,
                 throttle_absent=absence_is_expected,

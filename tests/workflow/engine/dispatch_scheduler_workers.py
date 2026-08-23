@@ -67,7 +67,7 @@ class _IssueProcessor:
         self._blocking = blocking
         self._lock = threading.Lock()
 
-    def __call__(self, _gh, _spec, issue) -> None:
+    def __call__(self, _gh, _spec, issue, **_route) -> None:
         with self._lock:
             self.processed.append(issue.number)
         start = self.starts.get(issue.number)
@@ -103,7 +103,7 @@ class _SequentialIssueProcessor(_IssueProcessor):
         self.maximum_in_flight = 0
         self._in_flight = 0
 
-    def __call__(self, gh, spec, issue) -> None:
+    def __call__(self, gh, spec, issue, **_route) -> None:
         with self._lock:
             self._in_flight += 1
             self.maximum_in_flight = max(
@@ -111,7 +111,7 @@ class _SequentialIssueProcessor(_IssueProcessor):
                 self._in_flight,
             )
         try:
-            super().__call__(gh, spec, issue)
+            super().__call__(gh, spec, issue, **_route)
         except BaseException:
             self._leave()
             raise
@@ -132,7 +132,7 @@ class _BarrierIssueProcessor:
         self._processed: list[int] = []
         self._lock = threading.Lock()
 
-    def __call__(self, _gh, _spec, issue) -> None:
+    def __call__(self, _gh, _spec, issue, **_route) -> None:
         self._barrier.wait()
         with self._lock:
             self._processed.append(issue.number)

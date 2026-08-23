@@ -111,7 +111,7 @@ class _WorkerClientScenario:
             self.cloned_clients.append(twin)
         return twin
 
-    def process_issue(self, worker_client, _spec, issue) -> None:
+    def process_issue(self, worker_client, _spec, issue, **_route) -> None:
         with self._calls_lock:
             self.process_calls.append((issue.number, id(worker_client)))
 

@@ -62,3 +62,4 @@ class _IssueSeed:
     title: str = "test issue"
     body: str = "test body"
     author: str = "geserdugarov"
+    closed: bool = False

@@ -40,6 +40,11 @@ from orchestrator.workflow.stages.decomposition.models import _ChildScan
 
 log = logging.getLogger("orchestrator.workflow")
 
+# The labels a closed child may wear without the close being a human override:
+# the two terminals, and the externally-merged transient the closed-in_review
+# sweep finalizes on the next tick.
+_ENDED_LABELS = (_state._DONE, "rejected", "in_review")
+
 
 def _route_parent_drift(
     gh: GitHubClient, issue: Issue, state: PinnedState
@@ -128,14 +133,6 @@ def _park_rejected_children(
     return True
 
 
-def _manually_closed_children(scan: _ChildScan) -> list[int]:
-    return [
-        number for number, child_issue in scan.issues.items()
-        if getattr(child_issue, "state", "open") == "closed"
-        and scan.labels.get(number) not in (_state._DONE, "rejected", "in_review")
-    ]
-
-
 def _remaining_manually_closed(
     gh: GitHubClient,
     spec: config.RepoSpec,
@@ -177,11 +174,11 @@ def _park_manually_closed_children(
     that the closed-in_review sweep finalizes on the next tick, NOT a manual
     override.
     """
-    manually_closed = _manually_closed_children(scan)
-    if manually_closed:
-        manually_closed = _remaining_manually_closed(
-            gh, spec, scan, manually_closed,
-        )
+    manually_closed = _remaining_manually_closed(gh, spec, scan, [
+        number for number, child_issue in scan.issues.items()
+        if getattr(child_issue, "state", "open") == "closed"
+        and scan.labels.get(number) not in _ENDED_LABELS
+    ])
     if not manually_closed:
         return False
     if state.get(_state._AWAITING_HUMAN):
@@ -199,6 +196,28 @@ def _park_manually_closed_children(
     return True
 
 
+def _parked_on_children(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+    scan: _ChildScan,
+) -> bool:
+    """Whether a child's disposition ends this parent's tick for a human.
+
+    The two questions in the order they are asked, published apart from the
+    scan they are asked of because one caller has something to do on the way
+    out: an umbrella parked here is still the owner of whatever its split put
+    on the remote, and every disposition that parks it -- a child rejected,
+    a child closed by hand -- is one the reclamation rule counts as ended. So
+    the parent that stops for a human still settles its ledger, and the park
+    itself is unchanged either way.
+    """
+    if _park_rejected_children(gh, issue, state, scan.labels):
+        return True
+    return _park_manually_closed_children(gh, spec, issue, state, scan)
+
+
 def _usable_child_scan(
     gh: GitHubClient,
     spec: config.RepoSpec,
@@ -209,8 +228,6 @@ def _usable_child_scan(
     scan = _read_child_labels(gh, issue, children)
     if scan is None:
         return None
-    if _park_rejected_children(gh, issue, state, scan.labels):
-        return None
-    if _park_manually_closed_children(gh, spec, issue, state, scan):
+    if _parked_on_children(gh, spec, issue, state, scan):
         return None
     return scan

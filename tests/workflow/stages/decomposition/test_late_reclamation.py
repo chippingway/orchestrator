@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import replace
-from unittest.mock import patch
 
 from orchestrator.git.snapshots import refs as _snapshot_refs
-from orchestrator.workflow.late_split.models import LateResourceState
+from orchestrator.workflow.late_split.models import (
+    LatePhase,
+    LateResourceState,
+)
 from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
 )
@@ -22,22 +24,26 @@ from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     CHILD_NUMBER,
+    RecordedDelete,
     LABEL_DONE,
     LABEL_IN_REVIEW,
     LABEL_REJECTED,
     PARENT_NUMBER,
-    RecordedDelete,
     SNAPSHOT_REF,
 )
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     STATE_FAILED,
+    STATE_RECLAIMING,
     STATE_RECONCILED,
     STATE_RETAINED,
+    SUPERSEDED_BRANCH,
     WORKFLOW_LOG,
+)
+from tests.workflow.stages.decomposition.late_cleanup_support import (
     resource_states,
     scan_of,
     split_umbrella,
-    walk_umbrella,
+    walk_owner,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
@@ -114,7 +120,9 @@ class UmbrellaReclamationTest(_PatchedWorkflowMixin, unittest.TestCase):
         seeded = _retaining()
 
         self._walk_with(
-            seeded, _snapshot_refs.SnapshotOutcome.ABSENT,
+            seeded,
+            _snapshot_refs.SnapshotOutcome.ABSENT,
+            presence=_snapshot_refs.SnapshotOutcome.ABSENT,
         )
 
         self.assertEqual(
@@ -132,10 +140,11 @@ class UmbrellaReclamationTest(_PatchedWorkflowMixin, unittest.TestCase):
         self.assertEqual(resource_states(seeded.github)[SNAPSHOT_REF], STATE_FAILED)
         self.assertFalse(seeded.parent.closed)
 
-    def test_a_consumer_nobody_recorded_keeps_the_ref(self) -> None:
-        # Fail-closed: a consumer the scan cannot speak for may still be
-        # cutting from the ref -- and a retained ref does not block the close,
-        # because nothing here can clear that condition.
+    def test_a_consumer_nobody_recorded_holds_it_open(self) -> None:
+        # Fail-closed twice over: a consumer the scan cannot speak for may
+        # still be cutting from the ref, so the ref stays -- and a ref that
+        # stays holds the terminal, because an umbrella closed over one is an
+        # object on the remote nothing would ever come back for.
         seeded = _retaining()
         seeded.github.seed_state(
             PARENT_NUMBER,
@@ -145,35 +154,43 @@ class UmbrellaReclamationTest(_PatchedWorkflowMixin, unittest.TestCase):
             },
         )
 
-        deleted = self._walk_with(
-            seeded, _snapshot_refs.SnapshotOutcome.DELETED,
-        )
+        with self.assertLogs(WORKFLOW_LOG, level="INFO"):
+            deleted = self._walk_with(
+                seeded, _snapshot_refs.SnapshotOutcome.DELETED,
+            )
 
         self.assertEqual(deleted.refs, [])
         self.assertEqual(
             resource_states(seeded.github)[SNAPSHOT_REF], STATE_RETAINED,
         )
-        self.assertTrue(seeded.parent.closed)
-
-    def test_a_death_post_delete_reconciles(self) -> None:
-        # The delete landed and the write that recorded it did not. Absent is
-        # success, so the retry asks once and settles the same entry rather
-        # than reading a mismatch against a ref that is already gone.
-        seeded = _retaining()
-        died = RecordedDelete(
-            _snapshot_refs.SnapshotOutcome.DELETED, dies=True,
-        )
-        with self.assertRaises(KeyboardInterrupt):
-            with patch.object(_snapshot_refs, "delete_snapshot_ref", died):
-                walk_umbrella(self, seeded)
-        self.assertEqual(died.refs, [SNAPSHOT_REF])
-        self.assertEqual(
-            resource_states(seeded.github)[SNAPSHOT_REF], STATE_RETAINED,
-        )
         self.assertFalse(seeded.parent.closed)
 
+    def test_a_death_post_delete_reconciles(self) -> None:
+        # The delete landed and the write that recorded it did not. The
+        # decision was recorded BEFORE the delete, so the retry acts on that
+        # rather than re-proving a consumer set a human may have changed --
+        # and absent is success, so it settles the same entry in one request.
+        seeded = _retaining()
+        died = RecordedDelete(
+            _snapshot_refs.SnapshotOutcome.DELETED,
+            raising=KeyboardInterrupt("died"),
+        )
+        with self.assertRaises(KeyboardInterrupt):
+            with died.answering():
+                walk_owner(self, seeded)
+        self.assertEqual(died.refs, [SNAPSHOT_REF])
+        self.assertEqual(
+            resource_states(seeded.github)[SNAPSHOT_REF], STATE_RECLAIMING,
+        )
+        self.assertFalse(seeded.parent.closed)
+        # A human reopening the consumer in that window cannot re-block a
+        # reclamation the record already says was ordered.
+        seeded.github.get_issue(CHILD_NUMBER).closed = False
+
         self._walk_with(
-            seeded, _snapshot_refs.SnapshotOutcome.ABSENT,
+            seeded,
+            _snapshot_refs.SnapshotOutcome.ABSENT,
+            presence=_snapshot_refs.SnapshotOutcome.ABSENT,
         )
 
         self.assertEqual(
@@ -181,11 +198,11 @@ class UmbrellaReclamationTest(_PatchedWorkflowMixin, unittest.TestCase):
         )
         self.assertTrue(seeded.parent.closed)
 
-    def _walk_with(self, seeded, outcome) -> RecordedDelete:
+    def _walk_with(self, seeded, outcome, **answers) -> RecordedDelete:
         """Run the umbrella tick with the remote answering `outcome`."""
-        deleted = RecordedDelete(outcome)
-        with patch.object(_snapshot_refs, "delete_snapshot_ref", deleted):
-            walk_umbrella(self, seeded)
+        deleted = RecordedDelete(outcome, **answers)
+        with deleted.answering():
+            walk_owner(self, seeded)
         return deleted
 
 
@@ -204,12 +221,31 @@ class UnprovableObligationTest(_PatchedWorkflowMixin, unittest.TestCase):
         # the strength of that projection is the reading the verbatim copy
         # exists to prevent.
         seeded = split_umbrella(LateResourceState.RECONCILED)
-        _seed_resources(seeded.github, [{"kind": _UNTYPED_KIND}])
+        self._seed_resources(seeded.github, [{"kind": _UNTYPED_KIND}])
 
-        walk_umbrella(self, seeded)
+        walk_owner(self, seeded)
 
         self.assertFalse(seeded.parent.closed)
         self.assertEqual(seeded.github.deleted_remote_branches, [])
+
+    def test_an_opaque_consumer_list_frees_the_branch(self) -> None:
+        # The two ledgers are preserved and written apart, and they stop
+        # different things. A consumer list nobody can read is what a
+        # snapshot's proof would be taken from -- so the ref stays -- but the
+        # branch owes no consumer anything, and freezing it too would leave a
+        # superseded branch on the remote for as long as the hand edit stood.
+        seeded = _retaining()
+        self._seed_resources(seeded.github, consumers=_OPAQUE_CONSUMERS)
+
+        deleted = RecordedDelete(_snapshot_refs.SnapshotOutcome.DELETED)
+        with self.assertLogs(WORKFLOW_LOG, level="INFO"), deleted.answering():
+            walk_owner(self, seeded)
+
+        self.assertEqual(
+            seeded.github.deleted_remote_branches, [SUPERSEDED_BRANCH],
+        )
+        self.assertEqual(deleted.refs, [])
+        self.assertFalse(seeded.parent.closed)
 
     def test_a_foreign_identity_is_never_deleted(self) -> None:
         # The transport proves the namespace and the commit, and neither is
@@ -221,7 +257,7 @@ class UnprovableObligationTest(_PatchedWorkflowMixin, unittest.TestCase):
             with self.subTest(ref=foreign):
                 seeded = _retaining()
                 github = seeded.github
-                _seed_resources(github, [{
+                self._seed_resources(github, [{
                     "kind": _KIND_SNAPSHOT,
                     "target": foreign,
                     "state": STATE_RETAINED,
@@ -230,11 +266,9 @@ class UnprovableObligationTest(_PatchedWorkflowMixin, unittest.TestCase):
                     _snapshot_refs.SnapshotOutcome.DELETED,
                 )
 
-                held = patch.object(
-                    _snapshot_refs, "delete_snapshot_ref", deleted,
-                )
+                held = deleted.answering()
                 with self.assertLogs(WORKFLOW_LOG, level="ERROR"), held:
-                    walk_umbrella(self, seeded)
+                    walk_owner(self, seeded)
 
                 self.assertEqual(deleted.refs, [])
                 self.assertEqual(resource_states(github)[foreign], STATE_FAILED)
@@ -245,10 +279,10 @@ class UnprovableObligationTest(_PatchedWorkflowMixin, unittest.TestCase):
         # owes; there is just nothing to correlate a reclamation to and no
         # issue number to prove a branch belongs to this generation.
         seeded = split_umbrella(LateResourceState.PENDING)
-        _seed_resources(seeded.github, damaged=True)
+        self._seed_resources(seeded.github, damaged=True)
 
         with self.assertLogs(WORKFLOW_LOG, level="ERROR"):
-            walk_umbrella(self, seeded)
+            walk_owner(self, seeded)
 
         self.assertFalse(seeded.parent.closed)
         self.assertEqual(seeded.github.deleted_remote_branches, [])
@@ -257,15 +291,30 @@ class UnprovableObligationTest(_PatchedWorkflowMixin, unittest.TestCase):
         # Every umbrella the initial decomposer made carries no ledger at all,
         # and answers without a write.
         seeded = split_umbrella(LateResourceState.PENDING)
-        _seed_resources(seeded.github, damaged=True, resources=None)
+        self._seed_resources(seeded.github, damaged=True, resources=None)
 
-        walk_umbrella(self, seeded)
+        walk_owner(self, seeded)
 
         self.assertTrue(seeded.parent.closed)
 
+    def _seed_resources(
+        self, github, resources=(), *, damaged: bool = False, consumers=None,
+    ) -> None:
+        """Re-seed the parent's ledgers, optionally without a readable identity."""
+        pinned = dict(github.pinned_data(PARENT_NUMBER))
+        if consumers is not None:
+            pinned["late_consumers"] = consumers
+        if resources is None:
+            pinned.pop("late_resources", None)
+        elif resources:
+            pinned["late_resources"] = resources
+        if damaged:
+            pinned.pop("late_cycle_id", None)
+        github.seed_state(PARENT_NUMBER, **pinned)
+
 
 class TerminalConsumerTest(unittest.TestCase):
-    """Which dispositions prove a consumer will never cut from the ref again.
+    """Which readings prove a consumer will never cut from the ref again.
 
     Asked of the rule directly, because the umbrella's own terminal is only
     ever reached with every child `done`: the other two are what a consumer
@@ -274,20 +323,21 @@ class TerminalConsumerTest(unittest.TestCase):
     """
 
     def test_every_way_a_consumer_can_end_counts(self) -> None:
-        for label, closed in (
-            (LABEL_DONE, False), (LABEL_REJECTED, False), (None, True),
-        ):
-            with self.subTest(label=label, closed=closed):
+        # All three end the consumer by CLOSING it -- publishing, being
+        # rejected, and a human closing it out from under whatever label it
+        # was wearing.
+        for label in (LABEL_DONE, LABEL_REJECTED, LABEL_IN_REVIEW, None):
+            with self.subTest(label=label):
                 self.assertTrue(
                     _late_cleanup._reclaimable(
-                        _one_consumer(), scan_of(label, closed=closed),
+                        _one_consumer(), scan_of(label, closed=True),
                     ),
                 )
 
     def test_a_real_shaped_close_counts(self) -> None:
-        # The close is the whole answer here, since the label is one a running
-        # child wears. Asked for the double's flag instead, this consumer
-        # reads as live and the ref it holds is never reclaimed.
+        # The close is the whole answer, and the only spelling a real issue
+        # carries it under is `state`. Asked for the double's flag instead,
+        # this consumer reads as live and the ref it holds is never reclaimed.
         scan = _ChildScan(
             children=[CHILD_NUMBER],
             issues={CHILD_NUMBER: _RealShapedChild(CHILD_NUMBER)},
@@ -295,6 +345,19 @@ class TerminalConsumerTest(unittest.TestCase):
         )
 
         self.assertTrue(_late_cleanup._reclaimable(_one_consumer(), scan))
+
+    def test_a_terminal_label_alone_does_not(self) -> None:
+        # Reopening a child leaves `done` / `rejected` exactly where they
+        # were, so a reading taken off the label would call a child that is
+        # live again terminal and delete the only copy of the work it came
+        # back for.
+        for label in (LABEL_DONE, LABEL_REJECTED):
+            with self.subTest(label=label):
+                self.assertFalse(
+                    _late_cleanup._reclaimable(
+                        _one_consumer(), scan_of(label),
+                    ),
+                )
 
     def test_a_live_consumer_keeps_the_ref(self) -> None:
         for label in (LABEL_IN_REVIEW, None):
@@ -314,35 +377,87 @@ class TerminalConsumerTest(unittest.TestCase):
             _late_cleanup._reclaimable(opaque, scan_of(LABEL_DONE)),
         )
 
-    def test_a_snapshot_with_no_consumers_is_kept(self) -> None:
-        # Nothing recorded is not the same claim as nobody waiting.
-        self.assertFalse(
+
+class WholeLedgerRuleTest(unittest.TestCase):
+    """Whether the ledger names every child, asked before who among them ended.
+
+    Every proof beside this one walks the recorded consumers, so it is only as
+    complete as that list. The record's own phase is what says whether the
+    list is the whole account of who was cut from the ref.
+    """
+
+    def test_no_consumer_before_a_split_is_taken(self) -> None:
+        # An empty list is a FACT here, not a gap. The ref is retained before
+        # the first child exists, so an owner a human closed in that interval
+        # owns a ref nothing was ever cut from -- and reading it as "nobody
+        # has written the list yet" left one nothing would ever reclaim, swept
+        # on every cadence forever.
+        self.assertTrue(
             _late_cleanup._reclaimable(late_generation(), scan_of(LABEL_DONE)),
         )
 
+    def test_a_split_still_in_its_loop_keeps_it(self) -> None:
+        # The create precedes the write that records it, so while `splitting`
+        # stands the list may be short by a child that already exists on
+        # GitHub. The LENGTH of it decides nothing: a list of ended consumers
+        # says as little about the child it has not reached as an empty one.
+        for recorded in ((), (CHILD_NUMBER,)):
+            with self.subTest(recorded=recorded):
+                self.assertFalse(
+                    _late_cleanup._reclaimable(
+                        late_generation(
+                            phase=LatePhase.SPLITTING, consumers=recorded,
+                        ),
+                        scan_of(LABEL_DONE, closed=True),
+                    ),
+                )
 
-def _seed_resources(github, resources=(), *, damaged: bool = False) -> None:
-    """Re-seed the parent's ledger, optionally without a readable identity."""
-    pinned = dict(github.pinned_data(PARENT_NUMBER))
-    if resources is None:
-        pinned.pop("late_resources", None)
-    elif resources:
-        pinned["late_resources"] = resources
-    if damaged:
-        pinned.pop("late_cycle_id", None)
-    github.seed_state(PARENT_NUMBER, **pinned)
+    def test_a_phase_that_proves_nothing_keeps_it(self) -> None:
+        # The ways a cycle leaves the loop without finishing it, and a phase
+        # this binary cannot type at all. None of them says the ledger is the
+        # whole account of who was cut from the ref.
+        unproven = (LatePhase.CANCELLING, LatePhase.RESTARTING, None)
+        for phase in unproven:
+            with self.subTest(phase=phase):
+                self.assertFalse(
+                    _late_cleanup._reclaimable(
+                        replace(_one_consumer(), phase=phase),
+                        scan_of(LABEL_DONE),
+                    ),
+                )
+
+    def test_a_finished_split_is_asked_as_before(self) -> None:
+        # Either side of the loop the list is whole, so the per-consumer proof
+        # is the whole question again.
+        whole = (LatePhase.SUPERSEDING, LatePhase.CLEANING_UP)
+        for phase in whole:
+            with self.subTest(phase=phase):
+                self.assertTrue(
+                    _late_cleanup._reclaimable(
+                        replace(_one_consumer(), phase=phase),
+                        scan_of(LABEL_DONE, closed=True),
+                    ),
+                )
 
 
 def _retaining() -> tuple:
-    """An umbrella whose branch is settled and whose ref is still held."""
+    """An umbrella whose branch is owed and whose ref is still held."""
     return split_umbrella(
-        LateResourceState.RECONCILED, snapshot=LateResourceState.RETAINED,
+        LateResourceState.PENDING, snapshot=LateResourceState.RETAINED,
     )
 
 
 def _one_consumer():
-    """A generation recording exactly the child the scan speaks for."""
-    return late_generation().with_consumers((CHILD_NUMBER,))
+    """A generation recording exactly the child the scan speaks for.
+
+    On the phase a finished split leaves, because that is what an owner with
+    a consumer to prove anything about really carries: every child created
+    and every one recorded, so the ledger is the whole list.
+    """
+    return late_generation(
+        phase=LatePhase.CLEANING_UP,
+    ).with_consumers((CHILD_NUMBER,))
+
 
 
 if __name__ == "__main__":

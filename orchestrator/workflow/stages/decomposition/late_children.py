@@ -106,23 +106,6 @@ _TITLE = "title"
 
 _BODY = "body"
 
-# Stamped into every child's body so the create that returned into a crash can
-# be recognized again. It names the ISSUE as well as the adjudication and the
-# slice, because a cycle identity is minted per issue and repeats across them:
-# two parents adjudicating their first candidate are both cycle 1, generation
-# 1, and their first slices would otherwise carry the same marker -- while the
-# lookup that reads it is scoped to no parent at all, walking the repository's
-# issues in every state and under no label, so one parent would adopt, reseed,
-# and activate the other's child. An HTML comment, so it is invisible in the
-# rendered issue.
-# The prefix every one of those markers begins with, kept as its own name
-# because two readings need it: the marker is built from it, and a candidate
-# the lookup returns is checked for carrying exactly one of them.
-_CHILD_RECEIPT = "<!--orchestrator-late-child:"
-
-_CHILD_MARKER = _CHILD_RECEIPT + (
-    "issue={issue}:cycle={cycle}:generation={generation}:index={index}-->"
-)
 
 class _StrandedChild(Exception):
     """An issue this walk found for a slice and may not take over.
@@ -394,7 +377,7 @@ def _sole_receipt(orphan: Issue, marker: str) -> bool:
     and is refused the same way.
     """
     body = getattr(orphan, "body", "") or ""
-    return marker in body and body.count(_CHILD_RECEIPT) == 1
+    return marker in body and body.count(_lineage.CHILD_RECEIPT) == 1
 
 
 def _forged_receipt(children: tuple) -> Optional[str]:
@@ -540,6 +523,14 @@ def _child_ancestry(
     the bound is enforced at the one place a child's depth is computed. The
     caller has already refused a split the lineage forbids; asking again costs
     nothing and means no path here can produce a child past the cap.
+
+    The pointer is stamped with the ordering the reclamation that can take it
+    runs under, because the child's guard reads a surviving local copy of the
+    ref as proof no reclamation has happened -- and that is only true of a
+    reclamation which takes this host's copy down first. The stamp is written
+    HERE, by the binary that would do the reclaiming, so it says something
+    about the world this pointer was created into rather than something about
+    the reader.
     """
     generation = context.generation
     return _lineage.LateAncestry(
@@ -550,6 +541,7 @@ def _child_ancestry(
         generation=generation.generation,
         snapshot_ref=snapshot_ref,
         snapshot_sha=generation.candidate_sha,
+        mirror_first=True,
         base_branch=context.spec.base_branch,
         scope=_declared_scope(child),
     )
@@ -557,7 +549,7 @@ def _child_ancestry(
 
 def _child_marker(generation, index: int) -> str:
     """The hidden marker naming this issue, adjudication, and slice."""
-    return _CHILD_MARKER.format(
+    return _lineage.child_marker(
         issue=generation.current_issue,
         cycle=generation.cycle_id,
         generation=generation.generation,

@@ -180,13 +180,21 @@ def _run_sequential_tick(
     failure (e.g. a PyGithub pagination error mid-sweep): the sequential loop
     processes everything yielded BEFORE the failure, but a `list(...)` upfront
     would lose every already-yielded issue when the generator raises. Each
-    `_process_issue` is wrapped in its own try/except so one raising issue
-    cannot stop the rest.
+    dispatch is wrapped in its own try/except so one raising issue cannot stop
+    the rest.
+
+    Handed to `_process_polled_issue` rather than straight to `_process_issue`,
+    because the object this loop holds is the enumeration's own reading and one
+    route may not be taken on a stale one: the cleanup sweep settles a closed
+    owner's ledger, and an owner reopened after this tick listed it has to be
+    seen as reopened. The other two paths get that from the refetch their
+    worker hand-off already makes; this one has no hand-off, so it takes the
+    same classification and the same fresh read itself.
     """
     for issue in gh.list_pollable_issues():
         try:
             with semaphore_cm:
-                _dispatch._process_issue(gh, spec, issue)
+                _dispatch._process_polled_issue(gh, spec, issue)
         except Exception:
             log.exception(
                 _dispatch._PROCESSING_FAILED_LOG,
@@ -256,6 +264,12 @@ class _ParallelTickPlan:
                     self.spec,
                     issue_number,
                     semaphore_cm=self.semaphore_cm,
+                    # Carried rather than re-derived: this worker refetches
+                    # the issue, and a reopen in between must not turn a
+                    # cleanup pass into the stage handler its label names.
+                    cleanup_only=(
+                        issue_number in self.partition.cleanup_numbers
+                    ),
                 )
             ] = issue_number
         return futures, family_sentinel

@@ -13,11 +13,14 @@ other's candidate.
 
 from __future__ import annotations
 
+import subprocess
 import unittest
 
 from pathlib import Path
+from unittest.mock import patch
 
 from orchestrator import config
+from orchestrator.git import commands
 from orchestrator.git.snapshots import namespace, refs
 
 from tests.git.snapshots.snapshot_test_support import real_remote
@@ -35,6 +38,18 @@ MIRROR = (
 _OVERLONG = namespace.MAX_REPOSITORY_SEGMENT * 3
 
 LONG_SLUG = "owner/{0}".format("n" * _OVERLONG)
+
+# What git exits with when a command fails outright instead of answering.
+_FATAL = 128
+
+# What every local command answers with once the ref store cannot be read at
+# all: a git directory pruned out from under a running tick, a clone taken
+# away while this process still held a path into it. The one failure real git
+# will not stage on request, and the one a teardown must not read as success.
+UNREADABLE_STORE = subprocess.CompletedProcess(
+    args=(), returncode=_FATAL, stdout="",
+    stderr="fatal: not a git repository",
+)
 
 
 def _preserved(remote) -> None:
@@ -165,7 +180,22 @@ class SharedTargetRootTest(unittest.TestCase):
 
 
 class LocalSnapshotReclamationTest(unittest.TestCase):
-    """This host's copy goes with the remote ref it mirrors."""
+    """This host's copy goes with the remote ref it mirrors, and goes first.
+
+    A child of a split reads a surviving mirror as proof that nobody has
+    reclaimed its ancestor's ref, which is what keeps a per-tick guard off the
+    network. Taken the other way round -- remote first, mirror after, on a
+    delete that is best-effort against this host's disk -- a local teardown
+    that failed left exactly the state that guard cannot tell from an
+    untouched world, and the child ran on against a candidate nobody vouches
+    for. So the mirror is dropped first, and one that will not go -- or that
+    a failed read cannot tell from one already gone -- stops the reclamation
+    instead.
+
+    The reading on the other side of that guarantee is an identity: this
+    checkout's ref store is one the agents' own worktrees share, so a copy
+    proves only the commit it carries.
+    """
 
     def test_it_drops_this_host_s_copy_too(self) -> None:
         # A mirror nothing deletes holds the snapshot's objects against `gc`
@@ -196,6 +226,84 @@ class LocalSnapshotReclamationTest(unittest.TestCase):
                 refs.SnapshotOutcome.ABSENT,
             )
             self.assertIsNone(refs._local_ref_sha(remote.clone, MIRROR))
+
+    def test_a_mirror_that_survives_keeps_the_ref(self) -> None:
+        # The state the guard cannot read: remote reclaimed, mirror standing,
+        # no receipt yet. It is unreachable because the remote is never asked
+        # while this host's copy is still here -- staged with the lock file a
+        # crashed git leaves behind, which is what a ref store other worktrees
+        # of the same clone share really refuses a delete with.
+        with real_remote() as remote:
+            _preserved(remote)
+            remote.lock_ref(MIRROR)
+
+            reclaimed = refs.delete_snapshot_ref(
+                remote.spec, remote.clone, ref=REF, sha=remote.sha,
+            )
+
+            self.assertEqual(reclaimed, refs.SnapshotOutcome.REFUSED)
+            self.assertEqual(remote.remote_ref_sha(REF), remote.sha)
+            self.assertEqual(_mirrored(remote), remote.sha)
+
+    def test_a_teardown_it_cannot_prove_keeps_the_ref(self) -> None:
+        # The same state through the check rather than through the delete: a
+        # ref that is not there and a store nothing can read answer a
+        # resolution alike, so a check reading "could not ask" as "already
+        # gone" is what takes the remote ref on the one tick where both halves
+        # of the teardown failed -- and what stands after it reads, to every
+        # child, as a reclamation that never happened.
+        with real_remote() as remote:
+            _preserved(remote)
+
+            with patch.object(
+                commands, "_git_hardened", return_value=UNREADABLE_STORE,
+            ):
+                reclaimed = refs.delete_snapshot_ref(
+                    remote.spec, remote.clone, ref=REF, sha=remote.sha,
+                )
+
+            self.assertEqual(reclaimed, refs.SnapshotOutcome.REFUSED)
+            self.assertEqual(remote.remote_ref_sha(REF), remote.sha)
+            self.assertEqual(_mirrored(remote), remote.sha)
+
+    def test_a_repointed_mirror_is_not_this_snapshot(self) -> None:
+        # The half the guard rests on, and the reason it is not an existence
+        # check: anything with this checkout can point a ref in it wherever it
+        # likes. A copy at another commit is not the candidate a child was
+        # promised, and reading it as one would start that child on work
+        # nobody adjudicated AND skip the remote read that would have parked
+        # it -- the mirror answers before the wire is touched at all.
+        with real_remote() as remote:
+            # Planted rather than fetched: what is under test is the reading,
+            # and the fetch that ordinarily puts a copy here is proved above.
+            remote.point_local_ref(MIRROR, remote.sha)
+            self.assertTrue(refs.local_snapshot_present(
+                remote.spec, remote.clone, ref=REF, sha=remote.sha,
+            ))
+
+            remote.point_local_ref(MIRROR, remote.other_sha)
+
+            self.assertFalse(refs.local_snapshot_present(
+                remote.spec, remote.clone, ref=REF, sha=remote.sha,
+            ))
+            self.assertEqual(_mirrored(remote), remote.other_sha)
+
+    def test_a_repointed_ref_keeps_this_host_s_copy(self) -> None:
+        # Which is why the read comes before the drop rather than after it: a
+        # ref carrying another commit is somebody else's, and a mirror dropped
+        # ahead of finding that out would throw away this host's only copy of
+        # a candidate the call then refuses to reclaim.
+        with real_remote() as remote:
+            _preserved(remote)
+            remote.drop_remote_ref(REF)
+            remote.plant_ref(REF, remote.other_sha)
+
+            reclaimed = refs.delete_snapshot_ref(
+                remote.spec, remote.clone, ref=REF, sha=remote.sha,
+            )
+
+            self.assertEqual(reclaimed, refs.SnapshotOutcome.MISMATCH)
+            self.assertEqual(_mirrored(remote), remote.sha)
 
 
 if __name__ == "__main__":

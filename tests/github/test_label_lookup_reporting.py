@@ -11,7 +11,7 @@ from github import GithubException
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.issues import CLOSED_SWEEP_LOOKUPS
+from orchestrator.github.issues import SWEEP_LOOKUPS
 
 _LOG_CHANNEL = "orchestrator.github"
 _REPO_SLUG = "owner/repo"
@@ -23,11 +23,12 @@ _SERVER_ERROR_STATUS = 502
 _CANONICAL_LABEL = "workflow:implementing"
 _SWEEP_CADENCE_ATTR = "CLOSED_ISSUE_SWEEP_EVERY_N_TICKS"
 
-# Every pre-namespace spelling the sweep asks for beside a namespaced one --
-# five of them, and all five answer 404 on a repository the rename reached.
+# Every pre-namespace spelling the sweep asks for beside a namespaced one,
+# recovery states and cleanup states alike -- all of them answer 404 on a
+# repository the rename reached.
 _LEGACY_NAMES = tuple(
     name
-    for name, absence_is_expected in CLOSED_SWEEP_LOOKUPS
+    for name, absence_is_expected in SWEEP_LOOKUPS
     if absence_is_expected
 )
 

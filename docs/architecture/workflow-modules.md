@@ -62,7 +62,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     comments.py             the orchestrator marker, the capped id ledger both posters write, and the trusted-author
                             thread read every prompt quotes
     dispatch.py             one tick's pollable issues turned into handler calls: the hard-skip filter, the family /
-                            fanout partition and its cap exemptions, the per-worker refetch, the refusal that keeps a
+                            fanout partition and its cap exemptions, the per-worker refetch and the sequential path's
+                            own classify-and-refetch beside it (on the two labels where a CLOSE decides which
+                            handler runs, neither reading of it may be taken from the poll), the refusal that keeps a
                             relabelled late adjudication off every other stage's handler, and the timed dispatch
     drift.py                the user-content hash and the six filters that keep content nobody wrote out of it, the
                             dev resume a drift earns, and the decomposition reset the pre-implementation route takes
@@ -100,7 +102,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             comment untouched and an unreadable obligation intact
     lineage.py              what a child born of a split inherits and reads back fail-closed: the lineage it
                             continues, the adjudication that created it, the snapshot ref and exact commit it may
-                            reuse, and the slice it owns
+                            reuse, and the slice it owns -- plus the two markers that claim a lineage outside the
+                            pinned comment, the receipt the transaction stamps into a child's body and the one a
+                            reclamation leaves on its thread, and the reader that turns the first back into a
+                            lineage when the pinned write that would have recorded one never landed
     exemption.py            the one commit an accepted candidate publishes under -- written, read, and compared
                             fail-closed, and deliberately outside the group a cleared generation drops
     restart.py              the two-phase restart marker: the closed pair of labels it may apply, the cycle it
@@ -154,8 +159,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             repair, the incomplete park, and the two owners that hold those markers instead -- a
                             human the issue is parked awaiting, and the late transaction while its generation is
                             live
-      parents.py            the fresh child scan, the rejected and manually-closed parks it earns, and the parent's
-                            own drift reroute
+      parents.py            the fresh child scan, the rejected and manually-closed parks it earns -- published
+                            apart from the scan, since one caller settles its ledger on the way out of them -- and
+                            the parent's own drift reroute
       activation.py         the dep-graph walk that releases the next children, the child it passes over because
                             GitHub reports it closed or the scan holds no issue for it, and the held-dependency
                             line it logs
@@ -217,14 +223,47 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the write that hands the issue on, the activation behind it -- through the shared
                             dep-graph walk, so a child that ended while the supersession was parked is left where
                             it is -- and the branch cleanup recorded as owed and attempted after
-      late_cleanup.py       what a split still owes a remote once its children are running: the branch obligations
-                            in every state but reconciled and the refs still held, the exact-name check a branch and a
-                            snapshot ref each have to pass before anything is deleted by it, the rule that decides
-                            whether a ref's recorded consumers have all ended, the two deletes -- the branch one
-                            taking the remote ref, the checkout, and the local ref, and proving all three gone --
-                            and the one write that records either answer, what may not be left behind (an opaque
-                            ledger and a damaged identity included), and the question the umbrella's terminal asks
-                            before it closes
+      late_cleanup.py       what a split still owes a remote once its children are running: the fresh per-consumer
+                            scan every rule here is proved against (a read that fails keeps its own ref and stops
+                            nothing else), the branch obligations in every state but reconciled and the refs still
+                            held, the exact-name check a branch and a snapshot ref each have to pass before anything
+                            is deleted by it, the rule that decides whether a ref's recorded consumers have all
+                            ended -- read off each consumer's issue state, since a reopen keeps the terminal label,
+                            and whether the list names all of them read off the record's phase, since a child is
+                            created before it is recorded -- the two deletes, the branch one taking the remote ref,
+                            the
+                            checkout, and the local
+                            ref and proving all three gone, the snapshot one ordered on the record before it is
+                            carried out and then re-proved against consumers read past that write (and retried past
+                            the proof only for a ref one read-only ask shows the remote no longer has, with a
+                            raising transport read as the refusal it is), the receipt every child cut from a
+                            reclaimed ref is left -- one comment, marked with this owner, cycle, and generation so
+                            it is said once, and never a write to that child's own pinned state, with the entry
+                            left `reclaiming` for a consumer it could not reach -- the one write that records any of
+                            it, the settle both callers share, what may not be left behind (everything
+                            unreconciled, an opaque ledger and a damaged identity included), and the question the
+                            umbrella's terminal asks before it closes -- and that a park for a rejected or
+                            hand-closed child asks on its way out, since both of those ended the consumer they
+                            name and nothing else revisits an open umbrella
+      late_reuse.py         what a child born of a split proves before it starts, taken on the child's own
+                            dispatch because the owner that reclaimed the ref cannot write another live issue's
+                            pinned comment safely: its own owner's receipt read off its thread first, which is what
+                            says the reclamation HAPPENED and outranks a mirror nobody dropped or a ref pushed again
+                            at the same commit -- so a thread that could not be READ holds the dispatch rather than
+                            falling through; then, where the thread answered and carries none, this host's mirror
+                            read for the commit it carries -- and only where the pointer carries the stamp saying a
+                            reclamation would have dropped it first -- and the remote behind it, whose absent /
+                            re-pointed / unreadable answers park, park, and HOLD the dispatch respectively; and, for a child the split recorded but never managed to
+                            seed, the same answers over the pointer its BODY marker earns -- corroborated against
+                            the owner's own fresh generation first, since a body is a field the world can write and
+                            a receipt is posted only after the ref is gone -- with the park, the pointer dropped or
+                            the lineage repaired, taken before the label's handler is reached
+      late_sweep.py         the cleanup-only pass over an owner a human closed mid-cycle -- reached by being closed
+                            on `decomposing` or `umbrella`, never by the label alone: the close re-read on a freshly
+                            refetched issue, whichever path routed it, and the pinned read that says whether
+                            anything is left to settle. Every rule it applies is `late_cleanup`'s, asked in the same order the
+                            umbrella's terminal asks them; what is here is the entry a closed issue has no handler
+                            to give it
       late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the exemption
                             naming the measured commit, the plan-PR hold released and the pull request reconciled
                             against that commit in any state -- with a settled pointer dropped rather than handed on

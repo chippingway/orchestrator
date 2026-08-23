@@ -34,11 +34,45 @@ Closed fan-out issues are exempt for the same reason at the other end: their
 handler is a terminal finalize with no spawn, so it must not queue behind
 active agent work.
 
+A closed issue on the two cleanup-swept decomposition labels is the one case
+where the label does NOT name the handler. `decomposing` and `umbrella` reach
+the sweep yielding them only so their generation ledger can be settled, and
+handing one to the stage handler its label names would spawn the decomposer on
+an issue a human closed, or walk a dependency graph and activate children under
+it. So the cleanup route is taken FIRST, ahead of the table and ahead of the
+pinned-state guards, and the issue never reaches either.
+
+Past that route, one read of the issue's own pinned comment answers two
+questions that can stop the tick outright: a live late adjudication the label
+was moved out from under, and a child of a split whose snapshot the remote no
+longer has. The second is asked here rather than in a stage precisely because
+the issue it is about is one nothing below would touch -- a consumer that ended
+wears `done` or `rejected`, reopening leaves the label where it was, and both
+are terminal no-ops.
+
+That is also why such an issue is partitioned as FAN-OUT rather than into the
+family bucket, despite wearing a family-aware label. The bucket's exemption is
+all-or-nothing, so a closed owner sharing it with an open `decomposing` issue
+would be cap-counted and skipped under saturated caps -- cleanup starved by
+work it has nothing to do with. As fan-out it is submitted cap-exempt on its
+own, and it does not need the family mutex: what serializes a parent against
+its children is a mutex over handlers that ACTIVATE, and this one reads its
+consumers and writes only issues it has proved terminal. The fan-out lane
+already runs those consumers' own closed-sweep finalizers concurrently, so the
+bucket would not have protected against them either.
+
 Only issue NUMBERS cross the thread boundary. PyGithub's `Issue` and the
 `GitHubClient` / `Repository` / `Requester` chain behind it hold mutable
 per-request state that is not documented thread-safe, so `_refetch_and_process`
 mints a per-worker client and refetches against it -- every in-flight call is
 then the sole consumer of its own requester.
+
+That refetch is also what makes the cleanup classification safe to act on,
+which is why the sequential path takes one of its own. A closed owner is
+routed to the sweep on a reading taken during enumeration, and the sweep's
+re-read of the close is only a question if the issue was read again since -- so
+`_process_polled_issue` classifies and refetches on the caller's thread rather
+than dispatching the object the poll yielded.
 
 The handler for a label is reached by importing the module
 `_STAGE_HANDLER_TARGETS` pairs it with, at call time: twelve of them are
@@ -65,7 +99,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.issues import issue_is_closed
+from orchestrator.github.issues import CLEANUP_SWEEP_LABELS, issue_is_closed
 from orchestrator.observability.analytics import recording
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.scheduler import IssueScheduler
@@ -86,11 +120,19 @@ _CAP_EXEMPT_FAMILY_LABELS = frozenset((
     WorkflowLabel.BLOCKED, WorkflowLabel.UMBRELLA,
 ))
 
+# The labels whose CLOSED issues the sweep yields for cleanup only. Kept as a
+# set of the members the sweep publishes so the two cannot drift: a label
+# queried there and missing here is a closed issue dispatched to the stage
+# handler its label names, which is the one thing the cleanup route exists to
+# prevent.
+_CLEANUP_SWEEP_LABELS = frozenset(CLEANUP_SWEEP_LABELS)
+
 _FAMILY_BUCKET_ISSUE: int = 0
 
 _CONFLICTS_PACKAGE = "orchestrator.workflow.stages.conflicts"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
 _LATE_RELABEL_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_relabel"
+_LATE_REUSE_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_reuse"
 _DISCUSSION_PACKAGE = "orchestrator.workflow.stages.discussion"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _FIXING_PACKAGE = "orchestrator.workflow.stages.fixing"
@@ -100,6 +142,13 @@ _QUESTION_PACKAGE = "orchestrator.workflow.stages.question"
 _VALIDATING_PACKAGE = "orchestrator.workflow.stages.validating"
 
 _TERMINAL_LABELS = (WorkflowLabel.DONE, WorkflowLabel.REJECTED)
+
+# The one handler a label does not choose. It is reached by being closed on a
+# cleanup-swept label instead, and it is deliberately not in the table below:
+# an entry there would make it the handler for those labels open or closed.
+_CLEANUP_SWEEP_TARGET = (
+    f"{_DECOMPOSITION_PACKAGE}.late_sweep", "_handle_closed_owner_cleanup",
+)
 
 # Keyed by the member rather than the label string so the table cannot drift
 # from the vocabulary it routes: a relabeled state is a lookup miss here, and a
@@ -123,40 +172,94 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
 })
 
 
-def _late_adjudication_holds_the_label(
+def _pinned_state_refuses(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, label: Optional[str],
 ) -> bool:
-    """True when a live late adjudication forbids this label's handler.
+    """True when what this issue's own pinned comment records stops the tick.
 
-    An oversized committed candidate is adjudicated under
-    ``workflow:decomposing``, and while that question is open the label is not
-    a state anything else may set. A hand relabel cannot be refused where it is
-    written -- the orchestrator never sees that write -- so it is caught here,
-    the one place a label becomes a handler call: the issue is put back and
-    left for the next tick rather than dispatched to whichever stage the new
-    label named, which for ``ready`` or ``implementing`` would publish a
-    candidate nobody adjudicated.
+    ONE read, two questions, because the read is what costs -- a comment walk
+    per labelled issue per tick, on top of the one that issue's own handler
+    makes.
 
-    The pinned read this costs is skipped for the label the adjudication
-    actually sits on, which is where every one of its own ticks is spent; the
-    owner beside it explains what the rest is paid for. Imported at call time
-    like the handlers below, since the stage tree imports this module.
+    The first is a live late adjudication. An oversized committed candidate is
+    adjudicated under ``workflow:decomposing``, and while that question is open
+    the label is not a state anything else may set. A hand relabel cannot be
+    refused where it is written -- the orchestrator never sees that write -- so
+    it is caught here, the one place a label becomes a handler call: the issue
+    is put back and left for the next tick rather than dispatched to whichever
+    stage the new label named, which for ``ready`` or ``implementing`` would
+    publish a candidate nobody adjudicated.
+
+    The second is a child of a split whose snapshot has since been reclaimed.
+    That one has to be asked HERE rather than inside a stage, because the issue
+    it is about is one the dispatcher would otherwise have nothing to do with:
+    a consumer that ended wears ``done`` or ``rejected``, reopening leaves the
+    label where it was, and both are terminal no-ops below. Asking before the
+    table also means a relabel straight to another stage cannot route around
+    it. It costs nothing extra on the wire in the steady state -- the guard
+    asks this host before it asks the remote.
+
+    Both step aside for the label the adjudication actually sits on, which is
+    where every one of its own ticks is spent, and where an ancestor's snapshot
+    is not what the issue is working from -- but only once the record PROVES
+    the adjudication is this issue's own. The label alone proves nothing: a
+    child of a split closed while it was being decomposed comes back with
+    ``decomposing`` exactly where it was and no generation at all, and its
+    ancestor's ref may well have been reclaimed while it was closed. Waving
+    that through on the label would spawn the decomposer against the reuse
+    instructions in its body, naming a ref that is gone. So the read is taken
+    first and the label is answered out of it. Imported at call time like the
+    handlers below, since the stage tree imports this module.
     """
-    if label == WorkflowLabel.DECOMPOSING:
-        return False
     late_relabel = importlib.import_module(_LATE_RELABEL_OWNER)
-    if not late_relabel._refuses_dispatch(gh, issue):
+    state = late_relabel._dispatch_state(gh, issue)
+    if state is None:
+        return True
+    if label == WorkflowLabel.DECOMPOSING and late_relabel._adjudicating(state):
         return False
-    log.warning(
-        "repo=%s issue=#%s was relabelled %r while its committed candidate "
-        "was under adjudication; not dispatching it",
-        spec.slug, issue.number, label,
-    )
-    return True
+    if late_relabel._holds_the_label(gh, issue, state):
+        log.warning(
+            "repo=%s issue=#%s was relabelled %r while its committed candidate "
+            "was under adjudication; not dispatching it",
+            spec.slug, issue.number, label,
+        )
+        return True
+    late_reuse = importlib.import_module(_LATE_REUSE_OWNER)
+    return late_reuse._refuses_reuse(gh, spec, issue, state)
+
+
+def _cleanup_sweep_only(issue: Issue, label: Optional[str]) -> bool:
+    """True when this issue is here for its ledger and nothing else.
+
+    A closed issue on ``decomposing`` or ``umbrella`` reaches a tick only
+    because the cleanup sweep asked for it, and what it is owed is a pass over
+    its generation ledger. Its label still names a stage handler -- one that
+    spawns the decomposer, or one that walks a dependency graph and activates
+    children -- so the closed reading has to be taken before the label is, or
+    the sweep would be resuming the workflow a human closed.
+    """
+    return label in _CLEANUP_SWEEP_LABELS and issue_is_closed(issue)
+
+
+def _call_handler(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    target: tuple[str, str],
+) -> None:
+    """Import the module a target names and run the handler off it."""
+    module_name, handler_name = target
+    issue_handler = getattr(importlib.import_module(module_name), handler_name)
+    issue_handler(gh, spec, issue)
 
 
 def _route_issue_to_handler(
-    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, label: Optional[str],
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    label: Optional[str],
+    *,
+    cleanup_only: bool = False,
 ) -> None:
     """Dispatch one issue to its stage handler by workflow label.
 
@@ -168,16 +271,32 @@ def _route_issue_to_handler(
     analytics record stay in ``_process_issue``, which wraps this call in its
     try / except / finally.
 
-    An issue whose label a human moved out from under a live late adjudication
-    is put back instead of dispatched -- see the owner above.
+    Two routes are taken ahead of the table. A closed issue on a cleanup-swept
+    label goes to the sweep owner, because its label names a handler that would
+    resume the workflow its close ended. And what the issue's own pinned
+    comment records can stop the tick outright -- a live adjudication the label
+    was moved out from under, or a snapshot this child was cut from and the
+    remote no longer has. The cleanup route comes first: that guard spends a
+    pinned read to decide, and a closed owner is not dispatched on either
+    answer.
+
+    ``cleanup_only`` is that first route arriving as a decision rather than as
+    a reading. It is set by the submit that a closed cleanup owner was
+    classified into, and it BINDS: the worker refetches the issue after the
+    classification, so a human who reopens one in that window would otherwise
+    have the freshly-read label send it to the handler its cap-exempt submit
+    was granted on the understanding it would never reach. The sweep refuses
+    an issue that is open again, so the answer to that race is a no-op and a
+    correctly classified next tick.
     """
-    if _late_adjudication_holds_the_label(gh, spec, issue, label):
+    if cleanup_only or _cleanup_sweep_only(issue, label):
+        _call_handler(gh, spec, issue, _CLEANUP_SWEEP_TARGET)
+        return
+    if _pinned_state_refuses(gh, spec, issue, label):
         return
     target = _STAGE_HANDLER_TARGETS.get(label)
     if target is not None:
-        module_name, handler_name = target
-        issue_handler = getattr(importlib.import_module(module_name), handler_name)
-        issue_handler(gh, spec, issue)
+        _call_handler(gh, spec, issue, target)
     elif label not in _TERMINAL_LABELS:
         log.warning(
             "repo=%s issue=#%s label=%r not implemented yet; leaving alone",
@@ -185,7 +304,59 @@ def _route_issue_to_handler(
         )
 
 
-def _process_issue(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
+def _process_polled_issue(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue,
+) -> None:
+    """Dispatch one issue this thread polled and still holds.
+
+    The sequential path's own entry, and what it adds over `_process_issue` is
+    the classification the other two paths get on their way to a worker: an
+    issue on a cleanup-swept label is refetched before anything routes it, and
+    a CLOSED reading at poll time additionally BINDS it to the sweep.
+
+    The refetch is the load-bearing half, and it is taken on both readings of
+    the close rather than on one. The object in hand is the enumeration's,
+    and the two labels this applies to are the two where the close decides
+    which handler runs: an owner closed after the poll would otherwise reach
+    the stage its label names on a stale open reading -- spawning the
+    decomposer, or walking a dependency graph and activating children, on an
+    issue a human just ended -- and an owner reopened after the poll would
+    have a cleanup pass settle a ledger the live cycle is writing again, since
+    the sweep's own close re-read would be re-reading the same stale object.
+
+    The binding is the other half, and it is one-way for the reason the
+    workers' is: a closed classification may not become an agent-spawning
+    stage handler on the strength of a reopen this tick raced, while an issue
+    that was open when it was polled has been classified as ordinary work all
+    along and the freshly-read close is what sends it to the sweep.
+
+    Refetched on the caller's own client rather than through
+    `_refetch_and_process`: nothing here crosses a thread, so what that mints
+    a per-worker client for does not apply, while the read it takes does.
+
+    Hard-skipped issues are dropped here as the partition drops them, rather
+    than inside `_process_issue`, so the classification this path takes is the
+    same one the other two take.
+    """
+    skip, label = _classify_pollable_issue(gh, spec, issue)
+    if skip:
+        return
+    if label not in _CLEANUP_SWEEP_LABELS:
+        _process_issue(gh, spec, issue)
+        return
+    _process_issue(
+        gh, spec, gh.get_issue(int(issue.number)),
+        cleanup_only=issue_is_closed(issue),
+    )
+
+
+def _process_issue(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    *,
+    cleanup_only: bool = False,
+) -> None:
     # Postponed-task hold: applying `backlog` (or `paused`) parks the issue
     # outside the state machine entirely until the label is removed. Checked
     # before reading the workflow label so the orchestrator never decomposes,
@@ -212,7 +383,9 @@ def _process_issue(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> Non
     start = time.monotonic()
     evaluation_result = "ok"
     try:
-        _route_issue_to_handler(gh, spec, issue, label)
+        _route_issue_to_handler(
+            gh, spec, issue, label, cleanup_only=cleanup_only,
+        )
     except Exception:
         evaluation_result = "error"
         raise
@@ -235,12 +408,14 @@ class _PollablePartition:
     cap-exempt decision (`_family_bucket_cap_exempt`) can read each
     family-aware issue's workflow label. ``fanout_closed`` is the subset of
     ``fanout_numbers`` whose issue is already closed -- a cheap terminal
-    finalize the dispatcher submits cap-exempt.
+    finalize, or a cleanup pass over a closed owner's ledger, and neither
+    spawns, so both are submitted cap-exempt.
     """
     family_numbers: list[int]
     family_labels: list[Optional[str]]
     fanout_numbers: list[int]
     fanout_closed: set[int]
+    cleanup_numbers: set[int] = field(default_factory=set)
 
 
 @dataclass
@@ -249,15 +424,18 @@ class _PollablePartitionBuilder:
     family_labels: list[Optional[str]] = field(default_factory=list)
     fanout_numbers: list[int] = field(default_factory=list)
     fanout_closed: set[int] = field(default_factory=set)
+    cleanup_numbers: set[int] = field(default_factory=set)
 
     def add(self, issue_number: int, label: Optional[str], closed: bool) -> None:
-        if label is None or label in _FAMILY_AWARE_LABELS:
+        if _drains_in_family_bucket(label, closed):
             self.family_numbers.append(issue_number)
             self.family_labels.append(label)
-        else:
-            self.fanout_numbers.append(issue_number)
-            if closed:
-                self.fanout_closed.add(issue_number)
+            return
+        self.fanout_numbers.append(issue_number)
+        if closed:
+            self.fanout_closed.add(issue_number)
+        if closed and label in _CLEANUP_SWEEP_LABELS:
+            self.cleanup_numbers.add(issue_number)
 
     def build(self) -> _PollablePartition:
         return _PollablePartition(
@@ -265,7 +443,23 @@ class _PollablePartitionBuilder:
             self.family_labels,
             self.fanout_numbers,
             self.fanout_closed,
+            self.cleanup_numbers,
         )
+
+
+def _drains_in_family_bucket(label: Optional[str], closed: bool) -> bool:
+    """Whether this issue belongs in the serialized, all-or-nothing bucket.
+
+    Every family-aware label does, with one exception: a CLOSED issue on a
+    cleanup-swept label runs the sweep rather than the stage its label names,
+    and the sweep neither spawns nor activates. Leaving it in the bucket would
+    tie its exemption to whatever else landed there -- one open `decomposing`
+    issue and the whole bucket is cap-counted, so a repository at its cap
+    stops reclaiming refs until the decomposer is idle.
+    """
+    if closed and label in _CLEANUP_SWEEP_LABELS:
+        return False
+    return label is None or label in _FAMILY_AWARE_LABELS
 
 
 def _read_issue_routing(
@@ -322,10 +516,13 @@ def _partition_pollable_issues(
     while the child's ``_handle_blocked`` would otherwise clobber the same
     pinned-state comment -- so they must never run two at a time and are
     collected into ``family_numbers`` (with index-aligned ``family_labels``).
-    Every other label touches only its own per-issue state and fans out; a
-    closed fanout issue is additionally recorded in ``fanout_closed`` because
-    its handler is a cheap terminal finalize submitted cap-exempt. Hard-skip
-    (``backlog`` / ``paused``) issues are dropped entirely.
+    Every other label touches only its own per-issue state and fans out, as
+    does a CLOSED issue on a cleanup-swept label, whose handler is the sweep
+    rather than the stage its label names. A closed fan-out issue is
+    additionally recorded in ``fanout_closed``, because what it runs is a
+    cheap terminal finalize or a cleanup pass over a closed owner's ledger --
+    neither spawns, so both are submitted cap-exempt. Hard-skip (``backlog``
+    / ``paused``) issues are dropped entirely.
     """
     builder = _PollablePartitionBuilder()
     for issue in gh.list_pollable_issues():
@@ -350,6 +547,11 @@ def _family_bucket_cap_exempt(family_labels: list[Optional[str]]) -> bool:
     containing ``decomposing`` (spawns the decomposer agent) or an
     unlabeled-pickup ``None`` (routes through ``_handle_pickup``, may spawn an
     agent) stays cap-counted.
+
+    A closed issue on a cleanup-swept label is not here to be exempted: it is
+    partitioned as fan-out instead (see ``_drains_in_family_bucket``), so it
+    is submitted cap-exempt on its own rather than tying its turn to whatever
+    else this bucket happens to hold.
     """
     return all(lbl in _CAP_EXEMPT_FAMILY_LABELS for lbl in family_labels)
 
@@ -360,6 +562,7 @@ def _refetch_and_process(
     issue_number: int,
     *,
     semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
+    cleanup_only: bool = False,
 ) -> None:
     """Mint a per-worker client, refetch the Issue, and run its handler.
 
@@ -374,12 +577,20 @@ def _refetch_and_process(
     path can thread the cross-repo ``global_semaphore`` through here; the
     scheduler path leaves it ``None`` (a no-op) because the scheduler owns
     the cross-repo cap itself.
+
+    ``cleanup_only`` rides along because the refetch is exactly where a
+    classification can go stale. A closed cleanup owner is submitted on its
+    own cap-exempt terms, and a reopen between the poll and this call must not
+    turn that submit into an agent-spawning stage handler running outside the
+    caps -- so the route is carried rather than re-derived.
     """
     worker_gh = gh._for_worker_thread()
     worker_issue = worker_gh.get_issue(issue_number)
     cm = contextlib.nullcontext() if semaphore_cm is None else semaphore_cm
     with cm:
-        _process_issue(worker_gh, spec, worker_issue)
+        _process_issue(
+            worker_gh, spec, worker_issue, cleanup_only=cleanup_only,
+        )
 
 
 def _drain_scheduler_family_bucket(
@@ -482,7 +693,13 @@ def _submit_scheduler_fanout_issues(
         scheduler.submit(
             spec.slug,
             issue_number,
-            functools.partial(_refetch_and_process, gh, spec, issue_number),
+            functools.partial(
+                _refetch_and_process,
+                gh,
+                spec,
+                issue_number,
+                cleanup_only=issue_number in partition.cleanup_numbers,
+            ),
             family=False,
             # A closed issue's handler is a cheap terminal finalization with
             # no agent spawn -- exempt it from the per-repo / global caps so
@@ -568,7 +785,10 @@ def _dispatch_via_scheduler(
     agent spawn, so it must not be starved behind active agent work -- a
     merged-PR issue could otherwise sit closed-but-labeled for many ticks
     while a sibling ``validating`` / ``documenting`` agent holds the only
-    per-repo slot.
+    per-repo slot. A closed ``decomposing`` / ``umbrella`` owner is a fan-out
+    submit for exactly this reason: its handler is the cleanup sweep, which
+    settles a ledger and spawns nothing, and folding it into the bucket would
+    make its turn depend on whatever else landed there.
     """
     per_repo_cap = _scheduler_per_repo_cap(spec)
     # `_partition_pollable_issues` owns the skip-label filtering, per-issue

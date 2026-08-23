@@ -235,7 +235,8 @@ The dispatch loop classifies each pollable issue by workflow label before submit
   single worker thread, so parent / child handlers cannot race. A bucket whose every label is in
   `_CAP_EXEMPT_FAMILY_LABELS` (`workflow:blocked` or `workflow:umbrella` — pure label / dep-graph walks) runs on a
   dedicated executor and does not consume a `MAX_PARALLEL_ISSUES_*` slot, so a blocked parent waiting on children
-  cannot deadlock those children.
+  cannot deadlock those children. A **closed** issue on a cleanup-swept label is not in this bucket at all: its
+  handler is the cleanup sweep rather than the stage its label names, so it fans out with its own exemption.
 - **Fan-out labels** (`workflow:ready`, `workflow:implementing`, `workflow:documenting`, `workflow:validating`,
   `in_review`, `workflow:fixing`, `workflow:resolving_conflict`, and the operator-applied `question` and
   `discussion`) only touch their own state and worktree. They run concurrently up to the per-repo and global caps. A
@@ -301,9 +302,10 @@ a PR the next handler would finalize. A `gh.get_pr` failure is treated as "leave
 ### Pollable issues and finalization
 
 `gh.list_pollable_issues()` yields all open non-PR issues plus closed non-PR issues still labeled with one of the
-eight sweep labels: `workflow:implementing`, `workflow:documenting`, `workflow:validating`, `in_review`,
-`workflow:fixing`, `workflow:resolving_conflict`, `question`, `discussion`. Each is queried under its pre-namespace
-spelling too, because a closed issue is the one case no other pass revisits: on a repository whose labels the
+eight recovery sweep labels — `workflow:implementing`, `workflow:documenting`, `workflow:validating`, `in_review`,
+`workflow:fixing`, `workflow:resolving_conflict`, `question`, `discussion` — or one of the two cleanup ones,
+`workflow:decomposing` and `workflow:umbrella`. Each of the seven that HAS a pre-namespace spelling is queried under
+that too, because a closed issue is the one case no other pass revisits: on a repository whose labels the
 bootstrap could not rename (see
 [Legacy labels and the migration off them](#legacy-labels-and-the-migration-off-them)), the bare label is
 all that is left to find it by. Both queries feed one seen-number set, so an issue carrying both spellings is yielded
@@ -325,11 +327,32 @@ once. The closed-issue sweep makes external manual merges and operator closes fi
   merges (`done`) or closes unmerged (`rejected`). Nothing else revisits a closed issue, so a terminal flip while
   that PR is open would strand the worktree and the branches the plan lives on.
 
-Pre-PR labels (`workflow:decomposing` / `workflow:blocked` / `workflow:umbrella` / `workflow:ready`) are not swept
-closed — a closed issue at those stages is a hard human stop until an operator relabels.
+`workflow:blocked` and `workflow:ready` are not swept closed — a closed issue at either stage is a hard human stop
+until an operator relabels.
+
+`workflow:decomposing` and `workflow:umbrella` are swept closed, but for **cleanup only**, and they are the one case
+where the label does not choose the handler. A split records what it owes the remote on the closing issue's own
+generation ledger — the branch its superseded candidate was committed on, and the immutable snapshot ref its children
+were cut from — and an issue a human closes mid-cycle is one nothing else would ever bring a tick back to. So the
+dispatcher reads *closed* first and routes both to the cleanup sweep
+([`delivery-stages.md`](delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)) rather than to
+`_handle_decomposing` or `_handle_umbrella`, which would spawn the decomposer or activate children on an issue whose
+close was a decision to stop. The pass reads the ledger, re-reads every recorded snapshot consumer, settles what can
+be settled, and does nothing else: no agent, no relabel, no activation, no terminal. It rides the same sweep walk,
+the same cadence, the same label cache, and the same absent-label throttle as the recovery labels above. It is
+partitioned as **fan-out** rather than into the family bucket, and submitted `cap_exempt=True` on its own: the
+bucket's exemption is all-or-nothing, so one open `workflow:decomposing` issue sharing the tick would make a closed
+owner cap-counted and, under a saturated cap, skipped — which would stop the repository reclaiming refs for as long
+as its decomposer stayed busy.
+
+- Closed `workflow:decomposing` / `workflow:umbrella` — a snapshot owner a human closed mid-cycle. Its generation
+  ledger may still hold a superseded branch and an immutable snapshot ref, and no other pass revisits a closed issue.
+  This is the one sweep entry that is not a terminal arc: it settles the ledger and nothing else (see above).
 
 The closed-issue sweep issues one closed-issue query per sweep label the repository actually carries, per repo, every
-tick — a fixed request cost that drives GitHub primary-rate-limit exhaustion on multi-repo hosts. A pre-namespace
+tick — a fixed request cost that drives GitHub primary-rate-limit exhaustion on multi-repo hosts. The two cleanup
+labels ride that same walk rather than a second pass of their own, so what they add is two label lookups and two
+closed-issue queries on the ticks the sweep already runs, and nothing at all in between. A pre-namespace
 spelling the rename already retired costs only its `GET …/labels/<name>` miss, and even that is thrown away for
 twenty sweeps before being asked again rather than re-requested every pass. The spellings one sweep confirms absent
 are reported together, in a single repo-qualified INFO line naming them, so a migrated multi-repo host does not open
@@ -623,16 +646,28 @@ rather than preserving.
   inside one precisely so that comparison is possible: the generation counter advances on every reconciliation that
   lands, and a body keyed to it could never be reconstructed after a re-measurement.
 - **External-resource ledgers.** `late_resources` holds one `{kind, target, state}` entry per obligation the remote is
-  owed — kind `snapshot_ref` / `branch` / `plan_pr` / `child`, state `pending` / `retained` / `reconciled` / `failed`
+  owed — kind `snapshot_ref` / `branch` / `plan_pr` / `child`, state `pending` / `retained` / `reclaiming` /
+  `reconciled` / `failed`
   — keyed on kind and target, so a reconciliation repeated after a crash updates the entry it already wrote instead
-  of appending a second one. `late_consumers` is the direct snapshot consumers, deduplicated and ordered, since the
-  reclamation rule asks about each of them once, and only a positive whole number is one — `True`, `2.5`, and `"7"`
-  are not issues anything can ask GitHub about, and neither the reader nor `with_consumers` will convert one into a
-  consumer id. Neither ledger is ever *reduced* to what this binary understood: an entry it cannot type, or a
+  of appending a second one. `reclaiming` is the decision, written *before* the delete that carries it out, so a tick
+  that died between the push and the record of it has something durable to retry. What the retry does not get is a
+  pass on the proof: the consumers are read again on every visit, immediately ahead of the delete, and one that came
+  back keeps the ref and leaves the entry `reclaiming`. The single exception is a ref the remote no longer has: the
+  delete has already happened, what is left is finishing it, and a consumer that came back to it is answered by the
+  receipt and the child's own guard rather than by keeping a ref nobody holds. Every
+  state but `reconciled` is still owed. `late_consumers` is the direct snapshot consumers, deduplicated and ordered,
+  since the reclamation rule asks about each of them once — and it is read from the other end too, as the one record
+  that can vouch for a child claiming this split in a body marker anybody can paste. Only a positive whole number is
+  one — `True`, `2.5`,
+  and `"7"` are not issues anything can ask GitHub about, and neither the reader nor `with_consumers` will convert
+  one into a consumer id. Neither ledger is ever *reduced* to what this binary understood: an entry it cannot type, or a
   consumer list it cannot read, is carried through verbatim beside the typed view and written back exactly as it
   came, and `LateGeneration.has_opaque_ledger` says so — and while it does, `with_resource` and `with_consumers`
   refuse an update to that ledger rather than returning a record the next write would silently drop back to the
-  verbatim copy. "Typed" is strict there, because the alternative to
+  verbatim copy. The two are preserved and written **independently**, and the reclamation refuses them
+  independently: an untypable entry on `late_resources` means no reclamation can be recorded at all, while one on
+  `late_consumers` means only that no snapshot's proof can be taken — the superseded branch, which owes no consumer
+  anything, is still deleted and still retried. "Typed" is strict there, because the alternative to
   preserving an entry is rewriting it from what was understood — an entry counts as one this binary wrote only when
   it carries exactly the three fields it writes, each holding a value this vocabulary knows, so a state it cannot
   read is **not** `pending`, a field it never wrote is not noise to drop, and a target that is not a usable
@@ -664,7 +699,8 @@ rather than preserving.
   recorded ref was created for is the one its reclamation compares against.
 - **Inherited lineage.** `late_ancestry_root_issue`, `late_ancestry_depth`, `late_ancestry_parent`,
   `late_ancestry_cycle_id`, `late_ancestry_generation`, `late_ancestry_snapshot_ref`,
-  `late_ancestry_snapshot_sha`, `late_ancestry_base_branch`, and `late_declared_scope` are what a child born of a
+  `late_ancestry_snapshot_sha`, `late_ancestry_mirror_first`, `late_ancestry_base_branch`, and `late_declared_scope`
+  are what a child born of a
   late split carries, and they are a separate group from the generation above because they answer a separate
   question and outlive it: a generation is minted, adjudicated, and retired inside one issue, while an ancestry is
   written once when the child is created and is still true after that child has been implemented, split again, and
@@ -675,7 +711,14 @@ rather than preserving.
   correlated back to the adjudication that created it by. The snapshot ref and commit are the only durable pointer
   to the work the child is meant to reuse, since the branch it was committed on is superseded and the pull request
   that carried it is closed — both halves or neither, because a ref with no commit cannot be verified against
-  anything and a commit with no ref names work nothing can fetch. `late_declared_scope` is the slice the
+  anything and a commit with no ref names work nothing can fetch. `late_ancestry_mirror_first` travels with that pair
+  and is a claim about the world rather than about the child: that any reclamation which can take this ref drops
+  **this host's copy of it first**. The child's own reuse guard reads a surviving copy as proof no reclamation has
+  happened, and that reading holds only against an orchestrator ordering the two — a pointer written before this one
+  did (the remote ref first, the mirror best-effort behind it) can leave a copy standing beside a ref that is gone.
+  Written `true` by the split that seeds the child and absent otherwise, so an unstamped pointer is answered with one
+  read-only `ls-remote` instead of the free local read. Nothing migrates: the stamp is written by the binary that
+  would do the reclaiming, so its absence is the whole question answered. `late_declared_scope` is the slice the
   adjudication assigned, and it is what the child's own late prompt states rather than an issue body somebody has
   since edited. Every field is additive and read fail-closed like the generation's own: an issue that reached this
   workflow another way carries none of these keys, and a hand-edited one reads back absent rather than becoming a
