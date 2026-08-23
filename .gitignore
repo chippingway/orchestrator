@@ -43,10 +43,4 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
-.venv
-venv
-
-# Rust
-target/
-/rust_out
-
+.coverage
