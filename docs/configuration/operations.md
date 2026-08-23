@@ -177,10 +177,14 @@ An issue whose committed implementation is adjudicated as a split leaves two thi
 branch its superseded candidate was committed on, and an immutable snapshot ref under
 `refs/orchestrator/late-split/issue-<n>/cycle-<c>/gen-<g>` holding the exact commit its children were told to reuse.
 Both are recorded on the issue's own pinned obligation ledger, and the orchestrator reclaims them itself — there is
-no TTL and no background garbage collection. Two passes do it, and between them every live ledger stays visited:
+no TTL and no background garbage collection. Three passes do it, and between them every live ledger stays visited:
 
 - the **umbrella's terminal**, which settles what is owed before it closes the parent (see
   [`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#_handle_umbrella-label-workflowumbrella));
+- the **umbrella's park**, on the way out of the two dispositions that stop the parent for a human — a child
+  `rejected`, or one closed without reaching a terminal label. Both closed the child, which is the reading the rule
+  takes, so the ledger is settled from the same scan that parked the parent; the park itself is unchanged and no
+  terminal is decided. Nothing else revisits an issue parked this way, which is why it happens here;
 - the **closed-owner cleanup sweep**, for an issue a human closed mid-cycle while it still carried
   `workflow:decomposing` or `workflow:umbrella` (see
   [`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)).
@@ -191,7 +195,7 @@ raising that knob (the multi-repo rate-limit advice in
 survives, by the same factor. It is cleanup-only: it never spawns an agent, resumes a workflow, activates a child, or
 changes a label.
 
-**What to look at when something is not going away.** Two signals, and they mean different things:
+**What to look at when something is not going away.** Three signals, and they mean different things:
 
 - A `late_failure` carrying `snapshot_delete_failed` or `branch_cleanup_failed`, repeated on the same issue (see
   [`../observability/event-streams.md`](../observability/event-streams.md#late-split-records-both-sinks)), together
@@ -207,6 +211,12 @@ changes a label.
   waiting for on each tick. A child that stays open forever keeps its ancestor's ref forever, which is the
   deliberate trade — invalidating a live child's only copy of the work it was told to reuse is worse. Closing (or
   finishing) the child is what lets both go.
+- A `late_cleanup` carrying `outcome: reclaiming`, and an umbrella that will not close over a ref that is already
+  **gone**. That state is progress, not failure: the decision is written down before the delete, so an entry left in
+  it is one whose delete landed while a child it owes a receipt could not be reached. Every obligation short of
+  `reconciled` holds the terminal, so the parent stays open until the next visit finishes the telling — which it
+  does by finding the ref absent, which counts as reclaimed, and then saying so to the children that were missed. A
+  child that stays unreachable is the one case that repeats, and the log line names it on every visit.
 
 To list what a repository is holding:
 
@@ -228,19 +238,31 @@ and it makes sure nothing resumes against one:
 - **The child refuses the work itself, at its own dispatch.** Before any handler runs, an issue whose recorded
   ancestry still names a snapshot looks for that receipt on its own thread — marked with the owner, cycle, and
   generation it was born of, and authored by the orchestrator — and refuses if it finds one. That answer is
-  authoritative: it says the reclamation *happened*, which no later look at the ref can contradict. Only where no
-  receipt landed does it fall back to asking whether the ref is still there, and there only a proved absence
-  refuses. A refusal drops the dangling pointer, parks the issue on `awaiting_human`, and returns before the label's
-  handler is reached — including for a reopened `done` / `rejected` child, which is otherwise a dispatch no-op. The
-  fallback is free in the steady state: it asks this host's own mirror first, and a reclamation takes that mirror
-  down with the remote ref, so only a child whose copy is already gone costs an `ls-remote`.
+  authoritative: it says the reclamation *happened*, which no later look at the ref can contradict. A thread the
+  tick could not *read* is not a thread with no receipt on it, and stops the dispatch there rather than falling
+  through to readings a receipt would have overruled.
+- **Where the thread answered and carries none, the ref itself decides**, and its three answers are three different
+  outcomes. Gone → park. Still there under **another commit** → park too, under `late_snapshot_repointed`: the name
+  survived and what it stood for did not, and nothing here re-points or deletes that ref. Unreachable → the dispatch
+  is *held* for the next tick, with nothing written, because an outage is evidence of nothing. A park drops the
+  dangling pointer, marks the issue `awaiting_human`, and returns before the label's handler is reached — including
+  for a reopened `done` / `rejected` child, which is otherwise a dispatch no-op.
+- **The steady state costs nothing on the wire.** The ref reading asks this host's own copy first, and a reclamation
+  takes that copy down *before* it touches the remote ref — refusing the whole reclamation if it cannot prove the
+  copy gone — so a copy still here means nothing has been reclaimed. It is read for the exact commit it carries,
+  since it lives in the object store the agents' own worktrees share, and it is trusted only for a pointer this
+  binary wrote (children created before that ordering existed pay one `ls-remote` instead).
 
-  A child the split recorded but never managed to seed — an ancestry write that failed after the issue existed — is
-  covered by the same receipt: its body still carries the split's marker, so the guard knows whose child it is, and
-  the park writes the lineage back.
+  A child the split recorded but never managed to seed — an ancestry write that failed after the issue existed —
+  carries the split's marker in its **body**, and that marker is corroborated rather than believed: the owner's own
+  generation is read fresh and has to name the same cycle and generation and carry this issue among its recorded
+  consumers. Vouched, it hands over the ref *and* the commit the owner preserved, and the same three answers follow.
+  Unvouched, the guard steps aside — a marker anyone can paste into a body parks nobody. Unreadable, opaque, or
+  naming no candidate, the dispatch is held.
 
   This is also why deleting a snapshot ref by hand is not the same as the orchestrator reclaiming one: no receipt is
-  written, so the children are never told, and a reopened child stops only if the ref is provably absent.
+  written, so the children are never told — and on the host that already fetched the ref, its own copy is still
+  there and is what a child reads first, so that child goes on working from the candidate until the copy goes too.
 
 Continuing after such a park means either implementing the issue as an ordinary change or starting an explicit new
 split cycle on the owner, which preserves a candidate of its own.

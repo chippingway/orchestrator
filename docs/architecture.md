@@ -246,6 +246,15 @@ reading the handler off it — as `pickup.py` does for the stage it starts an is
 intercept a dispatched handler targets that module. A stage-to-stage call is named the same way: the decomposition
 disabled-rollout and `ready` paths name `stages/implementing/handler.py` for `_handle_implementing`.
 
+Two things sit ahead of that table, and both can end a tick before any handler runs. One is the only route where the
+label does **not** choose the handler: a CLOSED issue on `workflow:decomposing` or `workflow:umbrella` goes to the
+cleanup sweep (`stages/decomposition/late_sweep.py`) instead of the stage its label names, because that stage would
+spawn the decomposer or activate children on an issue a human ended — so the close is read first, and on the
+sequential path the issue is refetched so neither reading of it is taken from the poll. The other is one read of the
+issue's own pinned comment, which answers two questions that stop a dispatch outright: a live late adjudication the
+label was moved out from under, and a child of a split whose snapshot has since been reclaimed
+([`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#the-reuse-guard-every-dispatch-ahead-of-every-handler)).
+
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
 an out-of-band human edit re-routes the issue back to `workflow:decomposing` (when no dev session exists yet), resumes
 the locked dev session with the updated body (implementing, validating, in_review, resolving_conflict), or unwinds
