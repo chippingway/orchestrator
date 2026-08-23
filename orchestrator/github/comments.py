@@ -28,6 +28,14 @@ The low-level readers (`GitHubClient.comments_after`, the PR comment /
 review readers) stay raw. Callers that want the allowlist applied filter
 their result through `filter_trusted`, or gate a single author on
 `is_trusted_author`.
+
+`carries_own_marker` answers a different question and lives here for the same
+reason: whether a hidden marker on a thread is one this orchestrator wrote.
+That question is asked wherever a comment is the receipt for an effect that
+cannot be made one operation with recording it, and the author is part of it --
+a marker anybody may post is a marker anybody may use to suppress the sentence
+it stands for. A client with no authenticated login to compare against checks
+the marker alone, which is the same fallback the pinned-state read takes.
 """
 from __future__ import annotations
 
@@ -36,6 +44,12 @@ from typing import Any, Iterable, List, Optional, TypeVar
 from orchestrator import config
 
 _CommentT = TypeVar("_CommentT")
+
+# What every hidden receipt this orchestrator writes begins with -- the pinned
+# state comment, the split's forward link and supersession notices, and the
+# marker a child issue is stamped with. One prefix because they are one thing:
+# a claim, invisible in the rendered thread, that a step already happened.
+RECEIPT_MARKER_PREFIX = "<!--orchestrator-"
 
 
 def _allowed_logins(allowed: Optional[Iterable[str]]) -> set[str]:
@@ -88,3 +102,45 @@ def filter_trusted(
         comment for comment in comments
         if is_trusted_author(getattr(comment, "user", None), allowed=allowed_lower)
     ]
+
+
+def carries_reserved_marker(written: Any) -> bool:
+    """Whether text somebody else wrote carries a receipt marker of OURS.
+
+    The other half of `carries_own_marker`, asked of content BEFORE it is
+    embedded rather than of a thread after it is read back. A receipt is
+    recognized by substring, because that is all a body search can do -- so
+    text that already carries one, from an agent's declared scope to a human's
+    issue body, can make a later lookup read some other issue as the receipt
+    for a step nobody took there. Content carrying one is refused where it is
+    declared, which is the only place the two can still be told apart.
+
+    Anything that is not text carries nothing, so a missing field answers no
+    rather than raising: the caller is validating somebody else's structure,
+    and an absent title is not a forged one.
+    """
+    return isinstance(written, str) and RECEIPT_MARKER_PREFIX in written
+
+
+def carries_own_marker(
+    comments: Iterable[Any], marker: str, *, bot_login: Optional[str],
+) -> bool:
+    """Whether one of these comments is OURS and carries `marker`.
+
+    Both halves are required. The marker says which effect the comment is the
+    receipt for, and it has to be scoped by its caller to the one episode it
+    belongs to -- a marker shared across episodes reads a previous one's
+    receipt as this one's. The author says the receipt is ours: an HTML
+    comment is invisible in the rendered thread and trivially copied, so
+    without the check a third party could post the marker and silence
+    whatever the receipt gates.
+    """
+    for comment in comments:
+        if marker not in (getattr(comment, "body", "") or ""):
+            continue
+        if bot_login is None:
+            return True
+        author = getattr(getattr(comment, "user", None), "login", None)
+        if author == bot_login:
+            return True
+    return False
