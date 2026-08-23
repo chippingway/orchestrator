@@ -805,7 +805,10 @@ nobody recorded is not recoverable.
 
 A park this mode leaves is attributed durably, because the next attempt has to tell its own park from another stage's.
 Most of them are *superseded* by the attempt that follows: a hold that failed has been reconciled by the time the
-retry gets there, a missing worktree is back, a run that timed out or answered unusably is about to be re-run. Those
+retry gets there, a missing worktree is back, a run that timed out or answered unusably is about to be re-run, and
+each of the three split-transaction steps — `late_snapshot_failed`, `late_children_failed`, and
+`late_supersession_failed` — is about to be reconciled again from the same recorded verdict, at no agent's cost.
+Those
 are
 retired — `awaiting_human` and `park_reason` cleared — the moment the hold reconciles, ahead of both the spawn and the
 reuse of a recorded answer, because `awaiting_human` is exactly what suppresses the announcement a question verdict

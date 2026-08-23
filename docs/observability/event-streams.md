@@ -409,8 +409,8 @@ external resource), `late_cancellation` (the owner was observed closed), and `la
 completed cancellation). The kind is the family; `stage` is the bare stage tag the issue sat in, spelled by the
 emitter like every other event on this page.
 
-**What a stream carries today.** The gate is not wired into publication yet, so the only producer that exists is the
-late adjudication under `workflow:decomposing`
+**What a stream carries today.** The gate is not wired into publication yet, so nothing reaches these families from
+a publication seam. Two producers exist. The first is the late adjudication under `workflow:decomposing`
 ([`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)): it writes
 one `late_verdict` per completed adjudication, one `late_measurement` per candidate a developer revision re-froze and
 re-measured
@@ -426,8 +426,9 @@ established. Two more arrive with the split transaction
 snapshot ref established (`retained`) or refused (`failed`), and one `late_cleanup` per superseded branch the
 transaction reconciled (`reconciled`) or could not (`failed`) — the latter beside a `late_failure` carrying
 `snapshot_failed` or `branch_cleanup_failed`, and `child_create_failed` or `supersession_failed` where those steps
-park instead. What the transaction could not reclaim is retried at the umbrella's terminal gate, which emits the
-same pair under `stage: umbrella` on every tick that finds every child resolved and something still owed — the
+park instead. The second producer is the umbrella's terminal gate, where what the transaction could not reclaim is
+retried: it emits the same pair under `stage: umbrella` on every tick that finds every child resolved and something
+still owed — the
 branch unconditionally, and the snapshot ref once every recorded direct consumer is terminal, carrying
 `snapshot_delete_failed` where the remote refuses one. So a repeated `late_cleanup` with `outcome: failed` on one
 issue is exactly the shape of an obligation nobody can settle, and the umbrella stays open while it repeats.

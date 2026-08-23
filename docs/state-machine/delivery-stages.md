@@ -153,7 +153,10 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      tick crashed mid-split), the handler cannot safely respawn the decomposer. When `expected_children_count` is set
      and `len(children) < expected_children_count`, park with `decomposition_crash`. Otherwise repair any child whose
      pinned `parent_number` was never seeded, then finalize to `workflow:umbrella` (when the flag is true) or
-     `workflow:blocked`.
+     `workflow:blocked`. Two owners take those markers away from this recovery: an issue already parked awaiting a
+     human, and one carrying a live late generation — the split transaction writes the same two markers and resumes
+     from its own durable facts, so finalizing on its behalf would hand a parent on before its snapshot, its
+     supersession, or what the remote is owed had been settled. Either way the tick ends having changed nothing.
   3. **DECOMPOSE kill switch.** If `config.DECOMPOSE` is off when this handler runs, clear decomposer-side park flags,
      ratchet `last_action_comment_id` past every visible comment, flip the label to `workflow:implementing`, and fall
      into `_handle_implementing`. Step 2 runs first so orphan children are not abandoned. An issue carrying a live
