@@ -426,12 +426,25 @@ established. Two more arrive with the split transaction
 snapshot ref established (`retained`) or refused (`failed`), and one `late_cleanup` per superseded branch the
 transaction reconciled (`reconciled`) or could not (`failed`) — the latter beside a `late_failure` carrying
 `snapshot_failed` or `branch_cleanup_failed`, and `child_create_failed` or `supersession_failed` where those steps
-park instead. The second producer is the umbrella's terminal gate, where what the transaction could not reclaim is
-retried: it emits the same pair under `stage: umbrella` on every tick that finds every child resolved and something
-still owed — the
+park instead. The second producer is the reclamation, and it has three entries into the same emission. One is the
+umbrella's terminal gate, where what the transaction could not reclaim is retried: it emits the same pair under
+`stage: umbrella` on every tick that finds every child resolved and something still owed — the
 branch unconditionally, and the snapshot ref once every recorded direct consumer is terminal, carrying
-`snapshot_delete_failed` where the remote refuses one. So a repeated `late_cleanup` with `outcome: failed` on one
-issue is exactly the shape of an obligation nobody can settle, and the umbrella stays open while it repeats.
+`snapshot_delete_failed` where the remote refuses one. The same gate's *park* is the second, and it emits the same
+way: a child `rejected` or closed by hand ends every consumer exactly as all-resolved does, so an umbrella stopped
+for a human settles from the same scan on its way out. The third is the closed-owner cleanup sweep
+([`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)),
+which asks the same question of an issue a human closed mid-cycle and emits the same families under whichever of
+`stage: decomposing` / `stage: umbrella` that issue was closed on — the stage is read off the issue rather than named
+by the caller, so a record says where the reclamation happened rather than which owner drove it. Only an attempted
+reclamation is reported, so an entry that was already reconciled adds nothing on a later visit — and an obligation
+merely *held* (a ref whose consumers are not all ended) attempts nothing, so it emits nothing and is instead logged
+on every tick that holds. `outcome: reclaiming` is progress rather than failure and is why the state reaches this
+stream at all: the decision goes down *before* the delete, so a record carrying it is an obligation whose ref may
+already be gone while a consumer it owes a receipt could not be told — the next visit finishes the telling and
+reports `reconciled`. A repeated
+`late_cleanup` with `outcome: failed` on one issue is exactly the shape of an obligation nobody can settle, and the
+umbrella stays open — or the closed owner keeps its label — while it repeats.
 `late_restart` is still the contract the restart step will emit under, and no record of it can appear in either
 stream until that step lands.
 
@@ -468,8 +481,9 @@ rather than a keyword somebody passed:
 - **The commits** — `source_sha` (the frozen candidate) and `base_sha` (the exact remote base it was measured against).
 - **The measurement** — `threshold` and `additions`.
 - **Family fields** — `verdict` (`single` / `split` / `question`), `category`, `child_count`, `failure` (the typed
-  reason), `resource` (`snapshot_ref` / `branch` / `plan_pr` / `child`) with `resource_id` and `outcome` (`pending` /
-  `retained` / `reconciled` / `failed`), `restart_step` (`pending` / `reconciled`), and `restart_target` +
+  reason), `resource` (`snapshot_ref` / `branch` / `plan_pr` / `child`) with `resource_id` and `outcome` — the
+  ledger's own state vocabulary, projected verbatim: `pending` / `retained` / `reclaiming` / `reconciled` /
+  `failed` — plus `restart_step` (`pending` / `reconciled`), and `restart_target` +
   `predecessor_cycle_id`.
 
 Extras whose value is `None` are dropped by both envelope builders, so each family carries only what applies to it.

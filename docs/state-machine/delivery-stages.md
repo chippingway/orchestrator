@@ -231,16 +231,169 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   last tick that could settle either: nothing revisits a closed umbrella, and no other handler reads that ledger. So
   `late_cleanup` retries every `branch` entry that is not `reconciled` — taking down the remote ref, the checkout,
   and the local ref, and settling the entry only once a read afterwards proves all three gone — and deletes each held
-  `snapshot_ref` once every recorded direct consumer is terminal, which all-children-resolved has just made true,
-  proved off the child scan this handler already took rather than off requests of its own. A branch target outside
-  the orchestrator namespace or belonging to another issue is refused rather than deleted; a consumer that cannot be
-  proved terminal keeps the ref. A refusal keeps the label rather than closing, which *is* the retry: the parent
-  stays visibly open instead of closing over a remote nobody will ever reap. A `snapshot_ref` still `retained` does
-  not block — that condition is a later sweep's to clear — while one the remote *refused* does. An opaque obligation
-  ledger blocks outright, and so does any ledger entry on a record whose cycle identity is damaged; an umbrella with
-  no recorded generation and no ledger owes nothing and answers without a write.
+  `snapshot_ref` once every recorded direct consumer has **ended**, which all-children-resolved has just made true,
+  proved off the child scan this handler already took rather than off requests of its own. "Ended" is the consumer's
+  own issue state, not its label: reaching `done`, being `rejected`, and a human closing it all close the issue, and
+  reopening preserves the label — so a child reopened while still wearing `done` is live again and keeps the ref. A
+  branch target outside the orchestrator namespace or belonging to another issue is refused rather than deleted; a
+  consumer that cannot be proved ended keeps the ref.
+- **A park settles the same ledger, and decides no terminal.** All-children-resolved is not the only reading that
+  ends every consumer: a child `rejected` and a child closed by hand both park the parent for a human, and both
+  closed the child — which is the reading the rule takes. Since nothing revisits an *open* umbrella either, a park
+  that returned before settling would hold a reclaimable ref and a superseded branch for as long as the human took
+  to answer. So the parked path runs the same settlement from the same fresh scan that parked it, reports only what
+  it actually did, and leaves the park itself untouched: still `awaiting_human`, still open, still on `umbrella`.
+- **Whether the ledger names every consumer is asked first**, off the record's own phase, because the proof above is
+  only as complete as the list it walks. A child is created and then recorded in two writes — it must be, since a
+  child on GitHub the parent does not record is a child nothing would come back to — so while `splitting` stands the
+  list may be short by one that already exists. Its length decides nothing there: a set of ended consumers says as
+  little about the child it has not reached as an empty one does, and nothing on the ref is reclaimed either way.
+  Either side of the loop the list is whole — before the split nothing has been created, and past it the loop ran to
+  the end — which is also what lets an *empty* list settle a ref no child was ever cut from, the snapshot being
+  retained ahead of the first child. A cancelled or restarted cycle, or a phase this binary cannot type, proves
+  nothing and keeps the ref.
+- **The delete is a small transaction.** The proof above is a reading of live issues and cannot be reproduced, so the
+  entry is written `reclaiming` *before* the delete — which is what stops a tick that died between the push and the
+  record of it from leaving a ref the ledger calls retained and the remote no longer has. Every recorded consumer is
+  then re-read **past that write and immediately ahead of the delete**, because the scan the pass qualified the ref
+  on was taken before the branch half ran and before anything was recorded, and each of those steps is a request a
+  human can reopen a consumer during. A consumer that came back inside that window keeps the ref: nothing is asked of
+  the remote, the entry stays `reclaiming`, and the terminal is held. What is left is the delete request itself,
+  which is irreducible.
+- **A recorded decision buys one thing.** A later visit acts on a `reclaiming` or `failed` entry only to **finish a
+  delete the remote already took**: past the consumer proof it costs one read-only ask about the ref itself and
+  qualifies only if the remote no longer has it. A ref still there is one a reopened child may still be cutting
+  from, and no record of a past decision outranks the reading in front of it. A transport that raises rather than
+  answering is read as the refusal it is, so no attempt is ever spent without a typed `snapshot_delete_failed`
+  behind it.
+- **The children are told before the entry closes, and told with a comment.** After a delete the remote accepted,
+  and before the entry is written `reconciled`, every recorded consumer gets one comment saying the snapshot has been
+  reclaimed and that reuse now needs an explicit new split cycle. It carries a hidden marker naming this owner, cycle,
+  and generation, so a consumer already holding one of ours is not told twice. The ref is never recreated.
+- **This owner never writes a consumer's pinned state.** That comment is written *whole* by whoever writes it, so a
+  handler of the child's own that read it before this pass and wrote it after would silently undo anything recorded
+  here — and a label is no proxy for "no writer": a terminal finalize sets `done` / `rejected` *before* its last
+  write, and closed `workflow:ready` / `workflow:blocked` are swept by nothing, so a consumer left on one never
+  becomes terminal at all. A comment is appended rather than rewritten, reaches a consumer in every state a consumer
+  can be in, and cannot be lost. What acts on it is the child's own guard (below). A consumer the pass could not
+  reach, or whose thread it could not read or post to, leaves the entry `reclaiming` rather than reconciling it —
+  reconciling is what stops anything coming back, and for a closed owner this pass is the only thing that would. A
+  refused delete tells nobody.
+
+## The reuse guard (every dispatch, ahead of every handler)
+- **Trigger**: `_route_issue_to_handler` on any issue whose pinned ancestry still names a snapshot ref. It shares its
+  pinned read with the live-adjudication guard beside it, so it costs no extra comment walk. Both step aside for
+  `workflow:decomposing` — an issue under adjudication is working from its own candidate, not an ancestor's snapshot —
+  but only once that read PROVES the adjudication is the issue's own. The label alone proves nothing: a consumer
+  closed while it was being decomposed comes back with the label exactly where it was and no generation at all, and
+  waving it through would spawn the decomposer against the reuse instructions in its body naming a reclaimed ref.
+- **Why here and not in a stage**: the issue this is about is one no handler would touch. A consumer that ended wears
+  `done` or `rejected`; reopening leaves the label exactly where it was, and both are terminal no-ops below. Asking
+  before the table also means a relabel straight to another stage cannot route around it.
+- **Why the child decides**: the owner that reclaimed the ref cannot make this safe from its side, for the reason
+  above. Evaluated on the child's own dispatch there is nobody to race: whatever a concurrent writer did to the
+  record, the child reads it again and decides again.
+- **What it asks, in order**: first the **receipt** — the comment the reclamation posted on this child, marked with
+  the owner, cycle, and generation its ancestry names, and authored by the orchestrator's own account. That is the
+  authoritative answer, because it records what *happened* rather than what a later reading suggests: a local mirror
+  nobody got round to dropping, or a ref somebody pushed again at the same commit, would both make the world look
+  untouched while the guarantee the child was given — that its candidate provably came from one adjudication — is
+  gone. It costs one walk of the child's own thread per tick, paid only by issues a split created. A thread that
+  could not be **read** is not a thread with no receipt on it, and the two may not be collapsed: everything asked
+  after this can look untouched while the answer that outranks it sits unseen, so an unreadable thread **holds** the
+  dispatch there and then.
+- **And when no receipt landed** (a crash, a thread it could not post to): this host's own mirror, which costs
+  nothing on the wire. That shortcut is bought by the order a reclamation runs in rather than assumed of it — the
+  mirror is dropped *before* the remote ref is touched at all, and a mirror that cannot be proved gone refuses the
+  reclamation instead of being logged past, so a mirror still present says nothing has been reclaimed (a ref deleted
+  by hand is the one exception, and a child can still read the candidate out of the copy it left). "Still present" is
+  read as an identity, not an existence: the copy is a ref in the object store every agent's worktree shares, so it
+  is resolved and compared against the exact commit the ancestry records. A copy standing at anything else is
+  somebody's write — it says nothing about the ref on the remote and is not a candidate to work from — and goes to
+  the ask like an absent one.
+- **The shortcut is conditioned on the pointer, not assumed of the world.** It is taken only where the ancestry
+  carries `late_ancestry_mirror_first`, the stamp a split writes onto every pointer it seeds. A pointer written
+  before that ordering existed belongs to a world where the remote ref went first and the mirror came down
+  best-effort afterwards — so a surviving mirror there is as likely to be the residue of a finished reclamation as
+  proof one never started, and the child pays the read-only ask instead of trusting it. Nothing migrates: the stamp
+  is written by the binary that would do the reclaiming, so its absence is the whole question answered.
+- **What the ask decides.** A mirror that is gone (or a pointer with no stamp) is worth one read-only `ls-remote`
+  for the exact ref and commit the ancestry records, and the three answers are three different verdicts. `absent` is
+  the reclamation this child was not told about, and it parks. `mismatch` is the ref carrying somebody else's commit
+  — not the candidate this child was promised, and not something to start work against either — so it parks too,
+  under its own reason (`late_snapshot_repointed`) and its own comment; nothing here re-points or deletes that ref,
+  exactly as the reclamation refuses one for a human. `unreadable` is an outage, which is evidence of nothing: the
+  dispatch is **held** — no park, no comment, no write, and the same question next tick — because parking every
+  late-born child through a rate-limit window would be a self-inflicted stop, while continuing would start an agent
+  against a ref nobody could vouch for.
+- **A child with no recorded ancestry at all** is not automatically an issue of no lineage. The split records a child
+  on the parent's ledger *before* it seeds that child's ancestry — a child on GitHub the parent does not record is a
+  child nothing would come back to — so a seed that failed leaves an issue whose **body** carries the split's own
+  marker and whose pinned comment carries nothing, while the reclamation still counts it as a consumer and still
+  leaves its receipt. The body is what decides whether to look, and it costs nothing: the dispatcher already has the
+  issue, and every issue no split created stops there without a request.
+- **A body marker is corroborated, never believed.** It is the one lineage claim in this workflow that comes out of a
+  field the world can write, while everything it competes with is authenticated — a pinned comment only the
+  orchestrator writes, a receipt checked against its author. So the **owner's own generation is read fresh** and has
+  to vouch for the claim: the same `late_cycle_id` and generation counter, and this issue's number among
+  `late_consumers`. A claim it does not vouch for is a claim about nothing and the guard steps aside — parking an
+  issue, comment and HITL mention and all, on the strength of a sentence somebody typed into its body is the
+  denial of service this check refuses, and it is also the honest answer for the *other* crash window (a child
+  created before its number was recorded), since an owner may not reclaim a ref while its own ledger can be short one
+  child. A record that could not be read, one whose consumer list this binary cannot type, and one naming no
+  candidate are a different answer: the claim may be true and this tick cannot tell, so the dispatch is **held**.
+- **What a vouched claim buys** is the whole pointer the failed seed never wrote — the ref the identity mints, and
+  the commit the owner recorded preserving — so the ask is the same ask the recorded shape makes: is *this* candidate
+  still obtainable. It has to be asked, because the receipt cannot cover the window it is posted after: a ref is
+  deleted first, so a silent thread is what that window looks like, and so is a thread this tick could not read. The
+  verdicts are the recorded shape's four, re-pointed included. The park writes back the lineage the body claims —
+  never the pointer, which was assembled out of the owner's record rather than out of anything this issue holds —
+  which both repairs what the failed seed owed and is what stops the question being asked again.
+- **What a refusal does**: drops `late_ancestry_snapshot_ref` / `late_ancestry_snapshot_sha`, parks the issue
+  (`awaiting_human`, reason `late_snapshot_reclaimed`, or `late_snapshot_repointed` where the ref survived and its
+  commit did not) with a comment naming the ref and the owner, and
+  returns before the label's handler is reached. Dropping the pointer is what makes the guard cost nothing on every
+  tick after — and both writes are taken on the issue's own dispatch, so there is no second writer to lose them to.
+- **Anything not `reconciled` holds the terminal**, ref and branch alike — a `retained` ref included. There is no
+  reading under which an object still on the remote is settled, and an umbrella closed over one is an object nothing
+  would ever come back for: the parent is `done` by then and no pass revisits it. Keeping the label *is* the retry,
+  and the reason it is held is logged on every tick that holds, since a hold attempts nothing and so writes and emits
+  nothing. An opaque *resource* ledger blocks outright, and so does any ledger entry on a record whose cycle identity
+  is damaged; an umbrella with no recorded generation and no ledger owes nothing and answers without a write. An
+  opaque *consumer* ledger is refused separately, because the two are preserved and written separately: it is what a
+  snapshot's proof would be taken from, so the ref stays — while the superseded branch, which owes no consumer
+  anything, is deleted and retried as usual.
 - **Output**: terminal `done`, OR a sibling unblocked, OR a HITL park, OR a held terminal (something still owed), OR
   a no-op.
+
+## Closed-owner cleanup sweep (no label of its own)
+- **Trigger**: an issue that is **closed** while still carrying `workflow:decomposing` or `workflow:umbrella`. The
+  closed-issue sweep yields those two states beside its own recovery labels, on the same
+  `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` cadence and through the same label cache and absent-label throttle, so it costs
+  no request on a tick that sweep is skipping anyway (see
+  [labels-and-state.md](labels-and-state.md#pollable-issues-and-finalization)).
+- **Why it is not the label's handler**: both labels name a stage handler that would resume the workflow the close
+  ended — one spawns the decomposer, the other walks the dependency graph and activates children. The dispatcher
+  therefore reads *closed* before it reads the label and routes to `late_sweep._handle_closed_owner_cleanup`
+  instead, ahead of even the live-adjudication relabel guard. That classification then **binds**: the submit carries
+  a `cleanup_only` route the worker cannot re-derive, so a human who reopens the issue between the poll and the
+  refetch cannot turn a cap-exempt submit into an agent-spawning stage handler. The handler re-reads the close
+  itself and does nothing at all when the issue is open again, leaving the next tick to classify it correctly.
+- **Why it fans out rather than joining the family bucket**: that bucket's cap exemption is all-or-nothing, so one
+  open `workflow:decomposing` issue sharing the tick would make a closed owner cap-counted — and under a saturated
+  cap the whole bucket is skipped, which stops the repository reclaiming refs for as long as its decomposer is busy.
+  Partitioned as fan-out, the owner carries its own `cap_exempt=True` submit, for the same reason every other closed
+  issue does: nothing on this path spawns an agent or touches a worktree it did not already own.
+- **What it does**: exactly what the umbrella's terminal does to the obligation ledger — the same rules, the same
+  `reclaiming` / release / `reconciled` order, the same records — and nothing else. It never writes a label, never
+  activates a child, never spawns, and never decides a terminal. An owner whose every obligation is `reconciled`
+  costs the pinned read and stops there, reading no consumer at all; an opaque ledger stops the pass with a warning,
+  because nothing on it may be reclaimed around an entry this binary cannot type.
+- **Consumer state is re-read, never latched**: this pass fetches every recorded consumer fresh, and a consumer
+  reopened before the delete lands has a live claim again, so the ref stays. A consumer whose read *fails* also
+  keeps its ref, while the branch half — which owes no consumer anything — is still settled on that same visit.
+- **Output**: obligations settled or retried (with the same `late_cleanup` / `late_failure` records the terminal
+  emits), consumers released where a ref went, OR a no-op.
 
 ## `_handle_implementing` (label `workflow:implementing`)
 - **Trigger**: each tick while the label is `workflow:implementing`.

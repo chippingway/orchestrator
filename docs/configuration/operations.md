@@ -171,6 +171,80 @@ systemd's journal captures `run.sh` and orchestrator stdout/stderr (process life
 The orchestrator's own structured log lives at `logs/orchestrator.log` under `WorkingDirectory` (rotated, ~10 MiB × 5).
 Check the journal first for "did it start / did it die", then `logs/orchestrator.log` for per-issue handler detail.
 
+## Reclaiming what a split leaves on the remote
+
+An issue whose committed implementation is adjudicated as a split leaves two things on the target repository: the
+branch its superseded candidate was committed on, and an immutable snapshot ref under
+`refs/orchestrator/late-split/issue-<n>/cycle-<c>/gen-<g>` holding the exact commit its children were told to reuse.
+Both are recorded on the issue's own pinned obligation ledger, and the orchestrator reclaims them itself — there is
+no TTL and no background garbage collection. Two passes do it, and between them every live ledger stays visited:
+
+- the **umbrella's terminal**, which settles what is owed before it closes the parent (see
+  [`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#_handle_umbrella-label-workflowumbrella));
+- the **closed-owner cleanup sweep**, for an issue a human closed mid-cycle while it still carried
+  `workflow:decomposing` or `workflow:umbrella` (see
+  [`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)).
+
+The sweep runs on the existing `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` cadence and adds no per-tick traffic of its own, so
+raising that knob (the multi-repo rate-limit advice in
+[`../configuration.md`](../configuration.md#github-rate-limits)) also stretches how long an unreclaimed branch or ref
+survives, by the same factor. It is cleanup-only: it never spawns an agent, resumes a workflow, activates a child, or
+changes a label.
+
+**What to look at when something is not going away.** Two signals, and they mean different things:
+
+- A `late_failure` carrying `snapshot_delete_failed` or `branch_cleanup_failed`, repeated on the same issue (see
+  [`../observability/event-streams.md`](../observability/event-streams.md#late-split-records-both-sinks)), together
+  with an umbrella that will not close, or a closed owner that keeps its label. The remote **refused** the delete.
+  That is a permission or ruleset problem — a protected-ref rule over `refs/orchestrator/*`, or a token that lost
+  push scope — and only an operator can clear it. Nothing is retried into success meanwhile; the retry itself is
+  every visit.
+- A snapshot ref that is simply still there, with no failure recorded, and an umbrella that will not close. It is
+  **retained** on purpose: a ref is kept until every recorded direct consumer has ended — which means the consumer's
+  issue is *closed*, since reaching `done`, being `rejected`, and a human closing it all close it, and reopening
+  leaves the label where it was. Those readings are taken fresh on every visit rather than latched, and every
+  obligation that is not `reconciled` holds the owner's terminal, so the umbrella stays open and logs what it is
+  waiting for on each tick. A child that stays open forever keeps its ancestor's ref forever, which is the
+  deliberate trade — invalidating a live child's only copy of the work it was told to reuse is worse. Closing (or
+  finishing) the child is what lets both go.
+
+To list what a repository is holding:
+
+```sh
+git ls-remote origin 'refs/orchestrator/late-split/*'
+```
+
+Deleting one by hand is safe once you are sure no child still needs it, and it does not strand the ledger: an absent
+ref counts as a successful reclamation, so the entry reconciles on the next visit at the cost of one read.
+
+Do **not** recreate a ref the orchestrator has already reclaimed. Its value was that it provably carried one exact
+commit, and a ref pushed again from whatever is reachable now proves nothing. The orchestrator does not do it either,
+and it makes sure nothing resumes against one:
+
+- **As the ref goes, each child cut from it gets one comment** saying so, carrying a hidden marker naming the owner,
+  cycle, and generation so it is said once. That is *all* the owner does to a child. It never edits a child's pinned
+  comment: that comment is written whole by whoever writes it, and a handler of the child's own that read it first
+  and wrote it after would silently undo the edit — so the receipt is an appended comment, which nothing can lose.
+- **The child refuses the work itself, at its own dispatch.** Before any handler runs, an issue whose recorded
+  ancestry still names a snapshot looks for that receipt on its own thread — marked with the owner, cycle, and
+  generation it was born of, and authored by the orchestrator — and refuses if it finds one. That answer is
+  authoritative: it says the reclamation *happened*, which no later look at the ref can contradict. Only where no
+  receipt landed does it fall back to asking whether the ref is still there, and there only a proved absence
+  refuses. A refusal drops the dangling pointer, parks the issue on `awaiting_human`, and returns before the label's
+  handler is reached — including for a reopened `done` / `rejected` child, which is otherwise a dispatch no-op. The
+  fallback is free in the steady state: it asks this host's own mirror first, and a reclamation takes that mirror
+  down with the remote ref, so only a child whose copy is already gone costs an `ls-remote`.
+
+  A child the split recorded but never managed to seed — an ancestry write that failed after the issue existed — is
+  covered by the same receipt: its body still carries the split's marker, so the guard knows whose child it is, and
+  the park writes the lineage back.
+
+  This is also why deleting a snapshot ref by hand is not the same as the orchestrator reclaiming one: no receipt is
+  written, so the children are never told, and a reopened child stops only if the ref is provably absent.
+
+Continuing after such a park means either implementing the issue as an ordinary change or starting an explicit new
+split cycle on the owner, which preserves a candidate of its own.
+
 ## Applying `.env` changes
 
 `.env` is read once, when `python -m orchestrator` starts. The orchestrator process never reloads it, so most edits

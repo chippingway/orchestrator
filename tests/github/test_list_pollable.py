@@ -18,6 +18,8 @@ _CLOSED_VALIDATING_ISSUE = 303
 _CLOSED_LEGACY_IMPLEMENTING_ISSUE = 311
 _CLOSED_LEGACY_FIXING_ISSUE = 312
 _CLOSED_LEGACY_CONFLICT_ISSUE = 313
+_CLEANUP_ISSUE = 321
+_SWEEP_CADENCE_ATTR = "CLOSED_ISSUE_SWEEP_EVERY_N_TICKS"
 
 # One closed issue per swept spelling: three namespaced, three pre-namespace.
 _CLOSED_SWEEP_CASES = (
@@ -118,6 +120,46 @@ class ListPollableIssuesClosedSweepTest(unittest.TestCase):
                 self.assertIn(issue_number, _swept_numbers(issue_number, label))
 
 
+class CleanupSweepTest(unittest.TestCase):
+    """Two closed decomposition states are swept, and only for cleanup.
+
+    An issue closed on `decomposing` or `umbrella` may still hold the remote
+    to a superseded branch and to the immutable ref its children were cut
+    from, and nothing else ever revisits a closed issue. The other two pre-PR
+    states have published nothing to preserve or supersede, so they stay out
+    -- a closed issue there is a hard human stop.
+    """
+
+    def test_a_closed_snapshot_owner_is_yielded(self) -> None:
+        for label in ("workflow:decomposing", "workflow:umbrella"):
+            with self.subTest(label=label):
+                self.assertIn(
+                    _CLEANUP_ISSUE, _swept_numbers(_CLEANUP_ISSUE, label),
+                )
+
+    def test_the_other_pre_pr_states_stay_out(self) -> None:
+        for label in ("workflow:ready", "workflow:blocked"):
+            with self.subTest(label=label):
+                self.assertEqual(_swept_numbers(_CLEANUP_ISSUE, label), [])
+
+    def test_a_cleanup_owner_rides_the_same_cadence(self) -> None:
+        # The whole point of folding it into the sweep that already runs: a
+        # cleanup owner costs no request on a tick the closed-issue sweep is
+        # skipping anyway.
+        gh = FakeGitHubClient()
+        gh.add_issue(make_issue(1, label=_IMPLEMENTING_LABEL))
+        closed = make_issue(_CLEANUP_ISSUE, label="workflow:umbrella")
+        closed.closed = True
+        gh.add_issue(closed)
+
+        with patch.object(config, _SWEEP_CADENCE_ATTR, 3):
+            swept = sorted(issue.number for issue in gh.list_pollable_issues())
+            held = sorted(issue.number for issue in gh.list_pollable_issues())
+
+        self.assertEqual(swept, [1, _CLEANUP_ISSUE])
+        self.assertEqual(held, [1])
+
+
 class ClosedSweepCadenceTest(unittest.TestCase):
     """`CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` batches the per-label closed-issue
     recovery sweep so its fixed request cost is not paid every tick. The
@@ -132,7 +174,7 @@ class ClosedSweepCadenceTest(unittest.TestCase):
         gh.add_issue(closed)
         # Pin the knob: it resolves from the environment, so reading it
         # unpatched would assert about the operator's shell, not the cadence.
-        with patch.object(config, "CLOSED_ISSUE_SWEEP_EVERY_N_TICKS", 1):
+        with patch.object(config, _SWEEP_CADENCE_ATTR, 1):
             for _ in range(3):
                 out = {issue.number for issue in gh.list_pollable_issues()}
                 self.assertEqual(out, {1, 7})
@@ -143,7 +185,7 @@ class ClosedSweepCadenceTest(unittest.TestCase):
         closed = make_issue(7, label="in_review")
         closed.closed = True
         gh.add_issue(closed)
-        with patch.object(config, "CLOSED_ISSUE_SWEEP_EVERY_N_TICKS", 3):
+        with patch.object(config, _SWEEP_CADENCE_ATTR, 3):
             # Call 1 (first): sweep runs -> closed issue present.
             self.assertEqual({issue.number for issue in gh.list_pollable_issues()}, {1, 7})
             # Calls 2 and 3: sweep skipped -> open issue only.
@@ -156,7 +198,7 @@ class ClosedSweepCadenceTest(unittest.TestCase):
         gh = FakeGitHubClient()
         gh.add_issue(make_issue(1, label=_IMPLEMENTING_LABEL))
         gh.add_issue(make_issue(2, label="workflow:validating"))
-        with patch.object(config, "CLOSED_ISSUE_SWEEP_EVERY_N_TICKS", 5):
+        with patch.object(config, _SWEEP_CADENCE_ATTR, 5):
             for _ in range(5):
                 out = {issue.number for issue in gh.list_pollable_issues()}
                 self.assertEqual(out, {1, 2})

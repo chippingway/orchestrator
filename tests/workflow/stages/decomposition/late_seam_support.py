@@ -16,8 +16,9 @@ import contextlib
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+from orchestrator.git.snapshots import refs as _snapshot_refs
 from orchestrator.git.snapshots.refs import SnapshotOutcome
 from orchestrator.git.verification.probes import _WorktreeStatus
 
@@ -98,6 +99,17 @@ class LocalTeardown:
         """Whether both local surfaces were asked to come down."""
         return bool(self.issues) and self.branch_deleted.called
 
+    def hold(self, stack, *, local_gone: bool = True) -> "LocalTeardown":
+        """Hold this teardown and the read that decides it happened."""
+        stack.enter_context(seam_patch("_remove_issue_worktree", self))
+        stack.enter_context(
+            seam_patch("_delete_local_issue_branch", self.branch_deleted),
+        )
+        stack.enter_context(seam_patch(
+            "_local_branch_present", MagicMock(return_value=not local_gone),
+        ))
+        return self
+
 
 @contextlib.contextmanager
 def local_teardown(*, local_gone: bool = True):
@@ -113,24 +125,9 @@ def local_teardown(*, local_gone: bool = True):
         stack.enter_context(seam_patch(
             "_worktree_path", MagicMock(return_value=Path(_ABSENT_CHECKOUT)),
         ))
-        yield _hold_teardown(
-            stack, Path(_ABSENT_CHECKOUT), local_gone=local_gone,
+        yield LocalTeardown(Path(_ABSENT_CHECKOUT)).hold(
+            stack, local_gone=local_gone,
         )
-
-
-def _hold_teardown(
-    stack, checkout: Path, *, local_gone: bool = True,
-) -> LocalTeardown:
-    """Hold the local teardown and the read that decides it happened."""
-    teardown = LocalTeardown(checkout)
-    stack.enter_context(seam_patch("_remove_issue_worktree", teardown))
-    stack.enter_context(
-        seam_patch("_delete_local_issue_branch", teardown.branch_deleted),
-    )
-    stack.enter_context(seam_patch(
-        "_local_branch_present", MagicMock(return_value=not local_gone),
-    ))
-    return teardown
 
 
 def hold_late_seams(
@@ -158,8 +155,8 @@ def hold_late_seams(
     }
     for name, answer in held.items():
         stack.enter_context(seam_patch(name, MagicMock(return_value=answer)))
-    _hold_teardown(
-        stack, checkout, local_gone=(snapshot or SnapshotSeed()).local_gone,
+    LocalTeardown(checkout).hold(
+        stack, local_gone=(snapshot or SnapshotSeed()).local_gone,
     )
 
 
@@ -183,6 +180,86 @@ def snapshot_seams(snapshot: SnapshotSeed):
         stack.enter_context(seam_patch(
             "_worktree_path", MagicMock(return_value=Path(_ABSENT_CHECKOUT)),
         ))
-        yield _hold_teardown(
-            stack, Path(_ABSENT_CHECKOUT), local_gone=snapshot.local_gone,
+        yield LocalTeardown(Path(_ABSENT_CHECKOUT)).hold(
+            stack, local_gone=snapshot.local_gone,
+        )
+
+
+class RecordedDelete:
+    """The remote's two answers about a snapshot, and what it was asked.
+
+    `outcome` is what the destructive call returns; `presence` is what the
+    read-only ask beside it sees, and they are separate because the pass asks
+    the second one exactly where the first must not be spent -- a decision
+    already recorded whose consumers are no longer unanimous. The default is
+    a ref the remote still holds, which is the reading that deletes nothing.
+
+    `raising` is what the call does instead of answering. A `KeyboardInterrupt`
+    is the crash between the call landing and the write that would have
+    recorded it -- the delete has happened as far as the remote is concerned,
+    and nothing on the issue says so -- while an ordinary exception is the
+    transport failing in a way it has no answer for, which a caller that must
+    RECORD the attempt may not let escape.
+    """
+
+    def __init__(
+        self,
+        outcome,
+        *,
+        raising: BaseException = None,
+        presence=SnapshotOutcome.PRESENT,
+        mirror_sha: str = "",
+    ) -> None:
+        self.outcome = outcome
+        self.presence = presence
+        # What this host's own copy of the ref is at: the candidate, somebody
+        # else's commit, or "" for no copy at all.
+        self.mirror_sha = mirror_sha
+        self.raising = raising
+        # What each call was asked, in the order it was asked: the two the
+        # destructive call names, and the refs the read-only ask saw.
+        self.refs: list[str] = []
+        self.shas: list[str] = []
+        self._observed: list[str] = []
+
+    def __call__(self, _spec, _cwd, *, ref: str, sha: str):
+        self.refs.append(ref)
+        self.shas.append(sha)
+        if self.raising is not None:
+            raise self.raising
+        return self.outcome
+
+    def observe(self, _spec, _cwd, *, ref: str, sha: str):
+        """Answer the read-only ask, recording that it was made."""
+        self._observed.append(ref)
+        return self.presence
+
+    def mirror(self, _spec, _cwd, *, ref: str, sha: str) -> bool:
+        """Answer whether this host holds its copy of the ref, at that commit.
+
+        Answered the way the real read answers it, because the question is
+        what makes the answer sound: the copy is a ref in the store every
+        agent's worktree shares, so what settles it is the commit the copy
+        carries rather than the name existing. A copy re-pointed at anything
+        but the candidate is the same answer as no copy at all.
+        """
+        return bool(self.mirror_sha) and self.mirror_sha == sha
+
+    @classmethod
+    def absent(cls) -> "RecordedDelete":
+        """A remote that has already let this ref go, both ways of asking."""
+        return cls(SnapshotOutcome.ABSENT, presence=SnapshotOutcome.ABSENT)
+
+    @property
+    def observed(self) -> list:
+        """The refs the read-only ask was spent on."""
+        return list(self._observed)
+
+    def answering(self):
+        """Hold both remote answers about a snapshot for one walk."""
+        return patch.multiple(
+            _snapshot_refs,
+            delete_snapshot_ref=self,
+            observed_snapshot_ref=self.observe,
+            local_snapshot_present=self.mirror,
         )

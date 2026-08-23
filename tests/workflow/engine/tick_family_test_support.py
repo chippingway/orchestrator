@@ -18,7 +18,7 @@ class _SlowFamilyProbe:
         self._family_release = threading.Event()
         self._lock = threading.Lock()
 
-    def process(self, _gh, _spec, issue) -> None:
+    def process(self, _gh, _spec, issue, **_route) -> None:
         if issue.number == 1:
             self._family_holding.set()
             self._family_release.wait(timeout=support._SYNC_TIMEOUT_SECONDS)
@@ -62,7 +62,7 @@ def _flaky_workflow_label(_client, issue):
     return support._ORIGINAL_WORKFLOW_LABEL(issue)
 
 
-def _simulate_family_child_state(client, _spec, issue) -> None:
+def _simulate_family_child_state(client, _spec, issue, **_route) -> None:
     if issue.number == 10:
         state = client.read_pinned_state(issue)
         for child_number in state.get("children") or []:

@@ -96,8 +96,10 @@ paths. The failure modes, their durable `park_reason` tokens, and the refresh-ow
 
 ### Pollable issues and finalization
 
-`gh.list_pollable_issues()` yields every open non-PR issue plus the closed ones still carrying one of the eight sweep
-labels, each queried under its pre-namespace spelling too, so an external merge or an operator close finalizes
+`gh.list_pollable_issues()` yields every open non-PR issue plus the closed ones still carrying one of the ten swept
+labels — the eight a terminal arc may still be owed on, and `workflow:decomposing` / `workflow:umbrella`, whose
+closed issues are yielded for snapshot cleanup only and never reach the stage handler their label names — each also
+queried under its pre-namespace spelling where it has one, so an external merge or an operator close finalizes
 cleanly instead of stranding the issue. `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` batches that sweep to once every N ticks,
 which is the knob for the GitHub primary-rate-limit cost it carries on a multi-repo host. Which labels are swept, why
 the pre-PR labels are not, and how a closed `discussion` is held for its plan PR are in

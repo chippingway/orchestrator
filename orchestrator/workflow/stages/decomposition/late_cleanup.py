@@ -10,9 +10,12 @@ both and lets the children run whatever the first attempt said.
 
 What that costs is an obligation nobody would otherwise come back to, because
 the issue is an umbrella by then and an umbrella polls its children and nothing
-else. So this owner is asked at the ONE boundary where an unsettled obligation
+else. So this owner is asked at the boundary where an unsettled obligation
 still matters and where the condition to settle it has just become true: the
-umbrella's all-children-resolved branch.
+umbrella's all-children-resolved branch. The narrow closed-owner sweep beside
+it asks the same question of an issue a human closed mid-cycle, which is the
+one other way a live ledger stops being visited -- same rules, same ledger, no
+terminal to decide.
 
 **The branch is unconditional.** It is superseded the moment the split lands,
 so every visit retries whatever is not yet reconciled -- and "the branch" is
@@ -40,12 +43,41 @@ terminal open for a human, which is the one answer that neither deletes
 somebody else's work nor quietly forgets the obligation.
 
 **The snapshot is not.** A ref may be deleted only once every recorded direct
-consumer is terminal, and all-children-resolved is exactly when that becomes
-true for the consumers this split created. The dispositions are read off the
-scan the umbrella already took, so proving it costs no request of its own, and
-anything that cannot be proved -- a consumer missing from the scan, one wearing
-a label this binary does not know, a consumer ledger it could not type -- keeps
-the ref rather than deleting an artifact somebody may still be cutting from.
+consumer has ENDED, and all-children-resolved is exactly when that becomes
+true for the consumers this split created. Ended is read off the consumer's
+own state rather than its label, on a scan taken by the visit that acts on it
+-- the umbrella hands over the one it already took, the sweep takes its own.
+All three dispositions that end a consumer close the issue and none of them
+survives a reopen, while a label does: a child reopened while still wearing
+`done` is live again, and a reading taken off the label would delete the only
+copy of the work it came back for. Anything that cannot be proved -- a
+consumer missing from the scan, one whose read failed, a consumer ledger this
+binary could not type -- keeps the ref.
+
+All of which is about the consumers the ledger NAMES, so the prior question is
+whether it names all of them, and the record's own phase is what answers it. A
+child is created and then recorded in two writes -- it must be, since a child
+on GitHub the parent does not record is a child nothing would come back to --
+so while `splitting` stands the list may be short by one that already exists,
+and how long the list is decides nothing: a set of ended consumers says as
+little about the child it has not reached as an empty one does. Nothing on the
+ref is reclaimed in that window. Either side of it the list is whole -- before
+the split nothing has been created, and past it the loop ran to the end -- and
+that is also what makes an EMPTY list a fact rather than a gap: the ref is
+retained ahead of the first child, so an owner closed in that interval has no
+consumers because there are none.
+
+**A reclamation is decided once, then retried until it lands.** The proof
+above is a reading of live issues and cannot be reproduced, so the entry is
+written `reclaiming` before the delete, the consumers are read once more past
+that write, and a later visit acts on the RECORD rather than on a proof it
+cannot repeat -- for one thing only, and only for a ref the remote no longer
+has. What follows the delete is each child being told, in one comment and
+nothing else: this owner may not write a consumer's pinned state at all, so
+what a child does about it is the child's own to decide on its own dispatch
+(`late_reuse`). The telling runs ahead of the entry that records the delete,
+so a tick that dies in between repeats it -- harmlessly, since a child already
+holding this reclamation's receipt is skipped.
 
 **Nothing that cannot be proved settled lets a terminal fire.** An obligation
 ledger this binary could not fully type blocks outright: the entries it could
@@ -55,17 +87,18 @@ a record whose cycle identity is damaged -- there is nothing to correlate a
 reclamation to, and no issue number to prove a branch belongs to this
 generation, so the only safe answer is to say so loudly and stay open.
 
-**A retained REF never blocks the terminal; a failed one always does.** The
-asymmetry is the safety argument. A ref kept because a consumer could not be
-proved terminal is one a later sweep settles, and blocking on it would hold the
-umbrella open for a condition nothing here can clear. A ref the remote REFUSED
-to delete is a permission or ruleset problem an operator has to see, and the
-parent staying open is how they see it.
+**Every state except `reconciled` is owed, for a ref exactly as for a branch.**
+There is no reading under which an object still on the remote is settled: a ref
+kept because a consumer could not be proved ended is one this repository is
+holding, and an umbrella closed over it is an object nothing would ever come
+back for, because the parent is `done` by then and no pass revisits it. So the
+label staying put IS the retry, and the reason it is held is logged on every
+tick that holds -- a terminal that will not fire and never says why is the one
+shape an operator cannot act on.
 
-A BRANCH has no such reading. There is no condition under which one is kept, so
-every state except `reconciled` is owed -- including the ones this binary never
-writes for a branch. The ledger takes any state the vocabulary defines from any
-writer, and a state read as neither owed nor settled is a branch left on the
+The ledger takes any state the vocabulary defines from any writer, which is why
+the reading is "not reconciled" rather than a list of the states this binary
+writes: a state read as neither owed nor settled would be an object left on the
 remote by an umbrella that closed saying it owed nothing.
 
 Idempotent by construction, for the reason the transport underneath is: both
@@ -78,6 +111,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Optional
 
 from github.Issue import Issue
 
@@ -89,23 +123,24 @@ from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.github import comments as _comments
 from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split import formats as _formats
+from orchestrator.workflow.late_split import lineage as _lineage
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split import telemetry as _telemetry
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateGeneration,
+    LatePhase,
     LateResource,
     LateResourceKind,
     LateResourceState,
 )
-from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
+from orchestrator.workflow.state import stage_name
 
 log = logging.getLogger("orchestrator.workflow")
-
-_UMBRELLA_STAGE = "umbrella"
 
 _BRANCH = LateResourceKind.BRANCH
 
@@ -117,15 +152,63 @@ _FAILURES = MappingProxyType({
     _SNAPSHOT: LateFailure.SNAPSHOT_DELETE_FAILED,
 })
 
-# The dispositions that prove a direct consumer will never cut from the
-# snapshot again. `done` covers a nested split too: a child that reached it has
-# published, so its own descendants are past needing the ancestor.
-_TERMINAL_CHILD = frozenset((_state._DONE, "rejected"))
+# The two states an entry reaches once the decision to reclaim it is durable.
+# Both are retryable past the consumer proof, but only for a ref the remote no
+# longer has: a decision already carried out has to be finished, while one
+# that never reached the remote is still a decision about a ref a consumer may
+# have come back for.
+_ORDERED = frozenset((
+    LateResourceState.RECLAIMING, LateResourceState.FAILED,
+))
+
+# What a child is told when the snapshot it was created to reuse is reclaimed.
+# Said once, at the moment it becomes true, so an issue reopened long after
+# its owner closed still reads it rather than following a pointer to nothing.
+# It is a comment and only a comment -- see `_release` for why this owner may
+# not write a consumer's pinned state at all.
+_RELEASED_NOTICE = (
+    "{mentions} the immutable snapshot this issue was created to reuse (from "
+    "the split on #{owner}) has been reclaimed, now that every issue cut from "
+    "it has ended. That ref is never recreated -- what made it worth reusing "
+    "was that it provably carried one exact commit, and a ref pushed again "
+    "from whatever is reachable now proves nothing. If this issue is "
+    "reopened, it is parked before any implementation starts: continuing "
+    "means an ordinary change, or an explicit new split cycle on #{owner}, "
+    "which preserves a candidate of its own.\n\n{marker}"
+)
 
 # What a terminal is blocked by when the ledger itself is the thing that
 # cannot be read. It names no resource because there is no resource to name --
 # only the fact that what is owed is unknown.
 _OPAQUE = "an obligation this orchestrator cannot read"
+
+# The phases at which the consumer ledger is the WHOLE account of the children
+# cut from this generation's snapshot.
+#
+# Before the split there are none to account for: `splitting` goes down and is
+# persisted ahead of the first create, so a record standing earlier has made
+# no child at all and its empty ledger is the whole truth. After it the loop
+# ran to the end, because the transaction moves on only once every child has
+# been created AND recorded -- one that could not be leaves the record parked
+# where it stands.
+#
+# `splitting` itself is the one phase deliberately absent, and the length of
+# the list is no help there. The create precedes the write that records it, so
+# a record standing in the loop may be missing a child that already exists on
+# GitHub -- the first one, or the fourth of five. Reclaiming on the strength
+# of the consumers it does name would delete the ref out from under whichever
+# child the ledger has not reached yet, unread and untold. Cancelled and
+# restarted cycles, and a phase this binary cannot type, are not among the
+# answers either.
+_WHOLE_LEDGER_PHASES = frozenset((
+    LatePhase.MEASURING,
+    LatePhase.HOLDING_PLAN_PR,
+    LatePhase.ADJUDICATING,
+    LatePhase.OWNER_CHECK,
+    LatePhase.SNAPSHOTTING,
+    LatePhase.SUPERSEDING,
+    LatePhase.CLEANING_UP,
+))
 
 # The two transport answers that mean the ref is gone: one this call deleted,
 # and one an earlier call already had.
@@ -136,23 +219,45 @@ _RECLAIMED = frozenset((
 
 
 @dataclass(frozen=True)
+class _Pass:
+    """One issue's reclamation pass, and what it reads its rules against.
+
+    Held together because the steps below are not independent: the delete is
+    ordered on the record, carried out against the remote, announced on the
+    consumers, and only then recorded -- and every one of those needs the same
+    issue, the same pinned comment, and the same scan.
+    """
+
+    gh: GitHubClient
+    spec: config.RepoSpec
+    issue: Issue
+    state: PinnedState
+    scan: _ChildScan
+
+    def persist(self, generation: LateGeneration) -> None:
+        """Make one step of this pass durable before the next one acts."""
+        _late_state.write_late_generation(self.state, generation)
+        self.gh.write_pinned_state(self.issue, self.state)
+
+
+@dataclass(frozen=True)
 class _Reclamation:
     """What one pass over this issue's obligations settled, and what it did not.
 
-    The two lists are what the sinks are told, and they are kept apart from
-    the record because an entry that was ALREADY reconciled is not news: a
-    tick that reports it again would put one `late_cleanup` per tick on an
-    umbrella that is simply waiting for a sibling.
+    `entries` is what the sinks are told, and it holds only the obligations
+    this pass ACTED on, in the state the record now gives them. An entry that
+    was already reconciled is not news: a tick that reported it again would
+    put one `late_cleanup` per tick on an umbrella that is simply waiting for
+    a sibling.
     """
 
     generation: LateGeneration
-    reclaimed: tuple[tuple[LateResourceKind, str], ...] = ()
-    refused: tuple[tuple[LateResourceKind, str], ...] = ()
+    entries: tuple[LateResource, ...] = ()
 
     @property
     def attempted(self) -> bool:
         """Whether anything was asked of the remote at all."""
-        return bool(self.reclaimed or self.refused)
+        return bool(self.entries)
 
 
 def _owed_branches(generation: LateGeneration) -> tuple[str, ...]:
@@ -188,31 +293,68 @@ def _held_snapshots(generation: LateGeneration) -> tuple[str, ...]:
 def _reclaimable(generation: LateGeneration, scan: _ChildScan) -> bool:
     """Whether every direct consumer this snapshot records is terminal.
 
-    Fail-closed: a consumer the scan does not carry, one wearing a label this
-    binary does not recognize, or a consumer ledger it could not type is a
-    consumer that may still be cutting from the ref, and deleting on the
-    strength of a reading nobody gave would destroy the only copy of work a
-    child was told to reuse.
+    Asked of a scan taken this tick, and asked again from scratch on every
+    visit -- a consumer read as closed once is not a fact this ledger latches.
+    A human who reopens one before the delete lands has a live consumer again,
+    and the answer the next reading gives is the one that decides.
+
+    Fail-closed: a consumer the scan does not carry, one whose read failed, or
+    a consumer ledger this binary could not type is a consumer that may still
+    be cutting from the ref, and deleting on the strength of a reading nobody
+    gave would destroy the only copy of work a child was told to reuse.
+
+    All of which is about the consumers the ledger NAMES, and the prior
+    question is whether it names all of them -- see `_whole_ledger`. Asked
+    first, because every proof below is only as complete as the list it walks.
     """
-    if generation.has_opaque_ledger or not generation.consumers:
+    if _unwritable(generation) or generation.has_opaque_ledger:
         return False
-    return all(_is_terminal(scan, consumer) for consumer in generation.consumers)
+    if not _whole_ledger(generation):
+        return False
+    return all(_ended(scan, consumer) for consumer in generation.consumers)
 
 
-def _is_terminal(scan: _ChildScan, consumer: int) -> bool:
-    """Whether one recorded consumer has ended, however it ended.
+def _whole_ledger(generation: LateGeneration) -> bool:
+    """Whether the ledger names every child cut from this generation's ref.
 
-    A terminal label is one way; a human closing the issue is the other, and
-    it leaves whatever label the child was wearing untouched. The close is
-    asked through the shared predicate rather than by reading an attribute
-    here, because the only spelling a real issue carries it under is `state`
-    -- and a consumer read as still running is one whose snapshot is never
-    reclaimed.
+    The question the per-consumer proof rests on, and the record's own phase
+    is what answers it. The split creates a child issue and records it in two
+    steps -- it must, since a child on GitHub the parent does not record is a
+    child nothing would come back to -- so while `splitting` stands the list
+    may be short by one that already exists, and a list of ended consumers
+    proves nothing about the child it has not reached. That window is where a
+    partial ledger would otherwise authorize the delete, unread and untold.
+    Either side of it the list is whole: nothing has been created yet, or the
+    loop ran to the end and the transaction moved on.
+
+    It is also what makes an EMPTY ledger a fact rather than a gap, which is
+    what left a ref nothing would ever reclaim: the snapshot is retained
+    before the first child exists, so an owner a human closed in that interval
+    has no consumers because there are none, and `all(())` settles it.
     """
-    number = int(consumer)
-    if scan.labels.get(number) in _TERMINAL_CHILD:
-        return True
-    return issue_is_closed(scan.issues.get(number))
+    return generation.phase in _WHOLE_LEDGER_PHASES
+
+
+def _ended(scan: _ChildScan, consumer: int) -> bool:
+    """Whether a fresh read says this recorded consumer has ended.
+
+    The issue's own state, not its label. All three dispositions that end a
+    consumer -- reaching `done`, being `rejected`, and a human closing it --
+    close the issue, and none of them survives a reopen. A LABEL does:
+    reopening a child leaves `done` or `rejected` exactly where it was, so a
+    reading taken off the label would call a child that is live again terminal
+    and delete the only copy of the work it came back for.
+
+    `done` still covers a nested split, for the reason it always did: a child
+    that reached it has published, so its own descendants are past needing the
+    ancestor -- and it reached it by being finished and closed.
+
+    The close is asked through the shared predicate rather than by reading an
+    attribute here, because the only spelling a real issue carries it under is
+    `state`. A consumer the scan never fetched is `None`, which is not closed,
+    so an unknown or unreadable consumer keeps the ref.
+    """
+    return issue_is_closed(scan.issues.get(int(consumer)))
 
 
 def _ours(
@@ -275,16 +417,17 @@ def _reclaim_branch(
             "issue=#%d recorded branch %r is not one this issue is published "
             "under; refusing to delete it", issue_number, branch,
         )
-        return _recorded(generation, _BRANCH, branch, deleted=False)
+        return _recorded(generation, _BRANCH, branch, LateResourceState.FAILED)
     try:
         deleted = gh.delete_remote_branch(branch)
     except Exception:
         log.exception("superseded branch %r delete raised", branch)
         deleted = False
     local_gone = _local_gone(spec, issue_number, branch)
-    return _recorded(
-        generation, _BRANCH, branch, deleted=deleted and local_gone,
-    )
+    return _recorded(generation, _BRANCH, branch, (
+        LateResourceState.RECONCILED if deleted and local_gone
+        else LateResourceState.FAILED
+    ))
 
 
 def _local_gone(
@@ -309,17 +452,36 @@ def _local_gone(
 
 
 def _reclaim_snapshot(
-    spec: config.RepoSpec,
-    issue_number: int,
-    generation: LateGeneration,
-    ref: str,
+    walk: _Pass, generation: LateGeneration, ref: str,
 ) -> LateGeneration:
-    """Delete one snapshot ref and record whether the remote let it go.
+    """Order, carry out, and announce the reclamation of one snapshot ref.
 
-    Named against the commit this generation preserved, so a ref somebody
-    re-pointed is refused rather than reclaimed. An absent ref is a success,
-    which is what makes the retry after a crash between the delete and this
-    write cost one request rather than a mismatch.
+    Four steps, and the order is the whole crash-safety argument.
+
+    **The decision goes down first.** Reaching here means every recorded
+    consumer was just proved ended, and that proof is not repeatable: a human
+    can reopen one at any moment. So the entry is written `reclaiming` BEFORE
+    the delete, which is what stops a tick that died after the push from
+    leaving a ref the ledger says is retained and the remote does not have.
+    What the entry does not buy is a later visit acting on this visit's proof:
+    the consumers are read again ahead of every delete, and only a ref the
+    remote no longer has finishes without one -- there the delete has already
+    happened, and a consumer that came back to it is answered by the receipt
+    and the child's own guard.
+
+    **The delete is named against the commit this generation preserved**, so a
+    ref somebody re-pointed is refused rather than reclaimed, and an absent
+    one is a success -- which is what makes the retry cost one read.
+
+    **The children are told before the entry is closed.** A child that reads
+    its ancestry after this owner has gone quiet would otherwise follow a
+    pointer to nothing, so each is sent one comment saying the ref is gone and
+    what continuing takes. It runs behind a delete the remote accepted and
+    ahead of the record of it, so a tick that dies in between re-enters
+    through `reclaiming` and repeats it; a child already holding this
+    reclamation's receipt is skipped, which is what keeps the sentence to one.
+    Nothing here touches a consumer's pinned state -- what acts on the receipt
+    is the child's own guard, on the child's own dispatch.
 
     Refused outright unless the target IS this generation's ref. The transport
     proves the namespace and the commit, and neither is identity: every
@@ -329,18 +491,198 @@ def _reclaim_snapshot(
     reuse. The name is re-derived here from the issue being walked and the
     record's own counters, and nothing else is deleted.
     """
+    issue_number = walk.issue.number
     if not _our_snapshot(issue_number, generation, ref):
         log.error(
             "issue=#%d recorded snapshot %r is not the ref this generation "
             "preserved; refusing to delete it", issue_number, ref,
         )
-        return _recorded(generation, _SNAPSHOT, ref, deleted=False)
-    outcome = _snapshot_refs.delete_snapshot_ref(
-        spec, spec.target_root, ref=ref, sha=generation.candidate_sha,
+        return _recorded(
+            generation, _SNAPSHOT, ref, LateResourceState.FAILED,
+        )
+    ordered = _ordered(walk, generation, ref)
+    proven = _consumer_scan(walk.gh, walk.issue, generation)
+    if not _may_take(walk, generation, ref, proven):
+        log.info(
+            "issue=#%d is not taking %s this visit: a consumer it records is "
+            "live again", issue_number, ref,
+        )
+        return ordered
+    return _taken(walk, ordered, ref, proven)
+
+
+def _may_take(
+    walk: _Pass, generation: LateGeneration, ref: str, proven: _ChildScan,
+) -> bool:
+    """The last reading before the delete, taken as late as one can be.
+
+    The scan the pass qualified this ref on was taken before the branch half
+    ran and before anything was written, and every one of those steps is a
+    request a human can reopen a consumer during. So the consumers are read
+    ONE more time, past the write that records the decision and immediately
+    ahead of the delete it authorizes -- which leaves the delete request
+    itself as the only window, and that one is irreducible.
+
+    A ref the remote no longer has is the one case that needs no proof: what
+    is left is finishing a delete that already happened, and a consumer that
+    came back to it is answered by the receipt and the child's own guard
+    rather than by keeping a ref nobody has.
+
+    A refusal leaves the entry `reclaiming` rather than putting it back. The
+    decision was taken and not carried out, which is exactly what that state
+    means -- and it is read back by the rule that probes the ref before acting
+    on it, so a ref still on the remote is kept until the consumers end again.
+    """
+    if _reclaimable(generation, proven):
+        return True
+    return _already_gone(walk, generation, ref)
+
+
+def _taken(
+    walk: _Pass, ordered: LateGeneration, ref: str, proven: _ChildScan,
+) -> LateGeneration:
+    """Carry out a delete this pass has just proved it may take."""
+    if _deleted(walk, ordered, ref) not in _RECLAIMED:
+        return _recorded(ordered, _SNAPSHOT, ref, LateResourceState.FAILED)
+    if not _release_consumers(walk, ordered, ref, proven):
+        # The ref is gone and a child still records it. Leaving the entry
+        # `reclaiming` is what keeps that obligation alive: it holds the
+        # terminal and keeps the sweep visiting, and the next pass finds the
+        # ref absent and delivers the receipt it could not.
+        return ordered
+    return _recorded(ordered, _SNAPSHOT, ref, LateResourceState.RECONCILED)
+
+
+def _deleted(
+    walk: _Pass, generation: LateGeneration, ref: str,
+) -> _snapshot_refs.SnapshotOutcome:
+    """Ask the remote to let go of one ref, reading a raise as a refusal.
+
+    The transport answers every refusal it can name, but a caller that must
+    RECORD the attempt cannot let one it could not name escape: an exception
+    here would abandon the pass with the decision written and nothing said,
+    which is the one outcome that produces no typed failure for an operator
+    to see. A raise is therefore the same answer a refused push is, and takes
+    the same `snapshot_delete_failed` with it.
+    """
+    try:
+        return _snapshot_refs.delete_snapshot_ref(
+            walk.spec, walk.spec.target_root,
+            ref=ref, sha=generation.candidate_sha,
+        )
+    except Exception:
+        log.exception("snapshot %r delete raised", ref)
+        return _snapshot_refs.SnapshotOutcome.REFUSED
+
+
+def _ordered(
+    walk: _Pass, generation: LateGeneration, ref: str,
+) -> LateGeneration:
+    """Record that this ref is going, before anything makes it so.
+
+    The proof that let the decision be taken is a reading of live issues, and
+    a reading is not a thing a retry can reproduce. What a retry CAN act on is
+    a decision somebody durably took, so it is written down first and the
+    delete underneath it is idempotent.
+    """
+    try:
+        decided = generation.with_resource(LateResource(
+            kind=_SNAPSHOT,
+            target=ref,
+            resource_state=LateResourceState.RECLAIMING,
+        ))
+    except _formats.InvalidLateValue:
+        log.exception("could not order the reclamation of %r", ref)
+        return generation
+    walk.persist(decided)
+    return decided
+
+
+def _release_consumers(
+    walk: _Pass, generation: LateGeneration, ref: str, proven: _ChildScan,
+) -> bool:
+    """Let every child cut from this ref know it is gone, once each.
+
+    Answers whether ALL of them were reached. Every consumer is attempted
+    before the answer is given -- one child this pass could not reach is not a
+    reason to leave the rest untold.
+    """
+    marker = _lineage.release_marker(
+        owner=walk.issue.number,
+        cycle=generation.cycle_id,
+        generation=generation.generation,
     )
-    return _recorded(
-        generation, _SNAPSHOT, ref, deleted=outcome in _RECLAIMED,
-    )
+    told = [
+        _release(walk, proven, consumer, marker)
+        for consumer in generation.consumers
+    ]
+    return all(told)
+
+
+def _release(
+    walk: _Pass, proven: _ChildScan, consumer: int, marker: str,
+) -> bool:
+    """Say on one child that the ref it was cut from is gone.
+
+    A COMMENT, and nothing else. Everything this owner knows about a consumer
+    it would rather write into that consumer's pinned comment -- drop the
+    dangling pointer, park it -- and it may not: the pinned comment is written
+    whole by whoever writes it, and a handler of the child's own that read it
+    before this pass and wrote it after would put the reclaimed pointer back
+    and take the park off, silently, with the owner already reconciled and
+    nothing left to come back. A label is no proxy for "no writer" either: a
+    finalize sets the terminal label BEFORE its last write, and the two
+    pre-PR states a human can close an issue on are swept by nothing at all,
+    so they never reach one.
+
+    A comment has none of that. It is appended rather than rewritten, so no
+    concurrent writer can lose it, and it reaches a consumer in every state a
+    consumer can be in. What acts on it is the child's own guard
+    (`late_reuse`), evaluated by the child's own handler, where there is
+    nobody to race.
+
+    Said once, proved from the thread rather than from state for the same
+    reason: the receipt is a marker naming this issue, this cycle, and this
+    generation, and a consumer already carrying one of ours has been told.
+
+    Read off the scan the delete was proved on, not the one the pass opened
+    with: that is the freshest reading of this child there is. A consumer that
+    scan could not fetch, or whose thread could not be read or posted to,
+    answers False -- the ref is gone either way, and a child that was never
+    told is the one thing this step exists to prevent, so the obligation stays
+    on the ledger until it can be.
+    """
+    child = proven.issues.get(int(consumer))
+    if child is None:
+        log.warning(
+            "issue=#%d reclaimed a snapshot but could not reach consumer #%d "
+            "to tell it; the obligation stays owed until it can",
+            walk.issue.number, int(consumer),
+        )
+        return False
+    try:
+        return _told(walk, child, marker)
+    except Exception:
+        log.exception(
+            "issue=#%d could not tell consumer #%d its snapshot is gone",
+            walk.issue.number, int(consumer),
+        )
+        return False
+
+
+def _told(walk: _Pass, child: Issue, marker: str) -> bool:
+    """Post this reclamation's receipt on one child unless it carries one."""
+    if _comments.carries_own_marker(
+        child.get_comments(), marker,
+        bot_login=getattr(walk.gh, "_bot_login", None),
+    ):
+        return True
+    walk.gh.comment(child, _RELEASED_NOTICE.format(
+        mentions=config.HITL_MENTIONS,
+        owner=walk.issue.number,
+        marker=marker,
+    ))
+    return True
 
 
 def _our_snapshot(
@@ -373,13 +715,9 @@ def _recorded(
     generation: LateGeneration,
     kind: LateResourceKind,
     target: str,
-    *,
-    deleted: bool,
+    settled: LateResourceState,
 ) -> LateGeneration:
-    """Move one obligation to what the remote just said about it."""
-    settled = (
-        LateResourceState.RECONCILED if deleted else LateResourceState.FAILED
-    )
+    """Move one obligation to the state this pass just established for it."""
     try:
         return generation.with_resource(LateResource(
             kind=kind, target=target, resource_state=settled,
@@ -387,6 +725,49 @@ def _recorded(
     except _formats.InvalidLateValue:
         log.exception("could not record the %s obligation %r", kind, target)
         return generation
+
+
+def _consumer_scan(
+    gh: GitHubClient, issue: Issue, generation: LateGeneration,
+) -> _ChildScan:
+    """Read every recorded direct consumer as it stands right now.
+
+    Fail-per-consumer rather than fail-per-pass. A read that raises leaves
+    that consumer out of both maps, which the reclamation rule already reads
+    as "not proved ended" and answers by keeping the ref -- while the branch
+    half, which owes nothing to any consumer, is still settled on this visit.
+    Abandoning the whole pass would instead let one unreadable child hold a
+    superseded branch on the remote for as long as it stayed unreadable.
+
+    Shaped as the parent scan the umbrella hands over, because the rule it
+    feeds is the same rule and may not learn a second shape to ask it in.
+    """
+    consumer_issues: dict[int, Issue] = {}
+    consumer_labels: dict[int, Optional[str]] = {}
+    for consumer in generation.consumers:
+        number = int(consumer)
+        consumer_issue = _consumer_issue(gh, issue, number)
+        if consumer_issue is None:
+            continue
+        consumer_issues[number] = consumer_issue
+        consumer_labels[number] = gh.workflow_label(consumer_issue)
+    return _ChildScan(
+        list(generation.consumers), consumer_issues, consumer_labels,
+    )
+
+
+def _consumer_issue(
+    gh: GitHubClient, issue: Issue, consumer: int,
+) -> Optional[Issue]:
+    """Fetch one recorded consumer, or None when it could not be asked for."""
+    try:
+        return gh.get_issue(consumer)
+    except Exception:
+        log.exception(
+            "issue=#%s could not read snapshot consumer #%d; its snapshot "
+            "stays retained", issue.number, consumer,
+        )
+        return None
 
 
 def _record_branch_obligation(
@@ -403,77 +784,190 @@ def _record_branch_obligation(
     ))
 
 
+def _unwritable(generation: LateGeneration) -> bool:
+    """Whether the RESOURCE ledger is one this binary may not update at all.
+
+    Distinct from `has_opaque_ledger`, which folds in the consumer ledger
+    beside it. The two are preserved and written independently, and they stop
+    different things: an entry this binary cannot type on the RESOURCE ledger
+    means no reclamation can be recorded, while one on the consumer ledger
+    means no snapshot's proof can be taken. Reading them as one would leave a
+    superseded branch on the remote because somebody hand-edited a list of
+    issue numbers.
+    """
+    return generation.opaque_resources is not None
+
+
 def _asked_of(
-    generation: LateGeneration, scan: _ChildScan,
+    walk: _Pass, generation: LateGeneration,
 ) -> tuple[tuple[LateResourceKind, str], ...]:
     """What this pass will ask the remote about, in the order it asks.
 
-    A branch is asked about whenever it is owed; a snapshot only once every
-    recorded direct consumer is terminal, which is the rule that owns it.
+    A branch is asked about whenever it is owed. A snapshot is asked about
+    once every recorded direct consumer is proved ended -- the rule that owns
+    it -- or, past that proof, only for a ref the remote no longer has.
 
-    Nothing at all while the ledger is opaque. The typed view is a projection
-    of the entries this binary could read, and the write puts the verbatim
-    copy back -- so a reclamation recorded against that view would be dropped
-    at the next write and asked for again forever.
+    Nothing at all while the RESOURCE ledger is opaque. The typed view is a
+    projection of the entries this binary could read, and the write puts the
+    verbatim copy back -- so a reclamation recorded against that view would be
+    dropped at the next write and asked for again forever.
+
+    An opaque CONSUMER ledger stops only what it is about. It is the thing a
+    snapshot's proof is taken from, so no ref may be reclaimed while it cannot
+    be read -- but a branch owes no consumer anything, and freezing the two
+    together would leave a superseded branch on the remote for as long as a
+    hand-edited consumer list stayed hand-edited. The two are preserved and
+    written independently, and they are refused independently here.
     """
-    if generation.has_opaque_ledger:
+    if _unwritable(generation):
         return ()
     owed = tuple((_BRANCH, target) for target in _owed_branches(generation))
-    if not _reclaimable(generation, scan):
-        return owed
     return owed + tuple(
-        (_SNAPSHOT, target) for target in _held_snapshots(generation)
+        (_SNAPSHOT, target) for target in _asked_snapshots(walk, generation)
     )
 
 
-def _reclaimed(
-    gh: GitHubClient,
-    spec: config.RepoSpec,
-    issue_number: int,
-    generation: LateGeneration,
-    scan: _ChildScan,
-) -> _Reclamation:
+def _asked_snapshots(
+    walk: _Pass, generation: LateGeneration,
+) -> tuple[str, ...]:
+    """The held refs this pass may act on, and what qualifies each of them.
+
+    Every held ref qualifies once the consumers are proved ended, which is the
+    rule that owns the snapshot.
+
+    Past that proof there is exactly one more way in, and it is narrow on
+    purpose. An entry reading `reclaiming` or `failed` records a decision that
+    was taken against a proof, and half of what a retry has to finish is not
+    repeatable: the ledger may be behind a delete that already landed, and a
+    child told against it, while the consumers a fresh reading finds are
+    whoever a human has reopened since. So the ref itself is asked about
+    first, and the entry qualifies only if the remote no longer has it. A ref
+    the remote still holds is a ref a reopened consumer may still be cutting
+    from -- and the decision to take it, however durably recorded, does not
+    outrank the reading in front of it.
+    """
+    if _reclaimable(generation, walk.scan):
+        return _held_snapshots(generation)
+    return tuple(
+        entry.target
+        for entry in generation.resources
+        if entry.kind == _SNAPSHOT
+        and entry.resource_state in _ORDERED
+        and _already_gone(walk, generation, entry.target)
+    )
+
+
+def _already_gone(
+    walk: _Pass, generation: LateGeneration, ref: str,
+) -> bool:
+    """Whether an ordered ref the consumers no longer clear is gone anyway.
+
+    One read, and it decides which of two wrongs to avoid. Assuming the ref
+    is gone would delete one a reopened child came back for; assuming it is
+    there would strand a ledger against a ref nothing can prove either way,
+    holding a terminal open forever. Asking answers it, and only in the window
+    where the two answers differ -- a decision recorded and the consumers no
+    longer unanimous, which is a crash or a refusal followed by a reopen.
+
+    Fails closed. Unreadable, mismatched, or raised all leave the ref held,
+    which is the answer that destroys nothing.
+    """
+    try:
+        observed = _snapshot_refs.observed_snapshot_ref(
+            walk.spec, walk.spec.target_root,
+            ref=ref, sha=generation.candidate_sha,
+        )
+    except Exception:
+        log.exception("could not ask the remote about snapshot %r", ref)
+        return False
+    return observed == _snapshot_refs.SnapshotOutcome.ABSENT
+
+
+def _reclaimed(walk: _Pass, generation: LateGeneration) -> _Reclamation:
     """Settle everything this issue owes that can be settled right now."""
-    asked = _asked_of(generation, scan)
+    asked = _asked_of(walk, generation)
     settled = generation
     for kind, target in asked:
         if kind == _BRANCH:
-            settled = _reclaim_branch(gh, spec, issue_number, settled, target)
+            settled = _reclaim_branch(
+                walk.gh, walk.spec, walk.issue.number, settled, target,
+            )
         else:
-            settled = _reclaim_snapshot(spec, issue_number, settled, target)
-    outstanding = set(_owed_branches(settled)) | set(_held_snapshots(settled))
+            settled = _reclaim_snapshot(walk, settled, target)
     return _Reclamation(
-        generation=settled,
-        reclaimed=tuple(
-            owed for owed in asked if owed[1] not in outstanding
-        ),
-        refused=tuple(owed for owed in asked if owed[1] in outstanding),
+        generation=settled, entries=_settled_entries(settled, asked),
     )
+
+
+def _settled_entries(
+    generation: LateGeneration,
+    asked: tuple[tuple[LateResourceKind, str], ...],
+) -> tuple[LateResource, ...]:
+    """What the record now says about each obligation this pass acted on.
+
+    Read back off the record rather than inferred from what the remote said,
+    because the two are not the same claim: a delete that landed while a
+    child could not be told leaves a ref that is gone and an obligation
+    that is not, and the entry is the only thing that carries both.
+    """
+    recorded = {
+        (entry.kind, entry.target): entry for entry in generation.resources
+    }
+    return tuple(recorded[owed] for owed in asked if owed in recorded)
 
 
 def _blocking(generation: LateGeneration) -> tuple[str, ...]:
     """What may not be left behind when this umbrella closes.
 
-    A branch that is not reconciled, and a snapshot the remote REFUSED. A
-    snapshot merely retained is not here: it is kept because a consumer could
-    not be proved terminal, which is a condition a later sweep clears and this
-    tick cannot.
+    Every obligation that is not `reconciled`, branch and ref alike. There is
+    no reading under which a ref still on the remote is settled: one kept
+    because a consumer could not be proved ended is an object this repository
+    is holding, and an umbrella closed over it is an object nothing would ever
+    come back for -- the parent is `done` by then and no pass revisits it. The
+    label staying put IS the retry, and it is also the only thing that makes
+    an unreclaimable ref visible to a human.
 
-    An opaque ledger blocks whatever the typed view says, and it has to: the
-    entries this binary could not read are still obligations, and the typed
-    entries beside them are not the whole of what is owed. Closing on the
-    strength of a projection is exactly the reading the verbatim copy exists
-    to prevent.
+    An opaque RESOURCE ledger blocks whatever the typed view says, and it has
+    to: the entries this binary could not read are still obligations, and the
+    typed entries beside them are not the whole of what is owed. Closing on
+    the strength of a projection is exactly the reading the verbatim copy
+    exists to prevent.
+
+    An opaque CONSUMER ledger needs no clause of its own. It is what a
+    snapshot's proof is taken from, so a ref it covers is never reclaimed and
+    is therefore already here as an unreconciled entry -- while a branch,
+    which owes no consumer anything, is settled and closes as it always did.
     """
-    if generation.has_opaque_ledger:
+    if _unwritable(generation):
         return (_OPAQUE,)
-    refused = tuple(
-        entry.target
-        for entry in generation.resources
-        if entry.kind == _SNAPSHOT
-        and entry.resource_state == LateResourceState.FAILED
-    )
-    return _owed_branches(generation) + refused
+    return _owed_branches(generation) + _held_snapshots(generation)
+
+
+def _settle(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+    scan: _ChildScan,
+) -> LateGeneration:
+    """Settle what this issue owes right now, and answer the record it leaves.
+
+    The write and the two sinks are behind `attempted` on purpose: an entry
+    that was ALREADY reconciled is not news, and reporting it again would put
+    one `late_cleanup` per visit on an issue that is simply waiting.
+
+    The stage both sinks record is read off the issue rather than named by the
+    caller, because it is a fact about where the reclamation happened and not
+    about which owner drove it: the umbrella's terminal reaches here on
+    `umbrella`, and the closed-owner sweep on whichever of the two cleanup
+    states its issue was closed on.
+    """
+    walk = _Pass(gh=gh, spec=spec, issue=issue, state=state, scan=scan)
+    settled = _reclaimed(walk, _late_state.read_late_generation(state))
+    if settled.attempted:
+        walk.persist(settled.generation)
+        _report(gh, issue, settled, stage=stage_name(gh.workflow_label(issue)))
+    return settled.generation
 
 
 def _settled_for_terminal(
@@ -485,8 +979,8 @@ def _settled_for_terminal(
 ) -> bool:
     """Whether this umbrella may complete, settling what it still owes.
 
-    The one caller is the umbrella's all-children-resolved branch, and the
-    answer is a decision rather than a report: False keeps the parent open on
+    The caller is the umbrella's all-children-resolved branch, and the answer
+    is a decision rather than a report: False keeps the parent open on
     `workflow:umbrella` for the next tick to ask again, which is what makes an
     unreclaimed remote loud instead of silent. An issue with no recorded
     generation owes nothing and answers without a write.
@@ -494,12 +988,17 @@ def _settled_for_terminal(
     generation = _late_state.read_late_generation(state)
     if not generation.is_present:
         return _owes_nothing_uncorrelated(issue, generation)
-    settled = _reclaimed(gh, spec, issue.number, generation, scan)
-    if settled.attempted:
-        _late_state.write_late_generation(state, settled.generation)
-        gh.write_pinned_state(issue, state)
-        _report(gh, issue, settled)
-    return not _blocking(settled.generation)
+    held = _blocking(_settle(gh, spec, issue, state, scan))
+    if not held:
+        return True
+    # Said on every tick that holds, because a hold with nothing attempted
+    # writes nothing and emits nothing: an umbrella that will not close and
+    # never says why is the one shape an operator cannot act on.
+    log.info(
+        "issue=#%d holds its terminal until the remote lets go of: %s",
+        issue.number, ", ".join(held),
+    )
+    return False
 
 
 def _owes_nothing_uncorrelated(
@@ -520,6 +1019,7 @@ def _owes_nothing_uncorrelated(
     """
     if not generation.resources and not generation.has_opaque_ledger:
         return True
+
     log.error(
         "issue=#%d still records external obligations under a damaged late "
         "identity; holding the umbrella open rather than closing over them",
@@ -529,51 +1029,57 @@ def _owes_nothing_uncorrelated(
 
 
 def _report(
-    gh: GitHubClient, issue: Issue, settled: _Reclamation,
+    gh: GitHubClient,
+    issue: Issue,
+    settled: _Reclamation,
+    *,
+    stage: Optional[str],
 ) -> None:
-    """Say on both sinks what each attempted reclamation did."""
-    for kind, target in settled.reclaimed:
-        _emit_cleanup(gh, settled.generation, kind, target, deleted=True)
-    for kind, target in settled.refused:
-        _emit_cleanup(gh, settled.generation, kind, target, deleted=False)
-        log.warning(
-            "issue=#%d still owes the remote %s %r; holding the umbrella "
-            "open until it is reclaimed", issue.number, kind, target,
-        )
+    """Say on both sinks what each attempted reclamation did.
+
+    One `late_cleanup` per obligation acted on, carrying the state the record
+    gives it. A typed failure rides with the one state that names a remote
+    that REFUSED; an obligation still `reclaiming` is work in progress, not a
+    failure, and says so by carrying that state rather than a second event.
+    Either way an entry short of `reconciled` is warned about, because it is
+    what a visit that keeps happening is happening for.
+    """
+    for entry in settled.entries:
+        _emit_cleanup(gh, settled.generation, entry, stage)
+        if entry.resource_state != LateResourceState.RECONCILED:
+            log.warning(
+                "issue=#%d still owes the remote %s %r (%s); it is retried "
+                "on every visit until it is reclaimed",
+                issue.number,
+                entry.kind,
+                entry.target,
+                entry.resource_state,
+            )
 
 
 def _emit_cleanup(
     gh: GitHubClient,
     generation: LateGeneration,
-    kind: LateResourceKind,
-    target: str,
-    *,
-    deleted: bool,
+    entry: LateResource,
+    stage: Optional[str],
 ) -> None:
     """Report what happened to one external resource, on both sinks."""
-    if not deleted:
+    if entry.resource_state == LateResourceState.FAILED:
         _telemetry.emit_late_event(
             gh,
             _events.LateEvent(
                 family=_events.LateEventFamily.FAILURE,
-                failure=_FAILURES[kind],
+                failure=_FAILURES[entry.kind],
             ),
             generation,
-            stage=_UMBRELLA_STAGE,
+            stage=stage,
         )
     _telemetry.emit_late_event(
         gh,
         _events.LateEvent(
             family=_events.LateEventFamily.CLEANUP,
-            resource=LateResource(
-                kind=kind,
-                target=target,
-                resource_state=(
-                    LateResourceState.RECONCILED if deleted
-                    else LateResourceState.FAILED
-                ),
-            ),
+            resource=entry,
         ),
         generation,
-        stage=_UMBRELLA_STAGE,
+        stage=stage,
     )

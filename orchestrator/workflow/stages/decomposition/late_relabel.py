@@ -46,6 +46,7 @@ that read is reconciled or the cycle is cancelled.
 from __future__ import annotations
 
 import logging
+from typing import Optional
 
 from github.Issue import Issue
 
@@ -90,6 +91,19 @@ def _adjudication_is_live(generation: LateGeneration) -> bool:
     return generation.is_oversized or generation.owner_check_pending
 
 
+def _adjudicating(state: PinnedState) -> bool:
+    """Whether this issue's own record has a live adjudication on it.
+
+    The one thing that makes `workflow:decomposing` a state this issue is IN
+    rather than a label it happens to be wearing, which is why the dispatcher
+    asks it before stepping its guards aside for that label. A child of a
+    split closed while it was being decomposed comes back on the same label
+    with no generation of its own at all, and the label alone cannot tell the
+    two apart.
+    """
+    return _adjudication_is_live(_late_state.read_late_generation(state))
+
+
 def _refuses_disabled_route(state: PinnedState) -> bool:
     """Whether `DECOMPOSE=off` may not route this issue to implementation.
 
@@ -100,7 +114,7 @@ def _refuses_disabled_route(state: PinnedState) -> bool:
     owner nobody has been able to read since the run that produced it -- and
     the legacy route publishes exactly that.
     """
-    return _adjudication_is_live(_late_state.read_late_generation(state))
+    return _adjudicating(state)
 
 
 def _restore_decomposing_label(
@@ -149,45 +163,41 @@ def _restore_decomposing_label(
     return True
 
 
-def _refuses_dispatch(gh: GitHubClient, issue: Issue) -> bool:
-    """Whether this issue may not reach the handler its label names.
+def _dispatch_state(gh: GitHubClient, issue: Issue) -> Optional[PinnedState]:
+    """The pinned comment the dispatcher's guards read, or None if it could not.
 
-    The dispatcher's own question, and the one place a hand relabel is
-    actually caught: by the time anything reads the label it is already gone,
-    so there is nothing to refuse at the write and the repair has to happen
-    where the label becomes a handler call.
-
-    The refusal is the safety property and the relabel is only the repair, so
-    a label write that fails still stops the dispatch. Otherwise a transition
-    guard set to `enforce`, or a GitHub error, would hand the issue to the
-    very handler this exists to keep it away from.
-
-    Reading the pinned state is this check's whole cost -- one comment walk per
-    labelled, non-decomposing issue per tick, on top of the one that issue's
-    own handler makes. It is paid because there is no cheaper signal: a live
-    generation is a fact about the pinned comment, and the label that would
-    have told us is exactly the thing a human moved.
-
-    A read that could not be taken refuses, which is the one place this guard
-    does NOT follow the additive-safety-net convention the pause probe reads
-    by. The costs are not symmetric. Failing open costs an unadjudicated
-    candidate published: the handler behind this one reads the same pinned
-    comment for itself, and a first read that failed transiently is followed
-    by a second that may well succeed -- so the very state that would have
-    stopped the dispatch is what the stage then acts on. Failing closed costs
-    one tick of one issue, retried on the next poll, during an outage in which
-    nothing else was going to make progress either.
+    None is a refusal, not an absence, and every caller treats it as one. The
+    costs are not symmetric: dispatching on an unread comment risks publishing
+    an unadjudicated candidate or resuming a child against a ref that is gone,
+    while refusing costs one tick of one issue during an outage in which
+    nothing else was making progress either.
     """
     try:
-        state = gh.read_pinned_state(issue)
+        return gh.read_pinned_state(issue)
     except Exception:
         log.exception(
             "issue=#%s pinned state could not be read; refusing to dispatch "
             "it rather than risk publishing an unadjudicated candidate",
             getattr(issue, "number", "?"),
         )
-        return True
-    if not _adjudication_is_live(_late_state.read_late_generation(state)):
+        return None
+
+
+def _holds_the_label(
+    gh: GitHubClient, issue: Issue, state: PinnedState,
+) -> bool:
+    """Whether a live adjudication forbids the label this issue now wears.
+
+    The one place a hand relabel is actually caught: by the time anything
+    reads the label it is already gone, so there is nothing to refuse at the
+    write and the repair has to happen where the label becomes a handler call.
+
+    The repair rides with the refusal: the label is put back where the
+    adjudication left it, and a write that fails still refuses -- otherwise a
+    transition guard set to `enforce`, or a GitHub error, would hand the issue
+    to the very handler this exists to keep it away from.
+    """
+    if not _adjudicating(state):
         return False
     try:
         restored = _restore_decomposing_label(gh, issue, state)

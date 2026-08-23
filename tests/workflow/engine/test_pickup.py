@@ -40,7 +40,7 @@ class _StageDispatchRecorder:
         self.labels: list = []
         self.state: dict = {}
 
-    def __call__(self, gh, spec, issue) -> None:
+    def __call__(self, gh, spec, issue, **_route) -> None:
         self.calls.append((gh, spec, issue))
         self.labels = list(self._github.label_history)
         self.state = dict(self._github.pinned_data(self._issue_number))

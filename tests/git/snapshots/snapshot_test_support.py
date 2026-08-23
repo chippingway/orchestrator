@@ -79,6 +79,27 @@ class RealRemote:
         """Take a ref off the remote without going through the transport."""
         _git("push", str(self.remote), f":{ref}", cwd=self.clone)
 
+    def point_local_ref(self, ref: str, sha: str) -> None:
+        """Point a ref in the shared clone at another commit.
+
+        What anything holding this checkout can do to a ref in it, the agent
+        running in one of its worktrees included -- which is why a copy of a
+        snapshot is read for the commit it carries rather than for existing.
+        """
+        _git("update-ref", ref, sha, cwd=self.clone)
+
+    def lock_ref(self, ref: str) -> None:
+        """Leave a local ref where nothing may delete it.
+
+        The lock file a crashed git leaves behind, which is how a ref store
+        several worktrees of one clone share really refuses to give a ref up:
+        the delete fails and every read still answers, which is the pair a
+        teardown that trusts a failed read cannot tell apart from success.
+        """
+        held = self.clone / ".git" / f"{ref}.lock"
+        held.parent.mkdir(parents=True, exist_ok=True)
+        held.touch()
+
 
 def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess:
     """Run one plain git command, raising with its stderr when it fails."""

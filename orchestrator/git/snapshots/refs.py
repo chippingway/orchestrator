@@ -90,10 +90,12 @@ class SnapshotOutcome(Enum):
     DELETED = "deleted"
 
 
-# The two answers that mean the remote no longer has the ref, and therefore
-# that this host's copy of it is holding objects nothing points at.
-_GONE = frozenset((
-    SnapshotOutcome.DELETED, SnapshotOutcome.ABSENT,
+# The two readings a reclamation may act on: the ref this generation
+# preserved, and one an earlier attempt already took. Anything else -- another
+# commit under the name, or a remote that could not be asked -- is left exactly
+# as it stands, mirror included.
+_RECLAIMABLE = frozenset((
+    SnapshotOutcome.PRESENT, SnapshotOutcome.ABSENT,
 ))
 
 
@@ -196,20 +198,65 @@ def delete_snapshot_ref(
     refused push. So a ref carrying anything but the exact candidate this
     generation preserved is a `MISMATCH` and is left alone for a human, and
     the lease is pinned to that expected commit rather than to the reading.
+
+    **This host's copy goes first, and the remote is not touched until it has
+    provably gone.** A child of a split reads a surviving mirror as proof that
+    nobody has reclaimed its ancestor's ref, which is what keeps a per-tick
+    guard off the network -- and that reading is only sound if the mirror can
+    never outlive the remote ref. Taking the remote first left exactly the
+    state the guard cannot tell from an untouched world whenever the local
+    delete failed, since that delete is best-effort against this host's disk.
+    So the order is inverted, and a mirror that will not go -- or that cannot
+    be PROVEN gone -- is a `REFUSED` reclamation: the obligation stays owed,
+    the umbrella stays open, and an operator has something to see. Dropping a
+    cache early is the harmless direction -- the ref is still on the remote,
+    and the reuse instructions every child carries fetch it again.
+
+    Which is also why the read comes before the drop rather than after it. A
+    ref carrying another commit is somebody else's content, and a mirror
+    dropped ahead of discovering that would throw away this host's only copy
+    of a candidate this call then refuses to reclaim.
     """
     if not namespace.is_snapshot_ref(ref):
         log.error("refusing to delete %r: not a snapshot ref", ref)
         return SnapshotOutcome.REFUSED
-    reclaimed = _reclaimed_remote(spec, worktree, ref, sha)
-    if reclaimed in _GONE:
-        _drop_mirror(spec, worktree, ref)
-    return reclaimed
+    observed = observed_snapshot_ref(spec, worktree, ref=ref, sha=sha)
+    if observed not in _RECLAIMABLE:
+        return observed
+    if not _mirror_dropped(spec, worktree, ref):
+        return SnapshotOutcome.REFUSED
+    if observed == SnapshotOutcome.ABSENT:
+        return observed
+    return _taken_from_remote(spec, worktree, ref, sha)
 
 
-def _reclaimed_remote(
-    spec: config.RepoSpec, worktree: Path, ref: str, sha: str,
+def observed_snapshot_ref(
+    spec: config.RepoSpec, worktree: Path, *, ref: str, sha: str,
 ) -> SnapshotOutcome:
-    """What the remote did with the one ref this generation preserved."""
+    """What the remote holds under one snapshot ref, writing nothing.
+
+    The read half of the deletion, published because a caller sometimes has
+    to know whether a ref is still there WITHOUT being allowed to take it: a
+    reclamation already ordered against consumers that have since come back
+    is retryable only if what it is retrying has already happened. Asking is
+    one request and answers that question exactly; assuming either way
+    answers it wrong -- either by stranding a ledger against a ref nothing
+    can prove is gone, or by deleting one a live child came back for.
+
+    `PRESENT` is the candidate this generation preserved and nothing else. A
+    ref carrying another commit is a `MISMATCH` whether it is being read or
+    reclaimed, and is left alone under both.
+
+    `sha` is that candidate and is required, for the reason the delete
+    requires it: an occupancy check is not an obtainability check. A caller
+    with no commit to name would be told a re-pointed ref is `PRESENT` and
+    would act on a promise nobody made -- so a caller that does not hold the
+    commit establishes it first, from the record that preserved it, rather
+    than asking a weaker question here.
+    """
+    if not namespace.is_snapshot_ref(ref):
+        log.error("refusing to ask about %r: not a snapshot ref", ref)
+        return SnapshotOutcome.REFUSED
     observed = authentication._remote_ref_sha(spec, worktree, ref)
     if observed is None:
         return SnapshotOutcome.UNREADABLE
@@ -221,6 +268,13 @@ def _reclaimed_remote(
             "leaving it untouched", spec.slug, ref, observed, sha,
         )
         return SnapshotOutcome.MISMATCH
+    return SnapshotOutcome.PRESENT
+
+
+def _taken_from_remote(
+    spec: config.RepoSpec, worktree: Path, ref: str, sha: str,
+) -> SnapshotOutcome:
+    """Ask the remote to let go of the one ref this generation preserved."""
     deleted = authentication._delete_remote_ref(
         spec, worktree, ref=ref, expected=sha,
     )
@@ -248,6 +302,42 @@ def local_snapshot_ref(spec: config.RepoSpec, ref: str) -> str:
     )
 
 
+def local_snapshot_present(
+    spec: config.RepoSpec, worktree: Path, *, ref: str, sha: str,
+) -> bool:
+    """Whether this host still holds its copy of one snapshot, at `sha`.
+
+    The free half of "is this snapshot still there", and it is sound because
+    of the ORDER a reclamation runs in rather than as a guess about it: the
+    mirror is taken down first and the remote ref is not touched until it has
+    provably gone, so a mirror still here says this host has reclaimed
+    nothing. That is enough for a reader that only needs to know whether it
+    may still reuse the candidate, and it costs a local `rev-parse` and no
+    network at all -- which is what keeps a per-tick guard off the wire for
+    every child of a live split.
+
+    `sha` is the commit the caller was promised, and it is required rather
+    than optional because this ref lives in the object store the agents' own
+    worktrees share. A name that resolves to SOMETHING says only that a ref
+    exists under it: an agent -- or anything else with the clone -- can point
+    it at whatever it likes, and a reader that asked about existence alone
+    would then answer "not reclaimed" for a mirror carrying another commit
+    entirely. That answer is spent twice over: the child resumes against work
+    nobody adjudicated, and the remote it would otherwise have asked -- the
+    one that would have said `ABSENT` or `MISMATCH` and parked it -- is never
+    asked at all. So the reading is an identity check, and only the exact
+    candidate this ref preserved answers yes.
+
+    Peeled to a commit by the resolution below, so a mirror pointed at a tag
+    object wrapping the candidate still answers for the candidate; every other
+    commit, and every unreadable store, answers no and sends the caller to the
+    remote, which is the authority anyway.
+    """
+    if not sha:
+        return False
+    return _local_ref_sha(worktree, local_snapshot_ref(spec, ref)) == sha
+
+
 def _repository_segment(slug: str) -> str:
     """A ref-safe, bounded, injective segment naming one repository."""
     sanitized = paths._sanitize_branch_segment(slug)
@@ -258,26 +348,76 @@ def _repository_segment(slug: str) -> str:
     return _DIGEST_MARK.join((sanitized[:kept], digest))
 
 
-def _drop_mirror(
+def _mirror_dropped(
     spec: config.RepoSpec, worktree: Path, ref: str,
-) -> None:
-    """Reclaim this host's copy of a snapshot whose remote ref is gone.
+) -> bool:
+    """Take this host's copy of a snapshot down, and say whether it went.
 
-    Best-effort and last: what the caller was asked to settle is the remote,
-    and a local ref left behind is this host's disk rather than the
-    repository's. It is still dropped, because a mirror nothing deletes holds
-    the snapshot's objects against `gc` for as long as the clone lives.
+    Answered by a READ rather than by an exit code, for the reason every
+    teardown in this repository is: `update-ref -d` is best-effort against a
+    ref store other worktrees of the same clone share, and a caller whose next
+    step depends on the answer may not trust the return of the command that
+    was supposed to produce it. A ref that was never fetched is already gone
+    and answers yes without a complaint of its own.
+
+    What depends on the answer is the remote delete above it, and through that
+    the child-side reuse guard: a mirror is what says "no reclamation has
+    happened" without spending a request, so one left standing beside a
+    reclaimed remote ref is a child cleared to work from a candidate nobody
+    vouches for any more. A mirror nothing deletes also holds the snapshot's
+    objects against `gc` for as long as the clone lives.
+
+    Which is why the read has to ESTABLISH the mirror is gone rather than
+    merely fail to find it: a delete that failed and a verification that could
+    not run are the same tick, and that tick is precisely the one this order
+    exists to stop.
     """
     mirror = local_snapshot_ref(spec, ref)
     with locks._target_root_lock(spec.target_root):
         dropped = commands._git_hardened(
             "update-ref", "-d", mirror, cwd=worktree,
         )
-    if dropped.returncode != 0:
-        log.warning(
-            "%s: local snapshot %s could not be dropped: %s",
-            spec.slug, mirror, (dropped.stderr or "").strip(),
+        gone = _local_ref_absent(worktree, mirror)
+    if gone:
+        return True
+    log.error(
+        "%s: local snapshot %s was not proven gone (%s); leaving %s on the "
+        "remote rather than reclaiming it behind a copy that may outlive it",
+        spec.slug, mirror, (dropped.stderr or "").strip(), ref,
+    )
+    return False
+
+
+def _local_ref_absent(worktree: Path, ref: str) -> bool:
+    """Whether the ref store was read and holds nothing under `ref`.
+
+    An established absence rather than a resolution that failed, and the two
+    are different answers however alike they look: `rev-parse` reports a ref
+    that is not there, a git directory that has gone, and a store nothing can
+    read with the same non-zero exit. A teardown verified through it therefore
+    reads "could not ask" as "already gone" -- so the one tick where both the
+    delete and the check fail is the one that takes the remote ref while this
+    host's copy is still standing, which is the exact state the child-side
+    guard cannot tell from a world nothing was reclaimed in, and it lasts
+    until a receipt lands.
+
+    `for-each-ref` separates the two by exit code: it succeeds and names
+    nothing when the store holds no such ref, and fails when the store could
+    not be read at all. What it printed is matched by name rather than
+    counted, because a ref is also a prefix pattern -- what was asked about is
+    this exact ref, and something nested under its name is not it.
+    """
+    listed = commands._git_hardened(
+        "for-each-ref", "--format=%(refname)", "--end-of-options", ref,
+        cwd=worktree,
+    )
+    if listed.returncode != 0:
+        log.error(
+            "could not read %s in %s: %s",
+            ref, worktree, (listed.stderr or "").strip(),
         )
+        return False
+    return ref not in (listed.stdout or "").split()
 
 
 def _local_ref_sha(worktree: Path, ref: str) -> Optional[str]:

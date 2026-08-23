@@ -12,12 +12,12 @@ from github import GithubException
 from orchestrator import config
 from orchestrator.github import client as _client
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.issues import CLOSED_SWEEP_LOOKUPS
+from orchestrator.github.issues import SWEEP_LOOKUPS
 from orchestrator.workflow.state import WorkflowLabel
 
 _STATE_OPEN = "open"
 _STATE_CLOSED = "closed"
-_SWEPT_LABEL_COUNT = len(CLOSED_SWEEP_LOOKUPS)
+_SWEPT_LABEL_COUNT = len(SWEEP_LOOKUPS)
 _HTTP_NOT_FOUND = 404
 _PARENT_ISSUE_NUMBER = 42
 _LEGACY_SWEEP_NAME = "implementing"
@@ -39,7 +39,7 @@ def _closed_sweep_fixture():
     client.repo.get_issues.return_value = iter([])
     sweep_labels = {
         name: MagicMock(name=f"{name}_label")
-        for name, _ in CLOSED_SWEEP_LOOKUPS
+        for name, _ in SWEEP_LOOKUPS
     }
     client.repo.get_label.side_effect = sweep_labels.__getitem__
     return client, sweep_labels

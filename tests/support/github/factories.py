@@ -17,5 +17,6 @@ def make_issue(number: int, **issue_fields) -> FakeIssue:
         body=seed.body,
         labels=labels,
         comments=list(seed.comments),
+        closed=seed.closed,
         user=FakeUser(seed.author),
     )

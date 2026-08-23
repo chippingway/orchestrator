@@ -143,14 +143,18 @@ examples.
 - `POLL_INTERVAL` — default `60`. seconds between polling ticks
 - `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` — default `1`. how many ticks apart the closed-issue recovery sweep runs (see
   [GitHub rate limits](#github-rate-limits) below). The sweep issues one `GET …/issues?state=closed&labels=<L>` per
-  non-terminal workflow label the repository actually carries **per repo**; across many repos at a short
+  non-terminal workflow label the repository actually carries — the eight recovery labels plus the two cleanup ones,
+  `workflow:decomposing` and `workflow:umbrella` — **per repo**; across many repos at a short
   `POLL_INTERVAL` that fixed cost dominates request volume and is the main driver of GitHub *primary* rate-limit
   (5000 req/hour/PAT) exhaustion. `1` runs it every tick (unchanged behavior). Raise it (e.g. `4`–`5`) on multi-repo
   deployments; the only cost is that an externally-merged/closed issue may take up to `N-1` extra ticks to finalize to
   `done`. The latency-sensitive open-issue poll always runs every tick. A closed `discussion` is the one issue the
   sweep keeps costing: with no plan PR published it waits the same `N-1` ticks to finalize to `rejected`, and with one
   still open it deliberately keeps its `discussion` label so the sweep goes on yielding it every pass until the humans
-  decide that pull request — a verdict `N>1` therefore picks up that many ticks later as well.
+  decide that pull request — a verdict `N>1` therefore picks up that many ticks later as well. A closed snapshot
+  owner behaves the same way: it keeps its `workflow:decomposing` / `workflow:umbrella` label, so the cleanup sweep
+  revisits it every pass until its obligation ledger is fully reconciled, and `N>1` stretches how long a superseded
+  branch or an unreclaimed snapshot ref survives by that many ticks.
 - `AGENT_TIMEOUT` — default `1800`. wall-clock cap per agent invocation, seconds
 - `REVIEW_TIMEOUT` — default (= `AGENT_TIMEOUT`). wall-clock cap per reviewer invocation, seconds
 - `SHUTDOWN_GRACE_SECONDS` — default `30`. seconds after SIGTERM/SIGINT before the loop force-terminates in-flight
@@ -200,9 +204,10 @@ A single fine-grained PAT gets **5000 REST requests/hour** (the GitHub *primary*
 fixed number of `GET /repos/…` requests **per repo**, independent of how much real work the repo has:
 
 - the open-issue poll (`list_pollable_issues`): 1+ requests,
-- the closed-issue recovery sweep: one `GET …/issues?state=closed&labels=<L>` per non-terminal workflow label (8
-  today — the six PR-carrying stages plus `question` and `discussion`, each of which has a terminal a closed issue
-  may still owe), and
+- the closed-issue sweep: one `GET …/issues?state=closed&labels=<L>` per non-terminal workflow label (10 today —
+  the six PR-carrying stages plus `question` and `discussion`, each of which has a terminal a closed issue may still
+  owe, and `workflow:decomposing` / `workflow:umbrella`, whose closed issues are swept for snapshot cleanup only),
+  and
 - the community-contribution PR sweep: 1 `GET …/pulls` request.
 
 With `R` repos at `POLL_INTERVAL` seconds, the floor is roughly `R × (10 + sweep) × 3600 / POLL_INTERVAL`
@@ -215,13 +220,15 @@ by `Setting next backoff to <hundreds-to-1000+>s`.
 Two built-in mitigations reduce the floor without touching `POLL_INTERVAL`:
 
 - **Workflow-label objects are cached** per repo client. They are immutable after `ensure_workflow_labels`, so the
-  closed sweep no longer re-fetches them every tick — eliminating 8 `GET …/labels/<name>` requests per repo per tick
-  automatically.
+  closed sweep no longer re-fetches them every tick — eliminating 10 `GET …/labels/<name>` requests per repo per tick
+  automatically (the eight terminal-arc states, plus `decomposing` and `umbrella`, whose closed issues the sweep
+  also yields for cleanup only).
 - **A pre-namespace label the repository does not have is asked for rarely.** The sweep looks up each swept state
   under both its `workflow:`-namespaced name and its pre-namespace one, so an issue still carrying the old label is
   not stranded (see [`state-machine/labels-and-state.md`][pollable-issues]). A lookup that comes back
   404 cannot be cached as a Label object, so it is instead thrown away for 20 sweeps before being asked again — on a
-  repository the bootstrap rename already reached, the five legacy spellings therefore cost five `GET …/labels/<name>`
+  repository the bootstrap rename already reached, the seven legacy spellings therefore cost seven
+  `GET …/labels/<name>`
   requests every twentieth sweep and nothing in between. A 403 is never treated this way: rate-limit exhaustion is not
   an answer about whether the label exists, so it is retried on the next sweep.
 - **`CLOSED_ISSUE_SWEEP_EVERY_N_TICKS`** batches the closed-issue recovery sweep to once every N ticks (see the list
@@ -350,7 +357,9 @@ cap-exempt: it does not consume cap slots and runs on a dedicated executor pool.
 from being starved by ordinary implementation work; in particular a blocked parent waiting on its own children would
 otherwise deadlock those children for the only per-repo slot under the default `parallel_limit=1`. The family mutex
 still applies. A bucket containing `workflow:decomposing` (spawns the decomposer agent) or an unlabeled-pickup issue
-stays cap-counted.
+stays cap-counted. A CLOSED issue on `workflow:decomposing` / `workflow:umbrella` never joins the bucket: its handler
+is the cleanup sweep over a snapshot owner's obligation ledger rather than the stage its label names, so it fans out
+with its own `cap_exempt=True` submit and cannot be starved by whatever else the bucket holds.
 
 **Family vs fan-out labels:**
 

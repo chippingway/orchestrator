@@ -36,11 +36,13 @@ _OWNERS = (
     "late_owner",
     "late_prompt",
     "late_relabel",
+    "late_reuse",
     "late_reply",
     "late_revision",
     "late_session",
     "late_settlement",
     "late_snapshot",
+    "late_sweep",
     "late_transaction",
     "manifest",
     "models",
@@ -148,6 +150,22 @@ class PackageSurfaceTest(unittest.TestCase):
 
 class DispatchTargetTest(unittest.TestCase):
     """The dispatcher names the owner each handler lives on."""
+
+    def test_the_cleanup_route_names_its_owner(self) -> None:
+        # The one handler no label chooses. It is deliberately absent from the
+        # table above -- an entry there would make it the handler for
+        # `decomposing` and `umbrella` open or closed -- so nothing else pins
+        # the pair, and a module renamed out from under it would surface as a
+        # closed owner nothing ever settles.
+        owner_name, handler_name = _dispatch._CLEANUP_SWEEP_TARGET
+        owner = _OWNER_MODULES["late_sweep"]
+
+        self.assertEqual(owner_name, owner.__name__)
+        self.assertTrue(callable(getattr(owner, handler_name)))
+        self.assertNotIn(
+            _dispatch._CLEANUP_SWEEP_TARGET,
+            _dispatch._STAGE_HANDLER_TARGETS.values(),
+        )
 
     def test_each_label_resolves_to_its_owner(self) -> None:
         # A dispatched handler is resolved off the module the table names -- so

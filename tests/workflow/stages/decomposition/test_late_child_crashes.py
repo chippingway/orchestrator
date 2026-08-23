@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.git.snapshots.refs import SnapshotOutcome
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages.decomposition import (
     late_children as _late_children,
@@ -25,6 +26,9 @@ from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_crash_support import (
     killed_after,
     killed_before,
+)
+from tests.workflow.stages.decomposition.late_seam_support import (
+    RecordedDelete,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     LATE_ISSUE_NUMBER,
@@ -160,8 +164,15 @@ class ChildBoundaryTest(LateSplitCase, unittest.TestCase):
         The whole dispatcher rather than the handler it lands on, because what
         is under test is the ORDER a repository polls in: the child reaches the
         stage machine on its own, before anything has attributed it.
+
+        The remote answers for the split's own ref while it does, because the
+        reuse guard may ask about it: an orphan carries a marker naming the
+        split, and where the parent's ledger vouches for that claim the ref it
+        names is asked about -- a split still in flight has left it exactly
+        where it created it.
         """
-        _dispatch._process_issue(self.github, _TEST_SPEC, child)
+        with RecordedDelete(SnapshotOutcome.DELETED).answering():
+            _dispatch._process_issue(self.github, _TEST_SPEC, child)
 
 
 if __name__ == "__main__":

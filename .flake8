@@ -579,13 +579,55 @@
 # is waived.
 #
 # orchestrator/git/snapshots/refs.py owns every operation over that namespace
-# and carries 8 members past the same ceiling: the outcome vocabulary, the
-# create-or-verify, the fetch-and-resolve, the delete and the remote half it
-# is composed of, the local name both the fetch and the child's instructions
-# are written from, the mirror a reclaimed remote leaves behind, and the local
-# resolution that proves what a fetch brought. Splitting them would put "what
-# a snapshot ref is worth" and "what was done to it" in two modules while the
-# lock and the exact-SHA proof run across both. WPS202 is waived.
+# and carries 11 members past the same ceiling: the outcome vocabulary, the
+# create-or-verify, the fetch-and-resolve, the read-only ask a caller spends
+# when it must know whether a ref is still there WITHOUT being allowed to take
+# it, the free local half of that same ask, the delete and the two steps it is
+# composed of in order -- this host's mirror, which gates the remote, and the
+# remote itself -- the repository segment and the local name both the fetch
+# and the child's instructions are written from, and the local resolution that
+# proves what a fetch brought. Splitting them would put "what a snapshot
+# ref is worth" and "what was done to it" in two modules while the lock and
+# the exact-SHA proof run across both. WPS202 is waived.
+#
+# orchestrator/workflow/stages/decomposition/late_reuse.py is the whole guard
+# a child born of a split passes before it starts, and it carries 11 members
+# past the WPS202 ceiling of 7 and names 15 imports past the WPS201 ceiling of
+# 12. The members are the verdict vocabulary and the two decisions it drives --
+# the recorded pointer's and the one claimed by a body -- plus the park those
+# share, the three sources of evidence read in the order that outranks
+# (the receipt on the child's own thread, this host's copy of the ref, the
+# read-only ask of the remote), the corroboration a body claim is held to
+# against the owner's own generation, what an unvouched claim is worth, and
+# which sentence each park is taken with. They are one question asked of one
+# issue -- may this child work from what it was cut from -- and every step is
+# what makes the next one safe to take: the receipt outranks every reading of
+# the ref, the ledger is what makes a body worth reading at all, and the
+# remote is only asked once those two have said nothing. Splitting them would
+# put the precedence in two modules. The imports are what that costs: the
+# snapshot transport and its outcome vocabulary, the comment reader the
+# receipt is authenticated with, the pinned-state and client types the whole
+# guard is typed by, the park the engine owns, and the late domain's lineage
+# owner beside the generation record and the reader that takes one off another
+# issue's pinned comment. WPS201 and WPS202 are waived.
+#
+# orchestrator/workflow/late_split/lineage.py is what a child born of a split
+# inherits and where it reads it back, and it carries 11 members past the
+# WPS202 ceiling of 7: the record itself, the read, the write, the clear that
+# says what "no lineage" means, the refusal a generation contradicting that
+# record earns, the corroboration a lineage claimed by a BODY is held to
+# before anything acts on it, the namespace check that keeps a recorded ref
+# one of ours, the projection a write is composed of, and the two markers a
+# child's lineage is claimed by outside the pinned comment -- the receipt the
+# split stamps into its body and the receipt a reclamation leaves on its
+# thread -- with the reader that turns the first back into a lineage. Both markers belong with
+# them because both ends key each one the same way and neither may guess: the
+# transaction and the reclamation write them from the generation they are
+# acting on, the child reads them back as the lineage it was born with, and a
+# spelling that drifted between the two would be a park that never happens.
+# The body reader lives here for the same reason -- it is the only lineage
+# left when the pinned write that would have recorded one never landed.
+# WPS202 is waived.
 #
 # orchestrator/workflow/late_split/state.py is the whole round trip a late
 # generation makes through the pinned comment, and it carries 8 members past
@@ -623,8 +665,8 @@
 # records, the umbrella flag and count written before the first child, the one
 # write that records a child as a child, a consumer, and an obligation at
 # once, the seed that adds an ancestry without replacing a child's own work,
-# and the body and the lineage that child is born with -- so it carries 13
-# members past the WPS202 ceiling of 7 and names 15 imports past the WPS201
+# and the body and the lineage that child is born with -- so it carries 18
+# members past the WPS202 ceiling of 7 and names 18 imports past the WPS201
 # ceiling of 12. The order is the crash-safety contract, and the imports are
 # what a child needs to exist: the lineage record it inherits, the depth
 # bound, the phase, the two ledger vocabularies, the initial split's own child
@@ -633,21 +675,32 @@
 # two modules, so WPS201 and WPS202 are waived.
 #
 # orchestrator/workflow/stages/decomposition/late_cleanup.py owns everything a
-# split still owes a remote once its children are running, so it carries 14
-# members past the WPS202 ceiling of 7 and names 15 imports past the WPS201
-# ceiling of 12. The members are one question asked twice over: which branches
-# and which refs are unsettled, whether the consumers a ref is kept for are
-# terminal (and what "terminal" is for one of them), the delete for each kind
-# and the one write that records either answer, the obligation the transaction
-# records ahead of its own first attempt, the pass that settles what can be
-# settled and what it asked, the subset that may not be left behind, the two
-# emissions, and the decision the umbrella's terminal reads. Splitting them
-# would separate "may this be deleted" from "delete it", which is the pair the
-# whole reclamation rule is. The imports are what asking costs: the pinned
-# generation the ledger is read off, the resource vocabulary it is typed by,
-# the snapshot transport and the client the two deletes go through, the events
-# and telemetry one reclamation is reported on, and the child scan the terminal
-# rule is proved against. WPS201 and WPS202 are waived.
+# split still owes a remote once its children are running, so it carries 34
+# members past the WPS202 ceiling of 7 and names 23 imports past the WPS201
+# ceiling of 12. The members are one question asked twice over: the pass
+# carrier both entries share, the fresh read of every recorded consumer and
+# the one fetch under it, which branches and which refs are unsettled, whether
+# every consumer a ref is kept for has ended (and what "ended" is for one of
+# them), which refs a visit may act on and whether one it decided against is
+# gone anyway, the last reading before a delete and the delete it authorizes,
+# whether a target is this issue's own, the branch teardown with the local
+# half it proves, the delete with the answer a raising transport is read as,
+# the one write that records any of it, the decision written ahead of the
+# delete and the release that follows it -- for every consumer, for one, and
+# the one post that says it -- the obligation
+# the transaction records ahead of its own first attempt, the pass
+# that settles what can be settled, what the record then says about each of
+# them, the subset that may not be left behind, the two emissions, and the
+# decision the umbrella's terminal reads over the settle both callers share.
+# Splitting them would separate "may this be deleted" from "delete it", which
+# is the pair the whole reclamation rule is. The imports are what asking
+# costs: the pinned generation the ledger is read off, the resource vocabulary
+# it is typed by, the ancestry owner the receipt marker is spelled by, the
+# snapshot transport and the client every read and both deletes go through,
+# the receipt reader a consumer is told at most once through, the events and
+# telemetry one reclamation is reported on, the stage tag they are recorded
+# under, and the child scan the rule is proved against. WPS201 and WPS202 are
+# waived.
 #
 # orchestrator/workflow/stages/decomposition/late_transaction.py is the order
 # a cleared split runs in -- the two refusals no step below could repair, the
@@ -780,6 +833,7 @@ per-file-ignores =
     orchestrator/git/snapshots/refs.py:WPS202
     orchestrator/workflow/state.py:WPS202
     orchestrator/workflow/late_split/models.py:WPS214
+    orchestrator/workflow/late_split/lineage.py:WPS202
     orchestrator/workflow/late_split/state.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
     orchestrator/workflow/engine/dispatch.py:WPS201,WPS202
@@ -809,6 +863,7 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/late_cleanup.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_transaction.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_revision.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_reuse.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_session.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS201

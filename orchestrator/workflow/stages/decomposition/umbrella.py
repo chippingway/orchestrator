@@ -25,6 +25,15 @@ child scan is handed over rather than re-taken, so proving that costs no
 request of its own. A remote that refuses holds the parent open, because an
 umbrella closed over an unreclaimed ref is an obligation nobody would ever
 settle, while one still open is a retry every tick.
+
+All-resolved is not the only reading that makes it true, which is why the same
+settlement runs on the way OUT. A child rejected and a child closed by hand
+both park this parent for a human, and both closed the child -- which is what
+the reclamation rule reads. A park that returned before settling would leave
+an owner sitting on a reclaimable ref for as long as the human took, and
+nothing sweeps an open umbrella. So the parked path settles from the same
+fresh scan that parked it, decides no terminal, and leaves the park exactly as
+it was.
 """
 from __future__ import annotations
 
@@ -112,8 +121,20 @@ def _handle_umbrella(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> N
         _handle_empty_umbrella(gh, issue, state)
         return
 
-    scan = _parents._usable_child_scan(gh, spec, issue, state, children)
+    scan = _parents._read_child_labels(gh, issue, children)
     if scan is None:
+        return
+    if _parents._parked_on_children(gh, spec, issue, state, scan):
+        # Parked for a human, and still the owner of what its split put on the
+        # remote. Every disposition that parks an umbrella closed the child it
+        # names -- a rejection and a manual close both do -- so the rule that
+        # owns the ref has just been satisfied by the very reading that
+        # stopped the tick. Settling here is what keeps that from waiting on a
+        # human: nothing else revisits an OPEN umbrella, so a parent parked
+        # over a reclaimable ref would hold it for as long as the park stood.
+        # It decides no terminal -- the park is the parent's answer, unchanged
+        # -- and reports only what it actually did.
+        _late_cleanup._settle(gh, spec, issue, state, scan)
         return
     if all(label == _state._DONE for label in scan.labels.values()):
         # Every child is resolved, so this is the last tick that could settle
