@@ -3,14 +3,19 @@
 """Trust policy for GitHub-authored content: `is_trusted_author` /
 `filter_trusted` gate workflow-driving comments on the
 `ALLOWED_ISSUE_AUTHORS` allowlist (empty disables the filter, populated
-matches logins case-insensitively, bots follow the same login rule)."""
+matches logins case-insensitively, bots follow the same login rule), and
+`carries_reserved_marker` refuses content claiming a receipt of ours."""
 from __future__ import annotations
 
 import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.github.comments import filter_trusted, is_trusted_author
+from orchestrator.github.comments import (
+    carries_reserved_marker,
+    filter_trusted,
+    is_trusted_author,
+)
 
 from tests.support.fakes import FakeComment, FakeUser
 
@@ -113,6 +118,41 @@ class FilterTrustedTest(unittest.TestCase):
                 [comment.id for comment in filter_trusted(comments)],
                 [1],
             )
+
+
+class ReservedMarkerTest(unittest.TestCase):
+    """What content somebody else wrote may not claim to be.
+
+    Every hidden receipt this orchestrator writes shares one prefix, and each
+    is a claim that a step already happened. A body search cannot tell a
+    quoted one from a stamped one, so content carrying one is refused where it
+    is declared.
+    """
+
+    def test_it_finds_a_marker_anywhere_in_the_text(self) -> None:
+        for written in (
+            "<!--orchestrator-late-child:issue=1:cycle=1:generation=1:index=0-->",
+            "scope\n\n<!--orchestrator-late-split:cycle=1:generation=1-->\n",
+            "leading text <!--orchestrator-state trailing text",
+        ):
+            with self.subTest(written=written):
+                self.assertTrue(carries_reserved_marker(written))
+
+    def test_ordinary_prose_and_comments_pass(self) -> None:
+        for written in (
+            "the first slice",
+            "<!-- a note the author left -->",
+            "mentions orchestrator markers without carrying one",
+        ):
+            with self.subTest(written=written):
+                self.assertFalse(carries_reserved_marker(written))
+
+    def test_what_is_not_text_carries_nothing(self) -> None:
+        # A caller validating somebody else's structure: an absent title is
+        # not a forged one.
+        for written in (None, 7, ["<!--orchestrator-state"]):
+            with self.subTest(written=written):
+                self.assertFalse(carries_reserved_marker(written))
 
 
 if __name__ == "__main__":
