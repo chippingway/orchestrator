@@ -92,8 +92,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             and the bounded name-free print one ledger entry is reported under
     payloads.py             what one hand-edited or older pinned late field reads back as: one reader per field
                             contract -- identity, count, depth, object id, literal flag, member, free text
-    ledgers.py              what the two external ledgers read back as, the exact entry shape one of ours has, and
-                            the verbatim copy anything else is preserved through
+    ledgers.py              what the two external ledgers read back as, the exact entry shape one of ours has, the
+                            verbatim copy anything else is preserved through, and the all-or-nothing reading of the
+                            ordered child register, whose entries are positional and so may not be skipped past
     state.py                the `late_*` pinned keys -- the frozen evidence, the ledgers, and the cancellation and
                             pending-owner-check markers -- and the round trip through them that leaves a legacy
                             comment untouched and an unreadable obligation intact
@@ -150,21 +151,28 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       split.py              the crash-safe order a `split` manifest becomes child issues in, and the summary / label /
                             activation tail
       recovery.py           what a tick that died mid-split left behind: the stale-manifest markers, the orphan-child
-                            repair, and the incomplete park
+                            repair, the incomplete park, and the two owners that hold those markers instead -- a
+                            human the issue is parked awaiting, and the late transaction while its generation is
+                            live
       parents.py            the fresh child scan, the rejected and manually-closed parks it earns, and the parent's
                             own drift reroute
-      activation.py         the dep-graph walk that releases the next children and the held-dependency line it logs
+      activation.py         the dep-graph walk that releases the next children, the child it passes over because
+                            GitHub reports it closed or the scan holds no issue for it, and the held-dependency
+                            line it logs
       blocked.py            the `workflow:blocked` poll and the `workflow:ready` handoff to implementing with its
                             consumed-comment ratchet
-      umbrella.py           the `workflow:umbrella` poll and the close its all-done branch earns instead of an
-                            implementation pass
+      umbrella.py           the `workflow:umbrella` poll, the close its all-done branch earns instead of an
+                            implementation pass, and the reconciliation that close waits on -- the one boundary at
+                            which what a late split still owes a remote can be settled, and the last that comes
+                            back if it cannot
       late_coordinator.py   the additive late mode's order: the owed owner read and the undelivered park notice both
                             reconciled ahead of every gate, the live-generation gate, the frozen-evidence proof, the
                             plan-PR hold before any spawn -- and the displaced one no new agent is started under --
                             the content settlement that can end the tick, the completed-result short circuit, the
                             retry-budgeted run whose pre-spawn write holds the accounting back, the read-only proof
-                            over the candidate worktree, and the fresh owner read every completion but a declined
-                            run passes through on its way to settlement
+                            over the candidate worktree, the fresh owner read every completion but a declined
+                            run passes through on its way to settlement, and the split transaction that read hands
+                            a cleared `split` on to
       late_session.py       the late run's pinned record -- role, locked spec, session, cycle, source commit,
                             generation, and the whole of what a verdict decided -- the whole-comment budget it is
                             refused past, the rules it is read back through, and the tracked spawn in the candidate's

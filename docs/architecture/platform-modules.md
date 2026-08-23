@@ -96,12 +96,15 @@ orchestrator/
                         embedded; the low-level comment and review readers stay raw
     events.py           audit event record construction and the optional JSONL sink
     issues.py           issue polling and writes, the query options, the wire issue-state vocabulary,
-                        and the closed predicate every reader of it asks through
+                        the closed predicate every reader of it asks through, and the every-state, no-label walk
+                        that finds the one issue carrying a marker -- the reading a receipt lookup needs and the
+                        only one that sees an issue a human has since closed or relabelled
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
     pinned_state.py     the pinned durable-state model, the comment body it is written as and the length GitHub
                         takes, its parser, and the comment watermarks beside it
     pull_requests.py    PR lookup by open state, by commit, and when GitHub could not be asked at all, plus creation,
-                        comments, body, labels, SHA-pinned merge, and remote-branch delete
+                        comments, body, labels, SHA-pinned merge, remote-branch delete, and the supersession that
+                        says once on a thread of ours that this change is not to be merged and then closes it
     reviews.py          current-head review aggregation: approval verdicts and unread-feedback watermarks
   agents/               publishes the run models, `run_agent`, and `terminate_all_running`
     models.py           the agent result, run-option, and subprocess-result models

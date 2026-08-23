@@ -356,15 +356,18 @@ ordering is what keeps the first of those from ever existing.
 
 `late_transaction.py` is the order, and the order is the contract: every step is preceded by the durable fact that
 lets the next tick tell "already done" from "never started", and every step is idempotent where that fact turns out
-to be ambiguous. Three refusals come first, because no step below could repair any of them. A lineage already at
+to be ambiguous. Four refusals come first, because no step below could repair any of them. A lineage already at
 `MAX_LINEAGE_DEPTH` creates nothing (the bound is enforced where the children would be born as well as where the
 reply was parsed). A recorded **ancestry that disagrees** with the generation's lineage creates nothing either, and
 that is the same bound read from the other side: a child of an earlier split carries the lineage it was created
 under, its own generation is minted from that record, and a generation naming a shallower depth or a different root
-is one minted without it — which is exactly how a lineage would buy itself a generation past the cap. And an
+is one minted without it — which is exactly how a lineage would buy itself a generation past the cap. An
 obligation ledger holding an entry this binary cannot type stops the whole transaction, since a split records a
 snapshot and one consumer per child on exactly that ledger and merging into one written back verbatim would drop
-whatever it did not understand.
+whatever it did not understand. And a manifest whose declared scope carries one of this orchestrator's own receipt
+markers is refused here rather than where the child body is built, because it is a fact about the manifest rather
+than about one slice and because this is the last point at which refusing costs a new commit instead of a human —
+the children step below says what that receipt would otherwise let a lookup adopt.
 
 **The snapshot, before any child** (`late_snapshot.py`, over `git/snapshots/`). A split ends with the parent's branch
 superseded, its pull request closed, and the parent itself an umbrella that implements nothing — so once children

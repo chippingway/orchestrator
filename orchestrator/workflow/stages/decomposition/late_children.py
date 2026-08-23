@@ -111,9 +111,10 @@ _BODY = "body"
 # slice, because a cycle identity is minted per issue and repeats across them:
 # two parents adjudicating their first candidate are both cycle 1, generation
 # 1, and their first slices would otherwise carry the same marker -- while the
-# lookup that reads it walks every open issue on one workflow label, so one
-# parent would adopt, reseed, and activate the other's child. An HTML comment,
-# so it is invisible in the rendered issue.
+# lookup that reads it is scoped to no parent at all, walking the repository's
+# issues in every state and under no label, so one parent would adopt, reseed,
+# and activate the other's child. An HTML comment, so it is invisible in the
+# rendered issue.
 # The prefix every one of those markers begins with, kept as its own name
 # because two readings need it: the marker is built from it, and a candidate
 # the lookup returns is checked for carrying exactly one of them.

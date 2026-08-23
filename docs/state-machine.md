@@ -165,8 +165,10 @@ is a no-op. Full flow: [`state-machine/delivery-stages.md`][blocked].
 ### `_handle_umbrella` (label `workflow:umbrella`)
 
 Mirrors `_handle_blocked` for the rejected / manually-closed checks and the dep-graph walk; the difference is the
-terminal — every child `done` posts a checkmark comment, stamps `umbrella_resolved_at`, sets `done`, and closes the
-issue, since an umbrella has no implementation of its own. Full flow:
+terminal — every child `done` reconciles whatever the issue still owes a remote, then posts a checkmark comment,
+stamps `umbrella_resolved_at`, sets `done`, and closes the issue, since an umbrella has no implementation of its own.
+An umbrella a late split made owes the superseded branch and the snapshot ref its children were cut from, and this is
+the last tick that could settle either; something still owed keeps the label instead, which is the retry. Full flow:
 [`state-machine/delivery-stages.md`][umbrella].
 
 ### `_handle_implementing` (label `workflow:implementing`)
