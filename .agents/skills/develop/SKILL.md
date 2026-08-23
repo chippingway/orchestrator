@@ -163,10 +163,10 @@ explicitly asks you to edit or remove one.
 
 ## Dependencies
 
-`pyproject.toml` pins `PyGithub` and `psycopg[binary]` as runtime deps; `pytest`, `ruff`, and
+`pyproject.toml` pins `PyGithub` and `psycopg[binary]` as runtime deps; `pytest`, `pytest-cov`, `ruff`, and
 `wemake-python-styleguide` live in the `dev` group; the analytics dashboard's `streamlit` and `plotly` live in the
-separate `dashboard` group so the default `uv sync --locked` stays minimal. `uv.lock` is the source of truth for
-exact versions and is committed — regenerate it (`uv lock`) whenever `pyproject.toml` changes. Anything else needs
+separate `dashboard` group so the default `uv sync --locked` stays minimal. `uv.lock` is the source of truth for exact
+versions and is committed — regenerate it (`uv lock`) whenever `pyproject.toml` changes. Anything else needs
 justification.
 
 ## Out of scope without explicit ask

@@ -8,9 +8,10 @@ and when an edited `.env` takes effect. The environment-variable reference these
 ## Continuous integration
 
 [`../../.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs `ruff check orchestrator tests`,
-`flake8 orchestrator tests --select=WPS`, and `pytest tests` as three separate mandatory steps on Python 3.12 for
-every push to `main` and every pull request, installing from the committed [`../../uv.lock`](../../uv.lock) via
-`uv sync --locked`.
+`flake8 orchestrator tests --select=WPS`, and
+`pytest tests --cov=orchestrator --cov-report=term-missing` as three separate mandatory steps on Python 3.12 for every
+push to `main` and every pull request, installing from the committed [`../../uv.lock`](../../uv.lock) via
+`uv sync --locked`. The pytest step prints coverage and missing lines for visibility but sets no minimum threshold.
 Ruff rules live in [`../../pyproject.toml`](../../pyproject.toml) under `[tool.ruff.lint]`; WPS is selected inline so
 Flake8 does not duplicate Ruff's checks; dev tools are declared in `[dependency-groups]`. The only on-disk Flake8
 config is [`../../.flake8`](../../.flake8), which scopes `WPS412` and `WPS410` per-file ignores to

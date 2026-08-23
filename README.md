@@ -51,10 +51,10 @@ is in [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md).
   Contents, Issues, Pull requests; Metadata read-only). Full rationale and the generation URL are in
   [`docs/configuration.md`](docs/configuration.md).
 - Runtime dependencies are `PyGithub` and `psycopg[binary]` (the latter for the optional analytics Postgres surface),
-  declared in [`pyproject.toml`](pyproject.toml). Dev tools (`pytest`, `ruff`, and `wemake-python-styleguide`) live in
-  a `dev` dependency group; the optional analytics dashboard's `streamlit` and `plotly` live in a separate `dashboard`
-  group, so `uv sync --locked` keeps the default install minimal. Exact versions are pinned in
-  [`uv.lock`](uv.lock); CI installs from it.
+  declared in [`pyproject.toml`](pyproject.toml). Dev tools (`pytest`, `pytest-cov`, `ruff`, and
+  `wemake-python-styleguide`) live in a `dev` dependency group; the optional analytics dashboard's `streamlit` and
+  `plotly` live in a separate `dashboard` group, so `uv sync --locked` keeps the default install minimal. Exact
+  versions are pinned in [`uv.lock`](uv.lock); CI installs from it.
 
 ## Quick start
 
@@ -75,7 +75,7 @@ is in [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md).
    [installation guide](https://docs.astral.sh/uv/getting-started/installation/).
 
    This creates `.venv/` and installs the exact runtime and dev versions recorded in `uv.lock`. For a runtime-only
-   install (no `pytest`, `ruff`, or WPS/Flake8), add `--no-dev`.
+   install (no `pytest`, `pytest-cov`, `ruff`, or WPS/Flake8), add `--no-dev`.
 
 3. **Configure environment**
 
