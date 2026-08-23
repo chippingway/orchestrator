@@ -118,7 +118,10 @@ Every key, what writes it, what spends it, and the legacy `codex_session_id` sti
 
 ## Stage handlers
 
-Each workflow label dispatches to one `_handle_<label>` function under `orchestrator/workflow/stages/`. The delivery
+Each workflow label dispatches to one `_handle_<label>` function under `orchestrator/workflow/stages/`, with two
+exceptions that belong to no label of their own: one read of the issue's own pinned comment runs ahead of every
+handler and can stop the tick outright, and a CLOSED issue on `workflow:decomposing` or `workflow:umbrella` goes to
+the cleanup sweep instead of the stage its label names. Both are on the delivery-stages page below. The delivery
 stages — pickup through the PR loop — are in
 [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md); the two operator-applied conversation stages
 are in [`state-machine/conversation-stages.md`](state-machine/conversation-stages.md). Which module owns each handler
@@ -170,8 +173,9 @@ Mirrors `_handle_blocked` for the rejected / manually-closed checks and the dep-
 terminal — every child `done` reconciles whatever the issue still owes a remote, then posts a checkmark comment,
 stamps `umbrella_resolved_at`, sets `done`, and closes the issue, since an umbrella has no implementation of its own.
 An umbrella a late split made owes the superseded branch and the snapshot ref its children were cut from, and this is
-the last tick that could settle either; something still owed keeps the label instead, which is the retry. Full flow:
-[`state-machine/delivery-stages.md`][umbrella].
+the last tick that could settle either — so the park a `rejected` or hand-closed child earns settles the same ledger
+on its way out, since nothing revisits an open umbrella either. Something still owed keeps the label, which is the
+retry. Full flow: [`state-machine/delivery-stages.md`][umbrella].
 
 ### `_handle_implementing` (label `workflow:implementing`)
 

@@ -44,7 +44,9 @@ spellings and pinned-state JSON keys are a compatibility contract, so this area 
   typed states and the transition guard, the migration off the pre-namespace spellings, what one tick reads and writes,
   and every pinned-state key.
 - [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md) — pickup, drift detection, decomposition, and
-  the dev / reviewer / docs loop through `in_review`, `workflow:fixing`, and `workflow:resolving_conflict`.
+  the dev / reviewer / docs loop through `in_review`, `workflow:fixing`, and `workflow:resolving_conflict`, plus the
+  two passes that belong to no label of their own: the guard every dispatched issue passes before its handler, and
+  the cleanup sweep over an owner a human closed mid-cycle.
 - [`state-machine/conversation-stages.md`](state-machine/conversation-stages.md) — the operator-applied `question` and
   `discussion` handlers, including the plan PR a confirmed design earns.
 - [`state-machine/lifecycle.md`](state-machine/lifecycle.md) — the compact label-lifecycle diagram.
@@ -57,9 +59,9 @@ and forbids, and how a role's command spec is parsed and pinned.
 - [`workflow/roles.md`](workflow/roles.md) — the three roles, the stages that spawn each, the session-reuse rules, the
   late adjudication an oversized committed candidate earns under the decomposer's own role, the owner read that
   adjudication passes before anything acts on it and what each verdict earns past it, the snapshot-first order a
-  cleared `split` creates its children in, what a human editing the
-  issue or answering under it changes while that candidate is frozen, and the local verify gate that is a stage step
-  rather than a role.
+  cleared `split` creates its children in, what a child proves about that snapshot before it starts, what a human
+  editing the issue or answering under it changes while that candidate is frozen, and the local verify gate that is a
+  stage step rather than a role.
 - [`workflow/conversations.md`](workflow/conversations.md) — the `question` and `discussion` prompt contracts, what a
   round may leave behind, and the tracked-repository awareness block.
 - [`workflow/command-specs.md`](workflow/command-specs.md) — the spec grammar, backend selection, worked examples, and
@@ -74,7 +76,7 @@ changes. [`../.env.example`](../.env.example) holds the basic parameters for a f
 - [`configuration/observability.md`](configuration/observability.md) — the sink paths and retention windows, the
   analytics database URL, skill-trigger tracking, the dashboard read mode, and the dashboard quickstart.
 - [`configuration/operations.md`](configuration/operations.md) — continuous integration, run modes, the systemd user
-  service, and what an edited `.env` takes to apply.
+  service, what a split leaves on the remote and what reclaims it, and what an edited `.env` takes to apply.
 - [`configuration/snapshot-capability-check.md`](configuration/snapshot-capability-check.md) — the
   disposable-repository check that proves a production token and its rulesets can create, fetch, verify, and delete
   the late split's snapshot refs, and what each failure means.

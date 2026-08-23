@@ -120,12 +120,21 @@ The late size gate preserves a superseded candidate under
   that kind — otherwise one issue could be adopted as two children of the same split, each seeded with the other's
   scope. The comment-side check is the author one: a receipt on a thread counts only when this orchestrator wrote it.
 
-The refs hold objects, so they hold *content*: a snapshot is a copy of a candidate that was never published. This
-host keeps its own copy under `refs/orchestrator/late-split-local/<repository>/…`, qualified so that two configured
-repositories sharing one clone cannot read each other's, and it is dropped when the remote ref is. It lives
-in the same repository under the same visibility as the branch it came from, and it is deleted at the umbrella's own
-terminal once every recorded direct consumer is terminal — a ref whose delete the remote refuses holds that terminal
-open rather than being silently abandoned. It is not a place to put anything the repository itself may not hold.
+The refs hold objects, so they hold *content*: a snapshot is a copy of a candidate that was never published. It
+lives in the same repository under the same visibility as the branch it came from, and it is deleted once every
+recorded direct consumer has ended — at the umbrella's own terminal, on the park a rejected or hand-closed child
+earns that parent, or in the closed-owner cleanup sweep for an issue a human closed mid-cycle. A ref whose delete
+the remote refuses holds that terminal open rather than being silently abandoned. It is not a place to put
+anything the repository itself may not hold.
+
+This host keeps its own copy under `refs/orchestrator/late-split-local/<repository>/…`, qualified so that two
+configured repositories sharing one clone cannot read each other's, and it is taken down **first** — the remote ref
+is not touched until this copy has provably gone, and a copy that cannot be proved gone refuses the whole
+reclamation. That order is what lets a child read a surviving copy as "nothing has been reclaimed" without spending
+a request, and it is only sound because the copy is read for the exact commit it carries: the ref store belongs to
+the clone the agents' own worktrees share, so a name that merely resolves proves nothing about what is under it.
+One consequence for an operator: deleting a snapshot ref on the remote by hand leaves this host's copy behind, and a
+child on that host goes on working from it until the copy is deleted too.
 
 ### Required human reviews for dependency-touching changes
 
