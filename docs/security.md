@@ -181,8 +181,12 @@ Mark these checks **required** in the branch-protection rule (job names as they 
 - `dependency-review` from [`../.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml)
   — fails when a PR introduces a vulnerable or non-compliant dep.
 
-Both workflows run on `pull_request` and declare `permissions: contents: read`, so the `GITHUB_TOKEN` minted for each
-run is read-only.
+`ci` and `dependency-review` both run on `pull_request` and declare `permissions: contents: read`, so the
+`GITHUB_TOKEN` minted for each run is read-only. The third workflow,
+[`../.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml), belongs on neither list: no pull-request
+event triggers it, so it reports no check a PR could wait on, and what it finds arrives as a code-scanning alert rather
+than as a failing run
+([`configuration.md#continuous-integration`](configuration.md#continuous-integration)).
 
 ### Fork-PR secret policy
 
