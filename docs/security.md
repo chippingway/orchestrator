@@ -36,7 +36,13 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
   ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). Dependabot covers the `uv`
   and `github-actions` ecosystems in [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every update PR
   it opens with `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a
-  maintainer has to triage is one label filter.
+  maintainer has to triage is one label filter. Both entries hold a release for a stabilization window before an
+  update PR offers it — 30 days for a major, 14 days for a minor or a patch. Dependabot allows only direct
+  dependencies by default, so a transitive package is in scope only once the `uv` entry's `allow:` rules name it:
+  `gitpython` is named there because GitPython reaches the lockfile through Streamlit, and its advisories would
+  otherwise leave the grouped security job with nothing it is allowed to update. An advisory against any other
+  transitive dependency needs its own rule added before a PR can open for it
+  ([`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration)).
 - **Actions pinned to immutable commit SHAs** — in repo. Every `uses:` in
   [`../.github/workflows/`](../.github/workflows/) names a full 40-character commit SHA with the release it belongs to
   in a trailing comment, so a retagged release cannot change what a run executes; Dependabot's `github-actions` updates
