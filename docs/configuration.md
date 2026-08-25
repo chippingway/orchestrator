@@ -427,7 +427,8 @@ The five steps from a JSONL sink to a running Streamlit page — confirm the rec
 [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs `ruff check orchestrator tests`,
 `flake8 orchestrator tests --select=WPS`, and `pytest tests` as three separate mandatory steps for every push to
 `main` and every pull request, and Dependabot opens weekly `workflow:dependencies` update PRs. The per-file lint
-scopes, the repository-wide 120-column target, the workflow's read-only token, and the dependency review are in
+scopes, the repository-wide 120-column target, the workflow's read-only token, the commit-SHA action pins, and
+the dependency review are in
 [`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration).
 
 ## Run modes

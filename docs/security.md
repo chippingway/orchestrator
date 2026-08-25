@@ -32,10 +32,12 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
 - **Package-registry hygiene (lockfiles, registry pinning)** — in repo. Runtime deps (`PyGithub`, `psycopg[binary]`)
   are declared in [`../pyproject.toml`](../pyproject.toml); exact versions are pinned in [`../uv.lock`](../uv.lock); CI
   installs via `uv sync --locked`
-  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). Dependabot covers the `uv`
-  and `github-actions` ecosystems in [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every update
-  PR it opens with `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a
-  maintainer has to triage is one label filter.
+  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). Every `uses:` in
+  [`../.github/workflows/`](../.github/workflows/) names a full commit SHA with its release in a trailing comment, so a
+  retagged release cannot change what a run executes. Dependabot covers the `uv` and `github-actions` ecosystems in
+  [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every update PR it opens with
+  `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a maintainer has to
+  triage is one label filter.
 
 ## Operator-owned controls (GitHub / org settings)
 
