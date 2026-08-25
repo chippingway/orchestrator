@@ -392,6 +392,16 @@ The security posture:
   prompt / resume / PR-feedback surfaces a bot is gated like any other author — trusted while the allowlist is empty
   (legacy behavior), and under a populated allowlist trusted only when its own login is explicitly listed. So an
   intentionally allowlisted automation account still works; an unlisted one does not.
+- **The pickup half has exactly one bypass, and it is a repository permission.** The allowlist's other job is gating
+  *automatic pickup* of an unlabeled issue — the one route a stranger reaches by filing one. The restart of a late
+  split whose cancellation completed does not ask it. That path is reachable only by an operator **removing** the
+  `rejected` label from a reopened issue, which GitHub grants only to accounts with write access to the repository,
+  and it is decided against the orchestrator's own authenticated pinned comment
+  ([below](#pinned-state-authentication)) rather than against anything the issue's author wrote. So the authorization
+  is the gesture plus that record, and an outsider acting alone reaches none of it — while an outsider's issue an
+  operator has deliberately restarted does run. This is the same standing a human already has by applying a workflow
+  label by hand, which is the documented way to drive any issue the allowlist would otherwise skip
+  ([`configuration/operations.md`](configuration/operations.md#restarting-an-issue-whose-cycle-was-cancelled)).
 - **Scope is comment content, not capability.** This boundary keeps untrusted *words* out of agent prompts and workflow
   signals; it is not a sandbox. Agents still run as the orchestrator's OS user with sandbox bypass, so the host remains
   the real trust boundary (see [above](#ai-generated-code-review-tests-and-scans) and

@@ -486,7 +486,8 @@ def _route_issue_to_handler(
     comment records can stop the tick outright -- a restart an operator has
     authorized over a settled cancellation, a live adjudication the label was
     moved out from under, a snapshot this child was cut from and the remote no
-    longer has, or a cancelled cycle this owner has still to settle. The
+    longer has, a cancelled cycle this owner has still to settle, or an
+    unlabeled issue this orchestrator has already greeted once. The
     cleanup route comes first: that guard spends a pinned read to decide, and a
     closed owner is not dispatched on any of those answers.
 
