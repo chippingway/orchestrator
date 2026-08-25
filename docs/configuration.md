@@ -436,10 +436,12 @@ dependency scanning: on a weekly `schedule` and on `workflow_dispatch` it audits
 [`../uv.lock`](../uv.lock) — not what a PR changes — and fails when a published advisory names one.
 [`../.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml) grades the repo's supply-chain posture with
 OpenSSF Scorecard weekly, on every push to `main`, and on demand, publishing the results the README badge and the
-public viewer read and uploading the SARIF to code scanning. Every `uses:` in every workflow names a full commit SHA
-with its release in a trailing comment, and Dependabot's `github-actions` updates rewrite that pair. The per-file lint
-scopes, the repository-wide 120-column target, the read-only tokens, the Scorecard job's two elevated permissions, the
-commit-SHA pins, the dependency review, and how the scheduled scan reaches every pin are in
+public viewer read and uploading the SARIF to code scanning.
+[`../.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) analyzes the Python source on pushes to `main`,
+pull requests targeting `main`, and a weekly schedule, then uploads the results to code scanning. Every `uses:` in
+every workflow names a full commit SHA with its release in a trailing comment, and Dependabot's `github-actions`
+updates rewrite that pair. The per-file lint scopes, the repository-wide 120-column target, workflow token
+permissions, the commit-SHA pins, the dependency review, and how the scheduled scans work are in
 [`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration).
 
 ## Run modes
