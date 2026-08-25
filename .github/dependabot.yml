@@ -8,6 +8,9 @@ updates:
       interval: weekly
     cooldown:
       default-days: 30
+      semver-major-days: 30
+      semver-minor-days: 14
+      semver-patch-days: 14
     labels:
       - "workflow:dependencies"
       - "workflow:github_actions"
@@ -18,6 +21,19 @@ updates:
       interval: weekly
     cooldown:
       default-days: 30
+      semver-major-days: 30
+      semver-minor-days: 14
+      semver-patch-days: 14
+    allow:
+      # An `allow:` block replaces the default rule rather than adding to it,
+      # so the direct-dependency rule is restated here to keep it.
+      - dependency-type: direct
+      # GitPython reaches the lockfile only through Streamlit, so a GitPython
+      # advisory matches no direct dependency and the grouped security job
+      # skips the whole `uv` group with nothing left to update. Naming the one
+      # package opens that group without putting every transitive dependency
+      # into the routine version-update queue.
+      - dependency-name: gitpython
     labels:
       - "workflow:dependencies"
       - "workflow:python:uv"
