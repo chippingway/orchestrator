@@ -10,9 +10,21 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
 
 - **Required human reviews for dependency changes** — operator-owned. Branch protection + `CODEOWNERS`. See
   [Required human reviews for dependency-touching changes](#required-human-reviews-for-dependency-touching-changes).
-- **Automated dependency vulnerability scan** — in repo + operator-owned to enforce.
-  [`../.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml) runs on every PR. See
-  [Required checks](#required-checks).
+- **Vulnerability reporting channel** — in repo + operator-owned to switch on. [`../SECURITY.md`](../SECURITY.md) is
+  the external-facing policy: report privately through GitHub Private Vulnerability Reporting, never as a public
+  issue, which on this repository is also an agent-workflow input. See
+  [Private vulnerability reporting](#private-vulnerability-reporting).
+- **Automated dependency vulnerability scan** — in repo + operator-owned to enforce. Two complementary scans.
+  [`../.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml) gates what a PR
+  *changes*, on every PR (see [Required checks](#required-checks));
+  [`../.github/workflows/vulnerability-scan.yml`](../.github/workflows/vulnerability-scan.yml) audits every pin in
+  [`../uv.lock`](../uv.lock) weekly and on demand
+  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). The standing scan is what
+  sees an advisory published against a version nobody is touching — a diff gate never looks at it again after the pin
+  lands. It runs on a schedule rather than on a PR, so it cannot be a required check; enabling
+  [Dependabot security updates](#dependabot-security-updates) is what turns one of its findings into a patch PR.
+- **Static analysis of the code itself** — operator-owned. CodeQL default setup, a repository setting with no workflow
+  file behind it. See [CodeQL default setup](#codeql-default-setup).
 - **2FA for all maintainers** — operator-owned. See [2FA](#2fa).
 - **Secret scanning + push protection** — operator-owned. See
   [Secret scanning and push protection](#secret-scanning-and-push-protection).
@@ -78,6 +90,54 @@ Enable both at `Settings → Code security`:
   accidental paste.
 
 On org-owned repos, set the same defaults at the org level.
+
+### Private vulnerability reporting
+
+Enable **Private vulnerability reporting** at `Settings → Code security`.
+
+[`../SECURITY.md`](../SECURITY.md) is the reporting policy this repository publishes, and it sends a reporter to the
+Security tab's "Report a vulnerability" button — which exists only while the setting is on. With it off, the policy
+names a channel that is not there, and the reporter's remaining options are a public issue (which this repository
+feeds to coding agents as workflow input, so the report is acted on in the open before a fix exists) or no report at
+all.
+
+- The private advisory draft it opens carries the discussion, the temporary private fork the fix is written on, the
+  CVE request, and the publication, so nothing about an unfixed vulnerability has to touch a public branch.
+- It is a repository setting; org owners can turn it on for every repository at once from the org's
+  `Settings → Code security`.
+
+### Dependabot security updates
+
+Enable **Dependabot alerts** and **Dependabot security updates** at `Settings → Code security`. These are a different
+mechanism from the weekly version-update PRs [`../.github/dependabot.yml`](../.github/dependabot.yml) configures:
+alerts fire when a published advisory matches a version pinned in [`../uv.lock`](../uv.lock), and security updates
+open the PR that bumps that one dependency to the fixed version.
+
+- **They are not subject to the 30-day `cooldown.default-days`** in the config. That window is there to let a routine
+  version update age before a maintainer has to look at it; a security patch is the case where waiting is the cost,
+  and the cooldown applies to version updates only.
+- They are the acting half of the standing scan:
+  [`../.github/workflows/vulnerability-scan.yml`](../.github/workflows/vulnerability-scan.yml) reports a vulnerable
+  pin every week, but nothing inside this repository can open the bump PR that clears it.
+- Alerts are visible to maintainers only, so enabling them discloses nothing about an unpatched pin.
+
+### CodeQL default setup
+
+Enable **CodeQL default setup** at `Settings → Code security → Code scanning`. It is the one scan here that reads the
+repository's own code rather than its dependencies.
+
+- Default setup is configured entirely on GitHub: it picks the languages (Python here) and the query suite, and runs
+  on pushes to `main`, on pull requests, and weekly. Nothing is added to
+  [`../.github/workflows/`](../.github/workflows/), so there is no fifth workflow to keep pinned, permissioned, and
+  reviewed — the analysis runs under GitHub's own token rather than one this repository declares.
+- Findings land on the Security tab, and once the baseline is clean a merge can be made to wait on them — through a
+  **ruleset**, not through the required-check list. At `Settings → Rules → Rulesets`, target `main` with the
+  **Require code scanning results** rule, select **CodeQL** as the tool, and set the two alert thresholds ([GitHub
+  docs](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/set-merge-protection)).
+  There is no status check named `code-scanning` to require in [Required checks](#required-checks); typing one in
+  would name a check nothing ever reports, which blocks every merge instead of gating on the analysis.
+- Advanced setup — a committed `codeql.yml` — buys a custom query pack or a manual build, neither of which this
+  repository needs; prefer default setup until one of them is actually required.
 
 ### Branch protection
 
@@ -188,11 +248,17 @@ Mark these checks **required** in the branch-protection rule (job names as they 
   — fails when a PR introduces a vulnerable or non-compliant dep.
 
 `ci` and `dependency-review` both run on `pull_request` and declare `permissions: contents: read`, so the
-`GITHUB_TOKEN` minted for each run is read-only. The third workflow,
-[`../.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml), belongs on neither list: no pull-request
-event triggers it, so it reports no check a PR could wait on, and what it finds arrives as a code-scanning alert rather
-than as a failing run
-([`configuration.md#continuous-integration`](configuration.md#continuous-integration)).
+`GITHUB_TOKEN` minted for each run is read-only. The other two workflows belong on neither list, because no
+pull-request event triggers either one, so neither reports a check a PR could wait on.
+[`../.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml) reports what it finds as a code-scanning
+alert rather than as a failing run
+([`configuration.md#continuous-integration`](configuration.md#continuous-integration)), and
+[`../.github/workflows/vulnerability-scan.yml`](../.github/workflows/vulnerability-scan.yml), triggered by `schedule`
+/ `workflow_dispatch`, is watched on the Actions tab — a red run is triaged there rather than by a blocked merge.
+
+CodeQL is the one scan off this list that can still hold a merge, and it does so beside the list rather than on it:
+its results are enforced by the **Require code scanning results** ruleset rule with CodeQL selected, which is a
+separate mechanism from the required-status-check names above. See [CodeQL default setup](#codeql-default-setup).
 
 ### Fork-PR secret policy
 

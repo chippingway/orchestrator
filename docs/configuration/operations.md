@@ -112,6 +112,33 @@ the cooldown policy, the allow rules, and the labels against what the config dec
 `actions/dependency-review-action` on every PR and fails the check when a PR introduces a vulnerable or non-compliant
 dependency.
 
+[`../../.github/workflows/vulnerability-scan.yml`](../../.github/workflows/vulnerability-scan.yml) is the standing
+scan beside that diff gate: a weekly `schedule` plus `workflow_dispatch`, the second so an edit to it is verifiable
+from the Actions tab instead of a week away. It exports the pins from [`../../uv.lock`](../../uv.lock) with
+`uv export --locked --all-groups --no-emit-project`, then audits them with `pip-audit` and fails the job when a
+published advisory names one of them. Why the export and the audit are shaped that way:
+
+- **`--all-groups`** covers the `dashboard` group as well as the runtime and `dev` ones, so the audit is the whole
+  lockfile rather than the subset a default `uv sync --locked` installs.
+- **Environment markers are stripped** from the export before the audit. A pin kept for another platform
+  (`colorama` under Windows, `tzdata`) is a version this repository still ships, and an audit reading markers would
+  skip it as inapplicable to the Linux runner — silently, and while reporting success.
+- **The scanner is CI-only.** `uvx` runs `pip-audit` from a throwaway environment, so it audits the pins without
+  becoming one: it appears in neither [`../../pyproject.toml`](../../pyproject.toml) nor the lockfile, and the
+  version range there is what keeps a new major from changing the CLI under the job.
+- **`--no-deps --disable-pip` and `--strict`.** The exported versions are already the complete pinned set, and the
+  two collection flags are what have `pip-audit` read them as written. `--no-deps` on its own still hands the file to
+  pip's resolver and audits whatever that resolves to — a fresh resolution, which is the step the lockfile exists to
+  settle. `--strict` closes the one hole left in that reading: a pin PyPI has no record of is otherwise skipped and
+  reported under a green run, while a line carrying no exact version fails the job with or without it. Neither flag
+  is a claim about the advisory data — a service that errors out fails the run on its own, and a pin no advisory
+  names is simply a clean result.
+
+The job declares the same `permissions: contents: read` and uses no secrets. It is not a required check and cannot
+be one — it never runs on a pull request — so a red run is triaged from the Actions tab. Turning one of its findings
+into a bump PR is Dependabot's job, which is why enabling Dependabot security updates is on the operator list in
+[`../security.md#dependabot-security-updates`](../security.md#dependabot-security-updates).
+
 ## Run modes
 
 - `./run.sh` — production. Continuous polling. `run.sh` does `git pull --ff-only origin "$ORCHESTRATOR_BASE_BRANCH"`
