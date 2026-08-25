@@ -18,13 +18,16 @@ from unittest.mock import Mock, patch
 from orchestrator.workflow.engine import dispatch
 from orchestrator.workflow.stages.decomposition import late_sweep as _late_sweep
 
-from tests.support.fakes import FakeGitHubClient, make_issue
+from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
+
+from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow.fixtures import (
     LABEL_BLOCKED,
     LABEL_DECOMPOSING,
     LABEL_IMPLEMENTING,
     LABEL_UMBRELLA,
 )
+from tests.workflow.observation_support import ObservedCloseCase
 
 _SPEC = SimpleNamespace(slug="acme/widget")
 
@@ -34,16 +37,26 @@ _OWNER_NUMBER = 41
 
 _LATE_RELABEL = "orchestrator.workflow.stages.decomposition.late_relabel"
 
+_WORKFLOW_LOG = "orchestrator.workflow"
+
 
 class _RecordingScheduler:
     """A scheduler that keeps the callable each submit was handed."""
 
     def __init__(self) -> None:
         self.routes: dict[int, object] = {}
+        self.settled: list[int] = []
 
     def submit(self, _slug, issue_number, callable_, **_options) -> bool:
         self.routes[issue_number] = callable_
         return True
+
+    def deferred_cleanups(self, _slug) -> frozenset:
+        """Nothing held: every submit this double takes is accepted."""
+        return frozenset()
+
+    def settle_cleanup(self, _slug, issue_number: int) -> None:
+        self.settled.append(issue_number)
 
 
 def _intercepted(target: tuple[str, str], reached: Mock):
@@ -75,13 +88,28 @@ def _routed(
     with _intercepted(dispatch._CLEANUP_SWEEP_TARGET, reached[0]):
         with _intercepted(dispatch._STAGE_HANDLER_TARGETS[label], reached[1]):
             dispatch._route_issue_to_handler(
-                github, _SPEC, issue, label, cleanup_only=cleanup_only,
+                github, _SPEC, issue, label,
+                reading=dispatch._PollReading(
+                    cleanup_only=cleanup_only, closed=closed,
+                ),
             )
     return reached
 
 
-class CleanupRouteTest(unittest.TestCase):
-    """A closed cleanup-swept issue reaches the sweep and nothing else."""
+class CleanupRouteTest(ObservedCloseCase, unittest.TestCase):
+    """A closed cleanup-swept issue reaches the sweep and nothing else.
+
+    Including past the filter that parks an issue outside the state machine.
+    `backlog` / `paused` run ahead of every route, and letting one drop a
+    CLOSED cleanup owner loses the close itself -- an observed close ends the
+    late cycle irreversibly, and the pass being dropped is the only one that
+    would ever record that, so the owner would come back from a reopen and an
+    unpause with a live generation and spawn against it. The route is taken;
+    the label defers everything it would otherwise DO.
+    """
+
+    def setUp(self) -> None:
+        self._fresh_process()
 
     def test_a_closed_owner_reaches_only_the_sweep(self) -> None:
         for label in _CLEANUP_LABELS:
@@ -119,8 +147,43 @@ class CleanupRouteTest(unittest.TestCase):
         cleanup.assert_called_once()
         stage.assert_not_called()
 
+    def test_a_parked_closed_owner_is_still_marked(self) -> None:
+        for skip_label in (PAUSED_LABEL, BACKLOG_LABEL):
+            with self.subTest(skip_label=skip_label):
+                github, issue = self._parked_owner(skip_label)
 
-class CleanupRouteSurvivesRefetchTest(unittest.TestCase):
+                with self.assertLogs(_WORKFLOW_LOG):
+                    dispatch._process_issue(github, _SPEC, issue)
+
+                pinned = github.pinned_data(_OWNER_NUMBER)
+                self.assertTrue(pinned["late_cancelled"])
+                self.assertEqual(github.label_history, [])
+                self.assertEqual(github.deleted_remote_branches, [])
+
+    def test_a_parked_open_issue_is_skipped_as_before(self) -> None:
+        # The exception is exactly one shape wide: an issue an operator
+        # parked while it was OPEN is dropped where it always was.
+        github, issue = self._parked_owner(PAUSED_LABEL)
+        issue.closed = False
+
+        with self.assertLogs(_WORKFLOW_LOG):
+            dispatch._process_issue(github, _SPEC, issue)
+
+        self.assertEqual(github.write_state_calls, 0)
+
+    def _parked_owner(self, skip_label: str):
+        """A closed snapshot owner an operator parked with a control label."""
+        github = FakeGitHubClient()
+        issue = make_issue(
+            _OWNER_NUMBER, label=LABEL_DECOMPOSING, closed=True,
+        )
+        issue.labels.append(FakeLabel(skip_label))
+        github.add_issue(issue)
+        github.seed_state(_OWNER_NUMBER, late_cycle_id=3)
+        return github, issue
+
+
+class CleanupRouteSurvivesRefetchTest(ObservedCloseCase, unittest.TestCase):
     """The classification binds; the refetch does not get to re-decide.
 
     A closed owner is submitted on its own cap-exempt terms, and the worker
@@ -128,6 +191,9 @@ class CleanupRouteSurvivesRefetchTest(unittest.TestCase):
     would otherwise have the freshly-read label send it to the handler whose
     exemption was granted on the understanding it would never run.
     """
+
+    def setUp(self) -> None:
+        self._fresh_process()
 
     def test_a_reopen_before_running_still_cleans_up(self) -> None:
         cleanup, stage = _routed(
@@ -138,8 +204,9 @@ class CleanupRouteSurvivesRefetchTest(unittest.TestCase):
         stage.assert_not_called()
 
     def test_the_submit_carries_the_route(self) -> None:
-        # The flag reaches the worker as a bound argument rather than being
-        # re-derived there, so it is the classification that decides.
+        # The route reaches the worker as the callable the submit was built
+        # from rather than being re-derived there, so it is the
+        # classification that decides.
         partition = _partition_of((_OWNER_NUMBER, LABEL_UMBRELLA, True))
         scheduler = _RecordingScheduler()
 
@@ -147,19 +214,36 @@ class CleanupRouteSurvivesRefetchTest(unittest.TestCase):
             FakeGitHubClient(), _SPEC, scheduler, partition, 1,
         )
 
-        self.assertEqual(
-            scheduler.routes[_OWNER_NUMBER].keywords["cleanup_only"], True,
+        self.assertIs(
+            scheduler.routes[_OWNER_NUMBER].func, dispatch._swept_for_cleanup,
         )
-        self.assertEqual(scheduler.routes[1].keywords["cleanup_only"], False)
+        self.assertIs(scheduler.routes[1].func, dispatch._refetch_and_process)
 
-    def test_a_reopened_owner_does_nothing_at_all(self) -> None:
-        # What the sweep does with the issue it was handed: the close it was
-        # classified on is re-read, and an issue that is open again is left
-        # for the next tick to classify correctly.
+    def test_a_reopened_owner_is_marked_and_left(self) -> None:
+        # What the sweep does with the issue it was handed. Being routed here
+        # says a close was observed, so the cycle ends whatever the refetch
+        # says -- but an issue somebody has just reopened gets nothing
+        # external done to it, and no terminal: the mark is what hands it to
+        # the dispatcher's own guard from the next tick.
         github = FakeGitHubClient()
         issue = make_issue(_OWNER_NUMBER, label=LABEL_UMBRELLA)
         github.add_issue(issue)
         github.seed_state(_OWNER_NUMBER, late_cycle_id=3)
+
+        with self.assertLogs(_WORKFLOW_LOG):
+            _late_sweep._handle_closed_owner_cleanup(github, _SPEC, issue)
+
+        self.assertTrue(github.pinned_data(_OWNER_NUMBER)["late_cancelled"])
+        self.assertEqual(github.label_history, [])
+        self.assertEqual(github.posted_comments, [])
+
+    def test_an_owner_with_no_cycle_is_untouched(self) -> None:
+        # The gate ahead of that: every umbrella the initial decomposer ever
+        # made is a closed issue on one of these labels and owns no cycle, so
+        # there is nothing about one to end.
+        github = FakeGitHubClient()
+        issue = make_issue(_OWNER_NUMBER, label=LABEL_UMBRELLA)
+        github.add_issue(issue)
 
         _late_sweep._handle_closed_owner_cleanup(github, _SPEC, issue)
 
@@ -167,7 +251,7 @@ class CleanupRouteSurvivesRefetchTest(unittest.TestCase):
         self.assertEqual(github.label_history, [])
 
 
-class CleanupExemptionTest(unittest.TestCase):
+class CleanupExemptionTest(ObservedCloseCase, unittest.TestCase):
     """Cleanup is admitted cap-exempt without exempting what spawns.
 
     The family bucket's exemption is all-or-nothing, so a closed owner folded
@@ -177,6 +261,9 @@ class CleanupExemptionTest(unittest.TestCase):
     busy. It is partitioned as fan-out instead, where its own submit carries
     its own exemption.
     """
+
+    def setUp(self) -> None:
+        self._fresh_process()
 
     def test_a_closed_owner_fans_out_cap_exempt(self) -> None:
         for label in _CLEANUP_LABELS:

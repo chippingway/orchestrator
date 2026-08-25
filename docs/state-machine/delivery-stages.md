@@ -250,8 +250,34 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   little about the child it has not reached as an empty one does, and nothing on the ref is reclaimed either way.
   Either side of the loop the list is whole — before the split nothing has been created, and past it the loop ran to
   the end — which is also what lets an *empty* list settle a ref no child was ever cut from, the snapshot being
-  retained ahead of the first child. A cancelled or restarted cycle, or a phase this binary cannot type, proves
-  nothing and keeps the ref.
+  retained ahead of the first child. A restarted cycle, or a phase this binary cannot type, proves nothing and keeps
+  the ref.
+- **The boundary an interrupted transaction stood at is kept, and a phase before the loop is believed only as far as
+  the record bears it out.** A phase is not written only forwards: a transaction re-entered after a crash comes back
+  through the whole coordinator, so the plan-PR hold reconciled before anything spawns, the spawn itself, and the
+  claim each completion writes would each name a boundary of their own. None of them is written over
+  `snapshotting`, `splitting`, or `superseding` — the record refuses that move itself — so a re-entered split
+  carries every one of those steps under the boundary it interrupted. That
+  matters most in the window with *nothing* recorded, which no ledger can speak to: a child is created before the
+  write that records it, so a loop that died between the two leaves an empty list beside a real issue on GitHub, and
+  the phase is all that says so. Beside that, the pre-split phases (`measuring` through `snapshotting`) say "nothing
+  has been cut from this ref" only on a record that shows no split ever started — a consumer or a split child on
+  the ledgers, or the `expected_children_count` the transaction writes in the same durable step as `splitting`,
+  ahead of its first create. That count is what upgrades a pinned comment an EARLIER binary already rewound: the
+  guard stops new rewinds and nothing migrates records already in flight, so what has to answer for one of those
+  is the evidence no phase write ever touched. That same count is then asked of *every* boundary, ahead of the
+  phase, because a record the count proves finished is whole wherever it happens to be standing — and more than
+  one boundary needs it. `splitting` is two answers rather than one: the phase goes down before the first create
+  *and again beside every child recorded*, the last one included, so a crash between that final write and the
+  announcement leaves a complete ledger wearing a mid-loop boundary. `snapshotting` is the same question one retry
+  later: a transaction resumed after a park rewrites it over whatever boundary it had reached, so a finished split
+  comes back wearing the one it started from. Reading either as mid-flight retains the ref for good and holds the
+  terminal with it, since nothing revisits a cancelled owner to move the phase on — so the count is compared
+  against the positional register the loop appends to, and a register that reached it is a loop that finished. A
+  stale count from an ordinary decomposition of the same issue reads the same way and is meant to — being wrong in
+  that direction keeps a ref and holds a terminal, where being wrong in the other deletes the only copy of a
+  child's work. Past the loop no corroboration is needed: the transaction reaches `superseding` only once every
+  child is created *and* recorded.
 - **The delete is a small transaction.** The proof above is a reading of live issues and cannot be reproduced, so the
   entry is written `reclaiming` *before* the delete — which is what stops a tick that died between the push and the
   record of it from leaving a ref the ledger calls retained and the remote no longer has. Every recorded consumer is
@@ -270,6 +296,12 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   and before the entry is written `reconciled`, every recorded consumer gets one comment saying the snapshot has been
   reclaimed and that reuse now needs an explicit new split cycle. It carries a hidden marker naming this owner, cycle,
   and generation, so a consumer already holding one of ours is not told twice. The ref is never recreated.
+- **A cancelled cycle tells none of them.** The receipt is what a live split owes children it is still responsible
+  for; an ending a human's close forced is responsible for none, and leaves each of them exactly as it found it —
+  the entry reconciles on the delete alone. Nothing about the ref goes unsaid: the transport drops this host's
+  mirror *before* the remote ref and refuses the whole reclamation if that copy cannot be proved gone, so a child
+  reopened afterwards finds no mirror, asks the remote once, and is stopped and told by its own guard — which is
+  where the receipt would only ever have been read anyway.
 - **This owner never writes a consumer's pinned state.** That comment is written *whole* by whoever writes it, so a
   handler of the child's own that read it before this pass and wrote it after would silently undo anything recorded
   here — and a label is no proxy for "no writer": a terminal finalize sets `done` / `rejected` *before* its last
@@ -365,35 +397,420 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   anything, is deleted and retried as usual.
 - **Output**: terminal `done`, OR a sibling unblocked, OR a HITL park, OR a held terminal (something still owed), OR
   a no-op.
+- **A third question rides the same read**, and it is asked FIRST: an owner whose cycle a close already ended and
+  whose ending has not been written. Cancellation is irreversible within a cycle, so a human who reopens the issue
+  does not get that cycle back, and both labels an adjudication can be wearing name a handler that would act on the
+  issue rather than settle it. That guard runs the cleanup below, reaches no handler, and writes that cycle's
+  `rejected` ending. It comes first because it is the only one of the three that has to *run* rather than merely
+  answer, and the other two can refuse indefinitely — the reuse guard *holds* a dispatch, writing nothing, for as
+  long as an ancestor's ref cannot be asked about, and an owner of its own cancelled cycle nested under one would
+  spend that whole outage never reconciling its own plan PR, branch, or ref. Nothing is lost by the order: a
+  cancelled cycle starts no work, so neither question below is about anything it is going to do, and both are asked
+  again on the tick after its ending is written.
 
 ## Closed-owner cleanup sweep (no label of its own)
-- **Trigger**: an issue that is **closed** while still carrying `workflow:decomposing` or `workflow:umbrella`. The
-  closed-issue sweep yields those two states beside its own recovery labels, on the same
+- **Trigger**: an issue that is **closed** while still carrying one of the four cleanup-routed labels —
+  `workflow:decomposing` or `workflow:umbrella`, where an adjudication runs, and `workflow:ready` or
+  `workflow:blocked`, where an interrupted ending can be *left*. The second pair is the close/agent race made
+  recoverable: a decomposition outcome writes one of them, a run spawned before its owner was observed closed lands
+  after that observation, and the latch that would route the ending dies with the process — so without the query a
+  restart before any cleanup pass loses the ending for good, receipt on the thread or not. Only their **closed**
+  issues are asked about; an open `ready` issue is polled and dispatched exactly as ever. It
+  is reached past the `backlog` / `paused` filter that parks everything else, because dropping one of these loses
+  the close itself — an observed close ends the late cycle irreversibly, and this is the only pass that would ever
+  record that, so an owner parked while closed would come back from a reopen and an unpause with a live generation
+  and spawn against it. The control label defers what the pass would *do*, not whether the cycle ends: the sweep
+  reads the same label and stops at the mark. The
+  closed-issue sweep yields those four states beside its own recovery labels, on the same
   `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` cadence and through the same label cache and absent-label throttle, so it costs
   no request on a tick that sweep is skipping anyway (see
   [labels-and-state.md](labels-and-state.md#pollable-issues-and-finalization)).
-- **Why it is not the label's handler**: both labels name a stage handler that would resume the workflow the close
-  ended — one spawns the decomposer, the other walks the dependency graph and activates children. The dispatcher
+- **An owner with no cycle left is asked one question before it is stepped over.** That question is the
+  retirement's own correlation: a terminal that made its retirement durable and then died leaves a record naming
+  which cycle it dropped, and a close observed inside that write leaves a receipt on the thread naming the same one.
+  Where the two agree the cycle goes back cancelled and this pass ends it like any other, `rejected` included.
+  Where they do not, what is left is an umbrella whose terminal is due and whose label never landed: that state is
+  `umbrella` and closed — exactly what this sweep queries — and the record says which terminal it
+  earned (`umbrella_resolved_at`), so `done` is written here. A write GitHub refuses keeps the label, which is the
+  retry, so the pass after it writes what this one could not. Anything else with no cycle is left alone: every
+  umbrella the initial decomposer made carries no generation and no stamp.
+- **Why it is not the label's handler**: every one of the four names a stage handler that would resume the workflow
+  the close ended — one spawns the decomposer, one walks the dependency graph and activates children, one hands the
+  issue to a developer. The dispatcher
   therefore reads *closed* before it reads the label and routes to `late_sweep._handle_closed_owner_cleanup`
   instead, ahead of even the live-adjudication relabel guard. That classification then **binds**: the submit carries
   a `cleanup_only` route the worker cannot re-derive, so a human who reopens the issue between the poll and the
-  refetch cannot turn a cap-exempt submit into an agent-spawning stage handler. The handler re-reads the close
-  itself and does nothing at all when the issue is open again, leaving the next tick to classify it correctly.
+  refetch cannot turn a cap-exempt submit into an agent-spawning stage handler.
+- **Reaching this route at all is what says a close was observed**, and an observed close cancels the generation
+  irreversibly. So the handler's own re-read decides how far the pass goes, never whether the cycle ends: an issue
+  that is open again is marked cancelled all the same and stopped there — nothing external is done to an issue
+  somebody has just reopened, and no terminal is written — and the mark is what hands it to the dispatcher's own
+  guard, which owns a reopened cancelled owner and settles it from the next tick.
+- **A submission no pass settles is latched, not dropped.** The scheduler admits no second worker for an issue one
+  is already running, and this is the only submission whose loss costs an *observation* rather than a turn: the poll
+  saw the issue closed, and if a human reopens it before the next pass, no later poll sees that again. So the
+  dispatcher latches the reading on `workflow/engine/observations.py` instead of discarding it, and the next tick
+  reads it back and routes the issue to this sweep on the strength of it — ahead of the label, ahead of the close,
+  and out of the family bucket, because the reading those come from is exactly what the reopen took away. What the
+  sweep does with an owner that is open again is the bullet above: mark the cancellation and stop.
+- **A pass that RETURNED is not a pass that finished the ending, and the reading is kept where nothing else would
+  come back.** A cleanup can run every step and leave the ending owed: a consumer that is live again keeps the ref,
+  a remote that refuses a delete keeps the branch, and the `rejected` terminal is one more request GitHub can
+  decline. What that decides is only whether this reading is the *last* route. An owner still wearing any of the
+  four swept labels is one a later tick reaches on the `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` cadence an operator set — the
+  label staying put *is* the retry — so the latch is handed back there rather than costing a cleanup pass per tick
+  for as long as the ending is owed, which for a live consumer can be indefinitely. An owner that is *open* again
+  hands it back too, because the sweep may not advance a reopened issue and the dispatcher's own guard owns it. What
+  is kept is an owner that is closed, still owes something, and wears a label no query asks for; a read that could
+  not answer is kept for the same reason, since it established nothing.
+- **What the ending owes outlives the process holding that reading, so the label is repaired too.** The sweep
+  queries four labels, and an owner can be moved outside all of them — by a hand relabel, or by an operator putting
+  a closed owner onto a terminal over a cycle that still owes something. Inside this process the held reading is
+  what brings a tick back to such an owner; after a restart, nothing would. So a sweep that leaves an obligation
+  owed puts the owner back under `decomposing` or `umbrella` (whichever the `umbrella` flag says the record
+  reached), unguarded, as the repair of a move this workflow never made — and the reading is handed back once that
+  repair landed, because the label is now the durable route. A repair GitHub refuses leaves the reading as the only one
+  there is, and it is held and said out loud. An ending that finished is left exactly where it is: it wrote
+  `rejected`, which is what takes an owner out of the sweep for good.
+- **The latch is a barrier the run in flight is held to, not just a note for the next tick.** The worker that owns
+  the issue asks it before every step the remote keeps, through the same owner read those barriers already take
+  (`late_owner._read_owner` consults the latch before it asks GitHub). That is the reading GitHub cannot give back: a
+  close and a reopen that both happened inside one of the run's own steps leaves the issue reporting `open`, and only
+  the poll ever saw otherwise. A latched close therefore ends the cycle where the run stands — the cancellation
+  persisted by the worker that owns the pinned comment, and nothing further spawned, created, or activated.
+- **Where those barriers are, and why each one is there.** Every one of them sits immediately before a step nothing
+  takes back, and each covers a window of *remote work* the poll runs beside:
+  - **the child loop**, before every child including the first — the write that forces the parent to be an umbrella
+    stands ahead of the first create — once more inside the create itself, since the orphan lookup that precedes it
+    walks the whole repository on a resumed pass, once *behind* it, and once more between the read of the child's
+    own pinned comment and the write that adds to it: the create is a request too, so is that read, and what a close
+    inside either leaves is a real GitHub issue. That one is recorded either way (a child nothing names is the one
+    state no pass can clean up) and written to never (a cancelled cycle owes its children nothing);
+  - **each publication step** — the announcement, the supersession, and the retirement that hands the parent to
+    `workflow:umbrella`;
+  - **the activation walk** (`activation.py`), before *every* relabel rather than once for the walk: a relabel is a
+    request, and a close latched after the first child was released must not release the second;
+  - **the spawn** (`late_coordinator`), asked twice and the second time right against it — a worktree probe, a
+    retry-budget write, a hold reconcile, and the write that records what this attempt IS all stand between a tick's
+    own gates and the one step that puts an agent on somebody's repository. What the record then claims is an
+    attempt nobody made, which the next tick reconciles for free; an agent that ran is what nothing takes back;
+  - **the developer revision** (`late_revision`), three times: as the tick is entered, again right against the
+    resume — the revising notice it posts in between is a request the poll runs beside — and once more when the run
+    comes back, which stops the remeasure that would write a fresh candidate over a cycle a close already ended.
+    The poisoned-session retry inside the shared resume is guarded with them, since that is a *second* agent and an
+    issue somebody closed is owed neither;
+  - **the `single` publication** (`late_settlement`), asked between *each* of its own steps — the reconciliations,
+    the exemption write, the handoff label, and the accepted notice — because these are the barriers protecting the
+    *record* rather than an effect: the last write drops the generation entirely, and both the sweep and a receipt
+    adopted from the thread read that generation to decide there is anything to end. Past that write a refusal is
+    too late, so the answer there is a **reinstatement**: the generation is still in the call's own memory, and it
+    is written back and cancelled from there. What was published stays published — the exemption, the notice, and
+    the handoff label are none of them this owner's to take back;
+  - **the reclamation itself** (`late_cleanup.py`), between every obligation it settles, between every two of the
+    receipts a reclaimed ref owes its children — each is a comment on somebody *else's* issue, so a close observed
+    after the first is one the second may not be written over — between the fresh consumer
+    proof and the ref delete it authorizes — a ref that is gone while the record still reads live is a reclamation
+    nothing afterwards can attribute to the cancellation that earned it — and again between that delete and the
+    receipts behind it — and once more inside each of THOSE, since proving a child untold is a thread walk of its own
+    and the comment it authorizes stands behind it — each is a request, and the receipts are the one cleanup effect
+    that writes to somebody *else's* issue. The mark does not buy a shortcut through the reclamation rules; what it
+    changes is what the settling owes anybody, since a cancelled cycle tells its consumers nothing;
+  - **the umbrella walk** (`umbrella.py`), past the child scan, behind the settlement its terminal waits on, and
+    once more immediately before the write that records the resolution — the scan is a request per child, and so is
+    the settlement. `done` is the write that cannot be recovered from, because it takes the issue off both labels
+    the closed-owner sweep queries, so what makes it safe is the write *ahead* of it: one pinned write that stamps
+    the resolution and **retires the cycle** together, carrying the two ledgers across the way the `single`
+    publication's own retirement does. A close observed before that write stops the terminal outright and leaves the
+    owner on `umbrella` with the mark down, where the ending retires it to `rejected` from a label the sweep still
+    queries. One arriving after it is a human closing an issue this orchestrator had already finished — every child
+    resolved, every obligation reclaimed, the cycle over — which is not a cancellation, and leaves no live cycle
+    under the terminal for anything to have to find. That write is itself a request, so the latch is asked once
+    more *behind* it, off the same `observations.retiring` window the `single` retirement holds: there the
+    answer is a **reinstatement** rather than a refusal — the generation is still in the call's own memory, so it
+    goes back cancelled, no terminal is written, and the owner keeps `umbrella` where the ending reaches it. That
+    barrier is this process's, so the write records `late_retired_cycle_id` exactly as the `single` retirement does:
+    a process that dies before reaching it leaves a record naming the cycle it dropped and a receipt on the thread
+    naming the same one, and the sweep adopts the two together rather than finishing a terminal over a close.
+    Every window a crash can land in is one the next pass repairs:
+    before that write the owner is on `umbrella` with a live cycle, which the sweep and the umbrella poll both
+    already own, and after it the owner is on `umbrella` with the resolution recorded and no cycle at all — which
+    the sweep finishes by writing the label the record already earned, retrying for as long as GitHub refuses it,
+    because the owner keeps the label the sweep asks for until one lands. The closing notice is gated on the same
+    stamp, so a terminal resumed after a crash says it once;
+  - **the activation's own answer, carried out**. The walk holds the children it has not reached, which is the whole
+    of what a shared dep-graph walk may decide; the split transaction asks again behind it and ends the cycle on the
+    answer, because reporting settled would send it on to reclaim the superseded branch with no mark saying why.
+
+  The barriers past a claim-bearing read take the latch alone: a claim names `owner_check`, and writing it over
+  whatever boundary the tick actually reached is the rewind the record refuses.
+- **It is latched where the close is READ**, which is the enumeration that classified the issue — not where the
+  reading is later carried. Between the two stands the rest of that enumeration (a label read per issue in the
+  repository) and the submit decision itself, and a worker already holding the issue asks the latch before every
+  irreversible step it takes for the whole of that window: a reading installed only once the scheduler had refused
+  would leave that worker free to spawn, create a child, or activate one against an issue the poll had already seen
+  ended. It is taken for every closed issue the fan-out set records, which is exactly the set whose route carries a
+  closed reading; a closed issue drained in the family bucket is a hard human stop with nothing to finalize.
+- **A close the enumeration never saw is taken at the REFETCH.** An issue open when it was listed carries no
+  reading at all — nothing was latched, because there was nothing to latch — and the refetch every route takes on
+  its way to a handler can be where that stops being true. From there the reading exists in one place only, and
+  everything behind it can fail: the pinned read the guard is built on answers a refusal of its own, and the write
+  that marks the cancellation is a request like any other. So both refetching paths take the observation against the
+  object they just got back — the sequential loop, which has no hand-off to hold one for it, and the worker, whose
+  hand-off carries the poll's *older* reading instead — and hold it across the pass, so a pass that could not mark
+  anything leaves the reading for the next tick rather than losing it to a reopen.
+- **The durable half is written there too.** A latch is memory, so an accepted submit whose task never starts — a
+  scheduler shutdown, a process that dies before the worker takes it — would otherwise leave the observation with
+  nothing on the remote saying it happened, and a human who reopens the issue before the next process polls it takes
+  the reading away for good. So the receipt goes on the thread while the record can still name the cycle it belongs
+  to, from the object the enumeration already listed: one pinned read per closed fan-out issue, and the same read
+  answers whether the reading is owed at all — an issue whose record says there is nothing to end has its latch
+  dropped again right there, so the machinery is carried only by the owners that need it (and the admitted pass
+  skips its own end-of-pass probe, since the poll already asked that record).
+- **It is process-wide rather than per-scheduler** because the readers are stage handlers deep inside a worker, and
+  the alternative is threading a scheduler through thirteen handler signatures that have nothing to do with it. It
+  is dropped by the pass that RAN (`settle_close` from the worker, once its pass returned), never by the submit that
+  was accepted: an accepted submit is not a cancellation persisted — the worker refetches the issue first, and that
+  read can be the thing that fails — so a pass that raises anywhere latches the reading again. A task that never
+  runs at all — a scheduler shutdown, or a process that dies between the submit and the worker taking it — leaves the
+  latch standing, which is the point: the next tick routes the issue to the sweep on the strength of it.
+- **The cycle a retirement drops is recorded outside the group that write clears.** The window above is memory and
+  the barrier behind the write is this process's, so a process that dies between them leaves a receipt naming a
+  cycle and a record that no longer names one — and the guard below returns on a record with no cycle, so nothing
+  would ever look at that receipt. `late_retired_cycle_id` is the one fact about the dropped generation that
+  outlives the drop (like `late_exempt_sha`, deliberately outside `LATE_STATE_KEYS`): a record carrying it is asked
+  once per owner per process whether the thread has that cycle's close receipt, and one that does gets the cycle put
+  back — cancelled, with the ledgers the retirement carried across — so the ending has something to run from. The
+  correlation ends where its window does, and only there: any generation written with an identity supersedes it (the
+  adoption's own mark included, which is what consumes it, and an operator's authorized restart with it). Both
+  retirements that drop a cycle record one — the `single` publication's and the umbrella terminal's — because what
+  the correlation is for is the process that dies before its own barrier, and that barrier belongs to whichever
+  process made the write. A terminal retiring cycle N names N and nothing else, so a receipt for any earlier cycle
+  on the same thread matches nothing an adoption would read.
+- **A retirement in flight is a record that answers for a cycle it no longer names.** A published `single` drops its
+  generation and then asks the latch, and between those two the record carries no cycle identity at all — which is
+  the one thing every reader of a close consults. A poll reading it there would answer "nothing to end", drop the
+  observation, and leave the barrier behind the write asking a latch nobody is holding any more. So the worker holds
+  `observations.retiring_cycle` across its own write and that barrier: inside the window the record's silence proves
+  nothing, the reading is kept, and the receipt the poll leaves on the thread is scoped to the cycle the window names
+  — which is the only place that cycle can still be read, and what makes the durable half survive the retirement at
+  all. Outside the window the same reading IS dropped, and correctly: the publication completed, and the ordinary
+  terminal arc the issue's label names owns the closed issue from there.
+- **The probe and the receipt are one read.** Whether the reading is still owed and what the receipt should say are
+  the same question about the same record, and two reads of a record a worker is writing can disagree — one seeing a
+  cycle and keeping the observation while the other sees the retirement behind it and leaves the thread saying
+  nothing, which leaves the reading in memory alone for a restart to take. So the owner writes the receipt from the
+  read that decides it and answers the dispatcher with what that read established; a read that failed keeps the
+  reading, which is the only answer a request that established nothing is entitled to.
+- **The durable half is a marked comment on the issue thread.** A latch dies with the process holding it, so the
+  first pass to latch a close also posts one cycle-scoped receipt
+  (`<!--orchestrator-late-close-observed:issue=N:cycle=C-->`). A *comment* rather than a pinned write for the reason
+  the latch exists at all: the pinned comment is written whole, so a second writer racing the worker that owns the
+  issue would drop whatever that worker recorded in between, while a comment is added and races nothing. Posting is
+  best effort — a receipt GitHub refuses costs durability, not the reading, which is still latched and still ends
+  the cycle on the next barrier the run reaches.
+- **A refused receipt is retried, not lost.** The post is attempted by every pass that latches a close and settled
+  by the first that lands one: the memo suppressing further attempts (`observations.receipt_written`) is written by
+  the attempt that succeeded, so a comment GitHub declines is tried again on the next poll. Without that, an
+  observation with no durable half would be one a restart takes away entirely — the latch alone does not survive the
+  process.
+- **The attempt is claimed, and the memo is counted against the reading it was claimed for.** Asking whether the
+  thread already carries a receipt and getting one onto it are two operations, and the other two parties are inside
+  that gap: a second poll owing the same observation (a worker's failed pass and the following tick's enumeration
+  meet there), and the worker running the pass that settles the reading. So `observations.claim_receipt_post` hands
+  out the sole right to attempt the post — one poll walks the receipt-less thread, not two — and it carries the
+  per-owner **generation** that reading was taken at. Every `settle_close` moves that generation, so a receipt
+  landing either side of a settlement records no memo at all: without it the memo would stand for a reading nobody
+  holds, and the *next* close — a fresh cycle an operator authorized by removing `rejected` — would be suppressed
+  into having no durable half, which a restart before its worker reaches a barrier takes away entirely. The claim is
+  handed back either way, by the write that recorded the memo or by the failure that recorded nothing; a claim left
+  standing would suppress every later poll's receipt for good.
+- **The receipt is read back once per owner per process.** After a restart the fresh process finds an issue a human
+  reopened, a record still saying the cycle is live, and nothing in memory; the dispatcher's own cancelled-cycle
+  guard therefore scans the thread for a receipt scoped to the cycle the record names, adopts it, marks the
+  cancellation, and runs the ending from the mark. The scan is claimed through `observations.claim_receipt_scan`, so
+  a thread carrying no receipt is walked on the first tick that sees the owner and never again — what it recovers is
+  an observation a *dead* process was holding, and every observation this one makes is in the latch, which costs no
+  request. The claim is held for the length of the walk and handed back where the walk established nothing — a
+  listing that raises leaves `observations.scanning_receipt` by exception and the claim goes with it — because a
+  claim standing over a read that established nothing would send every later tick straight past the receipt and on
+  to the live stage handler. It is handed back again whenever a receipt actually LANDS: a claim taken when the thread
+  carried nothing proved nothing about one posted since, and every later pass would read straight past it. Cycle
+  scoping is what keeps an old close from ending the fresh cycle an operator authorized by removing `rejected`.
+- **Every path that runs a cleanup holds its observation the same way.** The scheduler's fan-out submit, the in-tick
+  parallel one, and the sequential stream all wrap the pass in `dispatch._cleanup_observation`, with the refetch
+  *inside* the wrapper — that read is the first thing a cleanup spends and the likeliest to fail, and a pass that
+  raised marked nothing. Without the wrapper the exception is merely logged and a reopen before the next tick resumes
+  the uncancelled cycle.
+- **A closed owner whose label names an ordinary terminal is still cancelled.** The cleanup route takes a closed
+  owner on either label an adjudication runs under; what reaches the dispatcher's own guard closed is the one window
+  no label covers — a `single` verdict hands its issue to `workflow:implementing` a moment before it retires the
+  cycle. Nothing else would end that cycle: the terminal arc that label names drains a merged pull request or a
+  human close and writes the late record off nowhere, and the relabel guard beside it merely puts `decomposing`
+  back, which a reopen before the next tick takes away again. So the guard marks it from the reading it already has
+  — the closed issue it was handed and the record it already read — and the ending runs from the mark.
+  The dispatcher covers the same window on both sides of the submit. An **admitted** task carries the poll's closed
+  reading with it (`_PollReading`) and applies it on the worker thread before the guard reads the refetched object —
+  a human who reopens between the poll and the refetch would otherwise leave the fresh reading saying open with a
+  live cycle under it — and it holds that reading across the pass, latching it again on the way out unless the pass
+  actually spent it. Spending it is not the same as finishing: the pinned read the guard is built on answers a
+  refusal of its own, so a tick that could not read the record refuses the issue and marks nothing. A **refused**
+  submit latches the reading **first**, then drops it again only where the record positively says there is nothing
+  to end. All three tick paths do this. The order is
+  the whole of it — the probe is a request, and a request can fail or can land after the very retirement it was
+  asking about, so a reading conditioned on it would be lost to either. A latch held over an issue with no cycle
+  costs the next tick one cleanup pass that settles it; a reading dropped costs the close itself. It is taken on the
+  refusal rather than ahead of admission, because an admitted submit runs the label's own handler and settles
+  nothing.
+- **A cancelled cycle is refused under every label, and the terminal lands where the graph allows.** Every workflow
+  label names a handler that ACTS on the issue rather than settling it, so a cancelled cycle wearing any of them is
+  refused whatever it says — a human who relabels such an owner is asking for work on a cycle a close already ended.
+  Where `rejected` is *written* is the transition graph's answer for every label a workflow wrote: each state a late
+  cycle can be interrupted on declares that edge, and `question` — applied by an operator who wants the issue discussed
+  rather than ended — does not, so an owner there is refused and said out loud rather than relabelled out from under
+  whoever put it there. `ready` and `blocked` are the exception, and they are not a human's placement: a decomposer
+  spawned before the close writes one of them as its ordinary outcome and lands *after* the close, so an ending refused
+  there is one refused on every visit the sweep makes, forever — neither label declares the edge, and the sweep is what
+  brings a tick back. The terminal is therefore written from both, unguarded, as the repair of a move this workflow
+  never made. The **unlabeled** state is the one exception in the other direction — an operator who removed `rejected`
+  to authorize a restart leaves the issue wearing nothing, and re-applying a terminal there would undo that
+  authorization, so an unlabeled owner is stopped only while its cycle still owes something.
+- **A control label defers everything past the mark, and nothing before it.** `backlog` / `paused` park an issue
+  outside the state machine, and the ending is external work — a plan pull request closed, a branch deleted, a ref
+  reclaimed — so none of it runs while the label is on. The cancellation itself is still persisted, because the pass
+  the park would drop is the only one that would ever record the close: an owner parked while closed would otherwise
+  come back from a reopen and an unpause with a live generation. That reading also survives the partition filter, so
+  a parked *closed* issue is bucketed rather than discarded.
+
+  The waiver is exactly that wide, and it is re-applied behind the mark. A record with no late cycle marks nothing
+  at all, and the cancelled-cycle guard answers "not mine" for one — so without a second ask a parked issue would
+  reach the stage handler its label names, which is the one reaction an operator applied `paused` to prevent. The
+  same is true after a reopen between the poll and the worker: the reading is still the poll's, the record still
+  owes nothing, and the park is still the answer.
+- **A held observation outranks every filter above the partition.** It is not a reading of the current tick's, so
+  what that tick can see about the issue has already been overtaken. A `backlog` / `paused` park no longer drops it
+  — the sweep it routes to defers every external step anyway, which is exactly what the park asks for, and never the
+  mark. And an issue the enumeration does not yield at all, because a human moved its label off the two the closed
+  sweep queries, is added by NUMBER on the strength of the observation alone; the worker's own refetch decides the
+  rest. All three tick paths do this: the partition for the scheduler and parallel modes, and the sequential stream
+  sweeps whatever its enumeration never reached.
 - **Why it fans out rather than joining the family bucket**: that bucket's cap exemption is all-or-nothing, so one
   open `workflow:decomposing` issue sharing the tick would make a closed owner cap-counted — and under a saturated
   cap the whole bucket is skipped, which stops the repository reclaiming refs for as long as its decomposer is busy.
   Partitioned as fan-out, the owner carries its own `cap_exempt=True` submit, for the same reason every other closed
   issue does: nothing on this path spawns an agent or touches a worktree it did not already own.
-- **What it does**: exactly what the umbrella's terminal does to the obligation ledger — the same rules, the same
-  `reclaiming` / release / `reconciled` order, the same records — and nothing else. It never writes a label, never
-  activates a child, never spawns, and never decides a terminal. An owner whose every obligation is `reconciled`
-  costs the pinned read and stops there, reading no consumer at all; an opaque ledger stops the pass with a warning,
-  because nothing on it may be reclaimed around an entry this binary cannot type.
+- **What it does**: it ends the cycle, and nothing about the workflow the close ended. It never spawns, never
+  adjudicates, never creates or activates a child, and never touches one that already exists. The ending is
+  [`late_cancellation.py`](../../orchestrator/workflow/stages/decomposition/late_cancellation.py), and it runs in
+  a fixed order.
+  1. **The cancellation is persisted first**, ahead of every external call, and the `late_cancellation` record
+     rides that write — so there is one per cycle rather than one per cadence, and every gate below reads a record
+     that already says the cycle is over. It carries the moment the obligation was taken on and the boundary it
+     interrupted (`late_cancelled_phase`), because `late_phase` is about to name the cancellation itself and the
+     boundary is what the whole-ledger rule reads. Both are kept from the *first* observation: a reopen and a
+     second close re-mark the same cancellation and move neither.
+  2. **A held plan pull request is released, told once, and closed.** This is the one obligation a cancellation
+     owns that no other pass ever sees — every path that reaches an umbrella superseded its plan PR on the way, so
+     a cancelled cycle is the only shape where one is still open under a "do not merge" notice. The hold comes off
+     first, so a pull request that ends up closed is not also left wearing one forever; a release that failed on a
+     still-open pull request stops the close, since the preserved description is the only copy of what the hold
+     replaced. The notice carries a cycle-scoped marker and is proved from the pull request's own thread, and the
+     entry is recorded either way — `reconciled`, or `failed` with `pr_reconcile_failed` behind it. It is re-asked
+     on **every** visit, including one whose entry already reads `reconciled`, for the reason the ordinary
+     supersession is: that entry records what an earlier visit did, and a human can reopen the pull request behind
+     it — an owner the sweep is still visiting for a branch it cannot delete would otherwise reach `rejected`, and
+     leave the sweep for good, beside a change that is open again under a cancelled cycle. Re-asking costs one
+     fetch and one comment listing and repeats nothing; the write and both sinks stay behind a state that actually
+     moved, so a settled pull request adds no record per cadence.
+  3. **The branch and the ref are `late_cleanup`'s, unchanged** — the same rules, the same `reclaiming` / release /
+     `reconciled` order, the same records, and the same bound on them: what reaches the sinks and the pinned
+     comment is a state that *moved*, so a remote that goes on refusing one delete costs a request per visit
+     rather than a record and a write per visit, while the log goes on naming what is held. A cancellation buys no
+     shortcut through any of it: a consumer that is live again keeps the ref whether or not its owner is closed.
+     What it does change is which ledger the rule reads. The count written before the first create can only be
+     reached by a loop that ran to the end of its manifest, and a cancelled one never will — so the loop that stops
+     writes down that its register is **final**, which it may because every barrier that ends it is asked after the
+     write recording the child in hand. The ref then goes once every child the split actually cut has ended. A
+     **resumed** walk stopped before it reached the first unrecorded index seals nothing: a create is a request and
+     the write recording it is another, so a child an earlier attempt made and never recorded would not be on the
+     register, and there the ref stays held on the count.
+  3b. **A branch a supersession left unrecorded is taken on here.** The transaction settles the held plan PR and
+     records the branch that PR carried in two writes — the second is the retirement, and retiring ahead of a
+     supersession that might not land would let the children loose beside a change still carrying their work. A
+     close landing in that window leaves a cycle whose candidate is preserved on the ref, whose plan PR is closed,
+     and whose branch nothing on the record names; settling around it would retire the owner over a branch the
+     remote keeps for good. So a cancellation whose kept boundary is `superseding` resolves that branch and records
+     it as owed — but off the **announcement's own receipt**, not off the phase. A park at the supersession is
+     resumed from the top of the transaction, which rewrites `snapshotting` and `splitting` over the boundary while
+     stepping over the announcement it already made, so a second failed attempt stands at `splitting` with the
+     receipt still set and the phase no longer says what was reached. Not before that receipt, since the snapshot
+     is created *and proved* ahead of the first child and the branch stops being the only copy there. Only where
+     the record names no branch already, in any state. And only once the plan PR of step 2 is actually
+     **settled** — the boundary is written before the supersession is attempted, so it says the attempt was reached
+     and nothing about whether it landed, and inferring the branch while that pull request is still open would
+     delete, out from under a change a human can still see, the branch that change is built on. Nothing is lost by
+     waiting: the pull request is re-asked on every visit, and the visit that closes it takes the branch on.
+  3c. **The held plan pull request is asked once more, immediately before the terminal.** Step 2 settled it at the
+     top of the pass; what stands between that ask and the write below is a branch delete, a ref delete, and a
+     fresh read of every recorded consumer — long enough for a human to reopen the change inside them, which leaves
+     the record saying `reconciled` and the remote saying open. `rejected` takes the owner off both swept labels,
+     so a terminal taken on the record would leave that pull request standing under a cancelled cycle with nothing
+     coming back for it. The re-ask is the same idempotent one: a pull request still where the earlier ask left it
+     costs a fetch and a comment listing and moves nothing, while one that is open again is closed again and one
+     that will not close goes back to `failed` and holds the terminal for the next visit. It is taken only where
+     nothing else is owed, since that is the only visit whose terminal is actually due — an owner still holding a
+     branch the remote refuses is one the sweep is bringing back anyway, and the ask at the top of that pass is the
+     same ask.
+  4. **`rejected` last, and only once nothing is owed** — branch, ref, and *every* unreconciled plan-PR entry on
+     the ledger, which is a wider reading than what the pass acts on: acting takes the hold's own record, since
+     releasing one means knowing which pull request this cycle marked, while being owed takes the ledger, because
+     an entry left under a number a later write cleared is still an obligation and a `rejected` owner is one
+     nothing revisits. It is what a restart counts too, so retiring over one would refuse the fresh cycle that
+     terminal is meant to authorize. A recorded plan-PR number with no preserved description beside it is owed as
+     well, and is the one entry no pass can settle: the description that hold displaced is the only copy there
+     was, so nothing may put it back or close over it, and the terminal is held until a human repairs the record.
+     An opaque resource ledger blocks outright beside all of them.
+  4b. **The child receipts are discharged in the same breath.** Each child is recorded `pending` when it is
+     created, and nothing has ever moved one: the reclamation does not look at child entries, rightly, because a
+     child is a live issue rather than an object to reclaim. But `rejected` authorizes a restart, and a restart
+     projects its fresh cycle only over a ledger with nothing unreconciled on it — child entries included,
+     correctly, since the projection drops the ledger and may not discharge an obligation by forgetting it. So the
+     ending records what is already true: the children exist, this cycle is over, nothing further about them is
+     owed. Not one of them is touched on GitHub.
+
+     That label is the one write this path ever makes, and it is what takes the
+     issue out of the sweep for good: every label the sweep queries is one it keeps until this write lands, so a
+     terminal taken over an unreclaimed remote would leave that object with nothing coming back for it. A refusal
+     keeps the label, keeps the issue swept,
+     and says on every visit what is still holding it.
 - **Consumer state is re-read, never latched**: this pass fetches every recorded consumer fresh, and a consumer
   reopened before the delete lands has a live claim again, so the ref stays. A consumer whose read *fails* also
   keeps its ref, while the branch half — which owes no consumer anything — is still settled on that same visit.
-- **Output**: obligations settled or retried (with the same `late_cleanup` / `late_failure` records the terminal
-  emits), consumers released where a ref went, OR a no-op.
+  The scan is taken only where a ref is actually held, so an owner with nothing but a branch left costs no
+  per-consumer request.
+- **An issue with no recorded generation is left entirely alone**, which is every umbrella the initial decomposer
+  ever made: they wear one of the same two swept labels and own no cycle, so there is nothing to cancel and no
+  terminal to rewrite.
+- **A reopen does not resume the cycle, and does not skip its ending either.** Cancellation is irreversible within
+  its cycle, so a human who reopens the issue does not get that cycle back — and every label the issue could be
+  wearing names a handler that would act on it rather than settle it. The reopened owner is caught by the
+  dispatcher's own pinned-state guard ([above](#the-reuse-guard-every-dispatch-ahead-of-every-handler) shares that
+  read), which runs exactly the reconciliation above, reaches no handler, and writes the same `rejected` a closed
+  owner earns. It runs the cleanup rather than merely refusing because this sweep visits *closed* issues only: a
+  refusal with nothing behind it would freeze the issue until somebody closed it again. `rejected` is what the
+  **cycle** earns rather than what a closed issue earns, and it is what an operator removes to authorize a restart,
+  so reaching it is the only way back into ordinary work that does not silently resume a cycle a close already
+  ended. The issue is left open; closing one a human just reopened is not this pass's to do.
+- **The label decides where the ending is written, not whether it is refused.** A cancelled cycle is refused under
+  every label, and the terminal is written from the ones the transition graph declares the edge from, plus `ready`
+  and `blocked` — the two the cycle's own decomposer writes as its ordinary outcome, which no query would ever come
+  back to. Under a label that is neither (`question`), the refusal stands on its own and the cycle stays cancelled
+  where it is. The unlabeled state is the single exception, because an issue an operator has taken `rejected` off
+  wears no label at all and re-applying it there would undo the one authorization a restart has — so unlabeled, the
+  guard stops an issue only while its cancelled cycle still *owes* something (that obligation is real wherever the
+  label went) and otherwise steps aside.
+- **Output**: the cycle cancelled once, obligations settled or retried (with the same `late_cleanup` /
+  `late_failure` records the terminal emits, bounded the same way), no consumer written to or commented on, the
+  owner moved to `rejected` once nothing is owed, OR a no-op.
 
 ## `_handle_implementing` (label `workflow:implementing`)
 - **Trigger**: each tick while the label is `workflow:implementing`.

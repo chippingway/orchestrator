@@ -5,8 +5,10 @@
 An issue closed on `decomposing` or `umbrella` is outside every other pass, so
 the cleanup sweep is the only thing that ever asks about its ledger again. The
 real handler is driven in every case, because half of what is under test is
-what the pass does NOT do: it never relabels, never activates, and never
-spawns.
+what the pass does NOT do: it never activates a child and never spawns. The
+one label it does write is the `rejected` a fully settled cycle earns, which
+is the ending rather than a route -- what that ending consists of is pinned in
+`test_late_cancellation.py` beside the owner that decides it.
 """
 from __future__ import annotations
 
@@ -14,46 +16,46 @@ import unittest
 from unittest.mock import MagicMock
 
 from orchestrator.git.snapshots import refs as _snapshot_refs
-from orchestrator.workflow.late_split import lineage as _lineage, state as _late_state
+from orchestrator.workflow.late_split import restart as _restart
+from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import (
     LatePhase,
     LateResource,
     LateResourceKind,
     LateResourceState,
 )
-from orchestrator.workflow.stages.decomposition import late_sweep
-
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (
+    CHILD_KIND,
     CHILD_NUMBER,
     DECOMPOSING,
+    EVENT_LATE_CLEANUP,
     OwnerSeed,
     PARENT_NUMBER,
     RecordedDelete,
     SNAPSHOT_REF,
 )
 from tests.workflow.stages.decomposition.late_cleanup_support import (
+    EXPECTED_CHILDREN,
     LABEL_BLOCKED,
     LABEL_DONE,
     LABEL_IN_REVIEW,
     LABEL_READY,
     STATE_FAILED,
-    STATE_RECLAIMING,
     STATE_RECONCILED,
     STATE_RETAINED,
 )
 from tests.workflow.stages.decomposition.late_cleanup_support import (
+    LABEL_REJECTED,
     SUPERSEDED_BRANCH,
     UNRECORDED_CHILD,
     WORKFLOW_LOG,
     resource_states,
     seed_unrecorded_child,
     split_umbrella,
-    walk_owner,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
-    CYCLE_ID,
     GENERATION_NUMBER,
     late_generation,
 )
@@ -76,13 +78,9 @@ _GRANDCHILD_NUMBER = 4111
 
 _ANCESTRY_REF = "late_ancestry_snapshot_ref"
 
-
-def sweep_with(case, seeded, outcome=_DELETED, **answers) -> RecordedDelete:
-    """Run one cleanup sweep with the remote answering `outcome`."""
-    deleted = RecordedDelete(outcome, **answers)
-    with deleted.answering():
-        walk_owner(case, seeded, late_sweep._handle_closed_owner_cleanup)
-    return deleted
+# The one ref every case here is about, as the remote records being asked
+# for it.
+_TAKEN = (SNAPSHOT_REF,)
 
 
 def _closed(
@@ -129,17 +127,18 @@ class ClosedOwnerSweepTest(_PatchedWorkflowMixin, unittest.TestCase):
     """The ledger is settled; nothing else about the issue is touched."""
 
     def test_it_reclaims_what_a_closed_owner_left(self) -> None:
-        # Both halves in one pass, and nothing else: the close is a human
-        # decision, so no label is written, no comment is posted on the owner,
-        # and the consumer is read but never activated.
+        # Both halves in one pass, and nothing beyond the ledger: the close
+        # is a human decision, so the only label written is the terminal that
+        # says the cycle ended, nothing is posted anywhere, and the consumer
+        # is read to prove the ref may go and touched in no other way.
         seeded = _closed(
             LateResourceState.PENDING, LateResourceState.RETAINED,
         )
         github = seeded.github
 
-        deleted = sweep_with(self, seeded, _DELETED)
+        deleted = seeded.swept(self, _DELETED)
 
-        self.assertEqual(deleted.refs, [SNAPSHOT_REF])
+        self.assertEqual(tuple(deleted.refs), _TAKEN)
         self.assertEqual(deleted.shas, [CANDIDATE_SHA])
         self.assertEqual(github.deleted_remote_branches, [SUPERSEDED_BRANCH])
         self.assertEqual(
@@ -149,10 +148,10 @@ class ClosedOwnerSweepTest(_PatchedWorkflowMixin, unittest.TestCase):
                 SNAPSHOT_REF: STATE_RECONCILED,
             },
         )
-        self.assertEqual(github.label_history, [])
         self.assertEqual(
-            [number for number, _ in github.posted_comments], [CHILD_NUMBER],
+            github.label_history, [(PARENT_NUMBER, LABEL_REJECTED)],
         )
+        self.assertEqual(github.posted_comments, [])
 
     def test_a_close_is_read_anew_every_pass(self) -> None:
         # The label a running child wears is not terminal, so a manual close
@@ -168,7 +167,7 @@ class ClosedOwnerSweepTest(_PatchedWorkflowMixin, unittest.TestCase):
                     child_closed=child_closed,
                 )
 
-                deleted = sweep_with(self, seeded, _DELETED)
+                deleted = seeded.swept(self, _DELETED)
 
                 self.assertEqual(deleted.refs, asked)
 
@@ -183,9 +182,9 @@ class ClosedOwnerSweepTest(_PatchedWorkflowMixin, unittest.TestCase):
         )
         _seed_nested_generation(seeded)
 
-        deleted = sweep_with(self, seeded, _DELETED)
+        deleted = seeded.swept(self, _DELETED)
 
-        self.assertEqual(deleted.refs, [SNAPSHOT_REF])
+        self.assertEqual(tuple(deleted.refs), _TAKEN)
         self.assertEqual(
             {
                 entry["target"]: entry["state"]
@@ -205,7 +204,7 @@ class ClosedOwnerSweepTest(_PatchedWorkflowMixin, unittest.TestCase):
         seeded.github.get_issue = MagicMock(side_effect=RuntimeError("boom"))
 
         with self.assertLogs(WORKFLOW_LOG, level="ERROR"):
-            deleted = sweep_with(self, seeded, _DELETED)
+            deleted = seeded.swept(self, _DELETED)
 
         self.assertEqual(deleted.refs, [])
         self.assertEqual(
@@ -216,22 +215,21 @@ class ClosedOwnerSweepTest(_PatchedWorkflowMixin, unittest.TestCase):
             },
         )
 
-    def test_a_reclaimed_ref_tells_its_consumer(self) -> None:
-        # The sweep is the only pass that revisits a closed owner, so it is
-        # also the only thing that can tell the children the ref they were cut
-        # from is gone. They are told as part of the reclamation, not on some
-        # later visit that may never come -- and told by a comment, since this
-        # owner may not write a consumer's pinned state at all.
+    def test_a_reclaimed_ref_tells_nobody(self) -> None:
+        # A cancelled cycle owes its children nothing, the receipt a live
+        # split leaves included: they are issues a human's close stranded
+        # rather than work this orchestrator is still driving. Nothing about
+        # the ref goes unsaid -- the transport drops this host's mirror before
+        # it touches the remote, so a child reopened afterwards is stopped and
+        # told by its own guard, off the pointer this pass leaves standing.
         seeded = _closed(
             LateResourceState.RECONCILED, LateResourceState.RETAINED,
         )
 
-        sweep_with(self, seeded, _DELETED)
+        deleted = seeded.swept(self, _DELETED)
 
-        self.assertEqual(
-            [number for number, _ in seeded.github.posted_comments],
-            [CHILD_NUMBER],
-        )
+        self.assertEqual(tuple(deleted.refs), _TAKEN)
+        self.assertEqual(seeded.github.posted_comments, [])
         self.assertEqual(
             seeded.github.pinned_data(CHILD_NUMBER)[_ANCESTRY_REF],
             SNAPSHOT_REF,
@@ -246,7 +244,7 @@ class ClosedOwnerSweepTest(_PatchedWorkflowMixin, unittest.TestCase):
         )
 
         with self.assertLogs(WORKFLOW_LOG, level=_WARNING):
-            sweep_with(self, seeded, _snapshot_refs.SnapshotOutcome.REFUSED)
+            seeded.swept(self, _snapshot_refs.SnapshotOutcome.REFUSED)
 
         self.assertEqual(
             resource_states(seeded.github)[SNAPSHOT_REF], STATE_FAILED,
@@ -261,11 +259,42 @@ class ClosedOwnerSweepTest(_PatchedWorkflowMixin, unittest.TestCase):
         # closed on, not the umbrella terminal the other entry runs from.
         self.assertEqual(reported[0]["stage"], "decomposing")
 
-        retried = sweep_with(self, seeded, _DELETED)
+        retried = seeded.swept(self, _DELETED)
 
-        self.assertEqual(retried.refs, [SNAPSHOT_REF])
+        self.assertEqual(tuple(retried.refs), _TAKEN)
         self.assertEqual(
             resource_states(seeded.github)[SNAPSHOT_REF], STATE_RECONCILED,
+        )
+
+
+    def test_a_standing_refusal_records_once(self) -> None:
+        # The retry is every visit; the record of it is not. The decision is
+        # already durable on the entry, so the retry does not put
+        # `reclaiming` back over the `failed` it left -- which is what would
+        # otherwise alternate the recorded state and report a transition on
+        # every other visit that nothing actually transitioned.
+        seeded = _closed(
+            LateResourceState.RECONCILED, LateResourceState.RETAINED,
+        )
+        refused = _snapshot_refs.SnapshotOutcome.REFUSED
+
+        with self.assertLogs(WORKFLOW_LOG, level=_WARNING):
+            seeded.swept(self, refused)
+            written = seeded.github.write_state_calls
+            asked = seeded.swept(self, refused)
+            seeded.swept(self, refused)
+
+        self.assertEqual(tuple(asked.refs), _TAKEN)
+        self.assertEqual(
+            resource_states(seeded.github)[SNAPSHOT_REF], STATE_FAILED,
+        )
+        self.assertEqual(seeded.github.write_state_calls, written)
+        self.assertEqual(
+            len([
+                event for event in seeded.github.recorded_events
+                if event.get("event") == EVENT_LATE_CLEANUP
+            ]),
+            1,
         )
 
 
@@ -284,13 +313,15 @@ class WholeLedgerTest(_PatchedWorkflowMixin, unittest.TestCase):
 
         deleted = self._swept(seeded)
 
-        self.assertEqual(deleted.refs, [SNAPSHOT_REF])
+        self.assertEqual(tuple(deleted.refs), _TAKEN)
         self.assertEqual(self._ref_state(seeded.github), STATE_RECONCILED)
 
     def test_it_settles_the_owner_for_good(self) -> None:
         # What being stuck cost: the sweep came back on every cadence with a
-        # ref it would never take. Once the entry reconciles there is nothing
-        # left to ask about -- and nobody was told, because there is nobody.
+        # ref it would never take. Once the entry reconciles the owner leaves
+        # the sweep on the terminal, and a pass driven at it anyway asks the
+        # remote nothing, writes nothing, and does not re-apply the label --
+        # and nobody was told, because there is nobody.
         seeded = self._orphan(LatePhase.SNAPSHOTTING)
         self._swept(seeded)
         settled = seeded.github.write_state_calls
@@ -300,17 +331,45 @@ class WholeLedgerTest(_PatchedWorkflowMixin, unittest.TestCase):
         self.assertEqual(again.refs, [])
         self.assertEqual(seeded.github.write_state_calls, settled)
         self.assertEqual(seeded.github.posted_comments, [])
-        self.assertEqual(seeded.github.label_history, [])
+        self.assertEqual(
+            seeded.github.label_history, [(PARENT_NUMBER, LABEL_REJECTED)],
+        )
 
     def test_a_ledger_the_split_may_lead_is_kept(self) -> None:
-        # Past the write that goes down before the first create, the same
-        # empty list may be one write behind a child already on GitHub.
-        seeded = self._orphan(LatePhase.SPLITTING)
+        # The window with NOTHING recorded, which is the one the ledger
+        # cannot speak to at all: `splitting` goes down before the first
+        # create, so a loop that died between creating its first child and
+        # recording it leaves an empty list beside a real issue on GitHub.
+        #
+        # The phase says so on a record this binary wrote, which is why the
+        # owner-check claim may not write over it. On one an EARLIER binary
+        # left, the claim already did -- and what upgrades it is the count the
+        # transaction put down in that same write, which nothing moved.
+        upgraded = {EXPECTED_CHILDREN: 2}
+        for phase, evidence in (
+            (LatePhase.SPLITTING, {}), (LatePhase.OWNER_CHECK, upgraded),
+        ):
+            with self.subTest(phase=phase):
+                seeded = self._orphan(phase)
+                seeded.github.seed_state(
+                    PARENT_NUMBER,
+                    **{
+                        **seeded.github.pinned_data(PARENT_NUMBER),
+                        **evidence,
+                    },
+                )
+                seed_unrecorded_child(seeded.github)
 
-        deleted = self._swept(seeded)
+                deleted = self._swept(seeded)
 
-        self.assertEqual(deleted.refs, [])
-        self.assertEqual(self._ref_state(seeded.github), STATE_RETAINED)
+                self.assertEqual(deleted.refs, [])
+                self.assertEqual(
+                    self._ref_state(seeded.github), STATE_RETAINED,
+                )
+                self.assertEqual(seeded.github.label_history, [])
+                self.assertFalse(
+                    seeded.github.get_issue(UNRECORDED_CHILD).closed,
+                )
 
     def test_a_part_written_ledger_is_kept(self) -> None:
         # The same window with the list NOT empty, which is the shape that
@@ -319,19 +378,31 @@ class WholeLedgerTest(_PatchedWorkflowMixin, unittest.TestCase):
         # both closed since. Every consumer the ledger names has ended, so a
         # proof walking that list alone would take the ref -- out from under a
         # child it never read, never told, and could still be resumed.
-        seeded = _closed(
-            LateResourceState.RECONCILED,
-            LateResourceState.RETAINED,
-            phase=LatePhase.SPLITTING,
-        )
-        seed_unrecorded_child(seeded.github)
+        #
+        # `owner_check` is the same window wearing an earlier phase. The next
+        # tick came back through the post-agent owner read, which writes that
+        # phase OVER the `splitting` it interrupted, and the close that landed
+        # during it kept exactly what the read had left. Only the record can
+        # say the loop was in flight, so only the record is believed.
+        for phase in (LatePhase.SPLITTING, LatePhase.OWNER_CHECK):
+            with self.subTest(phase=phase):
+                seeded = _closed(
+                    LateResourceState.RECONCILED,
+                    LateResourceState.RETAINED,
+                    phase=phase,
+                )
+                seed_unrecorded_child(seeded.github)
 
-        deleted = self._swept(seeded)
+                deleted = self._swept(seeded)
 
-        self.assertEqual(deleted.refs, [])
-        self.assertEqual(self._ref_state(seeded.github), STATE_RETAINED)
-        self.assertEqual(seeded.github.posted_comments, [])
-        self.assertFalse(seeded.github.get_issue(UNRECORDED_CHILD).closed)
+                self.assertEqual(deleted.refs, [])
+                self.assertEqual(
+                    self._ref_state(seeded.github), STATE_RETAINED,
+                )
+                self.assertEqual(seeded.github.posted_comments, [])
+                self.assertFalse(
+                    seeded.github.get_issue(UNRECORDED_CHILD).closed,
+                )
 
     def _orphan(self, phase: LatePhase):
         """A closed owner holding a ref, with no child recorded or made."""
@@ -345,44 +416,112 @@ class WholeLedgerTest(_PatchedWorkflowMixin, unittest.TestCase):
 
     def _swept(self, seeded) -> RecordedDelete:
         """One sweep, with the remote taking whatever it is asked for."""
-        return sweep_with(self, seeded)
+        return seeded.swept(self)
 
     def _ref_state(self, github) -> str:
         """What the owner's ledger now says about the one ref it held."""
         return resource_states(github)[SNAPSHOT_REF]
 
 
-class UnfinishedReleaseTest(_PatchedWorkflowMixin, unittest.TestCase):
-    """A ref that went and a child that was not told is not a settled owner.
+class FinishedLoopTest(_PatchedWorkflowMixin, unittest.TestCase):
+    """More than one boundary is two answers, and the record tells them apart.
 
-    The sweep is the only pass that comes back to a closed owner, so an entry
-    that reconciles is an entry nothing revisits. It may only do that once
-    every child cut from the ref has been reached.
+    `splitting` goes down before the first create AND again beside every child
+    recorded, the last one included -- so a crash between that final write and
+    the announcement leaves a COMPLETE ledger wearing a mid-loop boundary. A
+    transaction retried after a park is the same question one step earlier: it
+    rewrites `snapshotting` over whatever boundary it had reached, so a
+    finished split comes back wearing the one it started from.
+
+    Reading either phase alone retains the ref for good and holds the terminal
+    with it, because nothing revisits a cancelled owner to move it on. What
+    separates them is the count the transaction put down ahead of its first
+    create, against the register it appends to as each child is recorded, and
+    it is asked of every boundary rather than of one.
     """
 
-    def test_an_unreachable_child_owes_the_release(self) -> None:
-        # The delete landed and one child could not be reached to be told.
-        # The entry stays `reclaiming` rather than reconciling, because
-        # reconciling is what stops the sweep coming back -- and this owner is
-        # the only thing that would ever come back.
+    def test_a_complete_ledger_is_whole_at_either(self) -> None:
+        # `snapshotting` is the retry window: the split finished, the tick
+        # died before the announcement, the next one re-entered and re-proved
+        # the ref it already had -- and a close landed there.
+        for phase in (LatePhase.SPLITTING, LatePhase.SNAPSHOTTING):
+            with self.subTest(phase=phase):
+                seeded = self._finished_loop(phase)
+
+                deleted = seeded.swept(self)
+
+                self.assertEqual(self._reclaimed(deleted), _TAKEN)
+                self.assertEqual(
+                    tuple(seeded.github.label_history),
+                    ((PARENT_NUMBER, LABEL_REJECTED),),
+                )
+
+    def test_a_short_register_keeps_the_ref(self) -> None:
+        # The same retry window with one child of two recorded, which is the
+        # shape the count exists to catch: a real issue exists that the
+        # consumer ledger cannot speak for, so the ref stays and the terminal
+        # is held with it.
+        seeded = self._finished_loop(LatePhase.SNAPSHOTTING, expected=2)
+
+        deleted = seeded.swept(self)
+
+        self.assertEqual(self._reclaimed(deleted), ())
+        self.assertEqual(tuple(seeded.github.label_history), ())
+
+    def _reclaimed(self, deleted) -> tuple:
+        """Which refs the remote was actually asked to drop."""
+        return tuple(deleted.refs)
+
+    def _finished_loop(self, phase: LatePhase, expected: int = 1):
+        """A closed owner whose one child is created, recorded, and ended."""
         seeded = _closed(
-            LateResourceState.RECONCILED, LateResourceState.RECLAIMING,
+            LateResourceState.RECONCILED,
+            LateResourceState.RETAINED,
+            phase=phase,
         )
-        seeded.github.get_issue = MagicMock(side_effect=RuntimeError("boom"))
+        seeded.github.seed_state(
+            PARENT_NUMBER,
+            **{
+                **seeded.github.pinned_data(PARENT_NUMBER),
+                EXPECTED_CHILDREN: expected,
+            },
+        )
+        return seeded
 
-        with self.assertLogs(WORKFLOW_LOG, level=_WARNING):
-            deleted = self._sweep(seeded, _ABSENT)
 
-        self.assertEqual(deleted.refs, [SNAPSHOT_REF])
+class UntouchedConsumerTest(_PatchedWorkflowMixin, unittest.TestCase):
+    """A cancelled cycle reclaims its ref and reaches no child doing it.
+
+    The receipt a reclamation leaves is what a live split owes the children it
+    is still responsible for, and a cycle a close ended is responsible for
+    none of them: they are real issues carrying real slices of somebody's
+    work, and what happens to them next is a human's decision. So the entry
+    reconciles on the delete alone, and nothing about a consumer -- its state,
+    its label, its thread -- is written by this pass. The umbrella's own
+    terminal is where the receipt still applies (`test_late_release.py`).
+    """
+
+    def test_it_reconciles_on_the_delete_alone(self) -> None:
+        # The consumer is still READ -- proving every one of them ended is
+        # what lets the ref go at all -- and that reading is the whole of
+        # what it costs the child.
+        seeded = _closed(
+            LateResourceState.RECONCILED, LateResourceState.RETAINED,
+        )
+
+        deleted = self._sweep(seeded)
+
+        self.assertEqual(tuple(deleted.refs), _TAKEN)
         self.assertEqual(
-            resource_states(seeded.github)[SNAPSHOT_REF], STATE_RECLAIMING,
+            resource_states(seeded.github)[SNAPSHOT_REF], STATE_RECONCILED,
         )
+        self.assertEqual(seeded.github.posted_comments, [])
 
-    def test_a_child_of_any_label_is_told(self) -> None:
+    def test_a_child_of_any_label_is_left_alone(self) -> None:
         # The two pre-PR states a human can close an issue on are swept by
         # nothing, so a consumer left on one never becomes terminal. It is
-        # still ended -- so the ref goes -- and it is still told, because the
-        # receipt is a comment rather than anything a label could gate.
+        # still ended -- so the ref goes -- and it is still untouched, on
+        # every label a stranded child can be wearing.
         for child_label in (LABEL_READY, LABEL_BLOCKED, LABEL_IN_REVIEW):
             with self.subTest(child_label=child_label):
                 seeded = _closed(
@@ -391,25 +530,37 @@ class UnfinishedReleaseTest(_PatchedWorkflowMixin, unittest.TestCase):
                     child_label=child_label,
                 )
 
+                recorded = dict(seeded.github.pinned_data(CHILD_NUMBER))
+
                 deleted = self._sweep(seeded)
 
-                self.assertEqual(deleted.refs, [SNAPSHOT_REF])
+                self.assertEqual(tuple(deleted.refs), _TAKEN)
+                self.assertEqual(seeded.github.posted_comments, [])
                 self.assertEqual(
-                    resource_states(seeded.github)[SNAPSHOT_REF],
-                    STATE_RECONCILED,
-                )
-                self.assertEqual(
-                    [
-                        number
-                        for number, _ in seeded.github.posted_comments
-                    ],
-                    [CHILD_NUMBER],
+                    seeded.github.pinned_data(CHILD_NUMBER), recorded,
                 )
 
-    def test_a_reachable_child_finishes_the_release(self) -> None:
-        # The visit after it. The ref is gone, so the entry is asked about
-        # again on the strength of the decision alone, and the receipt it
-        # could not deliver is what the pass is now for.
+    def test_an_unreadable_child_still_holds_the_ref(self) -> None:
+        # Nothing about the receipt changes what a consumer has to PROVE: one
+        # this pass could not read is one it cannot show has ended, so the ref
+        # stays and no delete is spent.
+        seeded = _closed(
+            LateResourceState.RECONCILED, LateResourceState.RETAINED,
+        )
+        seeded.github.get_issue = MagicMock(side_effect=RuntimeError("boom"))
+
+        with self.assertLogs(WORKFLOW_LOG, level=_WARNING):
+            deleted = self._sweep(seeded)
+
+        self.assertEqual(deleted.refs, [])
+        self.assertEqual(
+            resource_states(seeded.github)[SNAPSHOT_REF], STATE_RETAINED,
+        )
+
+    def test_an_ordered_ref_already_gone_finishes(self) -> None:
+        # The crash between the push that took the ref and the write that
+        # would have recorded it. The decision stands on the record, the ref
+        # is gone, and finishing it costs one read and no consumer at all.
         seeded = _closed(
             LateResourceState.RECONCILED, LateResourceState.RECLAIMING,
         )
@@ -419,38 +570,11 @@ class UnfinishedReleaseTest(_PatchedWorkflowMixin, unittest.TestCase):
         self.assertEqual(
             resource_states(seeded.github)[SNAPSHOT_REF], STATE_RECONCILED,
         )
-        self.assertEqual(
-            [number for number, _ in seeded.github.posted_comments],
-            [CHILD_NUMBER],
-        )
-
-    def test_a_receipt_it_already_left_stands(self) -> None:
-        # The crash between the receipt and the record of it. The retry
-        # re-enters through `reclaiming`, finds the ref gone, and reaches the
-        # release again -- where the thread, not the ledger, is what says the
-        # child has already been told.
-        seeded = _closed(
-            LateResourceState.RECONCILED, LateResourceState.RECLAIMING,
-        )
-        seeded.github.comment(
-            seeded.github.get_issue(CHILD_NUMBER),
-            _lineage.release_marker(
-                owner=PARENT_NUMBER,
-                cycle=CYCLE_ID,
-                generation=GENERATION_NUMBER,
-            ),
-        )
-
-        self._sweep(seeded, _ABSENT)
-
-        self.assertEqual(
-            resource_states(seeded.github)[SNAPSHOT_REF], STATE_RECONCILED,
-        )
-        self.assertEqual(len(seeded.github.posted_comments), 1)
+        self.assertEqual(seeded.github.posted_comments, [])
 
     def _sweep(self, seeded, outcome=_DELETED) -> RecordedDelete:
         """Sweep this owner, with the read-only ask agreeing with `outcome`."""
-        return sweep_with(self, seeded, outcome, presence=outcome)
+        return seeded.swept(self, outcome, presence=outcome)
 
 
 class SpentLedgerTest(_PatchedWorkflowMixin, unittest.TestCase):
@@ -461,15 +585,40 @@ class SpentLedgerTest(_PatchedWorkflowMixin, unittest.TestCase):
     is what decides whether the sweep is affordable at all.
     """
 
-    def test_a_settled_ledger_reads_no_consumer(self) -> None:
+    def test_a_settled_ledger_costs_one_ending_only(self) -> None:
+        # An owner whose every reclaimable obligation is already reconciled
+        # owes the pass only the ending: the cancellation mark, the child
+        # receipts it says nothing further is owed on, and the terminal that
+        # takes the issue out of the sweep. No consumer is read to establish
+        # any of it, and a second pass writes nothing at all.
         seeded = split_umbrella(
             LateResourceState.RECONCILED,
             owner=OwnerSeed(label=DECOMPOSING, closed=True),
         )
 
         self._asks_nothing(seeded)
+        written = seeded.github.write_state_calls
 
-        self.assertEqual(seeded.github.write_state_calls, 0)
+        self.assertEqual(
+            resource_states(seeded.github, CHILD_KIND),
+            {str(CHILD_NUMBER): STATE_RECONCILED},
+        )
+        # And what that discharge is FOR: `rejected` authorizes a restart,
+        # which projects a fresh cycle only over a ledger with nothing
+        # unreconciled on it -- so a receipt left `pending` would retire an
+        # owner whose restart then refuses for good.
+        self.assertTrue(_restart.obligations_settled(
+            _late_state.read_late_generation(
+                seeded.github.read_pinned_state(seeded.parent),
+            ),
+        ))
+        self.assertEqual(
+            seeded.github.label_history, [(PARENT_NUMBER, LABEL_REJECTED)],
+        )
+
+        self._asks_nothing(seeded)
+
+        self.assertEqual(seeded.github.write_state_calls, written)
 
     def test_an_opaque_ledger_stops_the_pass(self) -> None:
         # An entry this binary cannot type is an obligation too, so nothing on
@@ -507,7 +656,7 @@ class SpentLedgerTest(_PatchedWorkflowMixin, unittest.TestCase):
             },
         )
 
-        deleted = sweep_with(self, seeded)
+        deleted = seeded.swept(self)
 
         self.assertEqual(
             github.deleted_remote_branches, [SUPERSEDED_BRANCH],
@@ -525,7 +674,7 @@ class SpentLedgerTest(_PatchedWorkflowMixin, unittest.TestCase):
         """Sweep an owner that must cost neither a read nor a delete."""
         seeded.github.get_issue = MagicMock(side_effect=AssertionError)
 
-        deleted = sweep_with(self, seeded, _DELETED)
+        deleted = seeded.swept(self, _DELETED)
 
         self.assertEqual(deleted.refs, [])
 

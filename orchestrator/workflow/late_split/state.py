@@ -71,6 +71,7 @@ _LINKS_ANNOUNCED = "late_links_announced"
 _OWNER_CHECK_PENDING = "late_owner_check_pending"
 _CANCELLED = "late_cancelled"
 _CANCELLED_AT = "late_cancelled_at"
+_CANCELLED_PHASE = "late_cancelled_phase"
 _RESTART_PENDING = "late_restart_pending"
 _RESTART_TARGET = "late_restart_target"
 _RESTART_CYCLE_ID = "late_restart_cycle_id"
@@ -100,11 +101,68 @@ LATE_STATE_KEYS = (
     _OWNER_CHECK_PENDING,
     _CANCELLED,
     _CANCELLED_AT,
+    _CANCELLED_PHASE,
     _RESTART_PENDING,
     _RESTART_TARGET,
     _RESTART_CYCLE_ID,
     _RESTART_PREDECESSOR,
 )
+
+
+# The cycle a retirement dropped, kept OUTSIDE `LATE_STATE_KEYS` on purpose.
+# Clearing late mode is defined as dropping exactly the generation's own group,
+# and this is the one fact about that generation which has to outlive the drop:
+# a close observed INSIDE the retirement write leaves a receipt scoped to a
+# cycle the record no longer names, and without this there is nothing left to
+# adopt it against.
+LATE_RETIRED_CYCLE_ID = "late_retired_cycle_id"
+
+
+def read_retired_cycle(state: PinnedState) -> Optional[int]:
+    """The cycle a retirement dropped off this record, if one did.
+
+    Read through the domain's own identity reader, so a hand-edited value
+    reads back as no retirement at all rather than as a cycle nothing can be
+    correlated with.
+    """
+    return _payloads.as_identity(state.get(LATE_RETIRED_CYCLE_ID))
+
+
+def record_retired_cycle(state: PinnedState, cycle_id: int) -> None:
+    """Say which cycle the write that clears late mode is dropping.
+
+    Written in the SAME pinned write as the clear, because what it exists for
+    is the window between that write and the barrier behind it: a poll
+    observing the close in there receipts a cycle the record has stopped
+    naming, and a process that dies before the barrier runs leaves the receipt
+    with nothing to be adopted against.
+
+    It names ONE such window and outlives no other. The receipt it correlates
+    to is a comment, and comments are append-only, so a correlation left
+    standing past its window would let a cycle-scoped receipt be adopted
+    against a record whose cycle is two generations newer. What ends it is
+    `clear_retired_cycle` and the write below, between them.
+    """
+    state.set(LATE_RETIRED_CYCLE_ID, int(cycle_id))
+
+
+def clear_retired_cycle(state: PinnedState) -> None:
+    """Drop the retirement correlation, leaving every other field alone.
+
+    Asked by the write that records a generation with an IDENTITY, which is
+    the one state that says the window a correlation names is over: either
+    the adoption itself put the cycle back, or an operator authorized a fresh
+    one. Left standing past that, a cycle-scoped receipt could be adopted
+    against a record whose cycle is generations newer -- moving a completed
+    owner to `rejected` on a close that ended something else entirely.
+
+    Every retirement that DROPS a cycle records one instead, the umbrella's
+    terminal included: the barrier that answers a close observed inside such
+    a write belongs to the process that made it, so a process that dies first
+    leaves the correlation and the receipt as the only pair a later one can
+    read the ending back from.
+    """
+    state.data.pop(LATE_RETIRED_CYCLE_ID, None)
 
 
 def read_late_generation(state: PinnedState) -> LateGeneration:
@@ -174,6 +232,9 @@ def read_late_generation(state: PinnedState) -> LateGeneration:
         ),
         cancelled=_payloads.as_flag(state.get(_CANCELLED)),
         cancelled_at=_payloads.as_text(state.get(_CANCELLED_AT)),
+        cancelled_phase=_payloads.as_member(
+            LatePhase, state.get(_CANCELLED_PHASE),
+        ),
         restart_pending=_payloads.as_flag(state.get(_RESTART_PENDING)),
         restart_target=_restart.restart_target(state.get(_RESTART_TARGET)),
         restart_cycle_id=_payloads.as_identity(
@@ -195,8 +256,20 @@ def write_late_generation(
     stale value behind for the next tick to reconcile against. Keys outside
     this domain are not read or written: the pinned comment is shared with
     every other stage, and a late write is only ever about its own fields.
+
+    With one exception, and it is the retirement correlation's own rule: a
+    generation with an IDENTITY supersedes it. That correlation names the
+    cycle a retirement dropped so a close observed inside that write can
+    still be adopted, and a record carrying a live cycle is one where that
+    window is over -- either the adoption itself put the cycle back, or an
+    operator authorized a fresh one. Leaving it would let a later reader
+    correlate an append-only receipt to a cycle the record has long moved
+    past. A write with no identity leaves it exactly as the caller set it,
+    which is what makes recording it and clearing late mode one write.
     """
     clear_late_generation(state)
+    if generation.is_present:
+        clear_retired_cycle(state)
     for key, written in _written_fields(generation).items():
         state.set(key, written)
 
@@ -234,6 +307,7 @@ def _written_fields(generation: LateGeneration) -> dict[str, Any]:
         _OWNER_CHECK_PENDING: generation.owner_check_pending or None,
         _CANCELLED: generation.cancelled or None,
         _CANCELLED_AT: generation.cancelled_at,
+        _CANCELLED_PHASE: _wire(generation.cancelled_phase),
         _RESTART_PENDING: generation.restart_pending or None,
         _RESTART_TARGET: generation.restart_target,
         _RESTART_CYCLE_ID: generation.restart_cycle_id,
@@ -246,6 +320,16 @@ def _written_fields(generation: LateGeneration) -> dict[str, Any]:
     }
 
 
+def _wire(member: Optional[LatePhase]) -> Optional[str]:
+    """Return the wire string one phase field is recorded under, or None.
+
+    Both phase fields go through it, so the boundary a generation reached and
+    the one it was cancelled from are spelled the same way in the pinned
+    comment and read back through the same member lookup.
+    """
+    return None if member is None else str(member)
+
+
 def _evidence_fields(generation: LateGeneration) -> dict[str, Any]:
     """Return the identity, the frozen commits, and what they measured.
 
@@ -253,9 +337,6 @@ def _evidence_fields(generation: LateGeneration) -> dict[str, Any]:
     and what is dropped instead is an unknown depth, which is not the same
     thing and must not be recorded as if it were.
     """
-    phase: Optional[str] = None
-    if generation.phase is not None:
-        phase = str(generation.phase)
     return {
         _CYCLE_ID: generation.cycle_id or None,
         _GENERATION: generation.generation or None,
@@ -267,7 +348,7 @@ def _evidence_fields(generation: LateGeneration) -> dict[str, Any]:
         _BASE_SHA: generation.base_sha or None,
         _THRESHOLD: generation.threshold,
         _ADDITIONS: generation.additions,
-        _PHASE: phase,
+        _PHASE: _wire(generation.phase),
         _TITLE_BODY_HASH: generation.title_body_hash,
         _COMMENT_HASH: generation.comment_hash,
         _COMMENT_WATERMARK_ID: generation.comment_watermark_id,

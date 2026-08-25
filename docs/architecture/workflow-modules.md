@@ -57,17 +57,60 @@ unlabeled entry, which `engine/pickup.py` answers rather than a stage package.
 workflow/                   publishes the two label vocabularies, `guard_transition` and `is_allowed_transition`,
                             `IllegalTransition`, and the per-repo `tick`
   state.py                  the `WorkflowLabel` / `ControlLabel` vocabularies, strict label coercion, the declared
-                            transition graph and the guard over it, and the `workflow:` namespace boundary
+                            transition graph and the guard over it -- including the one edge OUT of a terminal,
+                            `done` to `rejected`, which the umbrella cancelled between its label write and its
+                            close is corrected over -- and the `workflow:` namespace boundary
   engine/                   what every stage is driven by
     comments.py             the orchestrator marker, the capped id ledger both posters write, and the trusted-author
                             thread read every prompt quotes
-    dispatch.py             one tick's pollable issues turned into handler calls: the hard-skip filter, the family /
+    dispatch.py             one tick's pollable issues turned into handler calls: the observation a refused
+                            fan-out submit was carrying -- latched from the poll's own closed reading and dropped
+                            again only where the RECORD positively says there is nothing to end, since the probe
+                            that asks is a request and a request can fail -- the same reading BOUND to an admitted
+                            one instead, since the worker refetches and a reopen in that window would answer
+                            differently -- the hard-skip filter a held close
+                            observation outranks (it is not this tick's reading, so a park, a reopen, and a relabel
+                            off the swept labels each leave it standing -- an owner the enumeration never yields is
+                            added by number), the family /
                             fanout partition and its cap exemptions, the per-worker refetch and the sequential path's
-                            own classify-and-refetch beside it (on the two labels where a CLOSE decides which
-                            handler runs, neither reading of it may be taken from the poll), the refusal that keeps a
-                            relabelled late adjudication off every other stage's handler, and the timed dispatch
+                            own classify-and-refetch beside it (a CLOSED issue is routed by any of the four cleanup
+                            labels, while only the two an adjudication RUNS under earn the refetch an OPEN issue
+                            costs, since neither reading of one may be taken from the poll), the hold that keeps a
+                            closed reading across the pass that would spend it -- a pass can fail to spend one
+                            without failing at all -- the close latched by the ENUMERATION that read it AND
+                            written down there, so a worker already holding the issue is answered for the whole
+                            window between that reading and the submit that carries it and an accepted task that
+                            never starts still leaves a receipt on the thread, the same observation taken at the
+                            REFETCH by both paths that take one -- an issue open when it was listed and closed by
+                            the time it is read carries a reading nothing else holds -- the park re-applied behind
+                            the mark that reading was waived for, the cleanup submission
+                            wrapped in the settlement its observation is owed -- kept by a pass that failed, by one
+                            nothing ever called, and by one that RAN and left the ending owed under a label no
+                            query asks for, settled everywhere else (a swept label reaches the owner on its own
+                            cadence), and shared by all three tick paths
+                            with the refetch inside the hold --
+                            the refusal that keeps a relabelled late adjudication off every other
+                            stage's handler, and the timed dispatch
+    observations.py         the closes a poll saw and could hand to no worker: the process-wide latch the run
+                            holding the issue asks before every step the remote keeps (a close and a reopen inside
+                            one of its own steps is the reading GitHub cannot give back), the settle a pass that
+                            RAN takes -- which moves the per-owner generation with it -- the claim one receipt is
+                            posted under, and the memo the attempt that landed a durable receipt writes against
+                            the generation it was claimed at -- so a refused post is retried by the next poll
+                            rather than lost, two polls in the check/post gap post once, and a settlement landing
+                            mid-post leaves no memo to suppress the NEXT reading's receipt, and a receipt that
+                            LANDS owes the thread walk again -- the window a worker
+                            retiring a cycle holds across its own write, which is what
+                            keeps a poll from calling a reading spent against a record whose cycle identity has
+                            just come off, is the only place that cycle can still be read, and decides what it
+                            observed as it CLOSES, under the lock that closes it, so no interval is left between
+                            the answer and the exit for a poll to latch a close in; and the
+                            once-per-owner-per-process claim that bounds the thread scan recovering an observation
+                            a DEAD process was holding, held for the length of the walk and handed back where it
+                            raised
     drift.py                the user-content hash and the six filters that keep content nobody wrote out of it, the
                             dev resume a drift earns, and the decomposition reset the pre-implementation route takes
+                            -- manifest, session, and every claim that manifest made about the children it created
     guards.py               what a finished agent run may leave behind: the shutdown-interruption and freshly-read
                             pause refusals, and the awaiting-human park
     messages.py             the markers read out of an agent's last message, and the redact-before-truncate stderr
@@ -87,8 +130,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             one
     formats.py              what any late value has to look like -- a real integer, a git object id, a bounded
                             single-line target -- and the one refusal every owner raises over it
-    models.py               the phase / verdict / failure / resource vocabularies, the frozen generation record
-                            with the transforms that return a new one, and the lineage bound it is read against
+    models.py               the phase / verdict / failure / resource vocabularies, the boundaries a split
+                            transaction owns among them, the frozen generation record with the transforms that
+                            return a new one -- including the boundary move that refuses to rewind out of one of
+                            those, which is the rule every retry above the transaction is held to -- and the
+                            lineage bound it is read against
     identity.py             the monotonic cycle and generation identities, the child depth the bound still allows,
                             the two local content fingerprints a scope edit and a trusted answer are told apart by,
                             and the bounded name-free print one ledger entry is reported under
@@ -163,12 +209,23 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             apart from the scan, since one caller settles its ledger on the way out of them -- and
                             the parent's own drift reroute
       activation.py         the dep-graph walk that releases the next children, the child it passes over because
-                            GitHub reports it closed or the scan holds no issue for it, and the held-dependency
-                            line it logs
+                            GitHub reports it closed or the scan holds no issue for it, the latch asked before
+                            EVERY relabel -- a relabel is a request, so a close observed after the first child was
+                            released may not release the second -- and the held-dependency line it logs
       blocked.py            the `workflow:blocked` poll and the `workflow:ready` handoff to implementing with its
                             consumed-comment ratchet
-      umbrella.py           the `workflow:umbrella` poll, the close its all-done branch earns instead of an
-                            implementation pass, and the reconciliation that close waits on -- the one boundary at
+      umbrella.py           the `workflow:umbrella` poll, the barriers around everything that acts on the child
+                            scan -- past the scan, behind the settlement the terminal waits on, and once more
+                            immediately before the write that records the resolution and RETIRES the cycle
+                            together -- correlating that retirement to nothing, since the cycle it drops finished
+                            -- correlating it to the cycle it dropped, since the barrier behind the write is this
+                            process's -- which is what leaves no live cycle under a `done` no sweep queries, with
+                            that write held inside the retirement window and the latch asked once more BEHIND it,
+                            where a close is answered by putting the cycle back cancelled rather than refused; the
+                            resolution said once off that same stamp, the label and close asked of a record that
+                            already says the terminal is due, the close its all-done branch earns
+                            instead of
+                            an implementation pass, and the reconciliation that close waits on -- the one boundary at
                             which what a late split still owes a remote can be settled, and the last that comes
                             back if it cannot
       late_coordinator.py   the additive late mode's order: the owed owner read and the undelivered park notice both
@@ -190,7 +247,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             spelling an earlier binary wrote and the one question that recognizes either as ours, and
                             the retry, the refusal, and the settled pull request it reconciles to
       late_outcome.py       what one finished reply becomes: the lineage-bound refusal, the durable write that precedes
-                            every external effect and closes a completion by carrying the owner read it now owes, the
+                            every external effect and closes a completion by carrying the owner read it now owes --
+                            under `owner_check` unless a split transaction was interrupted, whose boundary the
+                            record itself refuses to let any pre-split write rewind, since the phase is all that
+                            says a loop was in flight when nothing is recorded yet -- the
                             announcement a recorded question is reconciled by, and the parks
                             and emissions every late exit shares -- staged for the owner read to release, released
                             anyway where nothing would ever say them, and re-said at the top of a later tick when the
@@ -200,45 +260,89 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             read that discharges one a failed write left claiming the opposite of what GitHub holds,
                             and the pinned budget a notice too long to write down is refused past
       late_owner.py         the fresh tri-state read EVERY completed run passes before anything acts on what it
-                            left: the standing claim it is entered past rather than makes (written by the completion's
+                            left: the latch consulted ahead of GitHub, since a close a poll saw while this worker
+                            held the issue is the one reading a request cannot give back, the standing claim it is
+                            entered past rather than makes (written by the completion's
                             own write, so a tick that died on the way here still left a park and an owed read), the
                             reconciliation that takes an owed read again ahead of every gate, the
-                            cancellation a closed owner earns, the park an unreadable one takes only where nothing
+                            cancellation a closed owner earns -- recorded and reported once per cycle, since
+                            several barriers reach the same closed reading in one run and the cycle ended at the
+                            first, with the repeat's own claim still dropped -- the park an unreadable one takes
+                            only where nothing
                             else already holds the issue, and the one follow-up that park owes the thread --
-                            posted before the write that clears it
+                            posted before the write that clears it. Two barriers beside it take the latch ALONE,
+                            for the steps whose own moment is too tight for a request and where a claim would name
+                            `owner_check` over the boundary the tick actually reached: the create, the spawn, the
+                            developer revision on both sides of its run and against the resume itself, and each
+                            step of the `single` publication
+                            share one, and the activation past a retirement already standing at `cleaning_up` has
+                            its own
       late_snapshot.py      the immutable copy every child of a split is cut from: the ref this generation's
                             identity names, the obligation written ahead of the push and again behind the proof, the
                             create-or-verify that never overwrites, the fetch that proves a child could obtain it,
                             and the one park every refusal takes
       late_children.py      the children a split creates: the umbrella flag and count written before the first one,
-                            the single write that records each as a child, a consumer, and an obligation, the adopt
+                            the owner re-read before every one of them -- the first included, since that flag is a
+                            remote write -- the latch asked once more against the create itself, since the
+                            orphan lookup ahead of it walks the whole repository, once BEHIND it, and once between
+                            the read of the child's own comment and the write that adds to it, since a close
+                            landing inside either leaves a real issue: recorded either way, because a child
+                            nothing names is the one state no pass can clean up, never seeded, because a
+                            cancelled cycle owes its children nothing, and answered back to the loop rather than
+                            stopped at, since the seed is the last step of one child's turn and a caller told it
+                            succeeded opens the next slice against an ended cycle, the single write that records
+                            each as a child, a
+                            consumer, and an obligation, the seal that says the register a cancellation stopped
+                            the loop over is FINAL -- the count it was measured against is one a cancelled loop
+                            can never reach, so the ref would be held on a proof no pass could complete -- withheld
+                            on a resumed walk short of the first unrecorded index, where a child an earlier attempt
+                            made and never recorded would not be on it, the adopt
                             -- never repeat -- a resumed walk does, the one-receipt-only check a candidate has to
                             pass to be adopted, the manifest test that refuses a slice declaring a receipt of ours,
                             the seed that adds an ancestry without replacing a child's own work, and the body naming
                             the snapshot, the two reuse forms, and the hunk splitting it forbids
       late_transaction.py   the order a cleared split runs in: the four refusals no step below could repair, the
-                            snapshot before any child, the children before any link, the forward links behind the
-                            receipt that stops them repeating, the held plan PR superseded and closed under a
-                            marker scoped to this adjudication, the generation retired onto `workflow:umbrella` in
-                            the write that hands the issue on, the activation behind it -- through the shared
-                            dep-graph walk, so a child that ended while the supersession was parked is left where
-                            it is -- and the branch cleanup recorded as owed and attempted after
-      late_cleanup.py       what a split still owes a remote once its children are running: the fresh per-consumer
+                            snapshot before any child, the owner re-read before every step the remote keeps -- the
+                            same guard the handoff took, taken between the children and again between the
+                            announcement, the supersession, and the retirement, since a close a poll saw while this
+                            worker held the issue reaches no cleanup pass on the tick it happened -- the children
+                            before any link, the forward links behind the receipt that stops them repeating, the
+                            held plan PR superseded and closed under a marker scoped to this adjudication, the
+                            generation retired onto `workflow:umbrella` in the write that hands the issue on, the
+                            activation behind it -- through the shared dep-graph walk, so a child that ended while
+                            the supersession was parked is left where it is -- and the branch cleanup recorded as
+                            owed and attempted after
+      late_cleanup.py       what a split still owes a remote once its children are running, with the latch asked
+                            between every obligation it settles, between the fresh consumer proof and the ref
+                            delete it authorizes, between that delete and the receipts behind it, and between
+                            every two of those receipts, since each is a comment on somebody ELSE's issue -- a cancelled cycle settles by the same rules and tells its
+                            consumers nothing -- reported and written
+                            back only where a state actually MOVED -- so a remote that goes on refusing one delete
+                            costs a request per visit rather than a record and a comment write per visit, while the
+                            log goes on naming what is held: the fresh per-consumer
                             scan every rule here is proved against (a read that fails keeps its own ref and stops
                             nothing else), the branch obligations in every state but reconciled and the refs still
                             held, the exact-name check a branch and a snapshot ref each have to pass before anything
                             is deleted by it, the rule that decides whether a ref's recorded consumers have all
                             ended -- read off each consumer's issue state, since a reopen keeps the terminal label,
                             and whether the list names all of them read off the record's phase, since a child is
-                            created before it is recorded -- the two deletes, the branch one taking the remote ref,
-                            the
-                            checkout, and the local
+                            created before it is recorded, with a PRE-SPLIT phase corroborated against the ledgers
+                            and against the count the transaction writes ahead of its first create -- which is what
+                            upgrades a record an earlier binary rewound, and what tells a `splitting` loop that
+                            finished from one still running, since the phase is written beside every child
+                            recorded, with a SEALED register answering ahead of that count, since a cancelled loop
+                            can never reach one -- beside the claim that no longer rewinds a transaction boundary
+                            at all -- the
+                            two deletes, the branch one taking the remote ref, the checkout, and the local
                             ref and proving all three gone, the snapshot one ordered on the record before it is
                             carried out and then re-proved against consumers read past that write (and retried past
                             the proof only for a ref one read-only ask shows the remote no longer has, with a
                             raising transport read as the refusal it is), the receipt every child cut from a
-                            reclaimed ref is left -- one comment, marked with this owner, cycle, and generation so
-                            it is said once, and never a write to that child's own pinned state, with the entry
+                            reclaimed ref is left by a LIVE split -- one comment, marked with this owner, cycle, and
+                            generation so it is said once, proved against the child's own thread with the latch
+                            asked between that reading and the comment it authorizes, never a write to that
+                            child's own pinned state, and left
+                            unsaid entirely by a cancelled cycle, which owes its children nothing -- with the entry
                             left `reclaiming` for a consumer it could not reach -- the one write that records any of
                             it, the settle both callers share, what may not be left behind (everything
                             unreconciled, an opaque ledger and a damaged identity included), and the question the
@@ -253,22 +357,87 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             falling through; then, where the thread answered and carries none, this host's mirror
                             read for the commit it carries -- and only where the pointer carries the stamp saying a
                             reclamation would have dropped it first -- and the remote behind it, whose absent /
-                            re-pointed / unreadable answers park, park, and HOLD the dispatch respectively; and, for a child the split recorded but never managed to
-                            seed, the same answers over the pointer its BODY marker earns -- corroborated against
+                            re-pointed / unreadable answers park, park, and HOLD the dispatch respectively; and,
+                            for a child the split recorded but never managed to seed, the same answers over the
+                            pointer its BODY marker earns -- corroborated against
                             the owner's own fresh generation first, since a body is a field the world can write and
                             a receipt is posted only after the ref is gone -- with the park, the pointer dropped or
                             the lineage repaired, taken before the label's handler is reached
       late_sweep.py         the cleanup-only pass over an owner a human closed mid-cycle -- reached by being closed
-                            on `decomposing` or `umbrella`, never by the label alone: the close re-read on a freshly
-                            refetched issue, whichever path routed it, and the pinned read that says whether
-                            anything is left to settle. Every rule it applies is `late_cleanup`'s, asked in the same order the
-                            umbrella's terminal asks them; what is here is the entry a closed issue has no handler
-                            to give it
+                            on `decomposing` or `umbrella`, where an adjudication runs, or on `ready` or `blocked`,
+                            where a decomposition outcome that landed after the close can leave an ending nothing
+                            else would find; never by the label alone: the one reading that says
+                            whether there is a cycle to end, and the two readings that withhold everything but the
+                            mark -- an issue open again between the poll and the refetch, and one an operator has
+                            parked with `backlog` or `paused`. Being routed here at all says a close was observed,
+                            so either leaves the mark behind and the rest to a later visit. What that ending
+                            consists of is `late_cancellation`'s; what is here is the entry a closed issue has
+                            no handler to give it -- the close a dead terminal left correlated on the record and
+                            receipted on the thread, adopted before anything else is decided; and the one terminal
+                            it writes itself, the `done` an
+                            umbrella recorded in the write that retired its cycle and a crash took the label off,
+                            retried for as long as the remote refuses it because the owner keeps the swept label
+                            until it lands; and a swept label put BACK on an owner still owing the remote that a
+                            hand relabel moved outside all four, since after a restart the label is the only
+                            thing that reaches a closed issue
+      late_cancellation.py  the irreversible ending an owner observed closed earns, the mark a CLOSED owner gets
+                            from this guard when its label names an ordinary terminal rather than the cleanup
+                            sweep, the record read the dispatcher asks of a refused submit for the same window,
+                            the refusal EVERY label earns over a
+                            cancelled cycle -- each of them names a handler that would act on the issue rather
+                            than end it -- with the terminal written wherever the transition graph declares the
+                            edge from, plus the `ready` and `blocked` the cycle's own decomposer writes as its
+                            ordinary outcome, where a refusal would stand on every visit the sweep makes forever,
+                            and never from the unlabeled
+                            state, which IS the restart handshake, and
+                            deferred whole past a control label that says now is not the time; the reading of that
+                            ending the dispatcher takes on the way OUT of a cleanup pass, so a pass that returned
+                            with the ending owed under a label no query asks for keeps the observation that routes
+                            it back, and the obligations half of the same question, asked by the sweep deciding
+                            whether an owner may be let out of it; the receipt a
+                            poll leaves on
+                            the thread for a close it could hand to no worker -- a comment, since the pinned
+                            comment is written whole and the worker holding the issue owns it, retried until one
+                            lands, written from the SAME read that answers whether the reading is still owed, and
+                            scoped to the cycle a retirement in flight names where the record names none -- the
+                            once-per-process scan that adopts one a DEAD process was holding, scoped
+                            to the cycle so an operator's authorized restart is not ended by an older close and
+                            claimed only once the walk answered; the mark a handler already inside its own child
+                            walk takes when the latch answers mid-scan; and the two
+                            entries into the ending: the closed owner's, and the dispatcher refusal a REOPENED one
+                            takes, which runs the same reconciliation and writes the same terminal -- reaching no
+                            handler either way,
+                            since an issue worked again without passing the ending would be the cancelled cycle
+                            resumed by accident. Only the unlabeled state falls through, so the operator's own
+                            restart (taking `rejected` off) is not undone. The pass
+                            itself is the cancellation persisted (with the boundary it interrupted, since
+                            `cancelling` overwrites the phase every later rule reads) and reported once, before any
+                            external call; the held plan PR -- the one obligation no other pass ever sees --
+                            released, told once over a cycle-scoped marker, and closed, re-asked on every visit
+                            because its state is a human's to change and recorded only where that state moved; the
+                            branch a supersession left behind but never wrote down taken on as owed, off the
+                            announcement's own receipt rather than the phase a retry rewinds, only where the record
+                            names none, and only once that plan PR is settled -- the boundary is written before the
+                            attempt, so it says nothing about whether it landed; the child receipts discharged so
+                            the terminal a restart reads is one it will accept; the rest handed to
+                            `late_cleanup`'s own
+                            rules unchanged, with the consumer
+                            scan taken only where a ref is actually held; that plan PR asked ONCE MORE on the far
+                            side of all of it, since a branch delete, a ref delete and a consumer read apiece
+                            stand between the first ask and the terminal; and the `rejected` terminal, written last,
+                            only for a closed owner, and only once nothing is owed -- which is what takes the issue
+                            out of the sweep for good
       late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the exemption
                             naming the measured commit, the plan-PR hold released and the pull request reconciled
                             against that commit in any state -- with a settled pointer dropped rather than handed on
-                            -- before the candidate goes back to the ordinary publication, and the split passed
-                            on to the transaction that creates its children
+                            -- before the candidate goes back to the ordinary publication, with the latch asked
+                            between every one of those steps and the retirement behind them answered by REINSTATING
+                            the cycle rather than refusing, since past that write there is none left to end --
+                            the write and that barrier held inside the observations owner's retirement window, so
+                            a poll reading the record between them is not told there is nothing to end -- and
+                            the split passed on to the transaction that creates its children, and the cycle that
+                            retirement dropped recorded outside the group the write clears, so a process that dies
+                            before its own barrier leaves a receipt something can still be adopted against
       late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
                             lineage, and the three outcomes with the bounds they are judged against
       late_reply.py         the late reply's own fence, its three structured decisions, and the envelope and split rules
@@ -282,7 +451,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             every concurrent answer, the certificate a bare continue writes, the question a real
                             answer reopens, and the continue that answers none
       late_revision.py      the developer run guidance buys -- the locked session resumed under `agent_role=developer`
-                            and `stage=decomposing` -- the refusal a candidate whose split already created children
+                            and `stage=decomposing`, with a latched close asked on BOTH sides of it, since a resume
+                            is the same step a spawn is and the run takes hours -- the refusal a candidate whose
+                            split already created children
                             earns instead, and the clean tree, re-frozen commit, and fresh measurement its result is
                             reconciled through (which carries none of the last generation's split receipts), with
                             the `ACK:` marker an UNCHANGED commit needs before it counts as an answer
@@ -360,7 +531,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       session_read.py       the locked session read plus the stale / overflow / quota classifiers and the blockquote
                             they quote with
       resume.py             the two resume entry points and the historical call shape they keep
-      execution.py          one resume, its poisoned-session retry, and what each attempt is allowed to persist
+      execution.py          one resume, its poisoned-session retry -- withheld on an issue a poll observed closed,
+                            since that retry is a SECOND agent -- and what each attempt is allowed to persist
       worktree.py           the checkout a resume runs in, restored when reaped
       disposition.py        the `before_sha` publish / timeout-park decision, the certified floor a clean exit is
                             credited against, and the timeout park's own next-tick recovery

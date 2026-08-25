@@ -256,19 +256,28 @@ than a second source of truth: where the two disagree, the handler pages are aut
    not choose the handler -- routed by being closed, fanned out cap-exempt so
    an open decomposer cannot starve it, with that route BOUND into the submit
    so a reopen before the worker refetches cannot reach a stage handler):
-     every obligation          ─► nothing: the pinned read, and no consumer
-       reconciled                   read at all
-     opaque ledger             ─► nothing but a warning; no entry on it may be
-                                   reclaimed around one nobody can type
-     otherwise                 ─► the umbrella terminal's rules, verbatim, on
+     any generation            ─► mark the cycle cancelled, once, before any
+                                   external call; emit one late_cancellation
+                                   from that write
+     held plan PR              ─► release the hold, one marked notice, close
+                                   it; re-asked every visit, recorded only
+                                   where the state moved
+     opaque ledger             ─► nothing more but a warning; no entry on it
+                                   may be reclaimed around one nobody can type
+     branch / ref              ─► the umbrella terminal's rules, verbatim, on
                                    a scan this pass takes itself: retry the
                                    branch, and delete a held ref once every
-                                   consumer has ended, releasing each as the
-                                   ref goes. Reopened-before-delete or an
-                                   unreadable consumer keeps the ref; the
-                                   branch settles either way. Never spawns,
-                                   relabels, activates a child, or closes
-                                   anything
+                                   consumer has ended. Reopened-before-delete
+                                   or an unreadable consumer keeps the ref;
+                                   the branch settles either way. No consumer
+                                   is written to, commented on, or relabelled:
+                                   a cancelled cycle owes its children nothing
+     nothing left owed         ─► label=rejected, which ends the cycle and
+                                   takes the issue out of this sweep. Never
+                                   spawns, activates a child, or closes
+                                   anything; `rejected` is the one label it
+                                   writes, and a reopened owner reaches the
+                                   same ending through the dispatcher's guard
 
    question (operator-applied; no automatic in/out transitions):
      fresh spawn          ─► DECOMPOSE_AGENT runs read-only in issue-N

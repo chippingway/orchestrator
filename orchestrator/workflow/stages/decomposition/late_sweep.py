@@ -6,47 +6,72 @@ A split records what it owes the remote on the generation ledger and lets the
 umbrella's terminal settle it. That works for every issue that reaches the
 terminal. It does not work for the one a human closed halfway: a closed
 `decomposing` or `umbrella` issue is outside every other pass this
-orchestrator makes, so the branch its superseded candidate sat on and the
-immutable ref its children were cut from would be held by a repository nothing
-ever asked about again.
+orchestrator makes, so the branch its superseded candidate sat on, the
+immutable ref its children were cut from, and the plan pull request it was
+holding would be held by a repository nothing ever asked about again.
 
 So this owner exists, and its whole shape is decided by what it must NOT do.
-It is cleanup, not recovery: no agent is spawned, no label is written, no
-child is activated, and no workflow is resumed. The issue is closed, and the
-close is a human decision this pass has no standing to reverse -- the only
-thing it acts on is the ledger, which is the record of what the orchestrator
-put on somebody's repository and is therefore the one thing it still owes.
+It is cleanup, not recovery: no agent is spawned, no workflow is resumed, no
+child is created or activated, and no child that already exists is touched at
+all. The issue is closed, and the close is a human decision this pass has no
+standing to reverse -- what it acts on is the cycle, which ends, and the
+ledger, which is the record of what the orchestrator put on somebody's
+repository and is therefore the one thing it still owes.
 
-The rules are the reclamation owner's, not this one's -- the terminal reading
-of a consumer, the decision recorded before a delete, and the release that
-follows one all live there and are asked in exactly the same order the
-umbrella's terminal asks them. What is here is the entry into them: the pinned
-read that says whether anything is left to settle, and the first scan of the
-recorded consumers, which a closed owner has no handler to take for it.
+What that ending consists of is the cancellation owner's, next door: the mark
+that goes down before any external call, the held plan PR it closes over one
+notice, the branch and the ref it hands to the reclamation rules unchanged,
+and the `rejected` terminal a fully settled cycle earns. What is here is one
+of the two entries into it -- the re-read of the close, and the one reading
+that says whether there is a cycle to end at all. The other is the
+dispatcher's own guard, which takes the same ending for an owner a human
+reopened before it finished.
 
-The one ledger no reading helps is the one this binary could not type. Nothing
-on it may be reclaimed, so no consumer is read at all and the pass is spent on
-saying so where an operator will see it.
+The close is re-read rather than trusted because the reading that routed this
+issue was taken on the polling thread and the worker refetched it afterwards.
+What that second reading decides is what this pass DOES, though, and never
+whether the cycle ends: being here at all means a close was observed, by the
+poll that yielded the issue or by the dispatcher that routed it, and an
+observed close cancels the generation irreversibly. So an issue that is open
+again is marked all the same and stopped there -- nothing external is done to
+an issue somebody just reopened, and the ending it now owes is the
+dispatcher's own guard's from the next tick, which is the one pass that owns a
+reopened cancelled owner.
 
-Nothing here decides a terminal. The umbrella's own branch is where a settled
-ledger earns a close, and an issue that is already closed has nothing left to
-earn -- so the answer this pass gives is the work it did and no verdict at
-all.
+An issue with no recorded generation is every issue the initial decomposer
+ever made, and it leaves without a write of its own.
+
+Nothing here decides a terminal by measuring the workflow. The umbrella's own
+branch is where a settled ledger earns a `done`, and an issue a human already
+closed has nothing left to earn -- so the only terminal this path ever writes
+is the one that says the cycle it was carrying ended without publishing.
+
+The other label it writes is not a terminal and is not a decision about the
+workflow either: it is what keeps a closed owner reachable. This sweep queries
+four labels -- the two an adjudication runs under, and the two an interrupted
+ending can be left on by a decomposition outcome that landed after the close
+was observed -- and an owner moved off all four by hand is one nothing would
+bring a tick back to. So an owner that still owes the remote is put back under
+one the sweep asks for, and the held observation covers the window until it is.
 """
 from __future__ import annotations
 
 import logging
+from typing import Optional
 
 from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import issue_is_closed
+from orchestrator.github.labels import hard_skip_control_label
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
-from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.decomposition import (
-    late_cleanup as _late_cleanup,
+    late_cancellation as _late_cancellation,
 )
+from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -62,56 +87,171 @@ def _handle_closed_owner_cleanup(
     stage handler its label names, so nothing below can spawn the decomposer,
     resume an adjudication, or walk the dependency graph.
 
-    The close is re-read here rather than trusted, because the reading that
-    routed this issue was taken on the polling thread and the worker refetched
-    it afterwards. An issue reopened in between is ordinary decomposition work
-    again, and running a cleanup pass over it would settle a ledger a live
-    cycle is still writing.
+    Reaching it is also what says a close was OBSERVED -- the route is taken
+    on a closed reading and on nothing else -- so an issue this pass finds
+    open again has been reopened since that reading rather than never closed.
+    It is marked cancelled all the same, because an observed close ends the
+    cycle irreversibly, and nothing else is done to it here: acting externally
+    on an issue somebody has just reopened is not this pass's to do, and the
+    mark is what hands it to the dispatcher's own guard, which owns a reopened
+    cancelled owner from the next tick and settles it there.
 
-    An issue with no recorded generation is every issue the initial decomposer
-    ever made, and it leaves without a read of its own.
+    An owner with no cycle left is asked one question before it is stepped
+    over, and then finished rather than stepped over. The question is the
+    retirement's own correlation: a terminal that made its retirement durable
+    and then died leaves a record naming which cycle it dropped, and a close
+    observed inside that write leaves a receipt on the thread naming the same
+    one. Where the two agree the cycle goes back cancelled and this pass ends
+    it like any other. Where they do not -- no correlation, or no receipt --
+    what is left is an umbrella whose terminal is due and whose label never
+    landed, which is `umbrella` and closed, exactly what this sweep queries.
+
+    An owner the pass leaves still owing something is put back under a label
+    the sweep queries -- see `_kept_in_the_sweep`. The observation that routed
+    this visit is memory, and the label is the only durable thing that reaches
+    a closed issue, so an ending left under a label outside the queried four
+    would otherwise be finished by no later process.
     """
-    if not issue_is_closed(issue):
-        return
     state = gh.read_pinned_state(issue)
     generation = _late_state.read_late_generation(state)
-    if not _worth_a_pass(issue, generation):
-        return
-    _late_cleanup._settle(
-        gh, spec, issue, state,
-        _late_cleanup._consumer_scan(gh, issue, generation),
-    )
-
-
-def _worth_a_pass(issue: Issue, generation: LateGeneration) -> bool:
-    """Whether this ledger still holds the remote to anything at all.
-
-    Asked before the consumers are read, because reading them is what the pass
-    costs: an owner whose every obligation is reconciled has nothing a fresh
-    disposition could unlock, and asking about it once per sweep forever is
-    the difference between a sweep that is affordable and one that is not.
-
-    An opaque RESOURCE ledger stops the pass rather than starting one. Nothing
-    on a ledger holding an entry this binary cannot type may be recorded -- the
-    entries it could not read are obligations too, and settling around them is
-    what the verbatim copy exists to prevent -- so every reading this pass
-    could take is one it may not act on. Saying so on each visit is the point:
-    the ledger is a human's to settle, and only an operator can.
-
-    An opaque CONSUMER ledger is not that. It is what a snapshot's proof is
-    taken from, so it keeps the ref -- and it says nothing about the branch,
-    which is exactly what this pass would otherwise stop coming back for.
-    """
     if not generation.is_present:
-        return False
-    if _late_cleanup._unwritable(generation):
-        log.warning(
-            "issue=#%s is closed holding an obligation ledger this "
-            "orchestrator cannot read; nothing it records can be reclaimed "
-            "until a human settles it", issue.number,
+        generation = _late_cancellation._retired_close_adopted(
+            gh, spec, issue, state,
         )
-        return False
-    return bool(
-        _late_cleanup._owed_branches(generation)
-        + _late_cleanup._held_snapshots(generation),
+    if generation is None:
+        _finished_terminal(gh, issue, state)
+        return
+    withheld = _withheld(issue)
+    if withheld is not None:
+        log.info(
+            "issue=#%s carries a late cycle a close ended, and %s; marking "
+            "the cancellation and doing nothing else this visit",
+            issue.number, withheld,
+        )
+        _late_cancellation._marked(gh, issue, state, generation)
+        return
+    _late_cancellation._reconcile_closed_owner(
+        gh, spec, issue, state, generation,
     )
+    _kept_in_the_sweep(gh, issue, state)
+
+
+def _kept_in_the_sweep(
+    gh: GitHubClient, issue: Issue, state: PinnedState,
+) -> None:
+    """Put a closed owner back under a label that will bring a tick back.
+
+    The held observation routes an owner here whatever its label says, and it
+    is memory: a restart loses it, and the label is then the only thing left
+    that reaches a closed issue at all. The sweep queries four of them -- the
+    two an adjudication runs under and the two an interrupted ending can be
+    left on -- and a label OUTSIDE all four is one nothing would ever bring a
+    tick back to. A hand relabel puts an owner there, and so does an operator
+    moving a closed owner onto a terminal over a cycle that still owes
+    something.
+
+    Only while something is still OWED, and only from a label outside those
+    four. An ending that finished wrote `rejected` and is meant to leave the
+    sweep; an owner already on a queried label is already reachable and is
+    left exactly where it is, terminal included.
+
+    Which of the two comes from the record, the same way the half-finished
+    decomposition recovery reads it: an issue whose split converted it carries
+    the umbrella flag, and one that never got that far is still where every
+    adjudication runs. Nothing is dispatched under either while the cycle is
+    cancelled -- the guard ahead of every handler refuses it and settles the
+    ending instead -- and the terminal that ending earns takes the issue back
+    out of the sweep for good.
+
+    Written UNGUARDED, because it is not a transition: the graph describes the
+    moves this workflow makes, and this repairs one it did not make. A write
+    GitHub refuses is logged rather than raised -- the observation this pass
+    is still carrying is what brings the next tick back to try again.
+    """
+    if not _late_cancellation._still_owed(
+        _late_state.read_late_generation(state),
+    ):
+        return
+    if gh.workflow_label(issue) in _late_cancellation._SWEPT_LABELS:
+        return
+    label = (
+        WorkflowLabel.UMBRELLA if state.get(_state._UMBRELLA)
+        else WorkflowLabel.DECOMPOSING
+    )
+    log.warning(
+        "issue=#%s is closed with a cancelled cycle that still owes the "
+        "remote, under a label no closed sweep queries; putting %r back so a "
+        "later tick reaches it", issue.number, str(label),
+    )
+    try:
+        gh.set_workflow_label(issue, label, guarded=False)
+    except Exception:
+        log.exception(
+            "issue=#%s could not be put back under a swept label; the held "
+            "observation is what brings the next tick back to it",
+            issue.number,
+        )
+
+
+def _finished_terminal(
+    gh: GitHubClient, issue: Issue, state: PinnedState,
+) -> None:
+    """Write the terminal an umbrella earned and a crash took the label off.
+
+    The umbrella's own terminal is one pinned write and then two requests: the
+    label, and the close. The write is what makes the decision durable -- it
+    stamps the resolution and retires the cycle together -- so an owner
+    carrying that stamp with no cycle left is one whose terminal is due and
+    whose label simply never landed. `done` is written here rather than left
+    for a human, because the alternative is an issue this sweep yields on
+    every pass forever.
+
+    Anything else with no cycle is not this pass's: every umbrella the initial
+    decomposer made carries no generation and no stamp, and a closed one is a
+    hard human stop with nothing to finalize.
+
+    A write GitHub refuses is logged rather than raised. The label staying put
+    IS the retry -- the owner keeps `umbrella`, which is what this sweep asks
+    for, so the next pass writes what this one could not.
+    """
+    if state.get(_state._UMBRELLA_RESOLVED_AT) is None:
+        return
+    if gh.workflow_label(issue) == WorkflowLabel.DONE:
+        return
+    log.info(
+        "issue=#%s recorded its umbrella terminal and never got the label; "
+        "writing it now", issue.number,
+    )
+    try:
+        gh.set_workflow_label(issue, WorkflowLabel.DONE)
+    except Exception:
+        log.exception(
+            "issue=#%s could not be handed the terminal its record already "
+            "earned; it stays swept until it is", issue.number,
+        )
+
+
+def _withheld(issue: Issue) -> Optional[str]:
+    """Why this visit may mark the cancellation and do nothing more.
+
+    Two reasons, and neither of them is about the cycle: it ended when the
+    close was observed, and that is what the mark records. What they defer is
+    the external work the ending owes -- which is the whole of what a pass
+    over an issue in either of these states may not do.
+
+    An issue open again was reopened between the poll and the worker's
+    refetch. Acting externally on one somebody has just reopened is not this
+    pass's to do; the dispatcher's own guard owns it from the next tick.
+
+    An issue carrying `backlog` or `paused` is one an operator has parked
+    outside the state machine, and a pass that closed its pull request or
+    deleted its branch would be reacting exactly where they said not to. The
+    mark costs nothing and loses nothing: it is a fact about a close that
+    already happened, and the cleanup resumes on the tick the label comes off.
+    """
+    if not issue_is_closed(issue):
+        return "is open again"
+    skip_label = hard_skip_control_label(issue)
+    if skip_label is None:
+        return None
+    return f"an operator has parked it with {skip_label!r}"

@@ -113,7 +113,7 @@ plus interrupt / detour edges declared per-target. It is keyed by `WorkflowLabel
 resolves to its member before the guard sees it and is checked against the same edges. Operator relabels via the
 GitHub UI bypass both guards, so the guard never fights a human.
 
-Three of those edges belong to the late size gate and are declared ahead of the handlers that write them.
+Four of those edges belong to the late size gate and are declared ahead of the handlers that write them.
 `workflow:implementing → workflow:decomposing` is the route a clean committed candidate measured past the threshold
 takes instead of publishing — adjudication runs under the existing decomposing label rather than a state of its own.
 The existing `workflow:decomposing → workflow:implementing` edge beside it is the way back that a `single` verdict
@@ -121,10 +121,17 @@ takes, carrying the exemption naming the adjudicated commit, so the ordinary pub
 the way it does for any other change.
 `workflow:decomposing → rejected` and `workflow:umbrella → rejected` are the one terminal a late generation whose
 owner was closed mid-adjudication reaches, once its external cleanup is reconciled, under whichever of the two labels
-it had reached; they are also the only way a pre-PR state reaches a terminal at all. A restart after such a
-cancellation needs no edge of its own: the operator authorizes it by *removing* `rejected`, so the label a restart
-applies is written from the unlabeled entry, and both terminals keep their empty edge set — a rejected issue left
-labeled stays inert. The pinned state those transitions move an issue through is
+it had reached; they are also the only way a pre-PR state reaches a terminal at all. `done → rejected` is the fourth
+and the only edge out of a terminal this orchestrator declares, and it is there for an owner a human moved onto the
+terminal over a cycle that still has an ending to reach. The umbrella's own terminal needs none of it: the write that
+records the resolution **retires the cycle with it**, one write before the label, so a close arriving past that write
+finds nothing left to cancel and no `done` issue is ever left carrying a late cycle. A close observed *inside* that
+write is answered behind it — the generation is still in the pass's own memory, so it goes back cancelled and the
+owner keeps `workflow:umbrella`, where the closed-owner sweep reaches the ending. Nothing else may leave a terminal —
+the edge set is asserted whole, so the exception cannot grow a second. A restart after such a cancellation needs no
+edge of its own: the operator authorizes it by *removing*
+`rejected`, so the label a restart applies is written from the unlabeled entry and `rejected` keeps its empty edge
+set — a rejected issue left labeled stays inert. The pinned state those transitions move an issue through is
 [below](#late-generation-state).
 
 - _(none)_ — Open issue not yet picked up by the orchestrator.
@@ -303,8 +310,9 @@ a PR the next handler would finalize. A `gh.get_pr` failure is treated as "leave
 
 `gh.list_pollable_issues()` yields all open non-PR issues plus closed non-PR issues still labeled with one of the
 eight recovery sweep labels — `workflow:implementing`, `workflow:documenting`, `workflow:validating`, `in_review`,
-`workflow:fixing`, `workflow:resolving_conflict`, `question`, `discussion` — or one of the two cleanup ones,
-`workflow:decomposing` and `workflow:umbrella`. Each of the seven that HAS a pre-namespace spelling is queried under
+`workflow:fixing`, `workflow:resolving_conflict`, `question`, `discussion` — or one of the four cleanup ones,
+`workflow:decomposing`, `workflow:umbrella`, `workflow:ready`, and `workflow:blocked`. Each of the seven that HAS a
+pre-namespace spelling is queried under
 that too, because a closed issue is the one case no other pass revisits: on a repository whose labels the
 bootstrap could not rename (see
 [Legacy labels and the migration off them](#legacy-labels-and-the-migration-off-them)), the bare label is
@@ -327,31 +335,47 @@ once. The closed-issue sweep makes external manual merges and operator closes fi
   merges (`done`) or closes unmerged (`rejected`). Nothing else revisits a closed issue, so a terminal flip while
   that PR is open would strand the worktree and the branches the plan lives on.
 
-`workflow:blocked` and `workflow:ready` are not swept closed — a closed issue at either stage is a hard human stop
-until an operator relabels.
+`workflow:ready` and `workflow:blocked` are swept closed for **cleanup only**, and for one reason: a decomposition
+outcome writes one of them, and a run spawned before its owner was observed closed lands *after* that observation. So
+a close that was latched and receipted while the owner was still `workflow:decomposing` can end up on an issue closed
+under one of these — with the ending unmarked, the ref its children were cut from still held, and the latch that
+would route it living only in the process that took it. A restart before any cleanup pass would lose that ending for
+good, so the query is what makes it discoverable without one. Only their CLOSED issues are asked about: an open
+`workflow:ready` issue is polled and dispatched exactly as ever, and is not refetched the way an open owner on one of
+the two adjudication labels is. What it costs is one pinned read per closed issue on either, on the sweep cadence.
 
-`workflow:decomposing` and `workflow:umbrella` are swept closed, but for **cleanup only**, and they are the one case
-where the label does not choose the handler. A split records what it owes the remote on the closing issue's own
-generation ledger — the branch its superseded candidate was committed on, and the immutable snapshot ref its children
-were cut from — and an issue a human closes mid-cycle is one nothing else would ever bring a tick back to. So the
-dispatcher reads *closed* first and routes both to the cleanup sweep
-([`delivery-stages.md`](delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)) rather than to
+`workflow:decomposing` and `workflow:umbrella` are swept closed for the same pass, and all four are the one case
+where the label does not choose the handler -- and the one case the `backlog` / `paused` filter does not get to drop,
+since discarding a closed owner there would discard the close itself and leave a live generation to spawn against
+after a reopen and an unpause. The control label defers what the pass would DO; the mark still lands. A split records
+what it owes the remote on the closing issue's own generation ledger — the branch its superseded candidate was
+committed on, and the immutable snapshot ref its children were cut from — and an issue a human closes mid-cycle is one
+nothing else would ever bring a tick back to. So the dispatcher reads *closed* first and routes both to the cleanup
+sweep ([`delivery-stages.md`](delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)) rather than to
 `_handle_decomposing` or `_handle_umbrella`, which would spawn the decomposer or activate children on an issue whose
-close was a decision to stop. The pass reads the ledger, re-reads every recorded snapshot consumer, settles what can
-be settled, and does nothing else: no agent, no relabel, no activation, no terminal. It rides the same sweep walk,
-the same cadence, the same label cache, and the same absent-label throttle as the recovery labels above. It is
-partitioned as **fan-out** rather than into the family bucket, and submitted `cap_exempt=True` on its own: the
-bucket's exemption is all-or-nothing, so one open `workflow:decomposing` issue sharing the tick would make a closed
-owner cap-counted and, under a saturated cap, skipped — which would stop the repository reclaiming refs for as long
-as its decomposer stayed busy.
+close was a decision to stop. The pass ends the cycle: it marks the cancellation, closes any plan pull request that
+cycle was holding, re-reads every recorded snapshot consumer, settles what can be settled, and moves the issue to
+`rejected` once nothing is owed. Being routed there at all is what says a close was *observed*, so an issue the pass
+finds open again — reopened between the poll and the worker's refetch — is marked cancelled and stopped there, with
+the ending left to the dispatcher's own guard from the next tick. It does nothing else — no agent, no activation, and
+no child of the split touched. `rejected` is the only label it ever writes, and it is what takes the issue out of this
+sweep for good. It rides the same sweep walk, the same cadence, the same label cache, and the same absent-label
+throttle as the recovery labels above. It is partitioned as **fan-out** rather than into the family bucket, and
+submitted `cap_exempt=True` on its own: the bucket's exemption is all-or-nothing, so one open `workflow:decomposing`
+issue sharing the tick would make a closed owner cap-counted and, under a saturated cap, skipped — which would stop
+the repository reclaiming refs for as long as its decomposer stayed busy.
 
-- Closed `workflow:decomposing` / `workflow:umbrella` — a snapshot owner a human closed mid-cycle. Its generation
-  ledger may still hold a superseded branch and an immutable snapshot ref, and no other pass revisits a closed issue.
-  This is the one sweep entry that is not a terminal arc: it settles the ledger and nothing else (see above).
+- Closed `workflow:decomposing` / `workflow:umbrella` / `workflow:ready` / `workflow:blocked` — a snapshot owner a
+  human closed mid-cycle, or one whose own decomposition outcome landed after that close. Its generation
+  ledger may still hold a superseded branch, an immutable snapshot ref, and a plan pull request under a hold, and no
+  other pass revisits a closed issue. It is the one sweep entry that resumes no workflow: what it ends is the late
+  cycle, and it reaches a terminal only once that cycle owes the remote nothing (see above). An issue on any of the
+  four with no late cycle at all costs the pass its one pinned read and nothing else — it is not written to, not
+  relabelled, and not commented on.
 
 The closed-issue sweep issues one closed-issue query per sweep label the repository actually carries, per repo, every
-tick — a fixed request cost that drives GitHub primary-rate-limit exhaustion on multi-repo hosts. The two cleanup
-labels ride that same walk rather than a second pass of their own, so what they add is two label lookups and two
+tick — a fixed request cost that drives GitHub primary-rate-limit exhaustion on multi-repo hosts. The four cleanup
+labels ride that same walk rather than a second pass of their own, so what they add is four label lookups and four
 closed-issue queries on the ticks the sweep already runs, and nothing at all in between. A pre-namespace
 spelling the rename already retired costs only its `GET …/labels/<name>` miss, and even that is thrown away for
 twenty sweeps before being asked again rather than re-requested every pass. The spellings one sweep confirms absent
@@ -363,6 +387,10 @@ stays a per-label warning.
 `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` (default `1`) batches the whole sweep to once every N ticks; the open-issue poll is
 unaffected, so the only effect of `N>1` is that an externally-merged/closed issue can take up to `N-1` extra ticks to
 finalize. See [configuration.md#github-rate-limits](../configuration.md#github-rate-limits).
+
+`done` is queried by neither sweep, and nothing needs it to be: an umbrella's terminal makes the retirement durable
+one write *before* the label, so no `done` issue is ever left carrying a late cycle. A crash before that label lands
+leaves the owner on `workflow:umbrella` with the resolution recorded, which the closed-owner sweep finishes.
 
 `done` and `rejected` are terminal no-ops. Every handler receives the active `RepoSpec`, so `git worktree add`,
 `git fetch <spec.remote_name> <spec.base_branch>`, push-token resolution, and PR-base selection all flow from the spec.
@@ -571,9 +599,10 @@ reads and writes late state on every issue leaves a legacy pinned comment exactl
 once, on [`orchestrator/workflow/late_split/state.py`](../../orchestrator/workflow/late_split/state.py) —
 `LATE_STATE_KEYS` is the whole of what one GENERATION owns inside the pinned comment, `read_late_generation` /
 `write_late_generation` are the round trip through them, and `clear_late_generation` is defined as dropping exactly
-that list and nothing else. One late key deliberately sits outside it, on the
-[`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner beside it: `late_exempt_sha`, described
-below, is written so the generation CAN be cleared and would be worthless if the clear took it. The typed record the
+that list and nothing else. Two late keys deliberately sit outside it, for the same reason — each is written so the
+generation CAN be cleared and would be worthless if the clear took it. `late_exempt_sha`, described below, lives on
+the [`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner beside it; `late_retired_cycle_id` is
+spelled on the `state` owner itself, beside the group it is excluded from. The typed record the
 group round-trips through is `LateGeneration` on the `models` owner beside
 it. A write with no `late_cycle_id` records only what the issue still owes — the two external ledgers, if either
 holds anything — and drops the rest rather than keeping a half-record no audit line or child lineage could be
@@ -755,12 +784,77 @@ rather than preserving.
   written fail-closed like every other late field: only a whole git object id is one, a `record_exemption` handed
   anything else refuses rather than writing a value the gate would read as a bypass, and a hand-edited field reads
   back as no exemption at all.
-- **Cancellation.** `late_cancelled` and `late_cancelled_at` are irreversible within a cycle: once the owner has been
-  observed closed, a later tick that sees it reopened re-marks the same cancellation and keeps the first stamp. What
-  observes it is the post-agent owner guard — a fresh read taken after every completed late run, before anything it
-  earns happens — which writes the mark durably and emits `late_cancellation` from it, leaving what the remote is
-  still owed on the two ledgers for the cleanup path to settle. A cancelled cycle is nobody's to adjudicate, relabel,
-  or route, so a reopened issue starts a fresh cycle rather than resuming this one.
+- **Sealed consumer ledger.** `split_ledger_sealed` says the register of children a split recorded is FINAL. The
+  count written before the first create (`expected_children_count`) is what tells a partial ledger from a whole one,
+  and a loop a cancellation stopped can never reach it — so the ref its children were cut from would be held on a
+  proof no pass could complete, and the owner's terminal with it. The seal is written only by that loop, and only
+  where every child that exists is already on the register: every barrier that ends it is asked after the write
+  recording the child in hand, and no further one will be opened. A **resumed** walk stopped before it reached the
+  first unrecorded index writes none, because a child an earlier attempt created and never recorded would not be
+  on the register and only the adoption lookup can say otherwise. The field holds the **cycle** the seal belongs to
+  rather than a bare flag, and is believed by that cycle alone. It is a decomposition key, so the write that clears
+  late mode leaves it exactly where it was and the next cycle an operator authorizes comes up against it: read as a
+  bare "yes", a later split stopped mid-loop would look complete and release the ref its own unrecorded children
+  were cut from. A drift reset drops it beside the count it is a fact about, and anything that is not a positive
+  identity reads back as no seal at all — which holds the ref rather than releasing it.
+- **Retired cycle.** `late_retired_cycle_id` is the one fact about a dropped generation that outlives the drop: the
+  write that clears late mode records which cycle it was clearing. It exists for a single window — a poll observing
+  the close *inside* that write leaves a cycle-scoped receipt on the thread, and the record it would be adopted
+  against has just stopped naming a cycle, so a process that dies before its own post-write barrier would strand the
+  observation with nothing left to correlate it to. A record carrying the stamp and no generation is asked once per
+  owner per process whether the thread has that cycle's receipt; one that does gets the cycle put back, cancelled,
+  with the ledgers the retirement carried across, and the ordinary ending runs from there.
+  Both retirements that drop a cycle record it — the `single` publication's, and the umbrella terminal's, which
+  needs it for the same reason: the barrier behind each write belongs to the process that made it.
+  It names **one** window and outlives no other, because the receipt it reads is a comment and comments are
+  append-only: a correlation left standing would let a cycle-scoped receipt be adopted against a record whose cycle
+  is two generations newer, moving a completed owner from `done` to `rejected`. Two rules end it. A generation
+  written with an *identity* supersedes it — which is both the adoption consuming its own marker (the mark it writes
+  puts the cycle back) and an operator's authorized restart superseding it. So a terminal that retires cycle N names
+  N and nothing else, and a receipt for any earlier cycle on the same thread matches nothing an adoption would read.
+- **Cancellation.** `late_cancelled`, `late_cancelled_at`, and `late_cancelled_phase` are irreversible within a
+  cycle: once the owner has been observed closed, a later tick that sees it reopened re-marks the same cancellation
+  and moves none of the three. Two passes observe it. The post-agent owner guard is one — a fresh read taken after
+  every completed late run, before anything it earns happens, and taken again inside the split transaction before
+  every step the remote keeps: each child it creates, and the announcement, supersession, and activation behind
+  them. A child is the one thing created here that nothing takes back, and a close a poll saw while that worker
+  held the issue reaches no other pass on the tick it happened. The closed-owner cleanup sweep is the other, and it
+  is what catches a close at any of the boundaries no agent was running at — a measurement, a plan-PR hold, and
+  everything past the transaction — as well as one the scheduler could admit no worker for, which the dispatcher
+  holds and this sweep takes on a later tick. Either writes the mark durably *before* any external effect and
+  emits `late_cancellation` from that write, so the record is one per cycle rather than one per visit. What the
+  remote is still owed stays on the two ledgers for the
+  [cleanup path](delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own) to settle, and only once it has
+  does the owner reach `rejected`. A cancelled cycle is nobody's to adjudicate, relabel, or route, so a reopened
+  issue does not get this cycle back. The dispatcher's own pinned-state guard catches a reopened owner, runs the same
+  cleanup, hands it to no stage handler, and writes the same `rejected`
+  ([delivery-stages.md](delivery-stages.md#the-reuse-guard-every-dispatch-ahead-of-every-handler)) — reaching that
+  terminal is the only way back into ordinary work, and what authorizes the fresh attempt is an operator removing
+  the label rather than a human reopening the issue. That guard refuses a cancelled cycle under *every* label it can
+  be wearing, since each one names a handler that would act on the issue rather than end it, and it writes the
+  terminal wherever the graph declares the edge from — plus `ready` and `blocked`, which the cycle's own decomposer
+  writes as its ordinary outcome and which no query would ever bring a tick back to. Only the unlabeled state falls
+  through, because that state IS the restart handshake: an operator who has already taken `rejected` off is not
+  handed it back.
+
+  `late_cancelled_phase` is the boundary the cancellation interrupted, kept because `late_phase` becomes
+  `cancelling` and that answers nothing: whether the consumer ledger accounts for every child cut from this
+  generation's snapshot is read off the phase whenever the record cannot prove that for itself, so a record that
+  forgot where it was cancelled from could never prove a ref reclaimable again. A cancelled record carrying no such
+  boundary — one an older binary marked, or one whose own field was damaged — reads as unprovable and keeps the
+  ref. The boundary an interrupted transaction stood at is kept rather than rewound: no boundary before a split --
+  `measuring`, `holding_plan_pr`, `adjudicating`, `owner_check` -- is ever written over `snapshotting`,
+  `splitting`, or `superseding`, and the record refuses that move itself rather than each writer remembering to,
+  since a transaction re-entered after a crash comes back through every retry above it. A child is created before
+  the write that records it, so the phase is the only thing that says a loop was in flight when nothing is recorded
+  yet. Beside that, a pre-split phase is believed only as far as the record bears it out: one standing beside a
+  recorded consumer, a split child,
+  or the stage's own `expected_children_count` — written in the same durable step as `splitting` — is a partial
+  split wearing an earlier name, and its ref is kept. The count is asked of every boundary before the phase is
+  consulted at all, since a record it proves finished is whole wherever it stands — which is what answers both
+  `splitting`, written before the first create and again beside every child recorded, and a `snapshotting` a
+  retry rewrote over a split that had already finished. It is also what upgrades a pinned comment an earlier
+  binary rewound, since nothing migrates records already in flight.
 - **Pending restart.** `late_restart_pending`, `late_restart_target`, `late_restart_cycle_id`, and
   `late_restart_predecessor` are written before the restart's own external effects by the
   [`restart`](../../orchestrator/workflow/late_split/restart.py) owner, and beginning a restart is create-or-keep — a

@@ -17,15 +17,25 @@ from tests.workflow.stages.decomposition.late_test_support import (
     late_generation,
 )
 
-# An issue that never entered the gate, one measured under its ceiling, and a
-# cancelled cycle, which is cleanup-only.
+# An issue that never entered the gate and one measured under its ceiling.
+# Neither is this mode's business at all, so both route and relabel freely.
 SETTLED_GENERATIONS = (
     ("never entered the gate", LateGeneration()),
     (
         "measured under its ceiling",
         late_generation(additions=UNDERSIZED_ADDITIONS),
     ),
-    ("cancelled cycle", late_generation(cancelled=True)),
+)
+
+# The third record no gate keyed to size holds, and the one that is NOT free
+# to be routed: a cancelled cycle is its own ending until that ending is
+# written, so the dispatcher stops it on either adjudication label where the
+# two above are waved through.
+CANCELLED_GENERATION = late_generation(cancelled=True)
+
+# All three, for the predicates that only ask whether an adjudication is live.
+NOT_LIVE_GENERATIONS = SETTLED_GENERATIONS + (
+    ("cancelled cycle", CANCELLED_GENERATION),
 )
 
 # The one that LOOKS settled and is not: a revision that came back under the

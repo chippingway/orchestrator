@@ -36,6 +36,8 @@ from tests.workflow.git_owners import seam_patch
 
 _OWNER_NUMBER = 41
 
+_WORKFLOW_LOG = "orchestrator.workflow"
+
 _CYCLE_ID = 3
 
 _GENERATION = 1
@@ -87,15 +89,22 @@ class SequentialTickRefetchTest(unittest.TestCase):
     """The sequential path classifies and refetches before it sweeps."""
 
     def test_a_reopen_after_enumeration_keeps_the_ref(self) -> None:
+        # The reading that routed the issue is what says a close was
+        # OBSERVED, so the cycle ends whatever the refetch then says -- but
+        # the refetch is what decides how far this pass goes, and an issue
+        # somebody has just reopened gets nothing external done to it and no
+        # terminal. The mark is what hands it to the dispatcher's own guard.
         github = self._owner_holding_a_ref()
         deleted = Mock()
 
         with patch.object(_snapshot_refs, "delete_snapshot_ref", deleted):
-            self._sequential_tick(github)
+            with self.assertLogs(_WORKFLOW_LOG):
+                self._sequential_tick(github)
 
         deleted.assert_not_called()
-        self.assertEqual(github.write_state_calls, 0)
+        self.assertTrue(github.pinned_data(_OWNER_NUMBER)["late_cancelled"])
         self.assertEqual(github.label_history, [])
+        self.assertEqual(github.posted_comments, [])
 
     def test_a_still_closed_owner_is_swept_as_before(self) -> None:
         # The refetch decides on what it reads rather than on having read: an

@@ -12,12 +12,16 @@ beside this one.
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from unittest.mock import patch
 
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LatePhase,
     LateVerdict,
+)
+from orchestrator.workflow.stages.decomposition import (
+    late_owner as _late_owner,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
@@ -53,6 +57,8 @@ from tests.workflow.stages.decomposition.late_test_support import (
     EVENT_LATE_FAILURE,
     KEYS,
     QUESTION_ASKED,
+    generation_state,
+    late_generation,
 )
 
 COMMENT = "comment"
@@ -144,6 +150,61 @@ class OwnerReadTest(GuardedLateCase, unittest.TestCase):
             recorded[0].get("failure"), LateFailure.OWNER_READ_FAILED,
         )
         self.assertEqual(recorded[0].get("stage"), STAGE_DECOMPOSING)
+
+
+class InterruptedBoundaryTest(GuardedLateCase, unittest.TestCase):
+    """A close caught mid-transaction keeps the boundary it interrupted.
+
+    The whole tick is driven, because the hazard is not one write: a split
+    that crashed mid-loop comes back through the WHOLE coordinator, and every
+    step above the transaction names a boundary of its own -- the plan-PR
+    hold reconciled before anything spawns, and the claim each completion
+    writes on its way into the owner read. Any of them landing on the record
+    would leave a cancellation observed here keeping a boundary that says no
+    split ever started, and the reclamation would then read an empty ledger
+    as the whole account and delete the ref out from under the child that
+    loop had already created.
+    """
+
+    def test_a_close_mid_split_keeps_that_boundary(self) -> None:
+        for phase in (LatePhase.SNAPSHOTTING, LatePhase.SPLITTING):
+            with self.subTest(phase=phase):
+                self._crashed_at(phase)
+
+                self._decide(_ClosedDuringRun(self.issue, SPLIT_RUN))
+
+                pinned = self._pinned()
+                self.assertTrue(pinned.get(KEYS.cancelled))
+                self.assertEqual(pinned.get(KEYS.cancelled_phase), phase)
+
+    def test_an_ordinary_close_still_names_the_read(self) -> None:
+        # The other side of it: a cycle that never started a transaction is
+        # cancelled at the boundary a completion really did reach.
+        self._decide(_ClosedDuringRun(self.issue, SPLIT_RUN))
+
+        self.assertEqual(
+            self._pinned().get(KEYS.cancelled_phase), LatePhase.OWNER_CHECK,
+        )
+
+    def test_a_kept_boundary_is_a_standing_claim(self) -> None:
+        # What the guard reads the claim back as. A boundary it deliberately
+        # did not rewind is as standing a claim as `owner_check` -- otherwise
+        # every re-entered transaction would pay for a second write of the
+        # claim it already made.
+        kept = late_generation(
+            phase=LatePhase.SPLITTING, owner_check_pending=True,
+        )
+
+        self.assertTrue(_late_owner._already_claimed(kept))
+        self.assertFalse(
+            _late_owner._already_claimed(replace(kept, phase=None)),
+        )
+
+    def _crashed_at(self, phase: LatePhase) -> None:
+        """Re-seed this issue as a transaction that died at one boundary."""
+        self.github.seed_state(
+            self.issue.number, **generation_state(late_generation(phase=phase)),
+        )
 
 
 class UndecidedCompletionTest(GuardedLateCase, unittest.TestCase):

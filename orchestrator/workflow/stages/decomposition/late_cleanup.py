@@ -14,8 +14,9 @@ else. So this owner is asked at the boundary where an unsettled obligation
 still matters and where the condition to settle it has just become true: the
 umbrella's all-children-resolved branch. The narrow closed-owner sweep beside
 it asks the same question of an issue a human closed mid-cycle, which is the
-one other way a live ledger stops being visited -- same rules, same ledger, no
-terminal to decide.
+one other way a live ledger stops being visited -- same rules, same ledger.
+That issue's own terminal belongs to the cancellation owner the sweep reaches
+these rules through; nothing here decides one.
 
 **The branch is unconditional.** It is superseded the moment the split lands,
 so every visit retries whatever is not yet reconciled -- and "the branch" is
@@ -65,7 +66,9 @@ ref is reclaimed in that window. Either side of it the list is whole -- before
 the split nothing has been created, and past it the loop ran to the end -- and
 that is also what makes an EMPTY list a fact rather than a gap: the ref is
 retained ahead of the first child, so an owner closed in that interval has no
-consumers because there are none.
+consumers because there are none. A cancelled cycle answers with the boundary
+it kept rather than with `cancelling`, which is a boundary of its own and
+would say nothing about the loop.
 
 **A reclamation is decided once, then retried until it lands.** The proof
 above is a reading of live issues and cannot be reproduced, so the entry is
@@ -78,6 +81,14 @@ what a child does about it is the child's own to decide on its own dispatch
 (`late_reuse`). The telling runs ahead of the entry that records the delete,
 so a tick that dies in between repeats it -- harmlessly, since a child already
 holding this reclamation's receipt is skipped.
+
+A CANCELLED cycle tells none of them and reconciles on the delete alone. The
+receipt is what a live split owes children it is still driving; an ending a
+human's close forced drives none of them, and leaves each exactly as it found
+it. What the child would have read the receipt FOR still reaches it: the
+transport drops this host's copy of the ref before it touches the remote and
+refuses the reclamation outright if that copy cannot be proved gone, so a
+child reopened afterwards asks the remote once and its own guard stops it.
 
 **Nothing that cannot be proved settled lets a terminal fire.** An obligation
 ledger this binary could not fully type blocks outright: the entries it could
@@ -108,6 +119,7 @@ answer.
 """
 from __future__ import annotations
 
+import importlib
 import logging
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -124,6 +136,7 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.github import comments as _comments
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split import lineage as _lineage
@@ -137,19 +150,37 @@ from orchestrator.workflow.late_split.models import (
     LateResourceKind,
     LateResourceState,
 )
+from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import stage_name
+
+# Resolved at call time: the cancellation owner imports this module for the
+# reclamation rules it reuses unchanged, so a module-scope bind here would be
+# a cycle.
+_CANCELLATION_OWNER = (
+    "orchestrator.workflow.stages.decomposition.late_cancellation"
+)
 
 log = logging.getLogger("orchestrator.workflow")
 
 _BRANCH = LateResourceKind.BRANCH
 
+# The count the split transaction writes before it creates its first child,
+# in the same write as `splitting`. It is the stage's own key rather than this
+# domain's, and it is read here for one reason: it is durable evidence that a
+# transaction began which no later write of the PHASE can erase.
+_EXPECTED_CHILDREN = "expected_children_count"
+
 _SNAPSHOT = LateResourceKind.SNAPSHOT_REF
 
-# The typed failure each refused reclamation is reported under.
+# The typed failure each refused reclamation is reported under. The plan pull
+# request is here rather than beside the cancellation that settles it, because
+# what reports it is the emission below: a kind this map does not carry is an
+# entry no sink could name the failure of.
 _FAILURES = MappingProxyType({
     _BRANCH: LateFailure.BRANCH_CLEANUP_FAILED,
     _SNAPSHOT: LateFailure.SNAPSHOT_DELETE_FAILED,
+    LateResourceKind.PLAN_PR: LateFailure.PR_RECONCILE_FAILED,
 })
 
 # The two states an entry reaches once the decision to reclaim it is durable.
@@ -182,30 +213,32 @@ _RELEASED_NOTICE = (
 # only the fact that what is owed is unknown.
 _OPAQUE = "an obligation this orchestrator cannot read"
 
-# The phases at which the consumer ledger is the WHOLE account of the children
-# cut from this generation's snapshot.
+# The phases that come BEFORE the split loop, where the whole account of the
+# children cut from this generation's ref is "there are none yet": `splitting`
+# goes down and is persisted ahead of the first create, so a record standing
+# earlier has made no child at all.
 #
-# Before the split there are none to account for: `splitting` goes down and is
-# persisted ahead of the first create, so a record standing earlier has made
-# no child at all and its empty ledger is the whole truth. After it the loop
-# ran to the end, because the transaction moves on only once every child has
-# been created AND recorded -- one that could not be leaves the record parked
-# where it stands.
-#
-# `splitting` itself is the one phase deliberately absent, and the length of
-# the list is no help there. The create precedes the write that records it, so
-# a record standing in the loop may be missing a child that already exists on
-# GitHub -- the first one, or the fourth of five. Reclaiming on the strength
-# of the consumers it does name would delete the ref out from under whichever
-# child the ledger has not reached yet, unread and untold. Cancelled and
-# restarted cycles, and a phase this binary cannot type, are not among the
-# answers either.
-_WHOLE_LEDGER_PHASES = frozenset((
+# That is a claim about the record as much as about the phase, and it is held
+# to the record rather than taken on the phase's word -- because a phase is
+# not only written forwards. The post-agent owner check writes `owner_check`
+# over whatever boundary it interrupts, so a transaction re-entered after a
+# crash reads as one of these with a half-filled ledger standing behind it,
+# and believing the phase there would delete the ref out from under whichever
+# child the loop had already created. So a record naming any child at all is
+# not one of these however it is labelled.
+_PRE_SPLIT_PHASES = frozenset((
     LatePhase.MEASURING,
     LatePhase.HOLDING_PLAN_PR,
     LatePhase.ADJUDICATING,
     LatePhase.OWNER_CHECK,
     LatePhase.SNAPSHOTTING,
+))
+
+# The phases PAST the loop, where the ledger is whole whatever it holds: the
+# transaction moves on only once every child has been created AND recorded,
+# and one that could not be leaves the record parked where it stands. These
+# are the only boundaries whose word is enough on its own.
+_SETTLED_SPLIT_PHASES = frozenset((
     LatePhase.SUPERSEDING,
     LatePhase.CLEANING_UP,
 ))
@@ -244,15 +277,24 @@ class _Pass:
 class _Reclamation:
     """What one pass over this issue's obligations settled, and what it did not.
 
-    `entries` is what the sinks are told, and it holds only the obligations
-    this pass ACTED on, in the state the record now gives them. An entry that
-    was already reconciled is not news: a tick that reported it again would
-    put one `late_cleanup` per tick on an umbrella that is simply waiting for
-    a sibling.
+    `entries` holds every obligation this pass ACTED on, in the state the
+    record now gives them, and it is what the per-visit log line is drawn
+    from: a visit that keeps happening is happening for one of these, and
+    saying so on each of them is what makes an unreclaimable object visible.
+
+    `moved` is the subset whose recorded state this visit actually CHANGED,
+    and it is what the sinks and the pinned write are drawn from instead. The
+    two differ exactly where a retry keeps giving the same answer -- a remote
+    that goes on refusing one delete, a consumer that goes on being live --
+    and that is the shape a per-visit record would repeat forever: one
+    `late_cleanup`, one `late_failure`, and one comment write per sweep, for
+    as long as the refusal lasts. The transition is the news; the standing
+    state is what the log and the held terminal already say.
     """
 
     generation: LateGeneration
     entries: tuple[LateResource, ...] = ()
+    moved: tuple[LateResource, ...] = ()
 
     @property
     def attempted(self) -> bool:
@@ -290,7 +332,9 @@ def _held_snapshots(generation: LateGeneration) -> tuple[str, ...]:
     )
 
 
-def _reclaimable(generation: LateGeneration, scan: _ChildScan) -> bool:
+def _reclaimable(
+    state: PinnedState, generation: LateGeneration, scan: _ChildScan,
+) -> bool:
     """Whether every direct consumer this snapshot records is terminal.
 
     Asked of a scan taken this tick, and asked again from scratch on every
@@ -309,12 +353,12 @@ def _reclaimable(generation: LateGeneration, scan: _ChildScan) -> bool:
     """
     if _unwritable(generation) or generation.has_opaque_ledger:
         return False
-    if not _whole_ledger(generation):
+    if not _whole_ledger(state, generation):
         return False
     return all(_ended(scan, consumer) for consumer in generation.consumers)
 
 
-def _whole_ledger(generation: LateGeneration) -> bool:
+def _whole_ledger(state: PinnedState, generation: LateGeneration) -> bool:
     """Whether the ledger names every child cut from this generation's ref.
 
     The question the per-consumer proof rests on, and the record's own phase
@@ -331,8 +375,133 @@ def _whole_ledger(generation: LateGeneration) -> bool:
     what left a ref nothing would ever reclaim: the snapshot is retained
     before the first child exists, so an owner a human closed in that interval
     has no consumers because there are none, and `all(())` settles it.
+
+    A loop the RECORD proves finished is whole at any boundary, which is
+    asked before the phase is consulted at all -- see `_every_child_recorded`.
+    Two writers make that necessary and neither is a bug: `splitting` is
+    written before the first create and again beside every child recorded, so
+    the phase alone cannot say which end of the loop a record sits at; and a
+    retried transaction rewrites `snapshotting` over whatever it reached, so a
+    finished split can come back wearing the boundary it started from.
+
+    A boundary before the loop is believed only as far as the record bears it
+    out -- see `_split_began`. A pinned comment written by a binary that
+    rewound its own phase is exactly what that reading is for: the guard on
+    the record stops new rewinds and migrates nothing, so what has to answer
+    for one already in flight is evidence no phase write ever touched. Past
+    the loop the phase needs no corroboration: the transaction reaches
+    `superseding` only once every child is created and recorded.
+
+    A SEALED ledger answers ahead of all of it. The count can only ever be
+    reached by a loop that ran to the end of its manifest, and a cancelled one
+    never will: the children it did not make are ones nothing is going to
+    make. So the loop that stopped writes down that its register is final --
+    which it only does where every child that exists is already on it -- and
+    that is a stronger reading than the count, not a weaker one.
+
+    Believed only for the cycle it NAMES. The seal is a decomposition key
+    rather than a late one, so no write that ends a generation drops it, and
+    a later cycle on the same issue reads a seal its own split never wrote. A
+    partial register would then look final, and the delete below would take
+    the ref that cycle's unrecorded children were cut from.
+
+    Which phase answers, for a cycle whose own `phase` field has been taken
+    over by its cancellation, is `_accounted_at`'s question.
     """
-    return generation.phase in _WHOLE_LEDGER_PHASES
+    boundary = _accounted_at(generation)
+    if boundary in _SETTLED_SPLIT_PHASES:
+        return True
+    if _state._ledger_is_sealed(
+        state.get(_state._SPLIT_LEDGER_SEALED), generation.cycle_id,
+    ):
+        return True
+    if _every_child_recorded(state, generation):
+        return True
+    if boundary not in _PRE_SPLIT_PHASES:
+        return False
+    return not _split_began(state, generation)
+
+
+def _every_child_recorded(
+    state: PinnedState, generation: LateGeneration,
+) -> bool:
+    """Whether the split loop reached the end of the manifest it was given.
+
+    Asked of every boundary, because more than one of them is ambiguous.
+    `splitting` is written before the first create AND again beside every
+    child recorded, the last one included, so a record standing there is
+    either a loop mid-flight or one that finished and died before the step
+    that would have moved it on. `snapshotting` is the same question one
+    retry later: a transaction resumed after a park rewrites it over whatever
+    boundary it had reached, so a finished split comes back wearing the one it
+    started from. Reading either as mid-flight retains a ref no later pass can
+    ever release, because nothing revisits a cancelled owner to move a phase
+    for it.
+
+    What separates them is the count the transaction wrote ahead of its first
+    create, against the positional register it appends to as each child is
+    recorded. The register is written in the SAME step as the consumer and
+    the child obligation, so reaching the count means every child exists and
+    every one of them is on the ledgers this proof walks.
+
+    Fail-closed on anything else. A count that is not a positive whole number
+    is a field this binary cannot act on, and a register short of it is the
+    window this whole question exists for.
+    """
+    expected = state.get(_EXPECTED_CHILDREN)
+    if not _formats.whole_number(expected) or expected <= 0:
+        return False
+    return len(generation.split_children) >= expected
+
+
+def _split_began(state: PinnedState, generation: LateGeneration) -> bool:
+    """Whether this record shows a split transaction that already started.
+
+    Two signs, and only one of them survives a phase somebody moved. The
+    ledgers are the obvious one: a consumer or a split child recorded here is
+    a child this generation made, whatever boundary the record is wearing.
+
+    The other is the one that matters, because the window this question exists
+    for is the window where the ledgers say NOTHING. A child is created before
+    the write that records it, so a loop that died between the two leaves an
+    empty ledger and a real issue on GitHub -- and the count the transaction
+    puts down BEFORE its first create, in the same write as `splitting`, is
+    then the only thing left. A binary that rewound the phase over it (which
+    is what every record already in flight was written by) left that count
+    exactly where it was, so this is what upgrades one rather than believing
+    the boundary it now wears.
+
+    A stale count from an ordinary decomposition of the same issue reads the
+    same way, and is meant to: an issue that split into children became an
+    umbrella with no implementation of its own, so reaching the late gate at
+    all takes a human moving its label -- and being wrong in that direction
+    keeps a ref, holds a terminal, and says so on every visit, where being
+    wrong in the other deletes the only copy of a child's work.
+    """
+    if state.get(_EXPECTED_CHILDREN) is not None:
+        return True
+    return bool(generation.consumers or generation.split_children)
+
+
+def _accounted_at(generation: LateGeneration) -> Optional[LatePhase]:
+    """The boundary whose account of the consumers this ref is judged by.
+
+    Ordinarily the phase the record stands at. A cancelled cycle is the one
+    that needs asking, because `cancelling` is itself a boundary and it
+    overwrites the one the cancellation interrupted -- a generation cancelled
+    while its split loop was running and one cancelled long past it would
+    otherwise read alike, and the reading they would share proves nothing, so
+    every ref either of them holds would be retained for good.
+
+    So the cancellation keeps the phase it interrupted, and that is what is
+    asked here. A cancelled record that kept none -- one an older binary
+    marked, or one whose own field was damaged -- answers with something
+    outside the set, which retains the ref: a cancellation is exactly when
+    nobody is coming back to prove a partial ledger whole.
+    """
+    if generation.cancelled:
+        return generation.cancelled_phase
+    return generation.phase
 
 
 def _ended(scan: _ChildScan, consumer: int) -> bool:
@@ -508,6 +677,12 @@ def _reclaim_snapshot(
             "live again", issue_number, ref,
         )
         return ordered
+    # The scan above is a request per consumer and the probe behind it is
+    # another, so the poll can observe the close anywhere in there -- and what
+    # stands next is the delete itself. The mark goes down BEFORE it, because
+    # a ref that is gone while the record still reads live is a reclamation
+    # nothing afterwards can attribute to the cancellation that earned it.
+    ordered = _observed_close(walk, ordered)
     return _taken(walk, ordered, ref, proven)
 
 
@@ -533,7 +708,7 @@ def _may_take(
     means -- and it is read back by the rule that probes the ref before acting
     on it, so a ref still on the remote is kept until the consumers end again.
     """
-    if _reclaimable(generation, proven):
+    if _reclaimable(walk.state, generation, proven):
         return True
     return _already_gone(walk, generation, ref)
 
@@ -544,7 +719,14 @@ def _taken(
     """Carry out a delete this pass has just proved it may take."""
     if _deleted(walk, ordered, ref) not in _RECLAIMED:
         return _recorded(ordered, _SNAPSHOT, ref, LateResourceState.FAILED)
-    if not _release_consumers(walk, ordered, ref, proven):
+    # The delete is a request, and what stands immediately behind it is the
+    # one cleanup effect that WRITES to somebody else's issue. A close
+    # observed inside the delete makes this a cancelled cycle, which owes its
+    # children nothing at all -- so the reading is taken before the receipts
+    # rather than after them.
+    ordered = _observed_close(walk, ordered)
+    ordered, told = _release_consumers(walk, ordered, ref, proven)
+    if not told:
         # The ref is gone and a child still records it. Leaving the entry
         # `reclaiming` is what keeps that obligation alive: it holds the
         # terminal and keeps the sweep visiting, and the next pass finds the
@@ -584,6 +766,19 @@ def _ordered(
     a reading is not a thing a retry can reproduce. What a retry CAN act on is
     a decision somebody durably took, so it is written down first and the
     delete underneath it is idempotent.
+
+    Written once, though, and not on every retry of it. A record that already
+    reads `reclaiming` or `failed` already carries the decision -- both are
+    what the retry rule reads a decision back out of -- so putting
+    `reclaiming` over a `failed` entry costs a write, loses the fact that the
+    last attempt was refused, and leaves the pass's own outcome write with a
+    state to move BACK to. A remote that goes on refusing would otherwise
+    alternate the durable state between the two forever, reporting a
+    transition on every other visit that nothing actually transitioned.
+
+    The decision still travels forward in memory either way: the entry this
+    pass hands on says `reclaiming`, so a delete that lands and a child this
+    pass cannot reach still leave the ref recorded as being taken.
     """
     try:
         decided = generation.with_resource(LateResource(
@@ -594,34 +789,109 @@ def _ordered(
     except _formats.InvalidLateValue:
         log.exception("could not order the reclamation of %r", ref)
         return generation
-    walk.persist(decided)
+    if not _already_ordered(generation, ref):
+        walk.persist(decided)
     return decided
+
+
+def _already_ordered(generation: LateGeneration, ref: str) -> bool:
+    """Whether the record already holds a durable decision about this ref.
+
+    Either of the two states a decision reaches counts, because the retry
+    rule reads them alike: what both say is that a delete was authorized and
+    the ledger has been standing behind it since.
+    """
+    return any(
+        entry.resource_state in _ORDERED
+        for entry in generation.resources
+        if entry.kind == _SNAPSHOT and entry.target == ref
+    )
+
+
+def _observed_close(
+    walk: _Pass, generation: LateGeneration,
+) -> LateGeneration:
+    """Mark a close a poll observed while this pass was reclaiming.
+
+    The barrier every step of a reclamation is asked past, and it costs no
+    request -- which is why it can be asked as often as there are steps. The
+    write behind it happens once, on the pass that first reads one: a record
+    that already carries the mark is handed straight back.
+
+    The cancellation owner is resolved at call time because it imports this
+    module for the reclamation rules a cancelled cycle reuses unchanged; a
+    module-scope bind here would point that edge back at itself.
+    """
+    if generation.cancelled:
+        return generation
+    if not _observations.close_observed(walk.spec.slug, walk.issue.number):
+        return generation
+    late_cancellation = importlib.import_module(_CANCELLATION_OWNER)
+    return late_cancellation._marked(
+        walk.gh, walk.issue, walk.state, generation,
+    )
 
 
 def _release_consumers(
     walk: _Pass, generation: LateGeneration, ref: str, proven: _ChildScan,
-) -> bool:
+) -> tuple[LateGeneration, bool]:
     """Let every child cut from this ref know it is gone, once each.
 
-    Answers whether ALL of them were reached. Every consumer is attempted
-    before the answer is given -- one child this pass could not reach is not a
-    reason to leave the rest untold.
+    Answers with the record this left and whether ALL of them were reached.
+    Every consumer is attempted before that answer is given -- one child this
+    pass could not reach is not a reason to leave the rest untold.
+
+    A CANCELLED cycle tells none of them, and answers as though it had. Its
+    children are issues a human's close stranded rather than work this
+    orchestrator is still driving, and what that ending owes them is nothing
+    at all: it does not close them, relabel them, write their pinned state, or
+    put a word on their threads. Nothing about the ref is left unsaid by it --
+    the transport drops this host's copy before it touches the remote and
+    refuses the whole reclamation if that copy cannot be proved gone, so a
+    child reopened afterwards finds no mirror, asks the remote once, and is
+    stopped and told by its own guard on its own dispatch. The receipt is what
+    a live split owes the children it is still responsible for, and this is
+    the one pass that is responsible for none.
+
+    Which is why the reading is taken between EVERY two of them rather than
+    once for the walk. Each receipt is a comment on somebody else's issue, so
+    a close observed after the first is one the second may not be written
+    over: the children left are owed nothing, and the pass stops telling them
+    where it stands. It answers "all told" for those, because a cycle that
+    owes no receipt has left none undelivered.
+
+    And once more INSIDE each of them, because proving a child untold is a
+    request of its own: the thread walk stands between the reading this loop
+    took and the comment it authorizes, and a close landing in there would
+    otherwise be written over exactly as one landing between two children
+    would.
     """
+    if generation.cancelled:
+        return generation, True
     marker = _lineage.release_marker(
         owner=walk.issue.number,
         cycle=generation.cycle_id,
         generation=generation.generation,
     )
-    told = [
-        _release(walk, proven, consumer, marker)
-        for consumer in generation.consumers
-    ]
-    return all(told)
+    told = True
+    for consumer in generation.consumers:
+        generation = _observed_close(walk, generation)
+        if generation.cancelled:
+            break
+        generation, delivered = _release(
+            walk, proven, consumer, marker, generation,
+        )
+        told = delivered and told
+    return generation, told
 
 
 def _release(
-    walk: _Pass, proven: _ChildScan, consumer: int, marker: str,
-) -> bool:
+    walk: _Pass,
+    proven: _ChildScan,
+    consumer: int,
+    marker: str,
+    generation: LateGeneration,
+) -> tuple[LateGeneration, bool]:
     """Say on one child that the ref it was cut from is gone.
 
     A COMMENT, and nothing else. Everything this owner knows about a consumer
@@ -659,30 +929,55 @@ def _release(
             "to tell it; the obligation stays owed until it can",
             walk.issue.number, int(consumer),
         )
-        return False
+        return generation, False
     try:
-        return _told(walk, child, marker)
+        return _told(walk, child, marker, generation)
     except Exception:
         log.exception(
             "issue=#%d could not tell consumer #%d its snapshot is gone",
             walk.issue.number, int(consumer),
         )
-        return False
+        return generation, False
 
 
-def _told(walk: _Pass, child: Issue, marker: str) -> bool:
-    """Post this reclamation's receipt on one child unless it carries one."""
+def _told(
+    walk: _Pass,
+    child: Issue,
+    marker: str,
+    generation: LateGeneration,
+) -> tuple[LateGeneration, bool]:
+    """Post this reclamation's receipt on one child unless it carries one.
+
+    The thread walk that proves this child untold is a REQUEST, and the poll
+    runs beside it: a close observed in there makes this a cancelled cycle,
+    which owes its children nothing at all -- not a comment, and certainly not
+    one addressed to a human. So the latch is asked between the reading and
+    the write it authorizes, and the mark goes down where the walk stands
+    rather than after the sentence it would have made unsayable.
+
+    It answers "told" for that child all the same, because a cycle that owes
+    no receipt has left none undelivered -- the same answer the loop above
+    gives for every consumer it stops short of.
+    """
     if _comments.carries_own_marker(
         child.get_comments(), marker,
         bot_login=getattr(walk.gh, "_bot_login", None),
     ):
-        return True
+        return generation, True
+    generation = _observed_close(walk, generation)
+    if generation.cancelled:
+        log.warning(
+            "issue=#%d was observed closed while consumer #%s was being "
+            "read; writing nothing to it",
+            walk.issue.number, child.number,
+        )
+        return generation, True
     walk.gh.comment(child, _RELEASED_NOTICE.format(
         mentions=config.HITL_MENTIONS,
         owner=walk.issue.number,
         marker=marker,
     ))
-    return True
+    return generation, True
 
 
 def _our_snapshot(
@@ -846,7 +1141,7 @@ def _asked_snapshots(
     from -- and the decision to take it, however durably recorded, does not
     outrank the reading in front of it.
     """
-    if _reclaimable(generation, walk.scan):
+    if _reclaimable(walk.state, generation, walk.scan):
         return _held_snapshots(generation)
     return tuple(
         entry.target
@@ -884,18 +1179,31 @@ def _already_gone(
 
 
 def _reclaimed(walk: _Pass, generation: LateGeneration) -> _Reclamation:
-    """Settle everything this issue owes that can be settled right now."""
+    """Settle everything this issue owes that can be settled right now.
+
+    The latch is asked between the obligations rather than once for the pass,
+    because each of them is a request -- a branch delete, then a ref delete
+    with a receipt on every child cut from it -- and a poll can observe the
+    close between any two. What the mark changes is not WHETHER the rest is
+    settled (a cancellation buys no shortcut through the reclamation rules)
+    but what the settling owes anybody: a cancelled cycle tells its consumers
+    nothing, and its owner takes no terminal until its own ending has run.
+    """
     asked = _asked_of(walk, generation)
     settled = generation
     for kind, target in asked:
+        settled = _observed_close(walk, settled)
         if kind == _BRANCH:
             settled = _reclaim_branch(
                 walk.gh, walk.spec, walk.issue.number, settled, target,
             )
         else:
             settled = _reclaim_snapshot(walk, settled, target)
+    entries = _settled_entries(settled, asked)
     return _Reclamation(
-        generation=settled, entries=_settled_entries(settled, asked),
+        generation=settled,
+        entries=entries,
+        moved=_moved_entries(generation, entries),
     )
 
 
@@ -914,6 +1222,27 @@ def _settled_entries(
         (entry.kind, entry.target): entry for entry in generation.resources
     }
     return tuple(recorded[owed] for owed in asked if owed in recorded)
+
+
+def _moved_entries(
+    before: LateGeneration, entries: tuple[LateResource, ...],
+) -> tuple[LateResource, ...]:
+    """The acted-on obligations whose recorded state this visit changed.
+
+    Asked against the record the pass OPENED with, so what counts as movement
+    is what a reader of the ledger would see happen -- a first attempt, a
+    refusal that became a reclamation, a reclamation a reopened consumer put
+    back. A retry that reaches the same answer moves nothing, and there is
+    nothing about it a second record could say that the first did not.
+    """
+    was = {
+        (entry.kind, entry.target): entry.resource_state
+        for entry in before.resources
+    }
+    return tuple(
+        entry for entry in entries
+        if was.get((entry.kind, entry.target)) != entry.resource_state
+    )
 
 
 def _blocking(generation: LateGeneration) -> tuple[str, ...]:
@@ -952,9 +1281,15 @@ def _settle(
 ) -> LateGeneration:
     """Settle what this issue owes right now, and answer the record it leaves.
 
-    The write and the two sinks are behind `attempted` on purpose: an entry
-    that was ALREADY reconciled is not news, and reporting it again would put
-    one `late_cleanup` per visit on an issue that is simply waiting.
+    The write is behind what MOVED, not behind what was attempted. An entry
+    already reconciled is not asked about at all, and one a retry left exactly
+    as it found it has nothing to write down -- so a remote that goes on
+    refusing one delete costs a request per visit rather than a request and a
+    pinned write per visit, for as long as the refusal lasts.
+
+    What is reported is behind the same reading, and the log line beside it is
+    not: the sinks carry the transitions, and every visit that ends with
+    something still owed says so where an operator reads it.
 
     The stage both sinks record is read off the issue rather than named by the
     caller, because it is a fact about where the reclamation happened and not
@@ -964,8 +1299,9 @@ def _settle(
     """
     walk = _Pass(gh=gh, spec=spec, issue=issue, state=state, scan=scan)
     settled = _reclaimed(walk, _late_state.read_late_generation(state))
-    if settled.attempted:
+    if settled.moved:
         walk.persist(settled.generation)
+    if settled.attempted:
         _report(gh, issue, settled, stage=stage_name(gh.workflow_label(issue)))
     return settled.generation
 
@@ -1035,17 +1371,26 @@ def _report(
     *,
     stage: Optional[str],
 ) -> None:
-    """Say on both sinks what each attempted reclamation did.
+    """Say on both sinks what each attempted reclamation changed.
 
-    One `late_cleanup` per obligation acted on, carrying the state the record
-    gives it. A typed failure rides with the one state that names a remote
-    that REFUSED; an obligation still `reclaiming` is work in progress, not a
-    failure, and says so by carrying that state rather than a second event.
-    Either way an entry short of `reconciled` is warned about, because it is
-    what a visit that keeps happening is happening for.
+    One `late_cleanup` per obligation whose recorded state MOVED, carrying the
+    state the record now gives it. A typed failure rides with the one state
+    that names a remote that REFUSED; an obligation still `reclaiming` is work
+    in progress, not a failure, and says so by carrying that state rather than
+    a second event. A retry that reached the same answer as the visit before
+    it reports nothing at all: the record already carries that answer, and a
+    stream of identical failures is one fact repeated per cadence rather than
+    a second thing having gone wrong.
+
+    The log is the other half and is deliberately not bounded that way. Every
+    entry short of `reconciled` is warned about on every visit that attempted
+    it, because a visit that keeps happening is happening for one of these,
+    and an object nobody can reclaim has to stay visible for as long as it is
+    held rather than only on the tick it first refused.
     """
+    for moved in settled.moved:
+        _emit_cleanup(gh, settled.generation, moved, stage)
     for entry in settled.entries:
-        _emit_cleanup(gh, settled.generation, entry, stage)
         if entry.resource_state != LateResourceState.RECONCILED:
             log.warning(
                 "issue=#%d still owes the remote %s %r (%s); it is retried "

@@ -175,6 +175,7 @@ def full_generation() -> LateGeneration:
         owner_check_pending=True,
         cancelled=True,
         cancelled_at=CANCELLED_AT,
+        cancelled_phase=LatePhase.SPLITTING,
         restart_pending=True,
         restart_target=DECOMPOSING,
         restart_cycle_id=CYCLE_ID + 1,

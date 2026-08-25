@@ -148,7 +148,9 @@ def _handle_blocked(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> No
         _complete_blocked_parent(gh, issue, state)
         return
 
-    held = _activation._activate_ready_children(gh, issue, state, scan)
+    held = _activation._activate_ready_children(
+        gh, spec, issue, state, scan,
+    )
     _activation._log_held_children(
         issue, "blocked", children, scan.labels, held,
     )

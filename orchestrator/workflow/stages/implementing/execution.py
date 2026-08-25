@@ -32,7 +32,11 @@ from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import guards as _guards, usage as _usage
+from orchestrator.workflow.engine import (
+    guards as _guards,
+    observations as _observations,
+    usage as _usage,
+)
 from orchestrator.workflow.stages.implementing import (
     models as _models,
     session as _session,
@@ -140,10 +144,30 @@ class _DevResumeContext:
         return agent_result, paused
 
     def _needs_fresh_retry(self, agent_result: AgentResult) -> bool:
-        return (
+        """Whether a poisoned session earns this issue a second spawn.
+
+        Not while a poll has this issue latched closed. The retry exists so a
+        session GitHub's own transcript lost does not cost the issue a park,
+        and an issue somebody has closed is owed neither: it is a second
+        agent, on somebody's repository, against work nobody wants. The
+        reading costs no request, and the poisoned session id is left where it
+        is -- dropping it is what authorizes the retry, and there is no retry.
+        """
+        if not (
             self.plan.session.session_id is not None
             and not self.plan.fresh_spawn
             and _session._is_poisoned_session_failure(
                 self.plan.session.backend, agent_result,
             )
+        ):
+            return False
+        if not _observations.close_observed(
+            self.spec.slug, self.issue.number,
+        ):
+            return True
+        log.warning(
+            "repo=%s issue=#%d was observed closed by a poll while its "
+            "developer ran; not retrying the poisoned session as a second "
+            "fresh spawn", self.spec.slug, self.issue.number,
         )
+        return False

@@ -73,13 +73,16 @@ class IsAllowedTransitionTest(unittest.TestCase):
         )
 
     def test_late_gate_edges_are_declared(self) -> None:
-        # The late size gate's own three: an oversized committed candidate
-        # goes back to adjudication instead of publishing, and an adjudication
-        # whose owner is closed cancels from either label it can be wearing.
+        # The late size gate's own four: an oversized committed candidate
+        # goes back to adjudication instead of publishing, an adjudication
+        # whose owner is closed cancels from either label it can be wearing,
+        # and the umbrella that reached `done` in the same visit the close
+        # cancelled it has that terminal corrected to the one it earned.
         for cur, nxt in (
             (WorkflowLabel.IMPLEMENTING, WorkflowLabel.DECOMPOSING),
             (WorkflowLabel.DECOMPOSING, WorkflowLabel.REJECTED),
             (WorkflowLabel.UMBRELLA, WorkflowLabel.REJECTED),
+            (WorkflowLabel.DONE, WorkflowLabel.REJECTED),
         ):
             self.assertTrue(is_allowed_transition(cur, nxt), (cur, nxt))
 

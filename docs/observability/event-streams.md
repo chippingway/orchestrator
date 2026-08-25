@@ -436,15 +436,27 @@ for a human settles from the same scan on its way out. The third is the closed-o
 ([`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)),
 which asks the same question of an issue a human closed mid-cycle and emits the same families under whichever of
 `stage: decomposing` / `stage: umbrella` that issue was closed on — the stage is read off the issue rather than named
-by the caller, so a record says where the reclamation happened rather than which owner drove it. Only an attempted
-reclamation is reported, so an entry that was already reconciled adds nothing on a later visit — and an obligation
-merely *held* (a ref whose consumers are not all ended) attempts nothing, so it emits nothing and is instead logged
-on every tick that holds. `outcome: reclaiming` is progress rather than failure and is why the state reaches this
-stream at all: the decision goes down *before* the delete, so a record carrying it is an obligation whose ref may
-already be gone while a consumer it owes a receipt could not be told — the next visit finishes the telling and
-reports `reconciled`. A repeated
-`late_cleanup` with `outcome: failed` on one issue is exactly the shape of an obligation nobody can settle, and the
-umbrella stays open — or the closed owner keeps its label — while it repeats.
+by the caller, so a record says where the reclamation happened rather than which owner drove it. It is also the
+second producer of `late_cancellation`, under the same bound: the record rides the write that first marks the cycle,
+so a close at a boundary no agent was running at is reported exactly once however many passes the cleanup behind it
+takes. And it adds one `late_cleanup` member no other producer emits — `resource: plan_pr`, for the held plan pull
+request a cancelled cycle closes — carrying `pr_reconcile_failed` where that pull request could not be released or
+closed.
+
+What reaches these streams is a **transition**, not a state. An entry that was already reconciled is not asked
+about at all; an obligation merely *held* (a ref whose consumers are not all ended) attempts nothing; and a retry
+that reaches the same answer as the visit before it — a remote that goes on refusing one delete — records nothing
+either, because the record already carries that answer and repeating it per cadence is one fact restated rather
+than a second thing having gone wrong. The pinned write rides the same reading, so a standing refusal costs one
+request per visit rather than a request and a comment write. What is *not* bounded that way is the log: every
+obligation short of `reconciled` is warned about on every visit that attempted it, and the umbrella stays open — or
+the closed owner keeps its label — for as long as it is held. So the shape of an obligation nobody can settle is one
+`late_cleanup` with `outcome: failed` followed by a terminal that never fires, rather than a stream of identical
+records.
+
+`outcome: reclaiming` is progress rather than failure and is why the state reaches this stream at all: the decision
+goes down *before* the delete, so a record carrying it is an obligation whose ref may already be gone while a
+consumer it owes a receipt could not be told — the next visit finishes the telling and reports `reconciled`.
 `late_restart` is still the contract the restart step will emit under, and no record of it can appear in either
 stream until that step lands.
 

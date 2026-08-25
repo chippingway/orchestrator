@@ -60,6 +60,7 @@ from orchestrator.github.labels import (
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.skills import catalog as _catalog
 from orchestrator.workflow.engine import dispatch as _dispatch
+from orchestrator.workflow.engine import observations as _observations
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -191,7 +192,9 @@ def _run_sequential_tick(
     worker hand-off already makes; this one has no hand-off, so it takes the
     same classification and the same fresh read itself.
     """
+    yielded: set[int] = set()
     for issue in gh.list_pollable_issues():
+        yielded.add(int(issue.number))
         try:
             with semaphore_cm:
                 _dispatch._process_polled_issue(gh, spec, issue)
@@ -199,6 +202,36 @@ def _run_sequential_tick(
             log.exception(
                 _dispatch._PROCESSING_FAILED_LOG,
                 spec.slug, issue.number,
+            )
+    _swept_unyielded(gh, spec, yielded, semaphore_cm)
+
+
+def _swept_unyielded(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    yielded: set[int],
+    semaphore_cm: contextlib.AbstractContextManager,
+) -> None:
+    """Sweep the held close observations this enumeration never reached.
+
+    A held observation is not a reading of this tick's: an earlier poll found
+    the issue closed and could hand that to nobody. What the enumeration
+    yields is decided by the labels the closed sweep queries, so a human who
+    moves the label off one of them -- or closes the issue on a label the
+    sweep does not query at all -- makes the owner unreachable, and the
+    reading would be lost with it. So it is swept by number instead, on the
+    strength of the observation alone, and the pass holds it exactly as every
+    other cleanup does.
+    """
+    for owed in sorted(
+        _observations.observed_closes(spec.slug) - yielded,
+    ):
+        try:
+            with semaphore_cm:
+                _dispatch._swept_for_cleanup(gh, spec, owed)
+        except Exception:
+            log.exception(
+                _dispatch._PROCESSING_FAILED_LOG, spec.slug, owed,
             )
 
 
@@ -259,16 +292,27 @@ class _ParallelTickPlan:
         for issue_number in self.partition.fanout_numbers:
             futures[
                 executor.submit(
-                    _dispatch._refetch_and_process,
-                    self.gh,
-                    self.spec,
-                    issue_number,
-                    semaphore_cm=self.semaphore_cm,
-                    # Carried rather than re-derived: this worker refetches
-                    # the issue, and a reopen in between must not turn a
-                    # cleanup pass into the stage handler its label names.
-                    cleanup_only=(
-                        issue_number in self.partition.cleanup_numbers
+                    # Built by the dispatcher rather than assembled here, so
+                    # this path gets what the scheduler's own submit gets: the
+                    # route carried rather than re-derived -- this worker
+                    # refetches the issue, and a reopen in between must not
+                    # turn a cleanup pass into the stage handler its label
+                    # names -- and, for a cleanup, the observation held until
+                    # the pass has actually run it.
+                    _dispatch._fanout_task(
+                        self.gh,
+                        self.spec,
+                        issue_number,
+                        reading=_dispatch._PollReading(
+                            cleanup_only=(
+                                issue_number
+                                in self.partition.cleanup_numbers
+                            ),
+                            closed=(
+                                issue_number in self.partition.fanout_closed
+                            ),
+                        ),
+                        semaphore_cm=self.semaphore_cm,
                     ),
                 )
             ] = issue_number
@@ -326,7 +370,12 @@ def _run_parallel_tick(
     starve fanout under a small `limit`.
     """
     plan = _ParallelTickPlan(
-        gh, spec, _dispatch._partition_pollable_issues(gh, spec), semaphore_cm,
+        gh,
+        spec,
+        _dispatch._partition_pollable_issues(
+            gh, spec, _observations.observed_closes(spec.slug),
+        ),
+        semaphore_cm,
     )
     if plan.task_count == 0:
         return

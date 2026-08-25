@@ -12,6 +12,7 @@ import unittest
 from dataclasses import replace
 
 from orchestrator.git.snapshots import refs as _snapshot_refs
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split.models import (
     LatePhase,
     LateResourceState,
@@ -23,15 +24,16 @@ from orchestrator.workflow.stages.decomposition.models import _ChildScan
 
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (
+    CANDIDATE_SHA,
     CHILD_NUMBER,
     RecordedDelete,
     LABEL_DONE,
     LABEL_IN_REVIEW,
     LABEL_REJECTED,
     PARENT_NUMBER,
-    SNAPSHOT_REF,
 )
 from tests.workflow.stages.decomposition.late_cleanup_support import (
+    SNAPSHOT_REF,
     STATE_FAILED,
     STATE_RECLAIMING,
     STATE_RECONCILED,
@@ -40,17 +42,19 @@ from tests.workflow.stages.decomposition.late_cleanup_support import (
     WORKFLOW_LOG,
 )
 from tests.workflow.stages.decomposition.late_cleanup_support import (
+    late_generation,
     resource_states,
     scan_of,
     split_umbrella,
     walk_owner,
 )
-from tests.workflow.stages.decomposition.late_test_support import (
-    CANDIDATE_SHA,
-    late_generation,
-)
 
 _OPAQUE_CONSUMERS = '["?"]'
+
+# The stage key the split transaction writes before its first create,
+# spelled here rather than imported: what it is called is the contract a
+# record already in flight was written under.
+_EXPECTED_CHILDREN = "expected_children_count"
 
 # What one obligation an older or newer binary recorded looks like: a kind
 # this one cannot type, preserved verbatim rather than reduced to what it
@@ -83,6 +87,12 @@ class _RealShapedChild:
     def __init__(self, number: int) -> None:
         self.number = number
         self.state = _STATE_CLOSED
+
+
+# What the rule reads beside the record: a pinned comment carrying no
+# evidence that a split transaction ever started, which is every case here
+# but the upgrade one.
+_UNSTARTED = PinnedState(state_data={})
 
 
 class UmbrellaReclamationTest(_PatchedWorkflowMixin, unittest.TestCase):
@@ -330,6 +340,7 @@ class TerminalConsumerTest(unittest.TestCase):
             with self.subTest(label=label):
                 self.assertTrue(
                     _late_cleanup._reclaimable(
+                        _UNSTARTED,
                         _one_consumer(), scan_of(label, closed=True),
                     ),
                 )
@@ -344,7 +355,9 @@ class TerminalConsumerTest(unittest.TestCase):
             labels={CHILD_NUMBER: LABEL_IN_REVIEW},
         )
 
-        self.assertTrue(_late_cleanup._reclaimable(_one_consumer(), scan))
+        self.assertTrue(
+            _late_cleanup._reclaimable(_UNSTARTED, _one_consumer(), scan),
+        )
 
     def test_a_terminal_label_alone_does_not(self) -> None:
         # Reopening a child leaves `done` / `rejected` exactly where they
@@ -355,6 +368,7 @@ class TerminalConsumerTest(unittest.TestCase):
             with self.subTest(label=label):
                 self.assertFalse(
                     _late_cleanup._reclaimable(
+                        _UNSTARTED,
                         _one_consumer(), scan_of(label),
                     ),
                 )
@@ -364,6 +378,7 @@ class TerminalConsumerTest(unittest.TestCase):
             with self.subTest(label=label):
                 self.assertFalse(
                     _late_cleanup._reclaimable(
+                        _UNSTARTED,
                         _one_consumer(), scan_of(label),
                     ),
                 )
@@ -374,7 +389,9 @@ class TerminalConsumerTest(unittest.TestCase):
         opaque = replace(_one_consumer(), opaque_consumers=_OPAQUE_CONSUMERS)
 
         self.assertFalse(
-            _late_cleanup._reclaimable(opaque, scan_of(LABEL_DONE)),
+            _late_cleanup._reclaimable(
+                _UNSTARTED, opaque, scan_of(LABEL_DONE),
+            ),
         )
 
 
@@ -393,7 +410,9 @@ class WholeLedgerRuleTest(unittest.TestCase):
         # has written the list yet" left one nothing would ever reclaim, swept
         # on every cadence forever.
         self.assertTrue(
-            _late_cleanup._reclaimable(late_generation(), scan_of(LABEL_DONE)),
+            _late_cleanup._reclaimable(
+                _UNSTARTED, late_generation(), scan_of(LABEL_DONE),
+            ),
         )
 
     def test_a_split_still_in_its_loop_keeps_it(self) -> None:
@@ -405,6 +424,7 @@ class WholeLedgerRuleTest(unittest.TestCase):
             with self.subTest(recorded=recorded):
                 self.assertFalse(
                     _late_cleanup._reclaimable(
+                        _UNSTARTED,
                         late_generation(
                             phase=LatePhase.SPLITTING, consumers=recorded,
                         ),
@@ -421,7 +441,52 @@ class WholeLedgerRuleTest(unittest.TestCase):
             with self.subTest(phase=phase):
                 self.assertFalse(
                     _late_cleanup._reclaimable(
+                        _UNSTARTED,
                         replace(_one_consumer(), phase=phase),
+                        scan_of(LABEL_DONE),
+                    ),
+                )
+
+    def test_a_pre_split_phase_is_held_to_the_record(self) -> None:
+        # A phase is not only written forwards. Every completed run claims
+        # `owner_check`, writing it OVER whatever boundary it interrupted, so
+        # a transaction re-entered after a crash reads as pre-split with a
+        # half-filled ledger standing behind it. Believing the phase there
+        # would delete the ref out from under whichever child the loop had
+        # already created -- so a record naming a child is not pre-split,
+        # whatever it is labelled.
+        early = (LatePhase.OWNER_CHECK, LatePhase.SNAPSHOTTING)
+        for phase in early:
+            with self.subTest(phase=phase):
+                self.assertFalse(
+                    _late_cleanup._reclaimable(
+                        _UNSTARTED,
+                        replace(_one_consumer(), phase=phase),
+                        scan_of(LABEL_DONE, closed=True),
+                    ),
+                )
+                self.assertTrue(
+                    _late_cleanup._reclaimable(
+                        _UNSTARTED,
+                        late_generation(phase=phase), scan_of(LABEL_DONE),
+                    ),
+                )
+
+    def test_a_count_upgrades_a_record_written_before(self) -> None:
+        # What a binary that rewound the phase left behind, and the reason
+        # this question is not asked of the phase alone. The transaction puts
+        # its expected count down in the same write as `splitting`, ahead of
+        # its first create, and nothing that moved the phase over it moved
+        # that -- so a record wearing a pre-split boundary with an empty
+        # ledger beside a standing count is a split that started, and its ref
+        # is kept whatever the boundary now says.
+        started = PinnedState(state_data={_EXPECTED_CHILDREN: 2})
+        for phase in (LatePhase.OWNER_CHECK, LatePhase.SNAPSHOTTING):
+            with self.subTest(phase=phase):
+                self.assertFalse(
+                    _late_cleanup._reclaimable(
+                        started,
+                        late_generation(phase=phase),
                         scan_of(LABEL_DONE),
                     ),
                 )
@@ -434,6 +499,7 @@ class WholeLedgerRuleTest(unittest.TestCase):
             with self.subTest(phase=phase):
                 self.assertTrue(
                     _late_cleanup._reclaimable(
+                        _UNSTARTED,
                         replace(_one_consumer(), phase=phase),
                         scan_of(LABEL_DONE, closed=True),
                     ),

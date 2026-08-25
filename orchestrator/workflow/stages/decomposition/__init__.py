@@ -38,8 +38,9 @@ becomes, and `late_models` carries what they hand each other. `late_snapshot`,
 `late_children`, and `late_transaction` are the ordered split itself -- the
 candidate preserved on an immutable ref, the children cut from it, and the
 supersession behind them -- while `late_cleanup` owns what that leaves the
-remote holding and `late_sweep` is the cleanup-only pass that revisits an
-owner a human closed mid-cycle. The kill switch and that sweep are the only
+remote holding, `late_cancellation` owns the irreversible ending an owner
+observed closed earns, and `late_sweep` is the cleanup-only pass that revisits
+an owner a human closed mid-cycle. The kill switch and that sweep are the only
 things that dispatch into them -- an in-flight generation is what stops
 `DECOMPOSE=off` from routing an unadjudicated candidate to implementation --
 and the seam that decides a candidate is oversized is a later change, so the

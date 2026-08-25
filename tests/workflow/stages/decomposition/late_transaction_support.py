@@ -73,6 +73,9 @@ KEY_EXPECTED_CHILDREN = "expected_children_count"
 KEY_PARENT_NUMBER = "parent_number"
 KEY_PR_NUMBER = "pr_number"
 KEY_UMBRELLA = "umbrella"
+
+# The terminal a cancelled cycle earns once it owes the remote nothing.
+LABEL_REJECTED = "rejected"
 KEY_RESOURCES = "late_resources"
 
 KEY_ANCESTRY_REF = "late_ancestry_snapshot_ref"

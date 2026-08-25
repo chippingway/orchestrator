@@ -54,12 +54,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from typing import Optional
 
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import exemption as _exemption
 from orchestrator.workflow.late_split import payloads as _payloads
+from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateGeneration,
@@ -68,6 +71,9 @@ from orchestrator.workflow.late_split.models import (
 from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
 from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
+)
+from orchestrator.workflow.stages.decomposition import (
+    late_owner as _late_owner,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
     _GuardedSplit,
@@ -190,20 +196,54 @@ def _reconcile_single(
     candidate supersedes nothing: it publishes as itself, from the branch it
     is already committed on, so preserving a copy of it would create an
     obligation with nothing on the other end.
+
+    The owner is asked between every one of the steps below, and these are
+    the barriers in this mode that protect the RECORD rather than an effect:
+    the last write drops the cycle entirely, and the sweep that should end a
+    cancelled one reads that cycle to decide anything is owed. So a close
+    latched during the hold release, the pull-request lookup, the exemption
+    write, or the handoff label stops here -- not one step later, where the
+    generation the durable receipt would be adopted against no longer exists.
+
+    Latch-only, like the create and the spawn: the claim a full guard writes
+    would name `owner_check` over the boundary this tick reached.
     """
     if not _released_hold(context) or not _reconciled_pr(context):
         return _late_outcome._finished(context, _LateDisposition.PARKED)
-    _exemption.record_exemption(
-        context.state, context.generation.candidate_sha,
-    )
-    _late_outcome._persist(context)
-    context.gh.set_workflow_label(context.issue, WorkflowLabel.IMPLEMENTING)
-    _published(context)
+    ended = _handed_back(context)
+    if ended is not None:
+        return _late_outcome._finished(context, ended)
     return replace(
         finished,
         disposition=_LateDisposition.SETTLED,
         generation=context.generation,
     )
+
+
+def _handed_back(context: _LateContext) -> Optional[_LateDisposition]:
+    """Record the exemption, hand the label on, and retire the cycle.
+
+    Three requests in the one order a crash in them is safe in, with the
+    latch asked between each: the exemption is what stops the gate measuring
+    the same commit again, the label is what makes another stage read it, and
+    the retirement is what says this issue has no late question left. None is
+    reached over a close somebody observed.
+    """
+    stopped = _late_owner._latch_stops(context)
+    if stopped is not None:
+        return stopped
+    _exemption.record_exemption(
+        context.state, context.generation.candidate_sha,
+    )
+    _late_outcome._persist(context)
+    stopped = _late_owner._latch_stops(context)
+    if stopped is not None:
+        return stopped
+    context.gh.set_workflow_label(context.issue, WorkflowLabel.IMPLEMENTING)
+    stopped = _late_owner._latch_stops(context)
+    if stopped is not None:
+        return stopped
+    return _published(context)
 
 
 def _released_hold(context: _LateContext) -> bool:
@@ -317,7 +357,7 @@ def _unreconciled(context: _LateContext, message: str) -> bool:
     return False
 
 
-def _published(context: _LateContext) -> None:
+def _published(context: _LateContext) -> Optional[_LateDisposition]:
     """Say what was decided, and retire the generation that decided it.
 
     The two ledgers are the only thing carried across. An obligation the
@@ -331,6 +371,28 @@ def _published(context: _LateContext) -> None:
     a label already handed on with the generation still live -- costs a tick:
     the relabel guard puts the issue back and this reconciliation runs again,
     finding the hold already released and the exemption already recorded.
+
+    Both of those steps are requests, though, and this is the last place a
+    latched close can still be answered: past the retirement the record has no
+    cycle identity at all, which is the one state the ending cannot be entered
+    from. So the latch is asked between them, and asked again BEHIND the
+    retirement -- where the answer is not a refusal but a reinstatement, since
+    the generation it would have ended is still in memory.
+
+    The write and that last barrier are held inside `retiring_cycle`, because
+    "still in memory" is a claim about THIS thread and the poll runs beside
+    it. A poll that reads the record between the two finds no cycle, and
+    without the window it would answer "nothing to end", drop the observation,
+    and leave the barrier below asking a latch nobody is holding any more.
+    Inside it the record's silence proves nothing, the observation is kept,
+    and the receipt the poll leaves on the thread is scoped to the cycle this
+    window names.
+
+    The window is memory, though, and the barrier behind the write is this
+    process's. So the cycle being dropped is recorded in the same write that
+    drops it, outside the group that write clears: a process that dies before
+    the barrier runs leaves a receipt naming a cycle and a record that still
+    says which cycle that was, which is all a later one needs to adopt it.
     """
     _comments._post_issue_comment(
         context.gh, context.issue, context.state,
@@ -340,10 +402,65 @@ def _published(context: _LateContext) -> None:
             threshold=context.generation.threshold,
         ),
     )
-    context.generation = LateGeneration(
-        resources=context.generation.resources,
-        consumers=context.generation.consumers,
-        opaque_resources=context.generation.opaque_resources,
-        opaque_consumers=context.generation.opaque_consumers,
+    live = context.generation
+    stopped = _late_owner._latch_stops(context)
+    if stopped is not None:
+        return stopped
+    retiring = _observations.retiring(
+        context.spec.slug, context.issue.number, live.cycle_id,
     )
-    _late_outcome._persist(context)
+    with retiring.held():
+        context.generation = LateGeneration(
+            resources=live.resources,
+            consumers=live.consumers,
+            opaque_resources=live.opaque_resources,
+            opaque_consumers=live.opaque_consumers,
+        )
+        _late_state.record_retired_cycle(context.state, live.cycle_id)
+        _late_outcome._persist(context)
+    return _reinstated(context, live, retiring)
+
+
+def _reinstated(
+    context: _LateContext,
+    live: LateGeneration,
+    retiring: _observations.RetiringCycle,
+) -> Optional[_LateDisposition]:
+    """Put back a cycle the retirement write dropped a moment too early.
+
+    That write is a request like every other, so a poll can observe the close
+    inside it -- and what it leaves behind is a record with no cycle identity.
+    Nothing can end that: the closed-owner sweep reads the cycle to decide
+    anything is owed, and a receipt adopted from the thread has no generation
+    to be adopted against, so the observation would be stranded for good.
+
+    Asked OF the window rather than of the latch, and that is what makes it
+    unmissable: the window decides what it observed as it closes, under the
+    lock that closes it, so there is no interval between the answer and the
+    exit for a poll to latch a close and post a receipt in. A barrier that
+    read the latch itself would leave exactly one.
+
+    The window is also what makes the question answerable at all: without it
+    a poll racing the write would have read the retired record, called the
+    reading spent, and cleared the very latch this asks about.
+
+    The generation the publication was carrying is still in this call's own
+    memory, which is the whole reason the answer here is a reinstatement
+    rather than a refusal. It goes back exactly as it was and is cancelled
+    from there, so what the ending reads is the cycle that actually ran.
+
+    The published side of the tick is left standing: the exemption is
+    recorded, the notice is said, and the label is handed on. None of the
+    three is this owner's to take back, and what the ending does with the
+    issue where it stands is the cancellation's own business.
+    """
+    if not retiring.observed:
+        return None
+    log.warning(
+        "repo=%s issue=#%d was observed closed as its accepted candidate was "
+        "published; putting cycle %d back on the record so the cancellation "
+        "has something to end",
+        context.spec.slug, context.issue.number, live.cycle_id,
+    )
+    context.generation = live
+    return _late_owner._latch_stops(context)

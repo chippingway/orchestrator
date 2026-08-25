@@ -62,6 +62,7 @@ from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split import telemetry as _telemetry
 from orchestrator.workflow.late_split.models import (
+    IN_FLIGHT_PHASES,
     LateFailure,
     LatePhase,
     LateVerdict,
@@ -101,6 +102,12 @@ _LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 # Every way this mode hands an issue back, spelled once because each is a
 # durable pinned value and because the set below is read against them.
 PARK_HOLD_FAILED = "late_plan_pr_hold_failed"
+
+# The boundaries an owner-check claim can be standing at. `owner_check` is
+# where a completion ordinarily leaves the record; a transaction re-entered
+# after a crash keeps the boundary it interrupted instead -- the record's own
+# rule refuses that rewind -- and its claim is as standing as any other.
+_CLAIM_PHASES = frozenset((LatePhase.OWNER_CHECK, *IN_FLIGHT_PHASES))
 PARK_INCOMPLETE = "late_generation_incomplete"
 PARK_WORKTREE_MISSING = "late_worktree_missing"
 PARK_WORKTREE_MUTATED = "late_worktree_mutated"
@@ -759,8 +766,7 @@ def _completed(context: _LateContext) -> None:
     afterwards would be staging it into a write that has already happened.
     """
     context.generation = replace(
-        context.generation,
-        phase=LatePhase.OWNER_CHECK,
+        context.generation.at_phase(LatePhase.OWNER_CHECK),
         owner_check_pending=True,
     )
     _persist(context)

@@ -42,7 +42,10 @@ class ConflictIncludedInPollableIssuesTest(unittest.TestCase):
 
     def test_closed_unrelated_label_is_not_polled(self) -> None:
         # Closed issues with neither `in_review` nor `resolving_conflict`
-        # must stay out of the sweep so it does not balloon.
+        # must stay out of the sweep so it does not balloon: the terminal
+        # label is on every issue this orchestrator has ever finished, and
+        # nothing an umbrella's terminal leaves behind needs it -- the write
+        # that retires the cycle lands before the label does.
         gh = FakeGitHubClient()
         issue = make_issue(TERMINAL_ISSUE, label="done")
         issue.closed = True

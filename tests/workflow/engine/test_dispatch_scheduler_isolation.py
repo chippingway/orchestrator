@@ -63,7 +63,7 @@ class TickExecutionIsolationTest(_SchedulerWorkflowTest):
             patch.object(gh, "_for_worker_thread", clone),
             patch_base_refresh(),
             _patch_process_issue(
-                side_effect=lambda *args: _record_current_thread(worker_threads, *args),
+                side_effect=lambda *args, **read: _record_current_thread(worker_threads, *args),
             ),
         ):
             _tick.tick(gh, self._spec(parallel_limit=1))

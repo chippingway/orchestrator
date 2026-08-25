@@ -42,13 +42,16 @@ an issue a human closed, or walk a dependency graph and activate children under
 it. So the cleanup route is taken FIRST, ahead of the table and ahead of the
 pinned-state guards, and the issue never reaches either.
 
-Past that route, one read of the issue's own pinned comment answers two
+Past that route, one read of the issue's own pinned comment answers three
 questions that can stop the tick outright: a live late adjudication the label
-was moved out from under, and a child of a split whose snapshot the remote no
-longer has. The second is asked here rather than in a stage precisely because
-the issue it is about is one nothing below would touch -- a consumer that ended
-wears `done` or `rejected`, reopening leaves the label where it was, and both
-are terminal no-ops.
+was moved out from under, a child of a split whose snapshot the remote no
+longer has, and an owner whose cancelled cycle is still holding something on
+the remote. The last two are asked here rather than in a stage precisely
+because the issues they are about are ones nothing below would touch safely --
+a consumer that ended wears `done` or `rejected`, reopening leaves the label
+where it was, and both are terminal no-ops; and a reopened cancelled owner
+wears a label whose handler would spawn the decomposer or activate children
+over a cycle a close already ended.
 
 That is also why such an issue is partitioned as FAN-OUT rather than into the
 family bucket, despite wearing a family-aware label. The bucket's exemption is
@@ -93,16 +96,21 @@ import logging
 import time
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Mapping, Optional
+from typing import Callable, Mapping, Optional
 
 from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.issues import CLEANUP_SWEEP_LABELS, issue_is_closed
+from orchestrator.github.issues import (
+    CLEANUP_ROUTE_LABELS,
+    CLEANUP_SWEEP_LABELS,
+    issue_is_closed,
+)
 from orchestrator.observability.analytics import recording
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.scheduler import IssueScheduler
+from orchestrator.workflow.engine import observations
 from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 log = logging.getLogger("orchestrator.workflow")
@@ -112,6 +120,15 @@ log = logging.getLogger("orchestrator.workflow")
 # sequentially, refetched on a worker, or drained from the family bucket.
 _PROCESSING_FAILED_LOG = "repo=%s issue=#%s processing failed"
 
+# The three ways a cleanup observation goes unspent, said in the one line that
+# holds it, so an operator watching a closed owner sit still for a tick can
+# tell a worker holding the issue from a pass that reached it and broke, and
+# either from a pass that ran the whole ending, left it owed, and could not
+# get the issue back under a label a later tick would find it by.
+_HELD_BY_A_WORKER = "a worker is already running it"
+_PASS_FAILED = "the pass that took it failed before marking anything"
+_ENDING_UNFINISHED = "the ending it ran is owed under no label the sweep asks for"
+
 _FAMILY_AWARE_LABELS = frozenset((
     WorkflowLabel.DECOMPOSING, WorkflowLabel.BLOCKED, WorkflowLabel.UMBRELLA,
 ))
@@ -120,17 +137,26 @@ _CAP_EXEMPT_FAMILY_LABELS = frozenset((
     WorkflowLabel.BLOCKED, WorkflowLabel.UMBRELLA,
 ))
 
-# The labels whose CLOSED issues the sweep yields for cleanup only. Kept as a
+# Every label whose CLOSED issues the sweep yields for cleanup only. Kept as a
 # set of the members the sweep publishes so the two cannot drift: a label
 # queried there and missing here is a closed issue dispatched to the stage
 # handler its label names, which is the one thing the cleanup route exists to
 # prevent.
+_CLEANUP_ROUTE_LABELS = frozenset(CLEANUP_ROUTE_LABELS)
+
+# The narrower pair, and the one question that is about an OPEN issue: the two
+# an adjudication actually RUNS under are the two where a close landing after
+# the poll changes which handler this tick calls, so the sequential path pays a
+# refetch for them. The recovery labels beside them are only ever asked about
+# while closed -- an open `ready` issue is not an ending in progress -- so
+# nothing there earns that request.
 _CLEANUP_SWEEP_LABELS = frozenset(CLEANUP_SWEEP_LABELS)
 
 _FAMILY_BUCKET_ISSUE: int = 0
 
 _CONFLICTS_PACKAGE = "orchestrator.workflow.stages.conflicts"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
+_LATE_CANCELLATION_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_cancellation"
 _LATE_RELABEL_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_relabel"
 _LATE_REUSE_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_reuse"
 _DISCUSSION_PACKAGE = "orchestrator.workflow.stages.discussion"
@@ -172,14 +198,40 @@ _STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyTy
 })
 
 
+@dataclass(frozen=True)
+class _PollReading:
+    """What the poll established about one issue, carried to its worker.
+
+    Both halves are readings the ENUMERATION took, and neither is one the
+    worker can take again: it mints its own client and refetches the issue, so
+    a human who reopens one in that window would have the fresh object answer
+    differently. `cleanup_only` is the route a closed late owner was
+    classified into and may not be re-derived out of; `closed` is the same
+    reading for an issue whose label names an ordinary terminal instead, where
+    the guard that ends a live cycle is what reads it.
+    """
+
+    cleanup_only: bool = False
+    closed: bool = False
+
+
+# What an ordinary open issue carries, which is nothing at all.
+_POLLED_OPEN = _PollReading()
+
+
 def _pinned_state_refuses(
-    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, label: Optional[str],
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    label: Optional[str],
+    *,
+    observed_closed: bool = False,
 ) -> bool:
     """True when what this issue's own pinned comment records stops the tick.
 
-    ONE read, two questions, because the read is what costs -- a comment walk
-    per labelled issue per tick, on top of the one that issue's own handler
-    makes.
+    ONE read, three questions, because the read is what costs -- a comment
+    walk per labelled issue per tick, on top of the one that issue's own
+    handler makes.
 
     The first is a live late adjudication. An oversized committed candidate is
     adjudicated under ``workflow:decomposing``, and while that question is open
@@ -199,21 +251,48 @@ def _pinned_state_refuses(
     it. It costs nothing extra on the wire in the steady state -- the guard
     asks this host before it asks the remote.
 
-    Both step aside for the label the adjudication actually sits on, which is
-    where every one of its own ticks is spent, and where an ancestor's snapshot
-    is not what the issue is working from -- but only once the record PROVES
-    the adjudication is this issue's own. The label alone proves nothing: a
-    child of a split closed while it was being decomposed comes back with
-    ``decomposing`` exactly where it was and no generation at all, and its
-    ancestor's ref may well have been reclaimed while it was closed. Waving
-    that through on the label would spawn the decomposer against the reuse
-    instructions in its body, naming a ref that is gone. So the read is taken
-    first and the label is answered out of it. Imported at call time like the
-    handlers below, since the stage tree imports this module.
+    The third is an owner whose cycle a close already ended and whose cleanup
+    has not finished. Cancellation is irreversible within a cycle, so a human
+    who reopens the issue gets a fresh one -- but not while the old one still
+    holds a branch, a ref, or a plan pull request, because both labels an
+    adjudication can be wearing name a handler that would act on the issue
+    rather than settle it.
+
+    It is asked FIRST, because it is the only one of the three that has to RUN
+    rather than merely answer, and the other two can refuse indefinitely. The
+    reuse guard HOLDS a dispatch -- writing nothing, on purpose -- for as long
+    as an ancestor's ref cannot be asked about, and an owner of its own
+    cancelled cycle nested under such an ancestor would spend that entire
+    outage never reconciling its own plan PR, branch, or ref. Nothing is lost
+    by the order: a cancelled cycle starts no work, so neither question below
+    is about anything it is going to do, and both are asked again on the tick
+    after its ending is written.
+
+    The other two step aside for the label the adjudication actually sits on,
+    which is where every one of its own ticks is spent, and where an
+    ancestor's snapshot is not what the issue is working from -- but only once
+    the record PROVES the adjudication is this issue's own. The label alone
+    proves nothing: a child of a split closed while it was being decomposed
+    comes back with ``decomposing`` exactly where it was and no generation at
+    all, and its ancestor's ref may well have been reclaimed while it was
+    closed. Waving that through on the label would spawn the decomposer
+    against the reuse instructions in its body, naming a ref that is gone. So
+    the read is taken first and the label is answered out of it. Imported at
+    call time like the handlers below, since the stage tree imports this
+    module.
     """
     late_relabel = importlib.import_module(_LATE_RELABEL_OWNER)
     state = late_relabel._dispatch_state(gh, issue)
     if state is None:
+        return True
+    late_cancellation = importlib.import_module(_LATE_CANCELLATION_OWNER)
+    if observed_closed:
+        # The poll read this issue closed and the worker has refetched it
+        # since. A reopen in that window would leave the fresh object saying
+        # open with a live cycle under it, so the reading is applied here
+        # rather than re-derived from the object the guard is about to read.
+        late_cancellation._mark_observed_close(gh, issue, state)
+    if late_cancellation._refuses_cancelled(gh, spec, issue, label, state):
         return True
     if label == WorkflowLabel.DECOMPOSING and late_relabel._adjudicating(state):
         return False
@@ -228,17 +307,46 @@ def _pinned_state_refuses(
     return late_reuse._refuses_reuse(gh, spec, issue, state)
 
 
+def _parked_past_the_mark(spec: config.RepoSpec, issue: Issue) -> bool:
+    """Whether a control label the closed reading was let past applies again.
+
+    `backlog` / `paused` park an issue outside the state machine, and the one
+    thing that may still happen under one is recording a close: an observed
+    close ends a late cycle irreversibly, the pass that would record it is the
+    one the park would have dropped, and a mark deferred is a mark lost. That
+    is the whole of the waiver -- the mark is behind this, and the ending it
+    earns is deferred by the same label wherever it is entered.
+
+    So everything past the mark is parked again, and it has to be by asking
+    rather than by inference: a record with no late cycle marks nothing at
+    all, and the guard above answers `False` for one, which would otherwise
+    put a parked issue in front of the very handler the label exists to stop.
+
+    Costs no request: the labels are already on the object this was handed.
+    """
+    skip_label = hard_skip_control_label(issue)
+    if skip_label is None:
+        return False
+    log.info(
+        "repo=%s issue=#%s has %r and owns no cycle a close would end; "
+        "skipping everything the park defers",
+        spec.slug, issue.number, skip_label,
+    )
+    return True
+
+
 def _cleanup_sweep_only(issue: Issue, label: Optional[str]) -> bool:
     """True when this issue is here for its ledger and nothing else.
 
-    A closed issue on ``decomposing`` or ``umbrella`` reaches a tick only
-    because the cleanup sweep asked for it, and what it is owed is a pass over
-    its generation ledger. Its label still names a stage handler -- one that
-    spawns the decomposer, or one that walks a dependency graph and activates
-    children -- so the closed reading has to be taken before the label is, or
-    the sweep would be resuming the workflow a human closed.
+    A closed issue on one of the four cleanup-routed labels reaches a tick
+    only because the cleanup sweep asked for it, and what it is owed is a pass
+    over its generation ledger. Its label still names a stage handler -- one
+    spawns the decomposer, one walks a dependency graph and activates
+    children, one hands the issue to a developer -- so the closed reading has
+    to be taken before the label is, or the sweep would be resuming the
+    workflow a human closed.
     """
-    return label in _CLEANUP_SWEEP_LABELS and issue_is_closed(issue)
+    return label in _CLEANUP_ROUTE_LABELS and issue_is_closed(issue)
 
 
 def _call_handler(
@@ -259,7 +367,7 @@ def _route_issue_to_handler(
     issue: Issue,
     label: Optional[str],
     *,
-    cleanup_only: bool = False,
+    reading: _PollReading = _POLLED_OPEN,
 ) -> None:
     """Dispatch one issue to its stage handler by workflow label.
 
@@ -275,24 +383,37 @@ def _route_issue_to_handler(
     label goes to the sweep owner, because its label names a handler that would
     resume the workflow its close ended. And what the issue's own pinned
     comment records can stop the tick outright -- a live adjudication the label
-    was moved out from under, or a snapshot this child was cut from and the
-    remote no longer has. The cleanup route comes first: that guard spends a
-    pinned read to decide, and a closed owner is not dispatched on either
-    answer.
+    was moved out from under, a snapshot this child was cut from and the remote
+    no longer has, or a cancelled cycle this owner has still to settle. The
+    cleanup route comes first: that guard spends a pinned read to decide, and a
+    closed owner is not dispatched on any of those answers.
 
     ``cleanup_only`` is that first route arriving as a decision rather than as
     a reading. It is set by the submit that a closed cleanup owner was
     classified into, and it BINDS: the worker refetches the issue after the
     classification, so a human who reopens one in that window would otherwise
     have the freshly-read label send it to the handler its cap-exempt submit
-    was granted on the understanding it would never reach. The sweep refuses
-    an issue that is open again, so the answer to that race is a no-op and a
-    correctly classified next tick.
+    was granted on the understanding it would never reach. What the sweep does
+    with an issue that is open again is mark the cancellation the observed
+    close already earned and stop there, leaving every external part of the
+    ending to the guard that owns a reopened cancelled owner from the next
+    tick.
+
+    A control label the closed reading was let past is re-applied BEHIND the
+    guard, because what that reading buys is the mark and nothing else: the
+    park was waived so an observed close could be recorded before it was lost,
+    and a record with no late cycle to mark has nothing to record -- so the
+    stage handler below it would be the one reaction an operator's `paused`
+    exists to prevent.
     """
-    if cleanup_only or _cleanup_sweep_only(issue, label):
+    if reading.cleanup_only or _cleanup_sweep_only(issue, label):
         _call_handler(gh, spec, issue, _CLEANUP_SWEEP_TARGET)
         return
-    if _pinned_state_refuses(gh, spec, issue, label):
+    if _pinned_state_refuses(
+        gh, spec, issue, label, observed_closed=reading.closed,
+    ):
+        return
+    if _parked_past_the_mark(spec, issue):
         return
     target = _STAGE_HANDLER_TARGETS.get(label)
     if target is not None:
@@ -337,17 +458,95 @@ def _process_polled_issue(
     Hard-skipped issues are dropped here as the partition drops them, rather
     than inside `_process_issue`, so the classification this path takes is the
     same one the other two take.
+
+    Which labels that applies to is `_cleanup_routed`'s question, and it is
+    not the same one the partition asks: a closed issue is routed by any of
+    the four cleanup labels, while only the two an adjudication runs under
+    earn the refetch an OPEN issue costs.
+
+    A latched close overrides the label as it does in the partition, and for
+    the same reason: the reading it carries is one the reopen it survived took
+    off the remote, so nothing this path could read would find it. It
+    overrides the hard-skip filter with it -- an operator's park defers the
+    external half of the ending, which is what the sweep does with a parked
+    issue anyway, and never the mark. And the cleanup it routes to is wrapped
+    in the same observation hold the worker paths use, because a pass that
+    raises here marked nothing either.
     """
+    issue_number = int(issue.number)
+    latched = observations.close_observed(spec.slug, issue_number)
     skip, label = _classify_pollable_issue(gh, spec, issue)
-    if skip:
+    if skip and not latched:
         return
-    if label not in _CLEANUP_SWEEP_LABELS:
+    closed = issue_is_closed(issue)
+    if not latched and not _cleanup_routed(label, closed=closed):
+        _polled_ordinary(gh, spec, issue, closed=closed)
+        return
+    if not latched and not closed:
+        _polled_open_owner(gh, spec, issue_number)
+        return
+    # The refetch is INSIDE the hold, because it is the first thing a cleanup
+    # spends and the likeliest thing to fail: a read that raised marked
+    # nothing, and the reading this pass was taking would otherwise be gone.
+    with _cleanup_observation(gh, spec, issue_number):
+        _process_issue(
+            gh, spec, gh.get_issue(issue_number),
+            reading=_PollReading(cleanup_only=True, closed=True),
+        )
+
+
+def _cleanup_routed(label: Optional[str], *, closed: bool) -> bool:
+    """Whether this tick's own path has to treat the issue as a cleanup.
+
+    The two an adjudication RUNS under answer yes whatever the issue reads
+    as, because the close is exactly what this path has no hand-off to take
+    for it: an owner closed after the poll would otherwise reach the stage
+    its label names on a stale open reading. The two an interrupted ending
+    can be LEFT on answer yes only while closed -- an open `ready` issue is a
+    developer's to pick up rather than an ending in progress, and refetching
+    every one of them per tick would spend a request on a question nobody is
+    asking.
+    """
+    if label in _CLEANUP_SWEEP_LABELS:
+        return True
+    return closed and label in _CLEANUP_ROUTE_LABELS
+
+
+def _polled_open_owner(
+    gh: GitHubClient, spec: config.RepoSpec, issue_number: int,
+) -> None:
+    """Refetch an owner the poll read OPEN, and dispatch what comes back.
+
+    The refetch is the load-bearing half of this route: a cleanup-swept label
+    decides which handler runs off the close, and this path has no hand-off
+    to take that reading for it. So it is also where a close can first exist
+    at all, which is why the dispatch is wrapped in the hold one earns.
+    """
+    refetched = gh.get_issue(issue_number)
+    with _refetched_close(gh, spec, refetched, _POLLED_OPEN):
+        _process_issue(gh, spec, refetched)
+
+
+def _polled_ordinary(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    *,
+    closed: bool,
+) -> None:
+    """Dispatch one polled issue whose label names its own handler.
+
+    A CLOSED one carries the poll's reading and keeps it unless the pass
+    spent it, for the reason the worker paths do: nothing latched it, this
+    pass is what would have acted on it, and neither a raise nor a pinned
+    read the guard could not take leaves anything behind. An open one carries
+    nothing and has nothing to keep.
+    """
+    if not closed:
         _process_issue(gh, spec, issue)
         return
-    _process_issue(
-        gh, spec, gh.get_issue(int(issue.number)),
-        cleanup_only=issue_is_closed(issue),
-    )
+    with _closed_reading(gh, spec, int(issue.number)):
+        _process_issue(gh, spec, issue, reading=_PollReading(closed=True))
 
 
 def _process_issue(
@@ -355,22 +554,17 @@ def _process_issue(
     spec: config.RepoSpec,
     issue: Issue,
     *,
-    cleanup_only: bool = False,
+    reading: _PollReading = _POLLED_OPEN,
 ) -> None:
     # Postponed-task hold: applying `backlog` (or `paused`) parks the issue
-    # outside the state machine entirely until the label is removed. Checked
-    # before reading the workflow label so the orchestrator never decomposes,
-    # spawns an agent, or otherwise reacts while the operator is using the
-    # label as a "not yet" signal. Hard-skips are NOT counted as a stage
-    # evaluation: no handler runs and there is nothing to time.
-    skip_label = hard_skip_control_label(issue)
-    if skip_label is not None:
-        log.info(
-            "repo=%s issue=#%s has %r; skipping",
-            spec.slug, issue.number, skip_label,
-        )
-        return
+    # outside the state machine entirely until the label is removed, so the
+    # orchestrator never decomposes, spawns an agent, or otherwise reacts
+    # while the operator is using the label as a "not yet" signal. Hard-skips
+    # are NOT counted as a stage evaluation: no handler runs and there is
+    # nothing to time.
     label = gh.workflow_label(issue)
+    if _hard_skipped(spec, issue, label, reading):
+        return
     log.info("repo=%s issue=#%s label=%r", spec.slug, issue.number, label)
     # Time the handler dispatch and append a single `stage_evaluation`
     # analytics record on exit. `evaluation_result` flips to "error" inside the
@@ -383,9 +577,7 @@ def _process_issue(
     start = time.monotonic()
     evaluation_result = "ok"
     try:
-        _route_issue_to_handler(
-            gh, spec, issue, label, cleanup_only=cleanup_only,
-        )
+        _route_issue_to_handler(gh, spec, issue, label, reading=reading)
     except Exception:
         evaluation_result = "error"
         raise
@@ -420,22 +612,57 @@ class _PollablePartition:
 
 @dataclass
 class _PollablePartitionBuilder:
+    """Sorts one tick's issues, with the held observations overriding it.
+
+    ``deferred`` is the set an earlier tick observed closed and could hand to
+    no worker, and it decides this issue's route on its own -- ahead of the
+    label, ahead of the close, and ahead of every filter that runs before this
+    builder, because the reading those all come from is exactly what a reopen,
+    a park, or a relabel in the meantime has taken away. An issue in it goes
+    where a closed owner goes: fan-out, cap-exempt, and cleanup-only. What
+    the sweep does with one that reads open again is mark the cancellation
+    the observed close already earned and stop there, which is safe on any
+    label and a no-op for an issue carrying no late cycle at all.
+    """
+
     family_numbers: list[int] = field(default_factory=list)
     family_labels: list[Optional[str]] = field(default_factory=list)
     fanout_numbers: list[int] = field(default_factory=list)
     fanout_closed: set[int] = field(default_factory=set)
     cleanup_numbers: set[int] = field(default_factory=set)
+    deferred: frozenset[int] = frozenset()
+
+    yielded: set[int] = field(default_factory=set)
+
+    def owed(self, issue_number: int) -> bool:
+        """Whether an earlier poll's held observation decides this route."""
+        return issue_number in self.deferred
 
     def add(self, issue_number: int, label: Optional[str], closed: bool) -> None:
-        if _drains_in_family_bucket(label, closed):
+        owed = self.owed(issue_number)
+        self.yielded.add(issue_number)
+        if not owed and _drains_in_family_bucket(label, closed):
             self.family_numbers.append(issue_number)
             self.family_labels.append(label)
             return
         self.fanout_numbers.append(issue_number)
-        if closed:
+        if closed or owed:
             self.fanout_closed.add(issue_number)
-        if closed and label in _CLEANUP_SWEEP_LABELS:
+        if owed or (closed and label in _CLEANUP_ROUTE_LABELS):
             self.cleanup_numbers.add(issue_number)
+
+    def add_unyielded(self) -> None:
+        """Add every held observation this enumeration never reached.
+
+        What the enumeration yields is decided by the labels the closed sweep
+        queries, so a human who moves the label off one of them -- or closes
+        the issue on a label the sweep does not query at all -- makes the
+        owner unreachable. The observation is older than any of that and is
+        not lost with it: the issue is added by NUMBER, on the strength of the
+        reading alone, and routed exactly where a closed owner goes.
+        """
+        for owed in sorted(self.deferred - self.yielded):
+            self.add(owed, None, True)
 
     def build(self) -> _PollablePartition:
         return _PollablePartition(
@@ -457,7 +684,7 @@ def _drains_in_family_bucket(label: Optional[str], closed: bool) -> bool:
     issue and the whole bucket is cap-counted, so a repository at its cap
     stops reclaiming refs until the decomposer is idle.
     """
-    if closed and label in _CLEANUP_SWEEP_LABELS:
+    if closed and label in _CLEANUP_ROUTE_LABELS:
         return False
     return label is None or label in _FAMILY_AWARE_LABELS
 
@@ -465,15 +692,57 @@ def _drains_in_family_bucket(label: Optional[str], closed: bool) -> bool:
 def _read_issue_routing(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue,
 ) -> tuple[bool, Optional[str]]:
-    """Return ``(skip, label)`` from the issue's control / workflow labels."""
+    """Return ``(skip, label)`` from the issue's control / workflow labels.
+
+    The label is reported whether or not the issue is skipped, because a
+    caller that keeps a skipped one still has to bucket it -- and a parked
+    issue answered `None` would read as the unlabeled pickup, which is a
+    family-aware route and would flip the whole bucket cap-counted.
+    """
+    label = gh.workflow_label(issue)
+    return _hard_skipped(spec, issue, label, _POLLED_OPEN), label
+
+
+def _hard_skipped(
+    spec: config.RepoSpec,
+    issue: Issue,
+    label: Optional[str],
+    reading: _PollReading,
+) -> bool:
+    """Whether a control label parks this issue outside the state machine.
+
+    ``backlog`` / ``paused`` park everything, with one exception: an issue
+    somebody observed CLOSED. Dropping one of those loses the close itself --
+    an observed close ends a late cycle irreversibly, and the only pass that
+    would ever record that is the one this filter is about to discard, so an
+    owner paused while closed would come back from a reopen and an unpause
+    with a live generation and spawn against it. So it is routed, and what
+    the control label defers is everything past the mark: both the sweep and
+    the dispatcher's own cancelled-cycle guard read the same label and stop
+    there.
+
+    Any of the three readings counts, because each is a close somebody saw:
+    the bound cleanup route, the bound closed reading behind a label that
+    names an ordinary terminal, and this tick's own look at a closed issue on
+    a cleanup-swept label.
+    """
     skip_label = hard_skip_control_label(issue)
-    if skip_label is not None:
+    if skip_label is None:
+        return False
+    if reading.cleanup_only or reading.closed or _cleanup_sweep_only(
+        issue, label,
+    ):
         log.info(
-            "repo=%s issue=#%s has %r; skipping",
+            "repo=%s issue=#%s has %r and was observed closed; ending its "
+            "late cycle and deferring everything else",
             spec.slug, issue.number, skip_label,
         )
-        return True, None
-    return False, gh.workflow_label(issue)
+        return False
+    log.info(
+        "repo=%s issue=#%s has %r; skipping",
+        spec.slug, issue.number, skip_label,
+    )
+    return True
 
 
 def _classify_pollable_issue(
@@ -506,7 +775,9 @@ def _classify_pollable_issue(
 
 
 def _partition_pollable_issues(
-    gh: GitHubClient, spec: config.RepoSpec,
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    deferred: Optional[frozenset[int]] = None,
 ) -> _PollablePartition:
     """Split this tick's pollable issues into the family and fanout buckets.
 
@@ -523,14 +794,133 @@ def _partition_pollable_issues(
     cheap terminal finalize or a cleanup pass over a closed owner's ledger --
     neither spawns, so both are submitted cap-exempt. Hard-skip (``backlog``
     / ``paused``) issues are dropped entirely.
+
+    A held close observation outranks both of those filters, because it is
+    not a reading of this tick's at all: it is one an earlier poll took and
+    could hand to nobody. An operator who parks the issue does not undo it --
+    the sweep it routes to marks the cancellation and defers every external
+    step, which is exactly what the park asks for -- and an issue the
+    enumeration does not even yield is added on the strength of the
+    observation alone, since a human who moved the label off the two the
+    closed sweep queries would otherwise take the reading away for good.
     """
-    builder = _PollablePartitionBuilder()
+    builder = _PollablePartitionBuilder(deferred=deferred or frozenset())
     for issue in gh.list_pollable_issues():
-        skip, label = _classify_pollable_issue(gh, spec, issue)
-        if skip:
-            continue
-        builder.add(int(issue.number), label, issue_is_closed(issue))
+        _sorted_pollable(builder, gh, spec, issue)
+    builder.add_unyielded()
     return builder.build()
+
+
+def _sorted_pollable(
+    builder: _PollablePartitionBuilder,
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+) -> None:
+    """Classify one yielded issue into the bucket its route names.
+
+    A CLOSED reading is latched the moment this establishes it, which is the
+    earliest anything in this process knows. What stands between here and the
+    submit that would carry it is the rest of the enumeration -- a label read
+    per issue in the repository -- and a worker holding this issue is asking
+    the latch before every irreversible step it takes for the whole of that
+    window. A reading latched only once the scheduler had refused would leave
+    that worker free to spawn, create a child, or activate one against an
+    issue this poll already saw ended.
+
+    It is the same reading either way, and every path that carries it settles
+    it: an admitted cleanup drops it once its pass has run, an admitted
+    ordinary pass drops it where the record positively says there is nothing
+    to end, and a refused submit keeps it deliberately.
+
+    And it is written DOWN here too, not only latched. A latch is memory, so
+    an accepted submit whose task never starts -- a scheduler shutdown, a
+    process that dies before the worker takes it -- would otherwise leave the
+    observation with no durable half at all, and a human who reopens the issue
+    before the next process polls it takes the reading off the remote for
+    good. The receipt is the only thing that survives that, so it goes on the
+    thread while the record can still name the cycle it belongs to.
+
+    It costs one pinned read per closed fan-out issue, and no more: the
+    receipt is written from the object this enumeration already listed, and
+    the same read answers whether the reading is owed at all -- an issue whose
+    record says there is nothing to end has its latch dropped again here, so
+    the machinery is carried only by the owners that actually need it.
+
+    Only where the reading actually travels with the route: the closed
+    fan-out set is exactly what carries one, and a closed issue drained in the
+    family bucket is a hard human stop with nothing to finalize.
+    """
+    issue_number = int(issue.number)
+    closed = issue_is_closed(issue)
+    skip, label = _classify_pollable_issue(gh, spec, issue)
+    if skip and not (closed or builder.owed(issue_number)):
+        return
+    builder.add(issue_number, label, closed)
+    if issue_number in builder.fanout_closed:
+        _recorded_at_poll(gh, spec, issue)
+
+
+def _recorded_at_poll(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue,
+) -> bool:
+    """Latch this closed reading and get its durable half written.
+
+    Latched FIRST, because the reading is the one thing this exists to keep
+    and everything after it is a request that can fail. Dropped again only
+    where the record positively says there is nothing to end -- a closed issue
+    with no late cycle is owed a turn, not an observation, and carrying one
+    would send it through a cleanup pass it never earned.
+
+    Answers whether the reading was kept, so a caller that has to hold one
+    across the pass it is handing it to knows whether it is holding anything.
+    """
+    issue_number = int(issue.number)
+    observations.observe_close(spec.slug, issue_number)
+    late_cancellation = importlib.import_module(_LATE_CANCELLATION_OWNER)
+    if late_cancellation._record_observed_close(
+        gh, spec, issue_number, polled=issue,
+    ):
+        return True
+    observations.settle_close(spec.slug, issue_number)
+    return False
+
+
+@contextlib.contextmanager
+def _refetched_close(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    reading: _PollReading,
+):
+    """Hold a close the REFETCH established and the enumeration could not.
+
+    An issue open when it was listed and closed by the time its pass refetches
+    it carries a reading nothing else in this process holds: no latch was
+    taken, because there was nothing to latch, and nothing was written down.
+    Every step behind the refetch can fail -- the pinned read the guard is
+    built on, the write that marks the cancellation -- and a human who reopens
+    the issue before the next poll takes the reading off the remote for good,
+    leaving the stage handler its label names to resume a cycle a close ended.
+
+    So it is taken here, where it first exists and before anything acts on it,
+    exactly as the enumeration takes its own: latched, written down from the
+    same object, and dropped again where the record says there is nothing to
+    end. What the pass then does with it is the ordinary thing -- the guard
+    reads the same close off the same object -- and what a pass that could not
+    finish leaves behind is the reading, held for the next tick.
+
+    A pass already carrying a closed reading holds nothing here: the poll's
+    own is the older of the two and is already latched and already written.
+    """
+    if reading.closed or not issue_is_closed(issue):
+        yield
+        return
+    if not _recorded_at_poll(gh, spec, issue):
+        yield
+        return
+    with _closed_reading(gh, spec, int(issue.number)):
+        yield
 
 
 def _family_bucket_cap_exempt(family_labels: list[Optional[str]]) -> bool:
@@ -562,7 +952,7 @@ def _refetch_and_process(
     issue_number: int,
     *,
     semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
-    cleanup_only: bool = False,
+    reading: _PollReading = _POLLED_OPEN,
 ) -> None:
     """Mint a per-worker client, refetch the Issue, and run its handler.
 
@@ -583,14 +973,17 @@ def _refetch_and_process(
     own cap-exempt terms, and a reopen between the poll and this call must not
     turn that submit into an agent-spawning stage handler running outside the
     caps -- so the route is carried rather than re-derived.
+
+    Staleness runs the other way too, and that one is an OBSERVATION rather
+    than a route: an issue open when it was listed can be closed by the time
+    this reads it, and nothing in this process holds that reading. It is
+    taken here, against the object the refetch just returned.
     """
     worker_gh = gh._for_worker_thread()
     worker_issue = worker_gh.get_issue(issue_number)
     cm = contextlib.nullcontext() if semaphore_cm is None else semaphore_cm
-    with cm:
-        _process_issue(
-            worker_gh, spec, worker_issue, cleanup_only=cleanup_only,
-        )
+    with cm, _refetched_close(worker_gh, spec, worker_issue, reading):
+        _process_issue(worker_gh, spec, worker_issue, reading=reading)
 
 
 def _drain_scheduler_family_bucket(
@@ -690,16 +1083,14 @@ def _submit_scheduler_fanout_issues(
     per_repo_cap: int,
 ) -> None:
     for issue_number in partition.fanout_numbers:
-        scheduler.submit(
+        cleanup_only = issue_number in partition.cleanup_numbers
+        submitted = scheduler.submit(
             spec.slug,
             issue_number,
-            functools.partial(
-                _refetch_and_process,
-                gh,
-                spec,
-                issue_number,
-                cleanup_only=issue_number in partition.cleanup_numbers,
-            ),
+            _fanout_task(gh, spec, issue_number, reading=_PollReading(
+                cleanup_only=cleanup_only,
+                closed=issue_number in partition.fanout_closed,
+            )),
             family=False,
             # A closed issue's handler is a cheap terminal finalization with
             # no agent spawn -- exempt it from the per-repo / global caps so
@@ -710,6 +1101,306 @@ def _submit_scheduler_fanout_issues(
             cap_exempt=(issue_number in partition.fanout_closed),
             per_repo_cap=per_repo_cap,
         )
+        if submitted:
+            continue
+        _refused_submit(
+            gh, spec, issue_number,
+            cleanup_only=cleanup_only,
+            closed=issue_number in partition.fanout_closed,
+        )
+
+
+def _refused_submit(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue_number: int,
+    *,
+    cleanup_only: bool,
+    closed: bool,
+) -> None:
+    """Hold whatever observation a refused fan-out submit was carrying.
+
+    A cleanup route already says a late owner was observed closed, so the
+    reading is latched on the strength of the route alone. A closed issue on
+    any OTHER label may be carrying the same reading and no label says so:
+    the `single` verdict hands its issue to `implementing` a moment before it
+    retires the cycle, and a close landing in that window wears a label whose
+    handler is an ordinary terminal.
+
+    That one was latched by the enumeration that read it closed, and is
+    dropped here only where the record positively says there is nothing to
+    end. The order is the whole of it: the probe is a request, and a request
+    can fail or can land after the very retirement it was asking about -- so
+    a reading conditioned on it would be lost to either, and the reading is
+    the one thing this path exists to keep. A latch held over an issue with
+    no cycle costs the next tick one cleanup pass that settles it; a reading
+    dropped costs the close itself.
+    """
+    if cleanup_only:
+        _deferred_cleanup(gh, spec, issue_number, _HELD_BY_A_WORKER)
+        return
+    if closed:
+        _kept_closed_reading(gh, spec, issue_number)
+
+
+@contextlib.contextmanager
+def _closed_reading(
+    gh: GitHubClient, spec: config.RepoSpec, issue_number: int,
+):
+    """Hold one closed issue's reading across the pass that would spend it.
+
+    Asked on the way out however the pass ends, because a pass can fail to
+    spend the reading without failing at all: the pinned read the guard is
+    built on answers a refusal of its own, so a tick that could not read the
+    record refuses the issue and marks nothing. What a pass that DID mark it
+    leaves behind is a record positively saying there is nothing to end,
+    which is exactly what drops the reading again.
+    """
+    try:
+        yield
+    finally:
+        _kept_closed_reading(gh, spec, issue_number)
+
+
+def _kept_closed_reading(
+    gh: GitHubClient, spec: config.RepoSpec, issue_number: int,
+) -> None:
+    """Hold a closed reading no pass acted on, unless the record says not to.
+
+    Latched FIRST and dropped again only where the record positively says
+    there is nothing to end. The order is the whole of it: the probe is a
+    request, and a request can fail -- so a reading conditioned on it would be
+    lost to that, and the reading is the one thing this path exists to keep. A
+    latch held over an issue with no cycle costs the next tick one cleanup
+    pass that settles it; a reading dropped costs the close itself.
+
+    The probe and the durable receipt are ONE read for the same reason. They
+    ask the same record about the same reading, and two reads of a record the
+    worker is writing can disagree: one saw a cycle and kept the observation
+    while the other saw the retirement behind it and left the thread saying
+    nothing, which leaves the reading in memory alone for a restart to take.
+    So the owner writes the receipt from the read that decides this, and
+    answers with what that read established.
+    """
+    observations.observe_close(spec.slug, issue_number)
+    late_cancellation = importlib.import_module(_LATE_CANCELLATION_OWNER)
+    if not late_cancellation._record_observed_close(gh, spec, issue_number):
+        observations.settle_close(spec.slug, issue_number)
+        return
+    _said_deferred(spec, issue_number, _HELD_BY_A_WORKER)
+
+
+def _fanout_task(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue_number: int,
+    *,
+    reading: _PollReading,
+    semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
+) -> Callable[[], None]:
+    """The callable one fan-out submit hands the scheduler.
+
+    An ordinary issue is refetched and dispatched, and what it carries with it
+    is the poll's own CLOSED reading: the worker refetches, so a human who
+    reopens the issue in that window would otherwise have the fresh reading
+    say open and a live late cycle resume against it. The reading is the
+    poll's, so it is bound rather than re-derived.
+
+    A cleanup carries an OBSERVATION as well as a turn, so it is wrapped in
+    the settlement that observation is owed -- which is a thing only the
+    worker can decide, since only the worker knows whether the pass ran.
+    """
+    if reading.cleanup_only:
+        return functools.partial(
+            _swept_for_cleanup, gh, spec, issue_number,
+            semaphore_cm=semaphore_cm,
+        )
+    if reading.closed:
+        return functools.partial(
+            _closed_ordinary_pass, gh, spec, issue_number,
+            semaphore_cm=semaphore_cm,
+        )
+    return functools.partial(
+        _refetch_and_process, gh, spec, issue_number,
+        semaphore_cm=semaphore_cm,
+    )
+
+
+def _closed_ordinary_pass(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue_number: int,
+    *,
+    semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
+) -> None:
+    """Run a closed issue's ordinary pass, keeping the reading if it fails.
+
+    The pass carries the poll's closed reading and is the only thing that
+    will ever act on it: the enumeration latched it, and this task is what
+    settles it. So a failure anywhere -- the refetch, the pinned read, the
+    write that marks the cancellation -- has to leave the latch standing, or
+    a human who reopens before the next poll takes the reading off the remote
+    for good.
+
+    Asked on the way OUT rather than only on a raise, because a pass can
+    fail to spend the reading without failing at all: the pinned read the
+    guard is built on answers a refusal of its own, so a tick that could not
+    read the record refuses the issue and marks nothing. Settled the same way
+    a refused submit settles one -- only where the record positively says
+    there is nothing to end, which is exactly what a pass that DID mark it
+    leaves behind.
+
+    Held only where the enumeration kept a reading at all. It asked the same
+    record already, and an issue it settled there is a closed one with no late
+    cycle: asking again would spend a pinned read to reach the same answer,
+    and re-latching in between would route an ordinary terminal through a
+    cleanup pass on the tick after this one.
+    """
+    if not observations.close_observed(spec.slug, issue_number):
+        _refetch_and_process(
+            gh, spec, issue_number,
+            semaphore_cm=semaphore_cm, reading=_PollReading(closed=True),
+        )
+        return
+    with _closed_reading(gh, spec, issue_number):
+        _refetch_and_process(
+            gh, spec, issue_number,
+            semaphore_cm=semaphore_cm, reading=_PollReading(closed=True),
+        )
+
+
+def _swept_for_cleanup(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue_number: int,
+    *,
+    semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
+) -> None:
+    """Take one latched close, and settle it only if the pass lands.
+
+    Settled AFTER the pass rather than when the submit was accepted, because
+    an accepted submit is not a cancellation persisted: the worker's own
+    refetch is a GitHub read, and a read that fails leaves the cycle unmarked
+    with nothing left saying a close was ever seen. A human reopening the
+    issue before the next poll would then get ordinary workflow dispatch over
+    a cycle a close already ended.
+
+    So a pass that raises anywhere -- the refetch, the route, the sweep --
+    hands the observation back, whether this worker was carrying one from an
+    earlier tick or was the first to see the close. The next tick submits the
+    cleanup again on the strength of it, and the sweep it reaches repeats
+    whatever the failed pass did manage: every step of the ending is
+    idempotent, and the mark itself is kept from its first stamp.
+    """
+    with _cleanup_observation(gh, spec, issue_number):
+        _refetch_and_process(
+            gh, spec, issue_number, semaphore_cm=semaphore_cm,
+            reading=_PollReading(cleanup_only=True, closed=True),
+        )
+
+
+@contextlib.contextmanager
+def _cleanup_observation(
+    gh: GitHubClient, spec: config.RepoSpec, issue_number: int,
+):
+    """Hold one cleanup's observation until the pass has actually run it.
+
+    Every path that runs a cleanup wraps it in this, and they all have to:
+    the scheduler's fan-out submit, the in-tick parallel one, and the
+    sequential loop that dispatches on its own thread. A pass that raises
+    anywhere -- the refetch, the route, the sweep -- marked nothing, so the
+    reading it was carrying is still the only one there is, and dropping it
+    there would let a reopen before the next tick resume the very cycle the
+    close ended.
+
+    A pass that RETURNS is asked what it left, because returning is not
+    finishing: a live consumer holds the ref, a remote that refuses a delete
+    holds the branch, and the terminal is one more request that can be
+    declined. What the answer decides is only whether this reading is the
+    LAST route back -- an owner still wearing a swept label is one the sweep
+    reaches on its own cadence, and one whose label the cancelled cycle's own
+    agent moved is reachable by nothing else at all.
+    """
+    try:
+        yield
+    except Exception:
+        _deferred_cleanup(gh, spec, issue_number, _PASS_FAILED)
+        raise
+    _kept_cleanup_reading(gh, spec, issue_number)
+
+
+def _kept_cleanup_reading(
+    gh: GitHubClient, spec: config.RepoSpec, issue_number: int,
+) -> None:
+    """Hold a cleanup's reading where nothing else would come back for it.
+
+    The one question this asks the remote after a pass, and it is asked of the
+    ending rather than of the pass: every step of a cleanup is idempotent and
+    each is skipped where the record already says what a visit would say, so a
+    reading kept over an owner that settled a moment later costs one more pass
+    and a reading dropped over one that did not costs the close itself.
+
+    The observation is re-latched before the question rather than after the
+    answer, because the answer is a request and a request can fail. What that
+    ordering leaves at worst is a latch over an owner with nothing left to
+    end, which the next tick's own cleanup pass settles.
+    """
+    observations.observe_close(spec.slug, issue_number)
+    late_cancellation = importlib.import_module(_LATE_CANCELLATION_OWNER)
+    if late_cancellation._cleanup_settled(gh, spec, issue_number):
+        observations.settle_close(spec.slug, issue_number)
+        return
+    _said_deferred(spec, issue_number, _ENDING_UNFINISHED)
+
+
+def _deferred_cleanup(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue_number: int,
+    reason: str,
+) -> None:
+    """Latch a close no pass took, say why, and write it down once.
+
+    A cleanup submission is the only kind whose loss costs an OBSERVATION
+    rather than a turn: this poll saw the issue closed, and a human who
+    reopens it before the next pass takes that reading away. Two things can
+    cost one. The scheduler admits no second worker for an issue one is
+    already running, so a submit can be refused outright; and a pass that was
+    admitted can fail before it has marked anything.
+
+    Either way the reading is latched rather than discarded, and it is read
+    by both of the parties that could not otherwise have it. The next tick
+    routes the issue to the sweep on the strength of it -- whatever the issue
+    reads as by then -- and the run already holding the issue asks the same
+    latch before every step the remote keeps, so a close it could never see
+    for itself still ends its cycle where it stands.
+
+    The durable half is attempted by every pass that latches one and settled
+    by the first that lands it. A comment rather than a pinned write for the
+    reason the latch exists at all -- the pinned comment is written whole, so
+    writing it from here would drop whatever the worker holding the issue
+    recorded in between -- and retried rather than tried once, because a post
+    GitHub refuses leaves an observation with no durable half at all, which a
+    restart before the run reaches a barrier takes away for good. The owner
+    itself is what bounds the repeats: it writes nothing where the thread
+    already says this, and remembers the attempt that landed.
+    """
+    observations.observe_close(spec.slug, issue_number)
+    _said_deferred(spec, issue_number, reason)
+    late_cancellation = importlib.import_module(_LATE_CANCELLATION_OWNER)
+    late_cancellation._record_observed_close(gh, spec, issue_number)
+
+
+def _said_deferred(
+    spec: config.RepoSpec, issue_number: int, reason: str,
+) -> None:
+    """Say what was held, so an operator can tell one hold from the other."""
+    log.info(
+        "repo=%s issue=#%d observed closed with a late cycle to settle, but "
+        "%s; holding the observation and sweeping it on the next polling "
+        "pass",
+        spec.slug, issue_number, reason,
+    )
 
 
 def _dispatch_via_scheduler(
@@ -797,7 +1488,9 @@ def _dispatch_via_scheduler(
     # workflow-label-less issue never folds into the bucket and flips it
     # cap-counted, which would reserve the only per-repo slot and starve
     # fanout under `parallel_limit=1`.
-    partition = _partition_pollable_issues(gh, spec)
+    partition = _partition_pollable_issues(
+        gh, spec, observations.observed_closes(spec.slug),
+    )
 
     # One `family=True` submit per repo drains every family-aware issue
     # sequentially (see `_drain_scheduler_family_bucket`). The bucket is

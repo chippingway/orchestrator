@@ -184,8 +184,18 @@ class TransitionTableTest(unittest.TestCase):
             set(ALLOWED_TRANSITIONS), {None} | set(WorkflowLabel),
         )
 
-    def test_terminals_have_no_outgoing_edges(self) -> None:
-        self.assertEqual(ALLOWED_TRANSITIONS[WorkflowLabel.DONE], frozenset())
+    def test_terminals_keep_only_the_correction_edge(self) -> None:
+        # `rejected` is the true sink. `done` keeps exactly one outgoing edge,
+        # the late gate's: an owner a human relabelled onto the terminal over
+        # a cancelled cycle still has an ending to reach. The umbrella's own
+        # terminal needs none of it -- the write that records the resolution
+        # retires the cycle with it, so nothing is ever left under `done` for
+        # a later pass to correct. Asserting the edge SET is what keeps that
+        # one exception from growing a second.
+        self.assertEqual(
+            ALLOWED_TRANSITIONS[WorkflowLabel.DONE],
+            frozenset((WorkflowLabel.REJECTED,)),
+        )
         self.assertEqual(ALLOWED_TRANSITIONS[WorkflowLabel.REJECTED], frozenset())
 
     def test_every_target_is_a_workflow_label(self) -> None:

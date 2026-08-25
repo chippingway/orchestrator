@@ -6,13 +6,13 @@ from __future__ import annotations
 from typing import Any
 
 from orchestrator.github.issues import (
-    CLEANUP_SWEEP_LABELS,
+    CLEANUP_ROUTE_LABELS,
     CLOSED_SWEEP_LABELS,
 )
 from orchestrator.workflow.state import label_for_name
 
 
-_CLOSED_SWEEP_LABELS = frozenset(CLOSED_SWEEP_LABELS + CLEANUP_SWEEP_LABELS)
+_CLOSED_SWEEP_LABELS = frozenset(CLOSED_SWEEP_LABELS + CLEANUP_ROUTE_LABELS)
 
 
 def _copy_issue_comments(issue: Any) -> list[Any]:

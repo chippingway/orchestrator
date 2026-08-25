@@ -6,6 +6,13 @@ The scheduler's responsibilities are split across three layers that only this
 module composes: read-only state inspection plus temporary claims, atomic slot
 admission and release, and worker dispatch with completion draining. Callers
 reach the composed ``IssueScheduler`` through the package API.
+
+What a refused submission MEANT is not one of them. A submission this
+scheduler declines costs its caller a turn, and the caller decides what that
+is worth -- a cleanup refused because a worker already holds the issue costs
+an observation instead, and the workflow keeps that reading somewhere its own
+stage handlers can reach it rather than here, where nothing above the slot
+accounting could.
 """
 from __future__ import annotations
 

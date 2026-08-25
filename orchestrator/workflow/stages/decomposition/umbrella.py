@@ -46,13 +46,20 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.decomposition import activation as _activation
+from orchestrator.workflow.stages.decomposition import (
+    late_cancellation as _late_cancellation,
+)
 from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
 )
 from orchestrator.workflow.stages.decomposition import parents as _parents
 from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
@@ -74,18 +81,161 @@ def _handle_empty_umbrella(
 
 
 def _complete_umbrella(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+) -> None:
+    """Say the umbrella is resolved, hand it `done`, and close it.
+
+    `done` is the write that cannot be recovered from: it takes the issue off
+    both labels the closed-owner sweep queries, so nothing would ever visit it
+    again. What makes it safe is not a correction behind it but the write
+    AHEAD of it -- one pinned write that stamps the resolution and RETIRES the
+    generation together, and past which there is no live cycle for a close to
+    end.
+
+    So the latch is asked for the last time immediately before that write,
+    with no request standing between the answer and it, and a close observed
+    there stops the terminal outright: the owner keeps `umbrella` with the
+    mark down, and the ending retires it to `rejected` from a label the sweep
+    still queries. A close arriving AFTER it is a human closing an issue this
+    orchestrator had already finished -- every child resolved, every
+    obligation reclaimed, the cycle over -- which is not a cancellation and
+    leaves nothing to correct.
+
+    Every window a crash can land in is one the next pass repairs. Before the
+    pinned write the owner is on `umbrella` with a live cycle, which is what
+    the sweep and the umbrella poll both already own. After it the owner is on
+    `umbrella` with the resolution recorded and no cycle at all, and both of
+    those passes finish the terminal from the record rather than starting the
+    walk again -- which is also why the closing notice is said once, gated on
+    the same stamp.
+
+    That write is itself a request, so what the window observed is asked once
+    more BEHIND it -- and taken as the window closes rather than before it, so
+    no interval is left for a poll to latch a close in. There the answer is
+    not a refusal but a reinstatement: the cycle goes back on the record from
+    this call's own memory and is cancelled there, so a close observed while
+    the cycle was still live is one the ending can still be entered from.
+    """
+    if state.get(_state._UMBRELLA_RESOLVED_AT) is None:
+        _resolution_said(gh, issue, state)
+    if _late_cancellation._latched_close_ends(gh, spec, issue, state):
+        return
+    state.set(_state._AWAITING_HUMAN, False)
+    state.set(_state._PARK_REASON, None)
+    state.set(_state._UMBRELLA_RESOLVED_AT, _usage._now_iso())
+    if _late_cancellation._latched_close_ends(gh, spec, issue, state):
+        return
+    live = _retired_cycle(state)
+    retiring = _observations.retiring(spec.slug, issue.number, live.cycle_id)
+    with retiring.held():
+        gh.write_pinned_state(issue, state)
+    if _reinstated(gh, issue, state, live, retiring):
+        return
+    _finished_umbrella(gh, issue)
+
+
+def _reinstated(
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    live: LateGeneration,
+    retiring: _observations.RetiringCycle,
+) -> bool:
+    """Put back a cycle the retirement write dropped a moment too early.
+
+    The write is a request like every other, so a poll can observe the close
+    inside it -- and the reading that observation leaves is durable on the
+    thread while the record it names has just stopped naming a cycle. What
+    answers that HERE is the generation still in the call's own memory, which
+    is the fastest answer there is and the only one a live process needs. The
+    correlation the write records beside the clear -- see `_retired_cycle` --
+    is for the process that never reaches this barrier at all.
+
+    It goes back exactly as it was and is cancelled from there, so the owner
+    keeps `umbrella` with the mark down and the ending retires it to
+    `rejected` from a label the closed-owner sweep still queries. The
+    terminal is not written: the label and the close below it are what this
+    refuses, and everything already said stands.
+
+    Asked OF the window rather than of the latch. The window decides what it
+    observed as it closes, under the lock that closes it, so there is no
+    interval between the answer and the exit for a poll to latch a close and
+    post a receipt in -- and an umbrella with no cycle to retire carries a
+    window that advertised nothing and observed nothing.
+    """
+    if not retiring.observed:
+        return False
+    log.warning(
+        "issue=#%s was observed closed as its umbrella terminal retired "
+        "cycle %d; putting that cycle back so the ending has something to "
+        "run from",
+        issue.number, live.cycle_id,
+    )
+    _late_cancellation._marked(gh, issue, state, live)
+    return True
+
+
+def _retired_cycle(state: PinnedState) -> LateGeneration:
+    """Drop the identity of a cycle that finished, keeping what it recorded.
+
+    The two ledgers are the only thing carried across, exactly as the
+    `single` publication's own retirement carries them: an obligation does
+    not stop being owed because the identity written beside it was cleared,
+    and the receipts naming the children this split made are what a restart
+    reads. What goes is the cycle a close would have ended -- which is the
+    whole point of doing it HERE, one write before the terminal label: past
+    this there is no live cycle under `done` for anything to have to find.
+
+    The generation it dropped travels back, because the write that makes it
+    durable is a request and the barrier behind that request needs something
+    to put back.
+    """
+    live = _late_state.read_late_generation(state)
+    _late_state.write_late_generation(state, LateGeneration(
+        resources=live.resources,
+        consumers=live.consumers,
+        opaque_resources=live.opaque_resources,
+        opaque_consumers=live.opaque_consumers,
+    ))
+    if live.is_present:
+        _late_state.record_retired_cycle(state, live.cycle_id)
+    return live
+
+
+def _resolution_said(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> None:
+    """Say once that every child resolved, with what the issue cost.
+
+    Gated on the stamp rather than on a marker of its own, because the stamp
+    is what a resumed terminal has instead of memory: a pass that died
+    between this comment and the write that records it says it again, and one
+    that died after that write does not.
+    """
     close_body = ":white_check_mark: all children resolved; closing umbrella issue."
     verdict = _usage._format_issue_usage_verdict(state)
     if verdict:
         close_body = f"{close_body}\n\n{verdict}"
     _comments._post_issue_comment(gh, issue, state, close_body)
-    state.set(_state._AWAITING_HUMAN, False)
-    state.set(_state._PARK_REASON, None)
-    state.set("umbrella_resolved_at", _usage._now_iso())
+
+
+def _finished_umbrella(gh: GitHubClient, issue: Issue) -> None:
+    """Hand a resolved umbrella its terminal label and close it.
+
+    Both are asked of a record that already says the terminal is due, so
+    either can be repeated: a pass that died before the label leaves an owner
+    the sweep and the umbrella poll both finish from here, and one that died
+    before the close leaves an open `done` issue a human can see.
+    """
     gh.set_workflow_label(issue, WorkflowLabel.DONE)
-    gh.write_pinned_state(issue, state)
+    _closed_umbrella(issue)
+
+
+def _closed_umbrella(issue: Issue) -> None:
+    """Close the issue an umbrella's terminal has just resolved."""
     try:
         issue.edit(state="closed")
     except Exception:
@@ -93,6 +243,33 @@ def _complete_umbrella(
             "issue=#%s could not close umbrella after children done",
             issue.number,
         )
+
+
+def _completed_or_cancelled(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+    scan: _ChildScan,
+) -> None:
+    """Resolve this umbrella, unless a close arrived while it was settling.
+
+    Every child is resolved, so this is the last tick that could settle what
+    the issue still owes a remote -- and the only one that will come back if
+    it cannot. A refusal keeps the label, which is the retry.
+
+    The settlement is itself remote work: a branch delete, a ref delete, a
+    receipt on each child cut from a reclaimed ref. So the latch is asked
+    AGAIN behind it, because `done` is the one write on this path that cannot
+    be recovered from -- it takes the issue off both labels the closed-owner
+    sweep queries and closes it, and a cancellation that bypassed it would be
+    stranded for good with nothing left to visit the issue.
+    """
+    if not _late_cleanup._settled_for_terminal(gh, spec, issue, state, scan):
+        return
+    if _late_cancellation._latched_close_ends(gh, spec, issue, state):
+        return
+    _complete_umbrella(gh, spec, issue, state)
 
 
 def _handle_umbrella(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
@@ -124,6 +301,32 @@ def _handle_umbrella(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> N
     scan = _parents._read_child_labels(gh, issue, children)
     if scan is None:
         return
+    _acted_on_children(gh, spec, issue, state, scan)
+
+
+def _acted_on_children(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+    scan: _ChildScan,
+) -> None:
+    """Do what this reading of the children earns, if anything still may.
+
+    Split from the read above because the read is where the poll gets its
+    chance: a scan is a request per child, and everything here ACTS on what
+    it found -- it reclaims a remote a settled split still owes, or it hands
+    the issue `done` and closes it, or it releases a child to an agent. A
+    close observed inside the scan reaches no other pass, so the barrier is
+    the first thing past it.
+
+    `done` is the worst of the three to get wrong, and it is why the barrier
+    is here rather than one layer down: that write takes the issue off both
+    labels the closed-owner sweep queries, so a cancellation it bypassed
+    would never be recorded by anything.
+    """
+    if _late_cancellation._latched_close_ends(gh, spec, issue, state):
+        return
     if _parents._parked_on_children(gh, spec, issue, state, scan):
         # Parked for a human, and still the owner of what its split put on the
         # remote. Every disposition that parks an umbrella closed the child it
@@ -137,15 +340,12 @@ def _handle_umbrella(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> N
         _late_cleanup._settle(gh, spec, issue, state, scan)
         return
     if all(label == _state._DONE for label in scan.labels.values()):
-        # Every child is resolved, so this is the last tick that could settle
-        # what the issue still owes a remote -- and the only one that will
-        # come back if it cannot. A refusal keeps the label, which is the
-        # retry.
-        if _late_cleanup._settled_for_terminal(gh, spec, issue, state, scan):
-            _complete_umbrella(gh, issue, state)
+        _completed_or_cancelled(gh, spec, issue, state, scan)
         return
 
-    held = _activation._activate_ready_children(gh, issue, state, scan)
+    held = _activation._activate_ready_children(
+        gh, spec, issue, state, scan,
+    )
     _activation._log_held_children(
-        issue, _state._UMBRELLA, children, scan.labels, held,
+        issue, _state._UMBRELLA, scan.children, scan.labels, held,
     )

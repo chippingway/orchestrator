@@ -247,12 +247,19 @@ intercept a dispatched handler targets that module. A stage-to-stage call is nam
 disabled-rollout and `ready` paths name `stages/implementing/handler.py` for `_handle_implementing`.
 
 Two things sit ahead of that table, and both can end a tick before any handler runs. One is the only route where the
-label does **not** choose the handler: a CLOSED issue on `workflow:decomposing` or `workflow:umbrella` goes to the
-cleanup sweep (`stages/decomposition/late_sweep.py`) instead of the stage its label names, because that stage would
-spawn the decomposer or activate children on an issue a human ended — so the close is read first, and on the
-sequential path the issue is refetched so neither reading of it is taken from the poll. The other is one read of the
-issue's own pinned comment, which answers two questions that stop a dispatch outright: a live late adjudication the
-label was moved out from under, and a child of a split whose snapshot has since been reclaimed
+label does **not** choose the handler: a CLOSED issue on `workflow:decomposing`, `workflow:umbrella`,
+`workflow:ready`, or `workflow:blocked` goes to the cleanup sweep (`stages/decomposition/late_sweep.py`) instead of
+the stage its label names, because that stage would spawn the decomposer, activate children, or hand the issue to a
+developer on an issue a human ended — so the close is read first, and on the sequential path an owner on either of
+the two labels an adjudication RUNS under is refetched so neither reading of it is taken from the poll. The
+other two are asked about only while closed, so an open `workflow:ready` issue costs nothing it did not
+already. It is also the one route
+the `backlog` / `paused` hard skip steps aside for: discarding a closed owner there discards the close itself, so
+the route is taken and the control label defers only the external work behind it. The other is one read of the
+issue's own pinned comment, which answers three questions that stop a dispatch outright: a live late adjudication the
+label was moved out from under, a child of a split whose snapshot has since been reclaimed, and an owner whose
+cancelled cycle has not reached its ending — that last one settles the cycle and writes its `rejected` terminal from
+either adjudication label, so a reopen can neither resume the cycle nor slip past the ending it owes
 ([`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#the-reuse-guard-every-dispatch-ahead-of-every-handler)).
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so
