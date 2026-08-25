@@ -98,7 +98,10 @@ orchestrator/
     issues.py           issue polling and writes, the query options, the wire issue-state vocabulary,
                         the closed predicate every reader of it asks through, the every-state, no-label walk
                         that finds the one issue carrying a marker -- the reading a receipt lookup needs and the
-                        only one that sees an issue a human has since closed or relabelled
+                        only one that sees an issue a human has since closed or relabelled -- and the labels whose
+                        CLOSED issues a sweep still owes a pass: the recovery set whose terminal arc has not
+                        drained, and the cleanup set, which is where a late adjudication runs plus where an
+                        interrupted cancellation can be left
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
     pinned_state.py     the pinned durable-state model, the comment body it is written as and the length GitHub
                         takes, its parser, and the comment watermarks beside it

@@ -251,11 +251,15 @@ than a second source of truth: where the two disagree, the handler pages are aut
      dep_graph walk: any workflow:blocked child with all deps=done
                                ─► child=workflow:ready
 
-   closed on workflow:decomposing | workflow:umbrella (cleanup sweep, on the
-   CLOSED_ISSUE_SWEEP_EVERY_N_TICKS cadence; the ONE case where the label does
-   not choose the handler -- routed by being closed, fanned out cap-exempt so
-   an open decomposer cannot starve it, with that route BOUND into the submit
-   so a reopen before the worker refetches cannot reach a stage handler):
+   closed on workflow:decomposing | workflow:umbrella | workflow:ready |
+   workflow:blocked (cleanup sweep, on the CLOSED_ISSUE_SWEEP_EVERY_N_TICKS
+   cadence; the ONE case where the label does not choose the handler -- routed
+   by being closed, fanned out cap-exempt so an open decomposer cannot starve
+   it, with that route BOUND into the submit so a reopen before the worker
+   refetches cannot reach a stage handler. The first two are where an
+   adjudication runs; the other two are where a decomposition outcome that
+   landed after the close can leave its ending, and only their CLOSED issues
+   are asked about):
      any generation            ─► mark the cycle cancelled, once, before any
                                    external call; emit one late_cancellation
                                    from that write

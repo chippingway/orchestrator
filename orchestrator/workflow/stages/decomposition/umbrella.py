@@ -89,7 +89,7 @@ def _complete_umbrella(
     """Say the umbrella is resolved, hand it `done`, and close it.
 
     `done` is the write that cannot be recovered from: it takes the issue off
-    both labels the closed-owner sweep queries, so nothing would ever visit it
+    every label the closed-owner sweep queries, so nothing would ever visit it
     again. What makes it safe is not a correction behind it but the write
     AHEAD of it -- one pinned write that stamps the resolution and RETIRES the
     generation together, and past which there is no live cycle for a close to
@@ -261,7 +261,7 @@ def _completed_or_cancelled(
     The settlement is itself remote work: a branch delete, a ref delete, a
     receipt on each child cut from a reclaimed ref. So the latch is asked
     AGAIN behind it, because `done` is the one write on this path that cannot
-    be recovered from -- it takes the issue off both labels the closed-owner
+    be recovered from -- it takes the issue off every label the closed-owner
     sweep queries and closes it, and a cancellation that bypassed it would be
     stranded for good with nothing left to visit the issue.
     """

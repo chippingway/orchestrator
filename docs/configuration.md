@@ -143,8 +143,9 @@ examples.
 - `POLL_INTERVAL` — default `60`. seconds between polling ticks
 - `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` — default `1`. how many ticks apart the closed-issue recovery sweep runs (see
   [GitHub rate limits](#github-rate-limits) below). The sweep issues one `GET …/issues?state=closed&labels=<L>` per
-  non-terminal workflow label the repository actually carries — the eight recovery labels plus the two cleanup ones,
-  `workflow:decomposing` and `workflow:umbrella` — **per repo**; across many repos at a short
+  non-terminal workflow label the repository actually carries — the eight recovery labels plus the four cleanup ones,
+  `workflow:decomposing` and `workflow:umbrella` where a late adjudication runs, and `workflow:ready` and
+  `workflow:blocked` where an interrupted cancellation can be left — **per repo**; across many repos at a short
   `POLL_INTERVAL` that fixed cost dominates request volume and is the main driver of GitHub *primary* rate-limit
   (5000 req/hour/PAT) exhaustion. `1` runs it every tick (unchanged behavior). Raise it (e.g. `4`–`5`) on multi-repo
   deployments; the only cost is that an externally-merged/closed issue may take up to `N-1` extra ticks to finalize to
