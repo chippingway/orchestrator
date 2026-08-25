@@ -3,7 +3,6 @@
 .codex-*
 .claude/*
 !.claude/skills/
-.develop-review-loop/
 
 # sensitive data
 .env
@@ -44,3 +43,6 @@ __pycache__/
 venv/
 .pytest_cache/
 .coverage
+# symlinks
+.venv
+venv
