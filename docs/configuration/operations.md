@@ -137,7 +137,9 @@ published advisory names one of them. Why the export and the audit are shaped th
 The job declares the same `permissions: contents: read` and uses no secrets. It is not a required check and cannot
 be one — it never runs on a pull request — so a red run is triaged from the Actions tab. Turning one of its findings
 into a bump PR is Dependabot's job, which is why enabling Dependabot security updates is on the operator list in
-[`../security.md#dependabot-security-updates`](../security.md#dependabot-security-updates).
+[`../security.md#dependabot-security-updates`](../security.md#dependabot-security-updates). The audit reads the whole
+lockfile while those updates reach only what the `allow:` rules above name, so a finding against a transitive pin
+those rules do not name is cleared by widening them or by hand rather than by waiting for a PR.
 
 ## Run modes
 

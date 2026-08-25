@@ -276,6 +276,11 @@ page under each area, and says which addresses stay stable as an area grows. The
 | Observability | [`docs/observability.md`](docs/observability.md) | Map of the sinks, database, dashboard, parser |
 | Security | [`docs/security.md`](docs/security.md) | Checklist, GitHub and org settings |
 
+Reporting a suspected vulnerability is [`SECURITY.md`](SECURITY.md) at the root rather than any page in that table: it
+names the private channel — GitHub's Security tab, never a public issue, which on this repository is also an
+agent-workflow input — the versions that are supported, and what a report earns in return.
+[`docs/security.md`](docs/security.md) stays the operator-side hardening checklist behind it.
+
 ## License
 
 Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE) for the full text.

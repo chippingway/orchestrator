@@ -113,12 +113,15 @@ mechanism from the weekly version-update PRs [`../.github/dependabot.yml`](../.g
 alerts fire when a published advisory matches a version pinned in [`../uv.lock`](../uv.lock), and security updates
 open the PR that bumps that one dependency to the fixed version.
 
-- **They are not subject to the 30-day `cooldown.default-days`** in the config. That window is there to let a routine
-  version update age before a maintainer has to look at it; a security patch is the case where waiting is the cost,
-  and the cooldown applies to version updates only.
+- **They are not subject to the cooldown windows** the config declares — 30 days for a major, 14 for a minor or a
+  patch. Those windows are there to let a routine version update age before a maintainer has to look at it; a
+  security patch is the case where waiting is the cost, and the cooldown applies to version updates only.
 - They are the acting half of the standing scan:
   [`../.github/workflows/vulnerability-scan.yml`](../.github/workflows/vulnerability-scan.yml) reports a vulnerable
-  pin every week, but nothing inside this repository can open the bump PR that clears it.
+  pin every week, but nothing inside this repository can open the bump PR that clears it. What such an update may
+  bump is still bounded by the `uv` entry's `allow:` rules — direct dependencies plus `gitpython` — so a finding
+  against any other transitive pin needs its own rule before a PR can open for it
+  ([`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration)).
 - Alerts are visible to maintainers only, so enabling them discloses nothing about an unpatched pin.
 
 ### CodeQL default setup
