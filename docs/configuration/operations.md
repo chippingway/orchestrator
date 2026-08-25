@@ -71,14 +71,28 @@ rule; the first-party
 applies it to tracked Markdown/text files, exempting fenced code blocks, single unbreakable tokens (e.g. long URLs),
 binary assets, the lockfile, and the verbatim `LICENSE`.
 
-The workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
+The CI workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
 scope.
 
-Every `uses:` in both workflows names a full 40-character commit SHA with the release it belongs to in a trailing
-comment (`uses: owner/action@<sha> # v1.2.3`), so a retagged release cannot change what a run executes. Nothing checks
-the comment against the SHA, so a hand edit has to move both together; Dependabot's `github-actions` updates rewrite
-the pair.
+[`../../.github/workflows/scorecard.yml`](../../.github/workflows/scorecard.yml) runs OpenSSF Scorecard — the
+supply-chain grader behind the README badge — on a weekly `schedule`, on every push to `main`, and on
+`workflow_dispatch`, which is how a maintainer can prove a change to it works without waiting a week. It sets
+`publish_results: true`, so a run on `main` publishes the score the badge and the public
+[viewer](https://scorecard.dev/viewer/?uri=github.com/geserdugarov/agent-orchestrator) read, and hands the SARIF it
+produces to `github/codeql-action/upload-sarif`, which files each finding as a code-scanning alert on this repo. It
+declares the same top-level `contents: read` and reads no secrets; the job adds exactly the two grants those two
+publications need — `id-token: write` for the OIDC token the publication is authenticated by, and
+`security-events: write` for the SARIF upload — and restates `contents: read`, because a job-level `permissions:` block
+replaces the top-level one rather than adding to it. Nothing gates on the grade: a low score is a set of alerts to
+triage rather than a failing run, and the workflow is outside the required checks a merge waits on
+([`../security.md#required-checks`](../security.md#required-checks)).
+
+Every `uses:` in every workflow names a full 40-character commit SHA with the release it belongs to in a trailing
+comment (`uses: owner/action@<sha> # v1.2.3`), so a retagged release cannot change what a run executes.
+[`../../tests/repository/test_workflow_action_pins.py`](../../tests/repository/test_workflow_action_pins.py) holds that
+shape for every workflow, but nothing checks the comment against the SHA it labels, so a hand edit has to move both
+together; Dependabot's `github-actions` updates rewrite the pair.
 
 [`../../.github/dependabot.yml`](../../.github/dependabot.yml) opens weekly update PRs for the `github-actions` and `uv`
 (Python `pyproject.toml` + `uv.lock`) ecosystems with a 30-day `cooldown.default-days` window. Each entry declares the
