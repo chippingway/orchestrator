@@ -65,7 +65,7 @@ resume pays nothing for it.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Optional
 
 from github.Issue import Issue
@@ -87,6 +87,9 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
+)
+from orchestrator.workflow.stages.decomposition import (
+    late_owner as _late_owner,
 )
 from orchestrator.workflow.stages.decomposition import split as _split
 from orchestrator.workflow.stages.decomposition import state as _state
@@ -187,7 +190,7 @@ does not cover, implement normally.
 """
 
 
-@dataclass(frozen=True)
+@dataclass
 class _ChildWalk:
     """One pass over a split manifest, and what the parent already records.
 
@@ -203,6 +206,24 @@ class _ChildWalk:
     known: tuple[int, ...]
     snapshot_ref: str
     resumed: bool
+
+    # Whether no child of this generation exists that the register does not
+    # name. True from the start of a walk nobody resumed -- no earlier attempt
+    # could have created anything -- and set once this one has passed the
+    # first UNRECORDED index: to have created the index after that, an earlier
+    # attempt would have had to record this one, and it did not. Until then a
+    # resumed walk cannot say it, which is what keeps a create-before-record
+    # crash from being sealed over.
+    orphans_ruled_out: list[bool] = field(default_factory=list)
+
+    def past_the_unrecorded(self) -> None:
+        """Say the first index no attempt had recorded has been answered."""
+        self.orphans_ruled_out.append(True)
+
+    @property
+    def every_child_is_recorded(self) -> bool:
+        """Whether the register names every child this generation made."""
+        return not self.resumed or bool(self.orphans_ruled_out)
 
     def recorded_numbers(self) -> tuple[int, ...]:
         """The children this generation records once this step is durable.
@@ -221,9 +242,25 @@ def _create_late_children(
 ) -> Optional[_SplitPlan]:
     """Create or adopt every child of this split, in the crash-safe order.
 
-    Returns the populated plan, or None when a child could not be created,
-    recorded, or seeded and the issue was parked -- in which case the caller
-    creates nothing further and the next tick resumes from what is recorded.
+    Returns the populated plan, or None when the loop stopped early -- a
+    child that could not be created, recorded, or seeded, or an owner the
+    close-check below found closed or unreadable. Either way the caller
+    creates nothing further; which of the two it was is on the record.
+
+    The owner is re-read before every child, the first included, because a
+    create, a record, and a seed stand between each child and the next -- and
+    the write that forces this issue to be an umbrella stands ahead of the
+    first -- so a human can close the issue in any of those gaps. A close
+    observed by the poll while this worker holds the issue reaches no other
+    pass -- the scheduler admits no second worker for it -- so this loop is
+    what stops the next child being opened against an issue somebody has
+    ended.
+
+    The read at the top of each turn is not the last word, either. Adopting
+    a slice that was created and never recorded means walking the whole
+    repository for its marker, which is minutes of remote work on a resumed
+    pass, so the latch is asked ONE more time immediately before the create
+    itself -- the one step here nothing takes back.
     """
     # Read before `_prepared` writes it: a count already there is the only
     # evidence a previous pass got as far as creating anything, and it is what
@@ -237,14 +274,135 @@ def _create_late_children(
         resumed=resumed,
     )
     for index, child in enumerate(manifest):
-        created = _child_issue(context, walk, index, child)
-        if created is None:
+        # Index 0 gets its own reading too, rather than borrowing the
+        # caller's: `_prepared` above is a remote write, and a close landing
+        # inside it would otherwise still open the first child.
+        if _stopped(context, index):
+            _sealed(context, walk)
             return None
-        if not _recorded(context, walk, index, created, child):
-            return None
-        if not _seeded(context, walk, created, child):
+        if not _placed(context, walk, index, child):
+            _sealed(context, walk)
             return None
     return walk.plan
+
+
+def _sealed(context: _LateContext, walk: _ChildWalk) -> None:
+    """Close the consumer ledger of a split a CANCELLATION stopped.
+
+    The count this transaction wrote before its first create is what tells a
+    partial split from a finished one, and a cancelled loop can never reach
+    it: the children it did not make are ones nothing is ever going to make.
+    Left unsealed, the ref those children were cut from is one no pass could
+    release -- every consumer could end and the proof would still be short of
+    the count -- so the owner would hold a snapshot and its terminal forever.
+
+    What makes the ledger final rather than short is the cancellation itself.
+    Every exit that reaches here with the mark down is one where the child in
+    hand was already RECORDED: the create, the record, and the seed are three
+    steps in that order, and each barrier between them is asked after the
+    write that names the child. So the register accounts for every child that
+    exists, and no further one will ever be opened.
+
+    Except where an EARLIER attempt could have created one this walk has not
+    reached: a create is a request and the write recording it is another, so a
+    pass that died between them left a child on GitHub with nothing naming it.
+    That is what the adoption lookup answers, and until this walk has passed
+    the first unrecorded index a resumed one cannot say it -- so it does not,
+    and the ref stays held on the count exactly as before.
+
+    Written as the CYCLE it is a fact about, not as a flag. Nothing that ends
+    a generation drops this key, so a seal left saying only "yes" would be
+    read by the next cycle on the same issue as proof about a register it
+    never wrote -- and a later split stopped mid-loop, on a resumed walk that
+    seals nothing of its own, would release the ref its unrecorded children
+    were cut from.
+
+    Written once, and only over a record that does not already say it.
+    """
+    if not context.generation.cancelled:
+        return
+    if not walk.every_child_is_recorded:
+        log.info(
+            "issue=#%d was cancelled mid-split on a resumed walk; leaving "
+            "its consumer ledger open, since a child an earlier attempt "
+            "created and never recorded would not be on it",
+            context.issue.number,
+        )
+        return
+    cycle = context.generation.cycle_id
+    if _state._ledger_is_sealed(
+        context.state.get(_state._SPLIT_LEDGER_SEALED), cycle,
+    ):
+        return
+    log.warning(
+        "issue=#%d was cancelled with %d of %s children made; sealing cycle "
+        "%d's consumer ledger, since the rest are children nothing will "
+        "create",
+        context.issue.number, len(walk.recorded_numbers()),
+        context.state.get(_EXPECTED_CHILDREN), cycle,
+    )
+    context.state.set(_state._SPLIT_LEDGER_SEALED, cycle)
+    _late_outcome._persist(context)
+
+
+def _placed(
+    context: _LateContext, walk: _ChildWalk, index: int, child: dict,
+) -> bool:
+    """Establish one slice's child, in the order a crash in it is safe in.
+
+    Create or adopt, then record, then seed -- and False anywhere means the
+    loop creates nothing further, with the record saying whether that was a
+    park or the cancellation a latched close earned.
+    """
+    created = _child_issue(context, walk, index, child)
+    if created is None:
+        return False
+    if not _recorded(context, walk, index, created, child):
+        return False
+    if _stopped_seeding(context, created):
+        return False
+    return _seeded(context, walk, created, child)
+
+
+def _stopped_seeding(context: _LateContext, created: Issue) -> bool:
+    """Whether a close latched inside the create stops this child's seed.
+
+    The create is a request, so the close can land inside it -- and what it
+    leaves is a real issue on GitHub. Recording that issue is not optional
+    and is not touching it: the parent's own account is what makes the child
+    reclaimable at all, and a child nothing names is the one state no pass
+    can clean up. The SEED is a write to the child, and a cancelled cycle
+    owes its children nothing -- they are not closed, not relabelled, and not
+    written to, because what happens to them next is a human's decision.
+
+    A child recorded and never seeded is a state the record already
+    describes: the body carries the marker the create stamped into it, and
+    the child's pinned comment carries nothing.
+    """
+    if _late_owner._latch_stops(context) is None:
+        return False
+    log.warning(
+        "issue=#%d was observed closed while child #%d was being created; "
+        "recording it and writing nothing to it",
+        context.issue.number, created.number,
+    )
+    return True
+
+
+def _stopped(context: _LateContext, index: int) -> bool:
+    """Whether this issue has stopped wanting the children from here on.
+
+    The reading is the guard's own and so is what it writes: a closed owner
+    is marked cancelled where the loop stands, an unreadable one parks with
+    the read owed, and only an open one lets the next child be opened.
+    """
+    if _late_owner._still_wanted(context) is None:
+        return False
+    log.warning(
+        "issue=#%d is no longer known to want its split; creating none of "
+        "its children from slice %d on", context.issue.number, index,
+    )
+    return True
 
 
 def _prepared(context: _LateContext, manifest: tuple) -> None:
@@ -276,6 +434,10 @@ def _child_issue(
     Adoption is what keeps a retry from opening a second issue for a slice
     that already has one: the parent's own recorded list is the register, and
     it is written in the same durable step the creation is.
+
+    None is "create nothing further", and the record says which of the two
+    reasons it was: a park this step could not get past, or a cancellation a
+    latched close earned while the lookup was running.
     """
     try:
         return _adopted_or_created(context, walk, index, child)
@@ -297,7 +459,7 @@ def _child_issue(
 
 def _adopted_or_created(
     context: _LateContext, walk: _ChildWalk, index: int, child: dict,
-) -> Issue:
+) -> Optional[Issue]:
     """Return the child at this index, opening one only where none exists.
 
     Three answers in order, and the middle one is the whole point. A number
@@ -306,9 +468,17 @@ def _adopted_or_created(
     the write that would have recorded it -- adopted rather than duplicated,
     which is the only recovery for a create nothing outside GitHub knows
     about. Only past both is an issue actually opened.
+
+    None is a fourth answer and it belongs to the create alone: the lookup
+    above walks the repository, so the latch is asked again against the step
+    that would open a real issue somebody then works. The mark it leaves is
+    what tells the loop this was a cancellation rather than a park.
     """
     if index < len(walk.known):
         return context.gh.get_issue(walk.known[index])
+    # Past here the first UNRECORDED index has been answered, so nothing an
+    # earlier attempt made is left for the register to be missing.
+    walk.past_the_unrecorded()
     orphan = _orphan_for(context, walk, index)
     if orphan is not None:
         log.warning(
@@ -317,6 +487,13 @@ def _adopted_or_created(
             context.issue.number, orphan.number, index,
         )
         return orphan
+    if _late_owner._latch_stops(context) is not None:
+        log.warning(
+            "issue=#%d was observed closed while slice %d was being looked "
+            "up; opening no issue for it",
+            context.issue.number, index,
+        )
+        return None
     return context.gh.create_child_issue(
         title=child[_TITLE],
         body=_child_body(context, child, walk.snapshot_ref, index),
@@ -465,9 +642,17 @@ def _seeded(
     the case this step exists to repair: a retry reaches a child that was
     already created, and by then it may be implementing. Writing a fresh
     record over it would take its work with it.
+
+    False is either of the two ways this child is the last one: a write that
+    could not be made, which parks, and the cancellation a close latched
+    inside the read earned, which is on the record already. Both stop the
+    loop where it stands, and the cancellation has to -- reporting success
+    would let the loop go on opening real issues against an ended cycle, and
+    would leave the barriers behind it marking a cancellation that is already
+    marked.
     """
     try:
-        _seed_child_state(context, walk, child_issue, child)
+        return _seed_child_state(context, walk, child_issue, child)
     except Exception:
         log.exception(
             "issue=#%d could not seed child #%d with its ancestry",
@@ -475,7 +660,6 @@ def _seeded(
         )
         _parked(context, f"child #{child_issue.number} ({child.get('title')!r})")
         return False
-    return True
 
 
 def _seed_child_state(
@@ -483,7 +667,7 @@ def _seed_child_state(
     walk: _ChildWalk,
     child_issue: Issue,
     child: dict,
-) -> None:
+) -> bool:
     """Add the parent link, the stamp, and the ancestry to a child's state.
 
     The park an unattributed child took goes with the link that attributes it,
@@ -500,8 +684,22 @@ def _seed_child_state(
     A child that already records a parent has been attributed, so any park on
     it is its own -- something it hit while running -- and not this
     transaction's to take back.
+
+    The read is a request, so the poll can observe the close inside it -- and
+    what stands immediately behind it is the one write this transaction makes
+    to a child's OWN pinned comment. A cancelled cycle leaves every child that
+    already exists entirely untouched, so the latch is asked between the two,
+    and the answer travels back rather than stopping here: this is the LAST
+    step of one child's turn, so a caller told it succeeded would open the
+    next slice's issue against a cycle that has just ended.
     """
     child_state = context.gh.read_pinned_state(child_issue)
+    if _late_owner._latch_stops(context) is not None:
+        log.warning(
+            "issue=#%d was observed closed while child #%d was being read; "
+            "writing nothing to it", context.issue.number, child_issue.number,
+        )
+        return False
     if not child_state.get(_state._PARENT_NUMBER):
         child_state.set(_state._PARENT_NUMBER, context.issue.number)
         child_state.set(_state._AWAITING_HUMAN, False)
@@ -512,6 +710,7 @@ def _seed_child_state(
         child_state, _child_ancestry(context, child, walk.snapshot_ref),
     )
     context.gh.write_pinned_state(child_issue, child_state)
+    return True
 
 
 def _child_ancestry(

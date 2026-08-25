@@ -14,10 +14,17 @@ plain string all read the same value.
 frozen because every field on it is evidence: the SHAs a reconciliation is
 allowed to act on, the measurement a verdict answers, and the resources the
 remote still owes are what a crashed tick reads back instead of re-deriving
-from a moving branch. The three transforms that need to change one --
-recording an obligation, recording a consumer, and cancelling -- return a new
-record rather than mutating this one, so a caller cannot half-apply a change
-it then fails to persist.
+from a moving branch. The transforms that need to change one -- recording an
+obligation, recording a consumer, moving the boundary it stands at, and
+cancelling -- return a new record rather than mutating this one, so a caller
+cannot half-apply a change it then fails to persist.
+
+The boundary move is also where one invariant of the phase vocabulary lives
+rather than in the owners that write it. A record may move forwards freely
+and may never move BACKWARDS out of a transaction that has begun: every retry
+above a split names a boundary of its own, and in the window where a child
+exists and nothing records it the phase is the only account of what happened.
+Leaving that to each writer would mean every future one had to know.
 
 The lineage cap is here rather than beside a caller because it is the record's
 own invariant: `MAX_LINEAGE_DEPTH` bounds how deep automatic splitting may go,
@@ -70,6 +77,29 @@ class LatePhase(StrEnum):
     CLEANING_UP = "cleaning_up"
     CANCELLING = "cancelling"
     RESTARTING = "restarting"
+
+
+# The boundaries a split TRANSACTION owns. A record standing at one of them
+# has begun creating children and may be mid-loop, and that is the only thing
+# saying so in the window where nothing is recorded yet -- a child is created
+# before the write that records it, so the ledger is empty and the phase is
+# the whole evidence.
+IN_FLIGHT_PHASES = frozenset((
+    LatePhase.SNAPSHOTTING,
+    LatePhase.SPLITTING,
+    LatePhase.SUPERSEDING,
+))
+
+# The boundaries that come before a transaction. Every retry above one -- the
+# plan-PR hold reconciled on each tick, the spawn, the owner read a completion
+# claims -- writes one of these, and writing it over an in-flight boundary is
+# the rewind `at_phase` refuses.
+_BEFORE_TRANSACTION = frozenset((
+    LatePhase.MEASURING,
+    LatePhase.HOLDING_PLAN_PR,
+    LatePhase.ADJUDICATING,
+    LatePhase.OWNER_CHECK,
+))
 
 
 class LateVerdict(StrEnum):
@@ -210,6 +240,7 @@ class LateGeneration:
     owner_check_pending: bool = False
     cancelled: bool = False
     cancelled_at: Optional[str] = None
+    cancelled_phase: Optional[LatePhase] = None
     restart_pending: bool = False
     restart_target: Optional[str] = None
     restart_cycle_id: Optional[int] = None
@@ -324,15 +355,51 @@ class LateGeneration:
                 )
         return replace(self, split_children=tuple(numbers))
 
+    def at_phase(self, phase: LatePhase) -> LateGeneration:
+        """Return this record standing at one reconciliation boundary.
+
+        Ordinarily whatever the step that reached it says. The one move
+        refused is BACKWARDS out of a transaction that has begun, and it is
+        refused here rather than at each caller because every retry ABOVE the
+        transaction makes it: the plan-PR hold is reconciled on every tick, a
+        spawn names its own boundary, and each completion claims the owner
+        read. Any of them writing its own phase over `splitting` would erase
+        the only evidence there is in the window that matters -- a child is
+        created before the write that records it, so a loop that died between
+        the two leaves an empty ledger and a real issue on GitHub. What a
+        later reclamation reads then is a cycle that never started a split,
+        and the ref that half-created child is still cutting from is one it
+        would delete.
+
+        A cancellation is not a rewind and is not refused: `cancelling` comes
+        after every boundary here, and `cancel` keeps the one it interrupted
+        beside the stamp. Nor is a fresh generation, which starts over at
+        `measuring` by advancing the counter rather than by moving this one.
+        """
+        if phase in _BEFORE_TRANSACTION and self.phase in IN_FLIGHT_PHASES:
+            return self
+        return replace(self, phase=phase)
+
     def cancel(self, stamp: str) -> LateGeneration:
         """Return this record marked cancelled, keeping the first stamp.
 
         Cancellation is irreversible within a cycle: once the owner has been
         observed closed, a later tick that observes it reopened re-runs this
         and must not move the moment the cleanup obligation was taken on.
+
+        The boundary it was standing at is kept beside the stamp, because the
+        `phase` field is about to name the cancellation itself and the answer
+        it was carrying is one the reconciliation still needs: whether the
+        consumer ledger accounts for every child cut from this generation's
+        snapshot is read off the phase, and a record that forgot where it was
+        cancelled from could never prove it again. Kept from the first marking
+        for the same reason the stamp is -- a re-mark must not move it -- and
+        a record whose first marking is the one being repeated answers with
+        `cancelling`, which proves nothing and keeps the ref.
         """
         return replace(
             self,
             cancelled=True,
             cancelled_at=self.cancelled_at or stamp,
+            cancelled_phase=self.cancelled_phase or self.phase,
         )

@@ -102,6 +102,7 @@ class RoundTripTest(unittest.TestCase):
         # rather than here.
         written = json.loads(json.dumps(_written(_support.full_generation()).data))
         self.assertEqual(written["late_phase"], "snapshotting")
+        self.assertEqual(written["late_cancelled_phase"], "splitting")
         self.assertEqual(
             written[_RESOURCES_KEY],
             [{

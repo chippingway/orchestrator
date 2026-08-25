@@ -309,15 +309,44 @@ def _revise_from_guidance(
     run that then fails re-parks with the reason it actually failed for rather
     than leaving the issue claiming it is still waiting to be told what the
     edit meant.
+
+    A close a poll observed stops it before the agent and again after, and
+    the "before" is asked twice: the resume is the same kind of step a spawn
+    is -- an agent on somebody's repository, paid for and free to decide --
+    and the notice this call posts ahead of it is a request the poll runs
+    beside. So the reading is taken as the tick is entered, again right
+    against the resume, and once more when the run comes back, because no one
+    of the three covers the other two: the first two stop the agent, and the
+    last stops the remeasure that would write a fresh candidate over a cycle
+    a close already ended.
     """
     stranded = _stranded_by_effects(context)
     if stranded is not None:
         return stranded
+    latched = _latched_close(context)
+    if latched is not None:
+        return latched
     _comments._post_issue_comment(
         context.gh, context.issue, context.state, _REVISING_NOTICE,
     )
     _consume(context, signal)
     _late_outcome._answer_park(context)
+    return _resumed(context, signal)
+
+
+def _resumed(
+    context: _LateContext, signal: _LateContentSignal,
+) -> _LateContentSettlement:
+    """Start the developer this guidance bought, then read what it left.
+
+    The notice above is a request and the park answer is a write, so the poll
+    can observe the close inside either -- which is why the latch is asked
+    once more here, immediately against the resume, and once again when the
+    run comes back.
+    """
+    latched = _latched_close(context)
+    if latched is not None:
+        return latched
     worktree, agent_result, paused = _dev_resume._resume_dev_with_text(
         context.gh,
         context.spec,
@@ -332,6 +361,9 @@ def _revise_from_guidance(
             disposition=_LateDisposition.DEFERRED,
         )
     context.state.set(_LAST_AGENT_ACTION_AT, _usage._now_iso())
+    latched = _latched_close(context)
+    if latched is not None:
+        return latched
     if agent_result.timed_out:
         log.warning(
             "issue=#%d the developer revision timed out after %ds; reading "
@@ -339,6 +371,24 @@ def _revise_from_guidance(
             context.issue.number, config.AGENT_TIMEOUT,
         )
     return _reconcile_revised_candidate(context, worktree, agent_result)
+
+
+def _latched_close(
+    context: _LateContext,
+) -> Optional[_LateContentSettlement]:
+    """Whether a poll's own reading ends this revision instead of running it.
+
+    The latch alone, like every barrier whose step is too tight for a request:
+    a claim names `owner_check`, and writing it over the boundary this tick
+    reached is the rewind the record refuses. `persisted` is set because the
+    mark it leaves IS a durable write, and the caller must not take it as an
+    outcome it still owes one for.
+    """
+    if _late_owner._latch_stops(context) is None:
+        return None
+    return _LateContentSettlement(
+        disposition=_LateDisposition.CANCELLED, persisted=True,
+    )
 
 
 def _retry_revision(

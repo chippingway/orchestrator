@@ -278,11 +278,22 @@ def _reset_decomposition_for_drift(
     # A fresh decomposer session must keep the pinned backend so an agent-spec
     # configuration change cannot retarget an issue already in flight.
     state.set("decomposer_session_id", None)
-    # Empty manifest tracking prevents half-finished decomposition recovery
-    # from treating the intentional reroute as a crashed split.
+    _clear_drift_manifest(state)
+
+
+def _clear_drift_manifest(state: PinnedState) -> None:
+    """Empty manifest tracking, so half-finished decomposition recovery reads
+    the intentional reroute as one rather than as a crashed split.
+
+    The seal that calls a child register FINAL goes with the count it is a
+    fact about: a manifest being thrown away takes every claim about what it
+    made with it, and one left behind would let a later split short of its
+    own count read as complete.
+    """
     state.set("children", [])
     state.set("dep_graph", {})
     state.set("expected_children_count", None)
+    state.set("split_ledger_sealed", None)
     state.set("umbrella", None)
     state.set("awaiting_human", False)
     state.set("park_reason", None)

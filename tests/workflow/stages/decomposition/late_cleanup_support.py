@@ -12,7 +12,7 @@ dispatched to the stage its label names.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from orchestrator.workflow.late_split import lineage as _lineage
 from orchestrator.workflow.late_split import state as _late_state
@@ -22,6 +22,7 @@ from orchestrator.workflow.late_split.models import (
     LateResourceKind,
     LateResourceState,
 )
+from orchestrator.workflow.stages.decomposition import late_sweep as _late_sweep
 from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 
@@ -30,6 +31,7 @@ from tests.workflow.fixtures import _TEST_SPEC, _agent
 from tests.workflow.stages.decomposition.late_seam_support import (
     LocalTeardown,
     RecordedDelete as RecordedDelete,
+    SnapshotOutcome,
     local_teardown,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
@@ -66,6 +68,27 @@ UNRECORDED_CHILD = 412
 SUPERSEDED_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-41"
 
 SNAPSHOT_REF = "refs/orchestrator/late-split/issue-41/cycle-3/gen-1"
+
+# The issue a NESTED owner was itself cut from, and the moment either
+# observer marks a cycle over. Both are fixed so a case can assert on them.
+ANCESTOR_NUMBER = 4
+
+CANCELLED_AT = "2026-08-22T10:00:00+00:00"
+
+# The stage key the split transaction writes before its first create, and
+# the one piece of evidence a rewound phase cannot erase.
+EXPECTED_CHILDREN = "expected_children_count"
+
+# The ledger entry kinds a reclamation acts on, and the one beside them
+# that is a receipt rather than an obligation: a child is a live issue,
+# not an object on the remote.
+RECLAIMABLE_KINDS = ("branch", "snapshot_ref", "plan_pr")
+
+CHILD_KIND = "child"
+
+# The phases a record only reaches past the forward-links announcement,
+# which is written in the same step as the first of them.
+_PAST_ANNOUNCEMENT = (LatePhase.SUPERSEDING, LatePhase.CLEANING_UP)
 
 STATE_RECONCILED = "reconciled"
 
@@ -104,6 +127,27 @@ class OwnerSeed:
     proved ahead of the first child issue, so an owner closed in there records
     a snapshot and no consumers at all.
 
+    `recorded` is False for the issue that never entered the late gate at all,
+    which is every umbrella the initial decomposer ever made: it carries one
+    of the two swept labels and no generation, so nothing about a late cycle
+    is its to end.
+
+    `cancelled` is the mark either observer leaves -- the flag, the stamp, and
+    the boundary it interrupted -- which is what a case about the ending
+    starts from rather than reaching through the observer that writes it.
+
+    `announced` is the forward-links receipt the transaction writes in the
+    same step as `superseding`, and it is derived from the phase for every
+    seed at or past that boundary. A case says it explicitly for the one
+    shape where the two disagree: a supersession retried after a park, which
+    rewrites the earlier phases over the boundary while stepping over the
+    announcement it already made.
+
+    `ancestor_ref` makes this owner somebody else's child as well as its own
+    split's owner, which every late owner below the root of a lineage is. It
+    is what a case needs to reach the reuse guard that shares the dispatcher's
+    one pinned read with the cancellation guard.
+
     `child_mirror_first` is the ordering claim the split stamps onto every
     pointer it writes -- that the reclamation which can take this ref drops
     this host's copy of it first. False is a pointer written by an
@@ -120,12 +164,39 @@ class OwnerSeed:
 
     label: str = UMBRELLA
     closed: bool = False
+    recorded: bool = True
+    cancelled: bool = False
+    announced: bool = False
+    ancestor_ref: str = ""
     child: bool = True
     child_closed: bool = True
     child_ref: str = SNAPSHOT_REF
     child_ancestry: bool = True
     child_mirror_first: bool = True
     phase: LatePhase = LatePhase.CLEANING_UP
+
+    def seed_ancestry(self, github: FakeGitHubClient, parent) -> None:
+        """Give the OWNER an ancestry of its own, for a nested split.
+
+        Written after the generation rather than before it, because the two
+        are separate key groups and only the order of the seeding says which
+        write is the one the fake keeps.
+        """
+        if not self.ancestor_ref:
+            return
+        recorded = github.read_pinned_state(parent)
+        _lineage.write_late_ancestry(recorded, _lineage.LateAncestry(
+            root_issue=ANCESTOR_NUMBER,
+            lineage_depth=LINEAGE_DEPTH,
+            parent_issue=ANCESTOR_NUMBER,
+            cycle_id=CYCLE_ID,
+            generation=GENERATION_NUMBER,
+            snapshot_ref=self.ancestor_ref,
+            snapshot_sha=CANDIDATE_SHA,
+            mirror_first=True,
+            scope="the slice this owner was cut for",
+        ))
+        github.seed_state(PARENT_NUMBER, **recorded.data)
 
     def seed_child(self, github: FakeGitHubClient, child_label: str) -> None:
         """Add the one consumer, with the ancestry a split writes on it.
@@ -176,36 +247,81 @@ class SeededUmbrella:
     github: FakeGitHubClient
     parent: object
 
+    def swept(
+        self, case, outcome=SnapshotOutcome.DELETED, **answers,
+    ) -> RecordedDelete:
+        """Sweep this owner as closed, the remote answering `outcome`."""
+        return self.swept_by(case, RecordedDelete(outcome, **answers))
+
+    def swept_by(self, case, remote: RecordedDelete) -> RecordedDelete:
+        """Sweep this owner as closed, with a prepared remote answering.
+
+        The real handler, because half of what a closed owner's cases ask
+        about is the routing: its ledger is reached through the cleanup sweep
+        and never through the stage handler its label names. A case hands its
+        own recorder in where what it is about is WHEN the remote was asked
+        rather than what it answered.
+        """
+        with remote.answering():
+            walk_owner(case, self, _late_sweep._handle_closed_owner_cleanup)
+        return remote
+
 
 def split_umbrella(
-    owed: LateResourceState,
+    owed: LateResourceState | None,
     *,
     snapshot: LateResourceState | None = None,
     child_label: str = LABEL_DONE,
     branch: str = SUPERSEDED_BRANCH,
     owner: OwnerSeed | None = None,
 ) -> SeededUmbrella:
-    """An umbrella whose children are done and whose remote is still owed."""
+    """An umbrella whose children are done and whose remote is still owed.
+
+    `owed=None` is the cycle that never got as far as superseding anything,
+    so its ledger records no branch at all.
+    """
     seed = owner or OwnerSeed()
     github = FakeGitHubClient()
     parent = make_issue(PARENT_NUMBER, label=seed.label, closed=seed.closed)
     github.add_issue(parent)
     seed.seed_child(github, child_label)
+    if not seed.recorded:
+        github.seed_state(PARENT_NUMBER, umbrella=True)
+        return SeededUmbrella(github=github, parent=parent)
     settled = late_generation(
         threshold=None, additions=None, resources=(), phase=seed.phase,
     ).with_consumers(
         (CHILD_NUMBER,) if seed.child else (),
-    ).with_resource(LateResource(
-        kind=LateResourceKind.BRANCH,
-        target=branch,
-        resource_state=owed,
-    ))
+    )
+    if seed.child:
+        # What the split writes for a child in ONE step: the consumer, the
+        # positional register, and the obligation entry. A fixture recording
+        # fewer of the three describes no record production can produce.
+        settled = settled.with_split_children((CHILD_NUMBER,)).with_resource(
+            LateResource(
+                kind=LateResourceKind.CHILD,
+                target=str(CHILD_NUMBER),
+                resource_state=LateResourceState.PENDING,
+            ),
+        )
+    if owed is not None:
+        settled = settled.with_resource(LateResource(
+            kind=LateResourceKind.BRANCH,
+            target=branch,
+            resource_state=owed,
+        ))
     if snapshot is not None:
         settled = settled.with_resource(LateResource(
             kind=LateResourceKind.SNAPSHOT_REF,
             target=SNAPSHOT_REF,
             resource_state=snapshot,
         ))
+    if seed.announced or seed.phase in _PAST_ANNOUNCEMENT:
+        settled = replace(settled, links_announced=True)
+    if seed.cancelled:
+        settled = replace(
+            settled.cancel(CANCELLED_AT), phase=LatePhase.CANCELLING,
+        )
     recorded = github.read_pinned_state(parent)
     _late_state.write_late_generation(recorded, settled)
     github.seed_state(
@@ -214,6 +330,7 @@ def split_umbrella(
         umbrella=True,
         **recorded.data,
     )
+    seed.seed_ancestry(github, parent)
     return SeededUmbrella(github=github, parent=parent)
 
 
@@ -242,12 +359,22 @@ def walk_owner(
         return teardown
 
 
-def resource_states(github: FakeGitHubClient) -> dict:
-    """The obligations the parent records, by target."""
+def resource_states(
+    github: FakeGitHubClient, kind: str = None,
+) -> dict:
+    """What the parent's ledger records, by target, for one kind of entry.
+
+    Defaulted to the RECLAIMABLE kinds -- the branch, the ref, and the held
+    plan PR -- because that is the ledger every reclamation case is about, and
+    the child receipts beside them are neither asked about nor acted on there.
+    A case about the receipts themselves names `child` and gets those.
+    """
+    recorded = github.pinned_data(PARENT_NUMBER).get("late_resources") or []
+    wanted = (kind,) if kind else RECLAIMABLE_KINDS
     return {
         entry["target"]: entry["state"]
-        for entry in github.pinned_data(PARENT_NUMBER).get("late_resources")
-        or []
+        for entry in recorded
+        if entry["kind"] in wanted
     }
 
 

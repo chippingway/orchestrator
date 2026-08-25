@@ -89,7 +89,6 @@ and its verdict is worth nothing next to that.
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
@@ -392,9 +391,15 @@ def _incomplete_evidence(
 
 
 def _hold_plan_pr(context: _LateContext) -> bool:
-    """Reconcile the cycle-marked hold, or park without spawning."""
-    context.generation = replace(
-        context.generation, phase=LatePhase.HOLDING_PLAN_PR,
+    """Reconcile the cycle-marked hold, or park without spawning.
+
+    The boundary goes down through the record's own rule, because this runs
+    on EVERY tick a live generation gets -- including one re-entering a split
+    transaction that crashed mid-loop, where writing this boundary over
+    `splitting` would erase the only evidence the loop was ever in flight.
+    """
+    context.generation = context.generation.at_phase(
+        LatePhase.HOLDING_PLAN_PR,
     )
     hold = _late_hold._reconcile_plan_pr_hold(
         context.gh, context.issue, context.state, context.generation,
@@ -420,6 +425,15 @@ def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
     answer already recorded is still allowed to settle: settling releases a
     hold that is already gone, and only a NEW run would leave a human free to
     merge under one.
+
+    A close a poll observed stops it too, and that one is asked twice, the
+    second time right against the spawn. Everything between the tick's own
+    gates and here is a request -- a worktree probe, a retry-budget write, a
+    hold to reconcile, and the write that records what this attempt IS -- and
+    the poll runs beside all of it, so the reading it took may not have
+    existed when this tick started nor when the first of those two asked. The
+    latch costs nothing, and what it is asked against is the one step that
+    puts an agent on somebody's repository.
     """
     if context.displaced_hold:
         _late_outcome._emit_failure(context, LateFailure.PLAN_PR_HOLD_FAILED)
@@ -443,10 +457,30 @@ def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
     ):
         _late_outcome._persist(context)
         return _late_outcome._finished(context, _LateDisposition.PARKED)
+    stopped = _late_owner._latch_stops(context)
+    if stopped is not None:
+        return _late_outcome._finished(context, stopped)
+    return _spawned(context, unspent, worktree)
+
+
+def _spawned(
+    context: _LateContext, unspent: dict, worktree: Path,
+) -> _LateAdjudicationRun:
+    """Record what this attempt is, then start it -- latch permitting.
+
+    `_begin` is itself a pinned write, so the poll can observe the close
+    inside the very write that says this run is about to start. The latch is
+    asked again immediately against the spawn: what the record then claims is
+    an attempt nobody made, which the next tick reconciles for free, while an
+    agent that ran is what nothing takes back.
+    """
     started = _late_session._spawn_record_for(
         context.state, context.generation, resuming=context.answering,
     )
     _begin(context, started, unspent)
+    stopped = _late_owner._latch_stops(context)
+    if stopped is not None:
+        return _late_outcome._finished(context, stopped)
     return _settle(
         context,
         _late_session._spawn_late_adjudicator(context, started, worktree),
@@ -475,9 +509,7 @@ def _begin(
     # question is a different question. What the retired-park memory quiets is
     # the reconciliation retry that spawned nothing and found the same wall.
     context.retired_park = None
-    context.generation = replace(
-        context.generation, phase=LatePhase.ADJUDICATING,
-    )
+    context.generation = context.generation.at_phase(LatePhase.ADJUDICATING)
     _late_session._record_late_spawn(context.state, run)
     spent = _accounting(context.state)
     _apply_accounting(context.state, unspent)

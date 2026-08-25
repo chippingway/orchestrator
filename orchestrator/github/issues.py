@@ -41,10 +41,11 @@ _RECORDED_EVENTS_CAP = 500
 # agent, or -- on the two operator-applied conversation labels -- the close
 # itself being the whole signal. The in-memory double sweeps this same set.
 #
-# What is absent is the decomposition family: a closed issue on `ready` or
-# `blocked` is a hard human stop with nothing to finalize, and it stays out
-# until an operator relabels it. The other two are swept for cleanup only --
-# see `CLEANUP_SWEEP_LABELS` -- and never enter the arcs this set drives.
+# What is absent is the decomposition family, because none of it has a
+# terminal arc to drain: `ready` and `blocked` are a hard human stop with
+# nothing to finalize, and `decomposing` and `umbrella` publish nothing on
+# their own. All four are queried for CLEANUP only -- see
+# `CLEANUP_ROUTE_LABELS` -- and none of them enters the arcs this set drives.
 #
 # A label leaves this set by being written off the issue, which every terminal
 # arc does as it fires -- so in steady state the sweep costs one pass per
@@ -77,11 +78,42 @@ CLOSED_SWEEP_LABELS: tuple[WorkflowLabel, ...] = (
 # `decomposing` is where a candidate is adjudicated and where the split
 # transaction runs, and `umbrella` is what the parent is handed on to once it
 # lands; between them they cover every state in which a generation ledger can
-# hold something the remote still owes. `ready` and `blocked` are absent
-# because an issue on either has published nothing to preserve or supersede.
+# START holding something the remote owes. They are the pair an OPEN issue is
+# refetched on, too -- there a close decides which handler runs, and the wrong
+# answer spawns the decomposer or activates children on an issue somebody has
+# ended.
 CLEANUP_SWEEP_LABELS: tuple[WorkflowLabel, ...] = (
     WorkflowLabel.DECOMPOSING,
     WorkflowLabel.UMBRELLA,
+)
+
+# The two an interrupted ending can be LEFT on, which is a different question
+# from where one runs. A decomposition outcome writes `ready` or `blocked`,
+# and a run spawned before its owner was observed closed lands after that
+# observation -- so a close latched, receipted on the thread, and never yet
+# marked can end up on an issue that is closed under one of these. The latch
+# that would route it is memory; a process that exits before any cleanup pass
+# runs takes it away, and nothing else would ever bring a tick back to that
+# owner: the ref its children were cut from would be held by a repository
+# nobody asks about again.
+#
+# So their CLOSED issues are queried, and only theirs -- an open one is
+# dispatched exactly as before, since an ending is not something an open issue
+# on either label is in the middle of. What that costs is one pinned read per
+# closed issue on them per sweep, on the `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS`
+# cadence that exists to bound precisely this, and what it buys is an ending
+# no restart can lose.
+CLEANUP_RECOVERY_LABELS: tuple[WorkflowLabel, ...] = (
+    WorkflowLabel.READY,
+    WorkflowLabel.BLOCKED,
+)
+
+# Every label a CLOSED issue reaches the cleanup pass under. The dispatcher
+# routes on this rather than on either half: what the pass does is read one
+# record and settle whatever late cycle it finds, which is the same question
+# wherever the label came from.
+CLEANUP_ROUTE_LABELS: tuple[WorkflowLabel, ...] = (
+    CLEANUP_SWEEP_LABELS + CLEANUP_RECOVERY_LABELS
 )
 
 
@@ -111,7 +143,7 @@ def _sweep_lookups(
 
 CLOSED_SWEEP_LOOKUPS = _sweep_lookups(CLOSED_SWEEP_LABELS)
 
-CLEANUP_SWEEP_LOOKUPS = _sweep_lookups(CLEANUP_SWEEP_LABELS)
+CLEANUP_SWEEP_LOOKUPS = _sweep_lookups(CLEANUP_ROUTE_LABELS)
 
 # One walk over both, because both are the same request against the same
 # cadence and the same label cache, and the dispatcher tells the two apart by

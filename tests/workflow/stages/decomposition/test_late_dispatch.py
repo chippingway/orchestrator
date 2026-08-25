@@ -16,6 +16,7 @@ from orchestrator.workflow.state import WorkflowLabel
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_content_support import late_issue
 from tests.workflow.stages.decomposition.late_relabel_support import (
+    CANCELLED_GENERATION,
     SETTLED_GENERATIONS,
     relabelled,
 )
@@ -26,6 +27,8 @@ from tests.workflow.stages.decomposition.late_relabel_support import (
 READY_OWNER, READY_HANDLER = _dispatch._STAGE_HANDLER_TARGETS[
     WorkflowLabel.READY
 ]
+
+_WORKFLOW_LOG = "orchestrator.workflow"
 
 READ_PINNED_STATE = "read_pinned_state"
 
@@ -54,6 +57,9 @@ class DispatchRefusalTest(unittest.TestCase):
         )
 
     def test_a_settled_generation_routes_as_before(self) -> None:
+        # A record no gate keyed to size holds is free to be routed --
+        # unless it is CANCELLED, which is its own ending under whatever
+        # label a human moved it to.
         for label, generation in SETTLED_GENERATIONS:
             with self.subTest(generation=label):
                 github, issue = late_issue(generation=generation)
@@ -62,6 +68,23 @@ class DispatchRefusalTest(unittest.TestCase):
                 dispatched = self._route(github, issue)
 
                 dispatched.assert_called_once_with(github, _TEST_SPEC, issue)
+
+    def test_a_cancelled_cycle_is_refused_here_too(self) -> None:
+        # Every label names a handler that would ACT on the issue, so a
+        # cancelled cycle wearing one is refused whatever it says. `ready` is
+        # one the cycle's own decomposer writes as its ordinary outcome, so
+        # the ending that outcome interrupted is written from there rather
+        # than left for a label nothing would move.
+        github, issue = late_issue(generation=CANCELLED_GENERATION)
+        relabelled(issue, WorkflowLabel.READY)
+
+        with self.assertLogs(_WORKFLOW_LOG):
+            dispatched = self._route(github, issue)
+
+        dispatched.assert_not_called()
+        self.assertEqual(
+            github.label_history, [(issue.number, WorkflowLabel.REJECTED)],
+        )
 
     def test_a_failed_repair_still_refuses(self) -> None:
         # The refusal is the safety property and the relabel is the repair, so
@@ -133,6 +156,19 @@ class AdjudicatedLabelTest(unittest.TestCase):
 
                 self.assertFalse(held)
                 asked.assert_called_once()
+
+    def test_a_cancelled_cycle_is_held_before_it(self) -> None:
+        # The one settled record the label does not free, and the one asked
+        # AHEAD of the reuse question rather than past it. That question can
+        # hold a dispatch indefinitely -- an ancestor's ref nobody can reach
+        # is answered by holding, tick after tick -- and an owner of its own
+        # cancelled cycle nested under one would never reconcile what it owes.
+        held, asked = self._guarded(
+            *late_issue(generation=CANCELLED_GENERATION),
+        )
+
+        self.assertTrue(held)
+        asked.assert_not_called()
 
     def _guarded(self, github, issue):
         """Ask the guards, holding the reuse question the read ends in."""

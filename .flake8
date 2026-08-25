@@ -63,6 +63,22 @@
 # it is keyed by, or the guard away from the graph it reads, would put the state
 # machine back across the flat leaves this owner replaces, so WPS202 is waived.
 #
+# orchestrator/workflow/engine/observations.py is one owner for the whole
+# process-wide record of closes a poll saw and could hand to no worker, so it
+# carries 13 members past the WPS202 ceiling of 7: the key every registry is
+# shaped by, the latch and its four readers/writers, the claim one receipt is
+# posted under and the two calls that hand it back -- the write that records
+# the memo saying the receipt landed, and the release that records nothing --
+# the window a worker retiring a cycle holds with the factory that mints one
+# and the read that answers what it advertises, and the claim that bounds the
+# one thread walk a process owes each owner.
+# They are six registries kept under ONE lock and settled together -- a pass
+# that runs drops the latch and the receipt memo and moves the generation the
+# next memo is counted against, all in the same call, and a retirement window
+# is what makes a record with no cycle on it still answer for one -- so
+# splitting them would put that invariant across module boundaries with
+# nothing holding it. WPS202 is waived.
+#
 # orchestrator/workflow/engine/comments.py is one owner for both directions of
 # the issue/PR comment surface -- the marker and id bookkeeping every posted
 # comment goes through, and the trust-filtered read the agent prompts quote --
@@ -99,11 +115,19 @@
 # a repo's pollable issues and a running stage handler -- the hard-skip filter,
 # the family / fanout partition and its cap-exemption probe, the per-worker
 # refetch, the scheduler submits, and the timed per-issue dispatch -- so it
-# carries 15 members past the WPS202 ceiling of 7 and names 16 imports past the
+# carries 38 members past the WPS202 ceiling of 7 and names 18 imports past the
 # WPS201 ceiling of 12. Each link is only safe given the one before it: the
-# filter is what keeps a parked issue from flipping the bucket cap-counted, and
-# the partition is what the exemption probe reads, so splitting them would put
-# one tick's concurrency contract across several modules. The import list is
+# filter is what keeps a parked issue from flipping the bucket cap-counted, the
+# partition is what the exemption probe reads, the reading that partition takes
+# of a closed issue is what the park is waived for and what re-applies it
+# behind the mark, the durable half of that reading is written where the
+# partition establishes it, the refetch every route takes is where a close the
+# partition never saw is taken instead, which labels earn that refetch is what
+# tells a closed issue's route from an open one's, and the way OUT of a cleanup
+# asks whether anything but that reading would ever come back for the ending it
+# was routed for -- so splitting
+# them would put one tick's concurrency contract across several modules. The
+# import list is
 # the union of what that chain is typed by -- the issue and client it routes,
 # the labels it filters on, the scheduler it submits to, and the analytics sink
 # it times into. WPS201 and WPS202 are waived.
@@ -124,8 +148,10 @@
 #
 # orchestrator/workflow/engine/drift.py is one owner for what a user-content
 # change is and what it costs -- the hash, the six filters that keep it from
-# moving on content no human wrote, and the two routes a real move is handed
-# to -- so it carries 9 members past the same ceiling. The routes are the only
+# moving on content no human wrote, the two routes a real move is handed to,
+# and the manifest one of those routes empties, which is every claim the
+# thrown-away manifest made about the children it created -- so it carries 10
+# members past the same ceiling. The routes are the only
 # reason the hash exists, and a filter loosened without the route that fires on
 # it is a re-decompose nobody asked for, so WPS202 is waived.
 #
@@ -630,10 +656,13 @@
 # WPS202 is waived.
 #
 # orchestrator/workflow/late_split/state.py is the whole round trip a late
-# generation makes through the pinned comment, and it carries 8 members past
+# generation makes through the pinned comment, and it carries 12 members past
 # the WPS202 ceiling of 7: the read, the write, the clear that defines what
-# "late mode off" means, and the five composers behind the write -- the
-# evidence half, the two ledgers, the rule that a verbatim copy outranks a
+# "late mode off" means, the three accessors for the one field that group
+# deliberately excludes -- the cycle a retirement dropped, which is what a
+# close observed inside that write is adopted against, read, recorded, and
+# cleared where its window ends -- and the five composers behind the write:
+# the evidence half, the two ledgers, the rule that a verbatim copy outranks a
 # typed view, and the JSON one obligation is spelled as. They are one contract:
 # what a field means when it is unset is decided by the same owner that decides
 # what it reads back as, and splitting them would let the two disagree about a
@@ -664,8 +693,9 @@
 # child half of a split -- the walk that adopts what the parent already
 # records, the umbrella flag and count written before the first child, the one
 # write that records a child as a child, a consumer, and an obligation at
-# once, the seed that adds an ancestry without replacing a child's own work,
-# and the body and the lineage that child is born with -- so it carries 18
+# once, the seal that says a ledger a cancellation stopped is FINAL, the seed
+# that adds an ancestry without replacing a child's own work,
+# and the body and the lineage that child is born with -- so it carries 22
 # members past the WPS202 ceiling of 7 and names 18 imports past the WPS201
 # ceiling of 12. The order is the crash-safety contract, and the imports are
 # what a child needs to exist: the lineage record it inherits, the depth
@@ -675,22 +705,29 @@
 # two modules, so WPS201 and WPS202 are waived.
 #
 # orchestrator/workflow/stages/decomposition/late_cleanup.py owns everything a
-# split still owes a remote once its children are running, so it carries 34
+# split still owes a remote once its children are running, so it carries 40
 # members past the WPS202 ceiling of 7 and names 23 imports past the WPS201
 # ceiling of 12. The members are one question asked twice over: the pass
 # carrier both entries share, the fresh read of every recorded consumer and
 # the one fetch under it, which branches and which refs are unsettled, whether
 # every consumer a ref is kept for has ended (and what "ended" is for one of
-# them), which refs a visit may act on and whether one it decided against is
+# them, which boundary a cancelled record answers that from, whether the
+# record shows a split that started at all, and whether one that started
+# reached the end of its manifest -- or sealed a ledger it never will), which
+# refs a
+# visit may act on and whether one it decided against is
 # gone anyway, the last reading before a delete and the delete it authorizes,
 # whether a target is this issue's own, the branch teardown with the local
 # half it proves, the delete with the answer a raising transport is read as,
 # the one write that records any of it, the decision written ahead of the
-# delete and the release that follows it -- for every consumer, for one, and
+# delete (written once, and not again over a decision the record already
+# carries) and the release that follows it -- for every consumer, for one, and
 # the one post that says it -- the obligation
 # the transaction records ahead of its own first attempt, the pass
 # that settles what can be settled, what the record then says about each of
-# them, the subset that may not be left behind, the two emissions, and the
+# them and which of those the visit actually moved -- the reading the sinks
+# and the write ride, so a standing refusal is not one record per cadence --
+# the subset that may not be left behind, the two emissions, and the
 # decision the umbrella's terminal reads over the settle both callers share.
 # Splitting them would separate "may this be deleted" from "delete it", which
 # is the pair the whole reclamation rule is. The imports are what asking
@@ -701,6 +738,44 @@
 # telemetry one reclamation is reported on, the stage tag they are recorded
 # under, and the child scan the rule is proved against. WPS201 and WPS202 are
 # waived.
+#
+# orchestrator/workflow/stages/decomposition/late_cancellation.py is the whole
+# ending one cancelled cycle earns, from either side, so it carries 40 members
+# past the WPS202 ceiling of 7 and names 23 imports past the WPS201 ceiling of
+# 12. The members are one ordered pass and the two entries into it: the closed
+# owner's, which ends with the terminal, and the dispatcher refusal a reopened
+# owner takes, which reconciles and stops there; then the mark that goes down
+# before any external call, the held plan PR this pass may act on with the
+# attempt that releases and closes it, the fetch under that, the receipt it is
+# said once by, the entry it is recorded as and the state that entry leaves
+# owed and the one shape of it no pass can settle, the branch a supersession
+# left behind but never wrote down and the question of whether the record
+# already names one, the child receipts the ending discharges and which of
+# them are still standing, the consumer scan a held
+# ref has to be proved against, the ask that re-reads that plan PR on the far
+# side of everything else owed, the cycle a close observed now would end --
+# the record's own, or the one a retirement in flight still names -- the cycle
+# a retirement DROPPED, put back where the thread carries a receipt naming it,
+# with the identity every record of it is correlated by rebuilt beside the
+# ledgers, the terminal a
+# settled cycle earns and what
+# may not be left behind when it fires, whether anything but the held
+# observation would come back for the ending -- asked of one reading of the
+# issue and the record together, so a pass that returned with the ending owed
+# under a label no query asks for keeps that observation, and asked of the
+# obligations alone by the pass that decides whether an owner may leave the
+# sweep -- the one write each step is made
+# durable by, and the report the plan PR leaves on both sinks. Splitting them
+# would put "the cycle is over" in one module and "and here is what that costs
+# the remote" in another, which is the pair the whole cancellation is. The
+# imports are what the ending touches: the issue,
+# client, and pinned comment it reads and writes, the stamp clock the
+# cancellation is dated by, the domain's phase, generation, and resource
+# records, the events and telemetry one cancellation is reported on, the
+# reclamation owner every branch and ref rule is the same rules of, the hold's
+# own release, the child scan the ref rule is proved against, the branch
+# resolver a supersession's own name comes from, and the terminal label with
+# the stage tag both sinks record under. WPS201 and WPS202 are waived.
 #
 # orchestrator/workflow/stages/decomposition/late_transaction.py is the order
 # a cleared split runs in -- the two refusals no step below could repair, the
@@ -820,6 +895,26 @@
 # as an acknowledgment is the failure those two exist to prevent, and they
 # belong beside the freeze that would otherwise accept it.
 #
+# orchestrator/workflow/stages/decomposition/umbrella.py is one owner for the
+# `umbrella` poll and the terminal its all-resolved branch earns, so it carries
+# 10 members past the WPS202 ceiling of 7. The terminal alone is six of them,
+# and the split is the crash-safety: the resolution said once, the write that
+# stamps it and retires the cycle together, the window a poll racing that
+# write needs, the barrier behind it that puts the cycle back where a close
+# landed inside one, the label and close asked of a record that already says
+# the terminal is due, and the local close under them. Folding them back into
+# one function would put the ordering that makes every window recoverable
+# inside a single body with nothing naming it.
+#
+# orchestrator/workflow/stages/decomposition/late_sweep.py is the closed
+# owner's whole pass, and it names 13 imports past the WPS201 ceiling of 12:
+# the issue, client, and pinned comment it reads, the closed and control-label
+# predicates it filters on, the late record it types, the ending it hands an
+# owner to -- and the label vocabulary and stage keys it needs for the two
+# things it writes itself, the terminal an umbrella recorded and a crash took
+# the label off, and the swept label a cancelled cycle's own agent moved out
+# from under an ending still owed. WPS201 is waived.
+#
 per-file-ignores =
     orchestrator/__init__.py:WPS412,WPS410
     orchestrator/config/__init__.py:WPS412,WPS410
@@ -836,6 +931,7 @@ per-file-ignores =
     orchestrator/workflow/late_split/lineage.py:WPS202
     orchestrator/workflow/late_split/state.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
+    orchestrator/workflow/engine/observations.py:WPS202
     orchestrator/workflow/engine/dispatch.py:WPS201,WPS202
     orchestrator/workflow/engine/drift.py:WPS202
     orchestrator/workflow/engine/messages.py:WPS202
@@ -860,13 +956,15 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/late_settlement.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_snapshot.py:WPS201
     orchestrator/workflow/stages/decomposition/late_children.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_cancellation.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_cleanup.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_transaction.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_revision.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_reuse.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_session.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
-    orchestrator/workflow/stages/decomposition/umbrella.py:WPS201
+    orchestrator/workflow/stages/decomposition/umbrella.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_sweep.py:WPS201
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
     orchestrator/workflow/stages/discussion/handler.py:WPS202
     orchestrator/workflow/stages/discussion/parks.py:WPS202

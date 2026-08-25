@@ -153,10 +153,16 @@ _INTERRUPT_SOURCES: Mapping[
             WorkflowLabel.RESOLVING_CONFLICT,
         ),
     ),
-    # The last two are the late gate's cancellation: an issue whose owner is
+    # The last three are the late gate's cancellation: an issue whose owner is
     # observed closed mid-adjudication finishes its external cleanup and stops
-    # there, under whichever of the two labels the adjudication had reached --
-    # `decomposing` before a split, `umbrella` once one converted it.
+    # there, under whichever label the adjudication had reached --
+    # `decomposing` before a split, `umbrella` once one converted it, and
+    # `done` for an owner a human moved onto the terminal over a cycle that
+    # still has an ending to reach. That last one is the only edge out of a
+    # terminal the orchestrator takes. The umbrella's own terminal needs none
+    # of it: the write that records the resolution retires the cycle with it,
+    # so a close arriving past that write finds nothing left to cancel and
+    # nothing is ever left under `done` for a later pass to correct.
     WorkflowLabel.REJECTED: frozenset(
         (
             WorkflowLabel.IMPLEMENTING,
@@ -167,6 +173,7 @@ _INTERRUPT_SOURCES: Mapping[
             WorkflowLabel.RESOLVING_CONFLICT,
             WorkflowLabel.DECOMPOSING,
             WorkflowLabel.UMBRELLA,
+            WorkflowLabel.DONE,
         ),
     ),
     WorkflowLabel.RESOLVING_CONFLICT: _DETOUR_TO_RESOLVING,

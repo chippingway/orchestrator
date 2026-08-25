@@ -17,8 +17,8 @@ from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_content_support import late_issue
 from tests.workflow.stages.decomposition.late_relabel_support import (
     CANCELLED_OWED_READ,
+    NOT_LIVE_GENERATIONS,
     OWED_READ_GENERATION,
-    SETTLED_GENERATIONS,
     relabelled,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
@@ -71,7 +71,7 @@ class DisabledRouteTest(_LateLabelCase):
     def test_an_issue_with_nothing_live_still_routes(self) -> None:
         # The kill switch keeps meaning what it meant for every issue that is
         # only waiting to be decomposed.
-        for label, generation in SETTLED_GENERATIONS:
+        for label, generation in NOT_LIVE_GENERATIONS:
             with self.subTest(generation=label):
                 github, issue = late_issue(generation=generation)
 
@@ -183,7 +183,7 @@ class LabelRestorationTest(_LateLabelCase):
         self.assertEqual(self._labels(github), [])
 
     def test_a_settled_generation_pins_no_label(self) -> None:
-        for label, generation in SETTLED_GENERATIONS:
+        for label, generation in NOT_LIVE_GENERATIONS:
             with self.subTest(generation=label):
                 github, issue = late_issue(generation=generation)
                 relabelled(issue, WorkflowLabel.READY)

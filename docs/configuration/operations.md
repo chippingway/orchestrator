@@ -186,23 +186,35 @@ no TTL and no background garbage collection. Three passes do it, and between the
   takes, so the ledger is settled from the same scan that parked the parent; the park itself is unchanged and no
   terminal is decided. Nothing else revisits an issue parked this way, which is why it happens here;
 - the **closed-owner cleanup sweep**, for an issue a human closed mid-cycle while it still carried
-  `workflow:decomposing` or `workflow:umbrella` (see
+  `workflow:decomposing` or `workflow:umbrella` — or `workflow:ready` / `workflow:blocked`, where a decomposition
+  outcome that landed after the close can leave an ending nothing else would find (see
   [`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)).
 
 The sweep runs on the existing `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` cadence and adds no per-tick traffic of its own, so
 raising that knob (the multi-repo rate-limit advice in
 [`../configuration.md`](../configuration.md#github-rate-limits)) also stretches how long an unreclaimed branch or ref
 survives, by the same factor. It is cleanup-only: it never spawns an agent, resumes a workflow, activates a child, or
-changes a label.
+touches one that already exists. It does end the cycle the close interrupted — the cancellation is marked, any plan
+pull request that cycle was holding is closed over one notice, and the issue moves to `rejected` once nothing is
+owed. That last write is the only label it makes, and it is also what stops the sweep: an owner still owing the
+remote keeps its label and keeps being visited, so a repository whose closed owners stay on `workflow:decomposing`
+or `workflow:umbrella` is a repository with something the orchestrator could not reclaim.
+
+Reopening such an owner does not get the workflow going again. The same cleanup runs from the dispatcher instead,
+once per tick, the issue reaches no stage handler, and the same `rejected` is written once the ledger settles —
+each held tick logs a warning naming what is still owed. Clearing the refusal is clearing the obligation; starting
+a fresh attempt afterwards is removing `rejected`, which is the same handshake a restart has always taken.
 
 **What to look at when something is not going away.** Three signals, and they mean different things:
 
-- A `late_failure` carrying `snapshot_delete_failed` or `branch_cleanup_failed`, repeated on the same issue (see
+- A `late_failure` carrying `snapshot_delete_failed` or `branch_cleanup_failed` (see
   [`../observability/event-streams.md`](../observability/event-streams.md#late-split-records-both-sinks)), together
   with an umbrella that will not close, or a closed owner that keeps its label. The remote **refused** the delete.
   That is a permission or ruleset problem — a protected-ref rule over `refs/orchestrator/*`, or a token that lost
   push scope — and only an operator can clear it. Nothing is retried into success meanwhile; the retry itself is
-  every visit.
+  every visit, but the *record* of it is not: the sinks carry the move to `failed` once and say nothing on the
+  visits that reach the same answer again, so what tells you a refusal is still standing is the terminal that never
+  fires and the warning logged on every visit that holds — not a second event.
 - A snapshot ref that is simply still there, with no failure recorded, and an umbrella that will not close. It is
   **retained** on purpose: a ref is kept until every recorded direct consumer has ended — which means the consumer's
   issue is *closed*, since reaching `done`, being `rejected`, and a human closing it all close it, and reopening
@@ -235,6 +247,9 @@ and it makes sure nothing resumes against one:
   cycle, and generation so it is said once. That is *all* the owner does to a child. It never edits a child's pinned
   comment: that comment is written whole by whoever writes it, and a handler of the child's own that read it first
   and wrote it after would silently undo the edit — so the receipt is an appended comment, which nothing can lose.
+  A cycle a human's close **cancelled** leaves even that unsaid: it is responsible for none of those children, so it
+  reclaims the ref and touches nothing. The child is not left uncovered — the mirror goes before the remote ref, so
+  the guard below reaches the same park a receipt would have earned it, one `ls-remote` later.
 - **The child refuses the work itself, at its own dispatch.** Before any handler runs, an issue whose recorded
   ancestry still names a snapshot looks for that receipt on its own thread — marked with the owner, cycle, and
   generation it was born of, and authored by the orchestrator — and refuses if it finds one. That answer is

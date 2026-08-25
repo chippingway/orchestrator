@@ -96,7 +96,7 @@ orchestrator/
                         embedded; the low-level comment and review readers stay raw
     events.py           audit event record construction and the optional JSONL sink
     issues.py           issue polling and writes, the query options, the wire issue-state vocabulary,
-                        the closed predicate every reader of it asks through, and the every-state, no-label walk
+                        the closed predicate every reader of it asks through, the every-state, no-label walk
                         that finds the one issue carrying a marker -- the reading a receipt lookup needs and the
                         only one that sees an issue a human has since closed or relabelled
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
@@ -117,7 +117,10 @@ orchestrator/
       claude.py         Claude command construction and execution
   scheduler/            publishes `IssueScheduler` and `SubmissionRequest`
     models.py           the typed submission, the historical `submit` binding, and field normalization
-    service.py          the concrete scheduler: the caps, the tracked claims, the family mutex, dispatch, and shutdown
+    service.py          the concrete scheduler: the caps, the tracked claims, the family mutex, dispatch, and
+                        shutdown. What a refused submission MEANT is the caller's -- a cleanup refused because a
+                        worker holds the issue costs an observation rather than a turn, and the workflow keeps that
+                        reading where its own stage handlers can reach it
   git/
     authentication.py   the per-repo token and askpass session, the authenticated fetches, the remote-ref reads that
                         answer what a branch or a whole refname is at without a local one, the lease-pinned branch

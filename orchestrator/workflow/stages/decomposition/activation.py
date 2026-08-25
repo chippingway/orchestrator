@@ -29,9 +29,11 @@ from dataclasses import dataclass
 
 from github.Issue import Issue
 
+from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import WorkflowLabel
@@ -42,16 +44,49 @@ log = logging.getLogger("orchestrator.workflow")
 @dataclass
 class _ChildActivation:
     gh: GitHubClient
+    owner: Issue
+    slug: str
     state: PinnedState
     scan: _ChildScan
     held: list[_state._HeldChild]
     relabeled: bool = False
+    stopped: bool = False
 
     @classmethod
     def start(
-        cls, gh: GitHubClient, state: PinnedState, scan: _ChildScan,
+        cls,
+        gh: GitHubClient,
+        spec: config.RepoSpec,
+        owner: Issue,
+        state: PinnedState,
+        scan: _ChildScan,
     ) -> _ChildActivation:
-        return cls(gh, state, scan, [])
+        return cls(gh, owner, spec.slug, state, scan, [])
+
+    def parent_is_gone(self) -> bool:
+        """Whether a poll saw the parent closed since this walk began.
+
+        Asked before EVERY relabel rather than once for the walk, because a
+        relabel is a request and the poll runs beside it: a close latched
+        after the first child was released must not release the second. It
+        costs nothing to ask, and what it protects is an agent started
+        against a slice of work somebody has ended.
+
+        Nothing is written here. The parent's own record is not this walk's to
+        move -- the handler that called it owns the mark -- and stopping is
+        the whole of what a shared dep-graph walk may decide.
+        """
+        if self.stopped:
+            return True
+        if not _observations.close_observed(self.slug, self.owner.number):
+            return False
+        log.warning(
+            "repo=%s issue=#%s was observed closed while its children were "
+            "being released; releasing none of the rest",
+            self.slug, self.owner.number,
+        )
+        self.stopped = True
+        return True
 
     def consider(self, idx: int, child_number) -> None:
         number = int(child_number)
@@ -63,9 +98,12 @@ class _ChildActivation:
         pending = self._pending_dependencies(idx)
         if pending:
             self.held.append((number, pending))
-        else:
-            self.gh.set_workflow_label(child, WorkflowLabel.READY)
-            self.relabeled = True
+            return
+        if self.parent_is_gone():
+            self.held.append((number, []))
+            return
+        self.gh.set_workflow_label(child, WorkflowLabel.READY)
+        self.relabeled = True
 
     def _pending_dependencies(self, idx: int) -> list[int]:
         dep_graph = self.state.get("dep_graph") or {}
@@ -82,7 +120,11 @@ class _ChildActivation:
 
 
 def _activate_ready_children(
-    gh: GitHubClient, issue: Issue, state: PinnedState, scan: _ChildScan,
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+    scan: _ChildScan,
 ) -> list:
     """Dep-graph activation walk shared by `_handle_blocked` / `_handle_umbrella`.
 
@@ -94,8 +136,13 @@ def _activate_ready_children(
     no issue for, is passed over: the first has ended and the second cannot be
     written to. Writes pinned state when at least one child was relabeled. Returns the still-held children as
     `[(child_number, pending_dep_numbers)]` for visibility logging.
+
+    A parent a poll observed closed stops the walk where it stands, asked
+    again before every relabel: this walk is the one step of a late split
+    that puts an agent on somebody's repository, and a close latched after
+    the first child was released may not release the second.
     """
-    activation = _ChildActivation.start(gh, state, scan)
+    activation = _ChildActivation.start(gh, spec, issue, state, scan)
     for idx, child_number in enumerate(scan.children):
         activation.consider(idx, child_number)
     if activation.relabeled:

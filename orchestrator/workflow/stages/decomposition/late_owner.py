@@ -98,6 +98,7 @@ from dataclasses import replace
 from typing import Optional
 
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.late_split.models import (
     LateFailure,
@@ -178,6 +179,37 @@ def _reconcile_pending_owner_check(
     return None
 
 
+def _still_wanted(context: _LateContext) -> Optional[_LateDisposition]:
+    """Whether the split may take its next irreversible step, or why not.
+
+    None is the only answer that lets one happen. Asked immediately before
+    each of them rather than once for all of them, because the steps are not
+    one moment: a push and a fetch stand between the verdict and the first
+    child, and a create, a record, and a seed stand between every child and
+    the next, so a human can close the issue inside any of those gaps.
+
+    What makes asking necessary at all is who else could see the close. A
+    poll that observes one while this worker holds the issue cannot hand it
+    anywhere -- the scheduler admits no second worker for an issue one is
+    already running -- so the observation is deferred to a later tick, and
+    until that tick comes THIS run is the only thing standing between a
+    closed issue and another real issue created against it.
+
+    The three answers are the guard's own, unchanged. A closed owner is
+    marked and the cycle ends where it stands, with everything already put on
+    the remote left on the ledger for the cleanup path. An unreadable one
+    parks: a read that established nothing is not "still open", and the read
+    stays owed on the record, which is what brings the next tick back to it
+    ahead of anything else it would do.
+    """
+    reading = _guarded_owner(context)
+    if reading == _OwnerState.OPEN:
+        return None
+    if reading == _OwnerState.CLOSED:
+        return _LateDisposition.CANCELLED
+    return _LateDisposition.PARKED
+
+
 def _guarded_owner(context: _LateContext) -> _OwnerState:
     """Read this generation's owner fresh, and record what the answer costs.
 
@@ -230,27 +262,42 @@ def _already_claimed(generation: LateGeneration) -> bool:
     a read nobody would come back to. The phase is part of the question for
     the same reason it is part of the claim: a generation that recorded the
     obligation at an earlier boundary still owes this one its name.
+
+    Which phases those are is the completion's own answer, not a single one.
+    A claim never writes over a boundary the split transaction owns -- doing
+    so would tell the reclamation that nothing had been cut from the ref yet
+    -- so a transaction re-entered after a crash carries its claim under the
+    boundary it interrupted, and that is as standing a claim as `owner_check`.
     """
     return (
         generation.owner_check_pending
-        and generation.phase == LatePhase.OWNER_CHECK
+        and generation.phase in _late_outcome._CLAIM_PHASES
     )
 
 
 def _read_owner(context: _LateContext) -> _OwnerState:
-    """Fetch the issue again and say which of the three answers it gives.
+    """Say which of the three answers this issue gives, latch read first.
 
-    Re-fetched rather than read off the snapshot the tick opened with, which
-    is the whole point: that snapshot is as old as the run that has just
-    finished. The fetch and the state read share one guard, because a PyGithub
-    issue is lazy and the request that can fail is as likely to be the
-    attribute as the fetch.
+    The latch is asked ahead of GitHub because it holds the one reading GitHub
+    cannot give back: a poll that found this issue closed while this very
+    worker held it could hand that reading to nobody -- the scheduler admits
+    no second worker for an issue one is already running -- and a human who
+    reopened it in the meantime has taken it off the remote for good. Asking
+    costs no request, so every barrier in this mode gets it.
+
+    Otherwise re-fetched rather than read off the snapshot the tick opened
+    with, which is the whole point: that snapshot is as old as the run that
+    has just finished. The fetch and the state read share one guard, because a
+    PyGithub issue is lazy and the request that can fail is as likely to be
+    the attribute as the fetch.
 
     Fails closed twice over. An exception is unreadable, and so is a state
     that is neither of the two GitHub reports -- a shape with no state on it
     would otherwise default to "open" and let the tick publish on the strength
     of a read that established nothing.
     """
+    if _latched_close(context):
+        return _OwnerState.CLOSED
     try:
         owner_state = _owner_state(context)
     except Exception:
@@ -270,6 +317,78 @@ def _read_owner(context: _LateContext) -> _OwnerState:
         context.issue.number,
     )
     return _OwnerState.UNREADABLE
+
+
+def _latched_close(context: _LateContext) -> bool:
+    """Whether a poll observed this issue closed and nothing has settled it.
+
+    Said out loud when it answers, because it is the one closed reading that
+    no request of this run's would ever show and an operator reading the log
+    would otherwise see a cycle end against an issue GitHub reports open.
+    """
+    if not _observations.close_observed(
+        context.spec.slug, context.issue.number,
+    ):
+        return False
+    log.warning(
+        "repo=%s issue=#%d was observed closed by a poll that could hand the "
+        "reading to no worker; ending cycle %d here rather than asking "
+        "GitHub, which a reopen since would answer differently",
+        context.spec.slug, context.issue.number, context.generation.cycle_id,
+    )
+    return True
+
+
+def _latch_stops(context: _LateContext) -> Optional[_LateDisposition]:
+    """Whether a latched close forbids the step that is about to happen.
+
+    The barrier for every irreversible step whose own moment is too tight for
+    a request: the create at the bottom of the child loop, the spawn, the
+    write that erases a settled cycle. It is the LATCH alone rather than the
+    whole guard, because those steps sit where a claim would be wrong -- a
+    claim names `owner_check`, and writing it over whatever boundary the tick
+    actually reached is the rewind the record refuses -- and because it costs
+    nothing: no request, and no write at all on an issue still reading open.
+
+    A cycle already cancelled answers None, because there is nothing left
+    here to end and the gate above routes it to its ending anyway.
+    """
+    if not context.generation.is_present or context.generation.cancelled:
+        return None
+    if not _latched_close(context):
+        return None
+    _cancelled(context)
+    return _LateDisposition.CANCELLED
+
+
+def _still_activating(context: _LateContext) -> Optional[_LateDisposition]:
+    """Whether the children this transaction made may be started.
+
+    The last gap of all and the only one past the retirement, so it is asked
+    without the claim every earlier barrier takes: the generation now stands
+    at `cleaning_up`, and a claim writes `owner_check` over that -- the very
+    boundary the whole-ledger rule reads to decide whether a ref may go.
+
+    Three answers still, and the two that stop are not the same stop. A closed
+    owner -- latched, or reported so by GitHub between the retirement write
+    and this read -- ends the cycle: the mark goes down, no child is started,
+    and the ending settles what the transaction already put on the remote. An
+    unreadable one starts nothing and ends nothing; the umbrella's own walk
+    takes the same reading on its next tick, which is the retry the activation
+    always had.
+    """
+    reading = _read_owner(context)
+    if reading == _OwnerState.OPEN:
+        return None
+    if reading == _OwnerState.CLOSED:
+        _cancelled(context)
+        return _LateDisposition.CANCELLED
+    log.warning(
+        "issue=#%d could not be re-read before its children were started; "
+        "leaving them where they are for the umbrella's own walk",
+        context.issue.number,
+    )
+    return _LateDisposition.SETTLED
 
 
 def _owner_state(context: _LateContext) -> str:
@@ -340,7 +459,19 @@ def _cancelled(context: _LateContext) -> None:
     the remote still owes is already on the generation and is not touched
     here -- reclaiming it is the cleanup path's job, and this is the mark that
     path reads.
+
+    Recorded and reported ONCE per cycle. Several barriers can reach a closed
+    reading in one run -- the read taken between two children, the one taken
+    before the activation -- and a record that already carries the mark is
+    left exactly where the FIRST one put it: the stamp, the boundary, and the
+    `late_cancellation` a sink is handed all belong to that marking, and
+    repeating them would put one record per barrier on a cycle that ended at
+    the first. The claim the repeat's own read was taken under is still
+    dropped, because that read has now been taken.
     """
+    if context.generation.cancelled:
+        _claim_dropped(context)
+        return
     log.warning(
         "issue=#%d was closed while its oversized candidate %s was being "
         "adjudicated; cancelling cycle %d",
@@ -356,6 +487,23 @@ def _cancelled(context: _LateContext) -> None:
     _late_notice._notice_settled(context)
     _late_outcome._persist(context)
     _late_outcome._emit_cancellation(context)
+
+
+def _claim_dropped(context: _LateContext) -> None:
+    """Take the owner-read obligation off a cycle already marked over.
+
+    What the claim exists for is bringing a tick back to a read of this
+    issue, and the read that reached this has been taken. Written only where
+    one is actually standing: a repeat that owes nothing writes nothing, so
+    a cancelled cycle costs a pinned write on the barrier that marked it and
+    on none of the barriers after it.
+    """
+    if not context.generation.owner_check_pending:
+        return
+    context.generation = replace(
+        context.generation, owner_check_pending=False,
+    )
+    _late_outcome._persist(context)
 
 
 def _unreadable(context: _LateContext) -> None:

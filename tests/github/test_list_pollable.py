@@ -61,11 +61,8 @@ class ListPollableIssuesTest(unittest.TestCase):
         closed_done = make_issue(8, label="done")
         closed_done.closed = True
         gh = FakeGitHubClient((open_issue, closed_in_review, closed_done))
-        out = {
-            pollable_issue.number
-            for pollable_issue in gh.list_pollable_issues()
-        }
-        self.assertEqual(out, {1, 7})
+
+        self.assertEqual(_polled_numbers(gh), {1, 7})
 
     def test_closed_question_included_for_cleanup(self) -> None:
         # A human closing a `question`-labeled Q&A issue is the terminal
@@ -121,13 +118,18 @@ class ListPollableIssuesClosedSweepTest(unittest.TestCase):
 
 
 class CleanupSweepTest(unittest.TestCase):
-    """Two closed decomposition states are swept, and only for cleanup.
+    """The closed decomposition states are swept, and only for cleanup.
 
     An issue closed on `decomposing` or `umbrella` may still hold the remote
     to a superseded branch and to the immutable ref its children were cut
-    from, and nothing else ever revisits a closed issue. The other two pre-PR
-    states have published nothing to preserve or supersede, so they stay out
-    -- a closed issue there is a hard human stop.
+    from, and nothing else ever revisits a closed issue.
+
+    `ready` and `blocked` are queried for the same reason one step further
+    on: a decomposition outcome writes one of them, and a run spawned before
+    its owner was observed closed lands after that observation -- so an
+    ending latched, receipted, and never marked can be left on an issue that
+    is closed under either. The latch that would route it is memory, so
+    without the query a process that exits first loses the ending for good.
     """
 
     def test_a_closed_snapshot_owner_is_yielded(self) -> None:
@@ -137,10 +139,23 @@ class CleanupSweepTest(unittest.TestCase):
                     _CLEANUP_ISSUE, _swept_numbers(_CLEANUP_ISSUE, label),
                 )
 
-    def test_the_other_pre_pr_states_stay_out(self) -> None:
+    def test_an_interrupted_ending_is_yielded(self) -> None:
         for label in ("workflow:ready", "workflow:blocked"):
             with self.subTest(label=label):
-                self.assertEqual(_swept_numbers(_CLEANUP_ISSUE, label), [])
+                self.assertIn(
+                    _CLEANUP_ISSUE, _swept_numbers(_CLEANUP_ISSUE, label),
+                )
+
+    def test_an_open_pre_pr_state_is_polled_as_ever(self) -> None:
+        # The query is about CLOSED issues only: an open `ready` issue is a
+        # developer's to pick up, and nothing here changes how it is polled.
+        gh = FakeGitHubClient()
+        gh.add_issue(make_issue(_CLEANUP_ISSUE, label="workflow:ready"))
+
+        with patch.object(config, _SWEEP_CADENCE_ATTR, 1):
+            polled = [issue.number for issue in gh.list_pollable_issues()]
+
+        self.assertEqual(polled, [_CLEANUP_ISSUE])
 
     def test_a_cleanup_owner_rides_the_same_cadence(self) -> None:
         # The whole point of folding it into the sweep that already runs: a
@@ -202,6 +217,14 @@ class ClosedSweepCadenceTest(unittest.TestCase):
             for _ in range(5):
                 out = {issue.number for issue in gh.list_pollable_issues()}
                 self.assertEqual(out, {1, 2})
+
+
+def _polled_numbers(gh: FakeGitHubClient) -> set[int]:
+    """Which issues one poll of this client yields."""
+    return {
+        pollable_issue.number
+        for pollable_issue in gh.list_pollable_issues()
+    }
 
 
 if __name__ == "__main__":

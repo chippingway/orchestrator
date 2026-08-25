@@ -99,6 +99,7 @@ class _StateKeys:
     phase: str = "late_phase"
     cancelled: str = "late_cancelled"
     cancelled_at: str = "late_cancelled_at"
+    cancelled_phase: str = "late_cancelled_phase"
     resources: str = "late_resources"
     owner_check_pending: str = "late_owner_check_pending"
     exempt_sha: str = "late_exempt_sha"

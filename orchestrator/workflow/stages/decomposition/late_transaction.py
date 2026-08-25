@@ -28,13 +28,27 @@ announcement is gated on the durable stamp beside it, and the pull request's is
 gated on its own hidden marker on the thread, so a crash between a post and the
 write recording it costs at most a repeat that never happens twice.
 
+**And the owner between every one of them.** A close is not something this run
+is told about: a poll that observes one while this worker holds the issue can
+hand it to nobody, so the issue is re-read before each step the remote keeps --
+before each child, before the announcement, before the supersession, and before
+the retirement that hands the parent to `umbrella` and lets its children run.
+What a close ends is the CYCLE rather than the tick, and where it lands is what
+the cancellation reads back: an ending entered at the supersession still owns
+the held plan pull request, and one entered just past it takes on the
+superseded branch the retirement never got to write down.
+
 **Then the label, the retirement, and the activation, in that order.** The
 generation is retired -- identity, commits, and both ledgers kept, the
 measurement dropped -- in the same write that hands the issue to `umbrella`,
 because a live generation pins `workflow:decomposing` and the relabel guard
 would put an early flip straight back. Activation runs after that write for the
 reason the initial split's does: a crash between them must not leave a runnable
-child under a parent still labelled `decomposing`.
+child under a parent still labelled `decomposing`. And the owner is read once
+more between the two, since the write itself is a request a close can land
+inside -- that last read is taken without a claim, because the retirement has
+already moved the record to `cleaning_up` and a claim would name `owner_check`
+over the boundary the whole-ledger rule reads.
 
 **Cleanup last, and never in the way.** The superseded branch is an obligation
 recorded on the ledger and reconciled after the children are running: a delete
@@ -78,6 +92,9 @@ from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
 )
 from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
+from orchestrator.workflow.stages.decomposition import (
+    late_owner as _late_owner,
+)
 from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
 )
@@ -186,33 +203,130 @@ def _run_late_split(
 ) -> _LateAdjudicationRun:
     """Run the whole split transaction for one guarded verdict.
 
-    Entered only with a split the post-agent owner read cleared, so nothing
-    here re-asks whether the issue is still open: that guarantee is what the
-    guarded handoff carries, and re-deriving it would read a snapshot as old
-    as the run that produced the verdict.
+    Entered only with a split the post-agent owner read cleared, which is the
+    guarantee the guarded handoff carries: nothing between that read and the
+    snapshot re-asks it.
+
+    Past the snapshot the owner is read again before EVERY step that puts
+    something on the remote nobody takes back: before each child the loop
+    creates, and again before the announcement, the supersession, and the
+    activation behind them. What separates those steps from the snapshot is
+    not time but consequence -- a ref is an object a later pass can reclaim,
+    and a child is a real issue somebody will work.
+
+    Asked repeatedly rather than once because the steps are not one moment,
+    and because of who else can see a close while they run: a poll that
+    observes one cannot hand it anywhere, since the scheduler admits no
+    second worker for an issue one is already running. That observation is
+    deferred to a later tick, and until it arrives this run is the only thing
+    standing between a closed issue and another child created against it.
+
+    Fails closed, like the guard it repeats: an owner that cannot be read
+    parks where it stands, with the read owed on the record and the verdict
+    still recorded, so the next tick resumes at no agent's cost.
     """
     guarded = finished.guarded_split
     context.generation = guarded.generation
-    refusal = _refused_split(context, guarded.children)
-    if refusal is not None:
-        _parked(
-            context,
-            refusal,
-            LateFailure.CHILD_CREATE_FAILED,
-            _late_outcome.PARK_CHILDREN_FAILED,
-        )
+    if _blocked_split(context, guarded.children):
         return _late_outcome._finished(context, _LateDisposition.PARKED)
     snapshot_ref = _late_snapshot._snapshot_for_split(context)
     if snapshot_ref is None:
         return _late_outcome._finished(context, _LateDisposition.PARKED)
+    still_wanted = _late_owner._still_wanted(context)
+    if still_wanted is not None:
+        return _late_outcome._finished(context, still_wanted)
     plan = _late_children._create_late_children(
         context, guarded.children, snapshot_ref,
     )
     if plan is None:
-        return _late_outcome._finished(context, _LateDisposition.PARKED)
+        return _late_outcome._finished(context, _interrupted(context))
+    return _published_split(context, finished, plan, snapshot_ref)
+
+
+def _interrupted(context: _LateContext) -> _LateDisposition:
+    """What a step that created nothing means: a cancelled cycle, or a park.
+
+    The loop below reports both as "no plan", because to its caller they are
+    the same instruction -- create nothing further. Which of the two happened
+    is on the record it just wrote, and the mark is the one that says the
+    cycle is over rather than waiting.
+    """
+    if context.generation.cancelled:
+        return _LateDisposition.CANCELLED
+    return _LateDisposition.PARKED
+
+
+def _blocked_split(context: _LateContext, children: tuple) -> bool:
+    """Whether this verdict was refused before anything external happened."""
+    refusal = _refused_split(context, children)
+    if refusal is None:
+        return False
+    _parked(
+        context,
+        refusal,
+        LateFailure.CHILD_CREATE_FAILED,
+        _late_outcome.PARK_CHILDREN_FAILED,
+    )
+    return True
+
+
+def _published_split(
+    context: _LateContext,
+    finished: _LateAdjudicationRun,
+    plan: _SplitPlan,
+    snapshot_ref: str,
+) -> _LateAdjudicationRun:
+    """Finish a transaction whose children exist: announce, supersede, hand.
+
+    Every step here is one the remote keeps: a comment saying what the parent
+    became, the plan pull request closed over a supersession notice, the
+    umbrella label, and the children this walk lets start. A cycle a close
+    ended takes none of them -- what it has already put on the remote is on
+    the ledger, and the cleanup path is what settles it, closing that same
+    pull request over a cancellation instead.
+
+    So the owner is read BETWEEN them and not once for all of them, on the
+    same rule the child loop above runs on: publication is three separate
+    moments, each of which is a GitHub round-trip a human can close the issue
+    inside. Reading once would let a close observed during the announcement
+    or the supersession still hand the parent to `umbrella` and let its
+    children loose -- which is the one effect of the whole transaction that
+    puts an agent on somebody's repository.
+
+    Each of the three checks leaves the record where the interruption
+    actually happened, and the cancellation reads it from there: an ending
+    entered at the supersession closes the plan pull request over a
+    cancellation notice, and one entered between the supersession and the
+    retirement takes the superseded branch on as owed rather than retiring
+    over a branch nothing names.
+    """
+    stopped = _stopped_publishing(context)
+    if stopped is not None:
+        return stopped
     _announced(context, plan, snapshot_ref)
+    stopped = _stopped_publishing(context)
+    if stopped is not None:
+        return stopped
     if not _superseded(context, plan, snapshot_ref):
         return _late_outcome._finished(context, _LateDisposition.PARKED)
+    return _retired_split(context, finished, plan)
+
+
+def _retired_split(
+    context: _LateContext,
+    finished: _LateAdjudicationRun,
+    plan: _SplitPlan,
+) -> _LateAdjudicationRun:
+    """Hand the parent on, let its children run, and take its branch back.
+
+    Entered with the pull request settled and the children still `blocked`,
+    which is the state the third and last owner read is asked from: past it
+    an agent runs on somebody's repository, so a close observed anywhere
+    between the supersession and here ends the cycle instead.
+    """
+    stopped = _stopped_publishing(context)
+    if stopped is not None:
+        return stopped
     # Resolved once, ahead of the write that clears `pr_number`: the resolver
     # falls back to the legacy ref while a pull request is recorded, so a
     # second reading after that write could name a different branch from the
@@ -220,13 +334,31 @@ def _run_late_split(
     branch = _worktree_paths._resolve_branch_name(
         context.state, context.spec, context.issue.number,
     )
-    _handed_to_children(context, plan, branch)
+    ended = _handed_to_children(context, plan, branch)
+    if ended is not None:
+        return _late_outcome._finished(context, ended)
     _reclaimed_branch(context, branch)
     return replace(
         finished,
         disposition=_LateDisposition.SETTLED,
         generation=context.generation,
     )
+
+
+def _stopped_publishing(
+    context: _LateContext,
+) -> Optional[_LateAdjudicationRun]:
+    """Ask the owner whether the next publication step may happen at all.
+
+    None is the only answer that lets one run, and it is the same guard the
+    child loop takes between two creates -- a closed owner ends the cycle
+    where it stands, an unreadable one parks with the read owed on the
+    record, and neither is a state anything below may publish over.
+    """
+    still_wanted = _late_owner._still_wanted(context)
+    if still_wanted is None:
+        return None
+    return _late_outcome._finished(context, still_wanted)
 
 
 def _refused_split(
@@ -431,7 +563,7 @@ def _closed_over_notice(
 
 def _handed_to_children(
     context: _LateContext, plan: _SplitPlan, branch: str,
-) -> None:
+) -> Optional[_LateDisposition]:
     """Retire the generation onto `umbrella`, then let the children run.
 
     One write for the label and the retirement, because the two are the same
@@ -439,6 +571,11 @@ def _handed_to_children(
     still owes the remote is recorded in that write as well, so the obligation
     is durable before the cleanup that reconciles it is attempted -- and the
     activation that follows can therefore never be waiting on it.
+
+    Reports the disposition that ended the cycle, or None where the children
+    were started. The retirement write is itself a request, and a close
+    landing inside it is the last one this transaction can still catch: past
+    the read below, an agent is running on somebody's repository.
 
     Activation is last and is best-effort: a child this pass could not flip
     reads as deps-satisfied on the umbrella's own next walk, which is the
@@ -458,16 +595,28 @@ def _handed_to_children(
     context.state.set(_PR_NUMBER, None)
     context.gh.set_workflow_label(context.issue, WorkflowLabel.UMBRELLA)
     _late_outcome._persist(context)
-    _activated(context, plan)
+    ended = _late_owner._still_activating(context)
+    if ended is not None:
+        return ended
+    return _activated(context, plan)
 
 
-def _activated(context: _LateContext, plan: _SplitPlan) -> None:
+def _activated(
+    context: _LateContext, plan: _SplitPlan,
+) -> Optional[_LateDisposition]:
     """Let the children this split may still start, run.
 
     A read that failed leaves every child where it is. The umbrella's own walk
     takes the same reading on its next tick, so nothing is lost by declining
     to guess -- while flipping a child whose state could not be established is
     the write this exists to avoid.
+
+    The walk asks the latch before every relabel of its own, and what it does
+    with a close it finds there is HOLD the children after it -- it does not
+    own this issue's record. So the answer is asked for again here, and the
+    cycle ends on it: a transaction that reported settled would go on to
+    reclaim the superseded branch, which is external work on an issue this
+    reading says nobody wants, and would leave no mark saying why.
     """
     scan = _parents._read_child_labels(
         context.gh, context.issue, [number for number, _ in plan.created],
@@ -478,10 +627,11 @@ def _activated(context: _LateContext, plan: _SplitPlan) -> None:
             "umbrella's own walk retries on the next tick",
             context.issue.number,
         )
-        return
+        return None
     _activation._activate_ready_children(
-        context.gh, context.issue, context.state, scan,
+        context.gh, context.spec, context.issue, context.state, scan,
     )
+    return _late_owner._latch_stops(context)
 
 
 def _reclaimed_branch(context: _LateContext, branch: str) -> None:

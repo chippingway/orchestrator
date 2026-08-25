@@ -9,6 +9,7 @@ import unittest
 from orchestrator.workflow.stages.implementing import resume as _implementing_resume
 from orchestrator.workflow.stages.implementing import session_read as _session_read
 
+from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.stages.implementing import retry_test_support as support
 
 IssueScenario = support.IssueScenario
@@ -35,6 +36,9 @@ _agent = support._agent
 patch = support.patch
 _agent_runner = support.agent_runner
 _worktree_creation = support.worktree_creation
+STALE_SESSION_ISSUE = support.STALE_SESSION_ISSUE
+
+_WORKFLOW_LOG = "orchestrator.workflow"
 
 
 class StaleSessionClassifierTest(unittest.TestCase, _StaleSessionFixtureMixin):
@@ -82,6 +86,80 @@ class StaleSessionClassifierTest(unittest.TestCase, _StaleSessionFixtureMixin):
             stderr="No conversation found with session ID: xyz",
         )
         self.assertFalse(_session_read._is_stale_session_failure(BACKEND_CODEX, agent_result))
+
+
+class StaleRetryStopsAtAnObservedCloseTest(
+    ObservedCloseCase,
+    unittest.TestCase,
+    _StaleSessionFixtureMixin,
+):
+    """A poisoned session buys no second spawn on an issue a poll ended.
+
+    The retry exists so a transcript the backend itself lost does not cost
+    the issue a park. An issue somebody has closed is owed neither: it is a
+    SECOND agent, on somebody's repository, against work nobody wants. A
+    poll that observed the close while this run was in flight could hand that
+    reading to no other worker, so the latch is the only thing that has it.
+    """
+
+    def setUp(self) -> None:
+        self._fresh_process()
+        seeded = self._seeded_issue()
+        self.github = seeded[0]
+        self.issue = seeded[1]
+        self._latch_close(_TEST_SPEC.slug, STALE_SESSION_ISSUE)
+
+    def test_no_second_agent_is_spawned(self) -> None:
+        state = self.github.read_pinned_state(self.issue)
+        run_agent = MagicMock(side_effect=[_stale()])
+
+        with self.assertLogs(_WORKFLOW_LOG):
+            self._resumed(state, run_agent)
+
+        run_agent.assert_called_once()
+
+    def test_the_poisoned_session_is_left_pinned(self) -> None:
+        # Dropping the id is what AUTHORIZES the retry, and there is no
+        # retry: a fresh cycle a human authorizes later resolves the session
+        # for itself.
+        state = self.github.read_pinned_state(self.issue)
+
+        with self.assertLogs(_WORKFLOW_LOG):
+            self._resumed(state, MagicMock(side_effect=[_stale()]))
+
+        self.assertEqual(state.get(KEY_DEV_SESSION_ID), POISONED_SESSION)
+
+    def test_a_settled_latch_retries_as_ever(self) -> None:
+        # The baseline, so the guard is not simply "never retry".
+        self._settle_latches(_TEST_SPEC.slug)
+        state = self.github.read_pinned_state(self.issue)
+        run_agent = MagicMock(side_effect=[
+            _stale(), _agent(session_id=FRESH_SESSION, last_message=OK_MESSAGE),
+        ])
+
+        self._resumed(state, run_agent)
+
+        self.assertEqual(run_agent.call_count, 2)
+        self.assertEqual(state.get(KEY_DEV_SESSION_ID), FRESH_SESSION)
+
+    def _resumed(self, state, run_agent) -> None:
+        """Resume this issue's locked session with the given agent double."""
+        with (
+            patch.object(
+                _worktree_creation, ENSURE_WORKTREE, return_value=_FAKE_WT,
+            ),
+            patch.object(_agent_runner, RUN_AGENT, run_agent),
+        ):
+            _implementing_resume._resume_dev_with_text(
+                self.github, _TEST_SPEC, self.issue, state, RESUME_TEXT,
+            )
+
+
+def _stale():
+    """What a resume onto a transcript the backend lost comes back as."""
+    return _agent(
+        session_id="", last_message="", stderr=STALE_SESSION_STDERR,
+    )
 
 
 class StaleSessionImmediateRetryTest(

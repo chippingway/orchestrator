@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 
 from orchestrator import config
 from orchestrator.workflow.late_split.formats import InvalidLateValue
 from orchestrator.workflow.late_split.models import (
     MAX_LINEAGE_DEPTH,
     LateGeneration,
+    LatePhase,
     LateResource,
     LateResourceKind,
     LateResourceState,
@@ -20,6 +22,13 @@ from tests.workflow.late_split import generation_test_support as _support
 _BRANCH = "orchestrator/issue-1"
 _OTHER_BRANCH = "orchestrator/issue-2"
 _LATER_STAMP = "2026-08-21T11:00:00+00:00"
+
+# The boundaries a split transaction owns, spelled out here rather than
+# imported: what they are is the contract, and a member quietly added to
+# or dropped from the runtime set has to fail this rather than follow it.
+_IN_FLIGHT = (
+    LatePhase.SNAPSHOTTING, LatePhase.SPLITTING, LatePhase.SUPERSEDING,
+)
 
 
 def _generation(**fields) -> LateGeneration:
@@ -148,14 +157,78 @@ class OpaqueLedgerTest(unittest.TestCase):
                 )
 
 
-class CancellationTest(unittest.TestCase):
-    """Cancellation is irreversible, and keeps the moment it was observed."""
+class BoundaryTest(unittest.TestCase):
+    """How a record's boundary moves, and the two rules that stop it wrongly.
+
+    A boundary moves forwards freely and never backwards out of a split, and
+    a cancellation keeps the one it interrupted. Both exist for the same
+    window: a child is created before the write that records it, so a loop
+    that died between the two leaves an empty ledger and a real issue on
+    GitHub, and the phase is the whole account of what happened. Every retry
+    ABOVE the transaction names a boundary of its own -- the plan-PR hold on
+    every tick, a spawn, the owner read each completion claims -- and any of
+    them landing on that record would erase it.
+    """
+
+    def test_a_transaction_boundary_is_never_rewound(self) -> None:
+        earlier = (
+            LatePhase.MEASURING,
+            LatePhase.HOLDING_PLAN_PR,
+            LatePhase.ADJUDICATING,
+            LatePhase.OWNER_CHECK,
+        )
+        for standing in _IN_FLIGHT:
+            for phase in earlier:
+                with self.subTest(standing=standing, phase=phase):
+                    kept = _generation(phase=standing).at_phase(phase)
+
+                    self.assertEqual(kept.phase, standing)
+
+    def test_every_other_move_is_taken(self) -> None:
+        # Forwards out of a transaction, and anywhere at all from a boundary
+        # no transaction owns -- which is every ordinary tick.
+        moves = (
+            (LatePhase.SPLITTING, LatePhase.SUPERSEDING),
+            (LatePhase.SUPERSEDING, LatePhase.CLEANING_UP),
+            (LatePhase.SPLITTING, LatePhase.CANCELLING),
+            (LatePhase.ADJUDICATING, LatePhase.OWNER_CHECK),
+            (None, LatePhase.MEASURING),
+        )
+        for standing, phase in moves:
+            with self.subTest(standing=standing, phase=phase):
+                moved = _generation(phase=standing).at_phase(phase)
+
+                self.assertEqual(moved.phase, phase)
 
     def test_a_second_cancel_keeps_the_first_stamp(self) -> None:
         cancelled = _generation().cancel(_support.CANCELLED_AT)
         again = cancelled.cancel(_LATER_STAMP)
         self.assertTrue(again.cancelled)
         self.assertEqual(again.cancelled_at, cancelled.cancelled_at)
+
+    def test_it_keeps_the_boundary_it_interrupted(self) -> None:
+        # `phase` is about to name the cancellation itself, and the boundary
+        # it replaces is what says whether the consumer ledger accounts for
+        # every child cut from this generation's snapshot.
+        splitting = _generation(phase=LatePhase.SPLITTING)
+
+        cancelled = splitting.cancel(_support.CANCELLED_AT)
+
+        self.assertEqual(cancelled.cancelled_phase, LatePhase.SPLITTING)
+
+    def test_a_re_mark_never_moves_that_boundary(self) -> None:
+        # A record already carrying the mark is one a later observation is
+        # repeating, and by then `phase` names the cancellation -- which
+        # proves nothing about the loop and must not replace what does.
+        cancelled = _generation(phase=LatePhase.CLEANING_UP).cancel(
+            _support.CANCELLED_AT,
+        )
+
+        again = replace(cancelled, phase=LatePhase.CANCELLING).cancel(
+            _LATER_STAMP,
+        )
+
+        self.assertEqual(again.cancelled_phase, LatePhase.CLEANING_UP)
 
 
 if __name__ == "__main__":
