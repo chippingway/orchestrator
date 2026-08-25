@@ -19,12 +19,13 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
 - **`main` (and any release branch) protected, no force-push** — operator-owned. See
   [Branch protection](#branch-protection).
 - **Required status checks** — operator-owned. See [Required checks](#required-checks).
-- **Fork PRs cannot read repository secrets** — in repo + operator-owned. Workflows declare
-  `permissions: contents: read` and reference no secrets
+- **Fork PRs cannot read repository secrets** — in repo + operator-owned. Every workflow declares
+  `permissions: contents: read` at the top level and references no secrets
   ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). See
   [Fork-PR secret policy](#fork-pr-secret-policy).
-- **No CI publishing / deploys unless run on a protected ref** — N/A today, policy below. No publishing workflow
-  exists yet; see [No CI publishing / deploys outside protected refs](#no-ci-publishing--deploys-outside-protected-refs)
+- **No CI publishing / deploys unless run on a protected ref** — N/A today, policy below. No package-publishing or
+  deploy workflow exists yet; see
+  [No CI publishing / deploys outside protected refs](#no-ci-publishing--deploys-outside-protected-refs)
   before adding one.
 - **Backup / restore drills** — operator-owned. See [Backup and restore drills](#backup-and-restore-drills).
 - **Review / tests / scans for AI-generated code** — in repo. See
@@ -32,12 +33,22 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
 - **Package-registry hygiene (lockfiles, registry pinning)** — in repo. Runtime deps (`PyGithub`, `psycopg[binary]`)
   are declared in [`../pyproject.toml`](../pyproject.toml); exact versions are pinned in [`../uv.lock`](../uv.lock); CI
   installs via `uv sync --locked`
-  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). Every `uses:` in
-  [`../.github/workflows/`](../.github/workflows/) names a full commit SHA with its release in a trailing comment, so a
-  retagged release cannot change what a run executes. Dependabot covers the `uv` and `github-actions` ecosystems in
-  [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every update PR it opens with
-  `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a maintainer has to
-  triage is one label filter.
+  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). Dependabot covers the `uv`
+  and `github-actions` ecosystems in [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every update PR
+  it opens with `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a
+  maintainer has to triage is one label filter.
+- **Actions pinned to immutable commit SHAs** — in repo. Every `uses:` in
+  [`../.github/workflows/`](../.github/workflows/) names a full 40-character commit SHA with the release it belongs to
+  in a trailing comment, so a retagged release cannot change what a run executes; Dependabot's `github-actions` updates
+  rewrite the SHA and that comment together
+  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)).
+  [`../tests/repository/test_workflow_action_pins.py`](../tests/repository/test_workflow_action_pins.py) fails the
+  suite on a `uses:` that names a tag instead.
+- **Continuous supply-chain grading (OpenSSF Scorecard)** — in repo.
+  [`../.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml) grades this repo's supply-chain posture
+  weekly, on every push to `main`, and on demand, publishing the results the README badge and the public viewer read
+  and uploading the SARIF to code scanning, where the findings become the repo's own alerts
+  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)).
 
 ## Operator-owned controls (GitHub / org settings)
 
@@ -175,15 +186,20 @@ run is read-only.
 
 ### Fork-PR secret policy
 
-- Workflows already use no secrets and request only `contents: read`. Do **not** add `pull_request_target` triggers,
-  `secrets.*` references, or higher token permissions without a written justification.
+- Workflows already use no secrets, and `contents: read` is the top-level grant in each of them. The one elevation is
+  the Scorecard job's `security-events: write` + `id-token: write`, on a workflow no pull-request event triggers, so no
+  PR — fork or not — ever runs under it. Do **not** add `pull_request_target` triggers, `secrets.*` references, or
+  higher token permissions without a written justification.
 - At `Settings → Actions → General → Fork pull request workflows from outside collaborators`, set **"Require
   approval for first-time contributors who are new to GitHub"** (or stricter).
 - For org-owned repos, mirror this default at the org level.
 
 ### No CI publishing / deploys outside protected refs
 
-No publishing or deploy workflow exists in [`../.github/workflows/`](../.github/workflows/) today. If one is added:
+No package-publishing or deploy workflow exists in [`../.github/workflows/`](../.github/workflows/) today. The
+Scorecard workflow's `publish_results` is the one thing any run publishes, and it publishes only this repo's own score
+to the OpenSSF API, authenticated by OIDC rather than a secret and reachable from `main`, the weekly schedule, and
+`workflow_dispatch` alone. If a real publishing or deploy workflow is added:
 
 - Run it only on `push` to `main` (a protected branch) or on pushes of tags covered by a **protected tag ruleset**
   (`Settings → Rules → Rulesets → New tag ruleset`). Never on `pull_request` or `pull_request_target`, and never

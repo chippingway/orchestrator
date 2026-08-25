@@ -1,6 +1,6 @@
 # GitHub issue-driven workflow runner
 
-[![CI][ci-badge]][ci-link]
+[![CI][ci-badge]][ci-link] [![OpenSSF Scorecard][scorecard-badge]][scorecard-link]
 
 This agent orchestrator turns local coding-agent CLIs (`codex`, `claude`) into a hands-off implementer + reviewer
 loop. File an issue, and the orchestrator decomposes it if needed, spawns the dev agent in an isolated git worktree,
@@ -282,6 +282,8 @@ Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE) for the
 
 [ci-badge]: https://github.com/geserdugarov/agent-orchestrator/actions/workflows/ci.yml/badge.svg
 [ci-link]: https://github.com/geserdugarov/agent-orchestrator/actions/workflows/ci.yml
+[scorecard-badge]: https://api.scorecard.dev/projects/github.com/geserdugarov/agent-orchestrator/badge
+[scorecard-link]: https://scorecard.dev/viewer/?uri=github.com/geserdugarov/agent-orchestrator
 [cfg-systemd]: docs/configuration.md#running-under-systemd-user-service
 [qa-lifecycle]: docs/workflow/conversations.md#question-stage
 [label-migration]: docs/state-machine/labels-and-state.md#legacy-labels-and-the-migration-off-them
