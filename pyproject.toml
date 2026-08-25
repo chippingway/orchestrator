@@ -55,6 +55,8 @@ testpaths = ["tests"]
 line-length = 120
 
 [tool.ruff.lint]
-# E501 (line too long) is not in Ruff's default rule set; opt into it so
+# Keep the lint contract independent of changes to Ruff's default rule set.
+select = ["E4", "E7", "E9", "F"]
+# E501 (line too long) is not in the selected baseline; opt into it so
 # the line-length target above is actually enforced.
 extend-select = ["E501"]
