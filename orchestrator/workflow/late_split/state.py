@@ -165,6 +165,74 @@ def clear_retired_cycle(state: PinnedState) -> None:
     state.data.pop(LATE_RETIRED_CYCLE_ID, None)
 
 
+# What one cycle's `rejected` terminal is recorded by, kept OUTSIDE
+# `LATE_STATE_KEYS` for the reason the retired cycle is: clearing late mode is
+# defined as dropping exactly the generation's own group, and this is a fact
+# about the generation that the ENDING writes and a later tick has to read
+# back.
+#
+# Two fields because it is a two-phase record, exactly as an external
+# obligation is: the identity says which cycle the terminal is about and goes
+# down BEFORE the label write, so a tick that died in between has something
+# durable to come back to; the flag says the label was PROVED to be on the
+# issue and goes down after. Only the pair authorizes a restart. An attempt is
+# not a terminal -- a write GitHub refused leaves an owner that is unlabeled
+# for the reason it always was, and treating the intent as proof would start a
+# fresh cycle on a gesture nobody made.
+#
+# The proof is that the label IS on the issue, and it is reached three ways.
+# The pass that made the write takes it returning, and has to: a client's
+# cached labels survive the write that changes them, so reading the issue back
+# would answer with the label it wore a moment ago -- and a closed owner
+# leaves the sweep on that write with no second visit to correct it. Any later
+# pass takes it by SEEING `rejected` on the issue, which is what backfills a
+# cancellation that ended before this record existed. And where the decision
+# stands with neither -- a process that died between the label and the flag --
+# the remote's own label history is asked, because that window is the one
+# thing no local record can answer for and an operator's removal would
+# otherwise be spent re-applying a terminal that had already landed.
+LATE_TERMINAL_CYCLE_ID = "late_terminal_cycle_id"
+
+LATE_TERMINAL_CONFIRMED = "late_terminal_confirmed"
+
+
+def terminal_confirmed(state: PinnedState, cycle_id: int) -> bool:
+    """Whether THIS cycle's terminal is recorded as proved on the issue.
+
+    Both halves, and the identity first: a flag left by an earlier cycle says
+    nothing about this one, and an issue reaches a terminal more than once.
+    Read through the domain's own readers, so a hand-edited identity or a
+    `"true"` string reads back as no proof -- which refuses a restart rather
+    than authorizing one on a field anybody could have typed.
+
+    The absence of it is the whole question a caller asks. Whether the
+    decision half is there beside it separates a terminal this binary
+    attempted from one an older one wrote, and neither is proof -- so nothing
+    reads the decision on its own.
+    """
+    if _payloads.as_identity(state.get(LATE_TERMINAL_CYCLE_ID)) != cycle_id:
+        return False
+    return _payloads.as_flag(state.get(LATE_TERMINAL_CONFIRMED))
+
+
+def record_terminal(
+    state: PinnedState, cycle_id: int, *, confirmed: bool,
+) -> None:
+    """Record which cycle the terminal is about, and whether it is proved.
+
+    The unconfirmed write is the decision, made durable before the label it
+    carries out; the confirmed one is the receipt. An unconfirmed record
+    DROPS the flag rather than leaving it, because the same field is reused by
+    every cycle this issue ends: a confirmation left standing from the cycle
+    before would authorize a restart over an attempt that has not landed yet.
+    """
+    state.set(LATE_TERMINAL_CYCLE_ID, int(cycle_id))
+    if confirmed:
+        state.set(LATE_TERMINAL_CONFIRMED, True)
+    else:
+        state.data.pop(LATE_TERMINAL_CONFIRMED, None)
+
+
 def read_late_generation(state: PinnedState) -> LateGeneration:
     """Return the late generation a pinned comment records.
 

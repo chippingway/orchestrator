@@ -9,6 +9,7 @@ writer that closes one, has to spell it the way the API does.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any, Iterable, Optional
 
@@ -23,10 +24,13 @@ from orchestrator.workflow.state import (
     WorkflowLabel,
     coerce_workflow_label,
     guard_transition,
+    label_for_name,
     legacy_label_name,
     replaced_label_names,
     stage_name,
 )
+
+log = logging.getLogger("orchestrator.github")
 
 _STATE_ATTR = "state"
 _ISSUE_STATE_OPEN = "open"
@@ -247,11 +251,96 @@ def set_workflow_label(
         client._emit_stage_enter(issue, stage_name(new_workflow_label))
 
 
+# The event kind GitHub records when a label is put ON an issue. A removal is
+# its own kind and is deliberately not counted: what the reading below is
+# about is the last state this workflow PUT the issue in, and an operator
+# taking a label off does not put it in another one.
+_LABELED_EVENT = "labeled"
+
+
+def _last_workflow_labeling(issue: Issue, bot_login: str) -> Optional[str]:
+    """The newest workflow label THIS orchestrator applied to the issue.
+
+    The walk is oldest-first, which is the order the events endpoint serves,
+    so the last match wins.
+
+    Two filters, and both are what makes the answer mean "a state this
+    orchestrator put the issue in". The ACTOR has to be its own account: every
+    workflow label is one it writes itself, and a collaborator is free to
+    apply and remove the same names by hand -- reading one of those back would
+    let somebody outside the workflow forge the record of a write it never
+    made. And the label has to be in the workflow vocabulary: a control label
+    is an operator's modifier rather than a state, so a `paused` applied over
+    a terminal must not displace it, and anything a repository names its own
+    issues by is not this vocabulary at all.
+    """
+    latest = None
+    for issue_event in issue.get_events():
+        applied = _workflow_label_applied(issue_event, bot_login)
+        if applied is not None:
+            latest = applied
+    return latest
+
+
+def _workflow_label_applied(issue_event: Any, bot_login: str) -> Optional[str]:
+    """The workflow label one event says this orchestrator applied, or None."""
+    if getattr(issue_event, "event", None) != _LABELED_EVENT:
+        return None
+    actor = getattr(getattr(issue_event, "actor", None), "login", None)
+    if actor != bot_login:
+        return None
+    named = getattr(getattr(issue_event, "label", None), "name", None)
+    return label_for_name(named) if named else None
+
+
 class GitHubIssueMixin:
     """Issue-facing methods shared by the concrete GitHub client."""
 
     workflow_label = labels.WORKFLOW_LABEL_METHOD
     set_workflow_label = set_workflow_label
+
+    def last_workflow_label_applied(self, issue: Issue) -> Optional[str]:
+        """The workflow label most recently APPLIED to this issue, or None.
+
+        The one question about an issue's PAST this client answers, and it is
+        here because nothing else can answer it: a label removed leaves the
+        issue looking exactly like one that never carried it, and the pinned
+        comment cannot record what a process that died never got to write.
+
+        The newest application rather than "was it ever applied", because a
+        caller asking this is asking about one attempt and an issue reaches
+        the same state more than once. What separates the attempts is that
+        every state this workflow moves an issue to is itself an application:
+        a label applied after another one is proof the first is not the
+        latest, whatever the two were.
+
+        Only this orchestrator's OWN applications count, on the same
+        authentication the pinned comment is read under: the answer is about a
+        write it made, and a collaborator applying the same name by hand made
+        no such write. An account this client could not establish therefore
+        answers nothing at all rather than trusting every actor.
+
+        `None` is the absence of evidence and covers every way of having
+        none -- nothing this orchestrator applied, nothing this vocabulary
+        recognizes, no account to attribute by, and a walk that failed. A
+        caller here fails closed on all of them.
+
+        Costs one paginated walk of the issue's own timeline, so it is for
+        callers that have already narrowed themselves to a state the local
+        record cannot decide. Nothing asks it in the steady state.
+        """
+        bot_login = getattr(self, "_bot_login", None)
+        if bot_login is None:
+            return None
+        try:
+            return _last_workflow_labeling(issue, bot_login)
+        except Exception:
+            log.exception(
+                "issue=#%s label history could not be read; nothing is "
+                "concluded from a request that failed",
+                getattr(issue, "number", "?"),
+            )
+            return None
 
     def list_pollable_issues(
         self,

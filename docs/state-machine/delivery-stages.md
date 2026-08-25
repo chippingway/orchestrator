@@ -14,7 +14,15 @@ Which module owns each handler is in
 forbids is in [`../workflow.md`](../workflow.md).
 
 ## `_handle_pickup` (no label → `workflow:decomposing` or `workflow:implementing`)
-- **Trigger**: open issue with no workflow label.
+- **Trigger**: open issue with no workflow label **and no pinned comment**. What this handler does is *greet* an
+  issue — the "picking this up" comment, a drift baseline over a thread it assumes nobody has worked, and the
+  issue's pinned comment — so an issue that already carries one has been through it, and greeting it again writes a
+  second pinned comment that is invisible from the moment it is written (`read_pinned_state` answers with the first
+  authenticated one it finds) while the finished workflow in the old one goes on deciding. The dispatcher therefore
+  leaves an issue whose workflow label a human removed exactly where they left it, saying so once a tick; the way
+  back in is applying a workflow label by hand. The one unlabeled issue with a pinned comment that *is* answered is
+  the [restart](labels-and-state.md#late-generation-state), which reaches the same two labels by projecting the
+  pinned comment it already has rather than through this path's greeting, fresh state, and author allowlist.
 - **Input**: issue title/body/comments; `config.DECOMPOSE` (default on); `config.ALLOWED_ISSUE_AUTHORS` (default empty
   → allow all).
 - **Action**: when `ALLOWED_ISSUE_AUTHORS` is set, an issue authored by anyone outside the list is silently skipped
@@ -397,16 +405,23 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   anything, is deleted and retried as usual.
 - **Output**: terminal `done`, OR a sibling unblocked, OR a HITL park, OR a held terminal (something still owed), OR
   a no-op.
-- **A third question rides the same read**, and it is asked FIRST: an owner whose cycle a close already ended and
-  whose ending has not been written. Cancellation is irreversible within a cycle, so a human who reopens the issue
-  does not get that cycle back, and both labels an adjudication can be wearing name a handler that would act on the
-  issue rather than settle it. That guard runs the cleanup below, reaches no handler, and writes that cycle's
-  `rejected` ending. It comes first because it is the only one of the three that has to *run* rather than merely
-  answer, and the other two can refuse indefinitely — the reuse guard *holds* a dispatch, writing nothing, for as
+- **Two more questions ride the same read**, and both are asked FIRST. One is an owner whose cycle a close already
+  ended and whose ending has not been written. Cancellation is irreversible within a cycle, so a human who reopens
+  the issue does not get that cycle back, and *every* label it can be wearing — the unlabeled state included — names
+  a handler that would act on the issue rather than settle it. That guard runs the cleanup below, reaches no
+  handler, and writes that cycle's `rejected` ending from wherever the graph declares the edge — or, from the
+  unlabeled state, only where the record shows the terminal was never applied. The other is the **restart** an
+  operator authorizes by taking that `rejected` back off
+  ([labels-and-state.md](labels-and-state.md#late-generation-state)), which is asked one step ahead of it: a restart
+  writes its target label before it retires its own marker, so a tick that crashed in between finds a live-looking
+  label over a record that still says cancelled — and the cancellation guard would answer that by handing the issue
+  `rejected` again, undoing the authorization the restart is halfway through honoring.
+- They come first because they are the ones that have to *run* rather than merely answer, and the two above can
+  refuse indefinitely — the reuse guard *holds* a dispatch, writing nothing, for as
   long as an ancestor's ref cannot be asked about, and an owner of its own cancelled cycle nested under one would
-  spend that whole outage never reconciling its own plan PR, branch, or ref. Nothing is lost by the order: a
-  cancelled cycle starts no work, so neither question below is about anything it is going to do, and both are asked
-  again on the tick after its ending is written.
+  spend that whole outage never reconciling its own plan PR, branch, or ref. Nothing is lost by the order: neither a
+  cancelled cycle nor a restart mid-transaction starts any work, so neither question above is about anything either
+  is going to do, and both are asked again on the tick after the ending or the fresh cycle is written.
 
 ## Closed-owner cleanup sweep (no label of its own)
 - **Trigger**: an issue that is **closed** while still carrying one of the four cleanup-routed labels —
@@ -671,9 +686,13 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   spawned before the close writes one of them as its ordinary outcome and lands *after* the close, so an ending refused
   there is one refused on every visit the sweep makes, forever — neither label declares the edge, and the sweep is what
   brings a tick back. The terminal is therefore written from both, unguarded, as the repair of a move this workflow
-  never made. The **unlabeled** state is the one exception in the other direction — an operator who removed `rejected`
-  to authorize a restart leaves the issue wearing nothing, and re-applying a terminal there would undo that
-  authorization, so an unlabeled owner is stopped only while its cycle still owes something.
+  never made. The **unlabeled** state is refused with every other one, and the RECORD rather than the label decides
+  whether the terminal may be written from it: an operator who removed `rejected` to authorize a restart leaves the
+  issue wearing nothing, and so does a human who stripped a workflow label mid-cleanup and an ending whose terminal
+  write GitHub refused. Where this cycle's terminal is proved applied, re-applying it would undo the one
+  authorization a restart has, so it is not written; where the proof is missing, the terminal is still owed and is
+  written once the obligations settle. Falling through is what does not happen either way — the pickup path behind
+  the guard would greet a cancelled cycle as new.
 - **A control label defers everything past the mark, and nothing before it.** `backlog` / `paused` park an issue
   outside the state machine, and the ending is external work — a plan pull request closed, a branch deleted, a ref
   reclaimed — so none of it runs while the label is on. The cancellation itself is still persisted, because the pass
@@ -804,10 +823,12 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   every label, and the terminal is written from the ones the transition graph declares the edge from, plus `ready`
   and `blocked` — the two the cycle's own decomposer writes as its ordinary outcome, which no query would ever come
   back to. Under a label that is neither (`question`), the refusal stands on its own and the cycle stays cancelled
-  where it is. The unlabeled state is the single exception, because an issue an operator has taken `rejected` off
-  wears no label at all and re-applying it there would undo the one authorization a restart has — so unlabeled, the
-  guard stops an issue only while its cancelled cycle still *owes* something (that obligation is real wherever the
-  label went) and otherwise steps aside.
+  where it is. Unlabeled is refused too, and there the record decides what the label cannot: an issue an operator has
+  taken `rejected` off, one whose workflow label a human stripped mid-cleanup, and one whose terminal write GitHub
+  refused all wear the same nothing. A cycle whose terminal is proved applied is not handed it back — that would undo
+  the one authorization a restart has — and one carrying no such proof is owed the write. The restart itself is
+  answered one guard earlier ([labels-and-state.md](labels-and-state.md#late-generation-state)); what never happens
+  is stepping aside, since the pickup path below would greet a cancelled cycle as new.
 - **Output**: the cycle cancelled once, obligations settled or retried (with the same `late_cleanup` /
   `late_failure` records the terminal emits, bounded the same way), no consumer written to or commented on, the
   owner moved to `rejected` once nothing is owed, OR a no-op.

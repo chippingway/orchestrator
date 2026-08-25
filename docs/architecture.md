@@ -255,11 +255,15 @@ the two labels an adjudication RUNS under is refetched so neither reading of it 
 two are asked about only while closed, so an open `workflow:ready` issue costs nothing it did not already. It is
 also the one route the `backlog` / `paused` hard skip steps aside for: discarding a closed owner there discards the
 close itself, so the route is taken and the control label defers only the external work behind it. The other is one
-read of the issue's own pinned comment, which answers three questions that stop a dispatch outright: a live late
-adjudication the label was moved out from under, a child of a split whose snapshot has since been reclaimed, and an
-owner whose cancelled cycle has not reached its ending — that last one settles the cycle and writes its `rejected`
+read of the issue's own pinned comment, which answers five questions that stop a dispatch outright: a live late
+adjudication the label was moved out from under, a child of a split whose snapshot has since been reclaimed, an
+owner whose cancelled cycle has not reached its ending — which settles the cycle and writes its `rejected`
 terminal from wherever the owner has been left, so a reopen can neither resume the cycle nor slip past the ending
-it owes
+it owes — the restart an operator authorizes by taking that `rejected` back off, asked one step ahead of that one,
+which projects a fresh cycle onto the same pinned comment and puts the issue back on the label `DECOMPOSE` chooses
+— and, last, an unlabeled issue that already carries a pinned comment, which is one this orchestrator has met
+before: the pickup handler behind it *greets* an issue and mints its pinned comment, so a second greeting writes a
+second comment that every later read shadows
 ([`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#the-reuse-guard-every-dispatch-ahead-of-every-handler)).
 
 Most stage handlers run the user-content drift hook (`_compute_user_content_hash` → `_detect_user_content_change`) so

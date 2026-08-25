@@ -157,22 +157,28 @@ class CancelledOwnerDispatchTest(_PatchedWorkflowMixin, unittest.TestCase):
                 dispatched.assert_not_called()
                 self.assertEqual(tuple(seeded.github.label_history), _RETIRED)
 
-    def test_the_authorized_restart_is_not_undone(self) -> None:
-        # The operator authorizes a fresh attempt by taking `rejected` off,
-        # which leaves the issue unlabeled -- so the ending may not be written
-        # from there, or removing it would achieve nothing. What an unlabeled
-        # owner is still stopped for is an obligation, which is real wherever
-        # the label went -- and a ledger holding none of those is an issue
-        # this owner has no further business with.
-        for owed, reached in ((LateResourceState.PENDING, 0), (None, 1)):
-            with self.subTest(owed=owed):
-                seeded = _reopened_owner(WorkflowLabel.DECOMPOSING, owed)
+    def test_an_unlabeled_owner_reaches_no_handler(self) -> None:
+        # An operator authorizes a fresh attempt by taking `rejected` off, and
+        # a human who strips a workflow label mid-cleanup leaves exactly the
+        # same nothing behind -- so neither is dispatched, and what separates
+        # them is whether the terminal was ever applied. Nothing here says it
+        # was, so the ending writes the one it still owes once its obligations
+        # settle, and holds where they have not. The restart an applied
+        # terminal authorizes is its own owner's, and is pinned there.
+        for reclaims, written in ((True, _RETIRED), (False, ())):
+            with self.subTest(reclaims=reclaims):
+                seeded = _reopened_owner(WorkflowLabel.DECOMPOSING)
                 seeded.parent.labels = []
+                seeded.github._pull_state._delete_remote_branch_returns_ok = (
+                    reclaims
+                )
 
                 dispatched = routed_owner(self, seeded, None)
 
-                self.assertEqual(dispatched.call_count, reached)
-                self.assertEqual(seeded.github.label_history, [])
+                dispatched.assert_not_called()
+                self.assertEqual(
+                    tuple(seeded.github.label_history), written,
+                )
 
     def test_a_cleanup_that_cannot_finish_repeats(self) -> None:
         seeded = _reopened_owner(WorkflowLabel.DECOMPOSING)

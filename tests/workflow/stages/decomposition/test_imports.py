@@ -37,6 +37,7 @@ _OWNERS = (
     "late_owner",
     "late_prompt",
     "late_relabel",
+    "late_restart",
     "late_reuse",
     "late_reply",
     "late_revision",

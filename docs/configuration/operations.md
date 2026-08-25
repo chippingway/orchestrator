@@ -259,7 +259,62 @@ or `workflow:umbrella` is a repository with something the orchestrator could not
 Reopening such an owner does not get the workflow going again. The same cleanup runs from the dispatcher instead,
 once per tick, the issue reaches no stage handler, and the same `rejected` is written once the ledger settles —
 each held tick logs a warning naming what is still owed. Clearing the refusal is clearing the obligation; starting
-a fresh attempt afterwards is removing `rejected`, which is the same handshake a restart has always taken.
+a fresh attempt afterwards is removing `rejected`, which is the handshake below.
+
+### Restarting an issue whose cycle was cancelled
+
+**Reopen the issue, then remove `rejected`.** That is the whole gesture, and both halves are required: the
+orchestrator restarts an issue that is open and wearing no workflow label at all, over a pinned comment that records
+a cancelled cycle with nothing left owed **and** records that this cycle's `rejected` was actually handed out.
+Removing the label is what authorizes it — GitHub grants label writes only to a repository's own people — so the
+restart runs whoever filed the issue, `ALLOWED_ISSUE_AUTHORS` included.
+
+Three things follow from that last condition. Removing a *workflow* label from an owner whose cleanup has not
+finished does not authorize anything: the ending was never in a state it could write `rejected` from, so it writes it
+once the cleanup settles, and the handshake starts from there. Neither does a `rejected` the orchestrator tried and
+failed to apply — what is recorded is a label a pass could see on the issue, not an attempt, so a refused write is
+simply retried. And an issue whose cancellation is still owing the remote is refused until the cleanup finishes —
+including the one obligation no pass can clear for you, a recorded plan pull request with no preserved description
+beside it, which the held-terminal warning names as `plan PR #<n> (no preserved description)`. Repair that record
+first; nothing restarts over it.
+
+Cancellations the orchestrator ended itself need nothing from you, closed owners included: the pass that writes
+`rejected` records it in the same breath, so the first removal is the one that counts. Cancellations that ended
+*before* this record existed are sitting on `rejected` with nothing recorded, and the first tick that sees one there
+writes it down — so removing the label works the first time on those too, as long as a tick has seen the issue open
+and still labelled. If one of those older issues is **closed**, then reopened and unlabelled inside a single poll
+interval, the orchestrator asks GitHub's own label history for that issue before deciding: where the most recent
+workflow label **it** applied is `rejected`, the removal counts and the fresh cycle starts one tick later. Only its
+own applications count — a `rejected` a collaborator applied and removed by hand is somebody else's label, not a
+terminal this orchestrator wrote. A history whose newest one is some other state — which is what an issue that has
+already been restarted once looks like, since the restart applied a label of its own — and one the API would not
+serve both re-apply the terminal, and removing it again starts the cycle.
+
+Removing a terminal from an issue that never had a late cycle does not start anything either. An issue that already
+carries a pinned comment is one the orchestrator has met, and greeting it a second time would write a second pinned
+comment that every later read shadows, so an unlabeled issue with a pinned comment is left exactly where it is and
+logged once a tick. To drive such an issue again, apply the workflow label you want it to run from by hand — the
+same way an outsider's issue is driven past `ALLOWED_ISSUE_AUTHORS`.
+
+What you will see, on the next tick after the label comes off: **one comment** naming the new cycle and where the
+issue is going, and **one label** — `workflow:decomposing`, or `workflow:implementing` when `DECOMPOSE=off`. The
+issue then runs as a fresh attempt. Everything the cancelled cycle recorded is dropped from the pinned comment: its
+agent sessions, its pull request and branch, its child issues and dependency graph, the snapshot it was cut from,
+any park, the drift baseline, the retry and review counters, and the timestamps. What is kept is the pinned comment
+itself, the ids of the comments the orchestrator has posted on the thread, and the issue's cumulative agent-run,
+token, and cost counters — so the receipt a later terminal posts still reports what the whole issue has spent, not
+just what the newest attempt did. Child issues the cancelled cycle created on GitHub are **not** touched: they are
+real issues carrying real work, and what happens to them stays a human's decision.
+
+If you apply that same target label by hand while a restart is mid-transaction, you will see the orchestrator take
+it off and put it straight back. That is deliberate, not a fight over the label: its own application of the target
+is what separates the fresh cycle from the previous one's `rejected` in the label history, and GitHub records no
+event for a label that is already there. Leave it be — the issue ends up on the label you wanted either way.
+
+If the restart cannot finish — GitHub refuses the comment or the label — the issue keeps the pending marker in its
+pinned comment, a `late_failure` carrying `restart_failed` reaches both sinks, and the next tick resumes at the step
+that is still owed rather than starting over. `backlog` or `paused` on the issue defers the whole restart until the
+control label comes off; the authorization is not lost meanwhile.
 
 **What to look at when something is not going away.** Three signals, and they mean different things:
 

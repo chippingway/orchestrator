@@ -138,6 +138,13 @@ skipped; otherwise the handler posts the pickup comment, anchors `pickup_comment
 and routes to `workflow:decomposing` (`DECOMPOSE=on`) or `workflow:implementing` (off), running that stage's handler
 in the same tick. Full flow: [`state-machine/delivery-stages.md`][pickup].
 
+No unlabeled issue that already carries a pinned comment reaches it. Greeting one a second time writes a second
+pinned comment that every later read shadows, so an issue whose workflow label a human removed is left where they
+left it and driven back in by applying a label by hand. The one exception is the restart: taking `rejected` off an
+issue whose pinned comment records a late cancellation with nothing left owed authorizes a fresh late-split cycle,
+which reaches the same two labels by projecting the comment the issue already has —
+[`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#late-generation-state).
+
 ### User-content drift detection
 
 The drift-sensitive handlers hash the issue title, body, and every human-authored issue-thread comment, and react
