@@ -74,6 +74,11 @@ The workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` 
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
 scope.
 
+Every `uses:` in both workflows names a full 40-character commit SHA with the release it belongs to in a trailing
+comment (`uses: owner/action@<sha> # v1.2.3`), so a retagged release cannot change what a run executes. Nothing checks
+the comment against the SHA, so a hand edit has to move both together; Dependabot's `github-actions` updates rewrite
+the pair.
+
 [`../../.github/dependabot.yml`](../../.github/dependabot.yml) opens weekly update PRs for the `github-actions` and `uv`
 (Python `pyproject.toml` + `uv.lock`) ecosystems with a 30-day `cooldown.default-days` window. Each entry declares the
 service labels GitHub stamps on the PRs it opens: `workflow:dependencies` on every update PR, so the whole dependency
