@@ -39,12 +39,14 @@ becomes, and `late_models` carries what they hand each other. `late_snapshot`,
 candidate preserved on an immutable ref, the children cut from it, and the
 supersession behind them -- while `late_cleanup` owns what that leaves the
 remote holding, `late_cancellation` owns the irreversible ending an owner
-observed closed earns, and `late_sweep` is the cleanup-only pass that revisits
-an owner a human closed mid-cycle. The kill switch and that sweep are the only
-things that dispatch into them -- an in-flight generation is what stops
-`DECOMPOSE=off` from routing an unadjudicated candidate to implementation --
-and the seam that decides a candidate is oversized is a later change, so the
-four labels above are still the whole of what this package answers for.
+observed closed earns, `late_sweep` is the cleanup-only pass that revisits an
+owner a human closed mid-cycle, and `late_restart` owns the fresh cycle an
+operator authorizes by taking that ending's `rejected` back off. The kill
+switch and that sweep are the only things that dispatch into them -- an
+in-flight generation is what stops `DECOMPOSE=off` from routing an
+unadjudicated candidate to implementation -- and the seam that decides a
+candidate is oversized is a later change, so the four labels above are still
+the whole of what this package answers for.
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per label, and an eager binding here would

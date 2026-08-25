@@ -82,7 +82,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             window between that reading and the submit that carries it and an accepted task that
                             never starts still leaves a receipt on the thread, the same observation taken at the
                             REFETCH by both paths that take one -- an issue open when it was listed and closed by
-                            the time it is read carries a reading nothing else holds -- the park re-applied behind
+                            the time it is read carries a reading nothing else holds -- the record-driven pair
+                            asked ahead of every handler (an authorized restart first, then the refusal a cancelled
+                            cycle earns, since a restart between its label write and its retirement wears a
+                            live-looking label over a record that still says cancelled), the unlabeled issue
+                            that already carries a pinned comment and so is one this orchestrator has already
+                            MET -- left where a human's label removal put it rather than greeted a second
+                            time, since a second pinned comment is shadowed by the first from the moment it
+                            is written while the finished workflow in that first one goes on deciding, the
+                            park re-applied behind
                             the mark that reading was waived for, the cleanup submission
                             wrapped in the settlement its observation is owed -- kept by a pass that failed, by one
                             nothing ever called, and by one that RAN and left the ending owed under a label no
@@ -145,7 +153,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             ordered child register, whose entries are positional and so may not be skipped past
     state.py                the `late_*` pinned keys -- the frozen evidence, the ledgers, and the cancellation and
                             pending-owner-check markers -- and the round trip through them that leaves a legacy
-                            comment untouched and an unreadable obligation intact
+                            comment untouched and an unreadable obligation intact, plus the two keys
+                            deliberately outside the group a cleared generation drops: the cycle a retirement
+                            dropped, and the two-phase terminal record beside it -- the decision naming the
+                            cycle a `rejected` is owed for, and the proof that one landed on the issue, which
+                            together are the only durable evidence that the label an operator removes to
+                            authorize a restart was ever applied, and which an attempt alone is not
     lineage.py              what a child born of a split inherits and reads back fail-closed: the lineage it
                             continues, the adjudication that created it, the snapshot ref and exact commit it may
                             reuse, and the slice it owns -- plus the two markers that claim a lineage outside the
@@ -408,8 +421,27 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             takes, which runs the same reconciliation and writes the same terminal -- reaching no
                             handler either way,
                             since an issue worked again without passing the ending would be the cancelled cycle
-                            resumed by accident. Only the unlabeled state falls through, so the operator's own
-                            restart (taking `rejected` off) is not undone. The pass
+                            resumed by accident -- the unlabeled state included, which `late_restart` answers
+                            one guard ahead and which falls through to nothing, since the pickup path behind
+                            it would greet a cancelled cycle as new; the reading of what is owed by ANY
+                            measure that decides both, the ending's own list plus the settled-ledger answer
+                            the domain gives, since a child receipt and an untypeable consumer ledger are on
+                            neither of the first two; the terminal written from the unlabeled state only
+                            where the record shows one was never applied, so the operator's own
+                            restart (taking `rejected` off) is not undone while a workflow label a human
+                            stripped mid-cleanup still earns the ending it interrupted; the cycle that
+                            terminal is owed for, recorded before the label write so a tick that dies between
+                            the two has something to come back to, with the PROOF a restart reads taken from a
+                            label that LANDED -- from the write returning where this pass made it, since a
+                            client's cached labels outlive the write that changes them and a closed owner
+                            gets no second visit, and from seeing `rejected` on the issue where it did not,
+                            which is what backfills a cycle that ended before the record existed, and from
+                            the newest workflow label THIS orchestrator applied where neither reached --
+                            asked from BEHIND the reconciliation, so an obligation the ending discovers
+                            rather than reads is on the ledger before anything decides the cycle owes
+                            nothing -- what answers an
+                            unlabeled issue over a cancelled cycle is
+                            `late_restart`, asked one guard ahead of this one. The pass
                             itself is the cancellation persisted (with the boundary it interrupted, since
                             `cancelling` overwrites the phase every later rule reads) and reported once, before any
                             external call; the held plan PR -- the one obligation no other pass ever sees --
@@ -461,6 +493,37 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             whose owner read is still owed: the kill-switch route it refuses, and the dispatch it
                             refuses -- with the hand relabel it repairs -- when a human has moved the label out from
                             under an open adjudication
+      late_restart.py       the fresh cycle an operator authorizes by taking a settled cancellation's `rejected`
+                            back off: what the record has to prove before that gesture counts -- a cycle that
+                            exists, one a close already ended, and one that owes nothing under BOTH readings, since
+                            the ending's outstanding list and the domain's settled ledger overlap without
+                            containing each other (only the first reports a plan PR this generation cannot show it
+                            held, which no pass can settle and a restart would erase; only the second counts a
+                            child receipt or an untypeable consumer ledger, over which the retirement would refuse
+                            with the marker already down) -- the proof half of the terminal record, saying
+                            this cycle's `rejected` LANDED on the issue, without which a workflow label a
+                            human stripped mid-cleanup and a terminal write GitHub refused both read exactly
+                            like the removal that authorizes a restart -- the
+                            open, unlabeled issue the gesture is read off, and the marker that answers it for
+                            itself once a transaction has begun; the identity that record is repaired to before
+                            anything is written, since a pinned comment naming another issue would file the fresh
+                            cycle and both sinks' records of it under that one, and a root naming no issue at all
+                            is a record the telemetry contract refuses outright -- the current issue is the issue
+                            the comment was read off, and the root is kept where the record is this issue's own and
+                            re-derived from the ancestry otherwise; the control label that defers the whole of it;
+                            the `DECOMPOSE` setting that chooses between the two labels a restart may apply, and the
+                            record that outranks it from the moment a notice has announced one; then the
+                            transaction -- the marker made durable first, the notice said once over a cycle-scoped
+                            receipt proved from the thread and ADOPTED off it where an earlier pass posted one and
+                            lost the id it tracked in memory only, the label written where the issue is not already
+                            on it and put back where the name is there but this orchestrator is not what applied it
+                            -- the restart's own application is what separates the fresh cycle from its
+                            predecessor's terminal in the history the ending's last-resort proof reads, and GitHub
+                            records no event for a label already present -- and the retirement behind both, with the
+                            projection that retirement writes: a
+                            whitelist keeping the pinned comment's own identity, the bounded orchestrator comment
+                            ids, the cumulative issue usage, and the identity joining the fresh cycle to its
+                            predecessor, and dropping everything else
       late_models.py        the carriers the late owners hand each other: the tick's subject, the hold, the run, the
                             adjudication, the tri-state owner reading and the park staged for it to release, the
                             split that reading cleared for the transaction which creates its children, the content

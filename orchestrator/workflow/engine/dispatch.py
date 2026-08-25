@@ -42,16 +42,24 @@ an issue a human closed, or walk a dependency graph and activate children under
 it. So the cleanup route is taken FIRST, ahead of the table and ahead of the
 pinned-state guards, and the issue never reaches either.
 
-Past that route, one read of the issue's own pinned comment answers three
+Past that route, one read of the issue's own pinned comment answers five
 questions that can stop the tick outright: a live late adjudication the label
 was moved out from under, a child of a split whose snapshot the remote no
-longer has, and an owner whose cancelled cycle is still holding something on
-the remote. The last two are asked here rather than in a stage precisely
-because the issues they are about are ones nothing below would touch safely --
-a consumer that ended wears `done` or `rejected`, reopening leaves the label
-where it was, and both are terminal no-ops; and a reopened cancelled owner
-wears a label whose handler would spawn the decomposer or activate children
-over a cycle a close already ended.
+longer has, an owner whose cancelled cycle is still holding something on the
+remote, the restart an operator authorizes by taking that cycle's `rejected`
+back off, and an unlabeled issue that already carries a pinned comment. The
+last three are asked here rather than in a stage precisely because the issues
+they are about are ones nothing below would touch safely -- a consumer that
+ended wears `done` or `rejected`, reopening leaves the label where it was, and
+both are terminal no-ops; a reopened cancelled owner wears a label whose
+handler would spawn the decomposer or activate children over a cycle a close
+already ended; a restart's own issue wears either no label at all, where the
+handler would greet it as new and mint a second pinned comment, or the target
+label it applied a moment before a crash, where the cancelled-cycle guard
+would hand it `rejected` again; and an issue whose workflow label a human took
+off reaches the pickup handler, which GREETS one -- minting a second pinned
+comment that the first shadows from the moment it is written, while the
+finished workflow in that first one goes on deciding.
 
 That is also why such an issue is partitioned as FAN-OUT rather than into the
 family bucket, despite wearing a family-aware label. The bucket's exemption is
@@ -109,6 +117,7 @@ from orchestrator.github.issues import (
 )
 from orchestrator.observability.analytics import recording
 from orchestrator.github.labels import hard_skip_control_label
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.workflow.engine import observations
 from orchestrator.workflow.state import WorkflowLabel, stage_name
@@ -158,6 +167,7 @@ _CONFLICTS_PACKAGE = "orchestrator.workflow.stages.conflicts"
 _DECOMPOSITION_PACKAGE = "orchestrator.workflow.stages.decomposition"
 _LATE_CANCELLATION_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_cancellation"
 _LATE_RELABEL_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_relabel"
+_LATE_RESTART_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_restart"
 _LATE_REUSE_OWNER = f"{_DECOMPOSITION_PACKAGE}.late_reuse"
 _DISCUSSION_PACKAGE = "orchestrator.workflow.stages.discussion"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
@@ -229,11 +239,18 @@ def _pinned_state_refuses(
 ) -> bool:
     """True when what this issue's own pinned comment records stops the tick.
 
-    ONE read, three questions, because the read is what costs -- a comment
+    ONE read, five questions, because the read is what costs -- a comment
     walk per labelled issue per tick, on top of the one that issue's own
     handler makes.
 
-    The first is a live late adjudication. An oversized committed candidate is
+    The first is a restart an operator has authorized. A settled cancellation
+    whose `rejected` has been taken off is a fresh cycle waiting to be
+    projected, and so is one this orchestrator already began and left
+    half-applied -- a restart writes its target label before it retires the
+    marker, so a tick that crashed in between finds a live-looking label over
+    a record that still says cancelled.
+
+    The second is a live late adjudication. An oversized committed candidate is
     adjudicated under ``workflow:decomposing``, and while that question is open
     the label is not a state anything else may set. A hand relabel cannot be
     refused where it is written -- the orchestrator never sees that write -- so
@@ -242,7 +259,7 @@ def _pinned_state_refuses(
     stage the new label named, which for ``ready`` or ``implementing`` would
     publish a candidate nobody adjudicated.
 
-    The second is a child of a split whose snapshot has since been reclaimed.
+    The third is a child of a split whose snapshot has since been reclaimed.
     That one has to be asked HERE rather than inside a stage, because the issue
     it is about is one the dispatcher would otherwise have nothing to do with:
     a consumer that ended wears ``done`` or ``rejected``, reopening leaves the
@@ -251,35 +268,49 @@ def _pinned_state_refuses(
     it. It costs nothing extra on the wire in the steady state -- the guard
     asks this host before it asks the remote.
 
-    The third is an owner whose cycle a close already ended and whose cleanup
+    The fourth is an owner whose cycle a close already ended and whose cleanup
     has not finished. Cancellation is irreversible within a cycle, so a human
     who reopens the issue gets a fresh one -- but not while the old one still
     holds a branch, a ref, or a plan pull request, because both labels an
     adjudication can be wearing name a handler that would act on the issue
     rather than settle it.
 
-    It is asked FIRST, because it is the only one of the three that has to RUN
-    rather than merely answer, and the other two can refuse indefinitely. The
-    reuse guard HOLDS a dispatch -- writing nothing, on purpose -- for as long
-    as an ancestor's ref cannot be asked about, and an owner of its own
-    cancelled cycle nested under such an ancestor would spend that entire
-    outage never reconciling its own plan PR, branch, or ref. Nothing is lost
-    by the order: a cancelled cycle starts no work, so neither question below
-    is about anything it is going to do, and both are asked again on the tick
-    after its ending is written.
+    The fifth is an unlabeled issue this orchestrator has already met. What an
+    unlabeled issue reaches is the pickup handler, which GREETS one, and a
+    pinned comment is the record of having been greeted -- so it is asked LAST
+    and answered off the read alone. The one unlabeled issue it must not stop
+    is the restart, which is answered four questions above it and returns
+    before this one is reached.
 
-    The other two step aside for the label the adjudication actually sits on,
-    which is where every one of its own ticks is spent, and where an
-    ancestor's snapshot is not what the issue is working from -- but only once
-    the record PROVES the adjudication is this issue's own. The label alone
-    proves nothing: a child of a split closed while it was being decomposed
-    comes back with ``decomposing`` exactly where it was and no generation at
-    all, and its ancestor's ref may well have been reclaimed while it was
-    closed. Waving that through on the label would spawn the decomposer
-    against the reuse instructions in its body, naming a ref that is gone. So
-    the read is taken first and the label is answered out of it. Imported at
-    call time like the handlers below, since the stage tree imports this
-    module.
+    The restart and the unfinished cleanup are asked FIRST, because they are
+    the ones that have to RUN rather than merely answer, and the three below
+    them can refuse indefinitely. The reuse guard HOLDS a dispatch -- writing
+    nothing, on purpose -- for as long as an ancestor's ref cannot be asked
+    about, and an owner of its own cancelled cycle nested under such an
+    ancestor would spend that entire outage never reconciling its own plan PR,
+    branch, or ref. Nothing is lost by the order: neither a cancelled cycle
+    nor a restart mid-transaction starts any work, so neither question below
+    is about anything either is going to do, and both are asked again on the
+    tick after the ending or the fresh cycle is written.
+
+    The restart comes ahead of the cancellation refusal within that pair, and
+    only one of the two can be about a given issue: an issue with a marker
+    standing, or with the authorizing gesture on its surface, is one the
+    refusal would answer by handing it `rejected` again -- undoing the
+    authorization the restart is halfway through honoring.
+
+    The adjudication and the reclaimed snapshot step aside for the label the
+    adjudication actually sits on, which is where every one of its own ticks
+    is spent, and where an ancestor's snapshot is not what the issue is
+    working from -- but only once the record PROVES the adjudication is this
+    issue's own. The label alone proves nothing: a child of a split closed
+    while it was being decomposed comes back with ``decomposing`` exactly
+    where it was and no generation at all, and its ancestor's ref may well
+    have been reclaimed while it was closed. Waving that through on the label
+    would spawn the decomposer against the reuse instructions in its body,
+    naming a ref that is gone. So the read is taken first and the label is
+    answered out of it. Imported at call time like the handlers below, since
+    the stage tree imports this module.
     """
     late_relabel = importlib.import_module(_LATE_RELABEL_OWNER)
     state = late_relabel._dispatch_state(gh, issue)
@@ -292,7 +323,7 @@ def _pinned_state_refuses(
         # open with a live cycle under it, so the reading is applied here
         # rather than re-derived from the object the guard is about to read.
         late_cancellation._mark_observed_close(gh, issue, state)
-    if late_cancellation._refuses_cancelled(gh, spec, issue, label, state):
+    if _cycle_stops_the_tick(gh, spec, issue, label, state):
         return True
     if label == WorkflowLabel.DECOMPOSING and late_relabel._adjudicating(state):
         return False
@@ -304,7 +335,77 @@ def _pinned_state_refuses(
         )
         return True
     late_reuse = importlib.import_module(_LATE_REUSE_OWNER)
-    return late_reuse._refuses_reuse(gh, spec, issue, state)
+    return (
+        late_reuse._refuses_reuse(gh, spec, issue, state)
+        or _greeted_already(spec, issue, label, state)
+    )
+
+
+def _greeted_already(
+    spec: config.RepoSpec,
+    issue: Issue,
+    label: Optional[str],
+    state: PinnedState,
+) -> bool:
+    """True when an unlabeled issue is one this orchestrator has already met.
+
+    What an unlabeled issue reaches is the pickup handler, and what pickup
+    does is GREET one: it posts the "picking this up" comment, baselines the
+    drift hash over a thread it assumes nobody has worked, and mints the
+    issue's pinned comment. Every one of those is a first-contact act.
+
+    An issue that already carries a pinned comment has been through it, so
+    greeting it again writes a SECOND one -- and `read_pinned_state` answers
+    with the first authenticated comment it finds, so the new record is
+    invisible from the moment it is written while the old one goes on
+    deciding. What the old one carries is a finished workflow: a `pr_number`
+    and a branch nothing will reconcile, a watermark over comments the fresh
+    greeting has not read, a terminal somebody reached. Two records, one
+    unreachable, is worse than either.
+
+    So an issue whose workflow label a human took off is left exactly where
+    they left it, and said so once a tick. The way back into the workflow is
+    applying a workflow label, which is the same way an outsider's issue is
+    driven by hand. The one unlabeled issue this does NOT stop is the restart,
+    which is answered two guards above and never reaches here.
+    """
+    if label is not None or state.comment_id is None:
+        return False
+    log.info(
+        "repo=%s issue=#%s carries a pinned comment and no workflow label; "
+        "leaving it where it was rather than greeting it a second time",
+        spec.slug, issue.number,
+    )
+    return True
+
+
+def _cycle_stops_the_tick(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    label: Optional[str],
+    state: PinnedState,
+) -> bool:
+    """Whether a late cycle's own business is the whole of this dispatch.
+
+    The two guards that RUN rather than merely answer, kept together because
+    only one of them can be about a given issue and the order between them is
+    the whole reason: a restart applies its target label before it retires its
+    marker, so a tick that crashed in between finds a live-looking label over
+    a record that still says cancelled -- and the refusal below would answer
+    that by handing the issue `rejected` again, undoing the authorization the
+    restart is halfway through honoring.
+
+    Imported at call time like every other stage owner this module reaches,
+    since the stage tree imports this module.
+    """
+    late_restart = importlib.import_module(_LATE_RESTART_OWNER)
+    if late_restart._restarts(gh, spec, issue, label, state):
+        return True
+    late_cancellation = importlib.import_module(_LATE_CANCELLATION_OWNER)
+    return late_cancellation._refuses_cancelled(
+        gh, spec, issue, label, state,
+    )
 
 
 def _parked_past_the_mark(spec: config.RepoSpec, issue: Issue) -> bool:
@@ -382,9 +483,10 @@ def _route_issue_to_handler(
     Two routes are taken ahead of the table. A closed issue on a cleanup-swept
     label goes to the sweep owner, because its label names a handler that would
     resume the workflow its close ended. And what the issue's own pinned
-    comment records can stop the tick outright -- a live adjudication the label
-    was moved out from under, a snapshot this child was cut from and the remote
-    no longer has, or a cancelled cycle this owner has still to settle. The
+    comment records can stop the tick outright -- a restart an operator has
+    authorized over a settled cancellation, a live adjudication the label was
+    moved out from under, a snapshot this child was cut from and the remote no
+    longer has, or a cancelled cycle this owner has still to settle. The
     cleanup route comes first: that guard spends a pinned read to decide, and a
     closed owner is not dispatched on any of those answers.
 

@@ -171,6 +171,44 @@ class _WorkflowStateService:
     workflow_label = _workflow_label
     set_workflow_label = _set_workflow_label
 
+    def last_workflow_label_applied(
+        self, issue: FakeIssue,
+    ) -> Optional[WorkflowLabel]:
+        """The workflow label most recently applied to this issue.
+
+        The double's ORDERED history is the timeline the real client walks:
+        each entry is a `labeled` event GitHub recorded, oldest first, so the
+        newest match wins. A write that CLEARS the label is skipped, since an
+        issue put in no state was not put in one. An issue seeded wearing a
+        label was given it before the history begins, which is what answers
+        for a thread nothing has written to yet.
+
+        A case that needs the read to establish nothing patches the method:
+        the caller cannot tell a walk that failed from one that found no
+        application, and treats both the same way.
+        """
+        for number, written in reversed(self.label_history):
+            if number == issue.number and written is not None:
+                return written
+        return _workflow_label(self, issue)
+
+    def apply_foreign_label(self, issue: FakeIssue, new_label: str) -> None:
+        """Put a workflow label on an issue as somebody OTHER than the bot.
+
+        The one distinction the history above is built to draw, so the double
+        has to be able to express it: a collaborator is free to apply and
+        remove the same names by hand, and GitHub attributes those events to
+        them. The label lands on the issue and no application of THIS
+        orchestrator's is recorded, which is exactly what the real client's
+        actor filter walks past.
+        """
+        resolved_label = coerce_workflow_label(new_label)
+        replaced = replaced_label_names(label.name for label in issue.labels)
+        issue.labels = [
+            label for label in issue.labels if label.name not in replaced
+        ]
+        issue.labels.append(FakeLabel(resolved_label))
+
     def seed_state(self, issue_number: int, **state_data: Any) -> None:
         self._pinned[issue_number] = PinnedState(
             comment_id=next(self._comment_id),

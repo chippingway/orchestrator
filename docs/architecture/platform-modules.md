@@ -101,7 +101,14 @@ orchestrator/
                         only one that sees an issue a human has since closed or relabelled -- and the labels whose
                         CLOSED issues a sweep still owes a pass: the recovery set whose terminal arc has not
                         drained, and the cleanup set, which is where a late adjudication runs plus where an
-                        interrupted cancellation can be left
+                        interrupted cancellation can be left; plus the one question about an issue's PAST
+                        this client answers -- which workflow label THIS orchestrator applied to it LAST --
+                        which is what a removed label leaves no other trace of, and what tells one attempt
+                        at a state from an earlier one, since every state this workflow moves an issue to
+                        is itself an application; the actor is filtered on the same account the pinned
+                        comment is authenticated under, so a name a collaborator applied by hand is not a
+                        write of this orchestrator's; control labels are excluded, and no account, no
+                        evidence, and an unreadable walk all answer alike
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
     pinned_state.py     the pinned durable-state model, the comment body it is written as and the length GitHub
                         takes, its parser, and the comment watermarks beside it

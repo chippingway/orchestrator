@@ -43,6 +43,7 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/late_snapshot.py:WPS201
     orchestrator/workflow/stages/decomposition/late_children.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_cancellation.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_restart.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_cleanup.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_transaction.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_revision.py:WPS201,WPS202
@@ -81,4 +82,5 @@ per-file-ignores =
     orchestrator/git/verification/probes.py:WPS202
     orchestrator/git/worktrees/creation.py:WPS202
     orchestrator/git/worktrees/paths.py:WPS202
+    orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214

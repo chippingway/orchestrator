@@ -923,11 +923,13 @@ the cleanup rather than merely refusing because the closed-owner sweep visits cl
 nothing behind it would freeze the issue until somebody closed it again. What it does not do is close the issue: a
 human just reopened it, and the label is the whole of what this pass has standing to write.
 
-Which labels that ending may be written from is the whole of what the label decides here. The two an adjudication
-runs under are the two the terminal is declared out of, and they are also what the restart handshake reads — an
-issue an operator has taken `rejected` off wears no label at all, and re-applying it there would undo the one
-authorization a restart has. So off those two states an issue is stopped only while its cancelled cycle still
-*owes* something, which is real wherever the label went.
+Which labels that ending may be written from is the whole of what the label decides here — *whether* it is refused
+is not, since a cancelled cycle is refused under every label including none at all. The two an adjudication runs
+under are the two the terminal is declared out of. From the unlabeled state the record answers instead, because
+three different issues wear that same nothing: an operator who took `rejected` off, a human who stripped a workflow
+label mid-cleanup, and an ending whose terminal write GitHub refused. A cycle whose terminal is proved applied is
+not handed it back, which would undo the one authorization a restart has; one carrying no such proof is owed the
+write and gets it once its obligations settle.
 
 **The terminal comes last, and only once nothing is owed** — branch, ref, and *every* unreconciled plan-PR entry on
 the ledger, a recorded number with no preserved description beside it included. That last one is the entry no pass can
@@ -948,6 +950,62 @@ costs a bounded number of passes, and one that cannot — a remote that refuses 
 a ledger a human has to settle — keeps the label, keeps being visited, and says on every visit what it is still
 holding. An issue that never entered the late gate has no cycle to end and is not touched at all, which is every
 umbrella the initial decomposer made.
+
+### The restart that ending authorizes
+
+`rejected` is not only how a cancelled cycle ends; it is the thing an operator **removes** to start a fresh one. That
+removal is the whole handshake, and it authorizes rather than merely permits: taking a label off is a write GitHub
+grants only to a repository's own people, and the record it is read against is a pinned comment only this
+orchestrator writes. So the `ALLOWED_ISSUE_AUTHORS` allowlist — the guard on the one route a stranger reaches by
+filing an issue — is deliberately not asked here, and an outsider's issue an operator has decided to restart is
+restarted.
+
+What the record has to prove is a *completed* cancellation: a cycle that exists, one a close already ended, one that
+owes nothing, and one whose `rejected` was **proved** applied. That last one is the second half of the ending's
+two-phase terminal record, and it is there because the gesture cannot be read off the issue's surface: a human who
+strips a workflow label mid-cleanup, and an ending whose terminal write GitHub refused, both leave the same unlabeled
+issue an operator's removal does. The decision to write the label goes down before the write; the proof goes down
+only for a label that landed, so an attempt never reads as a terminal. The pass that makes the write takes that proof
+from the write returning rather than by reading the issue back, since a client's cached labels outlive the write that
+changes them and a closed owner gets no second visit. Where the proof is missing the ending writes the terminal it
+still owes instead, and the handshake becomes available from there — which is also how a cancellation that ended
+before this record existed is brought into it, since any visit that finds the issue still wearing `rejected` writes
+the proof down.
+
+Everything else stays inert, and inert means *undispatched*. A cancellation still owing the remote a branch, a ref,
+a child receipt, or a plan pull request belongs to the cleanup above until it does not, unlabeled or otherwise; a
+closed issue is the sweep's whatever its record says; and an unlabeled issue that already carries a pinned comment
+at all — a rejection from anywhere else in the workflow included — is left where it is rather than greeted a second
+time, since a second pinned comment is invisible from the moment it is written while the finished workflow in the
+first goes on deciding.
+
+"Owes nothing" is the ending's own outstanding list *and* the domain's settled-ledger reading, because neither
+contains the other. The plan pull request a generation names and cannot show it held is carried on no ledger and
+reported only by the ending — restarting over one would delete the last thing on the issue pointing at a change this
+orchestrator left marked and open — while a child receipt and an untypeable consumer ledger are counted only by the
+domain, and a restart that reached its retirement over one of those would be refused there with its marker already
+down.
+
+The restart itself is a transaction over that same pinned comment, and each step is idempotent so a crash resumes at
+the one still owed. The marker naming the cycle it intends, the cycle it succeeds, and the label it means to apply
+goes down **first** — a tick that died between the write and the effects has to finish *that* cycle rather than mint
+a second one and announce it twice. Then one notice on the thread, suppressed by a marker scoped to the cycle being
+minted, and the target label, skipped where the issue already wears it and this orchestrator is what applied it —
+a name somebody else applied is taken off and put back, since the restart's own application is what separates the
+fresh cycle from its predecessor's terminal in the label history the ending reads. Only once both have reconciled is
+the marker retired. Which label it is comes from the current `DECOMPOSE` setting when the marker is written and from
+the record thereafter, so a restart begun under one setting and resumed under the other finishes what its own notice
+announced.
+A refusal from either effect keeps the marker standing and is said out loud on both sinks; `backlog` / `paused` defer
+the whole of it, since the authorization sits on the issue's own surface and no tick can lose it.
+
+What the fresh cycle inherits is what is true about the **issue** rather than about the attempt that ended: the
+pinned comment's own identity, the bounded list of comment ids this orchestrator posted, the cumulative usage the
+issue has already paid for, and the identity joining the new cycle to its predecessor. Every session, the pull
+request and branch, the children and the dependency graph, the snapshot it was cut from, the parks, the drift
+baseline, the counters, and the timestamps are gone, and the lineage depth and generation counter are back at zero —
+a restarted issue is a fresh attempt with room to split, not a cancelled one wearing a new number. The full key list
+is in [`../state-machine/labels-and-state.md`](../state-machine/labels-and-state.md#late-generation-state).
 
 ### What a human can still change once the transaction has started
 

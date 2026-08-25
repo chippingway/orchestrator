@@ -783,7 +783,9 @@ rather than preserving.
   it is. There is no clearing step to remember and no window in which a stale exemption covers a moved head. Read and
   written fail-closed like every other late field: only a whole git object id is one, a `record_exemption` handed
   anything else refuses rather than writing a value the gate would read as a bypass, and a hand-edited field reads
-  back as no exemption at all.
+  back as no exemption at all. The one write that does drop it is a restart's projection, which keeps nothing about
+  the attempt that ended: the branch that commit was on goes with it, so an exemption left behind would name work
+  the fresh cycle has no way to reach and never adjudicated.
 - **Sealed consumer ledger.** `split_ledger_sealed` says the register of children a split recorded is FINAL. The
   count written before the first create (`expected_children_count`) is what tells a partial ledger from a whole one,
   and a loop a cancellation stopped can never reach it — so the ref its children were cut from would be held on a
@@ -793,10 +795,68 @@ rather than preserving.
   first unrecorded index writes none, because a child an earlier attempt created and never recorded would not be
   on the register and only the adoption lookup can say otherwise. The field holds the **cycle** the seal belongs to
   rather than a bare flag, and is believed by that cycle alone. It is a decomposition key, so the write that clears
-  late mode leaves it exactly where it was and the next cycle an operator authorizes comes up against it: read as a
-  bare "yes", a later split stopped mid-loop would look complete and release the ref its own unrecorded children
-  were cut from. A drift reset drops it beside the count it is a fact about, and anything that is not a positive
-  identity reads back as no seal at all — which holds the ref rather than releasing it.
+  late mode leaves it exactly where it was: read as a bare "yes", a later split stopped mid-loop would look complete
+  and release the ref its own unrecorded children were cut from. A drift reset drops it beside the count it is a
+  fact about, and so does a restart's projection, which keeps nothing about the cycle whose register it sealed.
+  Anything that is not a positive identity reads back as no seal at all — which holds the ref rather than releasing
+  it.
+- **Applied terminal.** `late_terminal_cycle_id` and `late_terminal_confirmed` are one two-phase record of a cycle's
+  `rejected`, and they sit outside `LATE_STATE_KEYS` with the retired cycle for the same reason: clearing late mode
+  drops exactly the generation's own group, and this is a fact about that generation an ending writes and a later
+  tick reads back. Together they are the only durable evidence that the label an operator removes to authorize a
+  restart was ever applied — without it an issue whose workflow label a human stripped mid-cleanup, and one whose
+  terminal write GitHub refused, are both indistinguishable from one whose `rejected` was taken off deliberately, and
+  the fresh cycle would start on a gesture nobody made.
+
+  Two phases exactly as an external obligation has them. The **decision** — the identity alone — goes down before the
+  label write, so a tick that dies in between has something durable to come back to. The **proof** goes down only for
+  a `rejected` that actually landed. Only the pair authorizes a restart; an attempt is not a terminal. Recording the
+  decision drops any proof standing beside it, since the same field is reused by every cycle an issue ends.
+
+  The proof is reached three ways. `_retired` takes the write **returning**, and has to: PyGithub does not refresh an
+  issue's cached labels when `set_labels` succeeds, so reading the label back there would answer with the one the
+  issue wore a moment ago — and a closed owner leaves the sweep on that write with no second visit to correct it.
+  `_terminal_proved` takes the other side, recording the proof for any visit that *finds* the label on the issue,
+  which is what makes the record compatible with cancellations that ended before it existed: such an issue wears
+  `rejected` and records nothing, and the first pass to see it writes the proof down.
+
+  `_terminal_recovered` covers what neither reaches. Two records look identical and mean opposite things: the label
+  landed and the process died before the receipt, and the label write GitHub *refused*. Nothing revisits the closed
+  `rejected` owner the first leaves, so the operator's reopen is the next thing that happens, and their removal makes
+  the two indistinguishable locally. A cancellation that ended before this record existed is a third, carrying
+  neither half. So the remote's own label history is asked, and the decision is deliberately **not** required to ask
+  it — demanding one would leave every pre-field cancellation needing a second removal. What gates the read instead
+  is that the issue is unlabeled over a cancelled cycle that owes nothing and has no proof, which also bounds the
+  cost: an unlabeled owner whose cleanup is unfinished is visited every tick, while one that owes nothing is written
+  back to `rejected` on the same tick it gets no proof, so the walk costs one request per removal rather than one per
+  tick.
+
+  What that read asks is which workflow label **this orchestrator** applied **last**, not whether `rejected` was ever
+  applied. The actor narrows it because a terminal is a write this orchestrator makes, and a collaborator is free to
+  apply and remove the same name by hand — reading one of those back would let somebody outside the workflow forge
+  the record of a write it never made, so the events are filtered on the same account the pinned comment is
+  authenticated under, and a client that could not establish one answers nothing. The newest narrows it because an
+  issue reaches this terminal once per cycle, so a repeat carries an older one in its history, and adopting that
+  would authorize a fresh cycle off a removal an operator made a cycle ago. The cycles are separated by construction:
+  a cycle exists only because a restart retired its marker, and a restart retires only once its own target label has
+  landed as one of *this orchestrator's* applications — which is why a restart that finds the target already applied
+  by somebody else takes the name off and puts it back — so a stale `rejected` always has a later application of its
+  own standing after it. Control
+  labels are excluded too, since a `paused` applied over a terminal is a modifier rather than a state this workflow
+  moved the issue to. A history whose newest application is some other state, one naming nothing this vocabulary
+  recognizes, and one that could not be read all fall the same way: the terminal is written again rather than a fresh
+  cycle started on a removal nobody made.
+
+  The read happens from **behind** the reconciliation, in the same pass and after `_reconciled` has run, because what
+  decides whether anything is still owed is the record the ending has just settled rather than the one it found. An
+  obligation the ending *discovers* — the branch a supersession left behind and never wrote down, derived from the
+  announcement's own receipt — is on no ledger until that pass puts it there, so adopting a proof in front of it
+  would let the restart project the branch away with the receipt it was derived from. The cost is one tick: the pass
+  that recovers the proof is the one before the pass that restarts. With all three proof paths, the operator's first
+  removal is still the one that authorizes the fresh cycle.
+
+  Both fields are read fail-closed (a hand-edited identity, or a `"true"` string, is no proof at all) and both
+  are dropped by a restart's projection, with the fresh cycle's own ending writing them again.
 - **Retired cycle.** `late_retired_cycle_id` is the one fact about a dropped generation that outlives the drop: the
   write that clears late mode records which cycle it was clearing. It exists for a single window — a poll observing
   the close *inside* that write leaves a cycle-scoped receipt on the thread, and the record it would be adopted
@@ -833,9 +893,19 @@ rather than preserving.
   the label rather than a human reopening the issue. That guard refuses a cancelled cycle under *every* label it can
   be wearing, since each one names a handler that would act on the issue rather than end it, and it writes the
   terminal wherever the graph declares the edge from — plus `ready` and `blocked`, which the cycle's own decomposer
-  writes as its ordinary outcome and which no query would ever bring a tick back to. Only the unlabeled state falls
-  through, because that state IS the restart handshake: an operator who has already taken `rejected` off is not
-  handed it back.
+  writes as its ordinary outcome and which no query would ever bring a tick back to. The unlabeled state is refused
+  with the rest of them: the [restart](#late-generation-state) is asked one guard ahead, so an issue reaching the
+  refusal with no label is one the restart already declined — and letting it fall through would hand a cancelled
+  cycle to the pickup path, which greets it as new. That ordering is also what keeps a restart between its label
+  write and its retirement safe: it wears a live-looking label over a record that still says cancelled, and the
+  refusal would answer that by handing the issue `rejected` again.
+
+  What the unlabeled state still decides is whether the terminal may be written from it, and the RECORD answers
+  rather than the label, because three different issues wear the same nothing. One is the handshake — an operator
+  took `rejected` off, and re-applying it would undo the only authorization a restart has. Another never got the
+  terminal at all: a human who strips a workflow label mid-cleanup leaves the ending owed under a state it cannot be
+  written from, so every visit since has settled obligations and stopped. The third had it attempted and refused. The
+  *proof* half of the terminal record separates the first from the other two.
 
   `late_cancelled_phase` is the boundary the cancellation interrupted, kept because `late_phase` becomes
   `cancelling` and that answers nothing: whether the consumer ledger accounts for every child cut from this
@@ -871,7 +941,70 @@ rather than preserving.
   not read — restart is reachable only from a cancellation whose cleanup completed, and retiring over an unsettled
   ledger would discharge the obligation by forgetting it. `restart.obligations_settled` is the same question a caller
   can ask first. What it projects when it does retire is a fresh cycle keeping only the identities that link it to
-  the one before: the cycle it is, the issue and root it belongs to, and the cycle it succeeds.
+  the one before: the cycle it is, the issue and root it belongs to, and the cycle it succeeds — with the lineage
+  depth back at the root's 0 and the generation counter back at 0, because a restarted issue is a fresh attempt with
+  room to split rather than a cancelled one wearing a new number.
+
+  Who writes those fields is
+  [`late_restart.py`](../../orchestrator/workflow/stages/decomposition/late_restart.py), the stage owner the
+  dispatcher asks ahead of the cancelled-cycle refusal. What it requires before it writes anything is a *settled*
+  cancellation — a cycle that exists, one a close already ended, and one that owes nothing — plus proof the terminal
+  was applied (`late_terminal_confirmed` beside this cycle's `late_terminal_cycle_id`) and the gesture that removed
+  it: an OPEN issue wearing no workflow label at all. Both halves are needed, because the gesture, a workflow label a
+  human stripped mid-cleanup, and a terminal write GitHub refused all leave the issue looking identical, and only the
+  record separates them.
+
+  "Owes nothing" is both readings, not either: the ending's own outstanding list and `obligations_settled` overlap
+  without containing each other, so the guard asks the cancellation owner as well as the domain. Only the ending
+  reports a `late_plan_pr_number` standing with no `late_plan_pr_body` beside it — a hold nothing can prove, carried
+  on no ledger, and repairable only by a human — and projecting the fresh cycle over one would delete the last thing
+  on the issue naming a pull request this orchestrator left marked and open. Only the domain counts an undischarged
+  child receipt or a consumer ledger this binary could not type, and a restart that reached its retirement over one
+  of those would be refused there with the marker already down and the label already applied. Asking both is also
+  what keeps this guard and the refusal behind it exactly complementary: the tick one stops is the tick the other
+  runs its ending on. A marker already standing answers the gesture for itself
+  whatever label the issue now wears, since only this owner writes one and only after the authorization was proved.
+  Everything else is inert: an unlabeled issue with no late cycle is an ordinary pickup under the ordinary rules, a
+  cancellation still owing the remote is the cleanup path's, and a closed issue is the sweep's.
+
+  `ALLOWED_ISSUE_AUTHORS` is deliberately not asked on this path. It guards the one route a stranger reaches on
+  their own — an unlabeled issue picked up automatically — and nobody reaches a restart that way: it takes a pinned
+  comment only this orchestrator writes and a label removal GitHub grants only to a repository's own people. The
+  fresh attempt is authorized by whoever made that gesture rather than by whoever filed the issue, so an outsider's
+  issue an operator has decided to restart is restarted.
+
+  Two identities are repaired before anything is written, and neither is the cycle: `late_current_issue` becomes the
+  issue the pinned comment was read off, because a field naming another one would file the fresh cycle — and both
+  sinks' records of it — under an issue the pass is not about; and `late_root_issue` is kept where the record is this
+  issue's own and re-derived from `late_ancestry_root_issue` (falling back to the issue itself) otherwise, because a
+  root naming no issue is a record the telemetry contract refuses outright, which would let a restart run to
+  completion saying nothing about itself. On a healthy record both are the values already there.
+
+  The transaction is three ordered steps over the one pinned comment, and each is idempotent so a crash resumes at
+  the step that is still owed. The marker goes down first, `late_phase` moving to `restarting` with it. Then the two
+  external effects: one notice on the thread, suppressed by a marker scoped to the cycle being minted, and the
+  target label, skipped where the issue already wears it *and this orchestrator is what applied it*. Where somebody
+  else applied that same name, it is taken off and put back instead: what the write leaves behind is not only the
+  label but the bot-authored application separating this cycle from its predecessor's terminal, which
+  `_terminal_recovered` reads below, and GitHub records no event for a label already present. A notice an earlier
+  pass posted is *adopted* rather than
+  merely recognized — posting tracks its id in memory and the write that would make it durable is the retirement two
+  steps later, so a pass whose label or retirement then failed left the id nowhere, and the marker suppresses the
+  repost that would have tracked it again. Only once both effects have reconciled is the marker retired.
+  Which label is applied is the current `DECOMPOSE` setting's answer at the moment the marker is written and the
+  *record's* answer from then on, so a restart begun under one setting and resumed under the other finishes the
+  label its own notice announced. A refusal from either effect is logged, recorded as a `late_failure` carrying
+  `restart_failed`, and left for the next visit with the marker standing; `backlog` / `paused` defer the whole of it,
+  since the authorization sits on the issue's own surface and cannot be lost.
+
+  The retirement's own write is the **projection**, and it is a whitelist rather than a list of deletions: every
+  stage shares this comment and each adds keys of its own, so naming what to drop would carry whatever the naming
+  was not written for. What survives is the pinned comment's own identity (the payload is rewritten in place rather
+  than a second comment minted), `orchestrator_comment_ids`, the four cumulative `issue_*` usage counters, and the
+  fresh generation's own identity. Everything else goes — every session id, `pr_number` and `branch`, `children` /
+  `dep_graph` / `expected_children_count` / `split_ledger_sealed`, the whole `late_ancestry_*` group and the
+  exemption beside it, `awaiting_human` / `park_reason`, `user_content_hash`, the retry, review-round and park
+  counters, and every timestamp.
 
 ### The late run
 

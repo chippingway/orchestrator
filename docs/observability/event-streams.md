@@ -410,7 +410,7 @@ completed cancellation). The kind is the family; `stage` is the bare stage tag t
 emitter like every other event on this page.
 
 **What a stream carries today.** The gate is not wired into publication yet, so nothing reaches these families from
-a publication seam. Two producers exist. The first is the late adjudication under `workflow:decomposing`
+a publication seam. Three producers exist. The first is the late adjudication under `workflow:decomposing`
 ([`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)): it writes
 one `late_verdict` per completed adjudication, one `late_measurement` per candidate a developer revision re-froze and
 re-measured
@@ -443,6 +443,18 @@ takes. And it adds one `late_cleanup` member no other producer emits — `resour
 request a cancelled cycle closes — carrying `pr_reconcile_failed` where that pull request could not be released or
 closed.
 
+The third producer is the **restart** an operator authorizes by taking a settled cancellation's `rejected` back off
+([`../workflow/roles.md`](../workflow/roles.md#the-restart-that-ending-authorizes)), and it is the only one that
+writes `late_restart`. Two records per restart, one per half of its transaction. `restart_step: pending` rides the
+write that first makes the marker durable — so a restart held for ticks by a label GitHub keeps refusing is one
+record rather than one per tick — and carries the cancelled cycle's own `cycle_id` beside `restart_target` and
+`predecessor_cycle_id`, under `phase: restarting`. `restart_step: reconciled` rides the retirement behind both
+external effects and carries the *fresh* cycle's `cycle_id`, with `predecessor_cycle_id` naming the one it succeeds
+and no `restart_target`, since the marker is gone by then. Between them it emits `late_failure` carrying
+`restart_failed` on every pass whose notice or label GitHub declined. The fresh cycle deliberately carries no
+commits and no measurement, which is why neither `late_restart` nor the failure beside it is held to the
+self-contained rule the two size families are.
+
 What reaches these streams is a **transition**, not a state. An entry that was already reconciled is not asked
 about at all; an obligation merely *held* (a ref whose consumers are not all ended) attempts nothing; and a retry
 that reaches the same answer as the visit before it — a remote that goes on refusing one delete — records nothing
@@ -457,8 +469,6 @@ records.
 `outcome: reclaiming` is progress rather than failure and is why the state reaches this stream at all: the decision
 goes down *before* the delete, so a record carrying it is an obligation whose ref may already be gone while a
 consumer it owes a receipt could not be told — the next visit finishes the telling and reports `reconciled`.
-`late_restart` is still the contract the restart step will emit under, and no record of it can appear in either
-stream until that step lands.
 
 **Family-typed events.** A record is built from a `LateEvent` on `workflow/late_split/events.py`, and each family
 declares which detail fields it requires and which it may carry (`_FAMILY_FIELDS`). Anything else raises

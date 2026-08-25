@@ -151,6 +151,7 @@ from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split import lineage as _lineage
+from orchestrator.workflow.late_split import restart as _restart
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split import telemetry as _telemetry
 from orchestrator.workflow.late_split.models import (
@@ -252,7 +253,8 @@ def _reconcile_closed_owner(
     The closed half of the ending: the reconciliation below, and then the
     terminal, which is asked last and of what the whole pass left.
     """
-    _retired(gh, issue, _reconciled(gh, spec, issue, state, generation))
+    settled = _reconciled(gh, spec, issue, state, generation)
+    _retired(gh, issue, state, settled)
 
 
 def _cleanup_settled(
@@ -756,11 +758,21 @@ def _refuses_cancelled(
     with nothing behind it would freeze the issue until somebody closed it
     again.
 
-    The unlabeled state is the one exception to all of it, because it is the
-    restart handshake itself: an issue an operator has taken `rejected` off
-    wears no label at all. There this stops an issue only while its cancelled
-    cycle still OWES something -- that obligation is real wherever the label
-    went -- and is otherwise this owner's business no longer.
+    The unlabeled state is refused with every other one, and by this owner.
+    The restart is asked one guard ahead, so an issue reaching here with no
+    label is one that guard has already declined -- because the cycle still
+    owes something, or because nothing on the record proves the terminal was
+    applied and then removed. Either way the issue is not a fresh attempt and
+    is not ordinary work: letting it fall through would hand a cancelled cycle
+    to the pickup path, which greets it as new and mints a SECOND pinned
+    comment that shadows the one this reading came from.
+
+    What the unlabeled state does still decide is whether the terminal may be
+    written from it, which `_ends_here` answers off the record rather than off
+    the label. An operator who has taken `rejected` off is not handed it back;
+    an issue that never got it -- a workflow label a human stripped
+    mid-cleanup, so the ending had no state to write from -- is, once the
+    cleanup it interrupted finishes.
 
     A record with no cycle on it is asked one more question before it is
     waved through, and only where the record itself says there is one to ask:
@@ -777,8 +789,6 @@ def _refuses_cancelled(
     generation = _inherited_close(gh, spec, issue, state, generation)
     if not generation.cancelled:
         return False
-    if label is None and not _outstanding(generation):
-        return False
     log.warning(
         "repo=%s issue=#%s wears %r over a cancelled late cycle; settling "
         "that cycle rather than dispatching the issue",
@@ -787,8 +797,10 @@ def _refuses_cancelled(
     if _parked_ending(spec, issue):
         return True
     settled = _reconciled(gh, spec, issue, state, generation)
-    if _ends_here(label):
-        _retired(gh, issue, settled)
+    _terminal_proved(gh, issue, state, settled)
+    _terminal_recovered(gh, issue, label, state, settled)
+    if _ends_here(state, settled, label):
+        _retired(gh, issue, state, settled)
     return True
 
 
@@ -907,7 +919,9 @@ def _parked_ending(spec: config.RepoSpec, issue: Issue) -> bool:
     return True
 
 
-def _ends_here(label: Optional[str]) -> bool:
+def _ends_here(
+    state: PinnedState, generation: LateGeneration, label: Optional[str],
+) -> bool:
     """Whether the cycle's terminal may be written from where the issue is.
 
     The transition graph answers for every label a WORKFLOW wrote: each state
@@ -927,11 +941,20 @@ def _ends_here(label: Optional[str]) -> bool:
     cleanup sweep makes, forever: the sweep is what brings a tick back to such
     an owner, and the terminal is the only thing that lets it stop.
 
-    Never from the unlabeled state, which IS that handshake. Re-applying a
-    terminal there would undo the one authorization a restart has.
+    From the UNLABELED state the RECORD answers instead of the label, because
+    the label cannot tell apart the issues that reach it wearing none. One is
+    the restart handshake: an operator took `rejected` off, and re-applying it
+    would undo the one authorization a restart has. Another never got the
+    terminal at all -- a human stripped the workflow label while the cleanup
+    was still running, so every visit since has found the ending owed under a
+    state it could not be written from. A third had it attempted and refused.
+    What separates the first from the other two is the PROOF half of the
+    terminal record: a cycle whose `rejected` was seen on the issue has been
+    through the handshake, and one carrying only the decision, or nothing at
+    all, is owed the write rather than holding the removal of one.
     """
     if label is None:
-        return False
+        return not _late_state.terminal_confirmed(state, generation.cycle_id)
     if label in _RELABELLED_MID_ENDING:
         return True
     return is_allowed_transition(label, WorkflowLabel.REJECTED)
@@ -1382,7 +1405,10 @@ def _proof_scan(
 
 
 def _retired(
-    gh: GitHubClient, issue: Issue, generation: LateGeneration,
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    generation: LateGeneration,
 ) -> None:
     """Hand a settled cycle its terminal, or say what is still holding it.
 
@@ -1414,9 +1440,28 @@ def _retired(
     closed on a label no query reaches -- refusing the repair of a move the
     guard never described, which is the opposite of what the guard is for.
 
+    It is recorded in two phases, exactly as an external obligation is. The
+    DECISION goes down first -- which cycle this terminal is for -- because a
+    tick that dies between the write and the record of it needs something
+    durable to come back to. The PROOF goes down after, and only for a write
+    that landed, because an operator authorizes a fresh cycle by REMOVING this
+    label and the removal leaves an issue indistinguishable from one whose
+    workflow label a human stripped mid-cleanup. An attempt is not a terminal:
+    treating the decision as proof would let a write GitHub refused authorize
+    a restart nobody asked for, on an owner that is unlabeled for the reason
+    it always was.
+
+    The proof this pass takes is the write RETURNING, and it may not be
+    re-derived by reading the issue back: a client's cached labels survive the
+    write that changes them, so a re-read here would answer with the label the
+    issue wore a moment ago and record nothing. That matters most exactly
+    where nothing would notice -- a closed owner leaves the sweep on this
+    write and gets no second visit to see the label for itself.
+
     A write GitHub refuses is left for the next visit rather than raised: the
     obligations are settled and recorded by then, and the only thing missing
-    is the label that says so.
+    is the label that says so -- which is exactly what the unproved decision
+    brings this pass back for.
     """
     held = _outstanding(generation)
     if held:
@@ -1427,7 +1472,10 @@ def _retired(
         )
         return
     if gh.workflow_label(issue) == WorkflowLabel.REJECTED:
+        _terminal_recorded(gh, issue, state, generation)
         return
+    _late_state.record_terminal(state, generation.cycle_id, confirmed=False)
+    _persisted(gh, issue, state, generation)
     try:
         gh.set_workflow_label(issue, WorkflowLabel.REJECTED, guarded=False)
     except Exception:
@@ -1436,6 +1484,151 @@ def _retired(
             "not be moved to rejected; the next sweep writes the label",
             issue.number,
         )
+        return
+    _terminal_recorded(gh, issue, state, generation)
+
+
+def _terminal_proved(
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    generation: LateGeneration,
+) -> None:
+    """Record a `rejected` this pass can SEE on the issue, once.
+
+    The reading half of the receipt, and what makes the record available to
+    passes that made no write at all: a cancellation that reached its terminal
+    before this record existed carries no proof of it, and a tick that died
+    between the label landing and the receipt carries none either. Both are an
+    issue visibly wearing `rejected` over a cancelled cycle, which is a thing
+    any visit can see and write down -- so the operator's FIRST removal is the
+    one that authorizes the fresh cycle.
+
+    Asked of the label as this pass FOUND it, which is why it is not what the
+    pass that writes the terminal uses: a client's cached labels are not
+    refreshed by the write that changes them, so re-reading one here after
+    writing would answer with the label the issue wore before and record
+    nothing at all.
+    """
+    if gh.workflow_label(issue) != WorkflowLabel.REJECTED:
+        return
+    _terminal_recorded(gh, issue, state, generation)
+
+
+def _terminal_recovered(
+    gh: GitHubClient,
+    issue: Issue,
+    label: Optional[str],
+    state: PinnedState,
+    generation: LateGeneration,
+) -> None:
+    """Prove a terminal a dead process left unrecorded, off the remote itself.
+
+    The one window neither half of the receipt covers. The decision goes down,
+    the label write lands, and the process dies before the proof -- and what
+    is left is an issue on `rejected` that nothing revisits, since a terminal
+    is on no sweep's list. The operator reopens it and takes the label off,
+    and now the record shows a decision with no proof, which is the same thing
+    a label write GitHub REFUSED leaves behind. One of those is a gesture and
+    the other is an ending still owed, and no local reading tells them apart.
+
+    So the remote is asked, and only from BEHIND the reconciliation: what
+    decides whether anything is still owed is the record this pass has just
+    settled, not the one it found. An obligation the ending discovers rather
+    than reads -- the branch a supersession left behind and never wrote down
+    -- is on no ledger until `_reconciled` puts it there, so adopting a proof
+    in front of that would let the restart project away a branch nobody had
+    looked for yet. Everywhere else this returns before it costs anything: the
+    proof is already recorded, something is still owed, or the issue is
+    wearing a label and the question does not arise.
+
+    What is asked is which workflow label THIS orchestrator applied last, not
+    whether `rejected` was ever applied at all. Both halves narrow it. The
+    actor, because a collaborator may apply and remove that same name by hand
+    and a terminal is a write this orchestrator makes -- reading somebody
+    else's back would let a label nobody here wrote stand in for one it did.
+    And the newest, because an issue reaches this terminal once per cycle, so
+    an older one's is still in the history and adopting that would authorize a
+    fresh cycle off a removal an operator made two cycles ago. The cycles are
+    separated by construction: a cycle exists only because a restart retired
+    its marker, and a restart retires only once its own target label has
+    landed as one of THIS orchestrator's applications -- a target it finds
+    somebody else applied is taken off and put back for exactly this reason --
+    so a stale `rejected` always has a later application of its own after it.
+
+    Fail-closed on every other answer. A history whose newest application is
+    some other state is an ending still owed, one that names nothing this
+    vocabulary recognizes says as much, and one that could not be read vouches
+    for nothing; each writes the terminal again rather than starting a fresh
+    cycle on a removal nobody made.
+    """
+    if not _terminal_unproved(label, state, generation):
+        return
+    if gh.last_workflow_label_applied(issue) != WorkflowLabel.REJECTED:
+        return
+    log.warning(
+        "issue=#%d carried %s for cancelled cycle %d and no pass recorded "
+        "it; adopting the remote's own history so the removal an operator "
+        "has already made is the one that authorizes a fresh cycle",
+        issue.number, WorkflowLabel.REJECTED, generation.cycle_id,
+    )
+    _terminal_recorded(gh, issue, state, generation)
+
+
+def _terminal_unproved(
+    label: Optional[str], state: PinnedState, generation: LateGeneration,
+) -> bool:
+    """Whether this issue is the one window the remote has to answer for.
+
+    Four local answers, and the remote is asked only past all of them. The
+    issue wears no label, over a cycle a close ended, with nothing left owed
+    and no proof its terminal ever landed -- which is what an operator's
+    removal leaves, and equally what a crash between the label and the receipt
+    does, and what a cancellation that ended before this record existed
+    carries. The DECISION is deliberately not required: a record written by a
+    binary that had no such field is exactly the case the reading exists to
+    recover, and demanding one would leave every cancellation that predates it
+    needing a second removal.
+
+    "Nothing owed" is what bounds the cost. An unlabeled owner whose cleanup
+    is unfinished is visited every tick, and asking the remote on each of
+    those would put a paginated walk on the steady state; asking only once
+    settled costs one walk per removal, because the tick that gets no proof
+    writes the terminal back and the issue stops being unlabeled.
+    """
+    if label is not None or not generation.is_present:
+        return False
+    if not generation.cancelled or _unsettled(generation):
+        return False
+    return not _late_state.terminal_confirmed(state, generation.cycle_id)
+
+
+def _terminal_recorded(
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    generation: LateGeneration,
+) -> None:
+    """Write down that this cycle's terminal is on the issue, once.
+
+    Reached two ways, and they are the same claim from either side of the
+    write: a pass that just set the label and was not refused knows it landed,
+    and a pass that finds the label already there can see that it did. What
+    neither is, and what may not reach here, is an attempt that raised.
+
+    Bounded by what it records: a cycle already proved is left alone, so the
+    guard that brings a tick back to a cancelled owner every tick costs a
+    pinned write once rather than one per visit.
+    """
+    if _late_state.terminal_confirmed(state, generation.cycle_id):
+        return
+    log.info(
+        "issue=#%d carries %s over cancelled cycle %d; recording the terminal "
+        "an operator removes to authorize a fresh one",
+        issue.number, WorkflowLabel.REJECTED, generation.cycle_id,
+    )
+    _late_state.record_terminal(state, generation.cycle_id, confirmed=True)
+    _persisted(gh, issue, state, generation)
 
 
 def _outstanding(generation: LateGeneration) -> tuple[str, ...]:
@@ -1445,8 +1638,34 @@ def _outstanding(generation: LateGeneration) -> tuple[str, ...]:
     plan pull request that owner never sees: a cycle cancelled before its
     split landed is the one case where a held plan PR is still open, since
     every path that reaches an umbrella superseded it on the way.
+
+    What it names is what this ending ACTS on and reports, which is why it is
+    a list of names. Whether anything at all is still owed is the wider
+    question `_unsettled` asks.
     """
     return _late_cleanup._blocking(generation) + _owed_plan_pr(generation)
+
+
+def _unsettled(generation: LateGeneration) -> bool:
+    """Whether anything this cancellation took on is owed by any reading.
+
+    Two readings, because neither contains the other and an obligation either
+    one counts is one nobody is coming back for once the issue has left this
+    owner. What the ending lists is the branch, the ref, and the plan pull
+    request -- including the one it can name and cannot prove it ever held.
+    What the domain's own settled-ledger answer adds is a child receipt, which
+    is none of those three, and a consumer ledger this binary could not type.
+
+    It is the question a DISPATCH is decided by rather than the one a terminal
+    is: an unlabeled owner is let past this guard into ordinary work only over
+    a cycle that owes nothing at all, and the restart beside it authorizes a
+    fresh cycle on exactly the same reading -- so no state falls between the
+    two, and neither can hand an issue to a stage handler over an obligation
+    the other was holding.
+    """
+    if _outstanding(generation):
+        return True
+    return not _restart.obligations_settled(generation)
 
 
 def _persisted(
