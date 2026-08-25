@@ -19,6 +19,7 @@ focused pages beside it.
 | find a setting, or apply an edited `.env` | [`configuration.md`](configuration.md) |
 | see what the orchestrator did, and what it cost | [`observability.md`](observability.md) |
 | harden the deployment | [`security.md`](security.md) |
+| report a suspected vulnerability | [`../SECURITY.md`](../SECURITY.md) |
 | change the code | [`../AGENTS.md`](../AGENTS.md), then the [`develop` skill](../.agents/skills/develop/SKILL.md) |
 
 ## Architecture
@@ -103,6 +104,11 @@ polling tick, so all are safe to truncate, rotate, or delete.
 [`security.md`](security.md) — the project security checklist mapped to this repo: what the repo files enforce, what
 is operator-owned in GitHub or org settings, the comment trust boundary, pinned-state authentication, and the
 cross-repo awareness disclosure.
+
+The reporting channel is neither on that page nor in this directory. [`../SECURITY.md`](../SECURITY.md) is the root
+community-health file GitHub's Security tab and community profile read, and it is written for a reporter from outside
+the project rather than for the operator running one: how to report privately, which versions are supported, and what
+a report earns in return. The posture behind it stays here.
 
 This area is one page on purpose. It is already focused — a checklist plus the controls no file in the repo can set —
 so it keeps no directory beside it, and is not split for symmetry with the five areas above.
