@@ -428,12 +428,15 @@ The five steps from a JSONL sink to a running Streamlit page — confirm the rec
 `flake8 orchestrator tests --select=WPS`, and pytest with an informational missing-line coverage report as three
 separate mandatory steps for every push to `main` and every pull request, and Dependabot opens weekly
 `workflow:dependencies` update PRs. The coverage report has no minimum threshold.
+[`../.github/workflows/vulnerability-scan.yml`](../.github/workflows/vulnerability-scan.yml) adds the standing half of
+dependency scanning: on a weekly `schedule` and on `workflow_dispatch` it audits every version pinned in
+[`../uv.lock`](../uv.lock) — not what a PR changes — and fails when a published advisory names one.
 [`../.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml) grades the repo's supply-chain posture with
 OpenSSF Scorecard weekly, on every push to `main`, and on demand, publishing the results the README badge and the
 public viewer read and uploading the SARIF to code scanning. Every `uses:` in every workflow names a full commit SHA
 with its release in a trailing comment, and Dependabot's `github-actions` updates rewrite that pair. The per-file lint
 scopes, the repository-wide 120-column target, the read-only tokens, the Scorecard job's two elevated permissions, the
-commit-SHA pins, and the dependency review are in
+commit-SHA pins, the dependency review, and how the scheduled scan reaches every pin are in
 [`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration).
 
 ## Run modes
