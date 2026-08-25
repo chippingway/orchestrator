@@ -23,8 +23,9 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
   sees an advisory published against a version nobody is touching — a diff gate never looks at it again after the pin
   lands. It runs on a schedule rather than on a PR, so it cannot be a required check; enabling
   [Dependabot security updates](#dependabot-security-updates) is what turns one of its findings into a patch PR.
-- **Static analysis of the code itself** — operator-owned. CodeQL default setup, a repository setting with no workflow
-  file behind it. See [CodeQL default setup](#codeql-default-setup).
+- **Static analysis of the code itself** — in repo + operator-owned to enforce.
+  [`../.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) runs CodeQL advanced setup for Python; a ruleset
+  decides which findings block a merge. See [CodeQL advanced setup](#codeql-advanced-setup).
 - **2FA for all maintainers** — operator-owned. See [2FA](#2fa).
 - **Secret scanning + push protection** — operator-owned. See
   [Secret scanning and push protection](#secret-scanning-and-push-protection).
@@ -125,23 +126,25 @@ open the PR that bumps that one dependency to the fixed version.
   ([`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration)).
 - Alerts are visible to maintainers only, so enabling them discloses nothing about an unpatched pin.
 
-### CodeQL default setup
+### CodeQL advanced setup
 
-Enable **CodeQL default setup** at `Settings → Code security → Code scanning`. It is the one scan here that reads the
-repository's own code rather than its dependencies.
+[`../.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) is the CodeQL advanced setup. It is the one scan
+here that reads the repository's own code rather than its dependencies.
 
-- Default setup is configured entirely on GitHub: it picks the languages (Python here) and the query suite, and runs
-  on pushes to `main`, on pull requests, and weekly. Nothing is added to
-  [`../.github/workflows/`](../.github/workflows/), so there is no fifth workflow to keep pinned, permissioned, and
-  reviewed — the analysis runs under GitHub's own token rather than one this repository declares.
+- The workflow runs CodeQL's default queries for Python on pushes to `main`, pull requests targeting `main`, and a
+  weekly schedule. Python uses `build-mode: none`, so the scan neither installs dependencies nor executes project
+  code.
+- The workflow declares `contents: read` at the top level. Its analysis job restates that grant and adds only
+  `security-events: write` for the result upload; it reads no secrets. The checkout and CodeQL actions are SHA-pinned
+  and covered by the same Dependabot and repository-test policy as every other workflow action.
 - Findings land on the Security tab, and once the baseline is clean a merge can be made to wait on them — through a
   **ruleset**, not through the required-check list. At `Settings → Rules → Rulesets`, target `main` with the
   **Require code scanning results** rule, select **CodeQL** as the tool, and set the two alert thresholds ([GitHub
   docs](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/set-merge-protection)).
   There is no status check named `code-scanning` to require in [Required checks](#required-checks); typing one in
   would name a check nothing ever reports, which blocks every merge instead of gating on the analysis.
-- Advanced setup — a committed `codeql.yml` — buys a custom query pack or a manual build, neither of which this
-  repository needs; prefer default setup until one of them is actually required.
+- If default setup is already active, GitHub rejects this workflow's CodeQL SARIF upload, so the run ends red. At
+  `Settings → Code security → Code scanning`, switch CodeQL to advanced setup, then rerun the failed workflow.
 
 ### Branch protection
 
@@ -252,8 +255,8 @@ Mark these checks **required** in the branch-protection rule (job names as they 
   — fails when a PR introduces a vulnerable or non-compliant dep.
 
 `ci` and `dependency-review` both run on `pull_request` and declare `permissions: contents: read`, so the
-`GITHUB_TOKEN` minted for each run is read-only. The other two workflows belong on neither list, because no
-pull-request event triggers either one, so neither reports a check a PR could wait on.
+`GITHUB_TOKEN` minted for each run is read-only. Scorecard and the vulnerability scan belong on neither list, because
+no pull-request event triggers either one, so neither reports a check a PR could wait on.
 [`../.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml) reports what it finds as a code-scanning
 alert rather than as a failing run
 ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)), and
@@ -262,14 +265,16 @@ alert rather than as a failing run
 
 CodeQL is the one scan off this list that can still hold a merge, and it does so beside the list rather than on it:
 its results are enforced by the **Require code scanning results** ruleset rule with CodeQL selected, which is a
-separate mechanism from the required-status-check names above. See [CodeQL default setup](#codeql-default-setup).
+separate mechanism from the required-status-check names above. See [CodeQL advanced setup](#codeql-advanced-setup).
 
 ### Fork-PR secret policy
 
-- Workflows already use no secrets, and `contents: read` is the top-level grant in each of them. The one elevation is
-  the Scorecard job's `security-events: write` + `id-token: write`, on a workflow no pull-request event triggers, so no
-  PR — fork or not — ever runs under it. Do **not** add `pull_request_target` triggers, `secrets.*` references, or
-  higher token permissions without a written justification.
+- Workflows already use no secrets, and `contents: read` is the top-level grant in each of them. The Scorecard job's
+  `security-events: write` + `id-token: write` elevation is on a workflow no pull-request event triggers. The CodeQL
+  analysis job adds `security-events: write` and does run on `pull_request`; GitHub downgrades a fork PR token to read
+  only but still accepts code-scanning uploads from the `pull_request` event. Do **not** enable write tokens for fork
+  PRs or add `pull_request_target` triggers, `secrets.*` references, or higher token permissions without a written
+  justification.
 - At `Settings → Actions → General → Fork pull request workflows from outside collaborators`, set **"Require
   approval for first-time contributors who are new to GitHub"** (or stricter).
 - For org-owned repos, mirror this default at the org level.

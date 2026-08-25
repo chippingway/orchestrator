@@ -75,6 +75,12 @@ The CI workflow declares `permissions: contents: read` so the run's `GITHUB_TOKE
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
 scope.
 
+[`../../.github/workflows/codeql.yml`](../../.github/workflows/codeql.yml) runs CodeQL's default queries against the
+Python source on every push to `main`, every pull request targeting `main`, and a weekly schedule. Its one-language
+matrix fixes the language at `python` and uses `build-mode: none`, so the scan analyzes source without installing or
+executing the project. The workflow keeps `contents: read` as its top-level token scope; the analysis job restates it
+and adds only `security-events: write`, which the CodeQL action needs to upload its results. It reads no secrets.
+
 [`../../.github/workflows/scorecard.yml`](../../.github/workflows/scorecard.yml) runs OpenSSF Scorecard — the
 supply-chain grader behind the README badge — on a weekly `schedule`, on every push to `main`, and on
 `workflow_dispatch`, which is how a maintainer can prove a change to it works without waiting a week. It sets
