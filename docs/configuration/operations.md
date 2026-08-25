@@ -95,19 +95,20 @@ shape for every workflow, but nothing checks the comment against the SHA it labe
 together; Dependabot's `github-actions` updates rewrite the pair.
 
 [`../../.github/dependabot.yml`](../../.github/dependabot.yml) opens weekly update PRs for the `github-actions` and `uv`
-(Python `pyproject.toml` + `uv.lock`) ecosystems. Both declare the same cooldown policy, holding a release for a
-stabilization window before an update PR offers it: 30 days for a major and for anything SemVer does not classify
-(`cooldown.default-days`), 14 days for a minor or a patch. The `uv` entry additionally declares `allow:` rules, which
-replace Dependabot's default rule rather than extend it — `dependency-type: direct` restates that default, and
-`dependency-name: gitpython` names the single transitive dependency it is widened for, because GitPython reaches the
-lockfile only through Streamlit and its advisories would otherwise leave a grouped security job with no allowed
-dependency to update. Each entry also declares the service labels GitHub stamps on the PRs it opens:
+(Python `pyproject.toml` + `uv.lock`) ecosystems. For routine version updates, `github-actions` uses the ecosystem-wide
+cooldown GitHub supports and holds every release for 30 days. The `uv` entry holds a major release, and anything SemVer
+does not classify, for 30 days; it holds a minor or a patch for 14 days. Cooldowns do not delay security updates. The
+`uv` entry additionally declares `allow:` rules, which replace Dependabot's default rule rather than extend it —
+`dependency-type: direct` restates that default, and `dependency-name: gitpython` names the single transitive dependency
+it is widened for, because GitPython reaches the lockfile only through Streamlit and its advisories would otherwise
+leave a grouped security job with no allowed dependency to update. Each entry also declares the service labels GitHub
+stamps on the PRs it opens:
 `workflow:dependencies` on every update PR, so the whole dependency queue is one label filter, plus
 `workflow:github_actions` or `workflow:python:uv` naming which ecosystem moved. Those three share the `workflow:`
 prefix with the labels the orchestrator writes but are not workflow states — nothing in the tree reads them, so a PR
 carrying one is not an issue in a stage. `github-actions` and `uv` above name the ecosystems Dependabot updates, not
 labels. [`../../tests/repository/test_dependabot_config.py`](../../tests/repository/test_dependabot_config.py) holds
-the cooldown policy, the allow rules, and the labels against what the config declares.
+the cooldown policies, the allow rules, and the labels against what the config declares.
 [`../../.github/workflows/dependency-review.yml`](../../.github/workflows/dependency-review.yml) runs
 `actions/dependency-review-action` on every PR and fails the check when a PR introduces a vulnerable or non-compliant
 dependency.

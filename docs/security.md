@@ -48,8 +48,9 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
   ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). Dependabot covers the `uv`
   and `github-actions` ecosystems in [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every update PR
   it opens with `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a
-  maintainer has to triage is one label filter. Both entries hold a release for a stabilization window before an
-  update PR offers it — 30 days for a major, 14 days for a minor or a patch. Dependabot allows only direct
+  maintainer has to triage is one label filter. For routine version updates, `github-actions` uses its supported
+  ecosystem-wide window to hold every release for 30 days; `uv` holds a major or unclassified release for 30 days and
+  a minor or patch for 14 days. These cooldowns do not delay security updates. Dependabot allows only direct
   dependencies by default, so a transitive package is in scope only once the `uv` entry's `allow:` rules name it:
   `gitpython` is named there because GitPython reaches the lockfile through Streamlit, and its advisories would
   otherwise leave the grouped security job with nothing it is allowed to update. An advisory against any other
@@ -113,8 +114,8 @@ mechanism from the weekly version-update PRs [`../.github/dependabot.yml`](../.g
 alerts fire when a published advisory matches a version pinned in [`../uv.lock`](../uv.lock), and security updates
 open the PR that bumps that one dependency to the fixed version.
 
-- **They are not subject to the cooldown windows** the config declares — 30 days for a major, 14 for a minor or a
-  patch. Those windows are there to let a routine version update age before a maintainer has to look at it; a
+- **They are not subject to the cooldown windows** the `uv` entry declares — 30 days for a major, 14 for a minor or
+  a patch. Those windows are there to let a routine version update age before a maintainer has to look at it; a
   security patch is the case where waiting is the cost, and the cooldown applies to version updates only.
 - They are the acting half of the standing scan:
   [`../.github/workflows/vulnerability-scan.yml`](../.github/workflows/vulnerability-scan.yml) reports a vulnerable
