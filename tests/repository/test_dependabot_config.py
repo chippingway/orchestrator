@@ -6,13 +6,14 @@ Three blocks carry behavior. The service labels stamped on every update PR let
 a reviewer select the dependency queue by label rather than by reading titles:
 the shared one the whole queue is filtered by, plus the one naming which
 ecosystem moved. The cooldown windows hold a release for a stabilization
-period before an update PR opens, and both ecosystems run the same policy, so
-a window rewritten on one of them and not the other is a divergence rather
-than a decision. The `uv` allow rules name GitPython, which reaches the
-lockfile only through Streamlit: an `allow:` block replaces Dependabot's
-default rule instead of adding to it, so losing either rule either stops
-direct updates outright or sends the grouped security job back to skipping the
-whole group with no allowed dependency matched.
+period before an update PR opens. GitHub Actions accepts only an
+ecosystem-wide default window, while `uv` accepts SemVer-specific windows, so
+each entry is held against the policy shape its ecosystem supports. The `uv`
+allow rules name GitPython, which reaches the lockfile only through Streamlit:
+an `allow:` block replaces Dependabot's default rule instead of adding to it,
+so losing either rule either stops direct updates outright or sends the
+grouped security job back to skipping the whole group with no allowed
+dependency matched.
 
 Nothing in the tree reads this config -- GitHub does -- so a dropped label, a
 window quietly rewritten on one ecosystem, or a deleted allow rule would
@@ -46,17 +47,22 @@ _EXPECTED_LABELS = (
     ("github-actions", ("workflow:dependencies", "workflow:github_actions")),
     ("uv", ("workflow:dependencies", "workflow:python:uv")),
 )
-_ECOSYSTEMS = tuple(ecosystem for ecosystem, _ in _EXPECTED_LABELS)
 _SERVICE_LABELS = frozenset(
     label for _, labels in _EXPECTED_LABELS for label in labels
 )
-# The one cooldown policy both ecosystems run: a major, and anything SemVer
-# does not classify, waits a month; a minor or a patch waits a fortnight.
-_EXPECTED_COOLDOWN = (
-    ("default-days", 30),
-    ("semver-major-days", 30),
-    ("semver-minor-days", 14),
-    ("semver-patch-days", 14),
+# GitHub Actions accepts only its ecosystem-wide window; `uv` can tier its
+# stabilization windows by SemVer change.
+_EXPECTED_COOLDOWNS = (
+    ("github-actions", (("default-days", 30),)),
+    (
+        "uv",
+        (
+            ("default-days", 30),
+            ("semver-major-days", 30),
+            ("semver-minor-days", 14),
+            ("semver-patch-days", 14),
+        ),
+    ),
 )
 # The `uv` allow rules, in file order: the default rule the block would
 # otherwise replace, then the transitive dependency the grouped security job
@@ -88,6 +94,18 @@ def _entry_declarations(ecosystem: str) -> str:
     )
 
 
+def _entry_block(ecosystem: str, key: str) -> str:
+    """One complete declaration block from an ecosystem entry."""
+    marker = f"    {key}:"
+    below_key = _entry_declarations(ecosystem).partition(f"{marker}\n")[2]
+    declarations = []
+    for line in below_key.splitlines():
+        if not line.startswith("      "):
+            break
+        declarations.append(line)
+    return "\n".join((marker, *declarations))
+
+
 class DependabotServiceLabelsTest(unittest.TestCase):
     def test_ecosystems_declare_their_labels(self) -> None:
         for ecosystem, labels in _EXPECTED_LABELS:
@@ -99,14 +117,17 @@ class DependabotServiceLabelsTest(unittest.TestCase):
 
 
 class DependabotCooldownPolicyTest(unittest.TestCase):
-    def test_ecosystems_share_one_cooldown_policy(self) -> None:
-        declared = _block(
-            "cooldown",
-            (f"{window}: {days}" for window, days in _EXPECTED_COOLDOWN),
-        )
-        for ecosystem in _ECOSYSTEMS:
+    def test_ecosystems_use_supported_cooldowns(self) -> None:
+        for ecosystem, cooldown in _EXPECTED_COOLDOWNS:
+            declared = _block(
+                "cooldown",
+                (f"{window}: {days}" for window, days in cooldown),
+            )
             with self.subTest(ecosystem=ecosystem):
-                self.assertIn(declared, _entry_declarations(ecosystem))
+                self.assertEqual(
+                    declared,
+                    _entry_block(ecosystem, "cooldown"),
+                )
 
 
 class DependabotAllowRulesTest(unittest.TestCase):
