@@ -979,7 +979,7 @@ def _reverified(
     """Ask the held plan PR again, on the far side of everything else owed.
 
     The terminal is the write that cannot be taken back: it takes the issue
-    off both labels the closed-owner sweep queries, so an owner that reaches
+    off every label the closed-owner sweep queries, so an owner that reaches
     it is one nothing revisits. The pull request was settled at the top of
     this pass and the record has said `reconciled` ever since -- but between
     the two stand a branch delete, a ref delete, and a fresh read of every

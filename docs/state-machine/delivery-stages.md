@@ -517,7 +517,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
     changes is what the settling owes anybody, since a cancelled cycle tells its consumers nothing;
   - **the umbrella walk** (`umbrella.py`), past the child scan, behind the settlement its terminal waits on, and
     once more immediately before the write that records the resolution — the scan is a request per child, and so is
-    the settlement. `done` is the write that cannot be recovered from, because it takes the issue off both labels
+    the settlement. `done` is the write that cannot be recovered from, because it takes the issue off every label
     the closed-owner sweep queries, so what makes it safe is the write *ahead* of it: one pinned write that stamps
     the resolution and **retires the cycle** together, carrying the two ledgers across the way the `single`
     publication's own retirement does. A close observed before that write stops the terminal outright and leaves the
@@ -689,7 +689,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - **A held observation outranks every filter above the partition.** It is not a reading of the current tick's, so
   what that tick can see about the issue has already been overtaken. A `backlog` / `paused` park no longer drops it
   — the sweep it routes to defers every external step anyway, which is exactly what the park asks for, and never the
-  mark. And an issue the enumeration does not yield at all, because a human moved its label off the two the closed
+  mark. And an issue the enumeration does not yield at all, because a human moved its label off the four the closed
   sweep queries, is added by NUMBER on the strength of the observation alone; the worker's own refetch decides the
   rest. All three tick paths do this: the partition for the scheduler and parallel modes, and the sequential stream
   sweeps whatever its enumeration never reached.

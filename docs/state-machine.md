@@ -120,9 +120,11 @@ Every key, what writes it, what spends it, and the legacy `codex_session_id` sti
 
 Each workflow label dispatches to one `_handle_<label>` function under `orchestrator/workflow/stages/`, with two
 exceptions that belong to no label of their own: one read of the issue's own pinned comment runs ahead of every
-handler and can stop the tick outright, and a CLOSED issue on `workflow:decomposing` or `workflow:umbrella` goes to
-the cleanup sweep instead of the stage its label names. Both are on the delivery-stages page below. The delivery
-stages — pickup through the PR loop — are in
+handler and can stop the tick outright, and a CLOSED issue on `workflow:decomposing`, `workflow:umbrella`,
+`workflow:ready`, or `workflow:blocked` goes to the cleanup sweep instead of the stage its label names — the first
+two because a late adjudication runs there, the other two because a decomposition outcome that landed after its
+owner was observed closed can leave that adjudication's ending under one of them. Both are on the delivery-stages
+page below. The delivery stages — pickup through the PR loop — are in
 [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md); the two operator-applied conversation stages
 are in [`state-machine/conversation-stages.md`](state-machine/conversation-stages.md). Which module owns each handler
 is in [`architecture/workflow-modules.md`](architecture/workflow-modules.md), and the dispatch that reaches one in

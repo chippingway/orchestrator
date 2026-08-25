@@ -445,7 +445,7 @@ cycle owes its children nothing — and once more inside each of those receipts,
 request of its own and the comment it authorizes stands behind it. And **the umbrella's own walk**, past its child
 scan, behind the settlement its terminal waits on, and immediately before the write that records the resolution,
 since everything after those acts — it reclaims a remote, hands the issue `done`, or releases a child, and `done`
-takes the issue off both labels the closed-owner sweep queries and closes it. What makes that label safe is the
+takes the issue off every label the closed-owner sweep queries and closes it. What makes that label safe is the
 write ahead of it: one pinned write that stamps the resolution and **retires the cycle** together, so a close
 arriving past it finds nothing left to cancel. One landing *inside* it is answered behind it, from the generation
 still in the call's own memory — a reinstatement rather than a refusal, exactly as the `single` publication's own
