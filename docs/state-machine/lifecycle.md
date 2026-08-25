@@ -183,6 +183,34 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                    generation at all, and is asked like any
                                    other child
 
+   the same dispatch, on the same pinned read (the pair below is asked
+       AHEAD of the reuse guard above, since both RUN rather than merely
+       answer; the greeting refusal is asked behind it):
+     late cycle a close ended, ─► the closed-owner ending below, run from
+       cleanup unfinished          wherever the owner was left: reaches no
+                                   handler, and writes that cycle's rejected
+                                   once nothing is owed
+     the same cycle settled,   ─► the RESTART. Mint cycle+1 behind a pending
+       its rejected PROVED         marker, post one notice scoped to it, apply
+       applied, and an operator    label=workflow:decomposing (DECOMPOSE=on)
+       has reopened the issue      or workflow:implementing (off), then retire
+       and taken the label off     the marker -- which projects the pinned
+                                   comment onto the fresh cycle. Asked one
+                                   step ahead of the ending above, since a
+                                   restart writes its label BEFORE it retires
+                                   its marker and the ending would otherwise
+                                   hand the issue rejected again.
+                                   ALLOWED_ISSUE_AUTHORS is not asked: taking
+                                   a label off is a write only a repository's
+                                   own people may make. backlog|paused defer
+                                   the whole of it; a refused notice or label
+                                   keeps the marker and resumes next tick
+     no workflow label, a      ─► nothing, logged once a tick. Pickup GREETS
+       pinned comment already      an issue and mints its pinned comment, so a
+       on the issue, and no        second greeting writes a second one every
+       restart authorized          later read shadows. Apply a workflow label
+                                   by hand to drive such an issue again
+
    workflow:blocked (per tick):
      all children = done       ─► parent=workflow:ready
      any child = rejected      ─► park HITL on parent
@@ -281,7 +309,12 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                    spawns, activates a child, or closes
                                    anything; `rejected` is the one label it
                                    writes, and a reopened owner reaches the
-                                   same ending through the dispatcher's guard
+                                   same ending through the dispatcher's guard.
+                                   The write is recorded in two phases -- the
+                                   cycle it is owed for before it, the proof
+                                   it LANDED after -- and that proof is what
+                                   makes an operator's later REMOVAL of the
+                                   label the restart arc above
 
    question (operator-applied; no automatic in/out transitions):
      fresh spawn          ─► DECOMPOSE_AGENT runs read-only in issue-N

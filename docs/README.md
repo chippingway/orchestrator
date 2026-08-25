@@ -61,9 +61,10 @@ and forbids, and how a role's command spec is parsed and pinned.
   late adjudication an oversized committed candidate earns under the decomposer's own role, the owner read that
   adjudication passes before anything acts on it and what each verdict earns past it, the snapshot-first order a
   cleared `split` creates its children in, what a child proves about that snapshot before it starts, what a close
-  observed mid-cycle ends irreversibly and what that ending still owes the remote, what a human editing the issue or
-  answering under it changes while that candidate is frozen, and the local verify gate that is a stage step rather
-  than a role.
+  observed mid-cycle ends irreversibly and what that ending still owes the remote, the fresh cycle an operator
+  authorizes by taking that ending's `rejected` back off and what a restarted issue keeps, what a human editing the
+  issue or answering under it changes while that candidate is frozen, and the local verify gate that is a stage step
+  rather than a role.
 - [`workflow/conversations.md`](workflow/conversations.md) — the `question` and `discussion` prompt contracts, what a
   round may leave behind, and the tracked-repository awareness block.
 - [`workflow/command-specs.md`](workflow/command-specs.md) — the spec grammar, backend selection, worked examples, and
@@ -78,7 +79,8 @@ changes. [`../.env.example`](../.env.example) holds the basic parameters for a f
 - [`configuration/observability.md`](configuration/observability.md) — the sink paths and retention windows, the
   analytics database URL, skill-trigger tracking, the dashboard read mode, and the dashboard quickstart.
 - [`configuration/operations.md`](configuration/operations.md) — continuous integration, run modes, the systemd user
-  service, what a split leaves on the remote and what reclaims it, and what an edited `.env` takes to apply.
+  service, what a split leaves on the remote and what reclaims it, how to restart an issue whose cycle was cancelled,
+  and what an edited `.env` takes to apply.
 - [`configuration/snapshot-capability-check.md`](configuration/snapshot-capability-check.md) — the
   disposable-repository check that proves a production token and its rulesets can create, fetch, verify, and delete
   the late split's snapshot refs, and what each failure means.

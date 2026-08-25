@@ -187,7 +187,8 @@ validates that plan-only change and opens a pull request. Merge the PR to accept
 `done`, or close it unmerged to finish as `rejected`. Closing the issue itself does not decide an open plan PR.
 
 To send the plan straight to implementation, relabel the issue to `workflow:implementing` before deciding the plan
-PR. Do not simply remove the `discussion` label, because the issue could be picked up as new work. See the
+PR. Do not simply remove the `discussion` label: an unlabeled issue the orchestrator has already met is left exactly
+where you put it rather than greeted a second time, so nothing runs again until a workflow label goes back on. See the
 [discussion-stage contract][discussion-lifecycle] for the full prompt and what each round may write, and the
 [discussion handler][discussion-handler] for the safety checks and recovery steps.
 

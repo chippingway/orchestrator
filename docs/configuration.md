@@ -117,7 +117,10 @@ examples.
 - `CLAUDE_BIN` — default `claude`. executable launched when a role's first token is `claude`; override only if
   `claude` is not on `$PATH`
 - `ALLOWED_ISSUE_AUTHORS` — default _(unset)_. comma-separated GitHub logins; when set, only auto-pick-up unlabeled
-  issues from those authors, and the per-tick sweep labels open PRs from anyone outside the list with
+  issues from those authors — the one path that runs an outsider's issue anyway is the restart of a cancelled late
+  split, authorized by an operator removing `rejected`, a write only a repository's own people may make
+  ([`configuration/operations.md`](configuration/operations.md#restarting-an-issue-whose-cycle-was-cancelled)) — and
+  the per-tick sweep labels open PRs from anyone outside the list with
   `workflow:community_contribution` and @-mentions `HITL_HANDLE` once per PR (bot-authored PRs such as Dependabot are
   excluded via `user.type == "Bot"`). When set it additionally becomes a comment trust boundary: comments from authors
   outside the list stay visible on GitHub but are dropped from the conversation text fed to every agent prompt
