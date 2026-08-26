@@ -625,7 +625,7 @@ def _run_left_commits(
     head onto it.
 
     Both questions are comparisons, so both ends have to have been READ, and
-    a run neither end can be established for publishes nothing. That is what
+    a run either end cannot be established for publishes nothing. That is what
     `_attributable_run` refuses on, and a recovered run is the one road past
     it -- it is defined by commits that predate the tick, so there is no run
     here to attribute anything to.

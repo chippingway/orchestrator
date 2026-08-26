@@ -564,7 +564,11 @@ machine fall into a few groups:
   except where the same handoff moved the branch onto a plan PR's live head, in which case it is that head: what this
   key has to name is where the branch REALLY sits, not which commit the record started from.
   `spawn._recovered_work_present` spends it: while HEAD still sits on that SHA the commits are inherited and the dev
-  runs, and once the dev commits, HEAD moves off it and the key is dropped. `publication._advance_to_validating`
+  runs, and once the dev commits, HEAD moves off it and the key is dropped. That is a comparison, so it is spent only
+  on a HEAD that was READ — `_head_sha` reports its own failure as `""`, which differs from the certified tip exactly
+  as a commit does, and a baseline retired on that reading would skip the implementer and republish the design's
+  predecessor as the work the discussion just agreed to. An unread head leaves the key standing and the dev runs, the
+  same as a head still on it. `publication._advance_to_validating`
   spends it too, since an issue leaving for `validating` has published and would otherwise carry the key — and
   everything the key holds — out of this stage with it.
   Standing beside `discussion_plan_sha`, it is also the record that says a handoff was ACCEPTED and nothing here has

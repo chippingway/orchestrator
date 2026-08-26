@@ -27,6 +27,11 @@ than a second source of truth: where the two disagree, the handler pages are aut
      manifest invalid / question / timeout ─► park HITL
 
    Late size gate (every clean committed candidate, before it is published):
+     tree not provably clean      ─► never reaches the gate. A dirty one
+                                     parks naming its paths; one `git status`
+                                     could not report on parks as
+                                     unreadable_worktree, since a read that
+                                     established nothing is not a clean tree
      additions <= MAX_ADDED_LINES ─► publish as usual (push, PR,
                                      workflow:validating); the generation is
                                      dropped, its cycle recorded retired, and
@@ -48,6 +53,12 @@ than a second source of truth: where the two disagree, the handler pages are aut
      DECOMPOSE=off, no generation ─► publish unmeasured; a candidate already
                                      recorded is measured with the switch
                                      either way
+     ... and no commit nameable   ─► park late_candidate_moved, publishing
+                                     nothing: on that road the CHECKOUT names
+                                     what goes out, and a push named against
+                                     nothing sends whatever the branch has
+                                     become, records no receipt, and leaves
+                                     both proofs around it nothing to compare
      no reading at all            ─► park late_measurement_failed with the
                                      frozen pair kept -- including the id a
                                      revision that would not peel resolved

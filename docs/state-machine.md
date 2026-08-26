@@ -197,9 +197,12 @@ gated by the 24h retry budget (`MAX_RETRIES_PER_DAY`, shared with decomposing) �
 recovered worktree, which skips the agent entirely, are carry-over work rather than retries. New commits on a clean
 tree are measured by the late size gate and then push the branch, open or reuse a PR, and set `workflow:validating`;
 a candidate strictly past `MAX_ADDED_LINES` is held unpublished and routed to `workflow:decomposing` instead, and one
-that could not be measured parks rather than publishing. A dirty tree, a tree `git status` could not report on, or a
-no-commit reply parks; a tree that stops being provably clean between the measurement and the handoff refuses the
-publication or the handoff the same way a moved checkout does. A
+that could not be measured parks rather than publishing. So does a checkout that cannot name the commit it is on:
+where the gate proved none — a new candidate while `DECOMPOSE=off` — the checkout is what names the commit the push
+carries, the receipt records, and both proofs around the push compare against, so one that can name none publishes
+nothing. A dirty tree, a tree `git status` could not report on, or a no-commit reply parks; a tree that stops being
+provably clean between the measurement and the handoff refuses the publication or the handoff the same way a moved
+checkout does. A
 `timed_out` run disposes on whether the run left a commit — HEAD moved past `pre_implement_sha` AND the branch is
 ahead of `<remote>/<base>`, since a head that moved onto the base was written by nobody. The park it leaves freezes
 the branch out of the pre-tick base refresh, and the next tick's silent recovery asks that same pair, so a base a

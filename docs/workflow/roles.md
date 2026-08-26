@@ -139,6 +139,15 @@ guidance resumed a developer on top of inherited work. A head that has not moved
 committed nothing, whatever else is on the branch: published on the ahead-of-base reading alone, the developer's
 clarifying question would be dropped and the very commit the human was still deciding about sent to review.
 
+Both are comparisons, so **both ends have to have been read**, and a run either end cannot be established for
+publishes nothing. `_head_sha` reports its own failure as `""` — the one value that cannot be a commit — so an
+unread end differs from every commit there is, and the difference belongs to the probe rather than to the run. On a
+branch that arrived already ahead of base (one a read-only relabel certified, one a size-gate park left a candidate
+on, one guidance resumed a developer over) that difference publishes work the run never made, or hands the gate a
+candidate nobody wrote. The refusal parks a finished run's commits behind a reading nobody got, which is a bounded
+cost — the commit is still in the worktree and the park says so — where the other way round pushes somebody else's
+work under this issue's name.
+
 **What the gate hands back is the commit**, not merely its permission, and the push is named against it. The gate
 reads the checkout and the publication writes it, and `HEAD` between those two moments is not necessarily the commit
 that passed — another tick, an operator, or a descendant the timeout cleanup raced can move it — so a push that named
