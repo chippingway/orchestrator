@@ -398,14 +398,29 @@ def _push_branch(
     """Push via GIT_ASKPASS so the token never appears in argv.
 
     `revision`, when provided, is the exact commit to publish, and it exists
-    for the caller that decided to push by INSPECTING one: the discussion
-    stage reads a branch, proves it carries the agreed plan and nothing else,
-    and then pushes. `HEAD` between those two moments is not necessarily the
-    commit that was proven -- another tick, an operator, or a stray agent can
-    move it -- and pushing whatever HEAD says would publish work no check ever
-    saw while the record named the commit that passed. Naming the SHA closes
-    that window in the only place it can be closed: a revision the local repo
-    no longer has is refused by git rather than substituted.
+    for every caller that decided to push by INSPECTING one. Two do. The
+    `discussion` stage's plan publication reads a branch and proves it carries
+    the agreed plan and nothing else; the `implementing` stage's publication
+    decides on one commit ahead of the push -- the one the size gate measured
+    or an adjudication accepted, or the one the checkout is standing on where
+    the gate proved none -- and names the push, the receipt it records, and
+    the proof it takes once the pull request is open against that same commit.
+    `HEAD` between the reading and the push is not necessarily what was proven
+    -- another tick, an operator, or a stray agent can move it -- and pushing
+    whatever HEAD says would publish work no check ever saw while the record
+    named the commit that passed. Naming the SHA closes that window in the
+    only place it can be closed: a revision the local repo no longer has is
+    refused by git rather than substituted.
+
+    Neither of those two has a fallback here, which is a fact about them
+    rather than about this helper: a checkout that cannot name the commit it
+    is on is refused by its own caller before this is reached, because a push
+    named against nothing would send whatever the branch had become and leave
+    the receipt and both proofs with no commit to compare against. What
+    reaches this function with no `revision` is a caller that never inspected
+    one -- the docs pass, the `validating` and `fixing` pushes, the conflict
+    publications, the squash rewrite, and the base-sync rebases -- publishing
+    whatever its own worktree currently is.
 
     `force_with_lease`, when provided, is the SHA the caller expects the
     remote ref to be at. The push then uses
@@ -413,9 +428,12 @@ def _push_branch(
     so a concurrent update to the remote rejects the push instead of being
     silently clobbered, and no `ls-remote` of our own is taken. Any caller
     that DECIDED to push by reading the remote belongs on this path: the
-    squash/rewrite, which pins the pre-rewrite HEAD it approved, and the
+    squash/rewrite, which pins the pre-rewrite HEAD it approved; the
     `discussion` stage's plan publication, which pins the tip it
-    established the branch was safe to move. Pinning is what prevents the
+    established the branch was safe to move; and the conflict and base-sync
+    publications, each pinning the SHA it read for itself -- the pre-rebase
+    head, or the pull-request head it validated as this orchestrator's own.
+    Pinning is what prevents the
     "out-of-band update happened in the window between the reading and the
     push" race -- a fresh `ls-remote` would treat the unexpected new remote
     SHA as the lease value and silently overwrite it, which for a
@@ -436,8 +454,11 @@ def _push_branch(
     The push target URL carries only the username (`x-access-token`); the
     token itself is read from the GIT_TOKEN env var by a tempfile askpass
     script. This keeps the PAT out of `/proc/<pid>/cmdline`, which is
-    world-readable on Linux. We also use an explicit `HEAD:refs/heads/<branch>`
-    refspec so no upstream is set and no remote URL is stored in .git/config.
+    world-readable on Linux. The refspec is explicit either way -- so no
+    upstream is set and no remote URL is stored in .git/config -- and which
+    one it is follows `revision`: `<revision>:refs/heads/<branch>` where a
+    caller named the commit it means, and `HEAD:refs/heads/<branch>` where
+    none did.
 
     The worktree is shared with the codex agent, so anything in `.git/hooks/`
     or `.git/config` is attacker-controlled. The agent also writes as the same

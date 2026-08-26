@@ -202,8 +202,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       models.py             the frozen records the owners hand each other
       state.py              the counter keys they share
     decomposition/          `workflow:decomposing`, `workflow:ready`, `workflow:blocked`, and `workflow:umbrella`
-      run.py                one `decomposing` tick: the drift / recovery / kill-switch order before the agent, and the
-                            pause, dirty-worktree, and interruption checks after it
+      run.py                one `decomposing` tick: the late route asked before anything else, the drift / recovery /
+                            kill-switch order before the agent, and the pause, dirty-worktree, and interruption
+                            checks after it
+      handoff.py            the two ways this label hands an issue to implementation -- the kill switch and a
+                            candidate the size gate settled, the latter releasing the plan-PR hold and moving
+                            `pr_number` onto the pull request the measured commit is on first -- and the re-read
+                            the inline handler is given
       session.py            the locked decomposer session: the spec read, the fresh spawn that pins it, the
                             human-reply resume, and the drift reset that retires it
       manifest.py           the fenced-block envelope rules both modes are held to, the JSON decode, and the parse entry
@@ -588,8 +593,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     implementing/           `workflow:implementing`
       handler.py            the order one tick asks its questions in
       spawn.py              awaiting-human vs active, the restorer the checkout comes back from, the
-                            recovered-worktree shortcut and the certified baseline it stands down for, and the
-                            retry-gated fresh spawn
+                            recovered-worktree shortcut and the certified baseline it stands down for -- which
+                            an unread head cannot spend, since that comparison is what a retirement rests on --
+                            and the retry-gated fresh spawn
       session.py            the three session retirements, the per-issue 24h spawn cap, and the fresh-spawn prompt
       session_read.py       the locked session read plus the stale / overflow / quota classifiers and the blockquote
                             they quote with
@@ -597,11 +603,49 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       execution.py          one resume, its poisoned-session retry -- withheld on an issue a poll observed closed,
                             since that retry is a SECOND agent -- and what each attempt is allowed to persist
       worktree.py           the checkout a resume runs in, restored when reaped
-      disposition.py        the `before_sha` publish / timeout-park decision, the certified floor a clean exit is
-                            credited against, and the timeout park's own next-tick recovery
+      disposition.py        the publish / timeout-park decision, taken on both readings of what a run left --
+                            the head moved off `before_sha`, and the branch is ahead of base -- so a checkout
+                            something advanced onto that base is not read as a commit, at the timeout's
+                            disposition or at its next-tick recovery; the attribution both readings rest on,
+                            which needs BOTH ends of the comparison read and parks where either is not; the
+                            certified floor a clean exit is credited against, the size gate every clean
+                            committed candidate passes, the timeout and measurement parks' own recoveries, and
+                            the approved commit an interrupted publication owes, disposed against the record
+                            naming it rather than against any ahead-of-base reading
+      late_gate.py          the order the size gate's questions are asked in: the switch, the three records that
+                            say a commit is already decided (the adjudication's exemption, the gate's own unspent
+                            approval, and the commit this stage already pushed), a record already answering, and
+                            the count that answers a pair nothing has yet
+      late_records.py       what one gate call is about, the answer it hands back, the identities a record of it
+                            is minted under, and the validated-or-minted identity every refusal is reported
+                            under so a damaged record cannot take its own refusal down with it
+      late_freeze.py        the pair a count is taken over -- the candidate proved, the base frozen or
+                            re-proved -- and whether a recorded one is whole enough to act on, its
+                            identity and the issue it names included
+      late_evidence.py      what a recovery proves before it acts: the checkout, both recorded objects, a
+                            head that is still the candidate, and a head that is still the commit an approval
+                            owes a publication for -- proved ahead of every spawn, and what a refused handoff
+                            waits to see back, which is that head with a provably clean tree around it
+      late_verdict.py       what a measured candidate earns -- the push, the `workflow:decomposing` hold, the
+                            approval a publication naming another commit supersedes, and
+                            the retirement each is durable behind, that write held inside the observations
+                            owner's retirement window with the latch asked ahead of it and the window's own
+                            answer behind it, where a close is answered by putting the cycle back cancelled
+      late_parks.py         the one park shape every unreadable reading takes, the typed failure both sinks
+                            carry, the bare continue that re-reads rather than re-runs, and the two commits a
+                            publication is read by -- the one an approval owes a push for, and the one it made
       publication.py        the push, the PR reuse (re-bodied when it was opened elsewhere) or open, and the
-                            validating handoff with its counter resets
-      parks.py              the session-limit, question, silent-failure, and dirty-tree parks
+                            validating handoff with its counter resets and the commit the push carried (decided
+                            once ahead of the push -- the one that passed the gate, or the checkout's own head
+                            where the switch named none -- and made durable there), written durably ahead of the
+                            relabel so nothing this line spends is stranded on an issue that has moved on and a
+                            relabel that fails leaves the branch recognizable -- refused,
+                            recoverably, on a checkout that has left the approved commit or stopped being provably
+                            clean around it -- both asked before the push and again once the pull request is open,
+                            since the worktree is writable while those requests run -- and spending the record of
+                            that commit once the handoff it was owed lands
+      parks.py              the session-limit, question, silent-failure, dirty-tree, and unreadable-tree parks,
+                            the last two behind one seam so the caller asks whether the tree is PROVABLY clean
       drift.py              a body edit mid-implementation: the resume it earns and the `ACK:` that answers it
       drift_preflight.py    a pre-session edit and the quiet timeout recovery
       continue_command.py   `/orchestrator continue` on a parked issue

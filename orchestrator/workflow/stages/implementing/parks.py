@@ -14,7 +14,11 @@ would let a later tick auto-recover over a question nobody answered.
 
 The dirty-worktree park is the fourth, and it exists to refuse a push rather
 than to explain a failure: the branch would omit the uncommitted files, so the
-PR would not match what the agent produced. Every park here posts the HITL
+PR would not match what the agent produced. A tree nothing could READ is that
+same refusal with the other half missing -- `git status` failing, or an index
+entry git was told to stop comparing, establishes nothing about what the
+checkout carries -- and it is its own park because what an operator has to fix
+there is a repository rather than a file list. Every park here posts the HITL
 comment, ratchets `last_action_comment_id` past it so the next tick reads the
 human's reply and not its own notice, and emits `park_awaiting_human` -- but
 leaves the pinned-state write to the handler, so the park composes with
@@ -28,6 +32,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments, messages as _messages
@@ -157,6 +162,28 @@ def _on_question(
     )
 
 
+def _on_unpublishable_tree(
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    agent_result: AgentResult,
+    tree: _WorktreeStatus,
+) -> None:
+    """Park a tree a push may not be taken from, by which half of it failed.
+
+    One seam for the one question a publication has to answer -- is this tree
+    provably carrying nothing loose -- because the two ways it can answer no
+    are a refusal either way and only the operator's next move differs. Paths
+    git named are files to commit or clear; a reading that never happened is a
+    repository to look at, and it must not be reported as the empty list it
+    literally is.
+    """
+    if tree.paths:
+        _on_dirty_worktree(gh, issue, state, agent_result, list(tree.paths))
+        return
+    _on_unreadable_worktree(gh, issue, state, agent_result)
+
+
 def _on_dirty_worktree(
     gh: GitHubClient,
     issue: Issue,
@@ -171,9 +198,43 @@ def _on_dirty_worktree(
     to the human and resume the codex session on their reply, identical to the
     question path.
     """
-    _comments._post_issue_comment(
+    _park_unpushable_tree(
         gh, issue, state, _dirty_worktree_message(agent_result, dirty),
+        {"reason": "dirty_worktree", "dirty_files": len(dirty)},
     )
+
+
+def _on_unreadable_worktree(
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    agent_result: AgentResult,
+) -> None:
+    """Park instead of pushing when the tree could not be read at all.
+
+    An unreadable tree is not a clean one. `git status` failing -- or an index
+    entry git has been told to stop comparing, which makes the rest of what it
+    reports unusable -- establishes nothing about what the checkout carries,
+    and a push that went ahead on it would publish a branch nobody proved
+    matches the work. So it is refused exactly as named dirty files are, and
+    the comment says which of the two happened, since what an operator has to
+    fix is a repository rather than a file list.
+    """
+    _park_unpushable_tree(
+        gh, issue, state, _unreadable_worktree_message(agent_result),
+        {"reason": "unreadable_worktree"},
+    )
+
+
+def _park_unpushable_tree(
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    message: str,
+    reported: dict,
+) -> None:
+    """Post the refusal, hold the issue, and report it under its own reason."""
+    _comments._post_issue_comment(gh, issue, state, message)
     state.set(_state._AWAITING_HUMAN, True)
     # Mirror `_on_question`: this needs human input, so stale transient state
     # must not auto-recover over it.
@@ -186,8 +247,22 @@ def _on_dirty_worktree(
         "park_awaiting_human",
         issue_number=issue.number,
         stage=stage_name(gh.workflow_label(issue)),
-        reason="dirty_worktree",
-        dirty_files=len(dirty),
+        **reported,
+    )
+
+
+def _unreadable_worktree_message(agent_result: AgentResult) -> str:
+    last_msg = agent_result.last_message.strip()
+    tail = ""
+    if last_msg:
+        quoted = _session_read._as_blockquote(last_msg)
+        tail = f"\n\n_Last agent message:_\n\n{quoted}"
+    return (
+        f"{config.HITL_MENTIONS} agent committed but this worktree's state "
+        "could not be read (`git status` failed, or an index entry is marked "
+        "`assume-unchanged`/`skip-worktree`); refusing to push a branch "
+        "nothing here can prove matches the work. Clear what is blocking the "
+        f"read, then reply and the orchestrator will resume the session.{tail}"
     )
 
 

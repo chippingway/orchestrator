@@ -24,6 +24,7 @@ _BLOCKED = "blocked"
 _OWNERS = (
     "activation",
     _BLOCKED,
+    "handoff",
     "late_cancellation",
     "late_children",
     "late_cleanup",

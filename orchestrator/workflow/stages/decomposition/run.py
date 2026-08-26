@@ -2,6 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """One `decomposing` tick: what runs before the agent, and what the agent earns.
 
+Two different questions wear this label, and the first thing a tick does is
+ask which one it is. An issue whose record carries a live late generation is
+not waiting to be decomposed: its implementation is committed, measured past
+the ceiling, and waiting on a verdict, so the whole tick belongs to the late
+coordinator and nothing below runs. Everything else is the initial
+decomposition this owner has always driven.
+
 The order in `_prepare_decomposer_run` is the contract. Drift goes first, so a
 body edited during a crash window clears the manifest markers before recovery
 can read them and finalize a split the human no longer wants. Recovery goes
@@ -36,97 +43,26 @@ from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.git.worktrees import decomposition as _worktree_decomposition
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.decomposition import (
-    late_relabel as _late_relabel,
+    late_coordinator as _late_coordinator,
 )
+from orchestrator.workflow.stages.decomposition import handoff as _handoff
 from orchestrator.workflow.stages.decomposition import outcomes as _outcomes
 from orchestrator.workflow.stages.decomposition import recovery as _recovery
 from orchestrator.workflow.stages.decomposition import session as _session
 from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.stages.decomposition.late_models import (
+    _LateDisposition,
+)
 from orchestrator.workflow.stages.decomposition.models import (
     _DecomposerCleanup,
     _DecomposerRunPlan,
 )
-from orchestrator.workflow.stages.implementing import handler as _implementing
-from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
 
-
-def _route_disabled_to_implementing(
-    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
-) -> bool:
-    """DECOMPOSE kill-switch bailout.
-
-    Returns True when the caller must return: decomposition is disabled, and
-    the issue was either routed to implementation or left exactly where it is
-    because a live late generation may not be routed. False means the caller
-    should proceed to spawn the decomposer.
-
-    Every path after this point spawns the decomposer (fresh or via the
-    awaiting_human resume), so an operator who restarts with DECOMPOSE=off
-    after `_handle_pickup` already labeled the issue `decomposing` -- or
-    while it is parked there awaiting a human -- would still see the
-    disabled rollout create manifests and child issues. Drop into the
-    legacy implementing flow exactly as `_handle_pickup` does on a freshly
-    unlabeled issue. The half-finished recovery above must keep running
-    regardless of the flag: abandoning orphan children (already on GitHub)
-    because new decompositions are now disabled would strand work, which
-    is not what a kill switch should do.
-
-    A live late generation stops the route for that same reason, one step
-    further on. Such an issue is not waiting to be decomposed -- its
-    implementation is already committed and measured past the ceiling -- so
-    the legacy route would publish an oversized candidate as though a `single`
-    verdict had been recorded for it, which is the one outcome the size gate
-    exists to prevent. The switch still keeps new candidates out of the gate;
-    it does not decide the ones already in it.
-    """
-    if config.DECOMPOSE:
-        return False
-    if _late_relabel._refuses_disabled_route(state):
-        log.info(
-            "issue=#%d carries a live oversized candidate; DECOMPOSE=off "
-            "leaves it under adjudication rather than routing it to "
-            "implementation", issue.number,
-        )
-        return True
-    _comments._post_issue_comment(
-        gh, issue, state,
-        ":robot: decomposition is disabled; routing this issue "
-        "to implementation.",
-    )
-    # Clear decomposer-side park state. Without this,
-    # `_handle_implementing` reads `awaiting_human=True` and
-    # tries to resume a dev session that was never spawned --
-    # at best it stalls on `comments_after`, at worst the
-    # follow-up text becomes the sole prompt instead of the
-    # real implement prompt.
-    state.set(_state._AWAITING_HUMAN, False)
-    state.set(_state._PARK_REASON, None)
-    # Mark every comment visible at this transition as
-    # "already consumed", mirroring `_handle_ready`'s ratchet.
-    # `_handle_implementing` will read the full issue thread
-    # via `_recent_comments_text` when it builds the implement
-    # prompt, so the dev sees any decomposing-era human
-    # feedback at spawn. Without this bump, the
-    # validating->in_review watermark seed later sees those
-    # same comments as fresh PR feedback (because they sit
-    # AFTER the now-stale `last_action_comment_id` from the
-    # decomposer-era park) and bounces the dev unnecessarily.
-    # One-way ratchet so we never lower a higher prior value.
-    latest = gh.latest_comment_id(issue)
-    if isinstance(latest, int):
-        prior = state.get(_state._LAST_ACTION_COMMENT_ID)
-        if not isinstance(prior, int) or latest > prior:
-            state.set(_state._LAST_ACTION_COMMENT_ID, latest)
-    gh.set_workflow_label(issue, WorkflowLabel.IMPLEMENTING)
-    gh.write_pinned_state(issue, state)
-    _implementing._handle_implementing(gh, spec, issue)
-    return True
 
 
 def _settle_decomposer_run(
@@ -196,7 +132,7 @@ def _prepare_decomposer_run(
     if _recovery._recover_stale_manifest(gh, issue, state):
         return _DecomposerRunPlan(agent_result=None)
 
-    if _route_disabled_to_implementing(gh, spec, issue, state):
+    if _handoff._route_disabled_to_implementing(gh, spec, issue, state):
         return _DecomposerRunPlan(agent_result=None)
 
     if state.get(_state._AWAITING_HUMAN):
@@ -254,8 +190,43 @@ def _process_decomposer_run(
     _outcomes._dispatch_decomposer_manifest(gh, issue, state, decomposer_result)
 
 
+def _late_adjudication_owns_the_tick(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
+) -> bool:
+    """Whether this `decomposing` tick belongs to the late size gate.
+
+    Asked before anything else this handler does, and asked of every tick
+    rather than only of the ones that look late. The coordinator's own first
+    steps are the reconciliations an earlier tick left owed -- a park notice a
+    refused comment stranded, an owner read that could not be taken -- and
+    those are owed by exactly the records the gates below would route past. On
+    an issue that never entered the size gate they cost nothing: there is no
+    generation to read them off, and the call comes straight back saying so.
+
+    What it answers with is what the tick did. Only "this is not a late
+    adjudication" falls through, so an oversized committed candidate is never
+    handed to the agent that would re-decompose the issue from scratch -- and
+    the read-only scratch checkout that agent needs is never created for a run
+    that reads the developer's own worktree instead.
+
+    Nor is "not an adjudication" the same as "never entered the gate", which
+    is why one more question stands between that answer and the decomposer: a
+    revision that came back at or below the ceiling is a record whose size
+    question is ANSWERED, and what it is owed is publication rather than a
+    second plan for work that is already written.
+    """
+    adjudicated = _late_coordinator._adjudicate_late_generation(
+        gh, spec, issue, state,
+    )
+    if adjudicated.disposition != _LateDisposition.NOT_LATE:
+        return True
+    return _handoff._settled_candidate_owns_the_tick(gh, spec, issue, state)
+
+
 def _handle_decomposing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
     state = gh.read_pinned_state(issue)
+    if _late_adjudication_owns_the_tick(gh, spec, issue, state):
+        return
     cleanup = _DecomposerCleanup(
         spec=spec,
         issue_number=issue.number,

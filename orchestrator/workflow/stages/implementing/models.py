@@ -53,6 +53,39 @@ class _AgentWork:
 
 
 @dataclass(frozen=True)
+class _RecoveredWork(_AgentWork):
+    """Committed work a RECOVERY is reconciling, not a run's fresh output.
+
+    A distinct type rather than a flag beside the worktree, because it is a
+    claim about the TICK rather than about the checkout -- and the checkout
+    cannot say it. No developer ran on the paths that build one: they answer a
+    reading a previous tick recorded, so a head that has moved is not fresh
+    output to be measured in the recorded candidate's place, and the
+    `DECOMPOSE` bypass would be answering a question the gate already asked.
+    Everything else about it is ordinary committed work, which is why it IS
+    one rather than merely resembling one.
+    """
+
+
+@dataclass(frozen=True)
+class _ApprovedWork(_AgentWork):
+    """A committed candidate the size gate let through, and which commit it is.
+
+    The SHA travels because the next step is a PUSH and the gate's answer was
+    about one object id: it proved that commit, measured that commit, and
+    recorded that commit. `HEAD` between the reading and the write is not
+    necessarily the same commit -- another tick, an operator, or a descendant
+    the timeout cleanup raced can move it -- so a publication that carried
+    only permission would publish work no measurement ever saw. Empty where
+    the GATE proved nothing, which is a candidate the switch kept out of it --
+    and there the publication resolves the checkout's own head instead, so
+    what goes out is still named against one commit.
+    """
+
+    candidate_sha: str = ""
+
+
+@dataclass(frozen=True)
 class _PRWork(_AgentWork):
     branch: str
 

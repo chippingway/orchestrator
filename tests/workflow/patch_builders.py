@@ -6,11 +6,13 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from orchestrator.git.verification.models import VerifyResult
-from orchestrator.git.verification.probes import _WorktreeStatus
 
+from tests.workflow.patch_measurement import _measurement_mocks
 from tests.workflow.patch_models import (
     _AnchorAnswers,
+    _HeadReadings,
     _RemoteTipAnswers,
+    _TreeReadings,
     _WorkflowRunContext,
     _as_mock,
     _default_infer_subject_prefix,
@@ -33,13 +35,11 @@ def _execution_mocks(context: _WorkflowRunContext) -> dict[str, object]:
         ),
         # The status form answers the same read for the caller that has to
         # prove a clean tree, so both are driven by one seed -- and a test
-        # about an unreadable worktree flips `tree_readable` alone.
-        "_worktree_status": MagicMock(
-            return_value=_WorktreeStatus(
-                readable=context.tree_readable,
-                paths=tuple(context.dirty_files),
-            ),
-        ),
+        # about an unreadable worktree flips `tree_readable` alone. A test
+        # about a tree that changes UNDER a publication seeds the readings
+        # themselves, since the whole point of that race is one reading
+        # disagreeing with the next.
+        "_worktree_status": MagicMock(side_effect=_TreeReadings(context)),
         "_committed_paths_since": MagicMock(
             return_value=list(context.committed_paths),
         ),
@@ -84,7 +84,7 @@ def _publication_mocks(context: _WorkflowRunContext) -> dict[str, object]:
         prefix_mock = MagicMock(return_value=context.fallback_prefix)
     return {
         "_push_branch": MagicMock(return_value=bool(context.push_branch)),
-        "_head_sha": MagicMock(side_effect=list(context.head_shas)),
+        "_head_sha": MagicMock(side_effect=_HeadReadings(context)),
         "_head_on_branch": MagicMock(
             return_value=bool(context.head_on_branch),
         ),
@@ -148,6 +148,7 @@ _MOCK_BUILDERS = (
     _publication_mocks,
     _validation_mocks,
     _conflict_mocks,
+    _measurement_mocks,
 )
 
 

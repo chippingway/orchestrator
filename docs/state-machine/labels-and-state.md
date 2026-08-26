@@ -289,10 +289,30 @@ against — would move the branch off the commit anything vouches for.
 The skip outlives the label. An unconsumed `question_*` / `discussion_*` park is honored whatever the issue is
 labeled now, because an operator's relabel to `workflow:implementing` takes the label off a full tick before the
 read-only guard rules on the branch, and a rebase in that gap would move the tip off the SHA the guard measures and
-convict a branch nobody touched. So are the three records that freeze a branch on their own: the two a discussion
-tick writes BEFORE the thing they describe (`discussion_round_open` and `discussion_publishing_sha`, which a tick
-that died mid-round leaves standing with no park at all, and with the commit it died holding on the branch), and the
-`read_only_baseline_sha` the guard writes in place of a park it clears, which stands until the dev run commits.
+convict a branch nobody touched. So are the five records that freeze a branch on their own
+([`git/base_sync/frozen.py`](../../orchestrator/git/base_sync/frozen.py)): the two a discussion tick writes BEFORE the
+thing they describe (`discussion_round_open` and `discussion_publishing_sha`, which a tick that died mid-round leaves
+standing with no park at all, and with the commit it died holding on the branch), the `read_only_baseline_sha` the
+guard writes in place of a park it clears, which stands until the dev run commits, and the two commits the late size
+gate is deciding about — `late_candidate_sha`, the pair it froze, and `late_approved_sha`, the commit an approval has
+still to publish, each dropped by the step that spends it. Two PARKS freeze the branch as well, and by the park
+rather than by a record, because neither can leave one. A standing `late_measurement_failed` is the first: the
+sharpest of those refusals is taken before any commit could be named, so there is nothing on the pinned comment to
+freeze by — and rebased under it, the exact-pair retry has lost its commit and the refusal that substitutes nothing
+for a pair nobody froze is standing on the base. A standing `agent_timeout` is the second, and its watermark names a
+commit that does not exist yet: `pre_implement_sha` is the tip the killed run STARTED at, so every reading of it is a
+comparison against what the checkout has become since. On the commonest shape of that park — a run killed before its
+first commit — the branch carries nothing of its own, so a base that advances fast-forwards the checkout straight
+onto the new tip, and the next tick's silent recovery reads a head that moved with no developer having written a
+line. Both parks end the way every park does, by being answered.
+`late_exempt_sha` and `implementing_published_sha` freeze the branch too, but on conditions rather than on their
+presence: neither is ended by a write — the exemption is never cleared at all and the publication record is
+overwritten rather than spent — so read by presence they would take a branch out of the refresh for the rest of its
+issue's life. The refresh asks two things instead. The checkout: the head still IS the commit the record names, or
+there is nothing there left to protect. And the label: the stage that has to act on that commit — `implementing` for
+both, plus `decomposing` for an exemption a relabel has not carried out of it yet — still has the issue. Past the
+handoff neither holds anything, and that is the point: a pushed branch is kept in step with base by the PR-aware
+sync, which is the only route that can move it without stranding the SHA a reviewer is looking at.
 
 Refresh-only failure modes — push rejected (`auto_base_rebase_push_failed`), rebase failed without conflicted files
 (`auto_base_rebase_failed`), dirty-after-clean-rebase (`auto_base_rebase_dirty`) — reset HEAD back to the pre-rebase
@@ -438,20 +458,50 @@ machine fall into a few groups:
   `_park_auto_rebase_failure` (`auto_base_rebase_failed` / `auto_base_rebase_dirty` /
   `auto_base_rebase_push_failed`) are owned by the per-tick
   base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`. The late
-  size gate re-sets its own reasons for the same kind of reason: `late_plan_pr_hold_failed`,
+  size gate re-sets its own reasons for the same kind of reason: `late_measurement_failed`,
+  `late_candidate_moved`, `late_evidence_missing`, `late_plan_pr_hold_failed`,
   `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,
   `late_manifest_invalid`, `late_result_unrecordable`, `late_owner_unreadable`, `late_pr_unreconciled`,
   `late_snapshot_failed`, `late_children_failed`, `late_supersession_failed`, `late_content_drift`,
   `late_revision_dirty`, `late_revision_unmeasured`, `late_revision_unanswered`, and `late_question` — see
-  [the late run](#the-late-run) for which of them the next attempt retires. `late_owner_unreadable` is the one of
-  them that recovers on its own: it is a GitHub read that failed after the agent had already answered, so the retry
-  re-reads rather than re-running anything, and the tick that finds the issue readable again posts the same one-time
-  follow-up a transient `validating` park does — before the write that clears the park, so a crash between them loses
-  the write and not the sentence. What drives that retry is `late_owner_check_pending` on the generation rather than
-  the park itself, which is also why this reason is taken only when the issue is not already parked on something a
-  human has to answer. On an issue that already is, the notice that other park staged is still said when the reason
-  it stands on is one no later attempt supersedes — the four revision and drift parks — since nothing else ever
-  would, and an `awaiting_human` with no sentence behind it stands for as long as the read keeps failing.
+  [the late run](#the-late-run) for which of them the next attempt retires. `late_measurement_failed` is the only one
+  of them taken under `workflow:implementing` rather than `workflow:decomposing`, because it is the gate's own and
+  the gate runs before any adjudication exists: it is answered there too, one step ahead of the generic continue
+  classifier, since a content-free `/orchestrator continue` on it means "take the reading again" rather than the
+  guidance a park needing a real answer would be refused for. `late_candidate_moved` is the second taken under
+  `workflow:implementing`, and it is the publication's own: the checkout is not the one the gate approved, so
+  nothing is pushed and the issue is not handed on. Two readings answer for "the checkout", because the head answers
+  only half of what it means. A head somewhere else is one. A tree carrying work no push would publish — or one
+  `git status` could not report on, which is not a clean tree but a reading that never happened — is the other, and
+  it is the half that can be true with the head never having moved, so every proof about the commit passes over it.
+  Both are asked before the push and again once the pull request is open. It has a reason of its own because the
+  remedy is neither a retry nor a re-measurement — every stage past the handoff works from that checkout and none of
+  them measures again, so what it asks for is the worktree back on the approved commit and carrying nothing else,
+  and a worktree deliberately left on the descendant is measured as the fresh candidate it is on the next run. The
+  same reason covers the pre-spawn refusal one step earlier: an approved commit this host
+  cannot show at all — the checkout was rebuilt from the base or the plan pull request on a replacement machine — is
+  the same ask with nothing to compare against, so neither the recovered-worktree shortcut nor a fresh developer run
+  is allowed to proceed past it. It is also the one park answered by something other than a comment: the approved
+  commit is recorded as `late_approved_sha`, every tick asks the checkout one local `rev-parse` against it and one
+  `git status` around it, and a checkout put back — on that commit, with nothing loose beside it — publishes on the
+  next poll with nothing re-run and no agent spawned. Both questions are asked, or the recovery would republish into
+  the very refusal the park was taken on and post a fresh notice every poll for a checkout that has not changed.
+  That record is what makes
+  the answer possible at all — the generation is retired ahead of the effects it licenses, so once the approval lands
+  nothing else on the issue still names the commit — and the read is silent, so an operator who leaves the checkout
+  where it is is not told the same thing once a tick. `late_evidence_missing` is the adjudication's counterpart, taken
+  under `workflow:decomposing` before the plan-PR hold or any spawn: the checkout is there and one of the two recorded
+  commits is not, so the agent would be shown a `git diff <base>...<candidate>` that cannot resolve and its verdict
+  would be an answer about nothing. It asks for the worktree at the recorded commit, never another run.
+  `late_owner_unreadable` is the one of them that recovers on its own: it is a GitHub read that failed after the
+  agent had already answered, so the retry re-reads rather than re-running anything, and the tick that finds the
+  issue readable again posts the same one-time follow-up a transient `validating` park does — before the write
+  that clears the park, so a crash between them loses the write and not the sentence. What drives that retry is
+  `late_owner_check_pending` on the generation rather than the park itself, which is also why this reason is taken
+  only when the issue is not already parked on something a human has to answer. On an issue that already is, the
+  notice that other park staged is still said when the reason it stands on is one no later attempt supersedes —
+  the four revision and drift parks — since nothing else ever would, and an `awaiting_human` with no sentence
+  behind it stands for as long as the read keeps failing.
 - **Undelivered park notice.** `late_park_notice` is the `{reason, message}` a late park has recorded and not yet
   said. The flag is durable before the comment is posted — a comment GitHub refuses must not take a finished run's
   result with it — so without this field a refused post leaves an `awaiting_human` nothing can tell from one whose
@@ -618,7 +668,12 @@ not make an unmeasured candidate report as oversized, a `"false"` string does no
 restart, and prose in a `late_candidate_sha` never becomes live state — and what a read refuses, the next write drops
 rather than preserving.
 
-- **Identity.** `late_cycle_id` and `late_generation` are monotonic and never reused, so a record naming cycle 2
+- **Identity.** Minted by the size gate, at the moment it freezes a candidate: the cycle is this issue's own while
+  one is live and the number after `late_retired_cycle_id` otherwise, and the generation counter advances with every
+  candidate frozen inside a cycle — which is what keeps a verdict recorded against an earlier commit from reading as
+  an answer to this one. The lineage beside them comes off `late_ancestry_*` wherever a split wrote one, so the bound
+  applies at the depth the issue was really born at.
+  `late_cycle_id` and `late_generation` are monotonic and never reused, so a record naming cycle 2
   always names the same attempt; `late_root_issue` and `late_current_issue` place the issue in its lineage; and
   `late_lineage_depth` is 0 at the root and bounded by `MAX_LINEAGE_DEPTH` (3, a safety invariant no configuration
   reads). A depth at or past the bound — including one an edit put there — reads as "may not split", so the deepest
@@ -780,7 +835,23 @@ rather than preserving.
   candidate handed back with its generation cleared and nothing else would be measured past the ceiling again and
   adjudicated again. It names exactly the commit that was measured, which is also the whole invalidation rule —
   anything committed on top of it is work nobody adjudicated, does not match, and is measured as the fresh candidate
-  it is. There is no clearing step to remember and no window in which a stale exemption covers a moved head. Read and
+  it is. There is no clearing step to remember and no window in which a stale exemption covers a moved head. That
+  is also why the pre-tick base refresh reads the CHECKOUT and the LABEL before it decides whether this record
+  freezes the branch: a rebase while the head is still the accepted commit, and the gate has still to act on it,
+  would have the gate measure the rewrite past the ceiling and re-route a decision a human has already made — while
+  freezing on the record's presence alone would take every issue that ever earned a verdict out of the base refresh
+  for the rest of its life, review and its rebases included.
+
+  It shares that window with `late_approved_sha`, and the two are not duplicates of each other. The approval is
+  written in the same breath and answers a different question: *this commit is owed a push, and no other may be
+  pushed in its place*. So it freezes by presence, is proved before anything spawns, and is spent by the publication
+  that lands — durably ahead of the relabel that hands the issue to `validating`, since past that label implementing
+  never runs on the issue again and nothing else would ever drop it. After that the exemption is on its own, still
+  saying *this commit needs no measuring* for every later tick that finds the branch where the verdict left it — a
+  claim the gate keeps reading and the base refresh stops honouring, since past the handoff the branch is review's. Each
+  covers what the other cannot: the approval covers the wait for the push and could not survive it without freezing
+  the branch for good, and the exemption covers every tick past it and could not be read by presence for the same
+  reason. Read and
   written fail-closed like every other late field: only a whole git object id is one, a `record_exemption` handed
   anything else refuses rather than writing a value the gate would read as a bypass, and a hand-edited field reads
   back as no exemption at all. The one write that does drop it is a restart's projection, which keeps nothing about
@@ -857,6 +928,45 @@ rather than preserving.
 
   Both fields are read fail-closed (a hand-edited identity, or a `"true"` string, is no proof at all) and both
   are dropped by a restart's projection, with the fresh cycle's own ending writing them again.
+- **Approved commit.** `late_approved_sha` is the commit this issue owes a publication and no push has carried yet. It
+  goes down in the same write that approves one — the retirement a small candidate earns, and the exemption a `single`
+  verdict records — and is dropped by whichever handoff spends it (the recovery that republishes, or the ordinary
+  `validating` advance, which writes the drop durably ahead of the relabel), by an adjudication that supersedes it,
+  and by any publication naming a different commit: a debt recorded for work nothing is going to push would freeze the
+  branch for the rest of the issue's life. It is a floor as well as a debt — a run resumed on top of that commit has
+  to move the head to have committed anything. Like `late_exempt_sha` it names one commit and is deliberately outside
+  `LATE_STATE_KEYS`: the generation it came from is retired before the push it licenses, so a record cleared with the
+  group would leave nothing on the issue naming the work — which is exactly what a replacement host would then publish
+  over. It is proved before anything spawns and it is what the `late_candidate_moved` park is answered by, together
+  with a status read that has to prove the tree around it carries nothing. What either
+  read does with it is a comparison, never a substitution — a head that cannot be peeled, or one that peels to
+  anything else, leaves the park exactly where it is. It freezes the branch out of the pre-tick base refresh for as
+  long as it stands, and there the freeze IS the remedy: what settles this park is an operator putting the worktree
+  back, so a rebase between their `git checkout` and the tick that would have noticed moves the head off the approved
+  commit again and leaves the one park answerable without a comment with nothing left to answer it.
+- **Published commit.** `implementing_published_sha` is the commit this stage last pushed — the one that passed the
+  gate, or the checkout's own head on a push the switch named none for, since `DECOMPOSE` keeps candidates out of the
+  gate rather than off the remote and is an operator's to turn back on. It is the same commit the push was named
+  against rather than a second reading of the checkout, which could have moved while the push and the pull request
+  were in flight; the pre-push half of that decision is durable as `late_approved_sha`, so a tick that died in the
+  window leaves a receipt either way. It is written in the same pinned
+  write that spends every record the gate decided by and ahead of the relabel that hands the issue to `validating`.
+  It exists for the window between those two: a relabel GitHub would not take, or a process that died before it,
+  leaves an implementing issue whose branch is on the remote and whose pull request carries it, with the approval and
+  the generation both already gone. Read as work nobody has ruled on, that branch is measured again against a base
+  that has moved and a ceiling that may have been retuned, and an oversized answer would route it to adjudication —
+  with the push and the pull request already made, which is the one outcome the size gate exists to prevent. Recorded,
+  the next tick recognizes the commit, publishes it without a reading, reuses the pull request that already carries
+  it, and lands the label. Like `late_exempt_sha` it names one commit and only it, which is the whole invalidation
+  rule and why there is no clearing step: work committed on top is work this stage has not published and is measured
+  as the fresh candidate it is, and the next publication overwrites it. It freezes the base refresh on exactly the
+  terms `late_exempt_sha` does, and for exactly as long: the refresh reads the CHECKOUT and the LABEL, so the branch
+  is held still only while the head is still this commit *and* the issue still carries a deciding-stage label. That
+  window is the one the record exists for — between the push and the relabel the branch is on the remote, its pull
+  request carries it, and a rebase there would move the head off the commit the next tick has to recognize, leaving
+  it to re-decide a published branch. The freeze ends with the handoff: past `workflow:validating` the label no
+  longer matches, and keeping a pushed branch in step with base is the PR-aware sync's own job, which is the only
+  route that can move it without stranding the reviewer's SHA.
 - **Retired cycle.** `late_retired_cycle_id` is the one fact about a dropped generation that outlives the drop: the
   write that clears late mode records which cycle it was clearing. It exists for a single window — a poll observing
   the close *inside* that write leaves a cycle-scoped receipt on the thread, and the record it would be adopted
@@ -864,8 +974,15 @@ rather than preserving.
   observation with nothing left to correlate it to. A record carrying the stamp and no generation is asked once per
   owner per process whether the thread has that cycle's receipt; one that does gets the cycle put back, cancelled,
   with the ledgers the retirement carried across, and the ordinary ending runs from there.
-  Both retirements that drop a cycle record it — the `single` publication's, and the umbrella terminal's, which
-  needs it for the same reason: the barrier behind each write belongs to the process that made it.
+  Every retirement that drops a cycle records it — the `single` publication's, the umbrella terminal's, and the size
+  gate's own drop of a candidate it measured at or below the ceiling, which needs it for the same reason: the barrier
+  behind each write belongs to the process that made it. All three take the same window around that write, and the
+  gate's is the one with the most to lose behind it: past its retirement come a pushed branch, an opened pull
+  request, and a relabel to `workflow:validating`, so a close dropped in that interval would hand a closed issue to
+  review. The latch is asked ahead of the write and the window's own answer behind it, and a close either side of it
+  ends the cycle instead — cancelled, from the generation still in the call's own memory, with nothing published to
+  take back. It is also what the next candidate on the issue mints its
+  cycle after, so a measurement taken after one that published cannot answer to the number that one did.
   It names **one** window and outlives no other, because the receipt it reads is a comment and comments are
   append-only: a correlation left standing would let a cycle-scoped receipt be adopted against a record whose cycle
   is two generations newer, moving a completed owner from `done` to `rejected`. Two rules end it. A generation

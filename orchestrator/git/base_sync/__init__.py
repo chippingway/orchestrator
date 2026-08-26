@@ -11,8 +11,12 @@ a verified recovery comparison produces live in ``outcomes``. The reads that
 comparison is built from -- the authenticated branch fetch, the local and
 remote head SHAs, and the divergence counts -- live in ``snapshot``, and the
 order those reads and answers are asked in lives in ``recovery``. ``refresh``
-drives one tick's base fetch, worktree discovery, and per-worktree routing;
-``pre_pr`` owns the hardened rebase it runs on a branch nobody has pushed
+drives one tick's base fetch, worktree discovery, and per-worktree routing,
+and ``frozen`` is what it asks before any of that reaches a checkout: the
+records that hold a branch still by their presence, the two parks that hold
+one with no record behind them, the two that hold one only while the checkout
+still stands on the commit they name, and the rule each of those freezes ends
+by. ``pre_pr`` owns the hardened rebase it runs on a branch nobody has pushed
 yet, and ``pr`` owns the order a pushed branch's synchronization asks its
 owners in. Those owners are ``eligibility`` for the label, park, PR-state,
 recovery, and clean-tree gates a PR-having worktree clears before any rewrite

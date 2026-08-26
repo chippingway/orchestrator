@@ -140,7 +140,16 @@ orchestrator/
                         operation names its tree with, and the unsafe local-transport probe
     locks.py            the per-target-root re-entrant lock registry and its accessor
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
-      refresh.py        the authenticated base fetch, worktree discovery, the sync gates, and the per-worktree route
+      refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
+                        in -- including the label scope on the two freezes no write ever ends -- and the
+                        per-worktree route
+      frozen.py         which records hold a checkout still and what ends each freeze: the five that freeze a
+                        branch by their presence -- a frozen late candidate and a refused handoff's approved
+                        commit among them -- the two parks that freeze one with no record behind them at all
+                        (a size reading nobody could take, and an implementer timeout whose watermark names a
+                        commit not yet made), and the two no write ever ends (the accepted commit and the
+                        published one), which freeze only while the checkout still stands on the commit they
+                        name and only while the stage that has to act on it still holds the issue
       eligibility.py    the label, park, open-PR, recovery, and clean-tree gates one PR sync clears
       pre_pr.py         the hardened rebase / merge probes and the aborting pre-PR local rebase
       pr.py             the order a PR-having worktree's gates, rebase, and publication are asked in
@@ -167,7 +176,9 @@ orchestrator/
     measurement/        how large a committed candidate is, and why a size is sometimes unknown
       models.py         the typed failure vocabulary, one frozen end of a diff, and the measurement record
       commits.py        the remote-authoritative base freeze (fetched once when the object is missing) and the
-                        candidate proof that an id resolves, is held here, and peels to the commit it names
+                        candidate proof that an id resolves, is held here, and peels to the commit it names --
+                        each handing back whatever id it did establish beside the failure, so a retry has one
+                        exact object to ask for
       additions.py      the `--numstat` added-line count over the frozen pair — read under the candidate's own
                         attributes and a named algorithm, pinned where git consults the environment last, and
                         refusing outright on the attribute file and diff-driver config no pin reaches — and the
@@ -193,8 +204,9 @@ orchestrator/
     verification/       what a verify run is, and the reads a checkout is judged by
       models.py         the `VerifyResult` statuses and fields, and the output budget
       output.py         the redact-then-truncate pass over captured verify output
-      probes.py         the HEAD reads, the porcelain status in both its answers (the paths, and whether git could be
-                        asked), and the two a named commit is judged by
+      probes.py         the HEAD reads, the porcelain status in both its answers (the paths, whether git could be
+                        asked, and the `is_clean` a caller whose next step is a push asks instead of truth-testing
+                        the list), and the two a named commit is judged by
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in

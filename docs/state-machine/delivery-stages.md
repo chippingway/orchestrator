@@ -119,7 +119,8 @@ Result routing in `_post_user_content_change_result`:
   resolving_conflict guard ahead of the helper via `_ignore_if_interrupted`), so the killed run leaves durable state
   untouched for the next process to retry;
 - a clean pushed fix hands straight back to `workflow:validating` from every stage that runs the drift resume; from
-  `workflow:implementing` the drift path runs `_on_commits` to open/push the PR;
+  `workflow:implementing` the drift path publishes through the shared committed-work seam, so the size gate measures
+  the resumed commit before `_on_commits` opens/pushes the PR;
 - a no-commit reply whose clean HEAD is strictly ahead of the remote PR branch (a fix a prior parked / interrupted run
   committed but never pushed) is published through the push tail and counted as a pushed fix (`_stranded_fix_unpushed`),
   ahead of the ack check;
@@ -156,6 +157,37 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - **Input**: issue + comments + pinned state (`decomposer_agent` / `decomposer_session_id`, retry-budget keys,
   `children`, `dep_graph`, `expected_children_count`, `umbrella`).
 - **Internal flow**:
+  0. **Late adjudication route.** Before anything else, the tick asks which of the two questions wearing this label it
+     is about (`_late_adjudication_owns_the_tick`). An issue whose record carries a live late generation is not
+     waiting to be decomposed — its implementation is committed and was measured past the ceiling — so the whole tick
+     belongs to the late coordinator (`late_coordinator.py`) and no step below runs, no scratch worktree is created,
+     and the initial decomposer is never spawned. The coordinator is asked on *every* tick rather than only on the
+     ones that look late, because its own first steps are the reconciliations an earlier tick left owed — a park
+     notice a refused comment stranded, an owner read nobody could take — and those are owed by exactly the records
+     the gates below would route past. On an issue that never entered the size gate it costs one pinned read that has
+     already happened and answers immediately. What it does under that label is
+     [`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer).
+
+     "Not an adjudication" is not the same answer as "never entered the gate", so one more question stands between
+     the two. A record whose candidate the measurement put at or below the ceiling — a developer revision a human's
+     guidance bought, re-frozen and re-measured — has had its size question **answered**: there is no verdict to
+     earn and no children to create, and the initial decomposer would re-plan an implementation that is already
+     written. That issue is relabelled `workflow:implementing` and falls into that handler on the same tick, exactly
+     as the kill-switch route below does — so the ordinary publication reconciles the exact commit already on the
+     branch. What the handback owes the pull requests first is what an accepted verdict owes them: this generation's
+     "do not merge" notice comes off the plan PR (a refusal parks under `decomposing` with the record untouched, so
+     the retry is free), and `pr_number` is moved to the pull request the measured commit is actually on — or
+     dropped where the recorded one is settled, since a merged plan PR carried into `implementing` ends the issue as
+     `done` on a design the revision was never published under.
+
+     The record itself is deliberately KEPT across the label, and retiring it is the implementing gate's own step.
+     It is the only thing saying this issue's size question was asked and answered, so a tick that dropped it and
+     then failed to move the label would leave a `decomposing` issue the initial decomposer could not tell from one
+     that never entered the gate. Kept, the gate finds a measurement it recorded for the commit in hand and settles
+     it there, retiring it (the generation dropped, its cycle kept as `late_retired_cycle_id`) durably ahead of the
+     push it licenses — which is where the freeze on the base refresh and the live-cycle reading a close is answered
+     against both end. A restart's fresh cycle is deliberately not this case: it carries an identity and no
+     candidate at all, and it really is waiting to be decomposed.
   1. **User-content drift check** (inline) — see drift section above.
   2. **Half-finished decomposition recovery.** If `expected_children_count` is set OR `children` is non-empty (a prior
      tick crashed mid-split), the handler cannot safely respawn the decomposer. When `expected_children_count` is set
@@ -857,8 +889,22 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      `run_agent(dev_agent, ...)`. The full spec persisted in `dev_agent` is re-parsed via `_read_dev_session` and
      reused; flipping `DEV_AGENT` in env does not migrate in-flight issues. When parked on `agent_timeout` with **no**
      new comment, first attempt `_try_recover_implementing_timeout_park` (the implementing counterpart to validating's
-     transient-park recovery): on a clean worktree whose HEAD advanced past the persisted `pre_implement_sha`, publish
-     the recovered commit via `_on_commits` and clear the park; otherwise stay parked silently. This recovers a clean
+     transient-park recovery): on a clean worktree whose HEAD advanced past the persisted `pre_implement_sha` **and
+     carries commits `<remote>/<base>` does not**, clear the park and hand the recovered commit to the shared
+     committed-work seam — the same one a finished run publishes through, so it is measured by the size gate and only
+     then reaches `_on_commits`; otherwise stay parked silently. Both readings are taken, because the watermark says
+     the checkout MOVED and not what it moved to: the commonest shape of this park is a run killed before its first
+     commit, whose branch carries nothing of its own, so any advance of the base fast-forwards the checkout straight
+     onto the new tip and the difference appears with no developer having written a line. Published on that reading,
+     the issue gets a branch and a pull request with no diff in them. The pre-tick refresh freezes a branch parked
+     like this so the rewrite does not happen at all
+     ([labels-and-state.md](labels-and-state.md#base-refresh)); the base reading is what answers for a rebase
+     it did not perform — an operator's, another process's, or one from before that freeze — and it fails closed, as
+     does a watermark that names no commit (the park writes `""` when the pre-agent head could not be read, and every
+     readable head differs from that).
+     A recovered commit is not exempt from the gate: nobody read the run that made it, and publishing around the
+     measurement is exactly how an oversized candidate would reach a branch and a pull request unadjudicated. This
+     recovers a clean
      commit a descendant the timeout cleanup raced finishes *after* the park is recorded (the observed `#77` shape:
      commit timestamp landed after the timeout event) without needing a human "push it" comment. A real human comment
      takes precedence and drives the normal resume.
@@ -870,17 +916,41 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        `_resume_dev_with_text` rotates it, a fresh respawn preamble) rather than the nudge — and the result disposes
        through the normal commit / timeout / question paths, with no "issue body changed" notice. A park needing a real
        answer (any other `park_reason`) consumes the command and posts a refusal (`_refuse_parked_continue`) once, then
-       stays parked (no per-tick loop). A comment carrying the command *alongside* genuine guidance falls through to the
+       stays parked (no per-tick loop). The size gate's own `late_measurement_failed` park is answered one step
+       AHEAD of that classifier (`_try_recover_late_measurement_park`), because what failed there is a READING rather
+       than a session: a content-free continue re-measures the recorded pair and re-publishes through the same seam,
+       and no agent is spawned — the developer that produced the commit finished long ago. A worktree that is gone
+       leaves the park exactly where it is rather than measuring something else, and guidance carrying real words
+       falls through to the ordinary resume. A comment carrying the command *alongside* genuine guidance falls
+       through to the
        normal drift/resume path so the guidance drives the dev (`_continue_command_action` returns `passthrough`). The
        classifier + parser + refusal live in `workflow/engine/messages.py` and are shared with `_handle_fixing` and
        `_handle_documenting`; a bare continue is also dropped from `_compute_user_content_hash` (see above).
+  1. **A frozen candidate with no park beside it** (`_holds_unreconciled_candidate`, asked before anything
+     spawns). A tick that recorded the `measuring` pair and died before counting or parking it leaves nothing on
+     the issue saying the workflow is waiting. On the host that froze it the next tick simply measures again; on
+     a rebuilt one the checkout comes back at base, the recorded commit is nowhere in it, and the ordinary flow
+     would pay for a SECOND developer over work the first one already finished. So the record is reconciled
+     first: the worktree has to be there, both ends of the pair readable in it, and the checkout actually ON the
+     recorded candidate — a host without any of the three parks (`late_measurement_failed`) asking for the checkout
+     rather than for another run. The head is proved because no developer ran here: unlike a fresh disposition, where
+     a head past the record IS a resumed developer's new commit, a moved checkout on this path is one somebody moved,
+     and measuring it would answer the size question about a commit nobody froze while discarding the record naming
+     the real one. Past all three the tick finishes what the crashed one started, over that exact pair.
   2. Otherwise ensure a per-issue worktree at `<WORKTREES_DIR>/<owner>__<name>/issue-<n>` on branch
      `orchestrator/<owner>__<name>/issue-<n>` (the slug-namespaced branch keeps two RepoSpecs sharing a `target_root`
      from colliding on the same `orchestrator/issue-<n>` ref). Worktrees with unpushed commits are reused (crash
      recovery); otherwise force-removed and recreated from `<spec.remote_name>/<spec.base_branch>`.
-  3. If the worktree already has commits (recovered), skip the agent and go straight to push — unless those commits
+  3. If the worktree already has commits (recovered), skip the agent and dispose them as a finished run would be —
+     through the committed-work seam, so the size gate measures them before anything is pushed — unless those commits
      are the ones a read-only relabel just certified (`read_only_baseline_sha` still equal to HEAD), which is a branch
-     the issue arrived carrying rather than a run to finish, so the implementer spawns normally.
+     the issue arrived carrying rather than a run to finish, so the implementer spawns normally. That is a
+     comparison, so a HEAD that could not be read spends nothing: `_head_sha` reports its own failure as `""`, which
+     differs from the certified tip exactly as a checkout the dev has committed on does, and read that way the
+     baseline is retired and the design's predecessor republished as the work the discussion just agreed to. A
+     baseline stands until something SHOWS the branch has moved off it. The road with no baseline is deliberately
+     untouched: there the commits are a previous run's whatever the probe says, and refusing them would buy a second
+     developer over an implementation the first one already finished.
   4. Else gate the run on the per-issue retry budget (`MAX_RETRIES_PER_DAY`, default 3); a 24h window opens at the first
      counted spawn. Only fresh spawns count.
   5. Else build the implementer prompt (issue body + recent comments + "commit, do not push"), persist `dev_agent`
@@ -896,16 +966,105 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        spawn, the awaiting-human resume (including the pre-disposition `_resume_dev_with_text` poisoned-session retry),
        and the user-content-change resume. The committed work stays on the branch and republishes through step 3's
        recovered-worktree path once the label is removed.
-     - `timed_out` → dispose on whether HEAD advanced past the pre-agent SHA snapshot: a clean advance publishes via
-       `_on_commits` exactly as a normal completion (a clean commit produced just before/around the kill is **not**
-       stranded behind `awaiting_human`); a dirty advance parks via `_on_dirty_worktree`; no advance parks
+     - `timed_out` → dispose on whether the run left a commit, which is two readings and not one
+       (`_timeout_left_commits`): HEAD advanced past the pre-agent SHA snapshot **and** the branch carries commits
+       `<remote>/<base>` does not. A clean advance that passes both goes through
+       the same committed-work seam — the size gate, and `_on_commits` past it — exactly as a normal completion (a
+       clean commit produced just before/around the kill is **not**
+       stranded behind `awaiting_human`); a dirty one parks via `_on_dirty_worktree`; anything else parks
        (`agent_timeout`) with the durable `park_reason="agent_timeout"` re-set and `pre_implement_sha` persisted for
-       step 1's next-tick recovery. The `pre_implement_sha` watermark (not `_has_new_commits`, which only compares to
-       `<remote>/<base>`) is what tells a commit produced by THIS run apart from commits already carried on the branch.
+       step 1's next-tick recovery. Neither reading answers alone. The `pre_implement_sha` watermark is what tells a
+       commit produced by THIS run apart from commits already carried on the branch, which `_has_new_commits` cannot
+       (it only compares to `<remote>/<base>`, which a branch can arrive at this stage already ahead of). And
+       `_has_new_commits` is what says the head moved onto WORK rather than onto the base — an agent that rebases or
+       resets mid-run, its own `git pull`, or another process across an hour-long run moves the checkout with nothing
+       written, and read as a difference alone that publishes the base branch as an empty PR. Step 1's recovery asks
+       exactly the same pair, over the base a rebase between two ticks left.
+       Both readings are COMPARISONS, so both ends have to have been read at all, and either missing parks
+       (`_attributable_run`, shared with the clean half). `_head_sha` reports its own failure as `""` — the one value
+       that cannot be a commit — so an unread end differs from every commit there is, and on a branch that was
+       already ahead of base (one a read-only relabel certified, one a size-gate park left a candidate on, one a
+       human's guidance resumed a developer over) that difference publishes work the run never made.
        (`_on_commits` clears the spent watermark + stale reason on publish.) Pairs with the hardened
        `processes.terminate_process_group` (SIGKILLs surviving descendants after the leader exits) so a build grandchild
        cannot keep committing into the worktree after the timeout is recorded.
-     - new commits + clean tree → `_on_commits`: push branch, open PR (or reuse an existing open one), comment
+     - new commits + clean tree → the **late size gate** first (`implementing/late_gate.py` and the
+       `late_records` / `late_freeze` / `late_evidence` / `late_verdict` / `late_parks` owners under it), the one
+       seam
+       all three committed dispositions publish through — a run that finished, a timeout that had committed, and a
+       branch a crash stranded. With `DECOMPOSE=on` the candidate is proved to be a commit this host holds, the base
+       is frozen from what the *remote* says the branch is at, and both are persisted with `late_phase=measuring`
+       BEFORE the diff is counted, so a tick that dies over the count comes back to the same pair rather than to one
+       re-derived from a branch that has moved. Strictly more than `MAX_ADDED_LINES`
+       ([`../configuration.md`](../configuration.md#cadence-and-budgets)) added lines routes the issue to
+       `workflow:decomposing` with nothing pushed and no pull request opened; at or below it publishes as below and
+       the generation is dropped, leaving `late_retired_cycle_id` so the next candidate cannot answer to the same
+       cycle number. Three commits skip the measurement because this workflow already decided about them, each
+       named exactly and only by its own record: the one an adjudication accepted (`late_exempt_sha`), the one the
+       gate approved and has still to push (`late_approved_sha`), and the one this stage already pushed
+       (`implementing_published_sha`). So does every candidate while `DECOMPOSE=off` — except
+       one this issue already has a recorded generation for, one it owes a push for, and
+       a **reconciliation**. The approval holds the switch back for the commit it *names* and no other, so the
+       switch is asked twice: once at the door, and once past the proof, where a head that is not the approved commit
+       is a resumed developer's new work and bypasses as new work does. The publication drops the stale approval on
+       its way past, since a debt recorded for a commit nothing will push freezes the branch and parks every later
+       tick asking for it back. On a tick answering a reading a previous one recorded (a park a human answered, a
+       frozen pair a crash stranded) is never new work, whatever the record says, and reading one as new work is the
+       switch failing *open*, publishing the very head whose reading somebody asked for. The switch decides what
+       ENTERS the gate; it does not answer a question the gate already asked, nor anything already in it. A
+       recorded candidate
+       is proved before anything else, and the current head is never a substitute for it: a host that cannot peel
+       that object parks under either switch setting, and a recorded base is retried by asking for that exact object
+       rather than by re-reading a remote whose branch has moved on. A reconciliation stays bound to that pair for
+       the whole tick — it proves the head against the record before it starts and the gate reads the head again, so
+       one that differs on the second reading is a checkout something moved mid-tick rather than a run's output, and
+       it is refused under either switch setting instead of being measured or pushed — refused before it is asked
+       whether it is readable, since a head that moved onto an object this host cannot peel still names one, and a
+       name handed on is what the park downstream would record in the recorded pair's place. A reading that could
+       not be taken is never a small candidate: it emits `late_failure` carrying `measurement_failed` — for every
+       refusal, under a minted identity where no generation exists yet or where the recorded one is not one a sink
+       may carry (a damaged identity would otherwise emit nothing, and one naming another issue would file this
+       issue's failure over there) — parks `late_measurement_failed`, and keeps the pair it froze for the retry.
+       Which is a pair whenever one can be established at all: a revision that resolved and would not peel comes
+       back carrying the id it resolved to, and that id is recorded with the park, so the retry asks for that exact
+       object and the reconciliation ahead of the next spawn proves it. A revision that would not resolve names
+       nothing, and there the park itself is the record — its bare continue is refused rather than answered, since
+       what a retry would take is a *first* reading of whatever the checkout points at by then and nothing ties that
+       head to this issue; the way on is guidance, which resumes the developer. Either way the park holds the branch
+       out of the pre-tick base refresh until it is answered, or a rebase under it would leave both the exact-pair
+       retry and the refusal with nothing to be answered from.
+       A count already on the record is acted on only once its identity is whole too: the domain's record gate has
+       to accept the cycle, generation, and root, and `late_current_issue` has to name this issue, since a reading
+       taken over there is not this issue's answer.
+     - past the verdict, the same rule covers the publication the gate licensed. The write that approves a candidate
+       records it as `late_approved_sha`, and the checkout is proved to be ON that commit before any later tick
+       spawns or republishes — the object alone outlives the branch, so a checkout reset on the very host that made
+       the commit still holds it — which is what stops a rebuilt or reset one being published, or being handed to a
+       second developer because it reads as a branch with nothing on it. It is a floor as well as a proof: a run
+       resumed on top of it is judged against `before_sha` too, so an agent that answered with a question rather
+       than an implementation parks that question instead of having the commit it was asked about published. And it
+       is spent durably BEFORE the relabel to `validating`, because past that label implementing never sees the
+       issue again and a stranded approval would freeze the branch for the rest of its life. That same write records
+       which commit the push carried (`implementing_published_sha`), for the one effect that can fail on its own: a
+       relabel GitHub would not take leaves the issue implementing with its branch pushed and its pull request open,
+       and the record is what has the next tick reuse that pull request and land the label rather than re-decide a
+       published branch. That commit is decided once, ahead of the push, and is what the push is named against —
+       where the gate proved one it is that, and where it did not the checkout names it — so the push, the receipt,
+       and the proof taken once the pull request is open are all about the same commit. A checkout that cannot name
+       one at all publishes nothing and parks (`late_candidate_moved`): a push named against nothing sends whatever
+       the branch has become by the time git runs it, records no receipt, and leaves both proofs around it with no
+       commit to hold the checkout to, so every guarantee here is off at once. The pre-push half is durable
+       as `late_approved_sha`, and the proof past the pull request is the second half of the moved-checkout refusal:
+       the worktree is writable while those requests run, and one that moved is parked rather than handed to review,
+       with the publication left standing. Both boundaries ask about the TREE as well as the head, because loose work
+       can appear with `HEAD` never moving — so every proof about the commit passes over it, while the checkout the
+       handoff passes on is no longer the thing that was measured and nothing past the handoff reads it again. A tree
+       that is dirty, or that `git status` could not report on, is parked as `late_candidate_moved` exactly as a
+       moved head is: before the push nothing is published, after it the branch and its pull request stand and only
+       the label is withheld. See
+       [`../workflow/roles.md`](../workflow/roles.md#the-size-gate-a-committed-candidate-passes).
+     - new commits + clean tree, past the gate → `_on_commits`: push branch, open PR (or reuse an existing open
+       one), comment
        `:sparkles: PR opened: #N`, then set label `workflow:validating` (the docs pass runs only as the final-docs
        handoff after approval). A reused PR is only known to be open on the branch — most sharply, an issue relabeled
        out of `discussion` arrives with its plan PR open on the very branch these commits went to — so one whose body
@@ -915,8 +1074,27 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        the decomposer's session, and would close no issue when it merged. Persists `pr_number` / `branch` and
        resets `review_round=0` and `retry_count=0` via `_reset_implementing_counters`.
      - new commits + dirty files → `_on_dirty_worktree`: park; refuse to publish a partial branch.
+     - new commits + a tree `git status` could not report on → `_on_unreadable_worktree`: park under
+       `unreadable_worktree`. An unreadable tree is not a clean one: the list form of that read maps its own failure
+       to "no paths", which is the answer a clean tree gives, so the seam that publishes asks the status form and
+       refuses on either half of "not provably clean". An index entry marked `assume-unchanged` / `skip-worktree`
+       comes back as a path AND withholds the reading, so it takes the dirty park and is named there.
      - no new commits → `_on_question`: post the agent's last message as a HITL question, park.
-- **Output**: pushed branch + open PR + label moved to `workflow:validating`, OR a HITL park.
+- **Output**: one of three. A pushed branch + open PR + label moved to `workflow:validating`; an **unpublished**
+  committed candidate held under `workflow:decomposing` for size adjudication, with no branch pushed and no pull
+  request opened; or a HITL park — the ordinary question / dirty-tree / unreadable-tree / timeout ones, plus the
+  size gate's own
+  `late_measurement_failed` (a reading nobody could take, a record too damaged to act on — a missing base, ceiling, or
+  boundary, an identity the late domain's record gate refuses, or a `late_current_issue` naming another issue — or a
+  recorded commit this host cannot show) and `late_candidate_moved` (the checkout is not the one the gate
+  approved — a head somewhere else, a commit not on this host at all, or a tree carrying work no push would
+  publish — so nothing was published and nothing was spawned rather than hand review a checkout the gate never saw
+  or buy a second developer run for an implementation that is already written; the approved commit is on the record
+  as `late_approved_sha` from the write that approved it, and the park clears itself on the tick the checkout is
+  back on that commit with a provably clean tree, publishing with no agent). The
+  retirement that precedes a publication is held inside the observations owner's retirement window, so a close
+  arriving as the record stops naming its cycle ends the cycle rather than being dropped: nothing is pushed, no pull
+  request is opened, and the issue is not relabelled.
 
 ## `_handle_documenting` (label `workflow:documenting`)
 - **Trigger**: each tick while the label is `workflow:documenting`. Set only by the **final-docs handoff** in

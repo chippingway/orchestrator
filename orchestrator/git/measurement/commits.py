@@ -56,6 +56,14 @@ def _freeze_base_commit(
     it does not carry that branch; neither establishes a commit, and a
     measurement with one end missing is a failure to measure rather than a
     small candidate.
+
+    An id the remote DID name and this host cannot read comes back beside its
+    failure rather than instead of it. Nothing may measure against it -- that
+    is what `is_frozen` refuses -- but it is the only record of which commit
+    this attempt was about, and a caller that persisted the failure without it
+    would have nothing to retry: the next pass would ask the remote again and
+    freeze whatever the branch had moved to since, measuring a different pair
+    under the same generation.
     """
     base_sha = authentication._remote_branch_tip(
         spec, worktree, spec.base_branch,
@@ -74,7 +82,9 @@ def _freeze_base_commit(
         "fetch, so no diff can be taken against it",
         spec.slug, base_sha, spec.base_branch,
     )
-    return FrozenCommit(failure=MeasurementFailure.BASE_ABSENT)
+    return FrozenCommit(
+        sha=base_sha, failure=MeasurementFailure.BASE_ABSENT,
+    )
 
 
 def _base_object_present(
@@ -120,6 +130,14 @@ def _prove_candidate_commit(worktree: Path, revision: str) -> FrozenCommit:
     could compare it to a branch tip, and the tag can be moved or deleted while
     the commit cannot.
 
+    An id that resolved and would not peel comes back BESIDE its failure, the
+    way an unreadable base does. Nothing may measure against it -- `is_frozen`
+    refuses it -- but it is the only record of which commit this attempt was
+    about, and a caller that reported it and dropped it would leave the retry
+    with nothing to ask for: the next pass would prove whatever the checkout
+    points at by then and measure that instead. A revision that would not
+    resolve at all names nothing, and comes back naming nothing.
+
     Hardened for the reason every read of an agent-writable worktree is, and
     for one that is specific to naming commits by id: `refs/replace/<oid>` and
     the graft file both make git serve one commit under another's name, and
@@ -148,5 +166,7 @@ def _prove_candidate_commit(worktree: Path, revision: str) -> FrozenCommit:
             "measured here: %s",
             named, worktree, (peeled.stderr or "").strip(),
         )
-        return FrozenCommit(failure=MeasurementFailure.CANDIDATE_ABSENT)
+        return FrozenCommit(
+            sha=named, failure=MeasurementFailure.CANDIDATE_ABSENT,
+        )
     return FrozenCommit(sha=candidate_sha)

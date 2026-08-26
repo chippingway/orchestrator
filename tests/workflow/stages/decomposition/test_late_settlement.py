@@ -88,6 +88,18 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
         self.assertIn(ACCEPTED_NOTICE, said)
         self.assertIn(str(ADDITIONS), said)
 
+    def test_the_accepted_commit_is_owed_a_push(self) -> None:
+        # The exemption says the commit needs no measuring; it does not say
+        # the issue is still waiting for it to be pushed -- and the retirement
+        # a line later takes away the record that did. Without this pair, a
+        # replacement host picking the issue up under `implementing` would
+        # rebuild the checkout from the base or the plan PR and publish that
+        # head instead, or pay for a second developer over an implementation a
+        # human has already ruled on.
+        self._decide(SINGLE_RUN)
+
+        self.assertEqual(self._pinned().get(KEYS.approved_sha), CANDIDATE_SHA)
+
     def test_the_generation_it_settles_is_retired(self) -> None:
         # Left standing, it would keep pinning the decomposing label and keep
         # reading as a candidate nobody has decided about.

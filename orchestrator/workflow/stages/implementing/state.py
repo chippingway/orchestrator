@@ -62,6 +62,46 @@ _LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 
 _AGENT_TIMEOUT = "agent_timeout"
 
+# The park a handoff refuses on: the checkout is not the commit the size
+# gate approved. It is its own reason because the recovery is neither a
+# session retry nor a re-measurement -- what it asks for is the worktree
+# back on that commit, and until then no stage past this one may read it.
+_CANDIDATE_MOVED = "late_candidate_moved"
+
+# The commit this issue owes a publication and no push has carried yet. It
+# goes down in the same write that APPROVES one -- the retirement a small
+# candidate earns, and the exemption a `single` verdict records -- because
+# both of those writes drop the record that used to name the commit, and the
+# push they license runs after them. Without it a tick that died in that
+# window would leave nothing on the issue naming the work: a replacement host
+# rebuilds the checkout from the base or the plan pull request, finds a head
+# nothing contradicts, and publishes it or pays for a second developer over an
+# implementation the first one already finished.
+#
+# So it is proved before anything spawns and it is what the park that refuses
+# an unpublishable checkout is answered by: a worktree put back on that commit
+# is the one the reading was taken over, so the recovery republishes it rather
+# than asking a human for guidance. Dropped by the handoff that spends it, and
+# by the adjudication that supersedes it.
+_APPROVED_SHA = "late_approved_sha"
+
+# The commit this stage last PUSHED, written durably ahead of the relabel that
+# hands the issue to review. Between those two the branch is on the remote and
+# a pull request carries it, while the label still says implementing and every
+# record the gate decided by is spent -- so a relabel that failed, or a process
+# that died in between, leaves the next tick reading a published branch as work
+# nobody has ruled on. Measured again there against a base that has moved or a
+# ceiling that was retuned, it can be routed to adjudication with the push and
+# the pull request already made, which is the one outcome the size gate exists
+# to prevent.
+#
+# It names one commit and only it, which is the whole invalidation rule: work
+# committed on top is work this stage has not published, and is measured as
+# the fresh candidate it is. So there is no clearing step -- the next
+# publication overwrites it, and a developer's next commit moves the head off
+# it.
+_PUBLISHED_SHA = "implementing_published_sha"
+
 _PARK_REASON = "park_reason"
 
 _PRE_IMPLEMENT_SHA = "pre_implement_sha"

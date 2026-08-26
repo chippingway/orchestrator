@@ -13,6 +13,23 @@ TEST_BASE_BRANCH = "main"
 # this too or its plan is measured against nothing.
 BASE_TIP_SHA = "base-branch-tip"
 
+# The two commits the size gate freezes a candidate between. Whole object
+# ids, unlike the readable tip above, because these two round-trip through
+# the pinned comment -- which reads a frozen commit at its exact length and
+# drops anything else, so a readable stand-in would come back absent.
+SHA_LENGTH = 40
+MEASURED_BASE_SHA = "b" * SHA_LENGTH
+MEASURED_CANDIDATE_SHA = "c" * SHA_LENGTH
+
+# What the checkout's own head reads as before and after a run, in the world
+# a test says nothing about. Two values rather than one because the ordinary
+# world is a run that COMMITTED: the dispositions decide by comparing the two
+# ends, so a single value says "the head never moved" and no value at all says
+# "the probe failed" -- both of which are refusals a test should have to ask
+# for. A test about either seeds the readings it is about.
+HEAD_BEFORE_RUN = "head-before-the-run"
+HEAD_AFTER_RUN = "head-after-the-run"
+
 STATE_CLOSED = "closed"
 STATE_OPEN = "open"
 

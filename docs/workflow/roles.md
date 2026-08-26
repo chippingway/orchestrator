@@ -84,13 +84,14 @@ per-stage behavior is in
   session really ran against this cycle, generation, and commit. The id is pinned at the two exits that persist, a
   timeout and a completed reply. The run happens in the issue's OWN worktree rather than a scratch checkout of the
   base branch, because the diff
-  it is asked about is between two commits nothing has pushed. The coordinator is callable and complete, and **almost
-  nothing calls it**: `_adjudicate_late_generation` has no caller in the tree, so no live issue reaches it. What IS
-  wired is the pair of refusals below, both of which keep something else from deciding a live generation: one stops
-  `DECOMPOSE=off` from routing an unadjudicated candidate to implementation, and one stops the dispatcher handing a
-  hand-relabelled issue to whichever stage the new label named. Wiring the adjudication itself into the
-  clean-committed pre-publication seam — the
-  point at which a candidate is measured and found oversized — is a separate change.
+  it is asked about is between two commits nothing has pushed. What reaches the coordinator is the first thing a
+  `decomposing` tick asks (`_late_adjudication_owns_the_tick` on `stages/decomposition/run.py`): an issue whose record
+  carries a live generation belongs to it entire, and no step of the initial decomposition runs for it. It is asked on
+  every tick of that label rather than only the ones that look late, because the reconciliations it opens with are
+  owed by exactly the records the gates below it route past. What PUTS an issue there is the size gate below, and the
+  two refusals beside it keep anything else from deciding a live generation: one stops `DECOMPOSE=off` from routing an
+  unadjudicated candidate to implementation, and one stops the dispatcher handing a hand-relabelled issue to whichever
+  stage the new label named.
 - **Late developer revision.** Guidance a human writes about an oversized candidate is not a decomposition question,
   so it does not go to the late adjudicator: the work itself has to change, and the session that wrote it is resumed
   against the guidance in the worktree the candidate already lives in
@@ -106,6 +107,235 @@ per-stage behavior is in
 What a resume re-parses, and why the pin is the full spec rather than the backend alone, is in
 [`command-specs.md#in-flight-session-lock`](command-specs.md#in-flight-session-lock). The two conversation stages'
 prompts and round contracts are in [`conversations.md`](conversations.md).
+
+## The size gate a committed candidate passes
+
+No agent runs here. This is the seam that decides whether an adjudication happens at all, and it sits at the one
+place every clean committed developer outcome publishes through (`_publish_committed_work` on
+`stages/implementing/disposition.py`, measured by the `stages/implementing/late_gate.py` owners) — a run that
+finished, a
+timeout that had committed before it was killed, and a branch a crash stranded all reach it, which is what makes the
+measurement a contract rather than a check.
+
+Only a CLEAN tree is measured, and clean is **proved** rather than inferred from an empty answer. A candidate
+measured beside uncommitted changes is not the candidate a push would publish, and the diff it would be adjudicated
+on is not the one a human would read, so a dirty tree parks exactly as it always did and never reaches the gate. A
+tree `git status` could not report on is refused there too, under its own `unreadable_worktree` park: the list form
+of that read maps its own failure to "no paths", which is the answer a clean tree gives, and a seam whose next step
+is a push may not rest on a probe that never ran.
+
+The order is the failure contract. The candidate is proved to be a commit this host holds (resolved and peeled, so a
+revision this repository has never seen is work made somewhere else rather than a head to stand in for it), the base
+is frozen from what the **remote** says the branch is at (not `refs/remotes/...`, which lives in the object store the
+agent's own worktree shares), and both are persisted with `late_phase=measuring` BEFORE a line is counted. A tick that
+dies over the count comes back to the pair this one froze rather than to one re-derived from a branch and a remote
+that have both moved, and the same freeze holds the branch out of the ordinary base refresh for as long as the
+generation lives.
+
+**A resumed run is judged against what it started on**, not only against what the branch inherited. The floor says
+which tip the branch was already carrying — a certified handoff, a frozen candidate, or a commit an approval owes a
+push for — and `before_sha` says which tip *this run* began at, and those are different commits whenever a human's
+guidance resumed a developer on top of inherited work. A head that has not moved since the run began is a run that
+committed nothing, whatever else is on the branch: published on the ahead-of-base reading alone, the developer's
+clarifying question would be dropped and the very commit the human was still deciding about sent to review.
+
+**What the gate hands back is the commit**, not merely its permission, and the push is named against it. The gate
+reads the checkout and the publication writes it, and `HEAD` between those two moments is not necessarily the commit
+that passed — another tick, an operator, or a descendant the timeout cleanup raced can move it — so a push that named
+nothing would publish work no measurement ever saw while the record named the commit that did.
+
+The **checkout** has to be on that commit too, and this is the one refusal here a human answers without writing
+anything. The push would be safe on its own, but every stage past the handoff works from the worktree — the reviewer
+reads a head ahead of the pushed branch as unpushed work, the squash rewrites what is on it, the docs pass commits on
+top — so a checkout that has moved is parked as `late_candidate_moved` rather than handed to review. It is asked
+*twice*, before the push and again once the pull request is open, because those three requests are where the window
+is: the worktree is writable while they run, and a descendant the timeout cleanup raced is the commonest thing to
+move it. The second refusal does not take the publication back — the commit is on the remote and its pull request
+carries it, which the record says — it stops the *handoff*, so review never reads the descendant.
+
+Both boundaries ask about the **tree** as well as the head, and for the same reason one step over. Loose work can
+appear beside a commit without moving it, so every proof about the commit passes while the checkout stops being what
+the gate measured — and the stage the handoff passes it to takes no reading of its own, so uncommitted work that
+slipped in reaches the squash and the docs pass, which commit it or destroy it. A tree that is dirty, or that could
+not be read at all, takes the same `late_candidate_moved` park on the same terms: nothing published before the push,
+and the publication left standing with only the label withheld after it.
+
+**One commit is decided on before any of it**, and everything downstream is named against that: the push carries it,
+the receipt the handoff leaves says it, and the post-push proof asks the checkout for it. Where the gate proved a
+commit, that is the one; where it did not — a candidate the switch kept out of the gate — the checkout names it,
+because a push named against nothing publishes whatever the branch has become by the time git runs it and leaves
+nothing on the issue afterwards saying which commit that was. And a checkout that cannot name one is refused rather
+than pushed as it stands: with no name there is no receipt and nothing for either proof around the push to hold it
+to, so it parks as `late_candidate_moved` and waits for a repository somebody can read.
+
+The intent is made durable before the push and only
+where the record does not already carry it, so the roads an approval or an adjudication already wrote pay nothing
+and the rest pay one write: a tick that died between the push and the handoff would otherwise leave a published
+branch and a record saying nothing was ever owed. The approved
+commit is on the record as `late_approved_sha` before any of this, because by then nothing else on the issue names
+it: the generation is retired ahead of the effects it licenses, on purpose. So the park has a way back that costs
+nothing. Every tick
+asks the checkout one local question against that record and says nothing until the answer changes, and a worktree put
+back on the approved commit publishes on the next poll — no reply, no guidance, and no second developer run over work
+that is already committed and already measured. It also freezes the branch out of the pre-tick base refresh, because
+that is what makes the remedy reachable: a rebase between the operator's `git checkout` and the tick that would have
+noticed moves the head off the approved commit again. A worktree deliberately left on the descendant is measured as the
+fresh candidate it is instead.
+
+**What a record already names is what a later tick reconciles**, and the current head is never a substitute for it.
+Where `late_candidate_sha` is set, that commit is proved *first*: a host that cannot peel it is one the work was not
+made on — a rebuilt checkout, a machine the branch never reached — and it parks rather than measuring, adjudicating,
+or publishing whatever the branch points at there. `DECOMPOSE=off` does not license publishing it either; the switch
+decides what is measured, not what may be pushed unproven. Only once both commits are proved present does a head that
+differs mean what it usually means: the developer was resumed on a human's guidance and committed again, which is a
+fresh candidate under a fresh generation of the same cycle — and, with the switch off, one published while the record
+it supersedes is retired rather than left freezing the branch over work nobody will publish. The recorded **base** is
+retried the same way: the object it names is asked for again (fetching once for it), never the remote, because a
+remote re-read would answer with wherever the base branch has moved to and measure a different pair under the same
+generation. That is why a base the remote named but this host could not read is recorded *beside* its failure — the
+id is the only thing a retry has to ask for. A count already on the record is acted on only once it is a WHOLE
+measurement: a base, a ceiling, and a boundary beside it, because the record's own comparison answers "not oversized"
+on a missing threshold — which is a damaged record publishing as a small candidate — and because a count whose base
+this host cannot show is a number with its evidence missing. The identity carries the same weight and is asked
+through the late domain's own record gate, so what a measurement may be acted on under is exactly what a record of it
+may be written under: a cycle, a generation, a root, and a `late_current_issue` naming *this* issue. Nothing
+downstream reads those fields, which is why they are easy to lose and why losing them fails open — a count that
+publishes but cannot be correlated is a reading no operator can defend afterwards, and one recorded against another
+issue is not this issue's answer at all. Anything short of that parks for repair rather than being read as an answer,
+and the refusal is reported under a minted identity rather than under the record it is about, so a damaged pinned
+comment cannot take its own refusal down with it. That repair is the reporting identity every late refusal here goes
+through, not the damaged-count case alone: the evidence refusals taken before any measurement — a reaped worktree, a
+recorded object this host cannot show, a base it no longer holds — would otherwise emit nothing at all for a record
+whose root is gone, and would file the failure against the wrong issue for one whose `late_current_issue` names
+another.
+
+The same rule reaches one step before the gate. A tick that recorded the pair and died before counting or parking it
+leaves a frozen candidate with nothing on the issue saying the workflow is waiting, so the record is reconciled ahead
+of any spawn: on a host that cannot show that commit — a rebuilt checkout, a machine the branch never reached — the
+issue parks asking for the worktree rather than paying for a second developer over work the first one finished. The
+checkout has to be *on* that commit too, because no developer ran on that path: a head past the record is a resumed
+developer's new work only where a developer was resumed, and everywhere else it is a checkout somebody moved.
+
+And one step *after* the verdict, where the same window opens with the record already gone. Every approval — the
+retirement a small candidate earns, and the exemption a `single` verdict is settled by — drops the record that named
+the commit and licenses a push that has not run yet, so `late_approved_sha` goes down in that same write and the
+commit it names is proved before anything spawns. What is proved is the **head**, not the object: holding the object
+says only that the store was never pruned, and the store outlives the branch — a worktree rebuilt or reset on the very
+host that made the commit still has it sitting in the object store it shares. The proof is taken once the checkout has
+been restored, which is what tells the two hosts apart: a commit the branch already carries comes back with it and the
+tick proceeds, while a checkout standing anywhere else parks as `late_candidate_moved` — nothing published, no second
+developer, and the same quiet republication settling it once the worktree is back on that commit with a provably
+clean tree around it. Both halves are asked there, or the republication would walk straight back into the refusal
+the park was taken on and post a fresh notice every poll for a checkout nobody has touched. The record is spent by the
+handoff that pays the debt, and spent *durably before the relabel*: past that label the issue belongs to
+`validating` and implementing never runs on it again, so an approval still standing there is one nothing will ever
+drop — and it goes on freezing the branch out of the base refresh for the rest of the issue's life. The same write
+records which commit the push carried, because the label is the one effect that can fail on its own: refused, the
+issue is still implementing with its branch pushed and its pull request open, and that record is what stops the next
+tick re-deciding a published branch and what has it reuse the pull request and land the label instead. The head has to
+be what is asked,
+because a branch with no commits ahead of base reads as an issue with nothing to publish: a checkout holding the
+object while standing on the base would be handed a second developer run for an implementation already written. An
+adjudication takes the record off again, since a candidate being decomposed is one nobody is publishing yet.
+
+**A reconciliation is never new work**, and that is what keeps `DECOMPOSE=off` from failing open on it. A tick
+answering a reading a previous one recorded — the bare-continue retry, the stranded pair — reaches the gate with the
+switch off exactly as it does with the switch on. Publishing the current head there would publish the very commit
+whose reading is what somebody asked for. New work is still bypassed; a question the gate already asked is still
+answered.
+
+**Every refusal keeps the identity it managed to establish**, and one that established none refuses the retry
+outright. A revision that *resolved* and would not peel — an object a prune took, work made on a host this one is
+not — comes back carrying the id it resolved to, and that id is recorded with the park: from there the retry asks for
+that exact object, the pre-tick base refresh holds the branch still around it, and the reconciliation ahead of the
+next spawn proves it before anything runs. A revision that would not resolve at all names nothing, and there the park
+itself is the record. Its bare continue is refused rather than answered, because there is no pair to re-read: what a
+retry would take is a *first* reading, of whatever the checkout points at by then, and nothing ties that head to this
+issue — a rebase, a reset, or a rebuilt worktree each leave one. The way on is the developer, which is what guidance
+buys. The park holds the branch out of the base refresh for as long as it stands, for the same reason: rebased under
+it, the frozen commit is gone and the checkout the refusal was protecting is standing on the base, so neither the
+exact-pair retry nor the refusal has anything left to be answered from.
+
+A reconciliation stays bound to the recorded pair *for the whole tick*, not only at the door. Both roads prove the
+head against the record before they start and the gate reads it again a moment later, and the checkout is writable
+in between — so a
+head that differs on the second reading is one something moved mid-tick, not a run's output, because no run of this
+tick exists. Read as fresh work it would be measured and published with the switch on, and pushed unmeasured with it
+off. So the second reading is refused exactly as the first would have been: nothing is published, the recorded pair
+stays for the retry, and the ordinary disposition — where a moved head really *is* a resumed developer's new commit —
+is deliberately not held to it. The refusal comes before the head is asked whether it is *readable*, because a head
+that moved onto a commit this host cannot peel still names one — and a named commit handed on from there is one the
+park downstream records, minting a generation around it and dropping the very pair the retry exists to re-read.
+
+What the number earns:
+
+- **At or below `MAX_ADDED_LINES`** — the ordinary publication, unchanged. The generation is dropped in the same
+  breath, because a frozen candidate freezes the branch and a record carried into the stages that close the issue
+  reads as a live cycle a close should end; `late_retired_cycle_id` outlives the drop, so the next candidate on this
+  issue mints a cycle after it rather than reusing the number. That drop is also the barrier: past it come a pushed
+  branch, an open pull request, and a relabel to `workflow:validating`, none of which may happen on an issue a human
+  has closed. A latched close is asked for ahead of the write, and the write is held inside the observations owner's
+  retirement window so a close arriving as the record stops naming its cycle is answered behind it — the generation
+  goes back from the call's own memory and is cancelled from there, with nothing published to take back.
+- **Strictly past it** — nothing is pushed, no pull request is opened, and the label moves to `workflow:decomposing`
+  with the measurement durable ahead of it. The commit stays exactly where the developer left it, which is where the
+  adjudicator reads it and where a `single` verdict publishes it from. A tick that dies between the write and the
+  label leaves a live generation under `workflow:implementing`, which the dispatcher's relabel guard puts back.
+- **Answered small after a revision** — the one record that wears `workflow:decomposing` with nothing left to
+  decompose. A developer revision guidance bought comes back re-frozen and re-measured, and a candidate now at or
+  below the ceiling has had its question answered: the label goes back to `workflow:implementing` and the ordinary
+  publication reconciles the exact commit already on the branch. Handing it to the initial decomposer instead would
+  re-plan an implementation that is already written. It owes the pull requests the same two reconciliations an
+  accepted verdict does, and for the same reasons: the "do not merge" notice comes off the plan PR before anything
+  else moves — a refusal parks under `decomposing` with the record untouched — and `pr_number` is moved onto the
+  pull request the measured commit is on, or dropped where the recorded one is settled, since a merged plan PR
+  carried across ends the issue as `done` on a design. The record is kept across that handoff and retired by the gate
+  on the other side, which is what makes it recoverable — it is the only thing saying the question was asked and
+  answered, so dropping it before a label write that then failed would leave an issue nothing could tell from one
+  that never entered the gate.
+- **No reading at all** — never "small". What a failed `git` invocation writes to stdout is what a candidate
+  that changes nothing writes, so a typed `late_failure` carrying `measurement_failed` goes to both sinks — for
+  every refusal, including one taken before a generation existed, which is reported under a minted identity —
+  the issue parks `late_measurement_failed`, and the pair that was frozen stays on the record. A trusted bare
+  `/orchestrator continue` re-measures exactly that pair and re-publishes through the same seam; it spawns no
+  agent, since the developer that produced the commit finished long ago — and because no agent ran, a checkout
+  that has left the recorded commit is refused rather than measured or published, under either switch setting.
+  Guidance is the opposite reply and buys the opposite thing: the developer is resumed, and what it leaves is
+  judged against the floor the park left on the branch rather than against the base, so a clarifying question is
+  answered by parking on it rather than by publishing the very work whose size nobody could read. A worktree
+  that is gone is answered by that same reconciliation rather than handed on: the generic parked-continue
+  classifier would refuse the command as carrying no guidance, which is the wrong thing to tell an operator
+  whose command is exactly right, so the park is re-taken saying the recorded commit is not on this host and the
+  next continue retries it once the worktree is back.
+
+Four candidates skip the measurement and none is a bypass. Three are commits this workflow has already *decided*
+about, and each names one commit and only it, so work committed on top of any of them is measured as the fresh
+candidate it is. `late_exempt_sha` names the commit an adjudication accepted; between the verdict and the publication
+it also holds the branch out of the base refresh — but on two conditions, since the record is never cleared and
+freezing on its presence would take every issue that ever earned a verdict out of the refresh for good. The head has
+to still be that commit, and the stage that has to act on it has to still have the issue: past the handoff the branch
+is review's, and keeping a pushed branch in step with base is the PR-aware sync's job.
+
+`late_approved_sha` names the commit the gate itself approved and has still to push, which a crash
+in that window brings back here with its generation already retired: re-deciding it there would measure a settled
+question against a base that has moved since, and route work a human may already have adjudicated back into
+adjudication. `implementing_published_sha` is that same window one step further on and the one that matters most,
+because the effects are already out: past the push a pull request carries the work and only the relabel is owed, so a
+reading that came back oversized there would hold nothing back and route a *published* branch to adjudication. And
+`DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
+recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing
+about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the
+publication is handed a candidate the gate never looked at while the record beside it names a different commit as the
+one still owed a push.
+
+The approval holds the switch back for the commit it *names* and no other, which is why the switch is asked twice —
+once at the door, cheaply, and once past the proof. An approval is a claim about one object id, and nothing can say
+whether the head is that id until the head is proved; past that proof and not it, the approval describes work this
+branch has moved past and the candidate in hand is new work, which is exactly what the switch keeps out. Asked only
+at the door, a stale approval would drag a resumed developer's fresh commit into a gate the operator switched off and
+route an oversized one to adjudication. The stale record goes with it: a publication naming a different commit drops
+the approval, because a debt recorded for a commit nothing is going to push freezes the branch out of the base
+refresh for the rest of the issue's life and parks every later tick asking for it back.
 
 ## What a late adjudication is asked, and what it may answer
 
@@ -449,14 +679,14 @@ takes the issue off every label the closed-owner sweep queries and closes it. Wh
 write ahead of it: one pinned write that stamps the resolution and **retires the cycle** together, so a close
 arriving past it finds nothing left to cancel. One landing *inside* it is answered behind it, from the generation
 still in the call's own memory — a reinstatement rather than a refusal, exactly as the `single` publication's own
-retirement takes one: the cycle goes back cancelled, no terminal is written, and the owner keeps
-`workflow:umbrella`, where the ending is reached. Both retirements read that answer off the *window* rather than
-asking the latch, and the window decides it as it closes, under the lock that closes it — a barrier taken any
-earlier leaves an interval in which a poll can still latch a close and receipt it against the cycle the window is
-advertising, and the worker would pass on having seen neither. That barrier belongs to the process that made the
-write, so the write records which cycle it dropped: a process that dies before reaching it leaves that correlation
-and the receipt on the thread, and the closed-owner sweep adopts the two together rather than finishing a terminal
-over a close somebody already observed.
+retirement and the size gate's drop of a small candidate both take one: the cycle goes back cancelled, no terminal is
+written, and the owner keeps `workflow:umbrella`, where the ending is reached. Every one of those retirements reads
+that answer off the *window* rather than asking the latch, and the window decides it as it closes, under the lock that
+closes it — a barrier taken any earlier leaves an interval in which a poll can still latch a close and receipt it
+against the cycle the window is advertising, and the worker would pass on having seen neither. That barrier belongs to
+the process that made the write, so the write records which cycle it dropped: a process that dies before reaching it
+leaves that correlation and the receipt on the thread, and the closed-owner sweep adopts the two together rather than
+finishing a terminal over a close somebody already observed.
 
 The same is true one layer up, of a close **no poll ever saw**: an issue open when the enumeration listed it and
 closed by the time its pass refetches it carries a reading that exists only on the object the refetch returned. Both

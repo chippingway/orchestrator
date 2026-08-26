@@ -130,6 +130,19 @@ class _WorktreeStatus:
     readable: bool
     paths: tuple[str, ...] = ()
 
+    @property
+    def is_clean(self) -> bool:
+        """Whether this reading PROVED the tree is carrying nothing loose.
+
+        What a caller whose next step is a push has to ask, and it is asked
+        rather than truth-tested on `paths` for the reason the field beside
+        them exists: a read that established nothing names no paths, which is
+        what a tree with nothing in it names too. Only a reading that happened
+        AND named nothing is a clean tree; everything else is a refusal,
+        whichever half of it failed.
+        """
+        return self.readable and not self.paths
+
 
 def _head_on_branch(worktree: Path, branch: str) -> bool:
     """True when this checkout's HEAD IS `branch` rather than a bare commit.

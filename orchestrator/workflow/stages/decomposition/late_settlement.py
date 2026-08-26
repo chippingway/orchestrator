@@ -81,6 +81,9 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateContext,
     _LateDisposition,
 )
+from orchestrator.workflow.stages.implementing.state import (
+    _APPROVED_SHA as _IMPLEMENTING_APPROVED_SHA,
+)
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
@@ -228,12 +231,27 @@ def _handed_back(context: _LateContext) -> Optional[_LateDisposition]:
     the same commit again, the label is what makes another stage read it, and
     the retirement is what says this issue has no late question left. None is
     reached over a close somebody observed.
+
+    The exemption is joined by the commit the handoff is owed a publication
+    for, and the pair is what makes the retirement behind them survivable. An
+    exemption says a commit needs no measuring; it does not say the issue is
+    still waiting for it to be pushed, and past the retirement the generation
+    that did say so is gone. A tick that died in that window would leave an
+    `implementing` issue whose branch carries an adjudicated commit and whose
+    record names none, so a replacement host -- rebuilding the checkout from
+    the base or the plan pull request -- would publish that head or spawn a
+    second developer over an implementation a human has already ruled on.
+    Recorded, the implementing gate proves the commit before anything runs
+    and parks for the checkout instead.
     """
     stopped = _late_owner._latch_stops(context)
     if stopped is not None:
         return stopped
     _exemption.record_exemption(
         context.state, context.generation.candidate_sha,
+    )
+    context.state.set(
+        _IMPLEMENTING_APPROVED_SHA, context.generation.candidate_sha,
     )
     _late_outcome._persist(context)
     stopped = _late_owner._latch_stops(context)

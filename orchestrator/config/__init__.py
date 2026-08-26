@@ -353,10 +353,15 @@ ORCHESTRATOR_BASE_BRANCH: str = _RESOLVED["ORCHESTRATOR_BASE_BRANCH"]
 # session in `in_review`.
 IN_REVIEW_DEBOUNCE_SECONDS: int = _RESOLVED["IN_REVIEW_DEBOUNCE_SECONDS"]
 
-# Kill switch for the entire `decomposing` stage. off -> revert to the
-# legacy "no label -> implementing" pickup, no children, no manifest. The
-# rollout safety valve so the user can disable decomposition if manifest
-# output proves unreliable, without redeploying old binaries.
+# Kill switch for NEW decompositions. off -> revert to the legacy "no label
+# -> implementing" pickup, no children, no manifest, and no fresh committed
+# candidate entering the size gate. It decides what ENTERS a decomposition
+# and nothing already in one: a recorded late generation is still
+# adjudicated, revised, split, cleaned up, cancelled, and restarted with it
+# off, and a candidate already frozen is still measured -- otherwise the
+# switch would publish work nobody adjudicated. The rollout safety valve so
+# the user can disable decomposition if manifest output proves unreliable,
+# without redeploying old binaries.
 DECOMPOSE: bool = _RESOLVED["DECOMPOSE"]
 
 # The size ceiling one implementation candidate may publish under, counted in

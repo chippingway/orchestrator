@@ -39,11 +39,13 @@ _PR_OWNER = "orchestrator.git.base_sync.pr"
 
 _CONFLICTS_OWNER = "orchestrator.git.base_sync.conflicts"
 
+_FROZEN_OWNER = "orchestrator.git.base_sync.frozen"
+
 _OWNERS = (
     _MODELS_OWNER, _PRE_PR_OWNER, _REFRESH_OWNER, _STATE_OWNER,
     _PERSISTENCE_OWNER, _OUTCOMES_OWNER, _SNAPSHOT_OWNER, _RECOVERY_OWNER,
     _STARTUP_OWNER, _ELIGIBILITY_OWNER, _PUBLICATION_OWNER, _GUARDS_OWNER,
-    _PR_OWNER, _CONFLICTS_OWNER,
+    _PR_OWNER, _CONFLICTS_OWNER, _FROZEN_OWNER,
 )
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS)

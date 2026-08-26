@@ -213,10 +213,34 @@ def _terminal_or_relabel_holds(
     Each owns the tick outright when it answers, so they are asked in the order
     the cheapest irreversible one comes first -- a closed issue ends the issue,
     and there is nothing to hand over on one.
+
+    The size gate's own park is answered ahead of the generic continue, and
+    that order is the whole point: what failed there was a reading rather than
+    a session, so the bare command has to reach a re-measurement of the commit
+    that already exists. Left to the generic handler it would be refused as a
+    continue with no guidance on it, and the committed candidate would sit
+    parked behind a question nobody could answer.
+
+    The handoff's own park is answered beside it, and quietly: what it refused
+    was a checkout that had left the approved commit, so what settles it is
+    the checkout coming back rather than anything a human could write. It is
+    asked every tick and says nothing until the answer changes.
+
+    A frozen candidate with NO park beside it is reconciled next, and it is
+    the crash window the park would otherwise have covered: a tick that
+    recorded the pair and died before counting it leaves nothing on the issue
+    saying the workflow is waiting, so an ordinary tick on another host would
+    rebuild the checkout at base and pay for a second developer over work the
+    first one already finished. It is asked before the spawn because that is
+    the only place it can be.
     """
     if _terminals._finalize_if_issue_closed(gh, spec, issue, state):
         return True
     if _read_only_relabel._handle_stale_read_only_park(gh, spec, issue, state):
+        return True
+    if _disposition._recovers_a_late_park(gh, spec, issue, state):
+        return True
+    if _disposition._holds_unreconciled_candidate(gh, spec, issue, state):
         return True
     return _continue_command._handle_parked_continue_command(gh, spec, issue, state)
 

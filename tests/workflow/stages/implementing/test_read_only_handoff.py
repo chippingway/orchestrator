@@ -36,6 +36,7 @@ from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     KEY_ROUND_SHA,
 )
 from tests.workflow.stages.implementing.read_only_relabel_test_support import (
+    COUNT_ADDED_LINES,
     PARK_DISCUSSION_RESPONSE,
     PUSH_BRANCH,
     RUN_AGENT,
@@ -45,10 +46,25 @@ from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     _seed_relabeled_discussion,
 )
 
+# Both ends of the comparison a disposition attributes work by, each seeded
+# unread in turn. The third reading is the disposition's own; the second is
+# the tip the spawn path records as this run's starting point.
+_UNREADABLE_ENDS = (
+    (
+        "the tip the run started at",
+        (HEAD_BEFORE_ROUND, "", HEAD_AFTER_COMMIT),
+    ),
+    (
+        "the tip the run ended on",
+        (HEAD_BEFORE_ROUND, HEAD_BEFORE_ROUND, ""),
+    ),
+)
+
 _ANSWERED_ISSUE_NUMBER = 995
 _INTERRUPTED_ISSUE_NUMBER = 996
 _PR_HANDOFF_ISSUE_NUMBER = 997
 _PUBLISHED_ISSUE_NUMBER = 998
+_UNREADABLE_ISSUE_NUMBER = 999
 _HANDOFF_PR_NUMBER = 5150
 _IMPLEMENTED = "implemented"
 
@@ -85,6 +101,42 @@ class ReadOnlyHandoffTest(
         pinned_data = gh.pinned_data(issue.number)
         self.assertTrue(pinned_data[KEY_AWAITING_HUMAN])
         self.assertIn("which store?", gh.posted_comments[-1][1])
+
+    def test_an_unread_end_over_inherited_work_parks(self) -> None:
+        # The same shape one probe worse, and the probe is what decides it.
+        # Both dispositions tell a run's own work from what the branch already
+        # carried by COMPARING the tip it started at with the tip it ended on,
+        # and `_head_sha` reports its own failure as "" -- so an end nobody
+        # read differs from every commit there is. Read as a difference, the
+        # inherited commits are published as this run's, which is exactly what
+        # the certified branch makes reachable: ahead-of-base is true of it
+        # before the agent ever starts.
+        for unread, heads in _UNREADABLE_ENDS:
+            with self.subTest(unread=unread):
+                gh, issue = _seed_relabeled_discussion(
+                    _UNREADABLE_ISSUE_NUMBER, PARK_DISCUSSION_RESPONSE,
+                )
+
+                mocks = self._run_implementing_on_worktree(
+                    gh,
+                    issue,
+                    unpushed_branch=_issue_branch(issue.number),
+                    run_agent=_agent(
+                        session_id=DEV_SESSION, last_message=_IMPLEMENTED,
+                    ),
+                    has_new_commits=True,
+                    branch_tip_sha=HEAD_BEFORE_ROUND,
+                    head_shas=heads,
+                )
+
+                mocks[RUN_AGENT].assert_called_once()
+                mocks[PUSH_BRANCH].assert_not_called()
+                mocks[COUNT_ADDED_LINES].assert_not_called()
+                self.assertEqual(gh.opened_prs, [])
+                self.assertEqual(gh.label_history, [])
+                self.assertTrue(
+                    gh.pinned_data(issue.number)[KEY_AWAITING_HUMAN],
+                )
 
     def test_an_interrupted_dev_keeps_the_handoff(self) -> None:
         # The relabel was accepted and the dev committed, then the run was cut

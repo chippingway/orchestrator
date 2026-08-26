@@ -332,10 +332,52 @@ class FrozenEvidenceTest(unittest.TestCase):
 
                 self._assert_refused(github, issue)
 
-    def _assert_refused(self, github, issue) -> None:
+    def test_an_unshowable_pair_parks_untouched(self) -> None:
+        # Well-shaped is not the same as HERE. Both commits are proved in the
+        # candidate's own checkout before the plan PR is held or an agent is
+        # started: a candidate this host cannot peel is work made somewhere
+        # else, and a base it does not hold makes the `git diff <base>...
+        # <candidate>` the prompt names unresolvable -- so the run would be
+        # paid for and its verdict would be an answer about nothing.
+        cases = (
+            ("no candidate object", WorktreeSeed(candidate_object=False)),
+            ("no base object", WorktreeSeed(base_object=False)),
+        )
+        for name, seed in cases:
+            with self.subTest(case=name):
+                github = FakeGitHubClient()
+                issue = seed_late_issue(
+                    github, late_generation(), pr_number=PLAN_PR_NUMBER,
+                    **{KEY_PLAN_PATH: PLAN_PATH},
+                )
+                seed_plan_pr(github)
+
+                self._assert_refused(
+                    github, issue, worktree=seed,
+                    said="is not on this host",
+                )
+
+    def test_an_unshowable_pair_is_reported(self) -> None:
+        github = FakeGitHubClient()
+        issue = seed_late_issue(github, late_generation())
+
+        with self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            adjudicate(
+                github, issue, worktree=WorktreeSeed(candidate_object=False),
+            )
+
+        failures = [
+            record for record in github.recorded_events
+            if record.get("event") == EVENT_LATE_FAILURE
+        ]
+        self.assertEqual(len(failures), 1)
+
+    def _assert_refused(
+        self, github, issue, worktree=None, said="cannot be adjudicated",
+    ) -> None:
         """Nothing is spawned, and no pull request is touched."""
         with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-            outcome, spawn = adjudicate(github, issue)
+            outcome, spawn = adjudicate(github, issue, worktree=worktree)
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         spawn.assert_not_called()
@@ -343,7 +385,7 @@ class FrozenEvidenceTest(unittest.TestCase):
         self.assertTrue(
             github.pinned_data(issue.number).get(KEYS.awaiting),
         )
-        self.assertIn("cannot be adjudicated", github.posted_comments[-1][1])
+        self.assertIn(said, github.posted_comments[-1][1])
 
 
 class MutationGuardTest(LateCase, unittest.TestCase):

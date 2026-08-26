@@ -78,7 +78,22 @@ class BaseFreezeTest(unittest.TestCase):
             )
 
         self.assertEqual(frozen.failure, MeasurementFailure.BASE_ABSENT)
-        self.assertEqual(frozen.sha, "")
+        self.assertFalse(frozen.is_frozen)
+
+    def test_a_missing_base_keeps_the_id_it_learned(self) -> None:
+        # The remote NAMED it, so the id is the only record of which commit
+        # this attempt was about -- and the only thing a retry can ask for. A
+        # failure recorded without it leaves the next pass re-reading a remote
+        # whose base has moved on, measuring a different pair. Nothing may
+        # measure against it either way, which `is_frozen` above refuses.
+        with patch.object(
+            authentication, _REMOTE_TIP_READ, return_value=_support.ABSENT_SHA,
+        ):
+            frozen = commits._freeze_base_commit(
+                self._repo.spec, self._repo.worktree,
+            )
+
+        self.assertEqual(frozen.sha, _support.ABSENT_SHA)
 
     def test_an_unanswered_remote_is_typed(self) -> None:
         # None is the read having failed -- no token, hijackable transport
@@ -154,9 +169,21 @@ class CandidateProofTest(unittest.TestCase):
         )
 
         self.assertEqual(proven.failure, MeasurementFailure.CANDIDATE_ABSENT)
-        self.assertEqual(proven.sha, "")
+        self.assertFalse(proven.is_frozen)
+
+    def test_an_absent_object_keeps_its_identity(self) -> None:
+        # The id it resolved to is the only record of which commit the attempt
+        # was about. Dropped, a retry has nothing to ask for and proves
+        # whatever the checkout points at by then instead.
+        proven = commits._prove_candidate_commit(
+            self._repo.worktree, _support.ABSENT_SHA,
+        )
+
+        self.assertEqual(proven.sha, _support.ABSENT_SHA)
 
     def test_an_unresolvable_revision_is_typed(self) -> None:
+        # Nothing was named, so nothing comes back named: a revision that will
+        # not resolve is a checkout that cannot say what it is on.
         proven = commits._prove_candidate_commit(
             self._repo.worktree, "no-such-branch",
         )
@@ -164,6 +191,7 @@ class CandidateProofTest(unittest.TestCase):
         self.assertEqual(
             proven.failure, MeasurementFailure.CANDIDATE_UNREADABLE,
         )
+        self.assertEqual(proven.sha, "")
 
 
 if __name__ == "__main__":

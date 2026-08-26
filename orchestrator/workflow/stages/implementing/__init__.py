@@ -15,10 +15,25 @@ retired and gates a fresh spawn against the per-issue daily cap, `resume` keeps
 the call shape every other stage wrote against, and `execution` runs one attempt
 plus the single poisoned-session retry behind it, in `worktree`'s checkout.
 
-What a finished run leaves behind is three more: `disposition` compares HEAD
+What a finished run leaves behind is four more: `disposition` compares HEAD
 against the pre-agent SHA to tell this run's commit from carried-over work,
-`publication` turns a clean tree into a pushed branch, a PR, and the validating
-handoff, and `parks` owns the four ways a commit-less run stops. The last four
+`late_gate` measures whatever it is about to publish and holds a candidate
+past the size ceiling unpublished under `workflow:decomposing`, `publication`
+turns a clean tree into a pushed branch, a PR, and the validating handoff, and
+`parks` owns the five ways a commit-less or unpublishable run stops. The gate
+sits inside the disposition rather than beside it because being the ONE seam
+all three committed outcomes publish through -- a finished run, a timeout that
+committed first, and a branch a crash stranded -- is what makes the
+measurement a contract rather than a check.
+
+`late_gate` is the order its own questions are asked in and nothing else, so
+five owners sit under it: what one gate call is ABOUT and the identity every
+refusal is reported under is `late_records`, the pair a count is taken over is
+`late_freeze`, what a recovery proves before it acts on a recorded commit is
+`late_evidence`, what a measured candidate earns -- the push, the
+`workflow:decomposing` hold, and the retirement each is durable behind -- is
+`late_verdict`, and the one park shape every unreadable reading takes, with
+the typed failure both sinks carry, is `late_parks`. The last four
 own the signals that arrive between runs -- a body edit (`drift`), a body edit
 before any session existed plus the quiet timeout recovery
 (`drift_preflight`), an operator's `/orchestrator continue` (`continue_command`),

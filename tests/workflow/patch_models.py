@@ -8,8 +8,13 @@ from typing import Any, Optional
 from unittest.mock import MagicMock
 
 from orchestrator.agents import AgentResult
+from orchestrator.git.verification.probes import _WorktreeStatus
 
-from tests.workflow.repo_values import BASE_TIP_SHA
+from tests.workflow.repo_values import (
+    BASE_TIP_SHA,
+    HEAD_AFTER_RUN,
+    HEAD_BEFORE_RUN,
+)
 
 
 @dataclass(frozen=True)
@@ -28,11 +33,20 @@ class _WorkflowRunContext:
     has_new_commits: Any = False
     dirty_files: tuple = ()
     tree_readable: bool = True
+    # What successive readings of the tree report. Empty is the ordinary
+    # world -- one answer built from `dirty_files`/`tree_readable`, given to
+    # every reading -- and a tuple seeds a tree that CHANGES between them,
+    # which is the race the publication boundaries refuse.
+    tree_states: tuple = ()
     committed_paths: tuple = ()
     head_contains_path: bool = True
     push_branch: bool = True
     anchor_pr_head: Any = True
-    head_shas: tuple = ("",)
+    # The checkout's own head, before the run and after it. The default is
+    # the ordinary world -- a head that reads, and a run that moved it -- so a
+    # test about publishing says nothing about it, and a test about a head
+    # that did not move, or a probe that failed, seeds exactly that.
+    head_shas: tuple = (HEAD_BEFORE_RUN, HEAD_AFTER_RUN)
     # Whether the checkout's HEAD is the per-issue branch. True by default,
     # since that is what a round runs on; a test about a commit made detached
     # says otherwise, and the plan publication refuses on it.
@@ -51,6 +65,23 @@ class _WorkflowRunContext:
     authed_fetch_result: Any = None
     analytics_log_path: Any = None
     trajectory_log_path: Any = None
+    # What the size gate reads about the candidate a publication is about to
+    # push. The default world is the ordinary one -- a commit this host holds,
+    # a base the remote named, and a diff well under any ceiling -- so a test
+    # about publishing says nothing about size, and a test about the gate
+    # seeds exactly the reading it is about. `added_lines` doubles as the
+    # refusal: a `MeasurementFailure` here is the count that never happened.
+    candidate_commit: Any = None
+    # What a revision OTHER than HEAD proves to -- the recorded candidate a
+    # retry asks for by id. None answers with the id that was asked for, which
+    # is the ordinary world: the object the record names is still here.
+    recorded_commit: Any = None
+    frozen_base: Any = None
+    # Whether the recorded base object is readable here, fetching once. False
+    # is a host the pair was not frozen on, where the retry has to park rather
+    # than ask the remote for whatever the branch has moved to.
+    base_object_present: bool = True
+    added_lines: Any = 0
 
 
 def _agent(**agent_fields) -> AgentResult:
@@ -67,6 +98,50 @@ def _agent(**agent_fields) -> AgentResult:
         stderr=seed.stderr,
         interrupted=seed.interrupted,
     )
+
+
+class _HeadReadings:
+    """What the checkout's own head reads as, this reading.
+
+    A tuple seeds a head that MOVES between readings -- one probe takes it
+    before a run and another after -- and its last entry answers every reading
+    past it, so a caller that asks once more than a test counted reads the
+    head the test left the checkout on rather than running out of answers.
+    """
+
+    def __init__(self, context: _WorkflowRunContext) -> None:
+        self._readings = list(context.head_shas)
+        self._reads = 0
+
+    def __call__(self, worktree):
+        reading = min(self._reads, len(self._readings) - 1)
+        self._reads += 1
+        return self._readings[reading]
+
+
+class _TreeReadings:
+    """What `git status` reports about the worktree, this reading.
+
+    A tuple seeds a tree that CHANGES between readings -- clean when the
+    disposition proves it and carrying something by the time the publication
+    proves it again -- and its last entry answers every reading past it, so a
+    caller that asks once more than a test counted reads the tree the test
+    left the checkout in rather than running out of answers.
+    """
+
+    def __init__(self, context: _WorkflowRunContext) -> None:
+        self._readings = list(context.tree_states) or [
+            _WorktreeStatus(
+                readable=context.tree_readable,
+                paths=tuple(context.dirty_files),
+            ),
+        ]
+        self._reads = 0
+
+    def __call__(self, worktree):
+        reading = min(self._reads, len(self._readings) - 1)
+        self._reads += 1
+        return self._readings[reading]
 
 
 class _AnchorAnswers:

@@ -20,7 +20,10 @@ from orchestrator.git.base_sync import (
     pre_pr as _base_sync_pre_pr,
     refresh as _base_sync_refresh,
 )
-from orchestrator.git.measurement import additions as _measurement
+from orchestrator.git.measurement import (
+    additions as _measurement,
+    commits as _measurement_commits,
+)
 from orchestrator.git.publication import (
     probes as _publication_probes,
     squash as _squash,
@@ -44,6 +47,7 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_anchor_pr_worktree": _worktree_creation,
     "_authed_fetch": _authentication,
     "_authed_target_fetch": _authentication,
+    "_base_object_present": _measurement_commits,
     "_branch_ahead_behind": _publication_probes,
     "_branch_has_unpushed_commits": _worktree_recovery,
     "_branch_tip_sha": _worktree_recovery,
@@ -53,12 +57,14 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_commit_contains": _verification_probes,
     "_commit_present": _verification_probes,
     "_committed_paths_since": _verification_probes,
+    "_count_added_lines": _measurement,
     "_decompose_worktree_path": _worktree_decomposition,
     "_delete_local_issue_branch": _worktree_cleanup,
     "_ensure_decompose_worktree": _worktree_decomposition,
     "_ensure_pr_worktree": _worktree_creation,
     "_ensure_worktree": _worktree_creation,
     "_first_commit_subject": _publication_probes,
+    "_freeze_base_commit": _measurement_commits,
     "_git": _commands,
     "_git_hardened": _commands,
     "_has_new_commits": _worktree_creation,
@@ -67,6 +73,7 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_infer_subject_prefix": _publication_titles,
     "_local_branch_present": _worktree_cleanup,
     "_measure_candidate": _measurement,
+    "_prove_candidate_commit": _measurement_commits,
     "_push_branch": _authentication,
     "_rebase_base_into_worktree": _base_sync_pre_pr,
     "_rebase_in_progress": _base_sync_pre_pr,
