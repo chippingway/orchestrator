@@ -32,6 +32,9 @@ from tests.workflow.fixtures import (
     LABEL_DISCUSSION,
     LABEL_IMPLEMENTING,
     LABEL_QUESTION,
+    LABEL_VALIDATING,
+    MEASURED_CANDIDATE_SHA,
+    SHA_LENGTH,
     _TEST_SPEC,
 )
 
@@ -40,7 +43,23 @@ _RELABELED_ISSUE_NUMBER = 984
 _UNSPENT_BASELINE_ISSUE_NUMBER = 987
 _CONSUMED_PARK_ISSUE_NUMBER = 988
 _IN_FLIGHT_ISSUE_NUMBER = 990
+_FROZEN_CANDIDATE_ISSUE_NUMBER = 993
+_REFUSED_HANDOFF_ISSUE_NUMBER = 994
+_ACCEPTED_COMMIT_ISSUE_NUMBER = 995
+_UNREADABLE_HEAD_ISSUE_NUMBER = 996
+_STALE_EXEMPTION_ISSUE_NUMBER = 997
+_PUBLISHED_COMMIT_ISSUE_NUMBER = 1001
+_HANDED_ON_ISSUE_NUMBER = 1002
+_PUBLISHED_EXEMPTION_ISSUE_NUMBER = 1003
+_UNREAD_MEASUREMENT_ISSUE_NUMBER = 998
+_ANSWERED_MEASUREMENT_ISSUE_NUMBER = 999
+_MEASUREMENT_PARK = "late_measurement_failed"
 _CERTIFIED_TIP = "head-the-relabel-certified"
+_ACCEPTED_COMMIT = MEASURED_CANDIDATE_SHA
+# What a developer committed after the verdict: the exemption still names the
+# commit it accepted, and the checkout has moved past it.
+_HEAD_PAST_THE_EXEMPTION = "f" * SHA_LENGTH
+_FROZEN_CANDIDATE = MEASURED_CANDIDATE_SHA
 _WORKTREE_ROOT = "/tmp/read-only-issue-"
 _READ_ONLY_LABELS = (LABEL_QUESTION, LABEL_DISCUSSION)
 # Both the clean hand-back and the refusal have to hold the branch still: the
@@ -60,7 +79,60 @@ _IN_FLIGHT_RECORDS = (
 )
 
 
-class ReadOnlyLabelBaseRefreshSkipTest(unittest.TestCase):
+class _SkipCase:
+    """One pre-tick sync of a seeded issue, and what it was allowed to do."""
+
+    def _assert_skipped(
+        self, issue_number: int, label: str, head: str = "", **seeded,
+    ) -> None:
+        # The rev-list and rebase helpers would shell out if reached, so a
+        # regression that lets the sync proceed surfaces as a call on these.
+        git_mock = MagicMock()
+        rebased = self._sync(issue_number, label, head, git_mock, seeded)
+
+        git_mock.assert_not_called()
+        rebased.assert_not_called()
+
+    def _assert_synced(
+        self,
+        issue_number: int,
+        head: str = "",
+        label: str = LABEL_IMPLEMENTING,
+        **seeded,
+    ) -> None:
+        """Nothing held the branch, so the ordinary base sync went ahead."""
+        git_mock = MagicMock(
+            return_value=MagicMock(returncode=0, stdout="0"),
+        )
+        self._sync(issue_number, label, head, git_mock, seeded)
+
+        git_mock.assert_called()
+
+    def _sync(self, issue_number, label, head, git_mock, seeded):
+        """Run one sync of this issue's worktree with git doubled out."""
+        gh = FakeGitHubClient()
+        issue = make_issue(issue_number, label=label)
+        gh.add_issue(issue)
+        if seeded:
+            gh.seed_state(issue.number, **seeded)
+
+        rebase_mock = MagicMock(return_value=(True, []))
+        with _patch_base_sync(
+            git=git_mock,
+            dirty=MagicMock(return_value=[]),
+            rebase=rebase_mock,
+            head_sha=MagicMock(return_value=head),
+        ):
+            refresh._sync_worktree_with_base(
+                gh,
+                _TEST_SPEC,
+                Path(f"{_WORKTREE_ROOT}{issue_number}"),
+                issue_number,
+            )
+        return rebase_mock
+
+
+class ReadOnlyLabelBaseRefreshSkipTest(_SkipCase, unittest.TestCase):
 
     def test_a_read_only_label_skips_base_sync(self) -> None:
         for offset, label in enumerate(_READ_ONLY_LABELS):
@@ -120,60 +192,172 @@ class ReadOnlyLabelBaseRefreshSkipTest(unittest.TestCase):
                     **record,
                 )
 
+    def test_a_frozen_late_candidate_holds_the_branch(self) -> None:
+        # The size gate names one commit, measures it against one base, shows
+        # an agent the diff between them, and publishes or preserves exactly
+        # that commit several ticks later. A rebase in any of those gaps moves
+        # the branch off the SHA every one of those steps acts on -- and the
+        # step that noticed would park rather than substitute whatever HEAD had
+        # become, so the adjudication would stall on a rewrite nobody asked
+        # for. No park and no label say so: the record is on an issue still
+        # wearing whichever label the adjudication reached it under.
+        self._assert_skipped(
+            _FROZEN_CANDIDATE_ISSUE_NUMBER,
+            LABEL_IMPLEMENTING,
+            awaiting_human=False,
+            park_reason=None,
+            late_candidate_sha=_FROZEN_CANDIDATE,
+        )
+
     def test_a_consumed_park_syncs_again(self) -> None:
         # The guard cleared the park and persisted it, so nothing is holding
         # the branch any more and the ordinary base sync resumes. Without this
         # the freeze would be permanent for every issue that ever passed
         # through a read-only stage.
-        gh = FakeGitHubClient()
-        issue = make_issue(_CONSUMED_PARK_ISSUE_NUMBER, label=LABEL_IMPLEMENTING)
-        gh.add_issue(issue)
-        gh.seed_state(
-            issue.number, awaiting_human=False, park_reason=None,
+        self._assert_synced(
+            _CONSUMED_PARK_ISSUE_NUMBER, awaiting_human=False, park_reason=None,
         )
 
-        git_mock = MagicMock(return_value=MagicMock(returncode=0, stdout="0"))
-        with _patch_base_sync(
-            git=git_mock,
-            dirty=MagicMock(return_value=[]),
-            rebase=MagicMock(return_value=(True, [])),
-        ):
-            refresh._sync_worktree_with_base(
-                gh,
-                _TEST_SPEC,
-                Path(f"{_WORKTREE_ROOT}{issue.number}"),
-                issue.number,
-            )
 
-        git_mock.assert_called()
+class LateRecordBaseRefreshSkipTest(_SkipCase, unittest.TestCase):
+    """The refresh runs first each tick, so it runs ahead of the size gate.
 
-    def _assert_skipped(
-        self, issue_number: int, label: str, **seeded,
-    ) -> None:
-        gh = FakeGitHubClient()
-        issue = make_issue(issue_number, label=label)
-        gh.add_issue(issue)
-        if seeded:
-            gh.seed_state(issue.number, **seeded)
+    Both late records name a commit a LATER tick has to find in the checkout,
+    and neither reader substitutes what it finds instead: the gate measures a
+    rewrite as the fresh candidate it now is, and the park waiting on a
+    restored checkout goes on waiting for a commit the branch no longer holds.
+    """
 
-        # The rev-list and rebase helpers would shell out if reached, so a
-        # regression that lets the sync proceed surfaces as a call on these.
-        git_mock = MagicMock()
-        rebase_mock = MagicMock(return_value=(True, []))
-        with _patch_base_sync(
-            git=git_mock,
-            dirty=MagicMock(return_value=[]),
-            rebase=rebase_mock,
-        ):
-            refresh._sync_worktree_with_base(
-                gh,
-                _TEST_SPEC,
-                Path(f"{_WORKTREE_ROOT}{issue.number}"),
-                issue.number,
-            )
+    def test_a_refused_handoff_holds_the_branch(self) -> None:
+        # The park that refused to hand review a checkout which had left the
+        # approved commit, and the record of the commit it is waiting to see
+        # back. Its remedy is an operator's `git checkout` -- so a rebase
+        # between that and the tick which would have noticed moves the head off
+        # the commit again, and the one park answered without a comment
+        # becomes one nothing can answer at all.
+        self._assert_skipped(
+            _REFUSED_HANDOFF_ISSUE_NUMBER,
+            LABEL_IMPLEMENTING,
+            awaiting_human=True,
+            park_reason="late_candidate_moved",
+            late_approved_sha=_ACCEPTED_COMMIT,
+        )
 
-        git_mock.assert_not_called()
-        rebase_mock.assert_not_called()
+    def test_an_accepted_commit_holds_the_branch(self) -> None:
+        # A `single` verdict accepts an oversized candidate and retires the
+        # generation in the same breath, so between that decision and the
+        # publication several ticks later the exemption is the only record
+        # saying this branch carries work already adjudicated. Rebased in that
+        # window the accepted commit is gone, and the gate measures the rewrite
+        # as the fresh candidate it now is: past the ceiling again, and routed
+        # to an adjudication a human has already answered.
+        self._assert_skipped(
+            _ACCEPTED_COMMIT_ISSUE_NUMBER,
+            LABEL_IMPLEMENTING,
+            head=_ACCEPTED_COMMIT,
+            late_exempt_sha=_ACCEPTED_COMMIT,
+        )
+
+    def test_an_unreadable_head_holds_the_branch(self) -> None:
+        # A checkout this process cannot ask about is not one to rewrite.
+        self._assert_skipped(
+            _UNREADABLE_HEAD_ISSUE_NUMBER,
+            LABEL_IMPLEMENTING,
+            head="",
+            late_exempt_sha=_ACCEPTED_COMMIT,
+        )
+
+    def test_an_unread_measurement_holds_the_branch(self) -> None:
+        # The one size refusal that leaves no record to hold the branch by:
+        # the revision would not resolve, so no commit was named and nothing
+        # went on the pinned comment. What the park promises is that the work
+        # is still where the developer left it -- either the exact pair to
+        # re-read, or a refusal to substitute anything for a pair nobody
+        # froze -- and a rebase under it makes both unanswerable, leaving the
+        # retry standing on the base with the commit gone.
+        self._assert_skipped(
+            _UNREAD_MEASUREMENT_ISSUE_NUMBER,
+            LABEL_IMPLEMENTING,
+            awaiting_human=True,
+            park_reason=_MEASUREMENT_PARK,
+        )
+
+    def test_a_published_commit_holds_the_branch(self) -> None:
+        # The window a relabel that did not land leaves: the branch is pushed
+        # and its pull request open, the issue is still implementing, and the
+        # record naming what went out is what has the next tick finish the
+        # handoff rather than re-decide a published branch. Rebased under it
+        # that record covers a commit the checkout no longer holds, and the
+        # gate reads the rewrite as work nobody has ruled on.
+        self._assert_skipped(
+            _PUBLISHED_COMMIT_ISSUE_NUMBER,
+            LABEL_IMPLEMENTING,
+            head=_ACCEPTED_COMMIT,
+            implementing_published_sha=_ACCEPTED_COMMIT,
+        )
+
+
+class LateRecordBaseRefreshEndTest(_SkipCase, unittest.TestCase):
+    """What ends each of those freezes, so none of them is permanent.
+
+    None of these records is dropped by the step that acts on it: a park's
+    reason outlives the flag beside it, an exemption is never cleared at all,
+    and a publication record is overwritten rather than spent. Read on their
+    own they would take a branch out of the base refresh for the rest of its
+    issue's life -- so each is read against something that does end: the flag
+    the park was taken under, the commit the checkout is standing on, and the
+    label of the stage that still has to act on it.
+    """
+
+    def test_an_answered_measurement_syncs_again(self) -> None:
+        # And it ends the way every park does. The reason outlives the flag
+        # beside it -- the retry reads it to know which park it is answering
+        # -- so a spent one left behind would freeze a branch nothing is
+        # waiting on for the rest of the issue's life.
+        self._assert_synced(
+            _ANSWERED_MEASUREMENT_ISSUE_NUMBER,
+            awaiting_human=False,
+            park_reason=_MEASUREMENT_PARK,
+        )
+
+    def test_a_handed_on_publication_syncs_again(self) -> None:
+        # And past the handoff it stops holding anything. The commit is on the
+        # remote with a pull request over it, and keeping THAT in step with
+        # base is the PR-aware sync's own job -- the only route that can move
+        # it without stranding the SHA a reviewer is looking at.
+        self._assert_synced(
+            _HANDED_ON_ISSUE_NUMBER,
+            head=_ACCEPTED_COMMIT,
+            label=LABEL_VALIDATING,
+            implementing_published_sha=_ACCEPTED_COMMIT,
+        )
+
+    def test_a_published_exemption_syncs_again(self) -> None:
+        # The same for the record that is never cleared at all. An exemption
+        # outlives the publication it licensed, so read on its own it would
+        # take every issue that ever earned a verdict out of the base refresh
+        # for the rest of its life -- validating, documenting, review, and
+        # fixing included, none of which re-measures anything.
+        self._assert_synced(
+            _PUBLISHED_EXEMPTION_ISSUE_NUMBER,
+            head=_ACCEPTED_COMMIT,
+            label=LABEL_VALIDATING,
+            late_exempt_sha=_ACCEPTED_COMMIT,
+        )
+
+    def test_a_stale_exemption_syncs_again(self) -> None:
+        # The other half of that freeze, and the reason it reads the checkout
+        # rather than the record: an exemption is never cleared -- a moved head
+        # is what invalidates it -- so freezing on its presence alone would take
+        # every issue that ever earned a verdict out of the base refresh for the
+        # rest of its life. The developer has committed since, what the gate
+        # will measure is that new work, and there is nothing here left to
+        # protect.
+        self._assert_synced(
+            _STALE_EXEMPTION_ISSUE_NUMBER,
+            head=_HEAD_PAST_THE_EXEMPTION,
+            late_exempt_sha=_ACCEPTED_COMMIT,
+        )
 
 
 if __name__ == "__main__":

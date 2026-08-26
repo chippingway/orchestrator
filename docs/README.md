@@ -58,7 +58,8 @@ spellings and pinned-state JSON keys are a compatibility contract, so this area 
 and forbids, and how a role's command spec is parsed and pinned.
 
 - [`workflow/roles.md`](workflow/roles.md) — the three roles, the stages that spawn each, the session-reuse rules, the
-  late adjudication an oversized committed candidate earns under the decomposer's own role, the owner read that
+  size gate a clean committed candidate passes before it is published, the
+  late adjudication an oversized one earns under the decomposer's own role, the owner read that
   adjudication passes before anything acts on it and what each verdict earns past it, the snapshot-first order a
   cleared `split` creates its children in, what a child proves about that snapshot before it starts, what a close
   observed mid-cycle ends irreversibly and what that ending still owes the remote, the fresh cycle an operator

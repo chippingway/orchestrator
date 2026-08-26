@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """One late adjudication, from the plan-PR hold to the run it settles.
 
-The coordinator an oversized committed candidate is adjudicated by. It is
-callable and complete, and nothing calls it yet: the seam that decides a
-candidate is oversized -- the clean-committed pre-publication boundary -- is
-wired separately, so this owner can be exercised on its own before any real
-publication depends on it. What a finished reply then becomes is the
+The coordinator an oversized committed candidate is adjudicated by. What puts
+an issue in front of it is the size gate at the clean-committed pre-publication
+seam, and what reaches it is the first question a `decomposing` tick asks: a
+record carrying a live generation belongs to this owner entire, and no step of
+the initial decomposition runs for it. What a finished reply becomes is the
 `late_outcome` owner beside it.
 
 The order is the contract, and each step persists what it reached before it
@@ -96,6 +96,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
@@ -170,6 +171,16 @@ _INCOMPLETE_PARK = (
     "touched. The recorded generation has to be repaired -- what an agent "
     "would be shown is derived from those fields, and a diff taken against a "
     "commit nobody froze is not a reading of this candidate."
+)
+
+_MISSING_OBJECTS_PARK = (
+    "this issue's frozen pair is not on this host: {missing} cannot be read "
+    "here. Nothing was held on a pull request and no late decomposer was "
+    "spawned -- an agent shown a diff between commits this checkout does not "
+    "have would answer about nothing, and that answer would be recorded as a "
+    "verdict on the candidate. Restore the worktree at the recorded commit "
+    "rather than re-running the developer; the recorded commits are the "
+    "evidence, and a fresh checkout is not them."
 )
 
 _MISSING_WORKTREE_PARK = (
@@ -275,9 +286,79 @@ def _blocked_before_running(
     _late_outcome._redeliver_park_notice(context)
     if not _is_adjudicable(context.generation):
         return _LateDisposition.NOT_LATE
-    if not _has_frozen_evidence(context) or not _hold_plan_pr(context):
+    if not _has_frozen_evidence(context) or not _holds_the_objects(context):
+        return _LateDisposition.PARKED
+    if not _hold_plan_pr(context):
         return _LateDisposition.PARKED
     return None
+
+
+def _holds_the_objects(context: _LateContext) -> bool:
+    """Prove this host really has the two commits the record names.
+
+    The step between the record being well SHAPED and it being usable, and it
+    runs before the plan-PR hold for the same reason the shape check does:
+    everything past this point is an external effect. The hold rewrites a
+    human-visible description, and the spawn behind it puts an agent on
+    somebody's repository for as long as an agent runs -- both spent on a
+    generation whose evidence turns out not to be here.
+
+    Each end fails differently and each failure is one nothing may substitute
+    around. A checkout that is gone takes the frozen commit with it. A
+    candidate the checkout cannot peel is work made on another host, and the
+    prompt would send the agent to diff a commit it does not have. And a base
+    this host does not hold is the subtler one, because the run would look
+    fine: the agent is shown a `git diff <base>...<candidate>` that cannot
+    resolve, and a verdict returned over a diff nobody could read would be
+    accepted as an answer about this candidate.
+
+    So it parks instead, naming the worktree rather than another run: the
+    recorded commits are the evidence, and a fresh checkout somewhere else is
+    not them.
+    """
+    worktree = _worktree_paths._worktree_path(
+        context.spec, context.issue.number,
+    )
+    if not worktree.exists():
+        _late_outcome._park(
+            context, _MISSING_WORKTREE_PARK,
+            reason=_late_outcome.PARK_WORKTREE_MISSING,
+        )
+        return False
+    missing = _absent_object(context, worktree)
+    if missing is None:
+        return True
+    log.error(
+        "issue=#%d records a frozen pair this host cannot show (%s); parking "
+        "rather than holding a pull request or spawning over it",
+        context.issue.number, missing,
+    )
+    _late_outcome._emit_failure(context, LateFailure.MEASUREMENT_FAILED)
+    _late_outcome._park(
+        context, _MISSING_OBJECTS_PARK.format(missing=missing),
+        reason=_late_outcome.PARK_EVIDENCE_MISSING,
+    )
+    return False
+
+
+def _absent_object(context: _LateContext, worktree: Path) -> Optional[str]:
+    """Which end of the frozen pair this checkout cannot show, or None.
+
+    Named rather than counted, because the two are repaired differently: a
+    candidate is work that has to come back with its branch, while a base is
+    an object a fetch can still bring.
+    """
+    generation = context.generation
+    candidate = _measurement_commits._prove_candidate_commit(
+        worktree, generation.candidate_sha,
+    )
+    if not candidate.is_frozen:
+        return f"candidate {generation.candidate_sha}"
+    if _measurement_commits._base_object_present(
+        context.spec, worktree, generation.base_sha,
+    ):
+        return None
+    return f"base {generation.base_sha}"
 
 
 def _guarded(

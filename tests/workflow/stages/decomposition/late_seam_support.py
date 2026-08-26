@@ -18,6 +18,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from orchestrator.git.measurement.models import (
+    FrozenCommit,
+    MeasurementFailure,
+)
 from orchestrator.git.snapshots import refs as _snapshot_refs
 from orchestrator.git.snapshots.refs import SnapshotOutcome
 from orchestrator.git.verification.probes import _WorktreeStatus
@@ -46,6 +50,11 @@ class WorktreeSeed:
     head: str = CANDIDATE_SHA
     readable: bool = True
     dirty: tuple[str, ...] = ()
+    # Whether this checkout can show the two commits the record names. Both
+    # are proved before the plan PR is held or an agent is started, so a case
+    # about a host the branch never reached says so here.
+    candidate_object: bool = True
+    base_object: bool = True
 
 
 @dataclass(frozen=True)
@@ -147,6 +156,12 @@ def hold_late_seams(
         "_measure_candidate": measurement or UNASKED_MEASUREMENT,
         "_worktree_path": checkout,
         "_head_sha": seed.head,
+        "_prove_candidate_commit": FrozenCommit(
+            sha=CANDIDATE_SHA,
+        ) if seed.candidate_object else FrozenCommit(
+            failure=MeasurementFailure.CANDIDATE_ABSENT,
+        ),
+        "_base_object_present": seed.base_object,
         "_worktree_status": _WorktreeStatus(
             readable=seed.readable, paths=tuple(seed.dirty),
         ),

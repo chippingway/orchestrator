@@ -268,6 +268,34 @@ once per tick, the issue reaches no stage handler, and the same `rejected` is wr
 each held tick logs a warning naming what is still owed. Clearing the refusal is clearing the obligation; starting
 a fresh attempt afterwards is removing `rejected`, which is the handshake below.
 
+### Rolling back to an older orchestrator
+
+The late generation an oversized candidate is adjudicated under lives in additive `late_*` fields on the issue's own
+pinned comment. An orchestrator that predates them ignores those fields entirely, which is safe for an issue that
+never entered the size gate and **not** safe for one currently in it: the older binary would read a
+`workflow:decomposing` issue carrying a frozen candidate as one waiting to be decomposed, spawn the initial
+decomposer against it, and decide the size question by not asking it. The same holds for an issue whose ledger still
+records a snapshot ref or a superseded branch — nothing in the older binary reclaims either.
+
+So a rollback is drained rather than cut over. Set `DECOMPOSE=off` and restart, which stops new candidates entering
+the gate while every recorded generation goes on being adjudicated, cancelled, cleaned up, and restarted. Then wait
+for **both** halves of the drain, because they end at different times:
+
+- **No open issue carries `late_cycle_id`** in its pinned comment. That is the adjudication half — a cycle still
+  deciding, revising, or splitting.
+- **No CLOSED issue carries an unsettled `late_resources` ledger**, on any of the four labels the cleanup sweep
+  visits. A closed owner is exactly the case the first check cannot see: its cycle was ended by the close, and what
+  is left is the sweep reclaiming the superseded branch and the snapshot ref its children were cut from, at the
+  `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` cadence rather than every tick. Deploying the older binary over one abandons
+  precisely the resources the paragraph above says nothing else reclaims. A ledger is settled when every entry reads
+  `reconciled`; a `retained` ref (its consumers are still live) is **not** settled and is the one state that can take
+  arbitrarily long, since it waits on issues that are still being worked.
+
+The section above lists the ref namespace and the `git ls-remote` that shows what is still out there, which is the
+direct check when a pinned comment is ambiguous. An issue that has to be parked mid-cycle instead is closed, which
+ends its cycle irreversibly and settles what it owes the remote — the work stays committed in its worktree and the
+section below says how to start it again.
+
 ### Restarting an issue whose cycle was cancelled
 
 **Reopen the issue, then remove `rejected`.** That is the whole gesture, and both halves are required: the

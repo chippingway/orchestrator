@@ -48,12 +48,18 @@ class FrozenCommit:
 
     Frozen in both senses: the object id is what the measurement and every
     retry after it are taken against, and the record is immutable so a caller
-    cannot carry a `sha` it half-replaced. The two fields are mutually
-    exclusive by construction -- the owners return either an id they proved is
-    readable here or a failure with no id beside it -- and `is_frozen` is what
-    a caller asks rather than truth-testing the SHA, since a repository that
-    answered with nothing at all is a failure to establish an end of the diff,
-    not an end that happens to be empty.
+    cannot carry a `sha` it half-replaced. `is_frozen` is what a caller asks
+    rather than truth-testing the SHA, since a repository that answered with
+    nothing at all is a failure to establish an end of the diff, not an end
+    that happens to be empty -- and since an id can arrive BESIDE a failure.
+
+    That pairing is deliberate and is the whole reason the two fields are not
+    mutually exclusive: an end this owner LEARNED and could not prove is still
+    the only record of which commit the attempt was about. Nothing measures
+    against it, and the caller that records it does so precisely so the retry
+    asks for that exact object rather than for whatever the branch has moved
+    to since. What `is_frozen` licenses is unchanged either way: only an id
+    with no failure beside it is an end of a diff.
     """
 
     sha: str = ""

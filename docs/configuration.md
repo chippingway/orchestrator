@@ -109,7 +109,13 @@ examples.
 - `DECOMPOSE` — default `on`. enable the `decomposing` stage; `off` reverts to the legacy
   "no label → `workflow:implementing`" pickup, and sends an issue already sitting on `workflow:decomposing` the same
   way through that stage's own handler (once any half-finished split above it is settled) rather than spawning
-  another decomposer. What it does not gate is the two operator-applied conversation labels: `question` and
+  another decomposer. It also gates the **late size gate** below: with the switch off a clean committed candidate is
+  published unmeasured — pushed from the checkout as it stands, with no reading taken. What the switch decides in
+  both directions is what
+  ENTERS a decomposition, never what is already in one — a live late generation is adjudicated, cancelled, cleaned up,
+  and restarted with the switch either way, and a candidate this issue already has a recorded generation for goes on
+  being measured, because turning the switch off must not publish work nobody adjudicated. What it does not gate at
+  all is the two operator-applied conversation labels: `question` and
   `discussion` still run on the decomposer's spec with `DECOMPOSE=off`, which is why that spec is validated either
   way
 - `CODEX_BIN` — default `codex`. executable launched when a role's first token is `codex`; override only if `codex` is
@@ -186,7 +192,11 @@ examples.
   comparison is **strictly greater than**: a candidate landing exactly on the configured value publishes the way it
   always has, and only one past it is oversized. Positive integer, validated at import like the parallelism caps —
   `0` or a negative would call every candidate oversized. Global on purpose; a per-repository override waits on
-  telemetry that shows repository skew
+  telemetry that shows repository skew. Where it is spent is the one seam every clean committed candidate publishes
+  through: a candidate at or below it pushes and opens its pull request as always, one past it is held unpublished
+  and routed to `workflow:decomposing` for adjudication, and one that could not be measured parks rather than
+  publishing; the seam is the implementing stage's own, in
+  [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#_handle_implementing-label-workflowimplementing)
 - `ORCHESTRATOR_BASE_BRANCH` — default `main`. base branch of the orchestrator's own repo, used by the self-update
   path
 - `SQUASH_ON_APPROVAL` — default `on`. after the reviewer emits `VERDICT: APPROVED`, squash the dev's commits on the

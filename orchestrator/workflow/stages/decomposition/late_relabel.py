@@ -36,6 +36,13 @@ cancellation, which records what was owed; coercing it through a label or a
 switch would leave the plan-PR hold, the frozen commit, and the external
 ledgers behind with nothing on the issue pointing at them.
 
+The third question this owner answers is the opposite one, and it is what
+keeps a settled generation from being decomposed a second time: a revision
+that came back at or below the ceiling has had its size question ANSWERED,
+so the label it is still wearing names no work left to do. That issue is
+handed back to publication rather than to the decomposer, which would
+otherwise re-plan an implementation that is already written.
+
 What counts as in-flight is deliberately wider than "oversized". A read this
 generation still owes is a question as open as the size one, and it is the
 one an undersized revision leaves behind: the candidate no longer trips the
@@ -115,6 +122,32 @@ def _refuses_disabled_route(state: PinnedState) -> bool:
     the legacy route publishes exactly that.
     """
     return _adjudicating(state)
+
+
+def _settles_to_implementing(state: PinnedState) -> bool:
+    """Whether this issue's size question is answered and small.
+
+    The one record that wears `workflow:decomposing` with nothing left to
+    decompose. A developer revision a human's guidance bought comes back
+    re-frozen and re-measured, and a candidate that now lands at or below the
+    ceiling has had its question ANSWERED -- there is no verdict to earn, no
+    children to create, and nothing for the late coordinator to do. Handing it
+    to the initial decomposer instead would decompose an implementation that
+    is already written, which is the one thing the whole gate exists to keep
+    from happening a second time.
+
+    Read off the measurement rather than off the label or the phase, because
+    that is the only field that says the question was asked and answered: a
+    restart's fresh cycle carries an identity and no candidate at all, and it
+    IS waiting to be decomposed. A cancelled cycle is the dispatcher's ending
+    to run and is not settled by anything here.
+    """
+    generation = _late_state.read_late_generation(state)
+    if not generation.is_present or generation.cancelled:
+        return False
+    if not generation.candidate_sha or generation.additions is None:
+        return False
+    return not generation.is_oversized
 
 
 def _restore_decomposing_label(

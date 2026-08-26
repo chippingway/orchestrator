@@ -180,9 +180,11 @@ The late size gate preserves a superseded candidate under
   fixed.
 - **The token needs to write and read it.** The same personal access token that pushes issue branches creates,
   fetches, and deletes these refs. It needs no *additional* scope, but a ruleset or a token permission that permits
-  `refs/heads/orchestrator/*` and nothing else will refuse them. Prove it before enabling the gate:
-  [`configuration/snapshot-capability-check.md`](configuration/snapshot-capability-check.md) is the
-  disposable-repository runbook, and a failure there blocks rollout rather than being answered by weakening a rule.
+  `refs/heads/orchestrator/*` and nothing else will refuse them. The gate that reaches them is live and on by default
+  (`DECOMPOSE=on`), so prove this on a disposable repository before the first oversized candidate is split rather
+  than after: [`configuration/snapshot-capability-check.md`](configuration/snapshot-capability-check.md) is the
+  runbook, and a failure there blocks rollout rather than being answered by weakening a rule. Until it is proved, a
+  refused ref parks the issue with the committed work intact rather than losing it.
 - **Nothing is ever overwritten, and only our own content is deleted.** Every write is lease-pinned: a create leases
   the ref as absent, and a ref already carrying a different commit is reported and left alone. A delete is leased at
   the commit the split *preserved* rather than at whatever a fresh read observes — leasing against the reading would
@@ -453,11 +455,16 @@ The security posture:
   themselves wrote into `REPOS`. No tokens, no `ORCHESTRATOR_TOKEN_FILE`, no provider keys, no remote URLs — there is
   nothing secret-shaped to redact because nothing secret is included by construction.
 - **Write-containment is unchanged.** The orchestrator pushes only the *current* issue's branch from the current
-  worktree, via an explicit `<commit>:refs/heads/<branch>` refspec under the hardened git envelope — `HEAD` for a
-  caller publishing work it just made, and the exact validated SHA where the decision to push came from inspecting a
-  commit, as the discussion stage's plan publication does
-  ([`architecture.md#push-path`](architecture.md#push-path-gitauthentication_push_branch)). If a misled agent edits a
-  sibling
+  worktree, via an explicit refspec under the hardened git envelope. Wherever the decision to push came from
+  inspecting a commit — the discussion stage's plan publication, and every implementing publication, measured,
+  exempt, or resolved from the checkout when the size gate was switched off — it is that exact validated SHA, and a
+  checkout that cannot name the commit it is on publishes **nothing**: the plan publication reads an unread tip as
+  unpublishable and the implementing publication parks, rather than falling back to a refspec that would send
+  whatever the branch had become. Every other caller — the docs pass, the `validating` and `fixing` pushes, the
+  conflict publications, the squash rewrite, the base-sync rebases — never inspected a commit and uses the default
+  `HEAD:refs/heads/<branch>`, publishing what its own worktree currently is under a lease that refuses a remote which
+  moved ([`architecture.md#push-path`](architecture.md#push-path-gitauthentication_push_branch)). If a misled
+  agent edits a sibling
   checkout, nothing the orchestrator does publishes it — it surfaces as a dirty foreign tree, never as a PR. The
   block's framing also states every listed path is read-only.
 - **Prompt-injection blast radius.** Untrusted issue / comment text could now point an agent at a named sibling path,

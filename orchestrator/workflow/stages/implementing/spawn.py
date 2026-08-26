@@ -9,10 +9,16 @@ timeout recovery); only an unparked one is allowed to spawn.
 An unparked tick still has a shortcut before the agent: a worktree that already
 carries commits is a previous run whose publication was interrupted, so the
 recovered result is synthesized and the commits are pushed rather than
-implemented again. The one issue that is not true of is one a read-only
-relabel just let through -- a discussion may be held on the branch its PR is
-open against, so the commits there predate this stage entirely, and the guard
-records the tip it certified for exactly this read. Then the retry budget
+implemented again. Neither road is taken on an issue that still owes a push
+for a commit the size gate approved: that commit is what the tick is about,
+so it publishes from a checkout standing on it and parks for the worktree
+otherwise -- because the ahead-of-base question the shortcut asks re-decides a
+settled one, and the spawn would buy a second developer run for an
+implementation that is already written. The one issue the shortcut is not
+true of is one a read-only relabel just let through
+-- a discussion may be held on the branch its PR is open against, so the
+commits there predate this stage entirely, and the guard records the tip it
+certified for exactly this read. Then the retry budget
 gates the spawn, and the agent spec is
 persisted BEFORE the run -- so a spawn that commits but returns no session id
 still leaves the durable role identity behind and a later `DEV_AGENT` flip
@@ -48,6 +54,7 @@ from orchestrator.workflow.engine import (
     usage as _usage,
 )
 from orchestrator.workflow.stages.implementing import (
+    disposition as _disposition,
     drift_preflight as _drift_preflight,
     models as _models,
     session as _session,
@@ -123,14 +130,26 @@ def _recovered_work_present(
     The baseline is spent as soon as it stops describing the branch: once the
     dev commits, HEAD moves off it and every later tick is judged the ordinary
     way again.
+
+    Which makes that a COMPARISON, and a comparison whose head could not be
+    read establishes nothing. `_head_sha` reports its own failure as "", so an
+    unread checkout arrives here differing from the certified tip exactly as a
+    checkout the dev has committed on does -- and read that way the baseline
+    is spent, the implementer is skipped, and the design's predecessor is
+    republished as the work the discussion just agreed to. So a baseline
+    stands until something shows the branch has moved off it. The road with no
+    baseline is untouched, and deliberately: there the commits ARE a previous
+    run's whatever the probe says, and refusing them would buy a second
+    developer over an implementation the first one already finished.
     """
     if not _worktree_creation._has_new_commits(spec, worktree):
         return False
     baseline = state.get(_state._READ_ONLY_BASELINE_SHA)
-    if baseline and str(baseline) == before_sha:
+    if not baseline:
+        return True
+    if not before_sha or str(baseline) == before_sha:
         return False
-    if baseline:
-        state.set(_state._READ_ONLY_BASELINE_SHA, None)
+    state.set(_state._READ_ONLY_BASELINE_SHA, None)
     return True
 
 
@@ -160,7 +179,25 @@ def _ensure_dev_worktree(
 def _prepare_active_dev_run(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
 ) -> Optional[_models._PreparedDevRun]:
+    """Run or recover one unparked dev tick, once the checkout can be trusted.
+
+    The size gate's own recovery comes first, and it is here rather than in
+    the preflight because it is a question about the RESTORED checkout. An
+    approval this issue has not published yet names a commit, and that commit
+    is the whole of what the tick is about: it publishes from the checkout
+    standing on it, and parks for the worktree where nothing here can show it.
+
+    Neither of the two roads below may be taken on one. The shortcut asks
+    whether the branch is ahead of base, which answers "nothing to publish"
+    for a base that has since absorbed the commit and "fresh candidate" for
+    one that has not -- re-deciding a settled question either way -- and the
+    spawn would pay for a second developer over an implementation the first
+    one already finished.
+    """
     worktree = _ensure_dev_worktree(spec, issue, state)
+    if _disposition._holds_approved_commit(gh, spec, issue, state, worktree):
+        gh.write_pinned_state(issue, state)
+        return None
     before_sha = _verification_probes._head_sha(worktree)
     if _recovered_work_present(spec, state, worktree, before_sha):
         log.info(

@@ -54,13 +54,17 @@ file is the durable record.
 - `review_verdict` — `_handle_validating` after `_parse_review_verdict` reads the reviewer's last message; extras:
   `verdict` (`approved` / `changes_requested` / `unknown`), `review_round`, `pr_number`, `session_id`.
 - `park_awaiting_human` — every `_park_awaiting_human` (in `workflow/engine/guards.py`) call site, plus
-  `_on_question`, `_on_dirty_worktree`,
+  `_on_question`, `_on_dirty_worktree`, `_on_unreadable_worktree`,
   `_park_verify_failure`, and the question- and discussion-stage `_park_question` / `_park_discussion` funnels;
   extras: `stage` (read from the current
   workflow label, not passed in), `reason` (e.g. `agent_timeout`, `push_failed`, `failed_checks`, `agent_question`,
   `agent_session_limit` (a quota-exhausted agent message, parked retryably as `agent_silent`), `dirty_worktree`,
-  `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`, `question_*`,
-  `discussion_*`, ...).
+  `unreadable_worktree` (the implementing publication seam could not PROVE the tree clean — `git status` failed, or an
+  index entry is marked `assume-unchanged` / `skip-worktree` — which is a repository to look at rather than the file
+  list `dirty_worktree` carries), `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` /
+  `verify_head_changed`, `question_*`, `discussion_*`, ...). `dirty_worktree` carries `dirty_files` (how many paths
+  git named); `unreadable_worktree` carries none, since naming a count there would report a failed read as an empty
+  tree.
 - `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The
   `discussion` stage's plan publication emits the same event with `stage="discussion"` when it opens (never when it
   reuses) a plan PR; it carries no `retry_count`, having no retry budget of its own.
@@ -409,41 +413,70 @@ external resource), `late_cancellation` (the owner was observed closed), and `la
 completed cancellation). The kind is the family; `stage` is the bare stage tag the issue sat in, spelled by the
 emitter like every other event on this page.
 
-**What a stream carries today.** The gate is not wired into publication yet, so nothing reaches these families from
-a publication seam. Three producers exist. The first is the late adjudication under `workflow:decomposing`
+**What a stream carries.** Four producers write to these families. The first is the publication seam itself
+([`../workflow/roles.md`](../workflow/roles.md#the-size-gate-a-committed-candidate-passes)), which is where a
+candidate is measured at all: it writes one `late_measurement` per clean committed candidate measured under
+`stage: implementing` — small and oversized alike, since a threshold study needs the candidates that *passed* as
+much as the ones that did not — and a `late_failure` carrying `measurement_failed` for **every** reading it
+could not take: a base the remote would not name, a base or candidate object this host does not hold, a diff
+nothing could pin, and a recorded candidate a reaped worktree took with it. A candidate refused before either
+end of the diff was frozen has no generation of its own to be correlated by, so the identity is *minted* for the
+record — derived from what the pinned comment already says, so a reading that keeps failing reports the same
+attempt rather than a fresh cycle per tick — and deliberately not persisted, since a pinned cycle with no
+candidate under it freezes nothing and would be read as a live cycle by the guard that ends one when the issue
+closes. A candidate the gate skips emits nothing, and four do. Three are commits this workflow has already
+decided about, each named exactly and only by its own record: the one an adjudication accepted
+(`late_exempt_sha`), the one the gate itself approved and has still to push (`late_approved_sha`, brought back by
+a crash between the write that approves a candidate and the push it licenses), and the one this stage already
+pushed (`implementing_published_sha`, brought back by a relabel to `workflow:validating` that did not land). The
+fourth is a NEW candidate while `DECOMPOSE=off`. So a reading that never happened is not always a reading that
+failed: an issue whose branch is published, or whose commit a verdict settled, reaches the seam again and leaves
+no `late_measurement` behind, which is the shape a threshold study sees for a candidate that was counted once
+and acted on twice. The switch is not silence either — a candidate this issue already has a recorded generation
+for is still measured with it off, and so is a reconciliation answering a reading a previous tick recorded, so a
+repository running with the switch off still writes these families for the work already in the gate. What it
+stops is records for work that never enters it. The seam writes one more family, and rarely:
+a `late_cancellation` under `stage: implementing` where a close a poll latched reaches the retirement that runs
+ahead of a publication — asked before that write and again on the window it is held inside, so a close arriving
+as the record stops naming its cycle is reported rather than lost. It is the same family and the same shape the
+adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended. The remaining three
+arrive once an oversized candidate is under adjudication. The second is the late adjudication under
+`workflow:decomposing`
 ([`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)): it writes
-one `late_verdict` per completed adjudication, one `late_measurement` per candidate a developer revision re-froze and
-re-measured
-([`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen)), one
-`late_cancellation` per cycle whose owner the post-agent guard found closed after ANY completed run — a question and
-a timeout included ([`../workflow/roles.md`](../workflow/roles.md#the-owner-read-a-finished-run-has-to-pass)) — and a
-`late_failure` carrying `plan_pr_hold_failed` when the plan-PR hold cannot be reconciled or released on a still-open
-plan PR (a notice a human removed from one included, which starts no new agent under it), `measurement_failed` when a
-revised candidate could not be measured, `owner_read_failed` on every read that guard could not take, or
-`pr_reconcile_failed` when the pull request an accepted candidate would be handed on against could not be
-established. Two more arrive with the split transaction
+one `late_verdict` per completed adjudication, one `late_measurement` per candidate a developer revision
+re-froze and re-measured
+([`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen)) —
+under `stage: decomposing`, which is where a re-measurement happens, unlike the gate's own — one
+`late_cancellation` per cycle whose owner the post-agent guard found closed after ANY completed run — a question
+and a timeout included
+([`../workflow/roles.md`](../workflow/roles.md#the-owner-read-a-finished-run-has-to-pass)) — and a
+`late_failure` carrying `plan_pr_hold_failed` when the plan-PR hold cannot be reconciled or released on a
+still-open plan PR (a notice a human removed from one included, which starts no new agent under it),
+`measurement_failed` when a revised candidate could not be measured, `owner_read_failed` on every read that
+guard could not take, or `pr_reconcile_failed` when the pull request an accepted candidate would be handed on
+against could not be established. Two more arrive with the split transaction
 ([`../workflow/roles.md`](../workflow/roles.md#what-a-cleared-split-actually-does)): one `late_snapshot` per
 snapshot ref established (`retained`) or refused (`failed`), and one `late_cleanup` per superseded branch the
 transaction reconciled (`reconciled`) or could not (`failed`) — the latter beside a `late_failure` carrying
-`snapshot_failed` or `branch_cleanup_failed`, and `child_create_failed` or `supersession_failed` where those steps
-park instead. The second producer is the reclamation, and it has three entries into the same emission. One is the
-umbrella's terminal gate, where what the transaction could not reclaim is retried: it emits the same pair under
-`stage: umbrella` on every tick that finds every child resolved and something still owed — the
-branch unconditionally, and the snapshot ref once every recorded direct consumer is terminal, carrying
-`snapshot_delete_failed` where the remote refuses one. The same gate's *park* is the second, and it emits the same
-way: a child `rejected` or closed by hand ends every consumer exactly as all-resolved does, so an umbrella stopped
-for a human settles from the same scan on its way out. The third is the closed-owner cleanup sweep
+`snapshot_failed` or `branch_cleanup_failed`, and `child_create_failed` or `supersession_failed` where those
+steps park instead. The third producer is the reclamation, and it has three entries into the same emission. One
+is the umbrella's terminal gate, where what the transaction could not reclaim is retried: it emits the same pair
+under `stage: umbrella` on every tick that finds every child resolved and something still owed — the branch
+unconditionally, and the snapshot ref once every recorded direct consumer is terminal, carrying
+`snapshot_delete_failed` where the remote refuses one. The same gate's *park* is the second, and it emits the
+same way: a child `rejected` or closed by hand ends every consumer exactly as all-resolved does, so an umbrella
+stopped for a human settles from the same scan on its way out. The third is the closed-owner cleanup sweep
 ([`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)),
 which asks the same question of an issue a human closed mid-cycle and emits the same families under whichever of
-`stage: decomposing` / `stage: umbrella` that issue was closed on — the stage is read off the issue rather than named
-by the caller, so a record says where the reclamation happened rather than which owner drove it. It is also the
-second producer of `late_cancellation`, under the same bound: the record rides the write that first marks the cycle,
-so a close at a boundary no agent was running at is reported exactly once however many passes the cleanup behind it
-takes. And it adds one `late_cleanup` member no other producer emits — `resource: plan_pr`, for the held plan pull
-request a cancelled cycle closes — carrying `pr_reconcile_failed` where that pull request could not be released or
-closed.
+`stage: decomposing` / `stage: umbrella` that issue was closed on — the stage is read off the issue rather than
+named by the caller, so a record says where the reclamation happened rather than which owner drove it. It is
+also the second producer of `late_cancellation`, under the same bound: the record rides the write that first
+marks the cycle, so a close at a boundary no agent was running at is reported exactly once however many passes
+the cleanup behind it takes. And it adds one `late_cleanup` member no other producer emits — `resource:
+plan_pr`, for the held plan pull request a cancelled cycle closes — carrying `pr_reconcile_failed` where that
+pull request could not be released or closed.
 
-The third producer is the **restart** an operator authorizes by taking a settled cancellation's `rejected` back off
+The fourth producer is the **restart** an operator authorizes by taking a settled cancellation's `rejected` back off
 ([`../workflow/roles.md`](../workflow/roles.md#the-restart-that-ending-authorizes)), and it is the only one that
 writes `late_restart`. Two records per restart, one per half of its transaction. `restart_step: pending` rides the
 write that first makes the marker durable — so a restart held for ticks by a label GitHub keeps refusing is one

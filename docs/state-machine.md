@@ -157,11 +157,14 @@ the bare `/orchestrator continue` exclusion), the legacy-hash normalization, and
 
 ### `_handle_decomposing` (label `workflow:decomposing`)
 
-Runs the decomposer read-only in a scratch worktree and parses its fenced `orchestrator-manifest` block: `single`
-posts the collected-context comment and flips to `workflow:ready`, `split` creates children labeled
-`workflow:blocked` and leaves the parent on `workflow:blocked` or `workflow:umbrella`. Half-finished splits recover
-rather than re-spawn, a `DECOMPOSE` kill switch falls through to `workflow:implementing`, and commits or a dirty tree
-park with the worktree kept. Full flow: [`state-machine/delivery-stages.md`][decomposing].
+Two questions wear this label, and the tick asks which one it is first. An issue whose record carries a live late
+generation is not waiting to be decomposed — its implementation is committed and measured past the ceiling — so the
+whole tick belongs to the late coordinator and nothing below runs for it. Everything else is the initial
+decomposition: the decomposer runs read-only in a scratch worktree and its fenced `orchestrator-manifest` block is
+parsed, where `single` posts the collected-context comment and flips to `workflow:ready`, and `split` creates children
+labeled `workflow:blocked` and leaves the parent on `workflow:blocked` or `workflow:umbrella`. Half-finished splits
+recover rather than re-spawn, a `DECOMPOSE` kill switch falls through to `workflow:implementing`, and commits or a
+dirty tree park with the worktree kept. Full flow: [`state-machine/delivery-stages.md`][decomposing].
 
 ### `_handle_ready` (label `workflow:ready` → `workflow:implementing`)
 
@@ -192,10 +195,18 @@ Spawns (or resumes) the locked dev session in the per-issue worktree at
 `<WORKTREES_DIR>/<owner>__<name>/issue-<n>` on branch `orchestrator/<owner>__<name>/issue-<n>`. Only a fresh spawn is
 gated by the 24h retry budget (`MAX_RETRIES_PER_DAY`, shared with decomposing) — an awaiting-human resume and a
 recovered worktree, which skips the agent entirely, are carry-over work rather than retries. New commits on a clean
-tree push the branch, open or reuse a PR, and set `workflow:validating`; a dirty tree or a no-commit reply parks. A
-`timed_out` run disposes on whether HEAD moved past `pre_implement_sha`, and `interrupted` or a mid-run `paused`
-returns without writing pinned state. The external-merge short-circuit, the `/orchestrator continue` retry, and the
-plan-PR question the merge terminal is reached past are in [`state-machine/delivery-stages.md`][implementing].
+tree are measured by the late size gate and then push the branch, open or reuse a PR, and set `workflow:validating`;
+a candidate strictly past `MAX_ADDED_LINES` is held unpublished and routed to `workflow:decomposing` instead, and one
+that could not be measured parks rather than publishing. A dirty tree, a tree `git status` could not report on, or a
+no-commit reply parks; a tree that stops being provably clean between the measurement and the handoff refuses the
+publication or the handoff the same way a moved checkout does. A
+`timed_out` run disposes on whether the run left a commit — HEAD moved past `pre_implement_sha` AND the branch is
+ahead of `<remote>/<base>`, since a head that moved onto the base was written by nobody. The park it leaves freezes
+the branch out of the pre-tick base refresh, and the next tick's silent recovery asks that same pair, so a base a
+rebase fast-forwarded the checkout to is never published as a late-landing commit. `interrupted` or a mid-run
+`paused` returns without writing pinned state. The external-merge short-circuit, the `/orchestrator continue` retry,
+and the plan-PR question the merge terminal is reached past are in
+[`state-machine/delivery-stages.md`][implementing].
 
 ### `_handle_documenting` (label `workflow:documenting`)
 

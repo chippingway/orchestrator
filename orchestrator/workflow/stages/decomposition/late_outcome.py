@@ -110,6 +110,10 @@ PARK_HOLD_FAILED = "late_plan_pr_hold_failed"
 _CLAIM_PHASES = frozenset((LatePhase.OWNER_CHECK, *IN_FLIGHT_PHASES))
 PARK_INCOMPLETE = "late_generation_incomplete"
 PARK_WORKTREE_MISSING = "late_worktree_missing"
+# The recorded commits are HERE-or-not, which is a different answer
+# from a checkout that is gone: the worktree can be present and still
+# not hold the pair, on a host the branch never reached.
+PARK_EVIDENCE_MISSING = "late_evidence_missing"
 PARK_WORKTREE_MUTATED = "late_worktree_mutated"
 PARK_TIMEOUT = "late_adjudicator_timeout"
 PARK_UNPARSED = "late_manifest_invalid"
@@ -147,6 +151,7 @@ PARK_REVISION_UNANSWERED = "late_revision_unanswered"
 # evidence that this mode had said anything to retire.
 _SUPERSEDED_PARKS = frozenset((
     PARK_HOLD_FAILED,
+    PARK_EVIDENCE_MISSING,
     PARK_INCOMPLETE,
     PARK_WORKTREE_MISSING,
     PARK_WORKTREE_MUTATED,

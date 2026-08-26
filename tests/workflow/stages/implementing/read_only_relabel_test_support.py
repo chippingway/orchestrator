@@ -38,6 +38,7 @@ from tests.workflow.fixtures import (
 )
 
 PUSH_BRANCH = "_push_branch"
+COUNT_ADDED_LINES = "_count_added_lines"
 ANCHOR_PR_WORKTREE = "_anchor_pr_worktree"
 RUN_AGENT = "run_agent"
 ENSURE_PR_WORKTREE = "_ensure_pr_worktree"

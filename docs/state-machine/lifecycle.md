@@ -26,6 +26,60 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      else workflow:blocked
      manifest invalid / question / timeout ─► park HITL
 
+   Late size gate (every clean committed candidate, before it is published):
+     additions <= MAX_ADDED_LINES ─► publish as usual (push, PR,
+                                     workflow:validating); the generation is
+                                     dropped, its cycle recorded retired, and
+                                     the commit still owed a push recorded as
+                                     late_approved_sha until it lands
+     additions >  MAX_ADDED_LINES ─► NOTHING pushed, no PR opened;
+                                     label=workflow:decomposing, where the
+                                     late coordinator owns every later tick
+     candidate == late_exempt_sha ─► publish unmeasured (the one commit an
+                                     adjudication accepted, and only it)
+     candidate == late_approved_sha ► publish unmeasured, named against it:
+                                     the commit this gate approved and has
+                                     still to push, brought back by a crash
+                                     between the two
+     candidate == the published sha ► publish unmeasured: the branch is
+                                     already pushed and its PR already open,
+                                     and only the relabel this tick finishes
+                                     was ever owed
+     DECOMPOSE=off, no generation ─► publish unmeasured; a candidate already
+                                     recorded is measured with the switch
+                                     either way
+     no reading at all            ─► park late_measurement_failed with the
+                                     frozen pair kept -- including the id a
+                                     revision that would not peel resolved
+                                     to; a trusted bare `/orchestrator
+                                     continue` re-measures that exact pair
+                                     and spawns nothing. The park freezes the
+                                     branch out of base sync until answered
+     no commit ever named         ─► the same park, and its bare continue is
+                                     refused: no pair was frozen, so a retry
+                                     would take a FIRST reading of a head
+                                     nothing ties to this issue. Guidance
+                                     resumes the developer instead
+     late_approved_sha recorded   ─► before any spawn, the approved commit
+                                     owns the tick: published from a checkout
+                                     standing on it, or parked
+                                     late_candidate_moved where it is not --
+                                     never re-measured, re-decided, or
+                                     re-implemented. It is also a floor a
+                                     resumed run has to clear, the durable
+                                     record of what a push is about to carry,
+                                     and is spent ahead of the validating
+                                     relabel
+     checkout moved after the push ─► park late_candidate_moved: the branch
+                                     and its PR are right, the CHECKOUT is
+                                     not, and every stage past the handoff
+                                     rewrites what it stands on
+     tree dirtied around either    ─► the same park. Loose work can appear
+     boundary                        with HEAD never moving, so the commit
+                                     proofs pass while the checkout stops
+                                     being what was measured -- and nothing
+                                     past the handoff reads it again
+
    Validating fix loop:
      workflow:validating --(CHANGES_REQUESTED)──► label=workflow:fixing
        (pre-spawn flip; dev runs with stage="fixing")

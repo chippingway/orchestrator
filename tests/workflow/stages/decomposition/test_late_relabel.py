@@ -8,9 +8,9 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.workflow.stages.decomposition import (
+    handoff as _handoff,
     late_relabel as _late_relabel,
 )
-from orchestrator.workflow.stages.decomposition import run as _run
 from orchestrator.workflow.state import WorkflowLabel
 
 from tests.workflow.fixtures import _TEST_SPEC
@@ -44,8 +44,8 @@ class _LateLabelCase(unittest.TestCase):
     def _route(self, github, issue) -> bool:
         """Take the kill switch's bailout with `DECOMPOSE=off`."""
         with patch.object(config, DECOMPOSE, False):
-            with patch.object(_run._implementing, HANDLE_IMPLEMENTING):
-                return _run._route_disabled_to_implementing(
+            with patch.object(_handoff._implementing, HANDLE_IMPLEMENTING):
+                return _handoff._route_disabled_to_implementing(
                     github, _TEST_SPEC, issue, github.read_pinned_state(issue),
                 )
 

@@ -6,7 +6,8 @@ One authenticated fetch of `origin/<base>` per spec feeds every issue
 worktree that survived the previous tick, so the gates that decide whether a
 worktree may be touched at all belong together: an in-flight scheduler claim,
 a dispatcher hard-skip, the read-only conversation stages, an unreadable
-issue, and a dirty pre-PR tree each end the sync before any rewrite is
+issue, a record the `frozen` owner beside this one says holds the checkout
+still, and a dirty pre-PR tree each end the sync before any rewrite is
 attempted.
 What survives is routed by whether pinned state already carries a PR --
 `pre_pr` rebases the local branch nobody has pushed yet, while the PR-aware
@@ -22,6 +23,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.git import authentication as _authentication, commands as _commands
 from orchestrator.git.base_sync import (
+    frozen as _frozen,
     pr as _pr,
     pre_pr as _pre_pr,
     state as _state,
@@ -42,19 +44,13 @@ _READ_ONLY_STAGE_LABELS: tuple[str, ...] = (
     str(WorkflowLabel.QUESTION), str(WorkflowLabel.DISCUSSION),
 )
 
-# Every record that freezes a branch on its own, whatever the labels and flags
-# beside it say: the tip a read-only relabel handed over and has not spent, and
-# the two a discussion tick leaves while it is mid-flight. They are spelled here
-# the way every pinned key this module reads is -- what this gate pins down is
-# how the refresh reads state written by stages it never calls into, so a shared
-# constant would let a rename pass unnoticed on the side that has to keep
-# understanding it. The two discussion records do not depend on
-# `awaiting_human`: an opening round leaves the issue unparked by design, so the
-# park read below would never see them.
-_FROZEN_BY_KEYS: tuple[str, ...] = (
-    "read_only_baseline_sha",
-    "discussion_round_open",
-    "discussion_publishing_sha",
+# The stages that still have to ACT on a commit their own records name: the
+# size gate under `implementing`, and the adjudication that writes an
+# exemption a relabel has not carried out of `decomposing` yet. Past them the
+# issue belongs to review, where a pushed branch is kept in step with base by
+# the PR-aware sync rather than by holding it still.
+_DECIDED_STAGE_LABELS: tuple[str, ...] = (
+    str(WorkflowLabel.IMPLEMENTING), str(WorkflowLabel.DECOMPOSING),
 )
 
 
@@ -82,7 +78,10 @@ def _base_sync_issue(
 
 
 def _issue_skips_base_sync(
-    issue: Issue, issue_number: int, state: _pinned_state.PinnedState,
+    issue: Issue,
+    issue_number: int,
+    state: _pinned_state.PinnedState,
+    worktree: Path,
 ) -> bool:
     """Apply dispatcher hard-skips and the conversation stage gate.
 
@@ -111,6 +110,12 @@ def _issue_skips_base_sync(
     checkout therefore stays frozen until the guard's own write clears the
     park, from which tick on the branch syncs normally again.
 
+    The records that freeze a branch on their own, the two parks that freeze
+    one with no record behind them, and the two that freeze only while the
+    checkout still stands on the commit they name are all the `frozen`
+    owner's; what belongs here is where in the order they are asked, and --
+    for the last two -- whether the stage that has to act on that commit still
+    has the issue.
     A discussion round or publication left in flight freezes the branch on the
     same terms and without any park at all. Those records are written before
     the thing they describe, so a tick that died mid-round leaves one standing
@@ -127,6 +132,10 @@ def _issue_skips_base_sync(
     publication was interrupted and push them without an agent ever running.
     The baseline is retired the moment there is committed work to publish, so
     this holds for the ticks the dev spends answering rather than building.
+
+    The accepted commit is asked LAST, because it is the only gate here that
+    costs a read of the checkout: an exemption on an issue some cheaper answer
+    already froze never pays for it.
     """
     skip_label = _labels.hard_skip_control_label(issue)
     if skip_label is not None:
@@ -136,12 +145,7 @@ def _issue_skips_base_sync(
             skip_label,
         )
         return True
-    held = [key for key in _FROZEN_BY_KEYS if state.get(key)]
-    if held:
-        log.debug(
-            "issue=#%d holds unspent read-only state (%s); skipping base sync",
-            issue_number, ", ".join(held),
-        )
+    if _state_holds_the_branch(issue_number, state):
         return True
     park_reason = state.get("park_reason") if state.get("awaiting_human") else None
     for stage_label in _READ_ONLY_STAGE_LABELS:
@@ -159,6 +163,72 @@ def _issue_skips_base_sync(
                 park_reason,
             )
             return True
+    return _stands_on_an_unhanded_commit(
+        issue, worktree, issue_number, state,
+    )
+
+
+def _stands_on_an_unhanded_commit(
+    issue: Issue,
+    worktree: Path,
+    issue_number: int,
+    state: _pinned_state.PinnedState,
+) -> bool:
+    """Whether a commit this issue still owes a step holds its branch still.
+
+    The records that name a COMMIT rather than a step are the `frozen`
+    owner's, and so is the reading that asks the checkout for one. What
+    belongs here is the half that owner cannot ask: whether the stage which
+    has to act on the commit still has the issue.
+
+    Neither of those records is ended by a write -- an exemption is never
+    cleared at all, and a publication record is overwritten rather than spent
+    -- so on their own they take a branch out of the base refresh for the rest
+    of its issue's life. Past the handoff that is exactly wrong: the commit is
+    on the remote with a pull request over it, and keeping that in step with
+    base is the PR-aware sync's own job, which is the only route that can move
+    it without stranding the reviewer's SHA. So the freeze lasts as long as
+    the stage that reads these records does -- the gate that must not
+    re-measure an accepted commit, and the handoff that has to find the pushed
+    one where it left it when its relabel did not land -- and ends with the
+    label that hands the issue on.
+    """
+    if not any(
+        _labels.issue_has_label(issue, stage_label)
+        for stage_label in _DECIDED_STAGE_LABELS
+    ):
+        return False
+    return _frozen._stands_on_a_decided_commit(worktree, issue_number, state)
+
+
+def _state_holds_the_branch(
+    issue_number: int, state: _pinned_state.PinnedState,
+) -> bool:
+    """Whether the pinned comment alone holds this branch still.
+
+    The answers that cost no read of the checkout, together because they are
+    the same kind of answer: an unspent record some stage wrote before the
+    thing it describes, and the two parks that are waiting on this branch's
+    own commit. Those are parks rather than records because neither can leave
+    one -- a size refusal that came before any commit could be named has none
+    to write, and a timeout's watermark names the tip the run started at
+    rather than anything it produced -- and a branch rebased under either
+    leaves its recovery with nothing it can be answered from.
+    """
+    held = _frozen._held_records(state)
+    if held:
+        log.debug(
+            "issue=#%d holds unspent read-only state (%s); skipping base sync",
+            issue_number, ", ".join(held),
+        )
+        return True
+    if _frozen._awaits_a_commit_of_its_own(state):
+        log.debug(
+            "issue=#%d is parked on %r, which is waiting on a commit of this "
+            "branch's own; skipping base sync until it is answered",
+            issue_number, state.get("park_reason"),
+        )
+        return True
     return False
 
 
@@ -197,7 +267,7 @@ def _sync_worktree_with_base(
         return
 
     state = gh.read_pinned_state(issue)
-    if _issue_skips_base_sync(issue, issue_number, state):
+    if _issue_skips_base_sync(issue, issue_number, state, worktree):
         return
 
     pr_number = state.get("pr_number")

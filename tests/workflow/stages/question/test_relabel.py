@@ -41,6 +41,9 @@ PARK_QUESTION_UNSAFE_RELABEL = "question_unsafe_relabel"
 # question park records no tip to match -- but it has to be READABLE: a guard
 # that cannot see where the tree is may not vouch for it.
 RESET_CHECKOUT_HEAD = "head-after-the-operator-reset"
+# Where the fresh dev run leaves the checkout: a head that has not moved since
+# the run began is a run that committed nothing, whatever the branch carries.
+IMPLEMENTED_HEAD = "head-the-fresh-dev-run-committed"
 
 BRANCH_HAS_UNPUSHED_COMMITS = "_branch_has_unpushed_commits"
 CLEANUP_QUESTION_WORKTREE = "_cleanup_question_worktree"
@@ -234,7 +237,9 @@ class QuestionRelabelToImplementingTest(
                 # branch sees clean -> agent spawns, and (3) the
                 # post-agent commit check -> push path.
                 has_new_commits=[False, False, True],
-                head_shas=(RESET_CHECKOUT_HEAD,) * 2,
+                head_shas=(
+                    RESET_CHECKOUT_HEAD, RESET_CHECKOUT_HEAD, IMPLEMENTED_HEAD,
+                ),
                 push_branch=True,
             )
 

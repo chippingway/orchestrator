@@ -103,6 +103,7 @@ class _StateKeys:
     resources: str = "late_resources"
     owner_check_pending: str = "late_owner_check_pending"
     exempt_sha: str = "late_exempt_sha"
+    approved_sha: str = "late_approved_sha"
     retry_count: str = "retry_count"
     retry_window: str = "retry_window_start"
     agent_runs: str = "issue_agent_runs"

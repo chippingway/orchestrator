@@ -28,8 +28,12 @@ this path:
    implementer; split work creates child issues, uses `workflow:blocked` for dependency waits, and can leave a
    no-implementation parent on `workflow:umbrella`. With `DECOMPOSE=off`, pickup starts at
    `workflow:implementing` instead.
-2. `workflow:implementing` — the dev agent produces commits in an isolated git worktree; the orchestrator pushes the
-   branch and opens the PR.
+2. `workflow:implementing` — the dev agent produces commits in an isolated git worktree; the orchestrator measures
+   what they add against `MAX_ADDED_LINES` and then pushes the branch and opens the PR. A candidate past that ceiling
+   is held unpublished and sent back to `workflow:decomposing`, where it is adjudicated as one change or split into
+   children that reuse the work already committed. With `DECOMPOSE=off` a *new* candidate skips that measurement and
+   publishes as it always did — but one already recorded goes on being measured and adjudicated, so flipping the
+   switch never publishes work nobody looked at.
 3. `workflow:validating` — a fresh reviewer checks the diff. Requested changes enter `workflow:fixing` and return
    here after the dev agent addresses them.
 4. `workflow:documenting` — the dev agent makes the final documentation pass after reviewer approval.

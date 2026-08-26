@@ -425,9 +425,26 @@ The orchestrator (not the agent) pushes. The push is hardened against the agent-
   tunnel the token-bearing push through an attacker proxy or disable certificate verification. Env-var proxies
   (`https_proxy`) are operator-set and stay honored — only agent-writable config-file transport is rejected.
 - Pushes via an explicit refspec (no upstream stored): `HEAD:refs/heads/<branch>` by default, or
-  `<revision>:refs/heads/<branch>` when the caller names the commit it means. A caller that decided to push by
-  inspecting a commit — the discussion stage's plan publication — names it, because `HEAD` between the reading and
-  the push is not necessarily the commit that was checked.
+  `<revision>:refs/heads/<branch>` when the caller names the commit it means. Every caller that decided to push by
+  INSPECTING a commit names it, because `HEAD` between the reading and the push is not necessarily the commit that
+  was checked. Two do: the discussion stage's plan publication, which proves the branch carries the agreed plan and
+  nothing else; and the implementing stage's publication, which decides on one commit before the push and names the
+  push, the record it leaves, and the proof it takes afterwards against that same one — the commit the size gate
+  measured or the exemption accepted where there is one, and the commit the checkout is standing on where the gate
+  proved none (a new candidate while `DECOMPOSE=off`), since the switch keeps candidates out of the measurement
+  rather than making them unnameable. **Neither of those two falls back to `HEAD`**: a checkout that cannot name the
+  commit it is on is refused rather than published as it stands — the plan publication reads an unread tip as
+  unpublishable, and the implementing publication parks (`late_candidate_moved`), because a push named against
+  nothing sends whatever the branch has become by the time git runs it, records no receipt, and leaves the proofs
+  around it with no commit to compare against. Implementing additionally refuses the handoff when the checkout has
+  left that commit — before the push and again once the pull request is open, since every stage past it works from
+  the checkout rather than from the refspec.
+- The bare `HEAD` form belongs to the callers that never inspected a commit and publish whatever the worktree
+  currently is: the docs pass, the `validating` dev-fix and its transient-park recovery, the `fixing` push, the three
+  `conflicts` publications, the squash rewrite, and the two base-sync rebase publications. What those refuse is a
+  moved REMOTE rather than a moved local head — the rewrite, the conflict publications, and the base-sync rebases pin
+  `force_with_lease` to the SHA they observed before the rewrite, and the rest take the default lease `_push_branch`
+  reads for itself at push time.
 
 ## Observability
 

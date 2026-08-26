@@ -41,12 +41,19 @@ supersession behind them -- while `late_cleanup` owns what that leaves the
 remote holding, `late_cancellation` owns the irreversible ending an owner
 observed closed earns, `late_sweep` is the cleanup-only pass that revisits an
 owner a human closed mid-cycle, and `late_restart` owns the fresh cycle an
-operator authorizes by taking that ending's `rejected` back off. The kill
-switch and that sweep are the only things that dispatch into them -- an
-in-flight generation is what stops `DECOMPOSE=off` from routing an
-unadjudicated candidate to implementation -- and the seam that decides a
-candidate is oversized is a later change, so the four labels above are still
-the whole of what this package answers for.
+operator authorizes by taking that ending's `rejected` back off. What puts an
+issue in front of them is the size gate at the implementing package's
+publication seam, and what reaches them is the first question a `decomposing`
+tick asks: a record carrying a live generation belongs to the coordinator
+entire, and no step of the initial decomposition runs for it. Two answers
+short of one are routed rather than adjudicated -- a settled candidate the
+measurement put back under the ceiling goes to `workflow:implementing` for
+publication, and `DECOMPOSE=off` may not route an unadjudicated one there at
+all -- so the four labels above are still the whole of what this package
+answers for. `handoff` owns both of those routes, together because neither is
+a decomposition and both end the same way: the label moves and the
+implementing handler runs on the same tick, against an issue read back after
+the write rather than the stale object that write was made against.
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per label, and an eager binding here would
