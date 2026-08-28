@@ -46,7 +46,10 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
 - **Package-registry hygiene (lockfiles, registry pinning)** — in repo. Runtime deps (`PyGithub`, `psycopg[binary]`)
   are declared in [`../pyproject.toml`](../pyproject.toml); exact versions are pinned in [`../uv.lock`](../uv.lock); CI
   installs via `uv sync --locked`
-  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). Dependabot covers the `uv`
+  ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). The one install CI makes
+  outside that lock is the wheel smoke check, whose throwaway environment resolves the distribution's declared
+  dependencies fresh from PyPI, because what it exists to prove is what an installer of the wheel gets rather than
+  what the lockfile pins; it runs `agent-orchestrator --help` and is discarded with the job. Dependabot covers the `uv`
   and `github-actions` ecosystems in [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every update PR
   it opens with `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a
   maintainer has to triage is one label filter. For routine version updates, `github-actions` uses its supported
@@ -286,10 +289,14 @@ separate mechanism from the required-status-check names above. See [CodeQL advan
 
 ### No CI publishing / deploys outside protected refs
 
-No package-publishing or deploy workflow exists in [`../.github/workflows/`](../.github/workflows/) today. The
-Scorecard workflow's `publish_results` is the one thing any run publishes, and it publishes only this repo's own score
-to the OpenSSF API, authenticated by OIDC rather than a secret and reachable from `main`, the weekly schedule, and
-`workflow_dispatch` alone. If a real publishing or deploy workflow is added:
+No package-publishing or deploy workflow exists in [`../.github/workflows/`](../.github/workflows/) today. CI does
+build a distribution on every push and pull request, but only to install the wheel and check that the console script
+launches from it: no step uploads that artifact, keeps it past the job, or holds a registry credential it could be
+pushed with
+([`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration)).
+The Scorecard workflow's `publish_results` is the one thing any run publishes, and it publishes only this repo's own
+score to the OpenSSF API, authenticated by OIDC rather than a secret and reachable from `main`, the weekly schedule,
+and `workflow_dispatch` alone. If a real publishing or deploy workflow is added:
 
 - Run it only on `push` to `main` (a protected branch) or on pushes of tags covered by a **protected tag ruleset**
   (`Settings → Rules → Rulesets → New tag ruleset`). Never on `pull_request` or `pull_request_target`, and never

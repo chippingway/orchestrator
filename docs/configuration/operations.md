@@ -35,7 +35,8 @@ explicitly under `[tool.hatch.build.targets.wheel]` for that reason — an entry
 not carry, or a runtime dependency the lockfile supplies while `[project.dependencies]` omits it, passes every other
 step and fails for the first person to install the distribution. `--no-project` and `--isolated` are what keep the
 answer honest: neither the project environment nor the lockfile is on the path the script imports from, so what
-answers `--help` is the wheel's own contents beside the dependencies it declares for itself.
+answers `--help` is the wheel's own contents beside the dependencies it declares for itself — resolved fresh from
+PyPI, which is the reading an installer of this distribution gets rather than the one `uv.lock` settles.
 
 The job declares `timeout-minutes: 20`, generous next to the few minutes a green run takes and far under the six-hour
 default GitHub would otherwise cancel it at; the reasoning that ceiling serves is the same one the scans below are
