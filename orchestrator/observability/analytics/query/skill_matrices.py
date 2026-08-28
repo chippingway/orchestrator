@@ -51,7 +51,6 @@ from orchestrator.observability.analytics.query.skill_provenance import (
 from orchestrator.observability.analytics.query.skill_values import (
     SkillCell,
     SkillCohort,
-    leveled_skills,
     skill_cohort,
 )
 
@@ -128,8 +127,9 @@ class SkillMatrixCounts:
     ) -> None:
         cohort = skill_cohort(row)
         self.cohort_runs[cohort] = self.cohort_runs.get(cohort, 0) + 1
-        reported = leveled_skills(row_value(row, 3, None), row_value(row, 4, None))
-        for loaded in provenance.resolve(cohort[0], reported):
+        for loaded in provenance.resolve_row(
+            cohort[0], row_value(row, 3, None), row_value(row, 4, None),
+        ):
             key = SkillCell(*cohort, *loaded)
             self.skill_runs[key] = self.skill_runs.get(key, 0) + 1
 

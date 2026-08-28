@@ -109,16 +109,18 @@ two capped reads pass a non-positive `limit` through as "every cell". One aggreg
 `skill_trigger_rates.py` (the whole-cohort denominator, the key-presence probe, and the summed trigger count),
 `skill_matrices.py` (the window-scoped runs scan, the zero-padding over it, and the ranking the cap keeps the top
 of), and `skill_adoption.py` (the per-session ratio and the invocation / load / incidental diagnostics beside it).
-Beneath the matrix, `skill_provenance.py` owns the repository-scoped catalog scan the padding is drawn from, the
-narrower filtering that repo-level record takes, and the level lookup over it — an unclassified load is filed at the
-level that repository offers the name at, where it offers exactly one, and a name it never offered or offers at two
-levels stays `unknown`; the lookup is exposed as `repo_skill_provenance` / `SkillProvenance` so a second reader
-resolves provenance the same way. Beneath the last, `skill_sessions.py` owns the resume-then-session-then-row-id
-session key and the two scans' scopes — the window one picks which sessions count, the history one drops the start
-bound and the stage filter while keeping the end bound. Beneath both aggregates, `skill_values.py` owns the two JSONB
-coercions (the name array and the name-to-source-level map), the pairing that reads each name's level off the same row
-and defaults an uncovered name to `unknown`, the `(repo, role, backend)` cohort with its `"unknown"` bucketing, and
-the `(repo, agent_role, backend, skill, level)` cell both aggregates accumulate under.
+Beneath both of the last two, `skill_provenance.py` owns the repository-scoped catalog scan the padding is drawn
+from, the narrower filtering that repo-level record takes, and the level lookup over it — an unclassified name is
+filed at the level that repository offers it at, where it offers exactly one, and a name it never offered or offers
+at two levels stays `unknown`; `repo_skill_provenance` / `SkillProvenance` are what both aggregates resolve through,
+and `SkillProvenance.resolve_row` is the one step each takes over a name array and the level map beside it. Beneath
+the adoption aggregate, `skill_sessions.py` owns the resume-then-session-then-row-id session key and the two session
+scans' scopes — the window one picks which sessions count, the history one drops the start bound and the stage filter
+while keeping the end bound — and applies the fill to every category either scan gathers: the window loads, the
+incidental references, and a history row's offered set and loads alike. Beneath both aggregates, `skill_values.py`
+owns the two JSONB coercions (the name array and the name-to-source-level map), the pairing that reads each name's
+level off the same row and defaults an uncovered name to `unknown`, the `(repo, role, backend)` cohort with its
+`"unknown"` bucketing, and the `(repo, agent_role, backend, skill, level)` cell both aggregates accumulate under.
 
 Beneath the rollup and breakdown families, `cache_shares.py` owns the token-share SQL the cache / no-cache split is
 weighted by — spelled once for the rollup's `total_*` sums and once for the agent-run view's per-run columns — and
@@ -188,16 +190,27 @@ of the read path narrow a nullable duration the same way.
 - `get_skill_adoption` (base table) — per-`(skill, level)` × `(repo, agent_role, backend)` adoption aggregated by
   **logical**
   agent session rather than by raw agent run, so a resume chain that pulled `develop` across several ticks counts as one
-  adopting session, not several. Two `agent_exit` base-table scans combine in Python. The first applies the full
+  adopting session, not several. Three base-table scans combine in Python. The first applies the full
   reporting-window filters and selects the *active* sessions plus the window-scoped diagnostics; the second reads each
   active session's evidence from every `agent_exit` row *before the window end*, deliberately dropping the window start
   and the stage filter (`WindowFilters.historical_scope`) so a load from a prior stage or from before the window stays
-  visible, while the retained `end` bound stops a later load from leaking backward. A session is keyed by
-  `resume_session_id`, then `session_id`, then the row's primary key (an ID-less row is its own session, never merged
-  into one anonymous bucket). Both scans read each row's `skill_levels` map beside its names, so an offer and a load
-  are matched by source level as well as by name and a session offered a repository's own `develop` is counted apart
-  from one offered a global skill of that name; a name no level map covers reads `unknown` on both sides, so a legacy
-  session's load still counts as adoption of what it was offered. `sessions` is the denominator — sessions in the
+  visible, while the retained `end` bound stops a later load from leaking backward. The third reads the repos'
+  `repo_skill_catalog` records under `WindowFilters.catalog_scope` (date and repo only — an issue or stage pushed onto
+  a repository-level record would drop every row), and the two `agent_exit` scans resolve against it.
+  A session is keyed by `resume_session_id`, then `session_id`, then the row's primary key (an ID-less row is its own
+  session, never merged into one anonymous bucket). Both session scans read each row's `skill_levels` map beside its
+  names, so an offer and a load are matched by source level as well as by name and a session offered a repository's
+  own `develop` is counted apart from one offered a global skill of that name. A name no level map covers is filled
+  from the catalog scan (`skill_provenance.py`): the level the row's repository offers that name at, where it offers
+  exactly one, so a claude session's unclassified offer and load land in the same cell a codex session's classified
+  ones do (`develop` / `project` reading 3 of 26 sessions rather than that cell beside a `develop` / `unknown` one).
+  A name the catalog never offered, or one it offers at two levels, stays `unknown` on both sides — so a legacy
+  session's load still counts as adoption of what it was offered — and a level the row itself recorded is never
+  overwritten. The fill is applied to all three evidence categories alike (window loads, incidental references, and
+  the historical availability and loads), since filling one and not another would strand a session outside its own
+  denominator; it is a read-side resolution, so a past window's rows correct themselves the next time the page is
+  drawn and no record is rewritten.
+  `sessions` is the denominator — sessions in the
   cohort with the skill available (its
   `skills_available` listed it, or a legacy load with the `skills_available` key absent implied it — an explicit empty
   set does not) — and `adopted` counts the sessions that loaded it, once per session, with a derived `adoption_rate`.
@@ -209,8 +222,8 @@ of the read path narrow a nullable duration the same way.
   `invocations` DESC, then a stable `(repo, agent_role, backend, skill, level)` tiebreak, and the list is capped at
   `limit`
   (default `SKILL_ADOPTION_ROW_LIMIT` = 100; a non-positive `limit` disables the cap). The agent-exit event-filter
-  short-circuit (no scans at all), NULL `"unknown"` bucketing, and `extras JSONB` / no-DDL / `TRACK_SKILL_TRIGGERS`-off
-  caveats match `get_skill_trigger_matrix`.
+  short-circuit (no scans at all, the catalog one included), NULL `"unknown"` bucketing, and `extras JSONB` / no-DDL /
+  `TRACK_SKILL_TRIGGERS`-off caveats match `get_skill_trigger_matrix`.
 - `get_issues` (base table) — date / repo-bounded one-row-per-`(repo, issue)` overview: event count, first / last
   activity, latest non-null stage, agent-exit count, cost / token totals, `max_review_round`, `failed_agent_runs`,
   `max_retry_count`. Bounded by `limit` and ordered by `sort_by` (`"last_seen"` default, `"cost"` orders by
@@ -578,17 +591,21 @@ either wave surfaces as one `st.error` + `st.stop`.
    definition shadows another: "Project-level skills · defined in the repository", "User-level skills · installed for
    the operator", and "Harness-level skills · built into the CLI", each rendering the same sortable table over its own
    `level` rows. A fourth section ("Unclassified skills · no source level recorded") is drawn only when the window
-   carries a cell no record classified — a claude run's load, whose stream names no source directory — so such a cell
-   is reported rather than dropped by the split. A named level the window has no cell of renders a short line saying
+   carries a cell neither the record nor the repository's catalog classified — a claude run's load of a name the repo
+   never offered, or offers at two levels — so such a cell is reported rather than dropped by the split. A cell whose
+   blank level the catalog does settle lands in that level's section instead, which is what keeps a claude cohort's
+   sessions inside the "Project-level skills" table rather than in this one. A named level the window has no cell of
+   renders a short line saying
    only that (`No user-level skill was recorded in this window.`), never the switch-naming notice, since a sibling
    section's rows already prove tracking is on.
    The table each section draws (`_skill_adoption_html` over `get_skill_adoption`) renders one row per `(repo,
    agent_role, backend, skill, level)` read-model cell with columns Repo / Role / Backend / Skill / Level / Sessions /
    Sessions using skill / Adoption rate / Invocation loads / Incidental references. `Level` is the source level the
-   skill was defined at (`project` / `user` / `harness`, or `unknown` where no record classified it) and is what
-   decides the section a row lands in, so two rows carrying the same four names ahead of it are legible as the two
-   definitions they are — a repository's own `develop` beside a same-named global one, or the `unknown`-level loads of
-   a claude run (whose stream names no source directory) beside the catalog's `project` cell for that name. The table
+   skill was defined at (`project` / `user` / `harness`, or `unknown` where neither the record nor the repository's
+   catalog classified it) and is what decides the section a row lands in, so two rows carrying the same four names
+   ahead of it are legible as the two definitions they are — a repository's own `develop` beside a same-named global
+   one. A claude session, whose stream names no source directory, does not add a third such row: its unclassified
+   offers and loads are filled from the catalog and merge into the cell for the definition they came from. The table
    counts skill use by **logical agent session**, not by raw run: `Sessions` is how many sessions in the cohort had
    the skill available, `Sessions using skill` the subset that loaded it, and `Adoption rate` their share
    (`adopted / sessions`, once per session). The two trailing columns are the window-scoped invocation diagnostics:

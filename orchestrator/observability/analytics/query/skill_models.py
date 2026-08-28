@@ -143,9 +143,11 @@ class SkillAdoptionRow:
     availability and load evidence from every `agent_exit` row before the
     window end (ignoring the window start and the stage filter, so a load
     from a prior stage or from before the window still counts, while a
-    later load cannot leak backward). All the skill fields live in
-    `analytics_events.extras` JSONB, so the reader scans the base table
-    with no DDL and no rollup change, mirroring `SkillTriggerMatrixRow`.
+    later load cannot leak backward). A third scan reads each repository's
+    `repo_skill_catalog` records, which is what an unclassified level is
+    filled from. All the skill fields live in `analytics_events.extras`
+    JSONB, so the reader scans the base table with no DDL and no rollup
+    change, mirroring `SkillTriggerMatrixRow`.
 
     `sessions` is the denominator: how many logical sessions in the
     cohort had this skill *available* -- its `skills_available` set listed
@@ -169,9 +171,16 @@ class SkillAdoptionRow:
     loading it.
 
     `level` is the source level the skill was defined at, read from the
-    recorded name-to-level map and `unknown` where none was recorded, so a
-    session offered a repository's own `develop` and one offered a global
-    skill of that name are counted apart rather than averaged together.
+    recorded name-to-level map, so a session offered a repository's own
+    `develop` and one offered a global skill of that name are counted apart
+    rather than averaged together. A record that named no level -- one written
+    before levels existed, or a claude run whose stream names no source
+    directory -- is filed at the level that repository's `repo_skill_catalog`
+    offers the name at, where it offers exactly one, so an availability
+    report, a load, and an incidental reference of the same definition all
+    reach the same cell instead of splitting an `unknown` row off beside it. A
+    name the catalog never offered, or one it offers at two levels, stays
+    `unknown`, and a level the record itself carried is never overwritten.
 
     `agent_role` / `backend` bucket NULLs under `"unknown"` so a cohort is
     never silently dropped. The same `TRACK_SKILL_TRIGGERS`-off caveat as
