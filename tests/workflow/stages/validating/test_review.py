@@ -22,6 +22,9 @@ LABEL_DOCUMENTING = review_support.LABEL_DOCUMENTING
 LABEL_FIXING = review_support.LABEL_FIXING
 LABEL_IN_REVIEW = review_support.LABEL_IN_REVIEW
 LABEL_VALIDATING = review_support.LABEL_VALIDATING
+PROVIDER_OVERLOAD_MENTION = review_support.PROVIDER_OVERLOAD_MENTION
+PROVIDER_OVERLOAD_MESSAGE = review_support.PROVIDER_OVERLOAD_MESSAGE
+PROVIDER_UNAVAILABLE_PHRASE = review_support.PROVIDER_UNAVAILABLE_PHRASE
 STAGE_FIXING = review_support.STAGE_FIXING
 STAGE_VALIDATING = review_support.STAGE_VALIDATING
 REVIEW_APPROVED_MESSAGE = review_support.REVIEW_APPROVED_MESSAGE
@@ -258,23 +261,51 @@ class HandleValidatingReviewerFailureTest(
         self.assertTrue(failure_state.get(AWAITING_HUMAN))
         self.assertEqual(failure_state.get(PARK_REASON), "reviewer_failed")
 
-    def test_text_unknown_verdict_not_tagged_failed(self) -> None:
-        # When the reviewer DID emit text but no VERDICT line, the park
-        # is real adjudication and must NOT be silently retried -- a
-        # human needs to read the message. Park reason stays cleared.
+    def test_provider_refusal_parks_reviewer_failed(self) -> None:
+        # The provider refused to serve the turn, so the reviewer's output
+        # slot carries a NON-EMPTY message that is the server's words. Reading
+        # it as a verdict the reviewer merely forgot to mark would send an
+        # outage to manual adjudication; tag `reviewer_failed` so the next
+        # tick's transient-recovery branch re-spawns the reviewer, and say so
+        # in the comment rather than asking for a judgment nobody has to make.
         failure_github, failure_issue = self._seeded()
         self._run_validating(
             failure_github,
             failure_issue,
             run_agent=_agent(
-                last_message="not sure what to think",
-                exit_code=0,
+                last_message=PROVIDER_OVERLOAD_MESSAGE,
+                exit_code=1,
             ),
         )
 
         failure_state = failure_github.pinned_data(5)
         self.assertTrue(failure_state.get(AWAITING_HUMAN))
-        self.assertIsNone(failure_state.get(PARK_REASON))
+        self.assertEqual(failure_state.get(PARK_REASON), "reviewer_failed")
+        last_comment = failure_github.posted_comments[-1][1]
+        self.assertIn(PROVIDER_UNAVAILABLE_PHRASE, last_comment)
+        self.assertNotIn("manual adjudication needed", last_comment)
+
+    def test_text_unknown_verdict_not_tagged_failed(self) -> None:
+        # When the reviewer DID emit text but no VERDICT line, the park
+        # is real adjudication and must NOT be silently retried -- a
+        # human needs to read the message. Park reason stays cleared. A
+        # review that WROTE about a provider outage is such a message: the
+        # refusal is its subject, not its outcome.
+        for last_message in ("not sure what to think", PROVIDER_OVERLOAD_MENTION):
+            with self.subTest(last_message=last_message):
+                failure_github, failure_issue = self._seeded()
+                self._run_validating(
+                    failure_github,
+                    failure_issue,
+                    run_agent=_agent(
+                        last_message=last_message,
+                        exit_code=0,
+                    ),
+                )
+
+                failure_state = failure_github.pinned_data(5)
+                self.assertTrue(failure_state.get(AWAITING_HUMAN))
+                self.assertIsNone(failure_state.get(PARK_REASON))
 
     def test_empty_zero_exit_message_not_failed(self) -> None:
         # Defensive: empty last_message but exit_code == 0 is not a

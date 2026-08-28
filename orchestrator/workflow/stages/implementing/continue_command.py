@@ -116,9 +116,10 @@ def _handle_parked_continue_command(
     issue BEFORE generic user-content-drift / resume processing.
 
     `/orchestrator continue` is the recovery signal for a dev session that hit
-    a session/usage limit or a silent failure (`_park_session_limit` /
-    `_park_silent_failure` tag both `agent_silent`; an implementer timeout tags
-    `agent_timeout`). Counting the bare command as an ordinary comment routed
+    a session/usage limit, a transient provider refusal, or a silent failure
+    (`_park_session_limit` / `_park_provider_unavailable` /
+    `_park_silent_failure` tag all three `agent_silent`; an implementer timeout
+    tags `agent_timeout`). Counting the bare command as an ordinary comment routed
     it through "issue body/content changed" drift handling and resumed the dev
     for the wrong reason (issue #729); a bare continue no longer shifts
     `user_content_hash`, and this handler routes it deliberately instead.

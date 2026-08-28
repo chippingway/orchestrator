@@ -46,6 +46,13 @@ ROLE_DEVELOPER = fixtures.ROLE_DEVELOPER
 _PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
 _agent = fixtures._agent
 
+# The two final messages that are NOT the dev's own words, and the phrase each
+# one's park comment is recognized by.
+PROVIDER_OVERLOAD_MESSAGE = fixtures.PROVIDER_OVERLOAD_MESSAGE
+PROVIDER_UNAVAILABLE_PHRASE = fixtures.PROVIDER_UNAVAILABLE_PHRASE
+SESSION_LIMIT_MESSAGE = fixtures.SESSION_LIMIT_MESSAGE
+SESSION_LIMIT_PHRASE = fixtures.SESSION_LIMIT_PHRASE
+
 # The follow-up a recovered park posts is worded by a validating owner this
 # stage's parked branch calls, so its text and the assertion over it come from
 # the shared fixtures rather than from either stage's own support module.
@@ -161,6 +168,8 @@ WORKTREE_PATH = "_worktree_path"
 AUTHED_FETCH = "_authed_fetch"
 
 CONTINUE_COMMAND = "/orchestrator continue"
+# The rule `_build_fresh_respawn_preamble` closes its re-grounding block with.
+FRESH_SPAWN_DIVIDER = "----------------------------------------"
 DEV_SESSION_ID = "dev_session_id"
 CHECK_SUCCESS = "success"
 DEBOUNCE_CONFIG = "IN_REVIEW_DEBOUNCE_SECONDS"
@@ -200,6 +209,20 @@ FRESH_COMMENT_DELAY_MINUTES = 30
 HISTORICAL_COMMENT_ID = 500
 MISSING_ANCHOR_ID = 999999
 GUIDED_COMMENT_ID = 9001
+
+
+def dev_task_section(prompt: str) -> str:
+    """The half of a dev prompt that IS the task, below the fresh-spawn divider.
+
+    Everything above it is re-grounding context: the issue body and a verbatim
+    transcript of the thread, which legitimately records the operator typing
+    `/orchestrator continue`. Below it is what the dev is being asked to
+    implement, and a bare command reaching THAT is the defect -- so a test
+    about what the replay feeds the dev asks this rather than searching the
+    whole prompt. A plain resume carries no preamble, so the whole prompt is
+    the task and the split is a no-op.
+    """
+    return prompt.rsplit(FRESH_SPAWN_DIVIDER, 1)[-1]
 
 
 class _InjectCommentAfterCall:

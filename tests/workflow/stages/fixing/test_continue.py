@@ -25,6 +25,7 @@ CAROL = support.CAROL
 CHANGES_REQUESTED = support.CHANGES_REQUESTED
 CHECK_SUCCESS = support.CHECK_SUCCESS
 COMMAND_COMMENT_ID = support.COMMAND_COMMENT_ID
+CONTINUE_COMMAND = support.CONTINUE_COMMAND
 DAVE = support.DAVE
 DEV_AGENT = support.DEV_AGENT
 DEV_SESSION_ID = support.DEV_SESSION_ID
@@ -66,6 +67,7 @@ VALIDATING = support.VALIDATING
 _ContinueSeed = support._ContinueSeed
 _PatchedWorkflowMixin = support._PatchedWorkflowMixin
 _agent = support._agent
+dev_task_section = support.dev_task_section
 make_issue = support.make_issue
 posted_comment_contains = support.posted_comment_contains
 
@@ -178,6 +180,12 @@ class _ContinueCommandFixtureMixin(_PatchedWorkflowMixin):
 def _assert_replayed_prompt(test_case) -> None:
     for body in PRESERVED_BATCH_BODIES:
         test_case.assertIn(body, test_case._prompt)
+    # The bare command is a control signal, not work: the replay renders what
+    # it is handed as PR feedback to act on, so the command line must not
+    # reach the task the dev is given.
+    test_case.assertNotIn(
+        CONTINUE_COMMAND, dev_task_section(test_case._prompt),
+    )
     test_case.assertIsNone(
         test_case._call.kwargs.get(RESUME_SESSION_ID),
     )

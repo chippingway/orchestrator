@@ -2,17 +2,22 @@
 # SPDX-License-Identifier: Apache-2.0
 """Why a run that produced no publishable commit stopped, and what that costs.
 
-A commit-less run reaches exactly one of three parks, and the difference
+A commit-less run reaches exactly one of four parks, and the difference
 between them is not cosmetic: `park_reason` is the field
-`/orchestrator continue` keys off. A quota notice and an empty result are both
-tagged `agent_silent` -- retryable session failures an operator can continue
-after the reset -- and both advance the silent-park streak that eventually
-rotates a poisoned session to a fresh spawn. A real question is the opposite:
-it clears the reason and zeroes the streak, because it needs a human's words
-before anything should run again, and a stale transient reason left behind
-would let a later tick auto-recover over a question nobody answered.
+`/orchestrator continue` keys off. A quota notice, a provider that refused to
+serve the turn, and an empty result are all tagged `agent_silent` -- retryable
+session failures an operator can continue once the other side is back -- and
+all advance the silent-park streak that eventually rotates a poisoned session
+to a fresh spawn. What makes the first two worth separating from a real
+question is that both arrive as ORDINARY non-empty final messages: the text
+the CLI hands back is the refusal, not the agent's words, so the field a
+question is read off says nothing about the run. A real question is the
+opposite: it clears the reason and zeroes the streak, because it needs a
+human's words before anything should run again, and a stale transient reason
+left behind would let a later tick auto-recover over a question nobody
+answered.
 
-The dirty-worktree park is the fourth, and it exists to refuse a push rather
+The dirty-worktree park is the fifth, and it exists to refuse a push rather
 than to explain a failure: the branch would omit the uncommitted files, so the
 PR would not match what the agent produced. A tree nothing could READ is that
 same refusal with the other half missing -- `git status` failing, or an index
@@ -32,6 +37,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.agents import sessions as _agent_sessions
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -86,6 +92,39 @@ def _park_session_limit(
     )
     _mark_agent_silent_park(state)
     return "agent_session_limit"
+
+
+def _park_provider_unavailable(
+    gh: GitHubClient, issue: Issue, state: PinnedState, raw: str
+) -> str:
+    """Park a transient provider refusal as a RETRYABLE session failure.
+
+    An `API Error: 529 Overloaded` reaches this stage as an ordinary non-empty
+    final message, so without this branch it would be posted as "agent needs
+    your input" -- a question the operator cannot answer, whose reply then
+    RESUMES the same session and gets the same refusal back. The park is the
+    one a quota stop takes: `agent_silent`, so `/orchestrator continue` drops
+    the failed session, re-grounds a fresh one on the preserved fixing batch,
+    and skips the feedback debounce. The bookmarks that batch is rebuilt from
+    (`pending_fix_*`, `pending_fix_reviewer_comment_id`) are untouched here --
+    only a pushed fix retires them.
+
+    The comment names the command verbatim because a retry is the whole
+    recovery and any other reply would be read as implementation guidance.
+    Returns the distinct EVENT reason for observability; the pinned
+    `park_reason` stays `agent_silent`.
+    """
+    quoted = _session_read._as_blockquote(raw)
+    _comments._post_issue_comment(
+        gh, issue, state,
+        f"{config.HITL_MENTIONS} the model provider is temporarily "
+        "unavailable, so the agent stopped before doing any work. Nothing "
+        "here needs your judgment: reply with exactly `/orchestrator "
+        "continue` to retry this on a fresh session.\n\n"
+        f"{quoted}",
+    )
+    _mark_agent_silent_park(state)
+    return "agent_provider_unavailable"
 
 
 def _park_real_question(
@@ -147,6 +186,8 @@ def _on_question(
     raw = agent_result.last_message.strip()
     if raw and _session_read._is_session_limit_message(agent_result):
         park_reason = _park_session_limit(gh, issue, state, raw)
+    elif raw and _agent_sessions.is_transient_provider_failure(agent_result):
+        park_reason = _park_provider_unavailable(gh, issue, state, raw)
     elif raw:
         park_reason = _park_real_question(gh, issue, state, raw)
     else:

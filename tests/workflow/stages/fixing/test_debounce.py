@@ -176,6 +176,9 @@ class FixingDebounceAndAckTest(unittest.TestCase, _FixingFixtureMixin):
     def test_no_commit_without_ack_still_parks(self) -> None:
         # A no-commit reply WITHOUT the marker is a genuine question and
         # must still park awaiting human until a fresh human reply arrives.
+        # The reason stays cleared, which is what makes a bare
+        # `/orchestrator continue` refuse rather than retry over words
+        # nobody answered.
         old = datetime.now(timezone.utc) - timedelta(hours=1)
         comment = FakeComment(
             id=TRIGGER_ID,
@@ -199,6 +202,7 @@ class FixingDebounceAndAckTest(unittest.TestCase, _FixingFixtureMixin):
 
         self.assertNotIn((ISSUE, IN_REVIEW), gh.label_history)
         self.assertTrue(gh.pinned_data(ISSUE).get(AWAITING_HUMAN))
+        self.assertIsNone(gh.pinned_data(ISSUE).get(PARK_REASON))
 
     def test_interrupted_no_commit_resume_is_ignored(self) -> None:
         # A shutdown-killed (interrupted) resume that produced no commit
