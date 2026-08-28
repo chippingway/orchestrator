@@ -8,6 +8,7 @@ import unittest
 from orchestrator.workflow.late_split import records as _records
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split.models import LateGeneration, LateVerdict
+from orchestrator.workflow.state import WorkflowLabel
 
 from tests.workflow.late_split import generation_test_support as _support
 
@@ -28,6 +29,25 @@ _MEASURED_CASES = tuple(
 )
 _STRIPPED = _support.measured_generation(
     candidate_sha="", base_sha="", threshold=None, additions=None, phase=None,
+)
+_PUBLICATION = "publication"
+_PRE = "pre_publication"
+_POST = "post_publication"
+_SOURCE_STAGE = "source_stage"
+_PUBLISHED_SHA = "published_sha"
+_PUBLISHED_PR = "published_pr_number"
+_CONTEXT_FIELDS = (_SOURCE_STAGE, _PUBLISHED_PR, _PUBLISHED_SHA)
+# What a marked entry may not reach a sink saying: a context it can no longer
+# name, and one offered as text nothing looked up.
+_UNNAMEABLE = (
+    (_SOURCE_STAGE, None),
+    (_SOURCE_STAGE, str(WorkflowLabel.FIXING)),
+    (_SOURCE_STAGE, _PROSE),
+    (_PUBLISHED_PR, None),
+    (_PUBLISHED_PR, 0),
+    (_PUBLISHED_PR, "34"),
+    (_PUBLISHED_SHA, ""),
+    (_PUBLISHED_SHA, _PROSE),
 )
 
 
@@ -72,6 +92,7 @@ class BoundedRecordTest(unittest.TestCase):
                 "threshold": _support.THRESHOLD,
                 "additions": _support.ADDITIONS,
                 "phase": "adjudicating",
+                _PUBLICATION: _PRE,
             },
         )
 
@@ -114,6 +135,75 @@ class BoundedRecordTest(unittest.TestCase):
         self.assertEqual(payload["restart_step"], "pending")
         self.assertEqual(payload["restart_target"], _support.DECOMPOSING)
         self.assertEqual(payload["predecessor_cycle_id"], _PREDECESSOR)
+
+
+class PublicationRecordTest(unittest.TestCase):
+    """Which side of publication a record was entered on, and on what."""
+
+    def test_every_family_says_where_it_was_entered(self) -> None:
+        # The answer is correlation rather than one family's own detail: a
+        # cleanup reconciling a snapshot of an initial publication and one
+        # reconciling a pull request the remote already carries are the same
+        # family describing two different steps.
+        for event in _support.family_cases():
+            with self.subTest(family=str(event.family)):
+                self.assertEqual(_payload(event)[_PUBLICATION], _PRE)
+
+    def test_an_overflow_names_what_it_was_entered_on(self) -> None:
+        recorded = _payload(_MEASUREMENT, **_support.ENTERED_ON_PUBLICATION)
+        self.assertEqual(recorded[_PUBLICATION], _POST)
+        self.assertEqual(recorded[_SOURCE_STAGE], "in_review")
+        self.assertEqual(recorded[_PUBLISHED_PR], _support.PUBLISHED_PR_NUMBER)
+        self.assertEqual(recorded[_PUBLISHED_SHA], _support.PUBLISHED_SHA)
+
+    def test_the_source_stage_is_the_envelopes_tag(self) -> None:
+        # A filter compares it against the envelope's own `stage`, which every
+        # emitter on these sinks records as the bare tag under the label.
+        entered = {
+            **_support.ENTERED_ON_PUBLICATION,
+            _SOURCE_STAGE: WorkflowLabel.FIXING,
+        }
+        self.assertEqual(
+            _payload(_MEASUREMENT, **entered)[_SOURCE_STAGE], "fixing",
+        )
+
+    def test_context_travels_only_under_the_marker(self) -> None:
+        # A record that reports an initial publication may not also carry a
+        # publication's context, however a hand-edited comment got it there.
+        unmarked = {
+            **_support.ENTERED_ON_PUBLICATION, "post_publication": False,
+        }
+        for named, fields in (("nothing", {}), ("context", unmarked)):
+            with self.subTest(carrying=named):
+                recorded = _payload(_MEASUREMENT, **fields)
+
+                self.assertEqual(recorded[_PUBLICATION], _PRE)
+                self.assertFalse(set(recorded) & set(_CONTEXT_FIELDS))
+
+    def test_an_unnameable_publication_is_refused(self) -> None:
+        # None of the three can be recovered from anywhere else, so a marker
+        # standing over a missing one -- or over a stage nobody looked up, a
+        # pull request nobody can ask about, or a head that is not a commit --
+        # would reach both sinks as a publication with no publication in it.
+        for field, damaged in _UNNAMEABLE:
+            with self.subTest(field=field, damaged=damaged):
+                entered = {**_support.ENTERED_ON_PUBLICATION, field: damaged}
+                with self.assertRaises(_REFUSED):
+                    _payload(_MEASUREMENT, **entered)
+
+    def test_a_pull_requests_own_text_is_not_recorded(self) -> None:
+        # A record says WHICH pull request a candidate overflowed, never what
+        # that pull request says: the body held through an adjudication is
+        # free-form text a human and an agent both write into.
+        recorded = _payload(
+            _MEASUREMENT,
+            **_support.ENTERED_ON_PUBLICATION,
+            plan_pr_body=_PROSE,
+            scope=_PROSE,
+        )
+
+        self.assertLessEqual(set(recorded), set(_records.LATE_PAYLOAD_FIELDS))
+        self.assertNotIn(_PROSE, str(tuple(recorded.values())))
 
 
 class RefusedRecordTest(unittest.TestCase):

@@ -26,6 +26,22 @@ name is deliberately not among them -- the record names its kind and carries
 what tells two cleanups of two different children apart without saying which
 children they were.
 
+Which side of publication a generation was entered on is on every family's
+record, because every one of them describes a different step depending on the
+answer: a `late_cleanup` reconciling a snapshot of an initial publication and
+one reconciling a pull request the remote already carries are the same family
+telling two stories. The answer is projected onto a closed pair here rather
+than carried as the pinned flag, so both halves are spelled and an analysis
+groups on the field instead of on whether it is present. The context beside it
+travels only under the marker that claims it -- the stage the gate took the
+issue out of, the pull request the work already had, and the head it was left
+standing on -- so a record that says it was entered before publication cannot
+also carry a publication's context. What that context may be is bounded before
+it arrives: the stage is a workflow state written as the bare tag the envelope
+spells, the pull request an identity, and the head a whole object id. The
+pull request's own body is not any of them and is not here -- a record says
+which pull request overflowed, never what it says.
+
 `correlation_key` is the other half of the contract. Records are emitted
 before the step they describe is durable, so a crash can produce the same
 record twice; a consumer deduplicates on these fields rather than on delivery,
@@ -35,7 +51,8 @@ every field again identically, so `ts` is the only thing that can differ
 between one step's two emissions, and any other difference is a different step
 -- two splits of one candidate into two children and into seven, two questions
 asked under different categories, two restarts aimed at different states, two
-measurements against different bases. Listing the distinguishing fields by
+measurements against different bases, an initial publication and the overflow
+of a pull request that already exists. Listing the distinguishing fields by
 hand instead is what let pairs like those collide, because the list has to be
 remembered every time the payload grows.
 """
@@ -44,22 +61,47 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any, Optional
 
+from orchestrator.workflow import state as _workflow_state
 from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split import identity as _identity
 from orchestrator.workflow.late_split import validation as _validation
 from orchestrator.workflow.late_split.models import LateGeneration
 
+# The field both halves of that answer are written under, spelled once for
+# the contract that declares it and the builder that fills it.
+_PUBLICATION = "publication"
+
+
+class LatePublication(StrEnum):
+    """Which side of publication one generation was entered on.
+
+    A pair rather than a marker, because a record has to answer for both: the
+    gate a candidate meets before anything is published, and the one an
+    already-published pull request meets when a later commit takes its
+    cumulative diff past the ceiling. Both are late generations, and every
+    family's record means a different thing under each.
+    """
+
+    PRE = "pre_publication"
+    POST = "post_publication"
+
+
 # What a payload may carry. Correlation first -- the identities that join a
-# record to a pinned generation, a lineage, and the commits it froze -- then
-# the measurement it is analyzed by, then the fields one family adds. Nothing
-# outside this tuple is written, so widening the record is a deliberate edit
-# here rather than a keyword somebody passed.
+# record to a pinned generation, a lineage, and the commits it froze, and the
+# publication the generation was entered on -- then the measurement it is
+# analyzed by, then the fields one family adds. Nothing outside this tuple is
+# written, so widening the record is a deliberate edit here rather than a
+# keyword somebody passed.
 LATE_PAYLOAD_FIELDS = (
     "cycle_id",
     "generation",
     "root_issue",
     "lineage_depth",
     "phase",
+    _PUBLICATION,
+    "source_stage",
+    "published_pr_number",
+    "published_sha",
     "source_sha",
     "base_sha",
     "threshold",
@@ -125,12 +167,34 @@ def _correlation_of(generation: LateGeneration) -> dict[str, Any]:
         "root_issue": generation.root_issue,
         "lineage_depth": generation.lineage_depth,
         "phase": _name_of(generation.phase),
+        **_publication_of(generation),
         "source_sha": generation.candidate_sha or None,
         "base_sha": generation.base_sha or None,
         "threshold": generation.threshold,
         "additions": generation.additions,
         "restart_target": generation.restart_target,
         "predecessor_cycle_id": generation.restart_predecessor,
+    }
+
+
+def _publication_of(generation: LateGeneration) -> dict[str, Any]:
+    """Which side of publication this generation was entered on, and on what.
+
+    The context travels under the marker and only under it, so a record that
+    reports an initial publication cannot also carry the stage, the pull
+    request, and the head an overflow of an existing one would name. What the
+    marked half carries has already been proved by the gate beside this owner
+    -- a marker that cannot name all three is refused rather than recorded --
+    so the stage here is a workflow state and is written as the bare tag the
+    envelope's own `stage` is, which is what lets a filter compare them.
+    """
+    if not generation.post_publication:
+        return {_PUBLICATION: str(LatePublication.PRE)}
+    return {
+        _PUBLICATION: str(LatePublication.POST),
+        "source_stage": _workflow_state.stage_name(generation.source_stage),
+        "published_pr_number": generation.published_pr_number,
+        "published_sha": generation.published_sha,
     }
 
 
