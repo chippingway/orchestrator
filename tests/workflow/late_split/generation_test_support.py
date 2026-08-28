@@ -25,6 +25,7 @@ from orchestrator.workflow.late_split.models import (
     LateResourceState,
     LateVerdict,
 )
+from orchestrator.workflow.state import WorkflowLabel
 
 REPO = "geserdugarov/agent-orchestrator"
 # Where the analytics half of a dual emission lands, patched by every test
@@ -48,6 +49,11 @@ COMMENT_HASH = "d" * DIGEST_LENGTH
 COMMENT_WATERMARK_ID = 555
 PLAN_PR_NUMBER = 12
 PLAN_PR_BODY = "the plan PR body held while adjudication runs"
+# What a post-publication entry froze: the stage the gate took the issue out
+# of, the pull request the work already had, and the head it was left on.
+SOURCE_STAGE = WorkflowLabel.IN_REVIEW
+PUBLISHED_PR_NUMBER = 34
+PUBLISHED_SHA = "e" * SHA_LENGTH
 SCOPE = "the declared slice this generation owns"
 SNAPSHOT_REF = "refs/orchestrator/snapshot/9"
 CANCELLED_AT = "2026-08-21T10:00:00+00:00"
@@ -170,6 +176,10 @@ def full_generation() -> LateGeneration:
         comment_watermark_id=COMMENT_WATERMARK_ID,
         plan_pr_number=PLAN_PR_NUMBER,
         plan_pr_body=PLAN_PR_BODY,
+        post_publication=True,
+        source_stage=SOURCE_STAGE,
+        published_pr_number=PUBLISHED_PR_NUMBER,
+        published_sha=PUBLISHED_SHA,
         resources=(SNAPSHOT,),
         consumers=(21, 22),
         owner_check_pending=True,

@@ -33,6 +33,18 @@ and a depth at or past it (a hand-edited pinned comment included) reads as
 known at all is the same answer: it is `None` rather than 0, because a
 generation whose depth could not be read is not a root, and a damaged field on
 a lineage already at the bound must not read back as one free to split again.
+
+The publication provenance is additive inside an additive record, and the
+absence of it is the answer rather than a gap: a generation that says nothing
+about how it was entered was entered BEFORE the work was published, which is
+what every record written without the group describes, so no pinned comment
+has to be migrated to say it. What the group carries when it is there is what
+a pre-publication entry has no need of and a post-publication one could never
+re-derive -- the stage the gate took the issue out of, the pull request the
+work already has, and the head that pull request was left standing on. All
+three are frozen for the reason every other late field is: the branch moves,
+the label the gate replaced is gone, and a reconciliation that re-read either
+would act on whatever the issue has become since.
 """
 from __future__ import annotations
 
@@ -41,6 +53,7 @@ from enum import StrEnum
 from typing import Optional
 
 from orchestrator.workflow.late_split import formats as _formats
+from orchestrator.workflow.state import WorkflowLabel
 
 # How deep automatic splitting may go. The root issue of a lineage is depth 0,
 # so a generation may only split while its own depth is strictly below this:
@@ -213,6 +226,15 @@ class LateGeneration:
     It is durable because nothing else would bring the workflow back to that
     read -- a below-threshold revision and an issue parked for a human both
     stop the tick long before the guard would run again.
+
+    `post_publication`, and the `source_stage`, `published_pr_number`, and
+    `published_sha` beside it, are the only context saying a generation was
+    entered on work the remote already has. A record carrying none of them was
+    entered before publication, so a pinned comment written without the group
+    answers the question without having been touched.
+    `has_publication_context` is what a caller asks rather than the flag: the
+    three fields are read as fail-closed as every other, and a marker standing
+    alone would claim a pull request nothing could name.
     """
 
     cycle_id: int = 0
@@ -231,6 +253,10 @@ class LateGeneration:
     comment_watermark_id: Optional[int] = None
     plan_pr_number: Optional[int] = None
     plan_pr_body: Optional[str] = None
+    post_publication: bool = False
+    source_stage: Optional[WorkflowLabel] = None
+    published_pr_number: Optional[int] = None
+    published_sha: str = ""
     resources: tuple[LateResource, ...] = ()
     consumers: tuple[int, ...] = ()
     split_children: tuple[int, ...] = ()
@@ -290,6 +316,25 @@ class LateGeneration:
         return (
             self.opaque_resources is not None
             or self.opaque_consumers is not None
+        )
+
+    @property
+    def has_publication_context(self) -> bool:
+        """Whether a post-publication entry carries what it is reconciled by.
+
+        The flag is not that answer on its own. Every field beside it is read
+        fail-closed, so a hand-edited or older pinned comment can leave the
+        marker standing with the stage, the pull request, or the head it named
+        gone -- and none of the three can be recovered from anywhere else: the
+        label the adjudication runs under has replaced the one it came from by
+        the time anything asks, the pull request is not the plan PR beside it,
+        and the head is a commit the branch has already moved off. A group
+        that cannot say all three says nothing an entry is reconciled from.
+        """
+        if not self.post_publication:
+            return False
+        return all(
+            (self.source_stage, self.published_pr_number, self.published_sha),
         )
 
     def with_resource(self, resource: LateResource) -> LateGeneration:
@@ -354,6 +399,49 @@ class LateGeneration:
                     f"child is not an issue ({type(number).__name__})",
                 )
         return replace(self, split_children=tuple(numbers))
+
+    def with_publication(
+        self, *, stage: str, pr_number: int, published_sha: str,
+    ) -> LateGeneration:
+        """Return this record entered on work a publication already carried.
+
+        All three are proved here rather than left to the write, for the
+        reason the exemption is proved where it is recorded: the pinned write
+        drops what it cannot type, so a stage that is not a workflow state, a
+        pull request that is not an identity, or a head that is not a whole
+        object id would each leave the marker standing over a context nothing
+        could reconcile -- and the reader on the far side would report a
+        post-publication entry with no publication in it. A caller that cannot
+        name all three has an entry this domain must not record as one.
+
+        The stage is taken through the label vocabulary rather than kept as
+        whatever was passed, for the reason a restart target is: what it names
+        is the state a settled adjudication puts the issue back into, and a
+        string nobody looked up would reach a later tick wearing this domain's
+        word that the workflow has such a state.
+        """
+        if stage not in WorkflowLabel:
+            raise _formats.InvalidLateValue(
+                "source stage is not a workflow state "
+                f"({type(stage).__name__})",
+            )
+        if not _formats.whole_number(pr_number) or pr_number <= 0:
+            raise _formats.InvalidLateValue(
+                "published PR is not an identity "
+                f"({type(pr_number).__name__})",
+            )
+        if not _formats.is_hex_of(published_sha, _formats.COMMIT_LENGTHS):
+            raise _formats.InvalidLateValue(
+                "published head is not a commit "
+                f"({type(published_sha).__name__})",
+            )
+        return replace(
+            self,
+            post_publication=True,
+            source_stage=WorkflowLabel(stage),
+            published_pr_number=pr_number,
+            published_sha=published_sha,
+        )
 
     def at_phase(self, phase: LatePhase) -> LateGeneration:
         """Return this record standing at one reconciliation boundary.

@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import json
 import unittest
+from dataclasses import replace
 from types import MappingProxyType
 
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
+from orchestrator.workflow.state import WorkflowLabel
 
 from tests.workflow.late_split import generation_test_support as _support
 
@@ -27,6 +29,20 @@ _CANDIDATE_KEY = "late_candidate_sha"
 _BASE_KEY = "late_base_sha"
 _TITLE_HASH_KEY = "late_title_body_hash"
 _COMMENT_HASH_KEY = "late_comment_hash"
+_POST_PUBLICATION_KEY = "late_post_publication"
+_SOURCE_STAGE_KEY = "late_source_stage"
+_PUBLISHED_PR_KEY = "late_published_pr_number"
+_PUBLISHED_SHA_KEY = "late_published_sha"
+
+# The three the marker is only a publication with: each is read fail-closed,
+# so one of them gone leaves the flag standing over a context nothing could
+# reconcile.
+_NAMED_CONTEXT = (_SOURCE_STAGE_KEY, _PUBLISHED_PR_KEY, _PUBLISHED_SHA_KEY)
+
+# The whole group that says a generation was entered on published work. A
+# record carrying none of it was entered before publication, so the write
+# leaves every one of these off rather than spelling that state a second way.
+_PUBLICATION_KEYS = (_POST_PUBLICATION_KEY, *_NAMED_CONTEXT)
 
 # Hex of the wrong length for the field claiming it: an abbreviation no commit
 # this domain froze is spelled as, one character short of an object id, one
@@ -61,6 +77,10 @@ _NOT_LIVE_STATE = (
     ("late_comment_watermark_id", 0),
     ("late_plan_pr_number", -3),
     (_DEPTH_KEY, 9),
+    (_SOURCE_STAGE_KEY, "workflow:sharpening"),
+    (_PUBLISHED_PR_KEY, 0),
+    (_PUBLISHED_SHA_KEY, _ABBREVIATION),
+    (_PUBLISHED_SHA_KEY, "the head the reviewer is looking at"),
     ("late_restart_target", "workflow:done"),
     ("late_restart_cycle_id", 0),
     ("late_restart_predecessor", -2),
@@ -172,7 +192,10 @@ class FieldContractTest(unittest.TestCase):
     def test_only_the_literal_flag_is_set(self) -> None:
         # `bool("false")` is True, so reading a flag for its truthiness would
         # arm a cancellation, or a pending restart, that nobody wrote.
-        for key in ("late_cancelled", "late_restart_pending"):
+        flags = (
+            "late_cancelled", "late_restart_pending", _POST_PUBLICATION_KEY,
+        )
+        for key in flags:
             for damaged in ("false", "no", 0, [], 1):
                 with self.subTest(key=key, damaged=damaged):
                     self.assertEqual(
@@ -191,14 +214,71 @@ class FieldContractTest(unittest.TestCase):
                 )
 
 
+class PublicationProvenanceTest(unittest.TestCase):
+    """How a generation was entered, and what saying nothing about it means."""
+
+    def test_the_whole_context_survives_a_round_trip(self) -> None:
+        read_back = _support.read_state(_written(_support.full_generation()))
+        self.assertTrue(read_back.post_publication)
+        self.assertIs(read_back.source_stage, WorkflowLabel.IN_REVIEW)
+        self.assertEqual(
+            read_back.published_pr_number, _support.PUBLISHED_PR_NUMBER,
+        )
+        self.assertEqual(read_back.published_sha, _support.PUBLISHED_SHA)
+        self.assertTrue(read_back.has_publication_context)
+
+    def test_a_pre_publication_entry_adds_no_key(self) -> None:
+        # One state, one spelling: a generation entered before the work was
+        # published is the same pinned comment as one written by a binary
+        # that never had the group, so the write adds no key saying so.
+        state = _written(_support.measured_generation())
+        for key in _PUBLICATION_KEYS:
+            with self.subTest(key=key):
+                self.assertNotIn(key, state.data)
+        read_back = _support.read_state(state)
+        self.assertFalse(read_back.post_publication)
+        self.assertFalse(read_back.has_publication_context)
+
+    def test_the_marker_alone_is_not_a_publication(self) -> None:
+        # Each field beside the flag is read fail-closed, so a hand edit can
+        # leave the marker standing over a context nothing could reconcile --
+        # a pull request nobody can name, a head no branch is compared
+        # against, or a stage nothing could put the issue back into.
+        for key in _NAMED_CONTEXT:
+            with self.subTest(key=key):
+                damaged = _written(_support.full_generation())
+                damaged.data.pop(key)
+
+                read_back = _support.read_state(damaged)
+
+                self.assertTrue(read_back.post_publication)
+                self.assertFalse(read_back.has_publication_context)
+
+    def test_a_damaged_identity_writes_what_it_owes(self) -> None:
+        # The provenance is correlated by the identity beside it, so a record
+        # whose cycle was damaged writes the obligation the remote is owed and
+        # none of the context nothing could join it to.
+        owed = replace(_support.full_generation(), cycle_id=0)
+
+        state = _written(owed)
+
+        self.assertIn(_RESOURCES_KEY, state.data)
+        for key in _PUBLICATION_KEYS:
+            with self.subTest(key=key):
+                self.assertNotIn(key, state.data)
+
+
 class LegacyCompatibilityTest(unittest.TestCase):
     """An issue that never entered the late gate needs no migration."""
 
     def test_no_late_fields_reads_as_absent(self) -> None:
+        # And as an entry from before anything was published, which is what
+        # every record written without that group describes.
         state = PinnedState(state_data=dict(_LEGACY_STATE))
         read_back = _support.read_state(state)
         self.assertEqual(read_back, LateGeneration())
         self.assertFalse(read_back.is_present)
+        self.assertFalse(read_back.post_publication)
 
     def test_writing_an_absent_generation_is_a_no_op(self) -> None:
         # The whole compatibility claim: a handler that reads and writes late
