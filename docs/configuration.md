@@ -438,8 +438,12 @@ The five steps from a JSONL sink to a running Streamlit page — confirm the rec
 ## Continuous integration
 
 [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs `ruff check orchestrator tests`,
-`flake8 orchestrator tests --select=WPS`, and pytest with an informational missing-line coverage report as three
-separate mandatory steps for every push to `main` and every pull request, and Dependabot opens weekly
+`flake8 orchestrator tests --select=WPS`, pytest with an informational missing-line coverage report, `uv build`, and a
+launch of `agent-orchestrator --help` from a throwaway environment holding that wheel and the dependencies it declares
+and nothing else, as five separate mandatory steps for every push to `main` and every pull request. The whole set runs
+twice, once on Python 3.12 and once on Python 3.13 — the two versions a run proves, out of the open-ended range
+`requires-python = ">=3.12"` admits — under a 20-minute job timeout, and a second push to a pull request cancels the
+run its earlier push started while a run on `main` is cancelled by nothing, queued or started. Dependabot opens weekly
 `workflow:dependencies` update PRs. The coverage report has no minimum threshold.
 [`../.github/workflows/vulnerability-scan.yml`](../.github/workflows/vulnerability-scan.yml) adds the standing half of
 dependency scanning: on a weekly `schedule` and on `workflow_dispatch` it audits every version pinned in
@@ -451,7 +455,8 @@ public viewer read and uploading the SARIF to code scanning.
 pull requests targeting `main`, and a weekly schedule, then uploads the results to code scanning. Every `uses:` in
 every workflow names a full commit SHA with its release in a trailing comment, and Dependabot's `github-actions`
 updates rewrite that pair. The per-file lint scopes, the repository-wide 120-column target, workflow token
-permissions, the commit-SHA pins, the job timeouts, the dependency review, and how the scheduled scans work are in
+permissions, the commit-SHA pins, the job timeouts, the run-cancellation rule, the two interpreters, the packaging
+smoke check, the dependency review, and how the scheduled scans work are in
 [`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration).
 
 ## Run modes

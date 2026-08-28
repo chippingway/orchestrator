@@ -8,10 +8,51 @@ and when an edited `.env` takes effect. The environment-variable reference these
 ## Continuous integration
 
 [`../../.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs `ruff check orchestrator tests`,
-`flake8 orchestrator tests --select=WPS`, and
-`pytest tests --cov=orchestrator --cov-report=term-missing` as three separate mandatory steps on Python 3.12 for every
-push to `main` and every pull request, installing from the committed [`../../uv.lock`](../../uv.lock) via
-`uv sync --locked`. The pytest step prints coverage and missing lines for visibility but sets no minimum threshold.
+`flake8 orchestrator tests --select=WPS`, `pytest tests --cov=orchestrator --cov-report=term-missing`, `uv build`, and
+a launch of the console script from the wheel that build produced, as five separate mandatory steps for every push to
+`main` and every pull request, installing from the committed [`../../uv.lock`](../../uv.lock) via `uv sync --locked`.
+The pytest step prints coverage and missing lines for visibility but sets no minimum threshold.
+
+The job is a two-leg matrix: that whole set runs once on Python 3.12 and once on Python 3.13. Those two are the
+versions a run proves, not the whole of what [`../../pyproject.toml`](../../pyproject.toml) admits —
+`requires-python = ">=3.12"` names a floor and no ceiling, so 3.14 and everything after it installs without CI having
+run a line under it, and 3.12 is checked because it is the floor an installer reads. Both legs install the same pins
+from the same lockfile — one resolution serves both, so neither leg needs a version of its own — and each names its
+interpreter with `uv sync --locked --python <version>` rather than letting uv pick a compatible one off the runner,
+which is what keeps a leg from reporting green for a version it never ran. `fail-fast: false` leaves the other leg
+running when one fails, so a failure that belongs to one interpreter is reported as one instead of cancelling the
+evidence that it does not belong to the other. A matrix leg carries its value in the check name, so the two report as
+`ci (3.12)` and `ci (3.13)`, and those two names — not a bare `ci` — are what a branch-protection rule has to
+require ([`../security.md#required-checks`](../security.md#required-checks)).
+
+The last two steps are about the distribution rather than the tree. `uv build` builds the sdist and, from it, the
+wheel; the step after installs that wheel into an environment created for it alone —
+`uv run --no-project --isolated --python <version> --with <wheel> agent-orchestrator --help` — and requires the console
+script to exit successfully from there. `uv sync` above installs this project into `.venv` as an editable install, so
+the console script does exist by then, but it reaches the package through the source tree and nothing before this step
+reads what the build backend packaged. A wheel that ships no `orchestrator` package — the flat layout is declared
+explicitly under `[tool.hatch.build.targets.wheel]` for that reason — an entry point naming a module the wheel does
+not carry, or a runtime dependency the lockfile supplies while `[project.dependencies]` omits it, passes every other
+step and fails for the first person to install the distribution. `--no-project` and `--isolated` are what keep the
+answer honest: neither the project environment nor the lockfile is on the path the script imports from, so what
+answers `--help` is the wheel's own contents beside the dependencies it declares for itself.
+
+The job declares `timeout-minutes: 20`, generous next to the few minutes a green run takes and far under the six-hour
+default GitHub would otherwise cancel it at; the reasoning that ceiling serves is the same one the scans below are
+bounded by. The workflow also declares a `concurrency` group of
+`${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}` with
+`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`. A pull request runs in a lane per ref, and a second
+push cancels the run its own earlier push started rather than leaving two runs racing for a runner and reporting
+checks against a commit nobody is reviewing. Every other run — a push to `main` above all — is keyed on its own run
+id, so it shares a group with nothing. That, rather than the flag, is what makes those runs uncancellable:
+`cancel-in-progress: false` protects a run that has started, but GitHub keeps at most one pending run per group and
+cancels the one each newcomer replaces, so under a shared group a third push would evict a queued `main` run while the
+first still held the runner. A run on `main` is the record of what that commit does, and no later push may erase it,
+waiting or started.
+[`../../tests/repository/test_ci_workflow.py`](../../tests/repository/test_ci_workflow.py) holds that concurrency
+block, the interpreter matrix and its floor against `requires-python`, the packaging steps, and this page's versions
+against the matrix that proves them.
+
 Ruff rules live in [`../../pyproject.toml`](../../pyproject.toml) under `[tool.ruff.lint]`; WPS is selected inline so
 Flake8 does not duplicate Ruff's checks; dev tools are declared in `[dependency-groups]`. The only on-disk Flake8
 config is [`../../.flake8`](../../.flake8), which scopes `WPS412` and `WPS410` per-file ignores to
@@ -100,15 +141,16 @@ comment (`uses: owner/action@<sha> # v1.2.3`), so a retagged release cannot chan
 shape for every workflow, but nothing checks the comment against the SHA it labels, so a hand edit has to move both
 together; Dependabot's `github-actions` updates rewrite the pair.
 
-Each security scan also bounds its own job with `timeout-minutes`: 30 for the CodeQL analysis, 20 for Scorecard and
-the vulnerability scan, 15 for the dependency review. A job that hangs otherwise runs until GitHub's six-hour default
+Each security scan bounds its own job the same way: 30 for the CodeQL analysis, 20 for Scorecard and the
+vulnerability scan, 15 for the dependency review. A job that hangs otherwise runs until GitHub's six-hour default
 cancels it, and both halves of this set pay for that wait. The dependency review is a required check and CodeQL's
 findings are enforced by a ruleset ([`../security.md#required-checks`](../security.md#required-checks)), so a hung job
 holds a merge for those six hours instead of failing in the minutes the scan takes. Scorecard, the vulnerability scan,
 and CodeQL's scheduled pass have nobody watching, so a hung one holds a runner while reading as a scan that has yet to
 report rather than as one that failed.
 [`../../tests/repository/test_workflow_job_timeouts.py`](../../tests/repository/test_workflow_job_timeouts.py) holds a
-declared timeout, shorter than that default, on every job in those four workflows.
+declared timeout, shorter than that default, on every job in all five workflows, and holds the list it walks against
+the workflow directory, so a sixth workflow arrives with a timeout rather than outside every check.
 
 [`../../.github/dependabot.yml`](../../.github/dependabot.yml) opens weekly update PRs for the `github-actions` and `uv`
 (Python `pyproject.toml` + `uv.lock`) ecosystems. For routine version updates, `github-actions` uses the ecosystem-wide
