@@ -250,13 +250,16 @@ Two GitHub-side controls combine to enforce this:
 
 Mark these checks **required** in the branch-protection rule (job names as they appear on the PR):
 
-- `ci` from [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — Ruff, WPS
-  (`flake8 orchestrator tests --select=WPS`), and pytest with an informational coverage report on Python 3.12,
-  installed from [`../uv.lock`](../uv.lock).
+- `ci (3.12)` and `ci (3.13)` from [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — Ruff, WPS
+  (`flake8 orchestrator tests --select=WPS`), pytest with an informational coverage report, and a launch of
+  `agent-orchestrator --help` from the built wheel, installed from [`../uv.lock`](../uv.lock). The job is a matrix over
+  the two tested interpreters, and a matrix leg reports under its own value, so these are two check names rather than
+  one `ci`
+  ([`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration)).
 - `dependency-review` from [`../.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml)
   — fails when a PR introduces a vulnerable or non-compliant dep.
 
-`ci` and `dependency-review` both run on `pull_request` and declare `permissions: contents: read`, so the
+Both CI legs and `dependency-review` run on `pull_request` and declare `permissions: contents: read`, so the
 `GITHUB_TOKEN` minted for each run is read-only. Scorecard and the vulnerability scan belong on neither list, because
 no pull-request event triggers either one, so neither reports a check a PR could wait on.
 [`../.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml) reports what it finds as a code-scanning
@@ -339,9 +342,10 @@ Every PR opened by the orchestrator is AI-generated, so the policy is the workfl
   `VERIFY_COMMANDS=python3 -m pytest -q;ruff check .` (or your project equivalent) so an AI-produced regression is
   caught locally before the PR is advertised to humans for merge.
 - **CI on every PR.** [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) re-runs Ruff, WPS, and tests with a
-  report-only coverage summary;
-  [`../.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml) blocks vulnerable /
-  non-compliant deps. Mark both **required** in branch protection (see [Required checks](#required-checks)).
+  report-only coverage summary on Python 3.12 and 3.13, then installs the wheel it builds and launches the console
+  script from it; [`../.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml) blocks
+  vulnerable / non-compliant deps. Mark every one of those checks **required** in branch protection (see
+  [Required checks](#required-checks)).
 - **Human merge by default.** The orchestrator is permanently manual-merge-only — it pings HITL handles when a PR is
   mergeable but never calls `gh.merge_pr`. A human clicks Merge on every PR that lands.
 - **Sandboxing reminder.** Agents are spawned with sandbox-bypass flags; the host (or container / VM) is the real trust

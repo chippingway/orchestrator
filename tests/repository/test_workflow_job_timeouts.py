@@ -1,17 +1,17 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The wall-clock ceiling every security scan's job runs under.
+"""The wall-clock ceiling every workflow job runs under.
 
 A job that hangs -- a network read that never returns, an action waiting on
-input no one is there to give -- runs until GitHub cancels it six hours later,
-and both halves of this set pay for that wait. The dependency review is a
-required check and CodeQL's findings are enforced by a code-scanning ruleset,
-so a hung job holds a merge for those six hours instead of failing in the
-minutes the scan takes. Scorecard, the vulnerability scan, and CodeQL's
-scheduled pass have nobody watching, so a hung one holds a runner while
-reading as a scan that has yet to report rather than as one that failed. A
-job-level `timeout-minutes` is what bounds either wait to the window the scan
-is expected to finish in.
+input no one is there to give, a suite that deadlocks -- runs until GitHub
+cancels it six hours later, and both halves of this set pay for that wait. CI
+and the dependency review are required checks and CodeQL's findings are
+enforced by a code-scanning ruleset, so a hung job holds a merge for those six
+hours instead of failing in the minutes the run takes. Scorecard, the
+vulnerability scan, and CodeQL's scheduled pass have nobody watching, so a hung
+one holds a runner while reading as a run that has yet to report rather than as
+one that failed. A job-level `timeout-minutes` is what bounds either wait to the
+window the job is expected to finish in.
 
 Nothing in the tree runs these files -- GitHub does -- so a job added or
 rewritten without one would otherwise go unnoticed until the run that hangs.
@@ -19,6 +19,10 @@ rewritten without one would otherwise go unnoticed until the run that hangs.
 The ceiling below is what keeps a declared timeout from being a restatement:
 GitHub already cancels a job at 360 minutes, so a value at or past that is the
 platform default under another name.
+
+The list below is held against the directory rather than trusted as the whole
+of it, so a workflow added beside these arrives with a timeout instead of
+sitting outside every check here.
 """
 from __future__ import annotations
 
@@ -31,13 +35,18 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _WORKFLOW_DIR = _REPO_ROOT / ".github" / "workflows"
 _ENCODING = "utf-8"
 
-# The security scans, whether a pull request waits on one or a schedule runs it.
-_SECURITY_WORKFLOWS = (
+# Every workflow this repository ships, whether a pull request waits on one, a
+# push to `main` triggers it, or a schedule runs it.
+_WORKFLOWS = (
+    "ci.yml",
     "codeql.yml",
     "dependency-review.yml",
     "scorecard.yml",
     "vulnerability-scan.yml",
 )
+
+# Both spellings GitHub accepts for a workflow file.
+_WORKFLOW_SUFFIXES = (".yml", ".yaml")
 
 _PLATFORM_DEFAULT_MINUTES = 360
 
@@ -80,24 +89,24 @@ def _job_timeouts(workflow: str) -> _JobTimeouts:
     return timeouts
 
 
-def _security_workflow_timeouts() -> dict[str, _JobTimeouts]:
+def _workflow_timeouts() -> dict[str, _JobTimeouts]:
     return {
         name: _job_timeouts((_WORKFLOW_DIR / name).read_text(encoding=_ENCODING))
-        for name in _SECURITY_WORKFLOWS
+        for name in _WORKFLOWS
     }
 
 
 def _untimed_jobs() -> list[str]:
-    """Every job across the security workflows that declares no timeout."""
+    """Every job across the workflows above that declares no timeout."""
     return [
         f"{name}: {job}"
-        for name, timeouts in _security_workflow_timeouts().items()
+        for name, timeouts in _workflow_timeouts().items()
         for job, minutes in timeouts.items()
         if minutes is None
     ]
 
 
-class SecurityWorkflowTimeoutTest(unittest.TestCase):
+class WorkflowTimeoutTest(unittest.TestCase):
     def test_every_job_declares_a_timeout(self) -> None:
         untimed = _untimed_jobs()
         untimed_report = "\n".join(untimed)
@@ -109,7 +118,7 @@ class SecurityWorkflowTimeoutTest(unittest.TestCase):
         )
 
     def test_no_timeout_reaches_the_platform_default(self) -> None:
-        for name, timeouts in _security_workflow_timeouts().items():
+        for name, timeouts in _workflow_timeouts().items():
             for job, minutes in timeouts.items():
                 with self.subTest(workflow=name, job=job):
                     self.assertIsNotNone(minutes)
@@ -122,9 +131,24 @@ class SecurityWorkflowTimeoutTest(unittest.TestCase):
         workflow, or one whose `jobs:` block this module fails to read, would
         pass them without having been looked at.
         """
-        for name, timeouts in _security_workflow_timeouts().items():
+        for name, timeouts in _workflow_timeouts().items():
             with self.subTest(workflow=name):
                 self.assertTrue(timeouts)
+
+    def test_every_workflow_file_is_listed(self) -> None:
+        """A workflow the list omits is one no check above ever opens.
+
+        Everything here walks the names above rather than the directory, so a
+        workflow dropped beside them -- another scan, another gate a merge
+        waits on -- would run to the six-hour default while the suite stayed
+        green.
+        """
+        present = [
+            path.name
+            for suffix in _WORKFLOW_SUFFIXES
+            for path in _WORKFLOW_DIR.glob(f"*{suffix}")
+        ]
+        self.assertEqual(sorted(present), sorted(_WORKFLOWS))
 
 
 class JobTimeoutReadingTest(unittest.TestCase):

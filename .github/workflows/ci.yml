@@ -10,18 +10,48 @@ on:
 permissions:
   contents: read
 
+# A pull request runs in one lane per ref and supersedes its own run on every
+# push, so the older one is cancelled rather than left racing the new head for
+# a runner and reporting a check against a commit nobody is reviewing.
+# Everything else -- a push to `main` above all -- is keyed on the run id
+# instead, so each such run is alone in its group. `cancel-in-progress: false`
+# would not be enough: GitHub holds at most one pending run per group and
+# cancels the one a newcomer replaces, so a third push to a shared group
+# evicts the queued run while the first still holds the runner. A run on
+# `main` is the record of what that commit does, and no later push may erase
+# it, waiting or started.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # Generous next to the few minutes a green run takes, and far under the
+    # six-hour default GitHub would otherwise cancel at: this job is a required
+    # check, so a hung one holds a merge for those six hours instead of failing
+    # in the minutes the suite needs.
+    timeout-minutes: 20
+    strategy:
+      # Both interpreters report. A failure on one is a fact about that
+      # version, not a reason to stop learning what the other does.
+      fail-fast: false
+      matrix:
+        # The two versions a run proves. `requires-python` sets a floor of
+        # 3.12 and no ceiling, so a later release installs untested.
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
+      # `--python` names the interpreter this leg is about rather than letting
+      # uv pick a compatible one off the runner: a leg that silently resolved
+      # to the other version would report green for a version it never ran.
       - name: Install from lock
-        run: uv sync --locked
+        run: uv sync --locked --python "${{ matrix.python-version }}"
 
       - name: Lint (ruff)
         run: uv run ruff check orchestrator tests
@@ -31,3 +61,21 @@ jobs:
 
       - name: Tests (pytest)
         run: uv run python -m pytest tests --cov=orchestrator --cov-report=term-missing
+
+      - name: Build (uv build)
+        run: uv build
+
+      # The sync above installs this project into `.venv` editable, so every
+      # step before this one reaches the console script through the source
+      # tree and none of them read what the build backend packaged. This one
+      # reads only that: the wheel, in an environment holding it and the
+      # dependencies it declares and nothing else -- no project, no lockfile,
+      # no dev group. A wheel shipping no `orchestrator` package, an entry
+      # point naming a module it does not carry, or a runtime dependency the
+      # lockfile supplies but `[project.dependencies]` omits fails here and
+      # passes every step above.
+      - name: Smoke-test the built wheel
+        run: |
+          wheel="$(ls dist/*.whl)"
+          uv run --no-project --isolated --python "${{ matrix.python-version }}" \
+            --with "${wheel}" agent-orchestrator --help
