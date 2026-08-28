@@ -37,6 +37,11 @@ _CONTENT_FIELD = "content"
 _TEXT_FIELD = "text"
 _SESSION_ID_FIELD = "session_id"
 _RESULT_FIELD = "result"
+_IS_ERROR_FIELD = "is_error"
+# The observed Claude refusal, verbatim, and a successful answer that merely
+# writes about one.
+_OVERLOADED_RESULT = "API Error: 529 Overloaded. This is a server-side issue, usually temporary."
+_OVERLOADED_MENTION = "I added a retry path for the API Error: 529 Overloaded case."
 _MOCK_PID = 12345
 _PROCESS_WAIT_SECONDS = 5
 _PARTIAL_CLAUDE_OUTPUT = json.dumps(

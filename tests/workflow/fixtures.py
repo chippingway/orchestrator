@@ -4,13 +4,14 @@
 
 Each name below is defined by the leaf beside it -- the event names, the two
 label vocabularies, the repo spec and backend values, the pinned-state keys and
-role names, the verdict messages, the recovery-follow-up wording, the value
-builders, and the hermetic patch context a stage handler runs inside. This
-module is the one import site the tests that span several of those leaves reach
-them through.
+role names, the verdict messages, the provider-failure messages, the
+recovery-follow-up wording, the value builders, and the hermetic patch context
+a stage handler runs inside. This module is the one import site the tests that
+span several of those leaves reach them through.
 """
 from __future__ import annotations
 
+from tests.workflow import agent_failure_values as _agent_failure_values
 from tests.workflow import other_labels as _other_labels
 from tests.workflow import patch_models as _patch_models
 from tests.workflow import patch_runner as _patch_runner
@@ -94,6 +95,12 @@ REVIEWER_TIMEOUT_PARK = _recovery_followup.REVIEWER_TIMEOUT
 TIMEOUT_EMPTY_DETAIL = _recovery_followup.TIMEOUT_EMPTY_DETAIL
 TIMEOUT_PUSHED_DETAIL = _recovery_followup.TIMEOUT_PUSHED_DETAIL
 _RecoveryFollowupAssertions = _recovery_followup._RecoveryFollowupAssertions
+
+PROVIDER_OVERLOAD_MENTION = _agent_failure_values.PROVIDER_OVERLOAD_MENTION
+PROVIDER_OVERLOAD_MESSAGE = _agent_failure_values.PROVIDER_OVERLOAD_MESSAGE
+PROVIDER_UNAVAILABLE_PHRASE = _agent_failure_values.PROVIDER_UNAVAILABLE_PHRASE
+SESSION_LIMIT_MESSAGE = _agent_failure_values.SESSION_LIMIT_MESSAGE
+SESSION_LIMIT_PHRASE = _agent_failure_values.SESSION_LIMIT_PHRASE
 
 REVIEW_APPROVED_MESSAGE = _verdict_values.REVIEW_APPROVED_MESSAGE
 REVIEW_CHANGES_REQUESTED_MESSAGE = _verdict_values.REVIEW_CHANGES_REQUESTED_MESSAGE

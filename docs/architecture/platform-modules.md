@@ -119,7 +119,8 @@ orchestrator/
   agents/               publishes the run models, `run_agent`, and `terminate_all_running`
     models.py           the agent result, run-option, and subprocess-result models
     environment.py      credential filtering and the injected git identity
-    sessions.py         session-id and Claude final-message JSONL parsing
+    sessions.py         session-id and Claude final-message JSONL parsing, plus the transient-provider
+                        classifier every stage that reads a final message as the agent's own asks first
     processes.py        the shared process registry and the subprocess-group lifecycle
     runner.py           `run_agent`: backend dispatch, result assembly, and spawn logging
     backends/

@@ -19,13 +19,14 @@ standalone key rather than part of the in_review bookmark pair, since
 `pending_fix_at` is what tells that route's round RESET from this route's
 bump.
 
-A reviewer that emitted no VERDICT line is the other verdict, and it splits
-by whether there was any output at all. An empty last message with a non-zero
-exit is a crash, tagged transient so the next tick re-spawns the reviewer --
-waking the dev on a human "retry" would hand the wrong agent a prompt with no
-review in it. Real text that merely omitted the marker is left for a human,
-and the stderr tail is suppressed there because the human is already reading
-model output.
+A reviewer that emitted no VERDICT line is the other verdict, and it splits by
+whose failure it was. An empty last message with a non-zero exit is a crash,
+and a message that opens with a transient provider refusal is an outage
+wearing the reviewer's output slot; both are tagged transient so the next tick
+re-spawns the reviewer -- waking the dev on a human "retry" would hand the
+wrong agent a prompt with no review in it. Real text that merely omitted the
+marker is left for a human, and the stderr tail is suppressed there because
+the human is already reading model output.
 """
 from __future__ import annotations
 
@@ -34,6 +35,7 @@ import logging
 from github.Issue import Issue
 
 from orchestrator import config
+from orchestrator.agents import sessions as _agent_sessions
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -51,25 +53,48 @@ from orchestrator.workflow.state import WorkflowLabel, stage_name
 log = logging.getLogger("orchestrator.workflow")
 
 
+def _reviewer_no_verdict_park(review) -> tuple[str, str]:
+    """Name the park a verdict-less reviewer run earns, and what it is told.
+
+    Two shapes are the provider's failure rather than the reviewer's. A silent
+    crash (empty last message + non-zero exit -- codex-side error, network
+    blip) leaves no review output the dev could act on. A transient provider
+    refusal (`API Error: 529 Overloaded` and its 5xx siblings) leaves a
+    NON-EMPTY message that is the server's words, not the reviewer's, and
+    reading it as a missing verdict would send an outage to manual
+    adjudication. Both are `reviewer_failed`, so the next tick's
+    transient-recovery branch re-spawns the reviewer rather than waking the dev
+    on a human "Retry" comment -- `_resume_developer_on_human_reply` would
+    otherwise hand the wrong agent a do-nothing prompt.
+
+    A reviewer that emitted real text and merely omitted the VERDICT line is
+    the one park a human has to read, and it stays `reviewer_no_verdict`.
+    """
+    if _agent_sessions.is_transient_provider_failure(review):
+        return (
+            _state._REASON_REVIEWER_FAILED,
+            "the model provider is temporarily unavailable and the review "
+            "will be retried on a later tick.",
+        )
+    if not (review.last_message or "").strip() and review.exit_code != 0:
+        return _state._REASON_REVIEWER_FAILED, "manual adjudication needed."
+    return "reviewer_no_verdict", "manual adjudication needed."
+
+
 def _park_reviewer_no_verdict(
     gh: GitHubClient, issue: Issue, state: PinnedState, review
 ) -> None:
     """Park `validating` when the reviewer produced no VERDICT line.
 
-    A silent crash (empty last message + non-zero exit -- codex-side error,
-    network blip) is tagged transient (`reviewer_failed`) so the next tick
-    re-spawns the reviewer instead of waking the dev on a human "Retry" comment;
-    there is no review output the dev could act on, and
-    `_resume_developer_on_human_reply` would otherwise hand the wrong agent a
-    do-nothing prompt. A reviewer that emitted text but merely omitted the
-    VERDICT line is left as `reviewer_no_verdict` for human adjudication, and
-    stderr diagnostics are suppressed (the human is reading real model output).
+    `_reviewer_no_verdict_park` splits the transient failures from the one
+    that needs a human; the reason it returns is set back on the pinned state
+    because `_park_awaiting_human` clears the field by contract. stderr
+    diagnostics ride along only when there was no model output at all -- a
+    human reading real reviewer text does not need the subprocess tail too.
     """
     raw = (review.last_message or "").strip() or "(reviewer produced no final message)"
     quoted = _messages._as_blockquote(raw)
-    silent_crash = (
-        not (review.last_message or "").strip() and review.exit_code != 0
-    )
+    park_reason, guidance = _reviewer_no_verdict_park(review)
     diag = (
         ""
         if (review.last_message or "").strip()
@@ -78,11 +103,11 @@ def _park_reviewer_no_verdict(
     _guards._park_awaiting_human(
         gh, issue, state,
         f"{config.HITL_MENTIONS} reviewer did not emit a VERDICT line; "
-        f"manual adjudication needed.\n\n_Last reviewer message:_\n\n"
+        f"{guidance}\n\n_Last reviewer message:_\n\n"
         f"{quoted}{diag}",
-        reason=_state._REASON_REVIEWER_FAILED if silent_crash else "reviewer_no_verdict",
+        reason=park_reason,
     )
-    if silent_crash:
+    if park_reason == _state._REASON_REVIEWER_FAILED:
         state.set(_state._PARK_REASON, _state._REASON_REVIEWER_FAILED)
     log.warning(
         "issue=#%s reviewer emitted no VERDICT; exit_code=%d "

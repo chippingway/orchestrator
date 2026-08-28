@@ -584,8 +584,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       resume.py             the quiet window, the dev run, the ACK fast path, and the `workflow:validating` relabel a
                             pushed fix earns
       parked.py             the four answers an `awaiting_human` tick can reach and the order they are asked in
-      continue_command.py   `/orchestrator continue` on a parked fix: the replay, the two refusals, and the guidance
-                            passthrough
+      continue_command.py   `/orchestrator continue` on a parked fix: the replay and what it may hand the dev --
+                            guidance, never the command itself -- plus the two refusals and the guidance passthrough
       drift.py              the `workflow:resolving_conflict` reroute a stuck validating-route park earns when its
                             worktree has fallen behind base
       models.py             the frozen records the owners hand each other
@@ -644,8 +644,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             clean around it -- both asked before the push and again once the pull request is open,
                             since the worktree is writable while those requests run -- and spending the record of
                             that commit once the handoff it was owed lands
-      parks.py              the session-limit, question, silent-failure, dirty-tree, and unreadable-tree parks,
-                            the last two behind one seam so the caller asks whether the tree is PROVABLY clean
+      parks.py              the session-limit, provider-unavailable, question, silent-failure, dirty-tree, and
+                            unreadable-tree parks, the last two behind one seam so the caller asks whether the
+                            tree is PROVABLY clean
       drift.py              a body edit mid-implementation: the resume it earns and the `ACK:` that answers it
       drift_preflight.py    a pre-session edit and the quiet timeout recovery
       continue_command.py   `/orchestrator continue` on a parked issue
@@ -682,7 +683,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             seed before the `workflow:documenting` relabel
       verify.py             how a non-ok verify result reads and the park it earns
       watermarks.py         the seed walk past leading orchestrator comments and the ratchet that never regresses one
-      requested_changes.py  the PR feedback and `workflow:fixing`-labeled dev fix, plus the no-VERDICT park
+      requested_changes.py  the PR feedback and `workflow:fixing`-labeled dev fix, plus the no-VERDICT park and
+                            the split that tells a provider's failure from a reviewer's
       dev_fix.py            what a finished dev fix leaves behind: the stranded-commit probe, the push, and the round
                             bump
       awaiting.py           the three park-reason claims on a human reply and the dev attempt they fall through to

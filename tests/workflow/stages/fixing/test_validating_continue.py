@@ -68,6 +68,7 @@ VALIDATING = support.VALIDATING
 _ContinueSeed = support._ContinueSeed
 _PatchedWorkflowMixin = support._PatchedWorkflowMixin
 _agent = support._agent
+dev_task_section = support.dev_task_section
 make_issue = support.make_issue
 posted_comment_contains = support.posted_comment_contains
 
@@ -242,7 +243,7 @@ class _ValidatingContinueFixtureMixin(_ContinueCommandFixtureMixin):
         return gh, issue, pr
 
 
-def _assert_validating_retry_outcome(test_case, github) -> None:
+def _assert_validating_retry_prompt(test_case) -> None:
     test_case.assertIsNone(
         test_case._call.kwargs.get(RESUME_SESSION_ID),
     )
@@ -250,6 +251,16 @@ def _assert_validating_retry_outcome(test_case, github) -> None:
         "please fix the last-frame-wins docstring",
         test_case._call.args[1],
     )
+    # The reviewer anchor is what the dev is asked to act on; the bare command
+    # that asked for the retry is not, or the task would read as "implement
+    # /orchestrator continue".
+    test_case.assertNotIn(
+        CONTINUE_COMMAND, dev_task_section(test_case._call.args[1]),
+    )
+
+
+def _assert_validating_retry_outcome(test_case, github) -> None:
+    _assert_validating_retry_prompt(test_case)
     test_case.assertFalse(
         posted_comment_contains(github, NO_PRESERVED_MESSAGE),
     )
@@ -273,6 +284,12 @@ def _assert_validating_retry_outcome(test_case, github) -> None:
         test_case._pinned_data.get(
             PENDING_FIX_REVIEWER_COMMENT_ID,
         ),
+    )
+    # Kept out of the task, still consumed: the watermark advances past the
+    # command comment so it does not re-fire next tick.
+    test_case.assertGreaterEqual(
+        test_case._pinned_data.get(PR_LAST_COMMENT_ID),
+        COMMAND_COMMENT_ID,
     )
 
 

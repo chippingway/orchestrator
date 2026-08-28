@@ -6,9 +6,12 @@ The command means "retry this fix", and the park it usually answers is a dev
 session that went silent or timed out with the PR feedback still unaddressed.
 Resuming on the command text alone is the failure this owner exists to prevent:
 the session that failed is dropped, a fresh one is grounded on the preserved
-batch, and anything the operator wrote beside the command rides along verbatim
--- the resume tail advances the watermarks past all of it either way, so an
-item omitted here would be consumed without the dev ever seeing it.
+batch, and anything the operator wrote beside the command rides along verbatim.
+The command line itself does not: what a replay is handed is rendered to the
+dev as PR feedback to act on, and the one thing this retry must not tell it to
+implement is the word "continue". Nothing is lost by dropping it, because the
+resume tail advances the watermarks past all of the fresh feedback rather than
+past what it replayed.
 
 Not every park may be retried. A park still waiting on a real human answer (an
 agent question, a worktree it could not finish) is refused rather than
@@ -82,6 +85,28 @@ def _reconstruct_pending_fix_batch(gh, issue, pr, state) -> list:
     return trusted_batch
 
 
+def _carried_fresh_feedback(feedback: _models._FixingFeedback) -> list:
+    """Return the fresh comments a replay may show the dev, minus the command.
+
+    A bare `/orchestrator continue` is a control signal addressed to the
+    orchestrator, and the replay renders whatever it is handed as PR feedback
+    to act on -- so carrying it through would ask the dev to implement the
+    command itself, on top of the batch it was meant to retry. Anything the
+    operator wrote BESIDE the command line survives verbatim, command line
+    included: mixed comments are guidance, and mangling their body is not this
+    owner's call.
+
+    Dropping the bare command costs nothing downstream. The resume tail
+    advances the watermarks past ALL of `feedback` rather than past what it
+    replayed, so the command is still consumed and does not re-fire next tick.
+    """
+    return [
+        comment
+        for comment in feedback.all_items
+        if not _messages._is_bare_orchestrator_continue(comment)
+    ]
+
+
 def _handle_continue_command(
     ctx: _models._FixingContext,
     feedback: _models._FixingFeedback,
@@ -104,10 +129,11 @@ def _handle_continue_command(
         session (so the retry re-grounds a FRESH session on the committed
         branch rather than replaying the transcript that already failed) and
         clears the park, as side effects; `batch` is the preserved PR-feedback
-        batch (`_reconstruct_pending_fix_batch`) followed by ALL fresh feedback
-        verbatim -- the command comment AND any guidance posted with or beside
-        it -- so nothing the operator wrote is dropped. Pinned state is NOT
-        written here (the caller's resume tail writes it).
+        batch (`_reconstruct_pending_fix_batch`) followed by the fresh feedback
+        that carries something (`_carried_fresh_feedback`) -- any guidance
+        posted with or beside the command, verbatim, but never the bare
+        command itself. Pinned state is NOT written here (the caller's resume
+        tail writes it).
       * ``("refuse", None)`` -- a content-free continue (every fresh comment is
         a bare command) on a park it cannot retry: an unsafe park that still
         needs real human guidance, or an eligible park with no reconstructable
@@ -134,11 +160,7 @@ def _handle_continue_command(
             "item(s) on a fresh dev session (park_reason=%s)",
             ctx.issue.number, len(batch), park_reason,
         )
-        # Carry every fresh comment (command + any accompanying guidance)
-        # verbatim into the replay: the resume tail advances the watermarks
-        # past all of `feedback`, so anything omitted here would be consumed
-        # without the dev ever seeing it.
-        return "replay", batch + feedback.all_items
+        return "replay", batch + _carried_fresh_feedback(feedback)
 
     if all(
         _messages._is_bare_orchestrator_continue(comment)

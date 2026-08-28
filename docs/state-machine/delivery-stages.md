@@ -1210,7 +1210,11 @@ so `DEV_AGENT` flips made mid-flight do not retarget the docs pass either.
        manual triage. (4) On success, if `squashed_count > 1` post `:package: squashed N commits to 1`, seed the
        in_review watermarks (inside the `gh.get_pr()` try so a snapshot failure leaves them untouched), then relabel
        to `workflow:documenting`.
-     - **unknown** (no marker) → park.
+     - **unknown** (no marker) → park, split by whose failure it was
+       (`_reviewer_no_verdict_park`). An empty last message with a non-zero exit (a crash), or a message opening with
+       a transient provider refusal (`is_transient_provider_failure` — `API Error: 529 Overloaded` and its 5xx
+       siblings), is tagged `reviewer_failed` so the next tick's transient-recovery branch re-spawns the reviewer;
+       real reviewer text that merely omitted the marker stays `reviewer_no_verdict` for human adjudication.
      - **changes_requested** → post the feedback to the PR, then flip the label to `workflow:fixing` BEFORE spawning
        the dev so the active job is observably "fixing reviewer-requested changes". Resume the dev with the fix
        prompt; on a new commit + clean tree push, bump `review_round`, and flip back to `workflow:validating`. A
@@ -1352,16 +1356,23 @@ state. The PR comment that triggers a route to `workflow:fixing` is the human si
   5. If `awaiting_human`, first handle the **`/orchestrator continue` operator command** (`_handle_continue_command`).
      It is matched as an EXACT LINE (`^\s*/orchestrator continue\s*$`), so a comment carrying the command line AND real
      guidance still counts as the command; the command is handled on BOTH routes so a session-limit / session-failure
-     park (`agent_silent` / `agent_timeout`) is never resumed on the bare command text. A recognized Claude
-     session/usage-limit notice returned as the dev's final message (`_is_session_limit_message`) is itself parked
-     `agent_silent` by `_on_question`, a retryable session failure rather than a real `park_reason=None` question, so a
-     quota reset is retried here rather than refused as needing human guidance. The helper returns one of three
+     park (`agent_silent` / `agent_timeout`) is never resumed on the bare command text. Two dev final messages are
+     parked `agent_silent` by `_on_question` rather than as a real `park_reason=None` question, because neither is the
+     agent's own words: a recognized Claude session/usage-limit notice (`_is_session_limit_message`), and a transient
+     provider refusal such as `API Error: 529 Overloaded` (`agents/sessions.py`'s
+     `is_transient_provider_failure`, which prefers the terminal result event's `is_error` flag and otherwise requires
+     a non-zero exit beside the prefix, so a successful answer that merely quotes the error stays an answer). A quota
+     reset and a provider that came back are therefore retried here rather than refused as needing human guidance.
+     The helper returns one of three
      actions: **replay** — an eligible session-failure park **with a reconstructable batch** (the in_review route's
      `pending_fix_*` bookmarks, or the validating route's `pending_fix_reviewer_comment_id` anchor): drop the poisoned
      dev session (`_drop_poisoned_dev_session` — so the retry re-grounds a fresh session on the committed branch), clear
-     the park, and **replay the preserved feedback batch** (`_reconstruct_pending_fix_batch`) carrying ALL fresh
-     feedback (the command comment and any guidance posted with or beside it) verbatim so nothing is dropped — resuming
-     the fresh dev on it, skipping the debounce; **refuse** — a content-free continue (every fresh comment is a bare
+     the park, and **replay the preserved feedback batch** (`_reconstruct_pending_fix_batch`) carrying the fresh
+     feedback that says something (`_carried_fresh_feedback`) — any guidance posted with or beside the command,
+     verbatim — but NEVER the bare command itself: a replay renders what it is handed as PR feedback to implement, so
+     the command line would read as work to do. Dropping it strands nothing, because the resume tail advances the
+     watermarks past all of the fresh feedback rather than past what it replayed. Resume the fresh dev on that batch,
+     skipping the debounce; **refuse** — a content-free continue (every fresh comment is a bare
      command) on a park it cannot retry (an unsafe park needing real human guidance, both `park_reason=None`; or an
      eligible reason with **no reconstructable batch**, e.g. a validating-route park whose reviewer anchor was never
      recorded or has since been deleted): the command comment is consumed (watermark advanced past it so the refusal
