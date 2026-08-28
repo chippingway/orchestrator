@@ -435,8 +435,9 @@ is swallowed so catalog collection never disturbs the polling tick. An empty cat
 
 The late size gate writes to **both** streams, deliberately: the audit copy has to answer offline what the database
 answers, so an operator with only the JSONL file can tell whether depth 3 is being approached, which repositories keep
-producing artifact-dominated `single` verdicts, and whether the configured threshold creates more adjudication than it
-prevents. One call on `workflow/late_split/telemetry.py` emits both — `GitHubClient.emit_event` for the audit record
+producing artifact-dominated `single` verdicts, whether the ceiling is being crossed before anything is published or
+by the fix commits a review asks for afterwards, and whether the configured threshold creates more adjudication than
+it prevents. One call on `workflow/late_split/telemetry.py` emits both — `GitHubClient.emit_event` for the audit record
 and the recording package's `build_record` / `append_record` pair for the analytics record — so the two carry the same
 fields under their own envelopes.
 
