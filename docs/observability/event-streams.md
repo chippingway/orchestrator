@@ -352,10 +352,23 @@ blended average. The level is read off the same row that named the skill, so an 
 provenance as well as by name. A name no level map covers reads `unknown` — a record written before levels existed, or
 a claude run whose stream names no source directory — which is one spelling an operator can look up rather than a
 scattering of blanks; because both an offer and a load read it, a legacy session's load still counts as adoption of
-what it was offered. The one exception is the trigger matrix's catalog padding: a `repo_skill_catalog` name the record
-left unclassified pads at `project`, since that scan enumerates a repository's own checked-in definitions. Both tables
+what it was offered. That is where the adoption model leaves such a name; the trigger matrix resolves it against the
+repository's catalog first, as the paragraph below describes, and a `repo_skill_catalog` name the record itself left
+unclassified is padded at `project`, since that scan enumerates a repository's own checked-in definitions. Both tables
 render the level as its own sortable `Level` column, so two rows whose Repo / Role / Backend / Skill read the same are
 legible as the two definitions their differing counts come from.
+
+**The matrix fills a blank level from the catalog.** A claude stream names no source directory for the skills it
+lists, so its loads arrive unclassified and would otherwise report as an `unknown` row beside the `project` one the
+catalog padded — one definition's use split across two cells. `get_skill_trigger_matrix` therefore resolves an
+unclassified load against the repository's own `repo_skill_catalog`: a name that repository offers at exactly one
+level is filed at that level, so the load merges into the padded cell (a `develop / project` cell reading 3 of 166
+runs rather than a padded zero next to an unknown-level 3). A name the catalog never offered, or one it offers at two
+levels, stays `unknown` — there is no single definition to file it under — and the lookup is per repository, so a
+level another repository classified the same name at never reaches these runs. A level the run itself recorded is
+never overwritten: an observation from the run outranks the repository-wide inference, so a globally installed
+`develop` a run named `user` keeps that level. This is a read-side resolution only — no record changes shape, and the
+`repo_skill_catalog` producer keeps classifying what it enumerates as `project`.
 
 **Per-session availability denominator.** `sessions` (the denominator) is how many logical sessions in the cohort had
 the skill available — its reported `skills_available` union listed it, or the *legacy* fallback above implied it.

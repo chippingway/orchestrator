@@ -132,9 +132,9 @@ class SkillMatrixOrderTest(unittest.TestCase):
         )
 
     def test_the_level_orders_one_name_apart(self) -> None:
-        # The only column that separates a catalog-padded cell from a run that
-        # triggered the same name under no recorded level, so an ordering
-        # reading the name instead would leave both where the read put them.
+        # The only column that separates a repository's own definition from a
+        # same-named one installed for the operator, so an ordering reading
+        # the name instead would leave both where the read put them.
         user, project = cells(
             CellCase(level=LEVEL_USER), CellCase(level=LEVEL_PROJECT),
         )

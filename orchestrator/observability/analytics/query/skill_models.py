@@ -95,8 +95,12 @@ class SkillTriggerMatrixRow:
     name a repository checked in and a same-named one installed globally
     are two cells rather than one blended average. A catalog-padded cell
     the record left unclassified is `project`, since that scan enumerates
-    a repository's own definitions; anything else unclassified (a legacy
-    record, or a claude run whose stream names no source directory) is
+    a repository's own definitions. A run that recorded no level for a
+    skill it loaded (a legacy record, or a claude run whose stream names
+    no source directory) is filed at the level that repository's catalog
+    offers the name at, where it offers exactly one -- so the load counts
+    inside the padded cell for that definition rather than beside it. A
+    name the catalog never offered, or one it offers at two levels, stays
     `unknown`.
 
     `agent_role` / `backend` bucket NULLs under `"unknown"` so a cohort

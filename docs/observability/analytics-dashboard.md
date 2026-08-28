@@ -107,15 +107,18 @@ therefore scan `analytics_events` and pin `conditions.py`'s `AGENT_EXIT_CONDITIO
 that excludes `agent_exit` returns without dialing rather than running a query whose two conditions contradict; the
 two capped reads pass a non-positive `limit` through as "every cell". One aggregate owner sits under each:
 `skill_trigger_rates.py` (the whole-cohort denominator, the key-presence probe, and the summed trigger count),
-`skill_matrices.py` (the repository-scoped catalog scan, the window-scoped runs scan, the zero-padding between
-them, and the ranking the cap keeps the top of), and `skill_adoption.py` (the per-session ratio and the invocation /
-load / incidental diagnostics beside it).
-Beneath the last, `skill_sessions.py` owns the resume-then-session-then-row-id session key and the two scans' scopes —
-the window one picks which sessions count, the history one drops the start bound and the stage filter while keeping
-the end bound. Beneath both aggregates, `skill_values.py` owns the two JSONB coercions (the name array and the
-name-to-source-level map), the pairing that reads each name's level off the same row and defaults an uncovered name to
-`unknown`, the `(repo, role, backend)` cohort with its `"unknown"` bucketing, and the
-`(repo, agent_role, backend, skill, level)` cell both aggregates accumulate under.
+`skill_matrices.py` (the window-scoped runs scan, the zero-padding over it, and the ranking the cap keeps the top
+of), and `skill_adoption.py` (the per-session ratio and the invocation / load / incidental diagnostics beside it).
+Beneath the matrix, `skill_provenance.py` owns the repository-scoped catalog scan the padding is drawn from, the
+narrower filtering that repo-level record takes, and the level lookup over it — an unclassified load is filed at the
+level that repository offers the name at, where it offers exactly one, and a name it never offered or offers at two
+levels stays `unknown`; the lookup is exposed as `repo_skill_provenance` / `SkillProvenance` so a second reader
+resolves provenance the same way. Beneath the last, `skill_sessions.py` owns the resume-then-session-then-row-id
+session key and the two scans' scopes — the window one picks which sessions count, the history one drops the start
+bound and the stage filter while keeping the end bound. Beneath both aggregates, `skill_values.py` owns the two JSONB
+coercions (the name array and the name-to-source-level map), the pairing that reads each name's level off the same row
+and defaults an uncovered name to `unknown`, the `(repo, role, backend)` cohort with its `"unknown"` bucketing, and
+the `(repo, agent_role, backend, skill, level)` cell both aggregates accumulate under.
 
 Beneath the rollup and breakdown families, `cache_shares.py` owns the token-share SQL the cache / no-cache split is
 weighted by — spelled once for the rollup's `total_*` sums and once for the agent-run view's per-run columns — and
@@ -167,7 +170,10 @@ of the read path narrow a nullable duration the same way.
   names, so a name defined at two levels is two cells rather than one blended average: a catalog name the record left
   unclassified pads at `project` (that scan enumerates a repository's own checked-in definitions), while an
   unclassified run name — a record written before levels existed, or a claude run whose stream names no source
-  directory — reads `unknown`. Each cell carries `skill_runs` (runs *containing* the skill,
+  directory — is filed at the level that repository's catalog offers the name at whenever it offers exactly one, so
+  the load merges into the padded cell instead of splitting off an `unknown` one beside it; a name the catalog never
+  offered, or one it offers at two levels, keeps `unknown`, and a level the run itself recorded is never overwritten
+  (`skill_provenance.py`). Each cell carries `skill_runs` (runs *containing* the skill,
   one per run per distinct name — not total invocations) and `runs` (the total agent-exit runs in the cell's cohort,
   so a low/zero trigger count reads against the cohort size). Every catalog skill is zero-padded across the cohorts
   observed for its repo so the matrix carries explicit "offered but never triggered" cells (e.g. `developer / claude /
@@ -562,11 +568,12 @@ either wave surfaces as one `st.error` + `st.stop`.
    `get_skill_trigger_rates`, showing runs, skill runs, a trigger-rate bar, and total trigger count) and, below it,
    the per-skill **trigger matrix** (`_skill_matrix_html` over `get_skill_trigger_matrix`) with columns Repo / Role /
    Backend / Skill / Level / Runs / Runs with skill / Trigger rate — the same `Level` column the adoption table
-   beneath it carries, so a catalog-padded `project` row can sit beside an `unknown`-level row for a skill some run
-   loaded. The matrix folds each repo's `repo_skill_catalog` into the observed triggers so a skill the repo offers but
-   no cohort fired surfaces as an explicit (muted) `0` "Runs with skill" cell (and a matching muted `0%` trigger rate)
-   rather than a missing row (the cohort `Runs` total is never muted); its headers write `mtx_sort` / `mtx_dir` params
-   (parsed by `parse_skill_matrix_sort`) and default to Repo ascending, then Trigger rate descending.
+   beneath it carries, so a catalog-padded `project` row can sit beside an `unknown`-level row for a skill whose
+   level neither the run nor the repository's catalog settles. The matrix folds each repo's `repo_skill_catalog` into
+   the observed triggers so a skill the repo offers but no cohort fired surfaces as an explicit (muted) `0` "Runs with
+   skill" cell (and a matching muted `0%` trigger rate) rather than a missing row (the cohort `Runs` total is never
+   muted); its headers write `mtx_sort` / `mtx_dir` params (parsed by `parse_skill_matrix_sort`) and default to Repo
+   ascending, then Trigger rate descending.
    Under that fold-out the adoption cells are drawn in one collapsed `st.expander` per source level, in the order one
    definition shadows another: "Project-level skills · defined in the repository", "User-level skills · installed for
    the operator", and "Harness-level skills · built into the CLI", each rendering the same sortable table over its own

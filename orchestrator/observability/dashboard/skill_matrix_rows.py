@@ -13,12 +13,12 @@ denominator the zero is read against, not part of the finding.
 
 The rate is rounded to whole points, since the column is compared down the
 table rather than read off a single row. The level beside the skill names the
-source a definition came from, so a catalog-padded cell and a run that
-triggered the same name under no recorded level stay legible as the two
-definitions they are. A category the sink recorded nothing for -- including a
-level no record classified -- is labelled through the same `unknown` the
-aggregate panel reads a missing role or backend under, so the two tables bucket
-an empty category the same way.
+source a definition came from, so two cells one name alone would read as one
+stay legible as the two definitions they are. A category the sink recorded
+nothing for -- including a level neither the run nor its repository's catalog
+settles -- is labelled through the same `unknown` the aggregate panel reads a
+missing role or backend under, so the two tables bucket an empty category the
+same way.
 
 Every naming column arrives off the sink rather than out of this repository, so
 all five are escaped into the markup a browser is asked to interpret.

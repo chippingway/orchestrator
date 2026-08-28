@@ -14,11 +14,11 @@ the direction a first click on a header means.
 
 The source level a skill was defined at is one of those naming columns rather
 than a qualifier on the name beside it, because it is what separates two rows a
-name alone would read as one: a catalog cell padded at `project` and an
-`unknown`-level run that triggered the same name are different definitions with
-different trigger counts. Ordering by it gathers every definition from one
-level together, which is the reading an operator comparing what a harness ships
-against what a repository checks in sorts on.
+name alone would read as one: a cell for the definition a repository checks in
+and one for a same-named skill a run loaded from another level are different
+definitions with different trigger counts. Ordering by it gathers every
+definition from one level together, which is the reading an operator comparing
+what a harness ships against what a repository checks in sorts on.
 
 The two query parameters those headers write are settled here too: a sort
 survives a page rerun only while the link that writes it and the parse that
