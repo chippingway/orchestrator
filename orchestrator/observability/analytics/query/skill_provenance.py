@@ -6,9 +6,9 @@ A run reports the skills it loaded, but not always the level each was defined
 at: a claude stream names the skills it pulled without naming a source
 directory for any of them, so every one of its loads arrives unclassified.
 Read against the name alone that load becomes a cell of its own -- a
-`develop` at `unknown` sitting beside the `develop` at `project` the catalog
-padded -- and one definition's use is split across two rows that neither add up
-nor read as the same skill.
+`develop` at `unknown` sitting beside the `develop` at `project` a classifying
+record put there -- and one definition's use is split across two rows that
+neither add up nor read as the same skill.
 
 `repo_skill_catalog` is what closes that gap, because it enumerates a
 repository's own checked-in definitions and the level each was classified at. A
@@ -24,6 +24,13 @@ from the run itself and outranks the repository-wide inference, so a globally
 installed `develop` a run named `user` keeps that level even where the
 repository checks in a `develop` of its own.
 
+Both per-skill reads resolve here, and each resolves every category of evidence
+it gathers: the loads a trigger cell counts, and the window loads, the
+incidental references, and the historical offers and loads an adoption cell
+reads a session across. Resolving one category and not another is what would
+leave a session offered a `develop` it is never credited with loading, so the
+rule has to reach all of them or none.
+
 The scan behind all of this is filtered differently from the run scans beside
 it. A catalog record is a repository-level fact -- no issue, no stage, and
 written whenever the catalog was last scanned -- so pushing the window, issue,
@@ -38,7 +45,7 @@ classified none.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from orchestrator.observability.analytics.query.conditions import (
     append_where_condition,
@@ -163,6 +170,21 @@ class SkillProvenance:
             (skill, self.resolve_level(repo, skill, level))
             for skill, level in loaded
         )
+
+    def resolve_row(
+        self,
+        repo: str,
+        raw_names: Any,
+        raw_levels: Any,
+    ) -> frozenset[SkillLevelPair]:
+        """Pair one row's names with their levels, resolving the blanks.
+
+        The one step every reader takes over a name array and the level map
+        beside it, so a load, an incidental reference, and a session's offered
+        set are all read and resolved the same way rather than each pairing
+        first and remembering separately to resolve after.
+        """
+        return self.resolve(repo, leveled_skills(raw_names, raw_levels))
 
 
 def repo_skill_provenance(

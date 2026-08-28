@@ -18,7 +18,14 @@ can be read as either a quiet skill or a busy one nobody keeps using.
 
 A cell is keyed by the skill's source level as well as its name, so a session
 offered a repository's own `develop` and one offered a global skill of that
-name are two cells rather than one blended ratio.
+name are two cells rather than one blended ratio. A record that named no level
+-- a claude run, whose stream names no source directory -- is filed at the
+level the repository's catalog offers that name at, where it offers exactly
+one; the catalog scan behind that lookup is a third read beside the two session
+scans, narrowed as the repository-level record it reads requires and documented
+on the owner that runs it. The fill reaches every kind of evidence a cell is
+built from, because resolving the loads and leaving the offers alone would move
+a session out of the denominator it belongs in.
 
 Which cells exist is the union of three observations, not just the availability
 set: a purely incidental reference and a load whose session reported a
@@ -37,6 +44,9 @@ from typing import Sequence
 from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.skill_models import SkillAdoptionRow
+from orchestrator.observability.analytics.query.skill_provenance import (
+    repo_skill_provenance,
+)
 from orchestrator.observability.analytics.query.skill_sessions import (
     SessionEvidence,
     SkillWindowRun,
@@ -156,8 +166,9 @@ def skill_adoption_rows(
     limit: int,
 ) -> list[SkillAdoptionRow]:
     """Return the per-session adoption cells, ranked and capped."""
-    window_runs = skill_window_rows(query, filters)
-    evidence = skill_session_evidence(query, filters, window_runs)
+    provenance = repo_skill_provenance(query, filters)
+    window_runs = skill_window_rows(query, filters, provenance)
+    evidence = skill_session_evidence(query, filters, window_runs, provenance)
     counts = SkillAdoption.build(window_runs, evidence)
     keys = sorted(counts.keys(), key=counts.order_key)
     if limit > 0:

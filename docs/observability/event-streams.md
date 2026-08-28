@@ -331,9 +331,10 @@ turned off.
 **Logical-session fallback.** Adoption counts by *logical agent session*, not by raw run, so a resume chain that pulled
 `develop` across several ticks counts as one adopting session, not several. A session is keyed by `resume_session_id`,
 then `session_id`, then the row's primary key — an ID-less row is its own session, never merged into one anonymous
-bucket, and the primary-key fallback is stable across both scans below.
+bucket, and the primary-key fallback is stable across both session scans below.
 
-**Active window vs. historical lookback.** `get_skill_adoption` runs two `agent_exit` scans and combines them in Python:
+**Active window vs. historical lookback.** `get_skill_adoption` runs two `agent_exit` scans plus one over the
+repo-level catalog records, and combines all three in Python:
 
 - The **active-window** scan applies the full reporting-window filters (date `[start, end)` / repo / stage / issue). It
   selects the *active* sessions (those with a run in the window) and computes the window-scoped invocation diagnostics.
@@ -342,6 +343,11 @@ bucket, and the primary-key fallback is stable across both scans below.
   stage / events filters while keeping `end` / repo / issue — so a load or an availability report from a prior
   stage, or from before the reporting window, still counts toward that session's denominator and `adopted`. History
   rows for sessions that were not active in the window are ignored, so their evidence never leaks into the aggregate.
+- The **repository-catalog** scan (`WindowFilters.catalog_scope`) reads the `repo_skill_catalog` records the level fill
+  below is drawn from, keeping the date bounds and the repo filter and dropping the stage / events / issue selection —
+  a catalog record is a repository-level fact carrying neither an issue nor a stage, so pushing the session selection
+  onto it would drop every row and leave the fill with nothing to read. It is the same scan at the same scope that
+  `get_skill_trigger_matrix` draws its zero-padding from.
 
 The retained `end` bound is the **future-evidence cutoff**: evidence recorded *after* the window end never leaks
 backward into an earlier window's aggregate, so a later load cannot retroactively raise a past window's adoption.
@@ -349,26 +355,38 @@ backward into an earlier window's aggregate, so a later load cannot retroactivel
 **A cell is keyed by source level too.** Both per-skill read models file their counts under the skill's `skill_levels`
 level as well as its name, so a repository's own `develop` and a same-named global one stay two cells rather than one
 blended average. The level is read off the same row that named the skill, so an offer and a load are matched by
-provenance as well as by name. A name no level map covers reads `unknown` — a record written before levels existed, or
-a claude run whose stream names no source directory — which is one spelling an operator can look up rather than a
-scattering of blanks; because both an offer and a load read it, a legacy session's load still counts as adoption of
-what it was offered. That is where the adoption model leaves such a name; the trigger matrix resolves it against the
-repository's catalog first, as the paragraph below describes, and a `repo_skill_catalog` name the record itself left
-unclassified is padded at `project`, since that scan enumerates a repository's own checked-in definitions. Both tables
-render the level as its own sortable `Level` column, so two rows whose Repo / Role / Backend / Skill read the same are
-legible as the two definitions their differing counts come from.
+provenance as well as by name. A name no level map covers — a record written before levels existed, or a claude run
+whose stream names no source directory — is resolved against the repository's catalog first, as the paragraph below
+describes; only what that cannot settle reads `unknown`, which is one spelling an operator can look up rather than a
+scattering of blanks. Because an offer and a load take the same resolution, a legacy session's load still counts as
+adoption of what it was offered. A `repo_skill_catalog` name the record itself left unclassified is read at `project`,
+since that scan enumerates a repository's own checked-in definitions. Both tables render the level as its own sortable
+`Level` column, so two rows whose Repo / Role / Backend / Skill read the same are legible as the two definitions their
+differing counts come from.
 
-**The matrix fills a blank level from the catalog.** A claude stream names no source directory for the skills it
-lists, so its loads arrive unclassified and would otherwise report as an `unknown` row beside the `project` one the
-catalog padded — one definition's use split across two cells. `get_skill_trigger_matrix` therefore resolves an
-unclassified load against the repository's own `repo_skill_catalog`: a name that repository offers at exactly one
-level is filed at that level, so the load merges into the padded cell (a `develop / project` cell reading 3 of 166
-runs rather than a padded zero next to an unknown-level 3). A name the catalog never offered, or one it offers at two
-levels, stays `unknown` — there is no single definition to file it under — and the lookup is per repository, so a
-level another repository classified the same name at never reaches these runs. A level the run itself recorded is
-never overwritten: an observation from the run outranks the repository-wide inference, so a globally installed
-`develop` a run named `user` keeps that level. This is a read-side resolution only — no record changes shape, and the
-`repo_skill_catalog` producer keeps classifying what it enumerates as `project`.
+**Both models fill a blank level from the catalog.** A claude stream names no source directory for the skills it
+lists, so its loads arrive unclassified and would otherwise report as an `unknown` row beside the `project` one a
+classified record put there — one definition's use split across two cells. `get_skill_trigger_matrix` and
+`get_skill_adoption` therefore resolve an unclassified name against the repository's own `repo_skill_catalog`: a name
+that repository offers at exactly one level is filed at that level, so the matrix's load merges into the padded cell
+(a `develop / project` cell reading 3 of 166 runs rather than a padded zero next to an unknown-level 3) and the
+adoption model's sessions merge into one (`develop / project` reading 3 adopting of 26 available rather than two
+half-cells). A name the catalog never offered, or one it offers at two levels, stays `unknown` — there is no single
+definition to file it under — and the lookup is per repository, so a level another repository classified the same name
+at never reaches these runs. A level the run itself recorded is never overwritten: an observation from the run
+outranks the repository-wide inference, so a globally installed `develop` a run named `user` keeps that level.
+
+Adoption applies the fill to **every** category of evidence a cell is built from — the active-window loads, the
+incidental references beside them, and the historical availability and loads the lookback scan gathers. Filling one
+and not another is what would leave a session offered a `develop` at one level and credited with loading it at
+another, which reads as an offer nobody took up next to a load nobody was offered. The catalog scan behind the
+lookup takes the same repository-level scope on both reads (`WindowFilters.catalog_scope`: date and repo only, since
+an issue or a stage pushed onto a repo-level record would drop every row).
+
+This is a read-side resolution only — no record changes shape, and the `repo_skill_catalog` producer keeps
+classifying what it enumerates as `project`. Windows already recorded therefore correct themselves the next time the
+page is drawn: nothing is migrated or backfilled, and a window whose catalog records are missing simply degrades to
+the levels the runs themselves recorded.
 
 **Per-session availability denominator.** `sessions` (the denominator) is how many logical sessions in the cohort had
 the skill available — its reported `skills_available` union listed it, or the *legacy* fallback above implied it.

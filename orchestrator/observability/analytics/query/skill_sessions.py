@@ -11,15 +11,15 @@ hiccup stays its own session rather than merging into one anonymous bucket. The
 primary key is stable across both scans below, so a shared ID-less row keys the
 same in each.
 
-Two scans feed one aggregate, and they are scoped differently on purpose. The
-window scan is the reporting window as the caller selected it, and it decides
-*which* sessions are counted at all. The history scan then reads every finished
-run of those sessions before the window ends -- dropping the start bound and
-the stage filter, keeping the end bound -- because a skill loaded in an earlier
-stage or before the window still means the session adopted it, while a load
-after the window ends has not happened yet from this page's point of view.
-History rows for sessions the window never saw are dropped: their evidence
-belongs to a window nobody asked about.
+Two scans here feed one aggregate, and they are scoped differently on purpose.
+The window scan is the reporting window as the caller selected it, and it
+decides *which* sessions are counted at all. The history scan then reads every
+finished run of those sessions before the window ends -- dropping the start
+bound and the stage filter, keeping the end bound -- because a skill loaded in
+an earlier stage or before the window still means the session adopted it, while
+a load after the window ends has not happened yet from this page's point of
+view. History rows for sessions the window never saw are dropped: their
+evidence belongs to a window nobody asked about.
 
 What a session accumulates is set-based on both sides, so folding a row twice
 -- a window row is also returned by the history scan -- never double counts.
@@ -28,6 +28,14 @@ it, so an offer and a load are matched by provenance as well as by name.
 Availability is tracked by JSON key presence rather than by a non-empty array,
 which is what separates "scanned, found none" from "never reported": the first
 is metadata that blocks the legacy fallback below, the second is not.
+
+A level the row left blank is filled from the repository's catalog before the
+pair is accumulated, and the caller hands that lookup in already scanned so
+both these scans read it the same. Every category takes the step -- a window
+load, an incidental reference, and a history row's offered set and loads alike
+-- because filling one and not another is what would leave a session offered a
+`develop` at one level and credited with loading it at another, which reads as
+an offer nobody took up next to a load nobody was offered.
 """
 
 from __future__ import annotations
@@ -43,10 +51,11 @@ from orchestrator.observability.analytics.query.execution import ReadQuery
 from orchestrator.observability.analytics.query.filters import WindowFilters
 from orchestrator.observability.analytics.query.predicates import build_window_where
 from orchestrator.observability.analytics.query.row_cells import row_value
+from orchestrator.observability.analytics.query.skill_provenance import SkillProvenance
 from orchestrator.observability.analytics.query.skill_values import (
     SkillCohort,
     SkillLevelPair,
-    leveled_skills,
+    label_or_unknown,
     skill_cohort,
 )
 
@@ -112,6 +121,25 @@ class SessionEvidence:
         self.available.update(available)
         self.adopted.update(triggered)
 
+    def observe_history(
+        self,
+        row: Sequence[Any],
+        provenance: SkillProvenance,
+    ) -> None:
+        """Fold one history scan row's offered set and loads into this session.
+
+        Both are resolved against the row's own repository, so a session
+        offered a name its record left unclassified is credited with loading
+        that same definition rather than an `unknown` one beside it.
+        """
+        repo = label_or_unknown(row[0])
+        levels = row_value(row, 9, None)
+        self.observe(
+            available=provenance.resolve_row(repo, row_value(row, 6, None), levels),
+            available_present=bool(row_value(row, 7, False)),
+            triggered=provenance.resolve_row(repo, row_value(row, 8, None), levels),
+        )
+
     def resolved_available(self) -> set[SkillLevelPair]:
         """Skills that count toward this session's denominator.
 
@@ -138,20 +166,30 @@ class SkillWindowRun:
     incidental: frozenset[SkillLevelPair]
 
 
-def skill_window_run(row: Sequence[Any]) -> SkillWindowRun:
-    """Project one window scan row onto its session, cohort, and skills."""
+def skill_window_run(
+    row: Sequence[Any],
+    provenance: SkillProvenance,
+) -> SkillWindowRun:
+    """Project one window scan row onto its session, cohort, and skills.
+
+    Both the loads and the incidental references are resolved against the
+    row's own repository, so a claude run's unclassified names reach the
+    same cell whichever of the two categories reported them.
+    """
+    cohort = skill_cohort(row)
     levels = row_value(row, 8, None)
     return SkillWindowRun(
         session_key=skill_session_key(row),
-        cohort=skill_cohort(row),
-        triggered=leveled_skills(row_value(row, 6, None), levels),
-        incidental=leveled_skills(row_value(row, 7, None), levels),
+        cohort=cohort,
+        triggered=provenance.resolve_row(cohort[0], row_value(row, 6, None), levels),
+        incidental=provenance.resolve_row(cohort[0], row_value(row, 7, None), levels),
     )
 
 
 def skill_window_rows(
     query: ReadQuery,
     filters: WindowFilters,
+    provenance: SkillProvenance,
 ) -> list[SkillWindowRun]:
     """Scan the finished runs the caller's window selected."""
     window_where, window_bindings = build_window_where(filters.without_events())
@@ -167,7 +205,7 @@ def skill_window_rows(
         f"FROM analytics_events{clause}",
         window_bindings,
     )
-    return [skill_window_run(row) for row in rows]
+    return [skill_window_run(row, provenance) for row in rows]
 
 
 def skill_history_rows(
@@ -197,6 +235,7 @@ def skill_session_evidence(
     query: ReadQuery,
     filters: WindowFilters,
     window_runs: Sequence[SkillWindowRun],
+    provenance: SkillProvenance,
 ) -> dict[str, SessionEvidence]:
     """Gather each active session's before-window-end availability + loads.
 
@@ -217,12 +256,6 @@ def skill_session_evidence(
         )
     for row in skill_history_rows(query, filters):
         session = evidence.get(skill_session_key(row))
-        if session is None:
-            continue
-        levels = row_value(row, 9, None)
-        session.observe(
-            available=leveled_skills(row_value(row, 6, None), levels),
-            available_present=bool(row_value(row, 7, False)),
-            triggered=leveled_skills(row_value(row, 8, None), levels),
-        )
+        if session is not None:
+            session.observe_history(row, provenance)
     return evidence

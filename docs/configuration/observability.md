@@ -60,11 +60,12 @@ parser read them back is in [`../observability/analytics-database.md`](../observ
   `skills.discovery.discover_local_skill_sources(cwd)` (a scan of the run's worktree `.agents/skills` /
   `.claude/skills` roots plus the global `$CODEX_HOME/skills`), whose per-name `project` / `user` / `harness` source
   level is recorded beside the names as `skill_levels` — dropped for a claude run, whose stream names no source
-  directory to classify. Both per-skill read models file a cell under that level as well as the name. The adoption
-  model reads a name no recorded map covers as `unknown`; the trigger matrix first fills that blank from the
-  repository's own `repo_skill_catalog`, so a claude load of a name the repository offers at exactly one level lands
-  in that level's cell instead of an `unknown` one beside it, and only an uncatalogued or two-level name keeps
-  `unknown`. Both skill tables render that level as a sortable `Level` column of their own.
+  directory to classify. Both per-skill read models file a cell under that level as well as the name, and both first
+  fill a name no recorded map covers from the repository's own `repo_skill_catalog`, so a claude run's load — and,
+  for adoption, the incidental reference and the historical offer beside it — of a name the repository offers at
+  exactly one level lands in that level's cell instead of an `unknown` one beside it. Only an uncatalogued or
+  two-level name keeps `unknown`, and a level the record itself carried is never overwritten. Both skill tables render
+  that level as a sortable `Level` column of their own.
   Once on, the dashboard's "Skill adoption" panel opens on a collapsed invocation-level diagnostic carrying the
   per-role/backend trigger rate (`skill_reads.get_skill_trigger_rates`) and the per-skill trigger matrix
   (`skill_reads.get_skill_trigger_matrix`) pairing each repo's offered-skill catalog with the skills its runs
