@@ -12,6 +12,8 @@ family the schema gained.
 """
 from __future__ import annotations
 
+from types import MappingProxyType
+
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split import state as _late_state
@@ -54,6 +56,15 @@ PLAN_PR_BODY = "the plan PR body held while adjudication runs"
 SOURCE_STAGE = WorkflowLabel.IN_REVIEW
 PUBLISHED_PR_NUMBER = 34
 PUBLISHED_SHA = "e" * SHA_LENGTH
+# The whole of what a generation entered on an existing pull request carries,
+# described once: the round trip writes it, the record projects it onto the
+# closed pair, and the key tells it apart from an initial publication.
+ENTERED_ON_PUBLICATION = MappingProxyType({
+    "post_publication": True,
+    "source_stage": SOURCE_STAGE,
+    "published_pr_number": PUBLISHED_PR_NUMBER,
+    "published_sha": PUBLISHED_SHA,
+})
 SCOPE = "the declared slice this generation owns"
 SNAPSHOT_REF = "refs/orchestrator/snapshot/9"
 CANCELLED_AT = "2026-08-21T10:00:00+00:00"
@@ -176,10 +187,7 @@ def full_generation() -> LateGeneration:
         comment_watermark_id=COMMENT_WATERMARK_ID,
         plan_pr_number=PLAN_PR_NUMBER,
         plan_pr_body=PLAN_PR_BODY,
-        post_publication=True,
-        source_stage=SOURCE_STAGE,
-        published_pr_number=PUBLISHED_PR_NUMBER,
-        published_sha=PUBLISHED_SHA,
+        **ENTERED_ON_PUBLICATION,
         resources=(SNAPSHOT,),
         consumers=(21, 22),
         owner_check_pending=True,

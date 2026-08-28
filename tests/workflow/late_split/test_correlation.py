@@ -8,6 +8,7 @@ from types import MappingProxyType
 
 from orchestrator.workflow.late_split import records as _records
 from orchestrator.workflow.late_split.models import LateVerdict
+from orchestrator.workflow.state import WorkflowLabel
 
 from tests.workflow.late_split import generation_test_support as _support
 
@@ -27,6 +28,14 @@ _MEASURED_APART = (
     {"base_sha": "f" * _support.SHA_LENGTH},
     {"threshold": _support.THRESHOLD + 1},
     {"additions": _support.ADDITIONS + 1},
+)
+# One field's worth of difference inside a publication a candidate overflowed:
+# which state the gate took the issue out of, which pull request the work
+# already had, and which head that pull request was standing on.
+_ENTERED_APART = (
+    {"source_stage": WorkflowLabel.FIXING},
+    {"published_pr_number": _support.PUBLISHED_PR_NUMBER + 1},
+    {"published_sha": "f" * _support.SHA_LENGTH},
 )
 
 
@@ -142,6 +151,30 @@ class ResourceCorrelationTest(unittest.TestCase):
             _records.correlation_key(_record(_support.family_cases()[3])),
             _records.correlation_key(_record(deleted)),
         )
+
+
+class PublicationCorrelationTest(unittest.TestCase):
+    """Which publication a step was taken on is part of which step it was."""
+
+    def test_an_overflow_is_not_its_first_publication(self) -> None:
+        # One issue's candidate measured before anything was published and
+        # the same issue's cumulative diff measured against a pull request
+        # the remote already carries are two readings, not one retried.
+        self.assertNotEqual(
+            _keyed(_MEASUREMENT, _support.ENTERED_ON_PUBLICATION),
+            _keyed(_MEASUREMENT),
+        )
+
+    def test_two_entries_apart_are_two_steps(self) -> None:
+        # The context is frozen with the candidate, so a difference in it is
+        # a difference in which publication the step was taken on.
+        entered = _keyed(_MEASUREMENT, _support.ENTERED_ON_PUBLICATION)
+        for apart in _ENTERED_APART:
+            with self.subTest(field=sorted(apart)[0]):
+                elsewhere = {**_support.ENTERED_ON_PUBLICATION, **apart}
+
+                self.assertNotEqual(_keyed(_MEASUREMENT, elsewhere), entered)
+
 
 class OutcomeFieldTest(unittest.TestCase):
     """Anything a record says differently is a different step it describes."""

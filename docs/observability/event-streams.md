@@ -444,7 +444,10 @@ fields under their own envelopes.
 `late_failure` (a typed step could not be completed), `late_snapshot` and `late_cleanup` (what happened to one
 external resource), `late_cancellation` (the owner was observed closed), and `late_restart` (a restart after a
 completed cancellation). The kind is the family; `stage` is the bare stage tag the issue sat in, spelled by the
-emitter like every other event on this page.
+emitter like every other event on this page. Every one of the seven also says which side of publication its
+generation was entered on, because each of them means something different under each: a `late_cleanup` reconciling a
+snapshot cut for an initial publication and one reconciling a pull request the remote already carries are the same
+family describing two different steps. That answer is the `publication` field below, not a family of its own.
 
 **What a stream carries.** Four producers write to these families. The first is the publication seam itself
 ([`../workflow/roles.md`](../workflow/roles.md#the-size-gate-a-committed-candidate-passes)), which is where a
@@ -566,6 +569,14 @@ rather than a keyword somebody passed:
 
 - **Correlation** — `cycle_id`, `generation`, `root_issue`, `lineage_depth`, `phase`. A lineage depth the pinned state
   could not read is absent rather than reported as the root's 0.
+- **The publication it was entered on** — `publication`, on every family's record: `pre_publication` for a candidate
+  the gate stopped before anything was published, `post_publication` for one whose cumulative diff took a pull request
+  the remote already carries past the ceiling. Both halves are spelled, so an analysis groups on the field rather than
+  on whether it is there. A `post_publication` record carries the three fields the entry froze beside it —
+  `source_stage` (the state the gate took the issue out of, as the bare tag the envelope's own `stage` is spelled by),
+  `published_pr_number`, and `published_sha` (the head that pull request was left standing on). A `pre_publication`
+  record carries none of the three: the context travels only under the marker that claims it, so a record reporting an
+  initial publication cannot also carry an existing pull request's context.
 - **The commits** — `source_sha` (the frozen candidate) and `base_sha` (the exact remote base it was measured against).
 - **The measurement** — `threshold` and `additions`.
 - **Family fields** — `verdict` (`single` / `split` / `question`), `category`, `child_count`, `failure` (the typed
@@ -576,7 +587,8 @@ rather than a keyword somebody passed:
 
 Extras whose value is `None` are dropped by both envelope builders, so each family carries only what applies to it.
 
-**What is deliberately absent.** No file paths, no diff content, no prompt, no agent rationale, and no agent output.
+**What is deliberately absent.** No file paths, no diff content, no prompt, no agent rationale, no agent output, and
+none of a pull request's own text.
 The payload has no argument any of those could arrive through — it is built from a frozen record and a family-typed
 event — and every field that could otherwise smuggle text through is closed at the boundary:
 
@@ -588,12 +600,20 @@ event — and every field that could otherwise smuggle text through is closed at
   the bounded 12-character fingerprint `identity.resource_fingerprint` takes over the entry's kind and target. It is
   stable across retries of one resource and distinct between two of the same kind, which is what lets a consumer tell
   two children's cleanups apart without being told which children they were.
+- **A pull request's own text.** What a `post_publication` record says about the pull request it overflowed is the
+  number, the head it was standing on, and the stage the issue came from — three bounded fields. The title, the body,
+  and the body the adjudication holds in pinned state (`late_plan_pr_body`) are free-form text a human and an agent
+  both write into, and no argument here reaches them.
 - **The generation's own fields** are checked by `workflow/late_split/validation.py` before anything is built, because
-  `candidate_sha`, `base_sha`, `phase`, and `restart_target` are typed `str` and would otherwise be written verbatim.
-  A commit field must be a whole git object id — 40 or 64 hex, since nothing here records an abbreviation — a phase
-  must be a member, a restart target must be one of the two labels a restart may apply, and every count must be a
-  real non-negative integer. The four correlating identities — `cycle_id`, `generation`, `root_issue`,
-  `current_issue` — are **required**: a record nothing can be joined to is not one this domain writes. A refusal
+  `candidate_sha`, `base_sha`, `published_sha`, `phase`, `source_stage`, and `restart_target` are typed `str` — or
+  annotated with a vocabulary that a lookalike string satisfies every comparison of — and would otherwise be written
+  verbatim. A commit field must be a whole git object id — 40 or 64 hex, since nothing here records an abbreviation —
+  a phase and a source stage must be actual members, a restart target must be one of the two labels a restart may
+  apply, and every count must be a real non-negative integer. The four correlating identities — `cycle_id`,
+  `generation`, `root_issue`, `current_issue` — are **required**: a record nothing can be joined to is not one this
+  domain writes. So is the group a publication marker stands over: a generation flagged `post_publication` that
+  cannot name its stage, its pull request, and its head is refused rather than recorded, since a record claiming an
+  overflow it cannot describe would reach both sinks as a post-publication entry with no publication in it. A refusal
   names the field and the type it arrived as, never the value, so a field rejected for carrying prose does not put
   that prose in the log line instead of the sink.
 - **`stage`** is resolved against the workflow label vocabulary rather than passed through. A caller may name either
@@ -624,9 +644,10 @@ envelope fields (`repo`, `issue`, `event`, `stage`) plus every field in `LATE_PA
 every field again identically, so the timestamp is the only thing that can differ between one step's two emissions,
 and any other difference is a different step by construction — one candidate split into two children and into seven,
 two questions asked under different categories, two cleanups of two children, two restarts aimed at different states,
-two measurements against different bases. Naming the distinguishing fields one at a time instead is what let pairs
-like those collide, because the list has to be remembered every time the payload grows. Nothing about workflow
-disposition may depend on delivery, which is the other half of the same rule.
+two measurements against different bases, an initial publication and the overflow of a pull request that already
+exists. Naming the distinguishing fields one at a time instead is what let pairs like those collide, because the list
+has to be remembered every time the payload grows. Nothing about workflow disposition may depend on delivery, which
+is the other half of the same rule.
 
 **Fail-open, twice.** Both sinks already swallow a filesystem refusal, and each emission additionally rides its own
 guard on the `orchestrator.workflow` channel, so a failing sink costs the record and nothing else — and a failure on

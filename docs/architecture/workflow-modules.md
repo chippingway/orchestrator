@@ -176,9 +176,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     events.py               the seven families, the per-family schema an event is refused against, the member each
                             detail has to actually be, and the closed vocabulary a verdict category is chosen from
     validation.py           what a generation has to prove before a record of it may be written: the required
-                            identity, the format of every field a sink would carry, and what each family's own
-                            record has to be readable without
-    records.py              the bounded payload both sinks carry and the fields a duplicate record is deduplicated on
+                            identity, the format of every field a sink would carry, the publication a marker has to
+                            still be able to name, and what each family's own record has to be readable without
+    records.py              the bounded payload both sinks carry -- including the closed pair every family's record
+                            says which side of publication it was entered on under, and the frozen context only the
+                            marked half carries -- and the fields a duplicate record is deduplicated on
     telemetry.py            the dual audit / analytics emission, the stage tag resolved against the label
                             vocabulary, the refusal turned into a logged non-emission, and the guard on each half
                             that keeps a sink from reaching workflow

@@ -11,7 +11,7 @@ and a Postgres column would then carry it. So the gate runs at the one place a
 record is built, and a generation that cannot satisfy it produces no record at
 all.
 
-Two rules, and both of them fail closed:
+Four rules, and every one of them fails closed:
 
 - **Identity is required.** A record with no cycle, generation, root, or
   current issue cannot be joined to a pinned generation, a lineage, or another
@@ -24,10 +24,16 @@ Two rules, and both of them fail closed:
   describe reconciliation rather than size, and a restart's fresh cycle has
   deliberately let its commits go, so none of them is held to it.
 - **Every other emitted field is checked for what it claims to be.** A commit
-  field must be spelled like a git object id, a phase must be a member of the
-  vocabulary rather than a string that resembles one, a count must be a real
-  non-negative integer, and a restart target must be one of the two states a
-  restart may put an issue back into.
+  field must be spelled like a git object id, a phase and a source stage must
+  be members of their vocabularies rather than strings that resemble them, a
+  count must be a real non-negative integer, and a restart target must be one
+  of the two states a restart may put an issue back into.
+- **A marker may not claim what its record cannot say.** A generation entered
+  after publication is recorded as one only while it can still name the stage
+  it came from, the pull request the work already had, and the head that pull
+  request stood on. A hand-edited comment that leaves the marker over any of
+  the three gone would otherwise put a post-publication record with no
+  publication in it into both sinks.
 
 The refusal never quotes the value it refused. A field rejected for carrying
 prose would put that prose in the log line reporting it, which is the same
@@ -47,6 +53,7 @@ from orchestrator.workflow.late_split.models import (
     LateGeneration,
     LatePhase,
 )
+from orchestrator.workflow.state import WorkflowLabel
 
 # The identity a record is joined by, and the smallest value each may take. A
 # generation counter of 0 is a cycle that has frozen a candidate without
@@ -58,7 +65,7 @@ _IDENTITY_FLOORS = MappingProxyType({
     "current_issue": 1,
 })
 
-_SHA_FIELDS = ("candidate_sha", "base_sha")
+_SHA_FIELDS = ("candidate_sha", "base_sha", "published_sha")
 
 # What a family's own record is read without. A measurement and the verdict
 # answering it are the two an analysis joins on: which commits were frozen,
@@ -79,6 +86,7 @@ _COUNT_FIELDS = (
     "threshold",
     "additions",
     "plan_pr_number",
+    "published_pr_number",
     "comment_watermark_id",
     "restart_cycle_id",
     "restart_predecessor",
@@ -120,7 +128,13 @@ def _check_identity(generation: LateGeneration) -> None:
 
 
 def _check_shape(generation: LateGeneration) -> None:
-    """Require the three fields whose vocabulary is closed."""
+    """Require the closed vocabularies, and the entry a marker claims.
+
+    The marker is the one field asked what it stands over as well as what it
+    is: a record saying a generation was entered on a publication it cannot
+    name is exactly the record the reader on the far side would report as a
+    post-publication entry with no publication in it.
+    """
     depth = generation.lineage_depth
     _require(
         depth is None
@@ -132,11 +146,24 @@ def _check_shape(generation: LateGeneration) -> None:
     _require(
         phase is None or isinstance(phase, LatePhase), "phase", phase,
     )
+    stage = generation.source_stage
+    _require(
+        stage is None or isinstance(stage, WorkflowLabel),
+        "source_stage",
+        stage,
+    )
     target = generation.restart_target
     _require(
         target is None or _restart.restart_target(target) is not None,
         "restart_target",
         target,
+    )
+    marked = generation.post_publication
+    _require(
+        isinstance(marked, bool)
+        and (not marked or generation.has_publication_context),
+        "post_publication",
+        marked,
     )
 
 
