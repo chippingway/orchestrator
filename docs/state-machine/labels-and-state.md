@@ -636,11 +636,11 @@ machine fall into a few groups:
   `orchestrator_comment_ids`. This is a read-only verdict — no budget breaker or control behavior gates on it.
 - **Late generation.** The additive `late_*` group an oversized committed candidate is adjudicated under — cycle and
   generation identity, root / current issue and lineage depth, the declared scope, the frozen candidate and base SHAs,
-  the measurement, the reconciliation phase, the local content fingerprints, the held plan PR, the external-resource
-  ledgers, the owner read a finished run still owes, the cancellation marker, and the pending-restart marker. The one
-  commit an accepted candidate publishes under sits beside that group rather than in it, since clearing the generation
-  is exactly what it has to survive. Every key, and what an absent one means, is in
-  [Late generation state](#late-generation-state) below.
+  the measurement, the reconciliation phase, the local content fingerprints, the held plan PR, how the gate was
+  entered and what it was entered from, the external-resource ledgers, the owner read a finished run still owes, the
+  cancellation marker, and the pending-restart marker. The one commit an accepted candidate publishes under sits
+  beside that group rather than in it, since clearing the generation is exactly what it has to survive. Every key,
+  and what an absent one means, is in [Late generation state](#late-generation-state) below.
 
 The legacy `codex_session_id` key (written before `dev_agent` existed) is still honored on read by `_read_dev_session`:
 it round-trips to `spec="codex"` with no args so an older orchestrator's pin keeps running on codex.
@@ -663,7 +663,8 @@ holds anything — and drops the rest rather than keeping a half-record no audit
 correlated to. Every field is read defensively: a hand-edited or older value that cannot be typed reads back as
 absent rather than raising on a tick that has committed work to reconcile. Which reader a field goes through
 is the field's own contract rather than its Python type — an identity has to be positive, a measurement non-negative,
-a depth inside the lineage, a flag literally `true`, and a restart target one of the two labels a restart may apply.
+a depth inside the lineage, a flag literally `true`, a source stage one of this workflow's own labels, and a restart
+target one of the two labels a restart may apply.
 The hex fields are read at their exact lengths: a frozen commit is a whole git object id (40 or 64), because nothing
 here ever records an abbreviation, and a local fingerprint is a whole SHA-256 digest (64), because a truncated one is
 not a hash anything could be compared against. Only a real integer counts as a number at all: a bool, a float, and
@@ -733,6 +734,30 @@ rather than preserving.
   hidden marker in place — is left as theirs. The hold text is keyed to the cycle and quotes nothing that moves
   inside one precisely so that comparison is possible: the generation counter advances on every reconciliation that
   lands, and a body keyed to it could never be reconstructed after a re-measurement.
+- **Publication provenance.** `late_post_publication`, `late_source_stage`, `late_published_pr_number`, and
+  `late_published_sha` say how the gate was entered and what it was entered from. They are additive inside an additive
+  group, and their absence is the answer rather than a gap: a generation carrying none of them was entered *before*
+  the work was published, which is what every record written without this group describes — so a live pinned comment
+  answers the question with no migration having reached it, and the write leaves the group off rather than spelling
+  that one state a second way. `late_post_publication` is read off the literal `true` and written only while it is
+  set, for the reason the cancellation marker is: `bool("false")` is `True`, and reading the flag for its truthiness
+  would tell a reconciliation there is a pull request to act on. The three fields beside it are what a
+  pre-publication entry has no need of and a post-publication one could not re-derive. `late_source_stage` is the
+  workflow label the issue was taken out of and the state a settled adjudication continues at — read through the label
+  vocabulary, so a value that is not one of them reads back absent rather than as a state a later tick would obey, and
+  the adjudication runs under `decomposing` rather than the label it came from, so a stage that was not recorded is
+  not one anything could recover. `late_published_pr_number` is the pull request the work already has, which is
+  **not** `late_plan_pr_number` beside it: that one is the plan PR a cycle-marked hold is placed on, and one record
+  can be standing on both. `late_published_sha` is the head that pull request was left on, frozen at entry like every
+  other late SHA because the branch moves under a reconciliation that re-read it. It is the late group's own copy
+  rather than a reading of `implementing_published_sha` above: that key is the publishing stage's live record and is
+  overwritten by the next push, while this one is evidence one generation is reconciled against and is dropped with
+  the generation. The flag alone proves none of it — `LateGeneration.has_publication_context` holds only while the
+  stage, the pull request, and the head are all readable beside it, so a group a hand edit half-damaged reads as
+  context nothing may act on rather than as a publication with no pull request to name, and
+  `LateGeneration.with_publication` refuses to record one that cannot name all three. A restart's fresh cycle keeps
+  none of the group and needs none: what it puts the issue back into is `decomposing` or `implementing`, which is a
+  pre-publication attempt again.
 - **External-resource ledgers.** `late_resources` holds one `{kind, target, state}` entry per obligation the remote is
   owed — kind `snapshot_ref` / `branch` / `plan_pr` / `child`, state `pending` / `retained` / `reclaiming` /
   `reconciled` / `failed`

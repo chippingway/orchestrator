@@ -151,9 +151,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     ledgers.py              what the two external ledgers read back as, the exact entry shape one of ours has, the
                             verbatim copy anything else is preserved through, and the all-or-nothing reading of the
                             ordered child register, whose entries are positional and so may not be skipped past
-    state.py                the `late_*` pinned keys -- the frozen evidence, the ledgers, and the cancellation and
-                            pending-owner-check markers -- and the round trip through them that leaves a legacy
-                            comment untouched and an unreadable obligation intact, plus the two keys
+    state.py                the `late_*` pinned keys -- the frozen evidence, the publication provenance, the
+                            ledgers, and the cancellation and pending-owner-check markers -- and the round trip
+                            through them that leaves a legacy comment untouched and an unreadable obligation
+                            intact, plus the two keys
                             deliberately outside the group a cleared generation drops: the cycle a retirement
                             dropped, and the two-phase terminal record beside it -- the decision naming the
                             cycle a `rejected` is owed for, and the proof that one landed on the issue, which

@@ -20,8 +20,15 @@ snapshot or a branch with nothing on the issue to reclaim it by. So an
 uncorrelatable record still writes what it owes, and nothing else. Past that
 gate each field says for itself what "unset" means: an identity or a SHA at
 its empty value is dropped, a lineage depth of 0 is a root and is kept, and
-the three flags are written only while they are set. What survives the round
-trip is therefore exactly what a caller put in.
+every flag is written only while it is set. What survives the round trip is
+therefore exactly what a caller put in.
+
+The publication provenance is additive twice over, and this write is what
+makes the second half of that true: a generation entered before the work was
+published records none of the group, which is the same pinned comment a binary
+that never had the group writes. One state, one spelling -- so reading an
+absent flag as a pre-publication entry is right about a live issue without a
+migration having reached it.
 
 The two external ledgers are the one pair of fields this owner does not
 rewrite from the typed record. A ledger the reader could not fully type comes
@@ -39,6 +46,7 @@ this list drops it no more than it drops another stage's keys.
 from __future__ import annotations
 
 import json
+from enum import StrEnum
 from typing import Any, Optional
 
 from orchestrator.github.pinned_state import PinnedState
@@ -47,6 +55,7 @@ from orchestrator.workflow.late_split import ledgers as _ledgers
 from orchestrator.workflow.late_split import payloads as _payloads
 from orchestrator.workflow.late_split import restart as _restart
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
+from orchestrator.workflow.state import WorkflowLabel
 
 _CYCLE_ID = "late_cycle_id"
 _GENERATION = "late_generation"
@@ -64,6 +73,10 @@ _COMMENT_HASH = "late_comment_hash"
 _COMMENT_WATERMARK_ID = "late_comment_watermark_id"
 _PLAN_PR_NUMBER = "late_plan_pr_number"
 _PLAN_PR_BODY = "late_plan_pr_body"
+_POST_PUBLICATION = "late_post_publication"
+_SOURCE_STAGE = "late_source_stage"
+_PUBLISHED_PR_NUMBER = "late_published_pr_number"
+_PUBLISHED_SHA = "late_published_sha"
 _RESOURCES = "late_resources"
 _CONSUMERS = "late_consumers"
 _SPLIT_CHILDREN = "late_split_children"
@@ -94,6 +107,10 @@ LATE_STATE_KEYS = (
     _COMMENT_WATERMARK_ID,
     _PLAN_PR_NUMBER,
     _PLAN_PR_BODY,
+    _POST_PUBLICATION,
+    _SOURCE_STAGE,
+    _PUBLISHED_PR_NUMBER,
+    _PUBLISHED_SHA,
     _RESOURCES,
     _CONSUMERS,
     _SPLIT_CHILDREN,
@@ -243,11 +260,11 @@ def read_late_generation(state: PinnedState) -> LateGeneration:
     Which reader a field is read through is the field's contract, not its
     Python type: an identity has to be positive, a measurement non-negative, a
     frozen commit a whole object id and a fingerprint a whole digest, a flag
-    literally `true`, and a restart target one of the two labels a restart may
-    apply. Anything else reads back
-    absent, so a hand-edited or older value never becomes live state -- a
-    threshold of -1 does not make an unmeasured candidate oversized, and a
-    `"false"` string does not arm a cancellation or a pending restart.
+    literally `true`, a source stage one of this workflow's own labels, and a
+    restart target one of the two labels a restart may apply. Anything else
+    reads back absent, so a hand-edited or older value never becomes live
+    state -- a threshold of -1 does not make an unmeasured candidate oversized,
+    and a `"false"` string does not arm a cancellation or a pending restart.
 
     The lineage depth is the one field with no safe substitute for an
     unreadable value, so it has none: a damaged or missing depth on a recorded
@@ -289,6 +306,16 @@ def read_late_generation(state: PinnedState) -> LateGeneration:
         ),
         plan_pr_number=_payloads.as_identity(state.get(_PLAN_PR_NUMBER)),
         plan_pr_body=_payloads.as_text(state.get(_PLAN_PR_BODY)),
+        post_publication=_payloads.as_flag(state.get(_POST_PUBLICATION)),
+        source_stage=_payloads.as_member(
+            WorkflowLabel, state.get(_SOURCE_STAGE),
+        ),
+        published_pr_number=_payloads.as_identity(
+            state.get(_PUBLISHED_PR_NUMBER),
+        ),
+        published_sha=_payloads.as_hex(
+            state.get(_PUBLISHED_SHA), _formats.COMMIT_LENGTHS,
+        ) or "",
         resources=resources,
         consumers=consumers,
         split_children=_ledgers.read_register(state.get(_SPLIT_CHILDREN)),
@@ -369,6 +396,7 @@ def _written_fields(generation: LateGeneration) -> dict[str, Any]:
         return ledgers
     fields = {
         **_evidence_fields(generation),
+        **_publication_fields(generation),
         **ledgers,
         _SPLIT_CHILDREN: list(generation.split_children) or None,
         _LINKS_ANNOUNCED: generation.links_announced or None,
@@ -388,12 +416,12 @@ def _written_fields(generation: LateGeneration) -> dict[str, Any]:
     }
 
 
-def _wire(member: Optional[LatePhase]) -> Optional[str]:
-    """Return the wire string one phase field is recorded under, or None.
+def _wire(member: Optional[StrEnum]) -> Optional[str]:
+    """Return the wire string one vocabulary field is recorded under, or None.
 
-    Both phase fields go through it, so the boundary a generation reached and
-    the one it was cancelled from are spelled the same way in the pinned
-    comment and read back through the same member lookup.
+    Every field holding a member goes through it -- the boundary a generation
+    reached, the one it was cancelled from, and the stage it was entered at --
+    so each is written exactly as the vocabulary that reads it back spells it.
     """
     return None if member is None else str(member)
 
@@ -422,6 +450,23 @@ def _evidence_fields(generation: LateGeneration) -> dict[str, Any]:
         _COMMENT_WATERMARK_ID: generation.comment_watermark_id,
         _PLAN_PR_NUMBER: generation.plan_pr_number,
         _PLAN_PR_BODY: generation.plan_pr_body,
+    }
+
+
+def _publication_fields(generation: LateGeneration) -> dict[str, Any]:
+    """Return how this generation was entered, absent context dropped.
+
+    A generation entered before anything was published records none of it, so
+    the flag goes down only while it is set and the three fields beside it
+    only while they hold something. That is what keeps a pre-publication entry
+    and a record written without this group the same pinned comment, rather
+    than two spellings a later reader would have to tell apart.
+    """
+    return {
+        _POST_PUBLICATION: generation.post_publication or None,
+        _SOURCE_STAGE: _wire(generation.source_stage),
+        _PUBLISHED_PR_NUMBER: generation.published_pr_number,
+        _PUBLISHED_SHA: generation.published_sha or None,
     }
 
 
