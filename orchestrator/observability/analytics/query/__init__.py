@@ -69,13 +69,15 @@ JSONB blob no table above the events one carries: how often a cohort reaches
 for a skill at all, which of a repository's offered skills each cohort
 triggered, and how many sessions that could have used one did.
 ``skill_trigger_rates`` owns the cohort denominator a quiet role still reports
-against, ``skill_matrices`` the catalog scan the observed cells are padded from
-and the narrower filtering that repository-level scan takes, ``skill_adoption``
-the per-session ratio and the window diagnostics that ride beside it without
-moving it, and ``skill_sessions`` which row belongs to which logical session and
-how far back the evidence for one reaches. Beneath them, ``skill_values`` owns
-the coercion a JSONB name array is read through, the cohort a row is filed
-under, and the ranking a matrix cell is sorted by.
+against, ``skill_matrices`` the runs scan the observed cells are counted from
+with the padding and the ranking over them, ``skill_provenance`` the catalog
+scan that padding is drawn from, the narrower filtering that repository-level
+scan takes, and the one offered level an unclassified load is filed at,
+``skill_adoption`` the per-session ratio and the window diagnostics that ride
+beside it without moving it, and ``skill_sessions`` which row belongs to which
+logical session and how far back the evidence for one reaches. Beneath them,
+``skill_values`` owns the coercion a JSONB name array is read through, the
+cohort a row is filed under, and the ranking a matrix cell is sorted by.
 
 Beneath the rollup and breakdown families, ``cache_shares`` owns the token
 share one row's cost is split into cache and no-cache bands by, once per set of

@@ -74,8 +74,8 @@ class SkillMatrixCellReadingsTest(unittest.TestCase):
         )
 
     def test_the_source_level_is_its_own_column(self) -> None:
-        # A catalog-padded cell and a run that triggered the same name under no
-        # recorded level are two rows, so a row that dropped the level would
+        # A repository's own definition and a same-named one installed for
+        # the operator are two rows, so a row that dropped the level would
         # report them as one another's duplicate.
         self.assertIn(
             cell_fragment(LEVEL_USER), _rendered(CellCase(level=LEVEL_USER)),

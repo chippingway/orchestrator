@@ -75,6 +75,8 @@ _SKILL_ADOPTION_OWNER = "skill_adoption"
 
 _SKILL_MATRICES_OWNER = "skill_matrices"
 
+_SKILL_PROVENANCE_OWNER = "skill_provenance"
+
 _SKILL_READS_OWNER = "skill_reads"
 
 _SKILL_SESSIONS_OWNER = "skill_sessions"
@@ -144,6 +146,7 @@ _OWNERS = _MODEL_OWNERS + (
     _ROW_CELLS_OWNER,
     _SKILL_ADOPTION_OWNER,
     _SKILL_MATRICES_OWNER,
+    _SKILL_PROVENANCE_OWNER,
     _SKILL_READS_OWNER,
     _SKILL_SESSIONS_OWNER,
     _SKILL_TRIGGER_RATES_OWNER,
@@ -179,6 +182,7 @@ _OWNERS = _MODEL_OWNERS + (
 # each beneath them too, plus the cell readings a row from either is narrowed
 # by. The skill reads are the three under skill_reads, the aggregate owner
 # behind each, the session identity and evidence the adoption one is built on,
+# the catalog scan and the level lookup an unclassified load is filled from,
 # and the payload coercion, cohort, and ranking all of them share. Constants --
 # the rollup view name, the two request field names, the `result` attribute
 # name, the filter-option columns, the two sort modes, the terminal throughput
@@ -393,10 +397,14 @@ _SURFACES = MappingProxyType({
     ),
     _SKILL_MATRICES_OWNER: (
         "SkillMatrixCounts",
-        "skill_catalog",
-        "skill_catalog_rows",
         "skill_run_rows",
         "skill_trigger_matrix_rows",
+    ),
+    _SKILL_PROVENANCE_OWNER: (
+        "SkillProvenance",
+        "repo_skill_provenance",
+        "skill_catalog",
+        "skill_catalog_rows",
     ),
     _SKILL_ADOPTION_OWNER: (
         "SkillAdoption",

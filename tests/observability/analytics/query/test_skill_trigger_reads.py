@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import unittest
 from itertools import product
+from types import MappingProxyType
 
 from orchestrator.observability.analytics.query.skill_reads import (
     get_skill_trigger_matrix,
@@ -49,6 +50,8 @@ _QUESTION = "question"
 
 _REPO = "owner/repo"
 
+_OTHER_REPO = "owner/other"
+
 _DEVELOP = "develop"
 
 _REVIEW = "review"
@@ -73,7 +76,20 @@ _SKILL_FREE_RUN = (_REPO, _DEVELOPER, _CLAUDE, None)
 # level each was classified at.
 _DEVELOP_CATALOG = ((_REPO, _DEVELOP_ONLY, {_DEVELOP: _PROJECT}),)
 
+# Both of the matrix's scans, for the fixture that offers `develop` and runs
+# one load of it, keyed by the fragment naming the scan each answers.
+_DEVELOP_SCANS = MappingProxyType({
+    _CATALOG_SCAN: _DEVELOP_CATALOG,
+    _EXIT_SCAN: (_DEVELOP_RUN,),
+})
+
 _DRILL_DOWN_ISSUE = 551
+
+# The developer / claude cohort one repository reports: 166 finished runs, of
+# which three loaded `develop` without naming the level it was defined at.
+_COHORT_RUNS = 166
+
+_COHORT_LOADS = 3
 
 # The two reads and one row wide enough for each, so what they share -- the
 # scan target and the short circuits -- is pinned once per read.
@@ -89,9 +105,11 @@ _SKILL_READ_CALLS = tuple(read for read, _row in _SKILL_READS)
 _EXIT_FREE_SELECTIONS = ([_STAGE_ENTER], [])
 
 
-def _catalog_and_runs(catalog: tuple, runs: tuple) -> dict[str, tuple]:
-    """Route the matrix's two scans to their own rows."""
-    return {_CATALOG_SCAN: catalog, _EXIT_SCAN: runs}
+def _matrix_rows(catalog: tuple, runs: tuple) -> list:
+    """Read the matrix, routing each of its two scans to its own rows."""
+    conn = FakeConnection(rows_for={_CATALOG_SCAN: catalog, _EXIT_SCAN: runs})
+    with configured_db_url():
+        return get_skill_trigger_matrix(connect=conn.as_connect)
 
 
 def _matrix_cells(rows) -> dict[tuple, tuple]:
@@ -126,7 +144,10 @@ class SkillReadShortCircuitTest(unittest.TestCase):
         # Skill fields live in the `extras` JSONB neither the rollup nor the
         # agent-run view carries, so both reads scan the events table.
         for read, row in _SKILL_READS:
-            conn = FakeConnection(rows=(row,), rows_for=_catalog_and_runs((), (row,)))
+            conn = FakeConnection(
+                rows=(row,),
+                rows_for={_CATALOG_SCAN: (), _EXIT_SCAN: (row,)},
+            )
             with self.subTest(read=read.__name__), configured_db_url():
                 read(connect=conn.as_connect)
             for scan_sql, _ in conn.executed:
@@ -201,10 +222,7 @@ class SkillMatrixScopeTest(unittest.TestCase):
     """Which selection reaches which of the matrix's two scans."""
 
     def test_the_repo_narrows_both_scans(self) -> None:
-        conn = FakeConnection(rows_for=_catalog_and_runs(
-            _DEVELOP_CATALOG,
-            (_DEVELOP_RUN,),
-        ))
+        conn = FakeConnection(rows_for=_DEVELOP_SCANS)
         with configured_db_url():
             get_skill_trigger_matrix(repo=_REPO, connect=conn.as_connect)
         for scan_sql, bindings in conn.executed:
@@ -216,10 +234,7 @@ class SkillMatrixScopeTest(unittest.TestCase):
         # and written whenever the catalog was last scanned -- so pushing the
         # window, issue, or stage selection onto it would drop every row and
         # silently collapse the padding.
-        conn = FakeConnection(rows_for=_catalog_and_runs(
-            _DEVELOP_CATALOG,
-            (_DEVELOP_RUN,),
-        ))
+        conn = FakeConnection(rows_for=_DEVELOP_SCANS)
         with configured_db_url():
             get_skill_trigger_matrix(
                 issue=_DRILL_DOWN_ISSUE,
@@ -239,10 +254,7 @@ class SkillMatrixScopeTest(unittest.TestCase):
     def test_each_scan_reads_its_own_skill_field(self) -> None:
         # Both scans read the recorded levels beside the names they differ
         # over, since a cell is filed under the two together.
-        conn = FakeConnection(rows_for=_catalog_and_runs(
-            _DEVELOP_CATALOG,
-            (_DEVELOP_RUN,),
-        ))
+        conn = FakeConnection(rows_for=_DEVELOP_SCANS)
         with configured_db_url():
             get_skill_trigger_matrix(connect=conn.as_connect)
         catalog_sql, _ = conn.executed[0]
@@ -274,7 +286,7 @@ class SkillMatrixCellTest(unittest.TestCase):
         # or question run emits `agent_exit` like any other, and a run that
         # recorded neither label is its own cohort under `unknown` rather than
         # one dropped for having nothing to group by.
-        conn = FakeConnection(rows_for=_catalog_and_runs(
+        rows = _matrix_rows(
             _DEVELOP_CATALOG,
             (
                 _DEVELOP_RUN,
@@ -282,9 +294,7 @@ class SkillMatrixCellTest(unittest.TestCase):
                 (_REPO, _QUESTION, _CODEX, None),
                 (_REPO, None, None, _DEVELOP_ONLY, {_DEVELOP: _PROJECT}),
             ),
-        ))
-        with configured_db_url():
-            rows = get_skill_trigger_matrix(connect=conn.as_connect)
+        )
         cells = _matrix_cells(rows)
         self.assertEqual(cells[(_DEVELOP, _PROJECT, _DEVELOPER, _CLAUDE)], (1, 1))
         self.assertEqual(cells[(_DEVELOP, _PROJECT, _DECOMPOSER, _CLAUDE)], (1, 0))
@@ -296,13 +306,10 @@ class SkillMatrixCellTest(unittest.TestCase):
         # What ran is not discarded for disagreeing with what was offered; it
         # simply earns no zeros elsewhere. Both cells read against the same
         # cohort size, so a low trigger count stays legible.
-        conn = FakeConnection(rows_for=_catalog_and_runs(
+        cells = _matrix_cells(_matrix_rows(
             ((_REPO, (_REVIEW,), {_REVIEW: _PROJECT}),),
             (_DEVELOP_RUN, _SKILL_FREE_RUN),
         ))
-        with configured_db_url():
-            rows = get_skill_trigger_matrix(connect=conn.as_connect)
-        cells = _matrix_cells(rows)
         self.assertEqual(cells[(_DEVELOP, _PROJECT, _DEVELOPER, _CLAUDE)], (2, 1))
         self.assertEqual(cells[(_REVIEW, _PROJECT, _DEVELOPER, _CLAUDE)], (2, 0))
 
@@ -324,30 +331,24 @@ class SkillMatrixCellTest(unittest.TestCase):
         self.assertEqual(len(conn.executed), 2)
 
     def test_a_cell_is_keyed_by_name_and_level(self) -> None:
-        # One name at two levels is two definitions, so the cohort's loads of
-        # each report as their own cells rather than one blended average -- a
-        # run that classified nothing (a record written before levels, or a
-        # claude run whose stream names no source directory) under `unknown`.
-        # The catalog record classified nothing either, and still pads at
-        # `project`: that scan reads a repository's own checked-in definitions.
-        conn = FakeConnection(rows_for=_catalog_and_runs(
+        # One name at two levels is two definitions, so what a cohort loaded
+        # of each reports as its own cell rather than one blended average.
+        # The catalog record classified nothing and still pads at `project`:
+        # that scan reads a repository's own checked-in definitions.
+        cells = _matrix_cells(_matrix_rows(
             ((_REPO, _DEVELOP_ONLY, None),),
             (
                 (_REPO, _DEVELOPER, _CLAUDE, _DEVELOP_ONLY, {_DEVELOP: _USER}),
-                (_REPO, _DEVELOPER, _CLAUDE, _DEVELOP_ONLY, None),
+                _SKILL_FREE_RUN,
             ),
         ))
-        with configured_db_url():
-            rows = get_skill_trigger_matrix(connect=conn.as_connect)
-        cells = _matrix_cells(rows)
         self.assertEqual(cells[(_DEVELOP, _USER, _DEVELOPER, _CLAUDE)], (2, 1))
-        self.assertEqual(cells[(_DEVELOP, _UNKNOWN, _DEVELOPER, _CLAUDE)], (2, 1))
         self.assertEqual(cells[(_DEVELOP, _PROJECT, _DEVELOPER, _CLAUDE)], (2, 0))
 
     def test_skill_names_parse_from_raw_json_text(self) -> None:
         # A driver or fixture that hands the JSONB arrays and maps back as
         # text rather than as adapted objects still parses, on both scans.
-        conn = FakeConnection(rows_for=_catalog_and_runs(
+        cells = _matrix_cells(_matrix_rows(
             (
                 (
                     _REPO,
@@ -357,9 +358,6 @@ class SkillMatrixCellTest(unittest.TestCase):
             ),
             ((_REPO, _DEVELOPER, _CLAUDE, '["develop"]', '{"develop": "project"}'),),
         ))
-        with configured_db_url():
-            rows = get_skill_trigger_matrix(connect=conn.as_connect)
-        cells = _matrix_cells(rows)
         self.assertEqual(cells[(_DEVELOP, _PROJECT, _DEVELOPER, _CLAUDE)], (1, 1))
         self.assertEqual(cells[(_REVIEW, _PROJECT, _DEVELOPER, _CLAUDE)], (1, 0))
 
@@ -368,7 +366,7 @@ class SkillMatrixCellTest(unittest.TestCase):
         # repo / role / backend / skill / level tiebreak.
         levels = {_DEVELOP: _PROJECT, _REVIEW: _PROJECT}
         reviewer_run = (_REPO, _REVIEWER, _CODEX, _DEVELOP_ONLY, levels)
-        conn = FakeConnection(rows_for=_catalog_and_runs(
+        rows = _matrix_rows(
             ((_REPO, (_DEVELOP, _REVIEW), levels),),
             (
                 _DEVELOP_RUN,
@@ -377,9 +375,7 @@ class SkillMatrixCellTest(unittest.TestCase):
                 reviewer_run,
                 reviewer_run,
             ),
-        ))
-        with configured_db_url():
-            rows = get_skill_trigger_matrix(connect=conn.as_connect)
+        )
         self.assertEqual(
             [
                 (row.skill, row.agent_role, row.backend, row.runs, row.skill_runs)
@@ -395,10 +391,10 @@ class SkillMatrixCellTest(unittest.TestCase):
 
     def test_the_cap_keeps_the_top_of_that_ranking(self) -> None:
         review_run = (_REPO, _DEVELOPER, _CLAUDE, (_REVIEW,), {_REVIEW: _PROJECT})
-        conn = FakeConnection(rows_for=_catalog_and_runs(
-            ((_REPO, (_DEVELOP, _REVIEW, _DOCUMENT), None),),
-            (_DEVELOP_RUN, review_run, review_run),
-        ))
+        conn = FakeConnection(rows_for={
+            _CATALOG_SCAN: ((_REPO, (_DEVELOP, _REVIEW, _DOCUMENT), None),),
+            _EXIT_SCAN: (_DEVELOP_RUN, review_run, review_run),
+        })
         with configured_db_url():
             capped = get_skill_trigger_matrix(limit=2, connect=conn.as_connect)
             uncapped = get_skill_trigger_matrix(limit=0, connect=conn.as_connect)
@@ -408,6 +404,77 @@ class SkillMatrixCellTest(unittest.TestCase):
         )
         # A non-positive cap means every cell, not no rows.
         self.assertEqual(len(uncapped), 3)
+
+
+class SkillMatrixProvenanceTest(unittest.TestCase):
+    """Which level a load that named none is filed at, and which it is not."""
+
+    def test_one_offered_level_fills_a_blank_load(self) -> None:
+        # A claude stream names no source directory, so every skill it loads
+        # arrives unclassified. The repository offers `develop` at exactly one
+        # level, so those loads land inside that catalog-padded cell instead
+        # of beside it as a second `unknown` row -- which is what lets the
+        # cohort read as one `develop / project` cell of 3 in 166 runs.
+        claude_load = (_REPO, _DEVELOPER, _CLAUDE, _DEVELOP_ONLY, None)
+        rows = _matrix_rows(
+            _DEVELOP_CATALOG,
+            (claude_load,) * _COHORT_LOADS
+            + (_SKILL_FREE_RUN,) * (_COHORT_RUNS - _COHORT_LOADS),
+        )
+        self.assertEqual(len(rows), 1)
+        assert_row_fields(self, rows[0], {
+            "skill": _DEVELOP,
+            "level": _PROJECT,
+            "runs": _COHORT_RUNS,
+            "skill_runs": _COHORT_LOADS,
+            "rate": _COHORT_LOADS / _COHORT_RUNS,
+        })
+
+    def test_a_recorded_level_outranks_the_catalog(self) -> None:
+        # What the run itself observed is never overwritten by the
+        # repository-wide inference, so a globally installed `develop` a run
+        # named `user` keeps that level and the offered one stays a real zero.
+        cells = _matrix_cells(_matrix_rows(
+            _DEVELOP_CATALOG,
+            ((_REPO, _DEVELOPER, _CLAUDE, _DEVELOP_ONLY, {_DEVELOP: _USER}),),
+        ))
+        self.assertEqual(cells, {
+            (_DEVELOP, _USER, _DEVELOPER, _CLAUDE): (1, 1),
+            (_DEVELOP, _PROJECT, _DEVELOPER, _CLAUDE): (1, 0),
+        })
+
+    def test_an_unoffered_name_stays_unknown(self) -> None:
+        # The lookup is per repository: a name this catalog never listed has
+        # no definition to file the load under, and the level another
+        # repository classified that same name at is not one either.
+        cells = _matrix_cells(_matrix_rows(
+            (
+                (_REPO, (_REVIEW,), {_REVIEW: _PROJECT}),
+                (_OTHER_REPO, _DEVELOP_ONLY, {_DEVELOP: _USER}),
+            ),
+            ((_REPO, _DEVELOPER, _CLAUDE, _DEVELOP_ONLY, None),),
+        ))
+        self.assertEqual(cells, {
+            (_DEVELOP, _UNKNOWN, _DEVELOPER, _CLAUDE): (1, 1),
+            (_REVIEW, _PROJECT, _DEVELOPER, _CLAUDE): (1, 0),
+        })
+
+    def test_an_ambiguous_name_stays_unknown(self) -> None:
+        # Two definitions the load could have come from is not a fallback, so
+        # it keeps the one spelling an operator can look up while both offered
+        # definitions stay padded at zero.
+        cells = _matrix_cells(_matrix_rows(
+            (
+                (_REPO, _DEVELOP_ONLY, {_DEVELOP: _PROJECT}),
+                (_REPO, _DEVELOP_ONLY, {_DEVELOP: _USER}),
+            ),
+            ((_REPO, _DEVELOPER, _CLAUDE, _DEVELOP_ONLY, None),),
+        ))
+        self.assertEqual(cells, {
+            (_DEVELOP, _UNKNOWN, _DEVELOPER, _CLAUDE): (1, 1),
+            (_DEVELOP, _PROJECT, _DEVELOPER, _CLAUDE): (1, 0),
+            (_DEVELOP, _USER, _DEVELOPER, _CLAUDE): (1, 0),
+        })
 
 
 if __name__ == "__main__":
