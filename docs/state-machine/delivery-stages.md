@@ -1079,7 +1079,12 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        to "no paths", which is the answer a clean tree gives, so the seam that publishes asks the status form and
        refuses on either half of "not provably clean". An index entry marked `assume-unchanged` / `skip-worktree`
        comes back as a path AND withholds the reading, so it takes the dirty park and is named there.
-     - no new commits → `_on_question`: post the agent's last message as a HITL question, park.
+     - no new commits → `_on_question`, which parks on whose words the last message is. A quota notice
+       (`_is_session_limit_message`) and a transient provider refusal (`agents/sessions.py`'s
+       `is_transient_provider_failure` — `API Error: 529 Overloaded` and its 5xx siblings) are the CLI's rather than
+       the agent's, so both park retryably as `agent_silent` with the operator told to reply `/orchestrator continue`;
+       any other non-empty message is posted as a real HITL question (`park_reason=None`); an empty one is the
+       silent-failure park (`agent_silent`).
 - **Output**: one of three. A pushed branch + open PR + label moved to `workflow:validating`; an **unpublished**
   committed candidate held under `workflow:decomposing` for size adjudication, with no branch pushed and no pull
   request opened; or a HITL park — the ordinary question / dirty-tree / unreadable-tree / timeout ones, plus the

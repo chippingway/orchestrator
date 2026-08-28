@@ -205,15 +205,19 @@ where you put it rather than greeted a second time, so nothing runs again until 
 - `paused` — freeze an in-flight issue without discarding its state. If it lands during an agent run, the orchestrator
   withholds post-run side effects; committed dev work or a confirmed discussion plan stays on the branch for recovery.
   Removing the label is the entire resume action.
-- `/orchestrator continue` — post this as the entire comment to retry a dev session parked because it went silent or
-  timed out; it is not an un-pause command and does not clear other park reasons.
+- `/orchestrator continue` — post this as the entire comment to retry a dev session that stopped for a reason no
+  human has to answer: it went silent, timed out, hit a session/usage limit, or was refused by the model provider (an
+  `API Error: 529 Overloaded` or one of its 5xx siblings). The park comment says which, and names this command when
+  it is the answer. It is not an un-pause command and does not clear other park reasons — a park waiting on a real
+  answer refuses it and says so.
 - `/orchestrator add-review-rounds N` — post this on its own line with a positive `N` on an issue parked at
   `MAX_REVIEW_ROUNDS`. It grants up to `N` more reviewer rounds, capped at the configured maximum.
 
-Some parks unstick themselves and say so. A push that failed on a network blip, or a dev or reviewer agent that timed
-out or crashed, is retried quietly on the next tick; when the retry works the orchestrator posts a short
-`Recovered automatically … No action needed.` comment so the @-mention that pinged you is not the thread's last word.
-A park that is still stuck stays silent, so a mention with no such follow-up under it is one that still wants you.
+Some parks unstick themselves and say so. A push that failed on a network blip, a dev or reviewer agent that timed
+out or crashed, or a review the provider refused to serve, is retried quietly on the next tick; when the retry works
+the orchestrator posts a short `Recovered automatically … No action needed.` comment so the @-mention that pinged
+you is not the thread's last word. A park that is still stuck stays silent, so a mention with no such follow-up
+under it is one that still wants you.
 
 See the [`backlog` / `paused` reference](docs/configuration.md#control-labels) and the
 [stage-handler lifecycle](docs/state-machine.md#stage-handlers) for the full semantics.

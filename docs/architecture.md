@@ -318,7 +318,10 @@ lock, and the resume mechanic are documented in
   `{"type":"result","result":...}` event (honored regardless of how the run ended), falls back to the last
   `assistant`/`message` text content for schema-drift forward-compat. The fallback is gated to clean, completed runs
   (`exit_code == 0`, not timed out, not interrupted); an interrupted or non-zero run with no terminal `result` event
-  exposes an empty `last_message` rather than a partial transcript chunk.
+  exposes an empty `last_message` rather than a partial transcript chunk. That same terminal event is read once more,
+  for its `is_error` flag: it is what tells a provider refusal the run ENDED on from an answer that merely quotes one,
+  and `agents/sessions.py`'s transient-provider classifier prefers it over any text match (falling back to a narrow
+  message prefix beside a non-zero exit only where no flag is present).
 - **Input**: prompt string; optional resume session id; timeout (`AGENT_TIMEOUT` / `REVIEW_TIMEOUT`).
 - **Output**: `AgentResult(...)`. `session_id` is harvested by walking the JSONL events for any UUID-shaped value at
   `session_id` / `conversation_id` / etc. (shared between both backends).
