@@ -141,8 +141,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     models.py               the phase / verdict / failure / resource vocabularies, the boundaries a split
                             transaction owns among them, the frozen generation record with the transforms that
                             return a new one -- including the boundary move that refuses to rewind out of one of
-                            those, which is the rule every retry above the transaction is held to -- and the
-                            lineage bound it is read against
+                            those, which is the rule every retry above the transaction is held to, and the
+                            post-publication entry no record carries unless it can name the stage, the pull
+                            request, and the head at once -- and the lineage bound it is read against
     identity.py             the monotonic cycle and generation identities, the child depth the bound still allows,
                             the two local content fingerprints a scope edit and a trusted answer are told apart by,
                             and the bounded name-free print one ledger entry is reported under
