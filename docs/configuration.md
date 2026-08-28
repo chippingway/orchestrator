@@ -451,7 +451,7 @@ public viewer read and uploading the SARIF to code scanning.
 pull requests targeting `main`, and a weekly schedule, then uploads the results to code scanning. Every `uses:` in
 every workflow names a full commit SHA with its release in a trailing comment, and Dependabot's `github-actions`
 updates rewrite that pair. The per-file lint scopes, the repository-wide 120-column target, workflow token
-permissions, the commit-SHA pins, the dependency review, and how the scheduled scans work are in
+permissions, the commit-SHA pins, the job timeouts, the dependency review, and how the scheduled scans work are in
 [`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration).
 
 ## Run modes

@@ -100,6 +100,16 @@ comment (`uses: owner/action@<sha> # v1.2.3`), so a retagged release cannot chan
 shape for every workflow, but nothing checks the comment against the SHA it labels, so a hand edit has to move both
 together; Dependabot's `github-actions` updates rewrite the pair.
 
+Each security scan also bounds its own job with `timeout-minutes`: 30 for the CodeQL analysis, 20 for Scorecard and
+the vulnerability scan, 15 for the dependency review. A job that hangs otherwise runs until GitHub's six-hour default
+cancels it, and both halves of this set pay for that wait. The dependency review is a required check and CodeQL's
+findings are enforced by a ruleset ([`../security.md#required-checks`](../security.md#required-checks)), so a hung job
+holds a merge for those six hours instead of failing in the minutes the scan takes. Scorecard, the vulnerability scan,
+and CodeQL's scheduled pass have nobody watching, so a hung one holds a runner while reading as a scan that has yet to
+report rather than as one that failed.
+[`../../tests/repository/test_workflow_job_timeouts.py`](../../tests/repository/test_workflow_job_timeouts.py) holds a
+declared timeout, shorter than that default, on every job in those four workflows.
+
 [`../../.github/dependabot.yml`](../../.github/dependabot.yml) opens weekly update PRs for the `github-actions` and `uv`
 (Python `pyproject.toml` + `uv.lock`) ecosystems. For routine version updates, `github-actions` uses the ecosystem-wide
 cooldown GitHub supports and holds every release for 30 days. The `uv` entry holds a major release, and anything SemVer
