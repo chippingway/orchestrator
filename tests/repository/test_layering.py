@@ -70,18 +70,35 @@ _BASE_SYNC = f"{PACKAGE}.git.base_sync"
 
 _COMMENTS = f"{PACKAGE}.workflow.engine.comments"
 
+_LATE_PUSH = f"{PACKAGE}.workflow.stages.implementing.late_push"
+
+_LATE_RECORDS = f"{PACKAGE}.workflow.stages.implementing.late_records"
+
+_LATE_REWRITE = f"{PACKAGE}.workflow.stages.implementing.late_rewrite"
+
+_PUBLICATION = f"{PACKAGE}.git.publication"
+
 # Every upward reach made inside a call, declared per module. A base sync runs
 # under a git-layer owner but reports to the issue it was started for: the
 # notice a rebase or a conflict posts goes out through the workflow's comment
-# owner, and the park a failed auto-rebase takes through its guard owner. Both
-# sit above this layer, so the import waits for the call that needs it -- at
+# owner, the park a failed auto-rebase takes through its guard owner, and the
+# rebase it is about to force-push is measured by the size gate first, since a
+# base that moved changes what the branch adds to it and a pull request may
+# not be grown past the ceiling by a refresh either. The squash on approval is
+# the same argument without a measurement: it force-pushes onto a pull request
+# the remote already carries, so it is entered on that publication before it
+# rewrites anything and pushes through the gate's own call. All of them sit
+# above this layer, so the import waits for the call that needs it -- at
 # module scope it would be a cycle, since the workflow imports base sync back.
 _CALL_TIME_HOPS = MappingProxyType({
     f"{_BASE_SYNC}.conflicts": (_COMMENTS,),
     f"{_BASE_SYNC}.persistence": (
-        _COMMENTS, f"{PACKAGE}.workflow.engine.guards",
+        _COMMENTS,
+        f"{PACKAGE}.workflow.engine.guards",
+        f"{PACKAGE}.workflow.stages.implementing.late_parks",
     ),
-    f"{_BASE_SYNC}.publication": (_COMMENTS,),
+    f"{_BASE_SYNC}.publication": (_COMMENTS, _LATE_PUSH, _LATE_RECORDS),
+    f"{_PUBLICATION}.rewrite": (_LATE_REWRITE,),
 })
 
 

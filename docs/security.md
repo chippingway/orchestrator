@@ -471,10 +471,12 @@ The security posture:
   exempt, or resolved from the checkout when the size gate was switched off — it is that exact validated SHA, and a
   checkout that cannot name the commit it is on publishes **nothing**: the plan publication reads an unread tip as
   unpublishable and the implementing publication parks, rather than falling back to a refspec that would send
-  whatever the branch had become. Every other caller — the docs pass, the `validating` and `fixing` pushes, the
-  conflict publications, the squash rewrite, the base-sync rebases — never inspected a commit and uses the default
-  `HEAD:refs/heads/<branch>`, publishing what its own worktree currently is under a lease that refuses a remote which
-  moved ([`architecture.md#push-path`](architecture.md#push-path-gitauthentication_push_branch)). If a misled
+  whatever the branch had become. Every push onto a pull request the remote already carries is named by the size
+  gate that measured it — the docs pass, the `validating` and `fixing` pushes, the conflict publications, the squash
+  rewrite, the base-sync rebases — under a lease that refuses a remote which moved. The default
+  `HEAD:refs/heads/<branch>` is left for the one push that could name no commit at all: a gated push on an install
+  running with `DECOMPOSE=off` whose checkout would not prove its own head
+  ([`architecture.md#push-path`](architecture.md#push-path-gitauthentication_push_branch)). If a misled
   agent edits a sibling
   checkout, nothing the orchestrator does publishes it — it surfaces as a dirty foreign tree, never as a PR. The
   block's framing also states every listed path is read-only.

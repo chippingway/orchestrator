@@ -85,16 +85,32 @@ IN_REVIEW = "in_review"
 ISSUE = 880
 PR_NUMBER = 880
 BRANCH = _branch(ISSUE)
-PR_HEAD_SHA = "cafe1234"
+# A whole git object id, because the size gate freezes the head its pull
+# request stands on before it measures and reads a commit field at its exact
+# length -- an abbreviation is no head at all there.
+PR_HEAD_SHA = fixtures.DEFAULT_PR_HEAD_SHA
 
 DEV_AGENT = "claude"
 DEV_SESSION = "dev-sess"
 FRESH_SESSION = "fresh-sess"
 POISONED_SESSION = "poisoned-sess"
 
-SHA_BEFORE = "sha-before"
-SHA_AFTER = "sha-after"
-SHA_SAME = "same-sha"
+# The head a fix run starts on and the head it leaves the checkout at. The
+# second IS the commit the size gate proves that checkout to, because in
+# production the two are one read of one worktree: the route names the commit
+# it means to publish and the gate refuses a checkout standing anywhere else,
+# so a fixture spelling them apart would model the race rather than the tick.
+#
+# The first is the head the pull request is standing on for the same reason:
+# the branch is in sync with its publication when a fix round opens, since the
+# reviewer just read that head. It is what the round names to the gate, so a
+# pull request somebody moved while the agent was out refuses the push.
+SHA_BEFORE = PR_HEAD_SHA
+SHA_AFTER = fixtures.MEASURED_CANDIDATE_SHA
+# The head a run that committed nothing never moved off, which is also the
+# head a stranded publication sends: unmoved is still the commit the checkout
+# stands on, so it is the one the gate proves it to.
+SHA_SAME = SHA_AFTER
 
 TRIGGER_ID = 2000
 FOLLOWUP_ID = 2001
@@ -181,7 +197,9 @@ FIX_FEEDBACK = "please address the typo"
 REVIEWER_FEEDBACK = ":eyes: review (round 1/3) requested changes"
 CHANGES_REQUESTED = "CHANGES_REQUESTED"
 STALE_PRE_COMMENT_HASH = "stale-hash-pre-comment"
-UNCHANGED_SHA = "aaa"
+# A head a run never moved off, which is the head its pull request is
+# standing on: the branch is in sync with its publication when a round opens.
+UNCHANGED_SHA = PR_HEAD_SHA
 NOTHING_TO_DO_MESSAGE = "nothing to do"
 ALLOWED_AUTHOR = "geserdugarov"
 ALLOWED_AUTHORS_CONFIG = "ALLOWED_ISSUE_AUTHORS"

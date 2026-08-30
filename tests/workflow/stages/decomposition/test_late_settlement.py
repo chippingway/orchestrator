@@ -48,6 +48,8 @@ from tests.workflow.stages.decomposition.late_test_support import (
     HOLD_MARKER_PREFIX,
     KEYS,
     OTHER_SHA,
+)
+from tests.workflow.stages.decomposition.late_test_support import (
     PLAN_PR_BODY,
     PLAN_PR_NUMBER,
 )
@@ -59,6 +61,9 @@ from tests.workflow.stages.decomposition.late_test_support import (
 EDIT_PR_BODY = "edit_pr_body"
 
 PR_CLOSED = "closed"
+
+PR_NUMBER = "pr_number"
+
 
 ACCEPTED_NOTICE = "one coherent change"
 
@@ -142,6 +147,7 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
             self.github.workflow_label(self.issue), LABEL_IMPLEMENTING,
         )
         self.assertEqual(self._pinned().get(KEYS.exempt_sha), CANDIDATE_SHA)
+
 
 
 class WithheldExemptionTest(GuardedLateCase, unittest.TestCase):

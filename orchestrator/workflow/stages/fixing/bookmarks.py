@@ -27,19 +27,34 @@ from __future__ import annotations
 from orchestrator.workflow.stages.fixing import state as _state
 
 
+# Every bookmark one fix route leaves, and the value clearing it writes.
+# Spelled as pairs rather than as a sequence of writes, so a caller that has
+# to hand the clear somewhere else -- the size gate, which applies a route's
+# bookkeeping inside its own durable write -- describes it in the same terms
+# this owner does. The last is the validating-route reviewer-feedback replay
+# anchor (recorded by `_handle_validating_changes_requested`), cleared
+# alongside the in_review-route bookmarks so a later route writes fresh values
+# and a session-failure park never replays an already-addressed reviewer round.
+_CLEARED_BOOKMARKS = (
+    (_state._PENDING_FIX_AT, None),
+    ("pending_fix_issue_max_id", None),
+    ("pending_fix_review_max_id", None),
+    ("pending_fix_review_summary_max_id", None),
+    ("pending_fix_issue_ids", None),
+    ("pending_fix_review_ids", None),
+    ("pending_fix_review_summary_ids", None),
+    ("pending_fix_reviewer_comment_id", None),
+)
+
+
+def _cleared_pending_fix_bookmarks() -> tuple:
+    """The pinned fields a cleared fix route leaves, as key/value pairs."""
+    return _CLEARED_BOOKMARKS
+
+
 def _clear_pending_fix_bookmarks(state) -> None:
-    state.set(_state._PENDING_FIX_AT, None)
-    state.set("pending_fix_issue_max_id", None)
-    state.set("pending_fix_review_max_id", None)
-    state.set("pending_fix_review_summary_max_id", None)
-    state.set("pending_fix_issue_ids", None)
-    state.set("pending_fix_review_ids", None)
-    state.set("pending_fix_review_summary_ids", None)
-    # Validating-route reviewer-feedback replay anchor (recorded by
-    # `_handle_validating_changes_requested`). Cleared alongside the
-    # in_review-route bookmarks so a later route writes fresh values and a
-    # session-failure park never replays an already-addressed reviewer round.
-    state.set("pending_fix_reviewer_comment_id", None)
+    for key, cleared in _CLEARED_BOOKMARKS:
+        state.set(key, cleared)
 
 
 def _pending_fix_id_set(state, ids_key: str, max_id_key: str) -> set:

@@ -37,6 +37,7 @@ from orchestrator.workflow.late_split import (
     validation as _late_validation,
 )
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
+from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -48,6 +49,80 @@ _UNRECORDABLE_IDENTITY = (
 _FOREIGN_RECORD = (
     "it was recorded against issue #{recorded} rather than this one"
 )
+
+@dataclass(frozen=True)
+class _Spends:
+    """The route bookkeeping a hold closes on its caller's behalf.
+
+    A hold is the end of the tick for the caller: the commit is on the branch,
+    the issue is on `workflow:decomposing`, and the caller returns without
+    pushing, relabelling, or counting anything. But the round IS spent -- the
+    head a reviewer rejected is superseded either way -- and no later tick of
+    that stage can count it, because a settled `single` verdict publishes the
+    accepted commit itself and the resumed stage finds nothing left to push.
+
+    So the caller says up front what its hold owes, and the hold writes it in
+    the same durable write that carries the measurement, AHEAD of the relabel.
+    Applied by the caller afterwards instead, it would be lost to a crash in
+    exactly the window the relabel opens: the issue is already the
+    adjudication's and nothing goes back for the count.
+
+    Spelled as pinned fields rather than as a call into the route's own owner,
+    so a stage's bookkeeping stays that stage's to describe and this owner
+    stays free of the stage packages that import it.
+    """
+
+    fields: tuple = ()
+
+
+# What a caller with no route bookkeeping behind it owes, which is every
+# publication taken before there is a pull request to spend a round on.
+_SPENDS_NOTHING = _Spends()
+
+
+def _spend(state: PinnedState, spends: _Spends) -> None:
+    """Close the route bookkeeping a caller said its hold owed.
+
+    Spelled beside the record rather than at either site that applies it, so
+    the routed hold and the recovery that publishes what a crash interrupted
+    write the same fields the same way. Both are the same claim -- this is
+    what the tick that reached the gate would have done -- and only the moment
+    differs: the hold writes it ahead of its own relabel, the recovery once
+    the push it makes has landed.
+    """
+    for key, spent in spends.fields:
+        state.set(key, spent)
+
+
+@dataclass(frozen=True)
+class _PublicationEntry:
+    """The publication a gate call was entered on, or why there is none.
+
+    What tells a candidate the remote already carries from one nothing has
+    published, and the only three facts about it a reconciliation could not
+    re-derive: the stage the gate is taking the issue out of, which the
+    adjudication label replaces the moment it is applied; the pull request the
+    work already has, which is not the plan pull request a hold is placed on;
+    and the head that pull request was left standing on, which the next push
+    to the branch moves. All three are read once, before any effect, and
+    travel frozen for the same reason every other late field does.
+
+    Absent where the gate was entered before anything was published, which is
+    what the whole implementing seam is, and refused with its reason where the
+    three could not be established -- `is_frozen` is what a caller asks, since
+    a group short of any one of them is a publication nothing could name.
+    """
+
+    stage: Optional[WorkflowLabel] = None
+    pr_number: int = 0
+    published_sha: str = ""
+    refusal: str = ""
+
+    @property
+    def is_frozen(self) -> bool:
+        """Whether this entry names a publication a record may carry."""
+        return not self.refusal
+
 
 @dataclass(frozen=True)
 class _Gate:
@@ -64,12 +139,74 @@ class _Gate:
     issue: Issue
     state: PinnedState
     worktree: Path
-    # Whether this tick is answering a reading a previous one recorded rather
-    # than disposing what a run just produced. No developer ran on a
-    # reconciliation, so nothing in the checkout can be that run's output --
-    # which is what makes the switch's bypass and the moved-head reading mean
-    # different things here than they do on a fresh disposition.
+    # Whether a developer ran on this tick. Nothing in the checkout can be a
+    # run's output where none did, which is what makes a head that moved off
+    # the recorded candidate something that moved rather than fresh work.
     reconciling: bool = False
+    # Whether this tick is answering a reading a PREVIOUS one recorded. The
+    # narrower of the two, and the one the switch is asked against: a rebase,
+    # a resolution, and a recovery push are each work no developer ran for
+    # and work the gate has never seen, so reading "no developer ran" as
+    # "already in the gate" would measure candidates `DECOMPOSE=off` exists
+    # to publish untouched.
+    answering: bool = False
+    # The commit the caller named as the one it means to publish, where it
+    # read one for itself. Empty where the caller has none -- a bounce over a
+    # checkout it did not just write, a recovery answering a recorded pair --
+    # and the head this owner proves is the whole of the answer there.
+    candidate: str = ""
+    # The publication this call was entered on, where there is one. It is the
+    # whole of what makes this gate reusable past the initial push: nothing
+    # else here changes when the work already has a pull request, and every
+    # record the call writes carries the group rather than reading as an entry
+    # taken before anything was published.
+    entry: Optional[_PublicationEntry] = None
+    # What this call's caller owes for the candidate, whichever way it goes.
+    # A hold closes it ahead of the relabel it makes, and a landed push closes
+    # it in the write that carries the receipt -- one durable write either
+    # way, since past that write nothing on the comment names the round any
+    # more. Empty for every publication with no round behind it, and for the
+    # implementing seam, which has no reviewer to have spent one.
+    spends: _Spends = _SPENDS_NOTHING
+
+
+@dataclass(frozen=True)
+class _Entered:
+    """The terms the CALLER entered this gate call on.
+
+    Every field is something this owner could read for itself and must not, or
+    could not know at all. A stage read back off a cached issue names the
+    label the fetch carried rather than the one a same-tick relabel wrote, and
+    a head read again is not the head the caller pinned its own decision to.
+    `reconciling` says no developer ran on this tick, which is what tells a
+    checkout that MOVED from a resumed developer's fresh commit. `answering`
+    is the narrower claim behind it -- that this call is answering a reading a
+    previous tick RECORDED -- and it is what the switch is asked against, so a
+    rebase or a recovery push that no developer ran for is still the new work
+    `DECOMPOSE=off` publishes untouched. `spends` is the route bookkeeping a
+    hold has to close on the caller's behalf.
+
+    Empty is the ordinary answer and means the caller established none of it:
+    the label is current, the remote has not been read, a run has just
+    finished, and there is no reviewer round behind the push.
+    """
+
+    stage: Optional[WorkflowLabel] = None
+    head: str = ""
+    # The commit the caller means to publish, where it read one for itself.
+    # This owner proves the checkout's head independently, and between the
+    # caller's read and that one the worktree is writable -- so a commit
+    # landing in the window would be measured, pushed, and recorded here while
+    # the caller went on to stamp the id IT read. Named, the two are one
+    # decision and a checkout that moved refuses before anything is persisted.
+    candidate: str = ""
+    reconciling: bool = False
+    answering: bool = False
+    spends: _Spends = _SPENDS_NOTHING
+
+
+# What a caller that established nothing hands in.
+_UNENTERED = _Entered()
 
 
 @dataclass(frozen=True)
@@ -157,7 +294,7 @@ def _identified(gate: _Gate, recorded: LateGeneration) -> LateGeneration:
     """
     ancestry = _lineage.read_late_ancestry(gate.state)
     root, depth = _lineage_of(gate, recorded, ancestry)
-    return replace(
+    return _entered(gate, replace(
         recorded,
         cycle_id=recorded.cycle_id or _identity.next_identity(
             _late_state.read_retired_cycle(gate.state),
@@ -168,6 +305,41 @@ def _identified(gate: _Gate, recorded: LateGeneration) -> LateGeneration:
         lineage_depth=depth,
         scope=recorded.scope or ancestry.scope,
         phase=LatePhase.MEASURING,
+    ))
+
+
+def _entered(gate: _Gate, generation: LateGeneration) -> LateGeneration:
+    """Stamp the publication this call was entered on onto one record.
+
+    Every record a call writes goes through here, the measurement and the
+    refusal alike, because the group is context rather than a result: what an
+    operator has to be able to ask of a stream is which of two questions a
+    record answers -- whether an unpublished candidate may be pushed at all,
+    or whether a pull request the remote already carries may be pushed to
+    again -- and a failure taken before either end of the diff was established
+    is as much one of those as a count is.
+
+    A call entered before anything was published stamps nothing, and that
+    absence IS the answer: a record with no group describes an initial
+    publication, which is what every record written from the implementing seam
+    is and what a live pinned comment already says without having been
+    migrated to say it.
+
+    A record that already carries a WHOLE group is left exactly as it is, and
+    that is a refusal rather than an optimization: the evidence a generation
+    was frozen against is the evidence it is reconciled against, and a stamp
+    that replaced it would let a reading taken over one publication be settled
+    against another. The caller proves the two agree before anything reaches
+    here -- a group that disagrees, or one too damaged to compare, refuses the
+    tick outright -- so the only thing this can be asked to overwrite is a
+    group identical to what it holds.
+    """
+    if gate.entry is None or generation.has_publication_context:
+        return generation
+    return generation.with_publication(
+        stage=gate.entry.stage,
+        pr_number=gate.entry.pr_number,
+        published_sha=gate.entry.published_sha,
     )
 
 

@@ -48,7 +48,11 @@ def _clean_rebase_scenario(
     behind_stdout: str = TWO_BEHIND_STDOUT,
     *,
     push_result: bool = True,
+    hardened=None,
 ) -> _BaseSyncScenario:
+    """One clean rebase, with the hardened git a case about a refused command
+    drives itself -- the rollback reset runs through that seam, so a double
+    installed outside this scenario's own patch context never sees it."""
     return _scenario(
         dirty=MagicMock(return_value=[]),
         **{
@@ -57,7 +61,7 @@ def _clean_rebase_scenario(
         },
         head_sha=MagicMock(side_effect=[BEFORE_SHA, AFTER_SHA]),
         git=MagicMock(return_value=_git_result(stdout=behind_stdout)),
-        hardened=MagicMock(return_value=_git_result()),
+        hardened=hardened or MagicMock(return_value=_git_result()),
     )
 
 

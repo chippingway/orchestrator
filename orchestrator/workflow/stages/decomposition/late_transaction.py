@@ -76,6 +76,7 @@ from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split import lineage as _lineage
+from orchestrator.workflow.late_split import payloads as _payloads
 from orchestrator.workflow.late_split import telemetry as _telemetry
 from orchestrator.workflow.late_split.models import (
     LateFailure,
@@ -97,6 +98,9 @@ from orchestrator.workflow.stages.decomposition import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
+)
+from orchestrator.workflow.stages.decomposition import (
+    late_publication as _late_publication,
 )
 from orchestrator.workflow.stages.decomposition import (
     late_snapshot as _late_snapshot,
@@ -189,12 +193,35 @@ _AT_BOUND_PARK = (
     "it manually."
 )
 
+# How the pull request a published split was measured on can fail to be the
+# one the verdict was taken over. Each is spelled as the log line reads it,
+# because what an operator has to reconcile differs by which of them moved.
+_SETTLED_PUBLICATION = "PR #{number} is {state} rather than open"
+
+
+_MOVED_PUBLICATION = (
+    "PR #{number} was standing at `{frozen}` and stands at `{moved}` now"
+)
+
+
 _SUPERSESSION_FAILED_PARK = (
     "the committed candidate for this issue was split and its snapshot and "
-    "children are safe, but the held plan PR #{number} could not be "
-    "superseded -- so no child was activated while a pull request carrying "
-    "the superseded work is still open. The next tick retries the same "
-    "supersession, which posts nothing twice."
+    "children are safe, but pull request #{number} -- the one carrying the "
+    "superseded work, whether this cycle held it or the candidate was "
+    "measured on it -- could not be superseded. So no child was activated "
+    "while it is still open. The next tick retries the same supersession, "
+    "which posts nothing twice."
+)
+
+
+_DISAGREEING_PUBLICATION_PARK = (
+    "the committed candidate for this issue was split and its snapshot and "
+    "children are safe, but {disagreement}. So no child was activated and "
+    "the branch was not reclaimed: what the recorded verdict was taken over "
+    "is not what that pull request carries now, and finishing the split "
+    "behind it would hand the work to children -- and delete the branch it "
+    "points at -- over a change nobody adjudicated. Reconcile the pull "
+    "request by hand, and the next tick settles the same recorded verdict."
 )
 
 
@@ -508,15 +535,206 @@ def _superseded(
     comment listing, and neither step repeats anything -- the notice is gated
     on this generation's own marker already on the thread, and a pull request
     that is not open is left exactly as it is.
+
+    Which pull request that IS depends on the side of publication the
+    generation was entered on, and the two are never both there. A hold names
+    the plan pull request this cycle marked. A generation entered past the
+    first push names the pull request the work is already on -- and that one
+    is the sharper of the two, because the transaction behind this deletes the
+    branch and hands the work to children: left unsuperseded it is an open
+    change carrying work nobody will finish, pointing at a branch that is
+    gone.
     """
     number = context.generation.plan_pr_number
     if number is None:
-        return True
+        return _superseded_publication(context, plan, snapshot_ref)
     release = _late_hold._release_plan_pr_hold(
         context.gh, context.issue, context.generation,
     )
     context.generation = release.generation
     settled = not release.failed and _closed_over_notice(
+        context, number, _SUPERSESSION_NOTICE.format(
+            parent=context.issue.number,
+            count=len(plan.created),
+            ref=snapshot_ref,
+            sha=context.generation.candidate_sha,
+            children=_child_lines(plan),
+            marker=_supersession_marker(context),
+        ),
+    )
+    if not settled:
+        return _unsuperseded(context, number)
+    _recorded_resource(
+        context,
+        LateResourceKind.PLAN_PR,
+        str(number),
+        LateResourceState.RECONCILED,
+    )
+    return True
+
+
+def _superseded_publication(
+    context: _LateContext, plan: _SplitPlan, snapshot_ref: str,
+) -> bool:
+    """Close the pull request this split's candidate was measured on, or park.
+
+    The verdict was a claim about what THAT pull request would come to with
+    the candidate in it, and a split answers it by replacing the work rather
+    than pushing it -- so the pull request is closed over a notice that says
+    where the work went, exactly as a held plan one is. Without it the
+    transaction hands the issue to `umbrella`, activates the children, and
+    reclaims the branch, leaving an open change carrying superseded work with
+    nothing on it saying so and no branch behind it.
+
+    Proved before it is closed, and the proof is the settlement's own: the
+    entry the gate froze names the pull request and the head it was standing
+    on, neither of which can be re-derived. A pull request nothing could read
+    is a park with a durable retry. One a human has since MERGED or CLOSED is
+    a change they settled while the adjudication was open, and closing it over
+    a supersession -- or letting children loose beside a merge -- is not this
+    tick's to do. One somebody PUSHED to is the same refusal one field over:
+    what the verdict was taken over is not what the pull request carries now.
+
+    An entry taken before publication reaches here with nothing to close, and
+    that absence is the answer: its candidate has no pull request yet.
+
+    The reading carries this adjudication's own receipt with it, because the
+    step behind this one is not the last: a tick that closed the pull request
+    and died before the retirement comes back to a `closed` reading it cannot
+    tell from a human's without the thread. Read as an external settlement it
+    would park for good, with the children blocked behind a supersession this
+    transaction had already made. What the receipt answers is the STATE and
+    only that: the head is proved on that path exactly as on the open one,
+    because a close does not stop anybody pushing to the branch behind it.
+    """
+    number = context.generation.published_pr_number
+    if number is None:
+        return True
+    reading = _late_publication._read_publication(
+        context.gh, context.issue, number, _supersession_marker(context),
+    )
+    if reading.refused:
+        return _unsuperseded(context, number)
+    unsettled = _publication_is_still_the_one(context, reading, number)
+    if unsettled:
+        return _parked_publication(context, number, unsettled)
+    return _closed_publication(context, plan, snapshot_ref, number)
+
+
+def _publication_is_still_the_one(
+    context: _LateContext,
+    reading: _late_publication._PublicationReading,
+    number: int,
+) -> str:
+    """Why this pull request is not the one the verdict was taken over, or "".
+
+    Named rather than counted, because what an operator has to reconcile
+    differs by which of the two moved: a change they settled themselves, and a
+    change somebody pushed to while the adjudication was open.
+
+    A pull request closed over THIS adjudication's own receipt is neither, as
+    far as the STATE goes. It is the supersession this transaction already
+    made, on a tick that died before the retirement behind it -- so the close
+    is no disagreement and the step below finishes as a read. A MERGED one is
+    not that, whatever the thread says: a human who reopened and landed the
+    work decided the opposite of what the supersession claims, and handing it
+    to children afterwards is the one outcome nothing takes back. A reopened
+    one is not that either -- it reads `open`, so the close is made again,
+    with the receipt already on the thread keeping the notice from repeating.
+
+    The head is proved on that path too, and on every other. A close does not
+    freeze a branch: somebody can push to it after this transaction closed the
+    pull request and before the retry arrives, and the receipt says only that
+    the close was made, never that what it closed is still what the verdict
+    was taken over. Waved through, the retry would settle the split, activate
+    the children, and RECLAIM that branch -- deleting a commit no snapshot
+    holds, because the snapshot was taken of the frozen head.
+    """
+    if reading.state == _late_publication.CLOSED and reading.superseded:
+        return _own_supersession_holds(context, reading, number)
+    if reading.state != _late_publication.OPEN:
+        return _SETTLED_PUBLICATION.format(
+            number=number, state=reading.state,
+        )
+    return _publication_moved(context, reading, number)
+
+
+def _own_supersession_holds(
+    context: _LateContext,
+    reading: _late_publication._PublicationReading,
+    number: int,
+) -> str:
+    """Why the close this split already made cannot be finished, or "".
+
+    The receipt answers the state and nothing else, so the head is asked
+    exactly as it is on the open path: a branch pushed to behind the close is
+    a disagreement whoever made it, and it fails closed here rather than being
+    discovered by the reclamation that deletes it.
+    """
+    moved = _publication_moved(context, reading, number)
+    if moved:
+        return moved
+    log.info(
+        "issue=#%d finds PR #%d already closed over this adjudication's "
+        "own supersession; finishing the split its retirement interrupted",
+        context.issue.number, number,
+    )
+    return ""
+
+
+def _publication_moved(
+    context: _LateContext,
+    reading: _late_publication._PublicationReading,
+    number: int,
+) -> str:
+    """Why this pull request no longer stands where it was frozen, or "".
+
+    A head that will not read as a whole object id is movement too: what the
+    verdict was taken over is a named commit, and text that is not one cannot
+    be shown to be it.
+    """
+    head = _payloads.as_hex(reading.head, _formats.COMMIT_LENGTHS)
+    frozen = context.generation.published_sha
+    if head == frozen:
+        return ""
+    return _MOVED_PUBLICATION.format(
+        number=number, frozen=frozen, moved=head or "an unreadable head",
+    )
+
+
+def _parked_publication(
+    context: _LateContext, number: int, disagreement: str,
+) -> bool:
+    """Park with the children durable and the pull request left alone.
+
+    Nothing is activated and nothing is reclaimed, so the retry finds the same
+    world: the snapshot and the children are on the remote, the pull request
+    is where its human left it, and the same recorded verdict is settled again
+    once the disagreement is reconciled.
+
+    Parked with the disagreement in the notice rather than with the write
+    failure's sentence, because this is not a supersession that failed. It is
+    one this transaction refuses to finish -- and on the receipt path it is
+    one it already MADE -- so telling the human it "could not be superseded"
+    would send them looking for a write that never went wrong.
+    """
+    log.error(
+        "issue=#%d was adjudicated as a split against PR #%d and %s; "
+        "refusing to finish a split over a publication this verdict "
+        "is not about",
+        context.issue.number, number, disagreement,
+    )
+    return _unsuperseded(
+        context, number,
+        _DISAGREEING_PUBLICATION_PARK.format(disagreement=disagreement),
+    )
+
+
+def _closed_publication(
+    context: _LateContext, plan: _SplitPlan, snapshot_ref: str, number: int,
+) -> bool:
+    """Put the supersession on the proved publication, and record it."""
+    settled = _closed_over_notice(
         context, number, _SUPERSESSION_NOTICE.format(
             parent=context.issue.number,
             count=len(plan.created),
@@ -729,8 +947,16 @@ def _recorded_resource(
     _late_outcome._persist(context)
 
 
-def _unsuperseded(context: _LateContext, number: int) -> bool:
-    """Park with the children durable and none of them activated."""
+def _unsuperseded(
+    context: _LateContext, number: int, message: str = "",
+) -> bool:
+    """Park with the children durable and none of them activated.
+
+    One reason key for every way the supersession does not land, because what
+    the issue is waiting on is the same in all of them: a pull request this
+    workflow may not act on behind. `message` is the sentence the human reads
+    when a caller has a sharper one than "the write failed".
+    """
     _recorded_resource(
         context,
         LateResourceKind.PLAN_PR,
@@ -739,7 +965,7 @@ def _unsuperseded(context: _LateContext, number: int) -> bool:
     )
     _parked(
         context,
-        _SUPERSESSION_FAILED_PARK.format(number=number),
+        message or _SUPERSESSION_FAILED_PARK.format(number=number),
         LateFailure.SUPERSESSION_FAILED,
         _late_outcome.PARK_SUPERSESSION_FAILED,
     )

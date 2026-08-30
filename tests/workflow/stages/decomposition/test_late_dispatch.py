@@ -15,11 +15,15 @@ from orchestrator.workflow.state import WorkflowLabel
 
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_content_support import late_issue
+from tests.workflow.stages.decomposition.late_published_support import (
+    published_generation,
+)
 from tests.workflow.stages.decomposition.late_relabel_support import (
     CANCELLED_GENERATION,
     SETTLED_GENERATIONS,
     relabelled,
 )
+from tests.workflow.stages.decomposition.late_test_support import KEYS
 
 # What the dispatcher would hand a relabelled issue to. `ready` is the label a
 # human reaches for to wave a candidate through, and its handler lives on the
@@ -37,6 +41,12 @@ READ_PINNED_STATE = "read_pinned_state"
 REFUSES_REUSE = "_refuses_reuse"
 
 SET_WORKFLOW_LABEL = "set_workflow_label"
+
+# What a record nothing can read parks under, and the two ways a hand edit
+# leaves the marker: gone, and there as a value no reader will type.
+PARK_MEASUREMENT_FAILED = "late_measurement_failed"
+MARKER_GONE = None
+NOT_A_FLAG = "yes"
 
 
 class DispatchRefusalTest(unittest.TestCase):
@@ -178,3 +188,71 @@ class AdjudicatedLabelTest(unittest.TestCase):
                 github, _TEST_SPEC, issue, WorkflowLabel.DECOMPOSING,
             )
         return held, asked
+
+
+class HalfPublishedAdjudicationTest(unittest.TestCase):
+    """An adjudication whose publication group is only part of one.
+
+    The group is the whole of what this mode settles by -- which pull request
+    the verdict was taken over, which head to pin the push it licenses to, and
+    which stage to hand the issue back to -- and none of it can be re-derived
+    from anywhere else. Every field beside the marker is read fail-closed, so
+    a marker a hand edit took leaves the record reading as a candidate nothing
+    had published: a `single` then skips the proof that the pull request is
+    still the one the reading was about, pushes nothing, routes the issue to
+    `implementing`, and retires the frozen evidence behind it.
+    """
+
+    def test_a_partial_group_holds_the_adjudication(self) -> None:
+        for marker in (MARKER_GONE, NOT_A_FLAG):
+            with self.subTest(marker=marker):
+                half = self._half_published(marker)
+
+                self.assertTrue(self._refuses(half))
+                pinned = self._pinned(half)
+                self.assertTrue(pinned[KEYS.awaiting])
+                self.assertEqual(
+                    pinned[KEYS.park_reason], PARK_MEASUREMENT_FAILED,
+                )
+
+    def test_the_frozen_evidence_is_left_standing(self) -> None:
+        # The park writes the pinned comment, and what it writes leaves the
+        # group exactly as it found it: what the record names is a human's to
+        # put back, and a settlement taken over half of it is what the refusal
+        # exists to stop.
+        entered = published_generation()
+        half = self._half_published(MARKER_GONE)
+
+        self._refuses(half)
+
+        pinned = self._pinned(half)
+        self.assertEqual(pinned[KEYS.candidate_sha], entered.candidate_sha)
+        self.assertEqual(
+            pinned[KEYS.published_pr_number], entered.published_pr_number,
+        )
+
+    def test_a_whole_group_is_adjudicated_as_before(self) -> None:
+        # What says the refusal is about the damage rather than about the
+        # adjudication being asked a question no record passes.
+        whole = late_issue(generation=published_generation())
+
+        self.assertFalse(self._refuses(whole))
+        self.assertNotIn(KEYS.awaiting, self._pinned(whole))
+
+    def _half_published(self, marker):
+        """A post-publication adjudication whose marker a hand edit took."""
+        seeded = late_issue(generation=published_generation())
+        pinned = self._pinned(seeded)
+        pinned[KEYS.post_publication] = marker
+        seeded[0].seed_state(seeded[1].number, **pinned)
+        return seeded
+
+    def _pinned(self, seeded) -> dict:
+        """What this issue's pinned comment carries."""
+        return seeded[0].pinned_data(seeded[1].number)
+
+    def _refuses(self, seeded) -> bool:
+        """Whether the dispatcher's own read stops this adjudication."""
+        return _dispatch._pinned_state_refuses(
+            seeded[0], _TEST_SPEC, seeded[1], WorkflowLabel.DECOMPOSING,
+        )

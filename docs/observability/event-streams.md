@@ -61,9 +61,11 @@ file is the durable record.
   `agent_session_limit` (a quota-exhausted agent message, parked retryably as `agent_silent`),
   `agent_provider_unavailable` (a transient provider refusal — `API Error: 529 Overloaded` and its 5xx siblings —
   arriving as the agent's final message, parked retryably as `agent_silent` too), `dirty_worktree`,
-  `unreadable_worktree` (the implementing publication seam could not PROVE the tree clean — `git status` failed, or an
-  index entry is marked `assume-unchanged` / `skip-worktree` — which is a repository to look at rather than the file
-  list `dirty_worktree` carries), `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` /
+  `unreadable_worktree` (a publication seam — the implementing one, or the conflict stage's clean rebase — could not
+  PROVE the tree clean: `git status` failed, or an index entry is marked `assume-unchanged` / `skip-worktree`, which
+  is a repository to look at rather than the file list `dirty_worktree` carries), `unreadable_head` (a clean rebase
+  whose post-rebase HEAD would not resolve, so nothing could say whether it left a commit the PR does not carry),
+  `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` /
   `verify_head_changed`, `question_*`, `discussion_*`, ...). `dirty_worktree` carries `dirty_files` (how many paths
   git named); `unreadable_worktree` carries none, since naming a count there would report a failed read as an empty
   tree.

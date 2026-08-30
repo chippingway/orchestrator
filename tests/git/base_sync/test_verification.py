@@ -8,7 +8,12 @@ import unittest
 from unittest.mock import MagicMock
 
 from tests.git.base_sync.refresh_scenarios import PUSH_PATCH, REBASE_PATCH, _scenario
+from tests.git.base_sync.gate_reads_support import _gate_candidates
+from tests.support.fakes import FakePRRef
+from tests.support.publication import LandingPush
 from tests.git.base_sync.refresh_test_support import (
+    _diverged,
+    PR_NUMBER,
     _CrashRecoveryVerificationFixture,
     _RemoteHeadGit,
     _SyncWorktreeWithBaseFixture,
@@ -18,9 +23,11 @@ from tests.git.base_sync.refresh_test_support import (
 ISSUE = 7
 
 # Worktree HEAD SHAs threaded through the rebase / recovery flows.
-BEFORE_SHA = "before-sha"
-REBASED_SHA = "rebased-sha"
-NEW_REBASED_SHA = "new-rebased-sha"
+BEFORE_SHA = "be40e5ba" * 5
+# Whole object ids: the head a rebase leaves is what the next push is
+# pinned to, and a commit field is read at its exact length.
+REBASED_SHA = "5eba5ed0" * 5
+NEW_REBASED_SHA = "9ea5eba1" * 5
 
 LABEL_VALIDATING = "workflow:validating"
 
@@ -127,8 +134,15 @@ class CrashRecoveryDivergenceUnitTest(
             pending_auto_base_rebase_push_sha=BEFORE_SHA,
             review_round=3,
         )
-        self._add_pr()
+        # The crashed tick's own push landed, so the pull request is already
+        # standing on the rebased head the fall-through leases against.
+        self._add_pr(head=FakePRRef(sha=REBASED_SHA))
         scenario = self._fallthrough_scenario(REBASED_SHA)
+        # The rebase behind the relabel-only recovery is the only push here,
+        # and the commit it publishes IS the head the finalize names: one read
+        # of one worktree, so a fixture spelling them apart would model the
+        # race rather than the tick.
+        _gate_candidates(self, NEW_REBASED_SHA)
 
         scenario.run(self)
 
@@ -146,6 +160,21 @@ class CrashRecoveryDivergenceUnitTest(
         scenario = self._fallthrough_scenario(
             "old-remote-sha",
             ahead_behind=(1, 0),
+            # The recovered push lands, so the pull request stands on what it
+            # published when the rebase behind it is leased against the head
+            # that push left.
+            push=LandingPush(self.gh, PR_NUMBER),
+        )
+        # Two pushes, two commits: the recovered head, then the one the
+        # rebase behind it rewrote that into. Publishing the same commit
+        # twice is a receipt the gate recognizes rather than a second push.
+        # The recovered push reads twice -- the measurement, then the proof
+        # that the checkout is still on what went out -- and the rebase
+        # behind that is what moves the head. Each reading is the commit its
+        # caller named, because both callers name the head they read out of
+        # this one checkout.
+        _gate_candidates(
+            self, REBASED_SHA, REBASED_SHA, NEW_REBASED_SHA,
         )
 
         scenario.run(self)
@@ -167,7 +196,7 @@ class CrashRecoveryDivergenceUnitTest(
             dirty=MagicMock(return_value=[]),
             rebase=MagicMock(),
             head_sha=MagicMock(return_value=REBASED_SHA),
-            ahead_behind=MagicMock(return_value=(1, 1)),
+            ahead_behind=MagicMock(return_value=_diverged(1, 1)),
             fetch=MagicMock(return_value=_git_result()),
             push=MagicMock(),
             git=MagicMock(
@@ -187,6 +216,7 @@ class CrashRecoveryDivergenceUnitTest(
         remote_head: str,
         *,
         ahead_behind: tuple[int, int] | None = None,
+        push=None,
     ):
         patches = {
             "dirty": MagicMock(return_value=[]),
@@ -195,7 +225,10 @@ class CrashRecoveryDivergenceUnitTest(
                 side_effect=[REBASED_SHA, REBASED_SHA, NEW_REBASED_SHA],
             ),
             "fetch": MagicMock(return_value=_git_result()),
-            PUSH_PATCH: MagicMock(return_value=True),
+            PUSH_PATCH: (
+                MagicMock(side_effect=push) if push
+                else MagicMock(return_value=True)
+            ),
             "git": MagicMock(
                 return_value=_git_result(stdout=TWO_BEHIND_STDOUT),
             ),
@@ -205,7 +238,7 @@ class CrashRecoveryDivergenceUnitTest(
         }
         if ahead_behind is not None:
             patches["ahead_behind"] = MagicMock(
-                return_value=ahead_behind,
+                return_value=_diverged(*ahead_behind),
             )
         return _scenario(**patches)
 

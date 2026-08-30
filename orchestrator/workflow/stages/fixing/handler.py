@@ -36,7 +36,6 @@ from typing import Optional
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.engine import guards as _guards
@@ -47,6 +46,11 @@ from orchestrator.workflow.stages.fixing import models as _models
 from orchestrator.workflow.stages.fixing import parked as _parked
 from orchestrator.workflow.stages.fixing import resume as _resume
 from orchestrator.workflow.stages.fixing import state as _state
+from orchestrator.workflow.stages.implementing import (
+    late_push as _late_push,
+    late_reconcile as _late_reconcile,
+    late_records as _late_records,
+)
 from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -143,7 +147,9 @@ def _fixing_preflight(gh: GitHubClient, spec: config.RepoSpec, issue: Issue, sta
     return pr
 
 
-def _publish_stranded_fix(spec: config.RepoSpec, issue: Issue, state) -> bool:
+def _publish_stranded_fix(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state, spends,
+) -> _models._StrandedPublication:
     """Push a fix an earlier run committed to the worktree but never published.
 
     The live-pause guard promises that work committed while `paused` was on
@@ -153,27 +159,57 @@ def _publish_stranded_fix(spec: config.RepoSpec, issue: Issue, state) -> bool:
     and no later run rediscovers it. Probing here is what makes the bounce
     honor that promise instead of relabeling over a head the fix never reached.
 
-    Returns True only when the branch actually moved, so the caller counts a
-    reviewer round for a fix the reviewer can now see. The worktree may be gone
-    (a terminal cleanup, a fresh host), `_stranded_fix_unpushed` refuses every
-    shape it cannot vouch for, and a failed push leaves the commit on disk for
-    the next round's push to carry rather than claiming a publish that did not
-    happen.
+    It is one of the seams a candidate reaches a published pull request
+    through, so the size gate stands in front of this push exactly as it does
+    in front of the shared dev-fix one -- a stranded commit is work nobody
+    measured, and a bounce that pushed it would be the way past a gate every
+    other route passes. A held candidate stops the bounce outright: the gate
+    has moved the issue to the adjudication, and relabeling over that would
+    publish the very question it just opened.
+
+    `pushed` is True only when the branch actually moved, so the caller counts
+    a reviewer round for a fix the reviewer can now see. `spends` is that same
+    round handed to the gate up front, for the exit where the caller never
+    gets to count it: a hold relabels, so bookkeeping applied afterwards is
+    lost to any crash in that window and no later tick goes back for it.
+
+    The worktree may be gone (a terminal cleanup, a fresh host),
+    `_stranded_fix_unpushed` refuses every shape it cannot vouch for, and a
+    failed push leaves the commit on disk for the next round's push to carry
+    rather than claiming a publish that did not happen.
     """
     wt = _worktree_paths._worktree_path(spec, issue.number)
     if not wt.exists():
-        return False
-    if not _dev_fix._stranded_fix_unpushed(spec, wt, state, issue):
-        return False
+        # Nothing to publish is the ordinary answer, and it is not the whole
+        # one: a pair this issue froze and never counted has no checkout to
+        # be measured in either, and bouncing on it would hand the reviewer a
+        # head the pull request never received.
+        return _models._StrandedPublication(
+            held=_late_reconcile._holds_absent_checkout(gh, spec, issue, state),
+        )
+    stranded = _dev_fix._stranded_fix_unpushed(spec, wt, state, issue)
+    if not stranded:
+        return _models._StrandedPublication()
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
-    if _authentication._push_branch(spec, wt, branch):
-        return True
+    published = _late_push._publishes(
+        _late_records._gate(gh, spec, issue, state, wt), branch,
+        # The remote head the stranded proof was taken against, which is the
+        # branch this push replaces. Left for the gate to read afterwards, a
+        # head somebody landed between that proof and this push becomes the
+        # lease and is force-overwritten by work proved against the head it
+        # used to be on.
+        _late_records._Entered(spends=spends, head=stranded),
+    )
+    if published.held:
+        return _models._StrandedPublication(held=True)
+    if published.landed:
+        return _models._StrandedPublication(pushed=True)
     log.warning(
         "repo=%s issue=#%s could not push the stranded fix on the "
         "no-feedback bounce; leaving it on the branch",
         spec.slug, issue.number,
     )
-    return False
+    return _models._StrandedPublication()
 
 
 def _bounce_without_feedback(
@@ -189,9 +225,29 @@ def _bounce_without_feedback(
     the in_review route's reset apart from this route's bump.
     """
     pending_fix_at_was_set = state.get(_state._PENDING_FIX_AT) is not None
-    if _publish_stranded_fix(spec, issue, state):
-        _resume._apply_fix_review_round(state, pending_fix_at_was_set)
-    _bookmarks._clear_pending_fix_bookmarks(state)
+    # Frozen before the push and re-applied after it, so the gate's own write
+    # and this tail cannot disagree: re-applying a value already written is a
+    # no-op, where recomputing the round from the pinned comment would count
+    # it twice.
+    owed = _resume._spends_fix_round(state, pending_fix_at_was_set)
+    stranded = _publish_stranded_fix(gh, spec, issue, state, owed)
+    if stranded.held:
+        # The gate owns the issue from here -- parked, or handed to the
+        # adjudication -- and the relabel below belongs to a bounce that is
+        # not happening. The round it would have counted was spent inside the
+        # gate's own write, ahead of the label it moved. The write still is
+        # this caller's: a park posts its notice and leaves the flags in
+        # memory for its caller to persist.
+        gh.write_pinned_state(issue, state)
+        return
+    if stranded.pushed:
+        _late_records._spend(state, owed)
+    else:
+        # Nothing was published, so no round was landed -- but the bookmarks
+        # this bounce read are consumed either way, and a later
+        # in_review->fixing route must write fresh values rather than mix
+        # rounds with them.
+        _bookmarks._clear_pending_fix_bookmarks(state)
     gh.set_workflow_label(issue, WorkflowLabel.VALIDATING)
     gh.write_pinned_state(issue, state)
 

@@ -100,8 +100,14 @@ def _dispatch_validating_recovery(
         return None
 
     recovery = _validating_recovery._try_recover_validating_transient_park(
-        ctx.spec, ctx.issue, ctx.state,
+        ctx.gh, ctx.spec, ctx.issue, ctx.state,
     )
+    if recovery == _validating_state._OUTCOME_HELD:
+        # The size gate took the candidate this retry was about. It has
+        # already parked the issue or handed it to the adjudication and
+        # written its own state, so the drift reroute below is not this
+        # tick's to take and the bounce is not this tick's to make.
+        return _models._ParkedFixingDecision(stop=True)
     if recovery == "stuck":
         # The transient condition has not resolved on its own (e.g.
         # `push_failed` keeps failing). When the worktree has drifted from

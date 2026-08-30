@@ -173,6 +173,7 @@ _DISCUSSION_PACKAGE = "orchestrator.workflow.stages.discussion"
 _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _FIXING_PACKAGE = "orchestrator.workflow.stages.fixing"
 _IMPLEMENTING_PACKAGE = "orchestrator.workflow.stages.implementing"
+_LATE_RECONCILE_OWNER = f"{_IMPLEMENTING_PACKAGE}.late_reconcile"
 _IN_REVIEW_PACKAGE = "orchestrator.workflow.stages.in_review"
 _QUESTION_PACKAGE = "orchestrator.workflow.stages.question"
 _VALIDATING_PACKAGE = "orchestrator.workflow.stages.validating"
@@ -239,7 +240,7 @@ def _pinned_state_refuses(
 ) -> bool:
     """True when what this issue's own pinned comment records stops the tick.
 
-    ONE read, five questions, because the read is what costs -- a comment
+    ONE read, six questions, because the read is what costs -- a comment
     walk per labelled issue per tick, on top of the one that issue's own
     handler makes.
 
@@ -303,14 +304,27 @@ def _pinned_state_refuses(
     adjudication actually sits on, which is where every one of its own ticks
     is spent, and where an ancestor's snapshot is not what the issue is
     working from -- but only once the record PROVES the adjudication is this
-    issue's own. The label alone proves nothing: a child of a split closed
-    while it was being decomposed comes back with ``decomposing`` exactly
+    issue's own, and never past the reading that asks whether that record can
+    be acted on at all. The label alone proves nothing: a child of a split
+    closed while it was being decomposed comes back with ``decomposing`` exactly
     where it was and no generation at all, and its ancestor's ref may well
     have been reclaimed while it was closed. Waving that through on the label
     would spawn the decomposer against the reuse instructions in its body,
     naming a ref that is gone. So the read is taken first and the label is
     answered out of it. Imported at call time like the handlers below, since
     the stage tree imports this module.
+
+    The last of them is the size gate's own unfinished business, and it is
+    asked here for the reason the others are: it belongs to no one stage. A
+    pair frozen for a pull request the remote already carries is durable and
+    the count that follows it is not, so a tick that died in between leaves a
+    record naming both commits with no number on it -- and the handler about
+    to run would spawn a reviewer, resume a developer, or read a pull request
+    still standing where the gate froze it, while the record goes on freezing
+    the branch out of the base refresh. Taking the reading first is what makes
+    the freeze a resumable step rather than a window; scoped by the record's
+    own source stage, so it is answered on the stage it was entered on and
+    nowhere else.
     """
     late_relabel = importlib.import_module(_LATE_RELABEL_OWNER)
     state = late_relabel._dispatch_state(gh, issue)
@@ -326,13 +340,46 @@ def _pinned_state_refuses(
     if _cycle_stops_the_tick(gh, spec, issue, label, state):
         return True
     if label == WorkflowLabel.DECOMPOSING and late_relabel._adjudicating(state):
-        return False
+        # The adjudication steps past the guards below because they are the
+        # other stages' -- but not past the one that asks whether its own
+        # record can be read. The publication group is the whole of what this
+        # mode settles by and the one thing it cannot re-derive, so a partial
+        # one is refused here rather than read as a candidate nothing had
+        # published and routed back to `implementing` with the evidence
+        # retired behind it.
+        return importlib.import_module(
+            _LATE_RECONCILE_OWNER,
+        )._reconciles_published_work(gh, spec, issue, label, state)
+    return _record_stops_the_tick(gh, spec, issue, label, state)
+
+
+def _record_stops_the_tick(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    label: Optional[str],
+    state,
+) -> bool:
+    """The three the read answers once a live cycle has been established.
+
+    Split from the questions above it because those decide whether there is a
+    cycle to ask about at all: a cancelled or reclaimed record stops the tick
+    whatever the label says, and only past them does the label mean what it
+    reads. Each owner below is imported at call time for the reason the ones
+    above are -- the stage tree imports this module back.
+    """
+    late_relabel = importlib.import_module(_LATE_RELABEL_OWNER)
     if late_relabel._holds_the_label(gh, issue, state):
         log.warning(
             "repo=%s issue=#%s was relabelled %r while its committed candidate "
             "was under adjudication; not dispatching it",
             spec.slug, issue.number, label,
         )
+        return True
+    late_reconcile = importlib.import_module(_LATE_RECONCILE_OWNER)
+    if late_reconcile._reconciles_published_work(
+        gh, spec, issue, label, state,
+    ):
         return True
     late_reuse = importlib.import_module(_LATE_REUSE_OWNER)
     return (

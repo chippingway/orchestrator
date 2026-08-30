@@ -6,11 +6,15 @@ import unittest
 
 from tests.workflow.stages.documenting.documenting_assertion_test_support import _pr_comment_text
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _agent,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
+from tests.workflow.stages.documenting import (
+    documenting_test_support as documenting_support,
+)
 from tests.workflow.stages.documenting.documenting_test_support import (
     _BasicDocumentingFixture,
 )
@@ -24,11 +28,18 @@ DEV_AGENT = "codex"
 DEV_SESSION = "dev-sess"
 
 # --- Worktree HEAD SHAs threaded through the docs / recovery flows ------
-SHA_BEFORE = "aaa"
-SHA_AFTER = "bbb"
-SHA_DOCS = "docs-sha"
-SHA_RECOVERED = "recovered-sha"
+SHA_BEFORE = documenting_support.SHA_BEFORE
+# The head a docs pass leaves the checkout on. Each IS the commit the size
+# gate proves that checkout to, because in production they are one read of one
+# worktree: the stage names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else, so a fixture that spelled them
+# differently would be modelling the race rather than the tick.
+SHA_AFTER = MEASURED_CANDIDATE_SHA
+SHA_DOCS = MEASURED_CANDIDATE_SHA
+SHA_RECOVERED = MEASURED_CANDIDATE_SHA
 SHA_PR_HEAD = "pr-head-sha"
+# What the pull request stands on once somebody else has landed on it.
+MOVED_PUBLICATION = "cafef00d" * 5
 
 # --- Pinned-state field keys read back from `gh.pinned_data(...)` -------
 DOCS_VERDICT = "docs_verdict"
@@ -160,6 +171,30 @@ class HandleDocumentingRecoveryTest(unittest.TestCase, _BasicDocumentingFixture)
         self.assertEqual(state.get(DOCS_VERDICT), VERDICT_UPDATED)
         self.assertEqual(state.get(DOCS_CHECKED_SHA), SHA_RECOVERED)
         self.assertIn("recovered docs commit", _pr_comment_text(gh))
+
+    def test_a_head_moved_after_the_probe_refuses(self) -> None:
+        # The ahead/behind probe fetched the branch, proved a recovered docs
+        # commit waiting on top of the remote tip, and handed that tip on: it
+        # is what this push replaces. Somebody landed on the pull request
+        # between the probe and the push -- read afresh at the gate, their head
+        # becomes the lease and the force-push overwrites it with a commit
+        # proved against the head it used to be on.
+        gh, issue = self._seeded()
+        gh.get_pr(self.pr_number).head.sha = MOVED_PUBLICATION
+
+        mocks = self._run_documenting(
+            gh,
+            issue,
+            run_agent=_agent(),
+            push_branch=True,
+            head_shas=[SHA_RECOVERED],
+            branch_ahead_behind=(1, 0),
+        )
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        self.assertNotIn((self.issue_number, IN_REVIEW), gh.label_history)
+        state = gh.pinned_data(self.issue_number)
+        self.assertTrue(state.get(AWAITING_HUMAN))
 
     def test_recovery_push_failure_parks_push_failed(self) -> None:
         gh, issue = self._seeded()

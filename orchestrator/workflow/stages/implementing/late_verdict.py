@@ -33,7 +33,6 @@ from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from orchestrator.workflow.stages.implementing import late_parks as _parks
 from orchestrator.workflow.stages.implementing import (
     late_records as _records,
-    state as _state,
 )
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -46,6 +45,22 @@ _ROUTED_NOTICE = (
     "pushed and no pull request carries it -- the commit `{candidate}` stays "
     "exactly where it is while `{label}` decides whether it ships as one "
     "change or becomes child issues."
+)
+
+# The same hold where a pull request already carries the work. What the notice
+# may not repeat is the sentence above it: something HAS been pushed, and a
+# reader told otherwise would go looking for a branch that is on the remote.
+# What it says instead is the number the count is about -- everything the pull
+# request would come to once this commit joined it -- and the head it is still
+# standing on, so the diff a human opens to check the reading is the one the
+# adjudication is about.
+_ROUTED_ON_PUBLICATION_NOTICE = (
+    ":triangular_ruler: pushing `{candidate}` would take this issue's pull "
+    "request #{pull_request} to {additions} added lines against a ceiling of "
+    "{threshold}, so it is being adjudicated for its size before that push. "
+    "Nothing was pushed -- the pull request still stands on `{published}` and "
+    "the commit stays exactly where it is while `{label}` decides whether it "
+    "ships as one change or becomes child issues."
 )
 
 def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
@@ -68,11 +83,11 @@ def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
     a generation carried into the stages that close the issue is one a later
     guard reads as a live cycle a close should end.
 
-    What outlives the drop is which cycle it was, and which COMMIT is still
-    owed a publication. The cycle is what a close a poll observes inside this
-    very window is adopted against, and what the next candidate on this issue
-    mints its own cycle after, so no two attempts ever answer to the same
-    number.
+    What outlives the drop is which cycle it was, which COMMIT is still owed
+    a publication, and what the route that owes it has still to close. The
+    cycle is what a close a poll observes inside this very window is adopted
+    against, and what the next candidate on this issue mints its own cycle
+    after, so no two attempts ever answer to the same number.
 
     The commit is the other half, and it rides the same write for the same
     reason: past the retirement nothing else on the issue names the work, and
@@ -82,6 +97,16 @@ def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
     checkout from the base or the plan pull request, would find a head nothing
     contradicted and publish that instead. Recorded, the same host finishes
     the publication and a host without the commit parks for it.
+
+    What the caller's route still OWES rides it too, and for the same window.
+    The obligations were frozen with the pair -- the reviewer round a fix
+    spends, the bookmarks a consumed batch clears, the head a finished docs
+    pass produced -- and dropping them with the generation would leave the
+    only tick that can pay this debt unable to close any of it: the push that
+    licenses the caller's own tail fails, the caller parks, and the retry that
+    lands the commit has no run behind it to re-derive a round from. Carried
+    past the retirement, that retry closes exactly what the tick that approved
+    the candidate would have.
     """
     log.info(
         "issue=#%d candidate %s adds %d lines against a ceiling of %d; "
@@ -89,8 +114,30 @@ def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
         gate.issue.number, generation.candidate_sha, generation.additions,
         generation.threshold,
     )
-    gate.state.set(_state._APPROVED_SHA, generation.candidate_sha)
-    return _retired(gate, generation)
+    _parks._approve(
+        gate.state, generation.candidate_sha, _frozen_lease(gate),
+    )
+    return _retired(gate, generation, _late_state.read_late_spends(gate.state))
+
+
+def _frozen_lease(gate: _records._Gate) -> str:
+    """The head an approval on the published side is pinned to.
+
+    The retirement below takes the generation -- and the head it froze -- off
+    the record, and the push it licenses has not run yet. If that push fails,
+    the retry has an approved commit and no reason to measure again, so
+    without this the only head left to pin to is whatever the pull request has
+    become since: a head somebody moved in between would be adopted as the
+    lease and force-overwritten. Carried past the retirement, the retry pins
+    to what was frozen and git refuses instead.
+
+    Empty for a call taken before anything was published, which is what makes
+    the implementing seam's push take its own reading of the remote exactly as
+    it always did.
+    """
+    if gate.entry is None:
+        return ""
+    return gate.entry.published_sha
 
 
 def _supersedes_approval(gate: _records._Gate, candidate_sha: str) -> None:
@@ -119,7 +166,7 @@ def _supersedes_approval(gate: _records._Gate, candidate_sha: str) -> None:
         gate.issue.number, candidate_sha or "a candidate it did not name",
         approved,
     )
-    gate.state.set(_state._APPROVED_SHA, None)
+    _parks._forget_approval(gate.state)
 
 
 def _superseded(gate: _records._Gate, recorded: LateGeneration) -> bool:
@@ -152,7 +199,9 @@ def _superseded(gate: _records._Gate, recorded: LateGeneration) -> bool:
     return _retired(gate, recorded)
 
 
-def _retired(gate: _records._Gate, generation: LateGeneration) -> bool:
+def _retired(
+    gate: _records._Gate, generation: LateGeneration, owed: tuple = (),
+) -> bool:
     """Drop this generation durably, BEFORE the publication it licenses.
 
     The write is the point, and it is one the caller cannot defer. What
@@ -195,6 +244,11 @@ def _retired(gate: _records._Gate, generation: LateGeneration) -> bool:
     with retiring.held():
         _late_state.clear_late_generation(gate.state)
         _late_state.record_retired_cycle(gate.state, generation.cycle_id)
+        # What an APPROVAL still owes its route, put back inside the same
+        # write that dropped the generation carrying it. Empty for every
+        # other retirement: a superseded or adjudicated generation's
+        # obligations belong to a candidate nothing is going to publish.
+        _late_state.write_late_spends(gate.state, owed)
         gate.gh.write_pinned_state(gate.issue, gate.state)
     if not retiring.observed:
         return False
@@ -247,7 +301,7 @@ def _marked(gate: _records._Gate, generation: LateGeneration) -> None:
         phase=LatePhase.CANCELLING,
         owner_check_pending=False,
     )
-    gate.state.set(_state._APPROVED_SHA, None)
+    _parks._forget_approval(gate.state)
     _late_state.write_late_generation(gate.state, cancelled)
     _late_state.clear_retired_cycle(gate.state)
     gate.gh.write_pinned_state(gate.issue, gate.state)
@@ -283,17 +337,144 @@ def _routed(gate: _records._Gate, generation: LateGeneration) -> bool:
     # standing, an approval this candidate was committed on top of would hold
     # the branch out of the base refresh for the whole adjudication and park
     # every later tick on a host that no longer has that commit.
-    gate.state.set(_state._APPROVED_SHA, None)
+    _parks._forget_approval(gate.state)
+    _parks._retire_superseded_park(gate.state)
+    _spent(gate)
     _parks._persisted(gate, generation)
     _comments._post_issue_comment(
-        gate.gh, gate.issue, gate.state,
-        _ROUTED_NOTICE.format(
-            additions=generation.additions,
-            threshold=generation.threshold,
-            candidate=generation.candidate_sha,
-            label=WorkflowLabel.DECOMPOSING,
-        ),
+        gate.gh, gate.issue, gate.state, _routed_notice(generation),
     )
     gate.gh.write_pinned_state(gate.issue, gate.state)
     gate.gh.set_workflow_label(gate.issue, WorkflowLabel.DECOMPOSING)
     return True
+
+
+def _unmeasured_verdict(
+    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str = "",
+) -> _records._GateVerdict:
+    """Publish a candidate this gate did not measure -- unless a close beat it.
+
+    The three ways past the measurement, and they share the step that is easy
+    to miss: a record may still be standing. The switch being off does not
+    retire what an earlier tick froze, and an exemption names one commit
+    rather than ending the generation that granted it -- so the retirement
+    that has to land before the push runs here too, and with it the close
+    protocol it carries. Held is the answer where a close ended the cycle: an
+    issue nobody wants gets no branch, no pull request, and no relabel.
+
+    An approval naming some OTHER commit is the same problem one field over,
+    and it is dropped for the same reason: the debt it records is for a commit
+    this publication is going past, and a record left over work nothing will
+    push freezes the branch and parks every later tick asking for it back.
+
+    What goes down in its place is the debt THIS publication is about, for the
+    reason the measured road records one: a candidate that skipped the reading
+    froze no generation either, so between here and the push there is
+    committed work on the branch and nothing on the issue naming it.
+    """
+    _supersedes_approval(gate, candidate_sha)
+    if _superseded(gate, recorded):
+        return _records._HELD
+    _owed_by_an_unmeasured_push(gate, candidate_sha, _frozen_lease(gate))
+    return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
+
+
+def _owed_by_an_unmeasured_push(
+    gate: _records._Gate, candidate_sha: str, lease: str,
+) -> None:
+    """Name the commit an unmeasured publication owes a push for, durably.
+
+    The measured road records this beside its retirement, and a candidate that
+    skipped the reading owes it just as much: nothing was frozen for it, so
+    past this call the only account of the work is the commit on the branch.
+    A tick that died between here and the push comes back to an issue with no
+    generation, no debt, and a pull request that may or may not have received
+    it -- and the stage below runs from there, spawning an agent over work
+    nobody can say is unpublished.
+
+    Recorded, the reconciliation ahead of every handler finds the debt first,
+    republishes the same commit against the same head, and closes what the
+    route owed in the receipt's own write -- so the stage behind it runs over
+    the world the dead tick would have handed it.
+
+    What the route still owes rides the same write, because the recovery has
+    no run behind it to re-derive a reviewer round, a consumed fix batch, or a
+    docs receipt from. The debt and the obligations are spent together by the
+    push that pays them.
+
+    A debt this issue ALREADY carries for the commit is left exactly as it
+    is. It was granted by an earlier tick against a head that tick froze, and
+    the head read now is precisely the move its lease exists to refuse -- so
+    re-leasing it here would repair a half-written approval by pinning it to
+    the present, which is the one substitution the refusal behind it forbids.
+    An approval naming some other commit is gone by this point, dropped by the
+    supersession a line above.
+
+    Written only where the push will MOVE the publication. A pull request
+    already standing on the commit has nothing to receive, so there is no
+    window to survive -- and a debt written there would be paid by a
+    republication that closes a round the tick which really published it
+    already closed. A call taken before anything was published names no head
+    at all, and the initial publication owns that window itself.
+
+    The lease is handed IN rather than read off the entry, because the entry
+    is not the only road to one. Where the switch keeps a candidate out of the
+    gate nothing freezes a publication, and the head the push is pinned to is
+    the CALLER's own reading of the remote -- so the debt is recorded against
+    that instead. What the switch decides is the measurement; the account of
+    what a push is putting where is not its to turn off.
+    """
+    if _parks._approved_commit(gate.state) == candidate_sha:
+        return
+    if not lease or lease == candidate_sha:
+        return
+    log.info(
+        "issue=#%d is publishing unmeasured candidate %s onto a pull request "
+        "standing at %s; recording the debt before the push that pays it",
+        gate.issue.number, candidate_sha, lease,
+    )
+    _parks._approve(gate.state, candidate_sha, lease)
+    _late_state.write_late_spends(gate.state, gate.spends.fields)
+    gate.gh.write_pinned_state(gate.issue, gate.state)
+
+
+def _spent(gate: _records._Gate) -> None:
+    """Close the route bookkeeping this hold's caller will never get to.
+
+    Written here rather than by the caller because of what comes next: the
+    relabel below hands the issue to the adjudication, and a caller that
+    counted afterwards would lose the count to any crash in that window --
+    with nothing going back for it, since a settled verdict publishes the
+    accepted commit and the resumed stage finds nothing left to push.
+
+    Only the ROUTED hold spends. A reading nobody could take also stops the
+    tick with a generation on the pinned comment, and that one is a park: the
+    developer's work is still pending and its round is not spent.
+    """
+    _records._spend(gate.state, gate.spends)
+
+
+def _routed_notice(generation: LateGeneration) -> str:
+    """What the hold tells the thread, on the side of publication it is on.
+
+    The record is what decides, rather than the caller: a generation carrying
+    the publication group was entered on work the remote already has, and one
+    without it was entered before anything went out. Read off the group as a
+    whole, so a half-damaged one describes the hold it can actually vouch for
+    instead of naming a pull request the record cannot show.
+    """
+    if not generation.has_publication_context:
+        return _ROUTED_NOTICE.format(
+            additions=generation.additions,
+            threshold=generation.threshold,
+            candidate=generation.candidate_sha,
+            label=WorkflowLabel.DECOMPOSING,
+        )
+    return _ROUTED_ON_PUBLICATION_NOTICE.format(
+        additions=generation.additions,
+        threshold=generation.threshold,
+        candidate=generation.candidate_sha,
+        pull_request=generation.published_pr_number,
+        published=generation.published_sha,
+        label=WorkflowLabel.DECOMPOSING,
+    )

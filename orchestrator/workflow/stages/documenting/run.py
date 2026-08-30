@@ -56,9 +56,12 @@ def _prepare_documenting_worktree(ctx: _models._DocumentingContext, wt):
     view of the remote) would clobber the real PR head. Mirrors the
     fetch-then-check pattern in `_handle_resolving_conflict`.
 
-    Returns the worktree's ahead count vs. `<remote>/<branch>` on success,
-    or None when a fetch failure or diverged worktree parked the issue
-    (the caller must return).
+    Returns the worktree's ahead count vs. `<remote>/<branch>` and the head
+    that count was taken against, or None when a fetch failure or diverged
+    worktree parked the issue (the caller must return). Both come from the one
+    fetch because they are one fact read two ways: the count says whether a
+    recovered docs commit is waiting, and the head is what the push that ships
+    it replaces.
     """
     spec = ctx.spec
     branch = ctx.branch
@@ -80,23 +83,47 @@ def _prepare_documenting_worktree(ctx: _models._DocumentingContext, wt):
         )
         return None
 
-    ahead, behind = _publication_probes._branch_ahead_behind(spec, wt, branch)
-    if behind > 0:
+    divergence = _publication_probes._branch_divergence(spec, wt, branch)
+    if not divergence.readable:
+        # A reading that did not happen, which is NOT an in-sync branch. Taken
+        # for one, a stale checkout is spawned over and force-pushed on
+        # evidence nobody took -- and the head this push is pinned to would be
+        # empty, which has the gate adopt whatever the pull request has moved
+        # to and lease against that.
+        log.error(
+            "issue=#%d documenting could not read how far its worktree "
+            "stands from %s/%s; refusing to run or push over a branch "
+            "nothing compared",
+            ctx.issue.number, spec.remote_name, branch,
+        )
+        _parks._park_documenting(
+            ctx,
+            f"{config.HITL_MENTIONS} how far this issue's worktree stands "
+            f"from `{spec.remote_name}/{branch}` could not be read, so "
+            "nothing was run and nothing was pushed: a reading that did not "
+            "happen answers the same as a branch in sync, and acting on it "
+            "would push a stale worktree over the real PR head. See "
+            "orchestrator logs; the next tick fetches and reads it again.",
+            "unreadable_divergence",
+        )
+        return None
+    if divergence.behind > 0:
         # Stale or diverged worktree. The reviewer's PR head has commits
         # we never saw, so pushing local state (even a clean recovery
         # push) would overwrite them. Refuse to act -- the same shape
         # `_handle_resolving_conflict`'s diverged-branch guard uses.
         _parks._park_documenting(
             ctx,
-            f"{config.HITL_MENTIONS} worktree on `{branch}` is {ahead} "
-            f"ahead and {behind} behind `{spec.remote_name}/{branch}`; "
-            "refusing to push a stale documenting branch over the "
-            "real PR head. Manual intervention needed.",
+            f"{config.HITL_MENTIONS} worktree on `{branch}` is "
+            f"{divergence.ahead} ahead and {divergence.behind} behind "
+            f"`{spec.remote_name}/{branch}`; refusing to push a stale "
+            "documenting branch over the real PR head. Manual intervention "
+            "needed.",
             "diverged_branch",
         )
         return None
 
-    return ahead
+    return (divergence.ahead, divergence.tip)
 
 
 def _documentation_prompt(ctx: _models._DocumentingContext) -> str:
@@ -109,7 +136,9 @@ def _documentation_prompt(ctx: _models._DocumentingContext) -> str:
     )
 
 
-def _resume_documenting_dev(ctx: _models._DocumentingContext, wt, ahead: int):
+def _resume_documenting_dev(
+    ctx: _models._DocumentingContext, wt, ahead: int, remote_head: str,
+):
     """Awaiting-human resume: rerun the FULL documentation prompt.
 
     The generic `_resume_developer_on_human_reply` helper builds the followup
@@ -157,10 +186,13 @@ def _resume_documenting_dev(ctx: _models._DocumentingContext, wt, ahead: int):
     )
     return _models._DocumentingRun(
         wt, documentation_result, before_sha, False, paused, ahead,
+        remote_head,
     )
 
 
-def _recovered_documenting_run(ctx: _models._DocumentingContext, wt, ahead: int):
+def _recovered_documenting_run(
+    ctx: _models._DocumentingContext, wt, ahead: int, remote_head: str,
+):
     """Recovered worktree: a previous tick committed docs but crashed before
     the push. Synthesize a non-interrupted result and skip the agent spawn so
     the unified commit/dirty/push disposition ships it.
@@ -191,11 +223,13 @@ def _recovered_documenting_run(ctx: _models._DocumentingContext, wt, ahead: int)
     # No agent ran this tick (dispatch already gated the label at tick start),
     # so there is no live-pause window to observe here.
     return _models._DocumentingRun(
-        wt, documentation_result, "", True, False, ahead,
+        wt, documentation_result, "", True, False, ahead, remote_head,
     )
 
 
-def _fresh_documenting_run(ctx: _models._DocumentingContext, wt, ahead: int):
+def _fresh_documenting_run(
+    ctx: _models._DocumentingContext, wt, ahead: int, remote_head: str,
+):
     """Fresh docs pass: snapshot `before_sha`, persist the pre-spawn
     watermarks, and resume the dev session with the docs prompt.
 
@@ -221,10 +255,13 @@ def _fresh_documenting_run(ctx: _models._DocumentingContext, wt, ahead: int):
     ctx.state.set("branch", ctx.branch)
     return _models._DocumentingRun(
         wt, documentation_result, before_sha, False, paused, ahead,
+        remote_head,
     )
 
 
-def _run_documenting_dev(ctx: _models._DocumentingContext, wt, ahead: int):
+def _run_documenting_dev(
+    ctx: _models._DocumentingContext, wt, ahead: int, remote_head: str = "",
+):
     """Run the docs pass and return its `_DocumentingRun` for disposition.
 
     Three entry shapes, in priority order:
@@ -237,7 +274,7 @@ def _run_documenting_dev(ctx: _models._DocumentingContext, wt, ahead: int):
     no new comments and the tick should end without disposition.
     """
     if ctx.state.get(_state._AWAITING_HUMAN):
-        return _resume_documenting_dev(ctx, wt, ahead)
+        return _resume_documenting_dev(ctx, wt, ahead, remote_head)
     if ahead > 0:
-        return _recovered_documenting_run(ctx, wt, ahead)
-    return _fresh_documenting_run(ctx, wt, ahead)
+        return _recovered_documenting_run(ctx, wt, ahead, remote_head)
+    return _fresh_documenting_run(ctx, wt, ahead, remote_head)

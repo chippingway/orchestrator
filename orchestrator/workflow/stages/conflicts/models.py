@@ -56,6 +56,14 @@ class _WorktreeSync:
     branch: str
     ahead: int
     behind: int
+    # The commit that fetched ref was AT, read from the same ref the counts
+    # above were taken against. It travels with them because the counts are a
+    # claim about it and nothing downstream can re-derive it: a push proved
+    # against "ahead and not behind" is pinned to this exact head, and a
+    # caller that dropped it would leave the gate reading the pull request
+    # for itself and adopting whatever landed in between. Empty is a tip
+    # nothing could read, which every reader treats as no head established.
+    fetched_tip: str = ""
 
 
 @dataclass(frozen=True)

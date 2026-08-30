@@ -14,11 +14,19 @@ from tests.support.fakes import (
 
 
 # --- Workflow labels this stage routes between --------------------------
+from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
+    _open_pr_for,
+)
+from tests.workflow.stages.documenting import (
+    documenting_test_support as documenting_support,
+)
 from tests.workflow.stages.documenting.documenting_test_support import (
     _branch,
     _DocumentingWorkflowMixin,
 )
 
+PR_NUMBER = "pr_number"
 DOCUMENTING = "workflow:documenting"
 IN_REVIEW = "in_review"
 VALIDATING = "workflow:validating"
@@ -28,10 +36,15 @@ DEV_AGENT = "codex"
 DEV_SESSION = "dev-sess"
 
 # --- Worktree HEAD SHAs threaded through the docs / recovery flows ------
-SHA_BEFORE = "aaa"
-SHA_AFTER = "bbb"
-SHA_DOCS = "docs-sha"
-SHA_RECOVERED = "recovered-sha"
+SHA_BEFORE = documenting_support.SHA_BEFORE
+# The head a docs pass leaves the checkout on. Each IS the commit the size
+# gate proves that checkout to, because in production they are one read of one
+# worktree: the stage names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else, so a fixture that spelled them
+# differently would be modelling the race rather than the tick.
+SHA_AFTER = MEASURED_CANDIDATE_SHA
+SHA_DOCS = MEASURED_CANDIDATE_SHA
+SHA_RECOVERED = MEASURED_CANDIDATE_SHA
 SHA_PR_HEAD = "pr-head-sha"
 
 # --- Pinned-state field keys read back from `gh.pinned_data(...)` -------
@@ -163,6 +176,9 @@ class _ContinueDocumentingFixture(_DocumentingWorkflowMixin):
             silent_park_count=1,
             user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
+        _open_pr_for(
+            gh, issue_number=number, pr_number=CONTINUE_PR_NUMBER,
+        )
         return gh, issue
 
 
@@ -190,6 +206,12 @@ class _ParkedDocumentingFixture(_DocumentingWorkflowMixin):
         )
         defaults.update(state)
         gh.seed_state(self.issue_number, **defaults)
+        if defaults[PR_NUMBER] not in gh.pulls:
+            _open_pr_for(
+                gh,
+                issue_number=self.issue_number,
+                pr_number=defaults[PR_NUMBER],
+            )
         return gh, issue
 
 
@@ -215,6 +237,12 @@ class _DocumentingDriftFixture(_DocumentingWorkflowMixin):
         )
         defaults.update(state)
         gh.seed_state(self.issue_number, **defaults)
+        if defaults[PR_NUMBER] not in gh.pulls:
+            _open_pr_for(
+                gh,
+                issue_number=self.issue_number,
+                pr_number=defaults[PR_NUMBER],
+            )
         return gh, issue
 
 
@@ -237,4 +265,10 @@ class _FinalDocsFixture(_DocumentingWorkflowMixin):
         )
         defaults.update(state)
         gh.seed_state(self.issue_number, **defaults)
+        if defaults[PR_NUMBER] not in gh.pulls:
+            _open_pr_for(
+                gh,
+                issue_number=self.issue_number,
+                pr_number=defaults[PR_NUMBER],
+            )
         return gh, issue

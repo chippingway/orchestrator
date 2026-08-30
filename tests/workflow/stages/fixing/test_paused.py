@@ -28,11 +28,12 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import _PatchedWorkflowMixin, _agent
+from tests.workflow.stages.fixing import fixing_test_support as support
 
 ISSUE = 880
 PR_NUMBER = 880
 BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-880"
-PR_HEAD_SHA = "cafe1234"
+PR_HEAD_SHA = support.PR_HEAD_SHA
 DEV_AGENT = "claude"
 DEV_SESSION = "dev-sess"
 TRIGGER_ID = 2000
@@ -134,7 +135,7 @@ class FixingLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
                 gh,
                 issue,
                 run_agent=_agent(session_id=DEV_SESSION, last_message="pushed fix"),
-                head_shas=("sha-before", "sha-after"),
+                head_shas=(support.SHA_BEFORE, support.SHA_AFTER),
                 push_branch=True,
             )
 
@@ -164,7 +165,7 @@ class FixingLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
                 gh,
                 issue,
                 run_agent=_agent(session_id=DEV_SESSION, last_message="pushed fix"),
-                head_shas=("sha-before", "sha-after"),
+                head_shas=(support.SHA_BEFORE, support.SHA_AFTER),
                 push_branch=True,
             )
         self.assertEqual(gh.label_history, [])
@@ -180,7 +181,7 @@ class FixingLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
                 gh,
                 issue,
                 run_agent=_agent(session_id=DEV_SESSION, last_message="pushed fix"),
-                head_shas=("sha-before", "sha-after"),
+                head_shas=(support.SHA_BEFORE, support.SHA_AFTER),
                 push_branch=True,
             )
 

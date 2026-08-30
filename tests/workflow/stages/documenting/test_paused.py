@@ -12,6 +12,10 @@ and the awaiting-human follow-up."""
 
 from __future__ import annotations
 
+from tests.workflow.stages.documenting import (
+    documenting_test_support as documenting_support,
+)
+
 import unittest
 from unittest.mock import patch
 
@@ -29,6 +33,7 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
@@ -36,8 +41,10 @@ from tests.workflow.fixtures import (
 
 LABEL_DOCUMENTING = "workflow:documenting"
 DEV_SESSION_ID = "dev-sess"
-BEFORE_SHA = "before-sha"
-AFTER_SHA = "after-sha"
+BEFORE_SHA = documenting_support.SHA_BEFORE
+# The head the docs pass leaves the checkout on, which IS the commit the size
+# gate proves that checkout to: one read of one worktree in production.
+AFTER_SHA = MEASURED_CANDIDATE_SHA
 PUSH_BRANCH = "_push_branch"
 RUN_AGENT = "run_agent"
 INITIAL_PASS_ISSUE_NUMBER = 90

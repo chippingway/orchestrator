@@ -13,10 +13,11 @@ from orchestrator.git.publication import probes as publication_probes
 from orchestrator.git.verification import probes as verification_probes
 
 from tests.git.base_sync import base_sync_helpers as fixtures
+from tests.git.base_sync.sync_test_support import _diverged
 
 AUTHED_FETCH = "_authed_fetch"
 
-AHEAD_BEHIND = "_branch_ahead_behind"
+DIVERGENCE = "_branch_divergence"
 
 HEAD_SHA = "_head_sha"
 
@@ -200,7 +201,7 @@ class CompleteRecoverySnapshotTest(unittest.TestCase):
     def test_differing_heads_carry_the_counts(self) -> None:
         completed = self._complete(
             fixtures.REMOTE_SHA,
-            ahead_behind=MagicMock(return_value=(1, 2)),
+            ahead_behind=MagicMock(return_value=_diverged(1, 2)),
         )
 
         self.assertEqual(completed.remote_head, fixtures.REMOTE_SHA)
@@ -227,7 +228,7 @@ class CompleteRecoverySnapshotTest(unittest.TestCase):
             MagicMock(return_value=remote_head),
         ):
             with patch.object(
-                publication_probes, AHEAD_BEHIND, ahead_behind,
+                publication_probes, DIVERGENCE, ahead_behind,
             ):
                 return snapshot._complete_recovery_snapshot(
                     fixtures._recovery_context(),

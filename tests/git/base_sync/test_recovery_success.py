@@ -13,6 +13,9 @@ from tests.git.base_sync.refresh_scenarios import (
     _scenario,
 )
 from tests.git.base_sync.refresh_test_support import (
+    _diverged,
+    AFTER_SHA,
+    REBASED_SHA,
     _RemoteHeadGit,
     _SyncWorktreeWithBaseFixture,
     _git_result,
@@ -21,9 +24,9 @@ from tests.git.base_sync.refresh_test_support import (
 ISSUE = 7
 
 # Worktree HEAD SHAs threaded through the rebase / push / recovery flows.
-BEFORE_SHA = "before-sha"
-AFTER_SHA = "after-sha"
-REBASED_SHA = "rebased-sha"
+# The post-rebase and recovered heads come off the shared fixture, where they
+# are the commit the size gate proves the checkout to.
+BEFORE_SHA = "be40e5ba" * 5
 
 LABEL_VALIDATING = "workflow:validating"
 
@@ -50,7 +53,7 @@ class CrashRecoverySuccessUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCa
             dirty=MagicMock(return_value=[]),
             rebase=MagicMock(),
             head_sha=MagicMock(return_value=REBASED_SHA),
-            ahead_behind=MagicMock(return_value=(1, 0)),
+            ahead_behind=MagicMock(return_value=_diverged(1, 0)),
             fetch=MagicMock(return_value=_git_result()),
             push=MagicMock(return_value=True),
             git=MagicMock(
@@ -86,7 +89,7 @@ class CrashRecoverySuccessUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCa
             dirty=MagicMock(return_value=[]),
             rebase=MagicMock(),
             head_sha=MagicMock(return_value=REBASED_SHA),
-            ahead_behind=MagicMock(return_value=(0, 0)),
+            ahead_behind=MagicMock(return_value=_diverged(0, 0)),
             fetch=MagicMock(return_value=_git_result()),
             push=MagicMock(),
             git=MagicMock(

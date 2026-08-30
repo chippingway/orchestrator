@@ -24,7 +24,12 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 
-from tests.support.fakes import FakeGitHubClient, FakeIssue, FakePR, make_issue
+from tests.support.fakes import (
+    FakeGitHubClient,
+    FakeIssue,
+    FakePR,
+    make_issue,
+)
 from tests.workflow.fixtures import LABEL_DECOMPOSING
 
 SHA_LENGTH = 40
@@ -45,6 +50,14 @@ UNDERSIZED_ADDITIONS = 12
 SCOPE = "the declared slice this generation owns"
 
 PLAN_PR_NUMBER = 77
+
+# The pull request a post-publication generation was measured against, the
+# head it was standing on, and the stage the gate took the issue out of --
+# the three a settled verdict has to find unchanged before it publishes.
+PUBLISHED_PR_NUMBER = 78
+PUBLISHED_HEAD_SHA = "d" * SHA_LENGTH
+PUBLISHED_SOURCE_STAGE = "workflow:fixing"
+PUBLISHED_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-4242"
 PLAN_PR_BODY = "the design this plan PR was opened with"
 PLAN_BRANCH = "orchestrator/plan"
 
@@ -103,7 +116,17 @@ class _StateKeys:
     resources: str = "late_resources"
     owner_check_pending: str = "late_owner_check_pending"
     exempt_sha: str = "late_exempt_sha"
+    post_publication: str = "late_post_publication"
+    published_pr_number: str = "late_published_pr_number"
     approved_sha: str = "late_approved_sha"
+    approved_lease: str = "late_approved_lease"
+    # The publishing stage's own receipt rather than a late field: it is what
+    # says a commit REACHED the remote, which is the evidence a settlement
+    # resumed past its own push is recognized by.
+    receipt_sha: str = "implementing_published_sha"
+    # The head that receipt replaced, written with it: what dates it to one
+    # publication attempt, since the receipt itself is never cleared.
+    receipt_lease: str = "implementing_published_lease"
     retry_count: str = "retry_count"
     retry_window: str = "retry_window_start"
     agent_runs: str = "issue_agent_runs"
@@ -190,6 +213,17 @@ def seeded_late_issue(**extra_state) -> tuple[FakeGitHubClient, FakeIssue]:
     """A fresh fake client carrying the standard oversized generation."""
     github = FakeGitHubClient()
     return github, seed_late_issue(github, late_generation(), **extra_state)
+
+
+# Every state the gate can take an issue out of, and so every state a settled
+# adjudication can put one back into.
+PUBLISHED_SOURCE_STAGES = (
+    "workflow:validating",
+    "workflow:documenting",
+    "in_review",
+    "workflow:fixing",
+    "workflow:resolving_conflict",
+)
 
 
 def seed_plan_pr(

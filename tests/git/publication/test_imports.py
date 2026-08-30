@@ -16,7 +16,7 @@ from orchestrator.git import publication as _publication_package
 
 _PACKAGE = "orchestrator.git.publication"
 
-_OWNERS = ("planning", "probes", "rewrite", "squash", "titles")
+_OWNERS = ("models", "planning", "probes", "rewrite", "squash", "titles")
 
 _MODULES = (_PACKAGE, *(f"{_PACKAGE}.{owner}" for owner in _OWNERS))
 
@@ -28,7 +28,7 @@ _OWNER_MODULES = MappingProxyType({
 
 # The divergence probe, named once because it recurs across the owner surface
 # below.
-_AHEAD_BEHIND = "_branch_ahead_behind"
+_DIVERGENCE = "_branch_divergence"
 
 # What each owner defines: the whole publication surface, split by the module a
 # patch aimed at one of these names has to land on.
@@ -41,22 +41,25 @@ _DEFINED = MappingProxyType({
         "_squash_message",
         "_squash_subjects",
     ),
+    "models": ("_SquashOutcome",),
     "probes": (
         "_CONVENTIONAL_RE",
         "_CONVENTIONAL_TYPES",
         "_CONVENTIONAL_TYPES_ALT",
         "_PREFIXED_RE",
         "_PREFIX_TOKEN_RE",
-        _AHEAD_BEHIND,
+        "_BranchDivergence",
+        _DIVERGENCE,
         "_first_commit_subject",
         "_is_conventional_subject",
         "_is_prefixed_subject",
-        "_parse_ahead_behind",
         "_recent_base_subjects",
         "_subject_prefix",
     ),
     "rewrite": (
         "_create_squash_commit",
+        "_gated_rewrite",
+        "_published_squash",
         "_rewrite_squash",
         "_rollback_squash",
         "_squash_commit_env",

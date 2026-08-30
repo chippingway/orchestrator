@@ -96,7 +96,7 @@ def _reject_unknown_recovery_comparison(
     """Park when unequal heads cannot be classified as ahead or behind."""
     log.warning(
         "issue=#%d auto-rebase recovery: local HEAD (`%s`) differs "
-        "from remote PR head (`%s`) but `_branch_ahead_behind` "
+        "from remote PR head (`%s`) but the divergence probe "
         "returned `(0, 0)`; aborting recovery and parking awaiting "
         "human",
         context.issue.number,
@@ -109,10 +109,10 @@ def _reject_unknown_recovery_comparison(
         context,
         f"local HEAD `{local_short}` differs from remote "
         f"PR head `{remote_short}` but "
-        "`_branch_ahead_behind` returned `(0, 0)`, which means the "
-        "remote-tracking ref we just fetched is unexpectedly missing "
-        "-- the path the recovery would take next cannot be determined "
-        "safely.",
+        "the divergence probe returned `(0, 0)`, which means the "
+        "remote-tracking ref we just fetched could not be read or "
+        "compared against -- the path the recovery would take next "
+        "cannot be determined safely.",
     )
 
 

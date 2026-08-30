@@ -23,7 +23,6 @@ from pathlib import Path
 from typing import Optional
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
@@ -31,6 +30,10 @@ from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.stages.conflicts import models as _models
 from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.stages.implementing import (
+    late_push as _late_push,
+    late_records as _late_records,
+)
 from orchestrator.workflow.stages.implementing import parks as _dev_parks
 
 
@@ -146,13 +149,46 @@ def _finalize_conflict_resolution(
     `agent_resolved` audit event, and hands to `validating` so the
     reviewer re-runs against the resolved branch. Writes pinned state on
     every exit.
+
+    A resolution is a candidate for a pull request the remote already carries
+    like any other -- an agent resolving conflicts writes code, and a rebase
+    onto a base that has moved changes what the branch adds to it -- so the
+    size gate stands in front of this push too. A held candidate ends the tick
+    here: the gate has parked the issue or handed it to the adjudication, and
+    the hand to `validating` below would move it off the state the gate just
+    set. The lease stays the CALLER's, because both callers read the head
+    their push replaces before the agent ran and the gate reads that pull
+    request again after it: a fresh conflict names the pre-rebase head it
+    rebased from, and a resumed park names the tip the pull request was
+    fetched at. Left to the reading taken afterwards, a push that landed
+    while the agent was out would become the lease this force-push replaces.
     """
     branch = _worktree_paths._resolve_branch_name(
         ctx.state, ctx.spec, ctx.issue.number,
     )
-    if not _authentication._push_branch(
-        ctx.spec, wt, branch, force_with_lease=force_with_lease,
-    ):
+    published = _late_push._publishes(
+        _late_records._gate(ctx.gh, ctx.spec, ctx.issue, ctx.state, wt),
+        branch,
+        _late_records._Entered(
+            head=force_with_lease or "",
+            # The commit the resolution left, so a checkout something moved
+            # between that read and the gate's own is refused rather than
+            # measured and pushed as this round's resolution.
+            candidate=after_sha,
+            # The round this resolution earned, handed to the gate for the
+            # exit where this caller never reaches the tail: a hold relabels to
+            # the adjudication, and the resumed tick would read the published
+            # commit as a branch already carrying its base -- the no-op flip,
+            # which resolves nothing and stamps no `last_conflict_resolved_at`.
+            spends=_transitions._settles_the_held_round(
+                "agent_resolved", after_sha,
+            ),
+        ),
+    )
+    if published.held:
+        ctx.gh.write_pinned_state(ctx.issue, ctx.state)
+        return
+    if not published.landed:
         _transitions._park_conflict(
             ctx,
             f"{config.HITL_MENTIONS} git push failed after conflict "

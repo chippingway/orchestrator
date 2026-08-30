@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from tests.support.github import client as _client
 from tests.support.github import factories as _factories
+from tests.support.github import lazy as _lazy
 from tests.support.github import models as _models
 
 
@@ -17,7 +18,9 @@ FakeComment = _models.FakeComment
 FakeIssue = _models.FakeIssue
 FakeLabel = _models.FakeLabel
 FakePR = _models.FakePR
+DEFAULT_PR_HEAD_SHA = _models.DEFAULT_PR_HEAD_SHA
 FakePRRef = _models.FakePRRef
 FakePRReview = _models.FakePRReview
 FakeUser = _models.FakeUser
+LazyPullRequest = _lazy.LazyPullRequest
 make_issue = _factories.make_issue

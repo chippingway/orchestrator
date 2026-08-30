@@ -368,11 +368,13 @@ def _reset_implementing_counters(state: _pinned_state.PinnedState) -> None:
         state.set(_state._PARK_REASON, None)
     state.set(_state._PRE_IMPLEMENT_SHA, None)
     # The commit an approval said was still owed a push: this IS that push,
-    # so the debt is paid. It is spent here rather than after the relabel
-    # because past the relabel the issue belongs to another stage, and a
-    # record left behind would freeze this branch out of the base refresh
-    # with nothing in implementing ever coming back to drop it.
-    state.set(_state._APPROVED_SHA, None)
+    # so the debt is paid -- and the head it was pinned against with it, since
+    # a lease outliving the publication it was frozen for would pin the next
+    # one to a head this push has already moved. Spent here rather than after
+    # the relabel because past the relabel the issue belongs to another stage,
+    # and a record left behind would freeze this branch out of the base
+    # refresh with nothing in implementing ever coming back to drop it.
+    _late_parks._forget_approval(state)
 
 
 def _moved_off_the_candidate(
@@ -638,9 +640,11 @@ def _dirtied_after_the_push(
 
     So the publication stands and the handoff stops, exactly as it does for a
     head that moved: the branch is on the remote, its pull request carries the
-    commit, the label does not move, and the commit is recorded as one still
-    owed a handoff so the quiet republication can finish it once the tree is
-    clean again.
+    commit, and the label does not move. What the commit is RECORDED as is the
+    caller's, because the two sides promise different things about the remote:
+    an initial publication's push opens the pull request and reads the remote
+    for itself, while a push onto one the remote already carries knows exactly
+    which head it left the branch on and can pin the republication to it.
     """
     tree = _verification_probes._worktree_status(worktree)
     if tree.is_clean:
@@ -659,7 +663,6 @@ def _dirtied_after_the_push(
             loose=loose,
         ),
     )
-    state.set(_state._APPROVED_SHA, published)
     return True
 
 
@@ -689,6 +692,10 @@ def _moved_after_the_push(
     reads the descendant; and the park names the commit the checkout has to go
     back to. Putting it back republishes with nothing re-run, and leaving it
     there measures it as the fresh candidate it is on the next run.
+
+    What the commit is RECORDED as owing is the caller's, for the reason the
+    dirty reading beside this one gives: the two sides of the gate promise
+    different things about the head the republication would be pinned to.
     """
     proved = _measurement_commits._prove_candidate_commit(worktree, _HEAD)
     if proved.is_frozen and proved.sha == published:
@@ -706,7 +713,6 @@ def _moved_after_the_push(
         reason=_state._CANDIDATE_MOVED,
     )
     state.set(_state._PARK_REASON, _state._CANDIDATE_MOVED)
-    state.set(_state._APPROVED_SHA, published)
     return True
 
 
@@ -759,6 +765,16 @@ def _on_commits(
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     if not _authentication._push_branch(
         spec, wt, branch, revision=published,
+        # The head an approval taken on the PUBLISHED side was frozen
+        # against, where there is one. A candidate a settled adjudication
+        # sends back here was measured against a pull request the remote
+        # already carries, and the reading it was measured under is only worth
+        # what the head it was taken over still is -- so the push is pinned to
+        # that head and a pull request somebody moved during the adjudication
+        # rejects it instead of being force-overwritten. None for an initial
+        # publication, whose push reads the remote for itself as it always
+        # did: there was no pull request to freeze.
+        force_with_lease=_late_parks._approved_lease(state) or None,
     ):
         # Park on awaiting_human like the timeout/question paths. Otherwise the
         # worktree's commits keep _has_new_commits() true, so every poll would
@@ -776,10 +792,31 @@ def _on_commits(
     # The push landed, so what was an intent is now a receipt: staged here so
     # the handoff write below carries it, and so a relabel that does not land
     # leaves the next tick something to recognize an already published branch
-    # by rather than work nobody has ruled on.
-    state.set(_state._PUBLISHED_SHA, published)
+    # by rather than work nobody has ruled on. It names no head it replaced --
+    # an initial publication froze none and reads the remote for itself -- and
+    # says so rather than leaving whatever the last published-side push wrote,
+    # which would date this receipt to an attempt it was not made under.
+    _late_parks._record_publication(state, published, "")
     if _moved_after_the_push(gh, issue, state, published, wt):
+        _owes_the_handoff(state, published)
         return
     if _dirtied_after_the_push(gh, issue, state, published, wt):
+        _owes_the_handoff(state, published)
         return
     _advance_to_validating(gh, issue, state, pr, branch)
+
+
+def _owes_the_handoff(
+    state: _pinned_state.PinnedState, published: str,
+) -> None:
+    """Record the commit a checkout this stage may not hand on still owes.
+
+    The commit and no lease, which is what an INITIAL publication can promise:
+    the push above is the one that opened this pull request, and the head the
+    quiet republication would be pinned to is whatever that push reads off the
+    remote for itself when it runs. A pull request the remote already carried
+    is the other side of the gate, and it records both -- the reconciliation
+    ahead of every handler reads the pair as the claim it is, and half of one
+    there is damage rather than a debt.
+    """
+    state.set(_state._APPROVED_SHA, published)

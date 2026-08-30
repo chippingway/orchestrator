@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from orchestrator import config
+from orchestrator.git.publication.models import _SquashOutcome
 
 from tests.support.fakes import (
     FakeComment,
@@ -24,6 +25,12 @@ from tests.workflow.fixtures import (
 )
 
 APPROVAL_ISSUE = 5
+
+# The flags a size-gate park leaves in memory for its caller to persist, and
+# the reason it words them under.
+AWAITING_HUMAN = "awaiting_human"
+PARK_REASON = "park_reason"
+PARK_MEASUREMENT_FAILED = "late_measurement_failed"
 APPROVAL_PR = 31
 APPROVAL_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-5"
 REVIEWED_SHA = "reviewedAA"
@@ -33,6 +40,20 @@ PR_OPEN_COMMENT_ID = 901
 REVIEW_DEBOUNCE_SECONDS = 600
 SQUASH_ON_APPROVAL = "SQUASH_ON_APPROVAL"
 LABEL_DOCUMENTING = "workflow:documenting"
+
+
+class _MeasurementPark:
+    """A squash the size gate held on a reading nobody could take.
+
+    The park's own shape: the notice is worded and the flags are set in
+    memory, and the caller is told the gate owns the issue. Nothing here
+    relabels, because a park is not the adjudication.
+    """
+
+    def __call__(self, gate, _branch) -> _SquashOutcome:
+        gate.state.set(AWAITING_HUMAN, True)
+        gate.state.set(PARK_REASON, PARK_MEASUREMENT_FAILED)
+        return _SquashOutcome(held=True)
 
 
 class _SquashApprovalFixtureMixin(_PatchedWorkflowMixin):
@@ -250,6 +271,25 @@ class SquashOnApprovalTest(
         # Park happened: awaiting_human flag set, HITL message posted to
         # the issue thread.
         self._assert_squash_parked(gh, mocks)
+
+    def test_a_held_park_reaches_the_pinned_comment(self) -> None:
+        # A hold is not always the adjudication. The gate also holds on a
+        # reading nobody could take -- a diff that would not run, a tree it
+        # could not prove -- and that one is a PARK: it words its own notice
+        # and leaves the flags in memory for whoever ran it. Lost, the issue
+        # keeps a frozen candidate with no `awaiting_human` and no
+        # `park_reason`, so every later tick runs the reviewer again over work
+        # nobody read the size of.
+        github, issue = self._setup()[:2]
+
+        self._run_squash_approval(github, issue, _MeasurementPark())
+
+        state = github.pinned_data(APPROVAL_ISSUE)
+        self.assertTrue(state[AWAITING_HUMAN])
+        self.assertEqual(state[PARK_REASON], PARK_MEASUREMENT_FAILED)
+        self.assertNotIn(
+            (APPROVAL_ISSUE, LABEL_DOCUMENTING), github.label_history,
+        )
 
     def test_squash_off_preserves_legacy_behavior(self) -> None:
         # Kill switch: with SQUASH_ON_APPROVAL=off the squash helper must

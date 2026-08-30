@@ -53,7 +53,10 @@ from enum import StrEnum
 from typing import Optional
 
 from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.state import WorkflowLabel
+from orchestrator.workflow.state import (
+    WorkflowLabel,
+    publishes_onto_a_pull_request,
+)
 
 # How deep automatic splitting may go. The root issue of a lineage is depth 0,
 # so a generation may only split while its own depth is strictly below this:
@@ -233,8 +236,11 @@ class LateGeneration:
     entered before publication, so a pinned comment written without the group
     answers the question without having been touched.
     `has_publication_context` is what a caller asks rather than the flag: the
-    three fields are read as fail-closed as every other, and a marker standing
-    alone would claim a pull request nothing could name.
+    three fields are read as fail-closed as every other, a marker standing
+    alone would claim a pull request nothing could name, and the stage is
+    asked what it is rather than merely whether it is there -- only the five
+    states that publish onto a pull request the remote already carries name
+    an entry anything may be reconciled from.
     """
 
     cycle_id: int = 0
@@ -330,12 +336,23 @@ class LateGeneration:
         the time anything asks, the pull request is not the plan PR beside it,
         and the head is a commit the branch has already moved off. A group
         that cannot say all three says nothing an entry is reconciled from.
+
+        The stage is asked what it IS as well as whether it is there, and by
+        the same predicate the entry was frozen under: only the five states
+        that push onto a pull request the remote already carries. A record
+        naming any other -- `ready`, `blocked`, `umbrella`, or the
+        `implementing` seam whose own push is what OPENS the pull request --
+        describes a publication this workflow never enters one on, so reading
+        it back as context would let a reconciliation measure and push a
+        candidate no post-publication stage ever committed. Written that way
+        it is refused; read back that way it is no context at all, which is
+        the same answer a pre-publication record gives.
         """
         if not self.post_publication:
             return False
-        return all(
-            (self.source_stage, self.published_pr_number, self.published_sha),
-        )
+        if not publishes_onto_a_pull_request(self.source_stage):
+            return False
+        return bool(self.published_pr_number and self.published_sha)
 
     def with_resource(self, resource: LateResource) -> LateGeneration:
         """Return this record with one external obligation recorded.
@@ -419,10 +436,21 @@ class LateGeneration:
         is the state a settled adjudication puts the issue back into, and a
         string nobody looked up would reach a later tick wearing this domain's
         word that the workflow has such a state.
+
+        Being a state is not enough, and the same predicate the entry is
+        frozen under is what says which: the five that push onto a pull
+        request the remote already carries. `ready`, `blocked`, and `umbrella`
+        each have an edge to the adjudication for reasons of their own and no
+        pull request behind any of them, and `implementing`'s own push is the
+        one that OPENS the pull request. Recorded from one of those, the group
+        would send a later reconciliation to measure and push a candidate no
+        post-publication stage ever committed.
         """
-        if stage not in WorkflowLabel:
+        if stage not in WorkflowLabel or not publishes_onto_a_pull_request(
+            WorkflowLabel(stage),
+        ):
             raise _formats.InvalidLateValue(
-                "source stage is not a workflow state "
+                "source stage is not one a publication is entered from "
                 f"({type(stage).__name__})",
             )
         if not _formats.whole_number(pr_number) or pr_number <= 0:

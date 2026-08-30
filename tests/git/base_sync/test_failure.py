@@ -9,14 +9,14 @@ from unittest.mock import MagicMock
 
 from tests.git.base_sync.refresh_scenarios import PUSH_PATCH, _scenario
 from tests.git.base_sync.refresh_test_support import (
+    AFTER_SHA,
     _SyncWorktreeWithBaseFixture,
     _git_result,
 )
 
 ISSUE = 7
 
-BEFORE_SHA = "before-sha"
-AFTER_SHA = "after-sha"
+BEFORE_SHA = "be40e5ba" * 5
 
 # Awaiting-human park reasons the auto-rebase flow writes.
 PARK_DIRTY = "auto_base_rebase_dirty"

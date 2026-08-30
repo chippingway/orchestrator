@@ -44,6 +44,9 @@ from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.stages.implementing import (
+    late_records as _late_records,
+)
 from orchestrator.workflow.stages.implementing import resume as _dev_resume
 from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
 from orchestrator.workflow.stages.validating import models as _models
@@ -181,6 +184,21 @@ def _finish_requested_fix(
         attempt.run.worktree,
         attempt.run.agent_result,
         attempt.run.before_sha,
+        # The caller flipped this issue to `fixing` remotely before the spawn
+        # and PyGithub does not refresh the cached labels, so the size gate
+        # reading them back would freeze `validating` -- the state the issue
+        # has LEFT -- and a settled adjudication would continue there instead
+        # of finishing the fix loop. Named for the same reason the resume
+        # above is.
+        stage=WorkflowLabel.FIXING,
+        # The round this route counts on a landed fix, handed to the gate for
+        # the exit where this caller never reaches the line below: a hold
+        # relabels to the adjudication, and a settled verdict publishes the
+        # accepted commit itself, so nothing behind here counts it.
+        spends=_late_records._Spends(fields=(
+            (_state._REVIEW_ROUND, context.decision.run.round_n + 1),
+            ("pending_fix_reviewer_comment_id", None),
+        )),
     )
     if not pushed:
         if not attempt.run.agent_result.interrupted:

@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 from orchestrator.git.base_sync import refresh as _base_refresh
 
 from tests.git.base_sync.refresh_test_support import (
+    AFTER_SHA,
     _SyncWorktreeWithBaseFixture,
     _git_result,
     _patch_base_sync,
@@ -17,9 +18,10 @@ from tests.git.base_sync.refresh_test_support import (
 
 ISSUE = 7
 
-# Worktree HEAD SHAs threaded through the rebase / push flow.
-BEFORE_SHA = "before-sha"
-AFTER_SHA = "after-sha"
+# Worktree HEAD SHAs threaded through the rebase / push flow. The post-rebase
+# head comes off the shared fixture, where it is the commit the size gate
+# proves the checkout to.
+BEFORE_SHA = "be40e5ba" * 5
 
 LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
 
@@ -114,7 +116,7 @@ class PrRefreshOutcomeUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
         # Defensive: if PR state cannot be determined this tick, leave the
         # label alone -- the handler can retry from a stable label rather
         # than racing a half-known state.
-        self._seed_pr_issue()
+        self._seed_pr_issue(with_pr=False)
         # No PR added -- get_pr will raise KeyError on the FakeGitHubClient.
         git_mock = MagicMock(return_value=_git_result(stdout=THREE_BEHIND_STDOUT))
         with _patch_base_sync(

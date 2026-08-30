@@ -95,11 +95,33 @@ def _reset_clear_and_park(
     `awaiting_human` flag is what short-circuits the same-tick handlers,
     and it still lands even if the worktree is left on an unexpected SHA
     for the operator to inspect.
+
+    The debt the reset abandoned is dropped with the anchor, and only once
+    the reset has actually LANDED. The size gate measures a rebased head
+    before it is pushed and, at or under the ceiling, records it as a commit
+    still owed a publication -- and a reset that landed puts the branch back
+    on the pre-rebase SHA, so that commit is not on this branch any more and
+    only the reflog still has it. Left standing there, it is a debt nothing
+    can pay and everything trips over: the pre-tick base refresh freezes this
+    branch out of the sync for as long as the issue lives, and the
+    reconciliation ahead of every handler stops the tick for a publication
+    that is never coming. An approval whose commit was abandoned is
+    superseded, which has always been one of the three things that drops one
+    -- so the owner doing the abandoning is the one that drops it.
+
+    A reset that FAILED abandoned nothing, and the record is the only thing
+    naming what the checkout may still be standing on: the approved commit,
+    the head its push is pinned to, and the route bookkeeping that push
+    closes. Dropped there, the exact-candidate retry has nothing to ask for
+    by id and the next tick measures whatever the worktree turns out to be.
+    So the two are ordered -- the reset is proved first, and the record
+    follows it rather than the intent.
     """
     reset = commands._git_hardened(
         "reset", "--hard", reset_sha, cwd=context.worktree,
     )
-    if reset.returncode != 0:
+    restored = reset.returncode == 0
+    if not restored:
         log.error(
             "issue=#%d auto-rebase recovery: reset --hard to %s failed: "
             "%s; the awaiting_human park still short-circuits same-tick "
@@ -117,6 +139,12 @@ def _reset_clear_and_park(
                 context.issue.number, (cleaned.stderr or "").strip(),
             )
     context.state.set(_PENDING_PUSH_SHA, None)
+    # Lazily bound for the reason the comment and guard owners are: the size
+    # gate sits in the workflow layer above this package, and binding it at
+    # module load would make every git-side import pay for the stage tree.
+    from orchestrator.workflow.stages.implementing import late_parks
+    if restored and late_parks._approved_commit(context.state) != reset_sha:
+        late_parks._forget_approval(context.state)
     _park_auto_rebase_failure(
         context.gh,
         context.issue,

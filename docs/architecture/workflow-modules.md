@@ -98,7 +98,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             cadence), and shared by all three tick paths
                             with the refetch inside the hold --
                             the refusal that keeps a relabelled late adjudication off every other
-                            stage's handler, and the timed dispatch
+                            stage's handler, the reading owed for a size-gate pair frozen and never counted --
+                            taken ahead of the handler that would otherwise run against a pull request still
+                            standing where the gate froze it, and only on the stage the record itself names --
+                            and the timed dispatch
     observations.py         the closes a poll saw and could hand to no worker: the process-wide latch the run
                             holding the issue asks before every step the remote keeps (a close and a reopen inside
                             one of its own steps is the reading GitHub cannot give back), the settle a pass that
@@ -188,21 +191,45 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     conflicts/              `workflow:resolving_conflict`
       handler.py            the order one tick asks its questions in: the missing-`pr_number` park, the terminal arcs,
                             the body-edit resume, and the rebase behind them
-      routing.py            the awaiting-human resume and `MAX_CONFLICT_ROUNDS` cap that gate the rebase, plus the
-                            worktree it runs in
+      routing.py            the awaiting-human resume and `MAX_CONFLICT_ROUNDS` cap that gate the rebase, the
+                            worktree it runs in, and the three things a branch can carry into a rebase that are not
+                            one -- a behind-base divergence, a round the size gate held and an adjudication has since
+                            published, and commits a crashed tick never pushed
       guards.py             the worktree restore and the two probes that prove a stale PR head is safe to
                             force-publish over
       divergence.py         the park a behind-base worktree earns, the one lease that excuses it, and the
-                            crash-recovered push
+                            crash-recovered push -- measured by the size gate first, since a crash between a commit
+                            and the gate is the window this recovery exists for, named against the head this
+                            stage read, which is the commit the round it finishes is recorded under, and PINNED to
+                            the tip the divergence reading was taken against, since "ahead and not behind" is
+                            a claim about that one commit and an unpinned push would have the gate adopt whatever
+                            the pull request moved to in between; a push neither the exceptional lease nor that tip
+                            can name refuses (`unpinnable_recovery`) rather than letting git read the remote for
+                            itself. The behind-base probe is taken
+                            BEFORE that push, since the reading is the same either side of one and taken first it
+                            says which round a held candidate would owe: on base the push completes a round of its
+                            own and leaves the receipt for it, behind base it is the preamble to a rebase that owns
+                            the round instead
       rebase.py             the branch and base fetches, the rebase, its `merge_attempt` event, and the three-way
                             disposition
-      publication.py        the dirty park, the no-op flip, the rebased-head push, and the hand-off of real conflicts
-                            to the dev
+      publication.py        the unproven-tree and unreadable-head parks, the no-op flip, the rebased-head push
+                            (measured by the size gate first, since a base that moved changes what the branch adds
+                            to it), and the hand-off of real conflicts to the dev. Both parks are the same refusal
+                            read one step apart: a status that established nothing names no paths and a head that
+                            would not resolve reads as the head this stage started on, so taken as absences they
+                            hand a reviewer a tree nobody read or a rewritten head the pull request never received
       resume.py             the three dev-resume entry points, the shared run, and the `/orchestrator continue`
                             classification
       outcomes.py           the interrupt / timeout / mid-rebase parks read before HEAD, and the push a completed
-                            resolution earns
-      transitions.py        the park-and-write pair and the pushed-round tail every exit shares
+                            resolution earns -- measured by the size gate first, since a resolution grows the pull
+                            request like any other candidate, and pinned by the pre-rebase head this stage read
+      transitions.py        the park-and-write pair and the pushed-round tail every exit shares, plus the round a
+                            hold owes: named for the gate to write down ahead of its relabel, read back by the tick
+                            the settlement hands the label to -- only over a checkout standing ON the head it names,
+                            since in sync with its remote is what a replacement host rebuilt at a moved pull request
+                            reads as too -- and dropped by whichever tail finally pays it, since the resumed tick
+                            reads a published resolution as a branch already standing on its base, which is the no-op
+                            flip that resolves nothing
       models.py             the frozen records the owners hand each other
       state.py              the counter keys they share
     decomposition/          `workflow:decomposing`, `workflow:ready`, `workflow:blocked`, and `workflow:umbrella`
@@ -329,7 +356,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             announcement, the supersession, and the retirement, since a close a poll saw while this
                             worker held the issue reaches no cleanup pass on the tick it happened -- the children
                             before any link, the forward links behind the receipt that stops them repeating, the
-                            held plan PR superseded and closed under a marker scoped to this adjudication, the
+                            pull request this cycle's work is on superseded and closed under a marker scoped to
+                            this adjudication -- the held plan one where the gate was entered before publication,
+                            and the implementation one where it was entered past it, which is proved still open
+                            and still standing where the reading found it before it is closed, since the tail
+                            behind this deletes the branch and hands the work to children and an unsuperseded one
+                            is an open change carrying work nobody will finish, with a pull request already
+                            closed over THIS adjudication's own receipt recognised as the supersession a crashed
+                            tick already made rather than as a human's settlement -- though never a MERGED one,
+                            whatever the thread says, and never one whose head moved behind the close, since a
+                            close does not freeze the branch the tail behind it reclaims -- the
                             generation retired onto `workflow:umbrella` in the write that hands the issue on, the
                             activation behind it -- through the shared dep-graph walk, so a child that ended while
                             the supersession was parked is left where it is -- and the branch cleanup recorded as
@@ -471,14 +507,35 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the exemption
                             naming the measured commit, the plan-PR hold released and the pull request reconciled
                             against that commit in any state -- with a settled pointer dropped rather than handed on
-                            -- before the candidate goes back to the ordinary publication, with the latch asked
-                            between every one of those steps and the retirement behind them answered by REINSTATING
+                            -- or, where the verdict was taken PAST publication, the frozen pull request proved
+                            rather than searched for: still open and still standing where the reading found it -- or
+                            already standing on the accepted candidate WHERE the approval, or the receipt read with
+                            the head it replaced, vouches for it, which is this settlement's own push having landed
+                            before the tick died and is finished rather than refused (that head on a fresh pass,
+                            ahead of both writes, is something else's push and refuses with every other) -- and
+                            otherwise
+                            refused, since dropping the number there would push onto a branch whose pull request a
+                            human settled and open a second one for a change adjudicated against the first; the push
+                            itself made HERE, named and leased by the evidence only this tick still holds, and the
+                            label then handed to the stage the record names rather than to implementing --
+                            before a pre-publication candidate goes back to the ordinary publication, with the
+                            latch asked between every one of those steps and the retirement behind them answered
+                            by REINSTATING
                             the cycle rather than refusing, since past that write there is none left to end --
                             the write and that barrier held inside the observations owner's retirement window, so
                             a poll reading the record between them is not told there is nothing to end -- and
                             the split passed on to the transaction that creates its children, and the cycle that
                             retirement dropped recorded outside the group the write clears, so a process that dies
                             before its own barrier leaves a receipt something can still be adopted against
+      late_publication.py   the pull request a verdict taken PAST the first push was measured on, read once for
+                            both roads out of the adjudication: a `single` publishes onto it and a `split` closes
+                            it over a supersession, and neither may look it up -- the entry the gate froze names
+                            it and the head it was standing on. One reading, because a fetched pull request is
+                            lazy and the reads behind the lookup are what talk, so a caller guarding only the
+                            lookup leaves them to raise out of a road whose every other refusal parks -- and a
+                            caller's own receipt is read there too, since one that CLOSED the pull request itself
+                            and died before the work behind that close was finished cannot tell its own close
+                            from a human's by the state alone
       late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
                             lineage, and the three outcomes with the bounds they are judged against
       late_reply.py         the late reply's own fence, its three structured decisions, and the envelope and split rules
@@ -567,7 +624,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       run.py                the branch refresh and diverged-worktree guard, plus the resume, recovered-commit, and
                             fresh-spawn shapes
       outcomes.py           the timeout / dirty / commit / `DOCS: NO_CHANGE` order a finished run is read in
-      publication.py        the push, the docs watermarks it stamps, and the PR notice it posts
+      publication.py        the size gate a docs commit passes -- the last one before a human is asked to merge,
+                            and handed the commit this pass made so a checkout something moved is refused rather than
+                            measured in its place -- then the push, the docs watermarks it stamps, and the PR notice
+                            it posts; a held commit leaves the head it produced as the receipt the handoff is still
+                            owed, and the handler finishes from that only over a checkout standing ON it, since in
+                            sync with its remote is what a replacement host rebuilt at a moved pull request reads as
+                            too
       drift.py              a body edit mid-hop: the dropped approval, the unwind sentinel, and the relabel to
                             `workflow:validating`
       drift_reset.py        the fetch / probe / hard-reset that puts the worktree back on the PR head, and the parks
@@ -579,14 +642,17 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       state.py              the pinned-state keys they share
     fixing/                 `workflow:fixing`
       handler.py            the order one tick asks its questions in, plus the preflight terminals, the
-                            missing-`pr_number` park, and the commit the no-feedback bounce publishes before it
-                            hands the PR back to the reviewer
+                            missing-`pr_number` park, and the commit the no-feedback bounce publishes -- measured by
+                            the same size gate the shared dev-fix publication passes, so a held candidate stops the
+                            bounce rather than being relabelled over -- before it hands the PR back to the reviewer
       feedback.py           the rescan past the three in_review watermarks and the narrower ratchet a consumed batch
                             advances them by
       bookmarks.py          the `pending_fix_*` ids a replay rebuilds the triggering batch from, and the clear each
                             round earns
-      resume.py             the quiet window, the dev run, the ACK fast path, and the `workflow:validating` relabel a
-                            pushed fix earns
+      resume.py             the quiet window, the dev run, the ACK fast path, the `workflow:validating` relabel a
+                            pushed fix earns, and the round a fix the size gate sent to adjudication spends here --
+                            no later tick of this stage can, since a settled verdict publishes before handing the
+                            issue back
       parked.py             the four answers an `awaiting_human` tick can reach and the order they are asked in
       continue_command.py   `/orchestrator continue` on a parked fix: the replay and what it may hand the dev --
                             guidance, never the command itself -- plus the two refusals and the guidance passthrough
@@ -616,29 +682,188 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             committed candidate passes, the timeout and measurement parks' own recoveries, and
                             the approved commit an interrupted publication owes, disposed against the record
                             naming it rather than against any ahead-of-base reading
-      late_gate.py          the order the size gate's questions are asked in: the switch, the three records that
+      late_gate.py          the order the size gate's questions are asked in, taken over one subject so both seams
+                            ask them the same way: the switch, the commit the caller named -- proved against the
+                            checkout before anything is persisted or pushed, since between the caller's read and this
+                            one the worktree is writable and a commit landing there is a different candidate -- the
+                            three records that
                             say a commit is already decided (the adjudication's exemption, the gate's own unspent
                             approval, and the commit this stage already pushed), a record already answering, and
                             the count that answers a pair nothing has yet
-      late_records.py       what one gate call is about, the answer it hands back, the identities a record of it
+      late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
+                            so a tick that dies over the diff comes back to the pair this one froze, and a recorded
+                            one acted on only once its other fields say what the number MEANS and the base it names
+                            is proved present here
+      late_overflow.py      what a gate call taken PAST publication freezes before it may measure -- the stage it is
+                            taking the issue out of, the pull request the work already has, and the head that pull
+                            request is standing on -- and the five refusals that make freezing them fail closed: a
+                            tree that is not provably clean, a pull request nothing could read, one that is closed or
+                            merged, a caller-named head that is no whole object id or that disagrees with the head
+                            this owner reads, and a head that moved off what a live record froze; asked behind the
+                            switch, so an install with the gate off pays neither the read nor the park. Also what a
+                            record already carrying a publication is re-proved against -- the whole frozen identity
+                            rather than the head alone, since a branch reused across two pull requests puts the same
+                            commit at the tip of both -- and what the CALLER established rather than what this owner
+                            would re-read: the head it pinned its own decision to, checked against the one this owner
+                            reads rather than substituted for it, and the stage a same-tick remote relabel
+                            wrote over a cached one. That comparison has one carve-out and it is not a preference: a
+                            tip a DURABLE RECORD says this issue put there -- an approval's commit, a live record's,
+                            or `implementing_published_sha` read with `implementing_published_lease`, the head that
+                            receipt replaced -- is this issue's own push having landed, which is the window an
+                            approval exists for; anything else at the tip is somebody else's branch move and
+                            refuses. The caller's own candidate is deliberately not among them: on a fresh attempt
+                            no push of this workflow's has run, so a tip that merely happens to BE that commit says
+                            an agent put it there, and waving it through would measure and route the candidate the
+                            gate is holding back. The receipt is not among them ALONE either, since one that is
+                            never cleared would read a pull request rewound onto a commit published rounds ago as
+                            this tick's own push arriving -- and a checkout rewound with it agrees on every local
+                            fact there is. Dated by the head it was PINNED to it names the one window it is evidence
+                            for, a push made from the head this call was entered on under a process that died
+                            before the relabel
+      late_publication.py   the answer half, between that entry and the push: the switch, the record, and the count
+                            asked in one place, so the seam that reached the gate makes no difference to what it is
+                            told -- an install with `DECOMPOSE=off` never reads a pull request, a record already in
+                            the gate goes through the ordinary questions, and a commit an approval owes a push is one
+                            this gate has already ruled on; a hold is the whole of what the tick did, parked or
+                            handed to the adjudication, rather than a bare permission, and anything else carries the
+                            commit the push is named against, the head it is leased against, and the head the pull
+                            request stands on now, which is what says whether the push has anything left to do
+      late_push.py          the one call every gated push onto a pull request the remote already carries goes
+                            through -- measure, push named against the measured candidate and leased against the
+                            frozen head, spend the debt it paid, close what the route owed for it (in that same
+                            write, since past it neither the approval nor the generation is left to say a round was
+                            owed, while the caller still has a relabel and a write to make), record what reached the
+                            remote so a tick that dies
+                            past the push neither re-reads nor re-pushes it, and prove the checkout again on the far
+                            side of the effect -- AHEAD of that write, so what the proof answers rides it: a
+                            checkout that moved or was dirtied holds the handoff rather than the publication, and
+                            the claim it owes lands with the receipt rather than one write behind it, where a crash
+                            would take it and leave the stage below reading a dirty worktree as no stranded work;
+                            borrowing the initial publication's own two questions for both; a pull request already
+                            STANDING on the candidate goes through the same
+                            tail, since the request is the only atomic proof that the publication this tick froze is
+                            still the one the pull request has -- git has nothing left to send, and the lease moves
+                            to the head the branch is on NOW rather than the one an approval was measured against.
+                            That write is skipped for a push that had nothing to SEND and finds the receipt naming
+                            its commit with no debt beside it, which is a retry of a publication already settled; a
+                            push that MOVED the pull request settles whenever a pair the route owes is not already
+                            the value on the comment, since the receipt is never cleared and on its own reads a
+                            branch pushed back onto an older published commit as a round nothing is left to close
+      late_accepted.py      the push an adjudication already accepted, taken with no measurement -- a verdict read
+                            this exact diff and said it ships as one change -- but still named against the commit
+                            that was DECIDED, still pinned to the head the reading was taken over, and made only
+                            over a checkout re-proved to be the one that verdict was reached about
+      late_rewrite.py       the publication a squash-on-approval may rewrite and the push it then makes, and the
+                            switch asked ahead of both: a squash is NEW work by the switch's own definition -- the
+                            commit it publishes is one it makes itself -- so `DECOMPOSE=off` reads no pull request
+                            and parks over none, and what such an install does is squash and push under the lease
+                            this stage read for itself -- the gate's own switch question, asked here because it reaches
+                            it twice and the first of the two is the pull-request read the switch is meant to save.
+                            With the
+                            switch on: entered on
+                            that pull request before the reset destroys anything locally, so a closed or unreadable
+                            one, a dirty tree, or a head that moved costs a refusal rather than a rewrite and a
+                            rollback; then the commit the squash MADE goes through the whole gate, because that is the
+                            object the push would put on the pull request -- the tree is the approved one, but the
+                            base moves, and this is the last push before a human is asked to merge. That commit is
+                            checked on both sides of the gate, since the gate proves the checkout for itself and a
+                            first generation has no record to prove it against, so something committing over the
+                            worktree in that window would be measured and published in its place. Which holds keep
+                            the rewrite is answered here too (`_rewrite_stands`): the receipt naming the squash
+                            says a push landed, a live record naming it says the adjudication owns it or the
+                            reconciliation still owes it a count, and a checkout that is not the squash says
+                            something else made the commit -- anything else is a reading that REFUSED and froze
+                            nothing, where the squash is a local commit nobody measured and the caller puts the
+                            branch back rather than leave a retry one commit to call success. And the debt a
+                            rollback abandons is dropped there, durably, since the reconciliation ahead of every
+                            handler would otherwise stop the tick for a publication that is never coming
+      late_reconcile.py     the reading the dispatcher takes for a pair frozen and never counted, scoped to the
+                            stage the record names and taken with no run behind it: measured at or under the ceiling
+                            the candidate is PUBLISHED before the stage runs -- nothing goes back for a push a
+                            settled reading left owed, and the stage behind an unpublished one spawns a reviewer over
+                            a pull request that never received it -- measured past the ceiling the issue is routed to
+                            the adjudication, and a refusal parks. So does a push that was allowed and did not land.
+                            An approval with no generation left behind it is the same window one step on, and
+                            `late_debt` beside this answers it.
+                            It stops the tick outright where the checkout that pair names is not on this host and
+                            where the label has left the stage the pair was frozen on, since neither a re-entry nor
+                            the handler is this process's to pick
+      late_claims.py        what a post-publication record claims and what it cannot produce: whether a live one
+                            still owes its count, and -- ahead of both reconciliations -- the four refusals a record
+                            that cannot make a claim whole earns. Read off the RAW fields, because the parse is what
+                            loses them: a group missing one member comes back as no group, an approval missing its
+                            lease as no approval, a frozen field the comment CARRIES and no reader will type as a
+                            field nothing froze, and a spend group with one unusable member as no bookkeeping at all
+                            -- so every question behind them answers "nothing owed" and the stage runs over a claim
+                            nothing can check, while the freeze quietly re-derives the half it cannot see from a
+                            remote that has moved. A field the comment does NOT carry is the same gap: what the
+                            write that mints a generation puts down in one go is required rather than merely checked
+                            when present, and a base is required beside any count, since a number is taken over a
+                            pair. All four claims on the five stages the transition graph's own set names, since
+                            `workflow:implementing` has an edge to the adjudication too and its approval carries no
+                            head by design; `workflow:decomposing` is asked the publication one ALONE, because that
+                            group is what a settlement decides everything by and cannot re-derive, while a verdict
+                            taken before publication approves its commit with no head to pin it against -- the very
+                            half-written pair the approval claim calls damage
+      late_debt.py          the approval the dispatcher pays ahead of every handler, where a crash past the write
+                            that granted one left no generation to reconcile from: that write retires the record
+                            before the push, deliberately, so what is left names a commit the pull request never
+                            received and nothing under the stage reads it. Paid under the id the gate decided about
+                            and the head it decided against, both of which live only on the approval by then --
+                            and only from a checkout still standing on that commit. One that is absent, unreadable,
+                            or standing elsewhere PARKS rather than standing down: the debt says a commit the pull
+                            request does not carry was allowed to join it, so a handler behind any of those reads a
+                            publication the approved work is not on. A push that LANDS closes what its caller never
+                            got to -- the route bookkeeping the approval carried past its own retirement, and the
+                            transient park that failed push left -- since no tick behind this one can, and one that
+                            misses again leaves both alone and says nothing: a second mention is one nobody can
+                            answer any faster, and a rewritten reason turns a park the stage recoveries retry into
+                            one only a human clears. The commit is read ONCE and named to the gate,
+                            so the proof that the checkout is standing on it and the reading the gate takes behind
+                            it are about one approval: a commit landing between the two is refused rather than
+                            measured, pushed, and receipted while the debt it was granted for is dropped as paid.
+                            A branch some owner deliberately moved off that commit never reaches here -- the auto
+                            rebase's own reset drops the approval it abandons. Payable only from the five stages the
+                            transition graph's own predicate names, rather than from every label with an edge to the
+                            adjudication -- `ready`, `blocked`, and `umbrella` each have one for reasons of their
+                            own, none of them a pull request -- and a debt whose label has moved to one of those
+                            stops the tick rather than being ignored, since the stage behind it would run over a
+                            publication the approved commit never reached
+      late_records.py       what one gate call is about -- the publication it was entered on included, where there
+                            is one, and the two claims a caller makes about its tick: that no developer ran, which
+                            decides whether a moved head is fresh output, and the narrower one that it is answering
+                            a reading the gate itself recorded, which is what the switch is asked against -- the
+                            answer it hands back, the identities a record of it
                             is minted under, and the validated-or-minted identity every refusal is reported
                             under so a damaged record cannot take its own refusal down with it
       late_freeze.py        the pair a count is taken over -- the candidate proved, the base frozen or
-                            re-proved -- and whether a recorded one is whole enough to act on, its
-                            identity and the issue it names included
+                            re-proved -- whether a recorded one is whole enough to act on, its
+                            identity and the issue it names included, and the one state the switch answers
+                            outright, which every seam that measures asks the same way
       late_evidence.py      what a recovery proves before it acts: the checkout, both recorded objects, a
                             head that is still the candidate, and a head that is still the commit an approval
                             owes a publication for -- proved ahead of every spawn, and what a refused handoff
                             waits to see back, which is that head with a provably clean tree around it
-      late_verdict.py       what a measured candidate earns -- the push, the `workflow:decomposing` hold, the
-                            approval a publication naming another commit supersedes, and
+      late_verdict.py       what a measured candidate earns -- the push and the head an approval on the published
+                            side is pinned to, which outlives the generation that froze it for as long as the push
+                            is still owed, the `workflow:decomposing` hold and the
+                            notice it owes the thread on the side of publication the record was entered on, the
+                            approval a publication naming another commit supersedes, the same debt recorded for a
+                            candidate that skipped the reading -- an exemption's, a supersession the switch let
+                            past -- since no generation was frozen for one and the push it licenses would
+                            otherwise leave the branch on the remote with nothing on the issue naming it, and
                             the retirement each is durable behind, that write held inside the observations
                             owner's retirement window with the latch asked ahead of it and the window's own
                             answer behind it, where a close is answered by putting the cycle back cancelled
-      late_parks.py         the one park shape every unreadable reading takes, the typed failure both sinks
-                            carry, the bare continue that re-reads rather than re-runs, and the two commits a
-                            publication is read by -- the one an approval owes a push for, and the one it made
-      publication.py        the push, the PR reuse (re-bodied when it was opened elsewhere) or open, and the
+      late_parks.py         the one park shape every unreadable reading takes, worded on the side of publication it
+                            was taken on, the typed failure both sinks carry under the stage the reading happened
+                            in, the bare continue that re-reads rather than re-runs, the measurement park a fresh
+                            reading retires -- latch and all, since a reconciliation has no run behind it to clear
+                            the flag -- and the commits a publication is read by: the one an approval owes a push
+                            for with the head it is pinned to, and the one this stage made
+      publication.py        the push -- named against the commit the gate decided and pinned to the head a
+                            published approval was frozen against, where there is one -- the PR reuse (re-bodied
+                            when it was opened elsewhere) or open, and the
                             validating handoff with its counter resets and the commit the push carried (decided
                             once ahead of the push -- the one that passed the gate, or the checkout's own head
                             where the switch named none -- and made durable there), written durably ahead of the
@@ -689,14 +914,22 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       watermarks.py         the seed walk past leading orchestrator comments and the ratchet that never regresses one
       requested_changes.py  the PR feedback and `workflow:fixing`-labeled dev fix, plus the no-VERDICT park and
                             the split that tells a provider's failure from a reviewer's
-      dev_fix.py            what a finished dev fix leaves behind: the stranded-commit probe, the push, and the round
-                            bump
+      dev_fix.py            what a finished dev fix leaves behind: the stranded-commit probe, the size gate every
+                            fix route publishes through -- told the state the run really belongs to, since the route
+                            that relabels before it spawns reads its own cached labels back -- the push and the
+                            approval it spends, and the round bump
       awaiting.py           the three park-reason claims on a human reply and the dev attempt they fall through to
       awaiting_resume.py    the order those claims are asked in and the resume none of them wanted
       drift.py              a body edit mid-review, the three parks that defer, and the consumed-thread watermark
       drift_outcomes.py     the `ACK:` reply that must not park, over the shared fix disposition
-      recovery.py           the silent retry of a push race or dev timeout, and the one sentence a park that
-                            healed itself owes the thread
+      recovery.py           the silent retry of a push race or dev timeout, both through the size gate -- the
+                            timeout's commit is the one road to a published pull request nothing else measures --
+                            the debt the push that lands pays, the held outcome that owes the caller no follow-up and
+                            no relabel, and the one sentence a park that healed itself owes the thread
+      rounds.py             the `review_round` a fix pays for on the one event `MAX_REVIEW_ROUNDS` counts -- a head
+                            the reviewer has not seen reaching the pull request -- spent by the push that lands and
+                            by the hold that sends the candidate to the adjudication, the held form handed to the
+                            gate so the count is not lost to a crash in the relabel window
       models.py             the frozen records the owners hand each other
       state.py              the pinned-state keys, park reasons, and outcome tokens they share
 ```

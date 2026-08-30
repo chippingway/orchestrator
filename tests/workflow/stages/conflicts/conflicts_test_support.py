@@ -19,14 +19,35 @@ from tests.workflow.git_owners import seam_patch
 from tests.workflow.other_labels import LABEL_RESOLVING_CONFLICT
 from tests.workflow.patch_models import _agent
 from tests.workflow.patch_runner import _PatchedWorkflowMixin
-from tests.workflow.repo_values import BACKEND_CLAUDE, STATE_OPEN
+from tests.workflow.repo_values import (
+    BACKEND_CLAUDE,
+    MEASURED_CANDIDATE_SHA,
+    STATE_OPEN,
+)
 from tests.workflow.value_helpers import _issue_branch
 
 
 _CONFLICT_ISSUE_NUMBER = 200
 _CONFLICT_BRANCH = _issue_branch(_CONFLICT_ISSUE_NUMBER)
 _CONFLICT_PR_NUMBER = 800
-_CONFLICT_PR_HEAD_SHA = "cafe1234"
+# The head the pull request is standing on, which is the same head this stage
+# reads out of the checkout before it rebases and leases its force-push
+# against: the branch is proved in sync with its remote before any of this
+# runs, so the two are one fact and the size gate refuses a call whose two
+# readings of it disagree. A whole git object id, because a commit field is
+# read at its exact length -- an abbreviation is no head at all there.
+CONFLICT_PR_HEAD_SHA = "be40e5ba" * 5
+_CONFLICT_PR_HEAD_SHA = CONFLICT_PR_HEAD_SHA
+
+# A pull request somebody else pushed to while this tick was in flight.
+MOVED_PR_HEAD_SHA = "cafe1234" * 5
+
+# The head a resolution leaves the checkout on. It IS the commit the size
+# gate proves that checkout to, because in production they are one read of one
+# worktree: the stage names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else, so a fixture that spelled them
+# differently would be modelling the race rather than the tick.
+RESOLVED_HEAD_SHA = MEASURED_CANDIDATE_SHA
 
 
 @dataclass(frozen=True)
@@ -49,8 +70,34 @@ class _ConflictRunContext:
     push_branch: bool = True
     run_agent_result: Any = None
     fetch_returncode: int = 0
+    # What `git rev-list --count HEAD..origin/<base>` answers. The recovered
+    # push is routed by it -- on base it completes a round of its own, behind
+    # base it is the preamble to a rebase that owns one -- and it rides the
+    # same `_git` seam the fetch does, which reads only the return code.
+    behind_base: str = "0\n"
     dirty_files: tuple = ()
+    # Whether the tree read HAPPENED at all. False is the checkout whose
+    # `git status` established nothing, which names no paths -- exactly what
+    # a tree with nothing in it names -- so a clean-rebase exit taken on it
+    # would hand a reviewer a checkout nobody read.
+    tree_readable: bool = True
     rebase_in_progress: bool = False
+    # What the size gate's count reports for the resolution about to be
+    # pushed. A resolution is a candidate for a pull request the remote
+    # already carries, so a case about one past the ceiling seeds it here.
+    added_lines: Any = 0
+    # What the checkout's own head proves to. In sync with its remote is not
+    # the same claim as CARRYING the commit a settled receipt names, so a case
+    # about a replacement host rebuilt at a moved pull request says so here.
+    candidate_commit: Any = None
+    # Where the checkout stands against the remote PR head. In sync is the
+    # ordinary reading a rebase runs from; ahead of it is the crash-recovery
+    # shape, where commits an earlier tick made never reached the remote.
+    branch_ahead_behind: tuple = (0, 0)
+    # Whether that reading HAPPENED. A ref nothing could resolve answers zero
+    # and zero, which is what an in-sync branch answers, so a case about a
+    # probe that established nothing says so here.
+    branch_divergence_readable: bool = True
 
 
 @dataclass(frozen=True)
@@ -94,7 +141,7 @@ def _seed_conflict(owner, context: _ConflictSeedContext):
 def _build_conflict_mocks(context: _ConflictRunContext) -> _ConflictMocks:
     fetch_result = MagicMock(
         returncode=context.fetch_returncode,
-        stdout="",
+        stdout=context.behind_base,
         stderr="",
     )
     return _ConflictMocks(
@@ -125,7 +172,12 @@ def _run_conflict_merge(owner, github, issue, context):
             push_branch=context.push_branch,
             head_shas=context.head_shas,
             dirty_files=context.dirty_files,
+            tree_readable=context.tree_readable,
             rebase_in_progress=context.rebase_in_progress,
+            added_lines=context.added_lines,
+            branch_ahead_behind=context.branch_ahead_behind,
+            branch_divergence_readable=context.branch_divergence_readable,
+            candidate_commit=context.candidate_commit,
         )
     return workflow_mocks, mocks.merge, mocks.git
 
@@ -137,6 +189,20 @@ class _ResolvingConflictMixin(_PatchedWorkflowMixin):
     issue_branch = _CONFLICT_BRANCH
     pr_number = _CONFLICT_PR_NUMBER
     pr_head_sha = _CONFLICT_PR_HEAD_SHA
+
+    def _run_resolving_conflict(self, github, issue, **run_options):
+        """Run the handler over a world whose two head readings agree.
+
+        The remote-tracking ref the ahead/behind comparison is taken against
+        and the head the pull request reports are one commit in every
+        ordinary world -- the fetch a line earlier is what put the first
+        there. A recovered push is PINNED to the first and the gate checks it
+        against the second, so a fixture that answered them differently would
+        make every recovery read as a publication somebody moved. A case
+        about one that really did move says so.
+        """
+        run_options.setdefault("fetched_branch_tip", self.pr_head_sha)
+        return super()._run_resolving_conflict(github, issue, **run_options)
 
     def _seed(self, **seed_options):
         return _seed_conflict(

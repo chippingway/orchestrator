@@ -12,10 +12,14 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.base_sync import models
 
+from tests.git.base_sync.sync_test_support import _diverged as _diverged
+
+from tests.git.base_sync.refresh_test_support import GATE_CANDIDATE_SHA
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakePR,
+    FakePRRef,
     FakeUser,
     make_issue,
 )
@@ -30,13 +34,27 @@ LABEL = "in_review"
 
 VALIDATING = "workflow:validating"
 
-PRE_REBASE_SHA = "before-sha"
+PRE_REBASE_SHA = "be40e5ba" * 5
 
-RECOVERED_SHA = "rebased-sha"
+# The head a crash recovery finds the checkout standing on. It IS the commit
+# the size gate proves that checkout to, because the two are one read of one
+# worktree: the recovery names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else.
+RECOVERED_SHA = GATE_CANDIDATE_SHA
 
 REMOTE_SHA = "remote-sha"
 
 WORKTREE = Path("/tmp/base-sync-owner-wt")
+
+# The head the recovered pull request is standing on. It IS the pre-rebase
+# sha, because that is what the recovery's own lease claims about that branch:
+# an interrupted auto-rebase left the remote where it found it, and the two
+# readings the gate compares -- the caller's lease and the pull request -- are
+# two statements of that one fact.
+RECOVERY_PR_HEAD_SHA = PRE_REBASE_SHA
+
+# A pull request somebody else pushed to while the recovery was in flight.
+MOVED_PR_HEAD_SHA = "0ec0de11" * 5
 
 SPEC = config.RepoSpec(
     slug="acme/widget",
@@ -99,6 +117,15 @@ def _recovery_context(
     gh.seed_state(
         ISSUE, pr_number=PR_NUMBER, branch=BRANCH, **state_fields,
     )
+    # The pull request the recovered push joins. A number in pinned state
+    # with nothing behind it is a state the size gate refuses before any
+    # recovery may push, and the head it stands on is read at its exact
+    # length.
+    gh.add_pr(FakePR(
+        number=PR_NUMBER,
+        head_branch=BRANCH,
+        head=FakePRRef(sha=RECOVERY_PR_HEAD_SHA),
+    ))
     return models._AutoRebaseRecoveryContext(
         gh=gh,
         spec=SPEC,

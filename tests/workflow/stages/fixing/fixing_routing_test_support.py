@@ -4,19 +4,13 @@
 
 from __future__ import annotations
 
-import contextlib
 import pathlib
-import shutil
 import subprocess
-import tempfile
 from unittest import mock
 
 from orchestrator import config
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.stages.validating import (
-    recovery as _validating_recovery,
-)
 
+from tests.git.base_sync.gate_reads_support import _gate_reads
 from tests.support import fakes
 from tests.workflow import fixtures, git_owners
 
@@ -45,7 +39,10 @@ STAGE_FIXING = "fixing"
 STATE_CLOSED = "closed"
 STATE_OPEN = "open"
 DEV_SESSION = "dev-sess"
-PR_HEAD_SHA = "cafe1234"
+# A whole git object id: the size gate freezes the head its pull request
+# stands on before a refresh may push, and reads a commit field at its exact
+# length.
+PR_HEAD_SHA = "cafe1234" * 5
 PENDING_FIX_AT = "2026-05-23T00:00:00+00:00"
 INITIAL_COMMENT_WATERMARK = 1999
 ISSUE_FEEDBACK_ID = 2000
@@ -94,6 +91,11 @@ class _FixingConflictFixtureMixin:
         )
         self.wt = Path("/tmp/refresh-wt-fixing")
         self.gh = FakeGitHubClient()
+        # The rebase this refresh would push is measured before it goes out,
+        # and this fixture has no checkout on disk for the reading to be taken
+        # in. These tests are about what the relabel preserves, so the gate
+        # gets its ordinary answers.
+        _gate_reads(self)
 
     def _git_result(self, *, returncode: int = 0, stdout: str = "") -> subprocess.CompletedProcess:
         return subprocess.CompletedProcess(
@@ -141,131 +143,3 @@ class _FixingConflictFixtureMixin:
         self.assertEqual(pinned_data.get("pr_last_comment_id"), INITIAL_COMMENT_WATERMARK)
         self.assertEqual(pinned_data.get("pr_last_review_comment_id"), 0)
         self.assertEqual(pinned_data.get("pr_last_review_summary_id"), 0)
-
-
-class _FixingWorktreeDriftFixtureMixin:
-    """A stuck validating-route transient can route through conflict handling.
-
-    When a validating-route transient park (e.g. `push_failed`) cannot
-    clear via the self-recovery (`_try_recover_validating_transient_park`
-    returns "stuck"), `_handle_fixing` falls through to
-    `_reconcile_parked_fixing` so a base advance that
-    landed mid-park can still unstick the issue. The helper must hand
-    both drift shapes to `resolving_conflict` while leaving any park
-    that could be hiding a real dev question parked for the human.
-    """
-
-    def setUp(self) -> None:
-        # The router probes `wt.exists()`, so the patched `_worktree_path`
-        # must point at a directory that is really on disk.
-        self._wt_dir = tempfile.mkdtemp(prefix="fixing-drift-wt-")
-        self.addCleanup(shutil.rmtree, self._wt_dir, ignore_errors=True)
-
-    def _git_behind(self, behind: int) -> MagicMock:
-        return MagicMock(
-            return_value=subprocess.CompletedProcess(
-                args=["git"],
-                returncode=0,
-                stdout=f"{behind}\n",
-                stderr="",
-            )
-        )
-
-    def _seed_parked_fixing(
-        self,
-        gh: FakeGitHubClient,
-        number: int,
-        *,
-        park_reason: str | None = "push_failed",
-        pending_fix_at: str | None = None,
-    ) -> None:
-        issue = make_issue(number, label=LABEL_FIXING)
-        gh.add_issue(issue)
-        pr = FakePR(
-            number=DRIFT_PR_NUMBER_OFFSET + number,
-            head_branch=f"orchestrator/issue-{number}",
-            head=FakePRRef(sha=DRIFT_PR_HEAD),
-            state=STATE_OPEN,
-        )
-        gh.add_pr(pr)
-        state = dict(
-            pr_number=pr.number,
-            branch=f"orchestrator/issue-{number}",
-            dev_agent=BACKEND_CLAUDE,
-            dev_session_id=DEV_SESSION,
-            awaiting_human=True,
-            # Default: a stuck validating-route transient (`push_failed`)
-            # with no `pending_fix_at` so the validating-route recovery
-            # branch fires. Per-test overrides exercise the other shapes
-            # the router must refuse to auto-recover.
-            park_reason=park_reason,
-            pending_fix_at=pending_fix_at,
-            # Watermarks above any seeded comment so the rescan finds nothing.
-            pr_last_comment_id=DRIFT_FEEDBACK_WATERMARK,
-            pr_last_review_comment_id=0,
-            pr_last_review_summary_id=0,
-            review_round=1,
-        )
-        gh.seed_state(number, **state)
-
-    @contextlib.contextmanager
-    def _drift_patches(
-        self,
-        behind: int,
-        *,
-        dirty=(),
-        local_head=DRIFT_PR_HEAD,
-        recovery: str = "stuck",
-    ):
-        wt_path = Path(self._wt_dir)
-        self.post = MagicMock()
-        self.recover = MagicMock(return_value=recovery)
-        with contextlib.ExitStack() as stack:
-            stack.enter_context(
-                seam_patch("_worktree_path", MagicMock(return_value=wt_path)),
-            )
-            stack.enter_context(
-                seam_patch(
-                    "_worktree_dirty_files", MagicMock(return_value=list(dirty)),
-                ),
-            )
-            stack.enter_context(seam_patch("_git", self._git_behind(behind)))
-            stack.enter_context(
-                seam_patch("_head_sha", MagicMock(return_value=local_head)),
-            )
-            stack.enter_context(
-                patch.object(
-                    _comments,
-                    "_post_pr_comment",
-                    self.post,
-                )
-            )
-            # The parked dispatch imports the recovery attempt from the
-            # validating owner, so the mock has to land there.
-            stack.enter_context(
-                patch.object(
-                    _validating_recovery,
-                    "_try_recover_validating_transient_park",
-                    self.recover,
-                )
-            )
-            yield
-
-    def _assert_routed(self, gh, number) -> None:
-        self.assertIn((number, LABEL_RESOLVING_CONFLICT), gh.label_history)
-        pinned_data = gh.pinned_data(number)
-        self.assertFalse(pinned_data.get(KEY_AWAITING_HUMAN))
-        self.assertEqual(pinned_data.get("conflict_round"), 0)
-        # The in_review watermark survives so the eventual in_review
-        # re-entry can still re-discover any feedback past it.
-        self.assertEqual(pinned_data.get("pr_last_comment_id"), DRIFT_FEEDBACK_WATERMARK)
-        self.post.assert_called_once()
-        entered = [
-            event
-            for event in gh.recorded_events
-            if event.get("issue") == number
-            and event.get("event") == "conflict_round"
-            and event.get("action") == "entered"
-        ]
-        self.assertEqual(len(entered), 1)
-        self.assertEqual(entered[0].get("stage"), STAGE_FIXING)

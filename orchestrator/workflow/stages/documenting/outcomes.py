@@ -18,7 +18,6 @@ advancing an issue whose docs were never actually reviewed.
 from __future__ import annotations
 
 from orchestrator import config
-from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import messages as _messages
@@ -30,20 +29,22 @@ from orchestrator.workflow.stages.documenting import (
 
 
 def _dispose_documenting_clean(
-    ctx: _models._DocumentingContext, wt, ahead: int, after_sha: str,
-    documentation_result: AgentResult,
+    ctx: _models._DocumentingContext,
+    wt,
+    run: _models._DocumentingRun,
+    after_sha: str,
 ) -> None:
     """No new commit on a clean tree: the agent either declared no change or
     asked a question. The explicit `DOCS: NO_CHANGE` marker is the only signal
     that confirms the diff was checked and nothing was needed; anything else
     parks via `_on_question`."""
     verdict, body = _messages._parse_documentation_verdict(
-        documentation_result.last_message or "",
+        run.agent_result.last_message or "",
     )
     if verdict == "no_change":
-        _publication._route_documenting_no_change(ctx, wt, ahead, after_sha, body)
+        _publication._route_documenting_no_change(ctx, wt, run, after_sha, body)
         return
-    _parks._park_documenting_question(ctx, documentation_result)
+    _parks._park_documenting_question(ctx, run.agent_result)
 
 
 def _dispose_documenting_outcome(
@@ -82,7 +83,8 @@ def _dispose_documenting_outcome(
         _publication._push_docs_and_advance(
             ctx, wt, after_sha,
             _publication._documenting_commit_notice(run.recovered),
+            entered_head=run.entered_head,
         )
         return
 
-    _dispose_documenting_clean(ctx, wt, run.ahead, after_sha, run.agent_result)
+    _dispose_documenting_clean(ctx, wt, run, after_sha)

@@ -12,9 +12,12 @@ from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.stages.conflicts import conflict_resume_test_support
 from tests.workflow.stages.conflicts.conflicts_test_support import (
+    RESOLVED_HEAD_SHA,
+    CONFLICT_PR_HEAD_SHA,
     _ResolvingConflictMixin,
 )
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _FAKE_WT,
     _TEST_SPEC,
     _agent,
@@ -29,7 +32,7 @@ LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 RUN_AGENT = "run_agent"
 HUMAN_LOGIN = "alice"
 BEFORE_HEAD = "beforehead"
-MERGED_HEAD = "merged"
+MERGED_HEAD = RESOLVED_HEAD_SHA
 PUSH_BRANCH = "_push_branch"
 LABEL_VALIDATING = "workflow:validating"
 DEV_SESSION = "dev-sess"
@@ -148,11 +151,15 @@ class ResolvingConflictAwaitingHumanResumeTest(unittest.TestCase, _ResolvingConf
         # to `validating`. Docs do not run here -- the single docs pass
         # runs after reviewer approval before `in_review` via the
         # final-docs handoff.
+        # A resume names the tip the pull request was fetched at, so that is
+        # what the push is pinned against -- and the commit the gate measured
+        # is what goes out.
         mocks[PUSH_BRANCH].assert_called_once_with(
             _TEST_SPEC,
             _FAKE_WT,
             self.issue_branch,
-            force_with_lease=None,
+            revision=MEASURED_CANDIDATE_SHA,
+            force_with_lease=CONFLICT_PR_HEAD_SHA,
         )
         _assert_successful_resume_state(self, gh)
         self.assertIn((CONFLICT_ISSUE, LABEL_VALIDATING), gh.label_history)

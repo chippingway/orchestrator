@@ -37,6 +37,10 @@ _DECOMPOSING = (support.GATE_ISSUE_NUMBER, LABEL_DECOMPOSING)
 _STAGE_IMPLEMENTING = "implementing"
 _DECOMPOSE = "DECOMPOSE"
 _CANDIDATE_MOVED = "late_candidate_moved"
+_POST_PUBLICATION = "late_post_publication"
+_SOURCE_STAGE = "late_source_stage"
+_PUBLISHED_PR = "late_published_pr_number"
+_PUBLISHED_SHA = "late_published_sha"
 
 # A checkout that answers the gate with the measured commit and the
 # publication with a descendant: the race the handoff refuses.
@@ -95,6 +99,19 @@ class LateGateVerdictTest(support._GateCase, unittest.TestCase):
             pinned[support.KEY_ROOT_ISSUE], support.GATE_ISSUE_NUMBER,
         )
         self.assertEqual(pinned[support.KEY_LINEAGE_DEPTH], 0)
+
+    def test_the_hold_records_no_publication(self) -> None:
+        # An initial publication is the side of the gate that has no pull
+        # request behind it, and the record says so by carrying none of the
+        # publication group -- which is what lets a live pinned comment answer
+        # the question with no migration having reached it.
+        self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        pinned = self._pinned()
+        for absent in (
+            _POST_PUBLICATION, _SOURCE_STAGE, _PUBLISHED_PR, _PUBLISHED_SHA,
+        ):
+            self.assertNotIn(absent, pinned)
 
     def test_the_hold_says_what_it_waits_for(self) -> None:
         self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)

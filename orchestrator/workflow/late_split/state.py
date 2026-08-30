@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import json
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Any, Optional
 
 from orchestrator.github.pinned_state import PinnedState
@@ -90,6 +91,8 @@ _RESTART_TARGET = "late_restart_target"
 _RESTART_CYCLE_ID = "late_restart_cycle_id"
 _RESTART_PREDECESSOR = "late_restart_predecessor"
 
+_SPENDS = "late_spends"
+
 LATE_STATE_KEYS = (
     _CYCLE_ID,
     _GENERATION,
@@ -123,6 +126,7 @@ LATE_STATE_KEYS = (
     _RESTART_TARGET,
     _RESTART_CYCLE_ID,
     _RESTART_PREDECESSOR,
+    _SPENDS,
 )
 
 
@@ -133,6 +137,71 @@ LATE_STATE_KEYS = (
 # cycle the record no longer names, and without this there is nothing left to
 # adopt it against.
 LATE_RETIRED_CYCLE_ID = "late_retired_cycle_id"
+
+# How many members a recorded spend pair has: the field and what it is set to.
+_PAIR = 2
+
+# How long an outcome a conflict round settles on may be. Every one this
+# workflow writes is a short word; the bound is what keeps a hand-edited record
+# from putting a body-sized string on the pinned comment through a retry.
+_OUTCOME_LIMIT = 64
+
+
+def _cleared(spent: Any) -> bool:
+    """Whether a bookmark was recorded as CLEARED, which is all it may be."""
+    return spent is None
+
+
+def _counted(spent: Any) -> bool:
+    """Whether a counter was recorded as a real, non-negative count."""
+    return _formats.whole_number(spent) and spent >= 0
+
+
+def _named_outcome(spent: Any) -> bool:
+    """Whether an outcome was recorded as one bounded, single-line name."""
+    return _formats.is_bounded_text(spent, _OUTCOME_LIMIT)
+
+
+def _settled_commit(spent: Any) -> bool:
+    """Whether a settled head was recorded as a commit, or as none at all."""
+    return spent == "" or _formats.is_hex_of(spent, _formats.COMMIT_LENGTHS)
+
+
+# Every pinned field a hold's route bookkeeping may close, with what each one
+# may be set TO. Spelled as literals rather than imported from the four stage
+# packages that own them: a stage's bookkeeping stays that stage's to describe
+# and this owner stays free of the packages that import it.
+# `tests/workflow/test_spend_vocabulary.py` proves the two lists agree, so a
+# key added to a route without being added here fails there rather than
+# silently at a retry.
+#
+# The table is what turns a restored spend from "whatever the comment says"
+# into a bounded claim, and it is per KEY rather than per type because what
+# comes back is APPLIED to the pinned comment and then read by owners that
+# know what each field is. An arbitrary key is a write into any field the
+# workflow has -- a label, a watermark, a park flag. A key with the wrong
+# SHAPE is the same damage one step in: `["review_round", "later"]` passes any
+# check that only asks whether a comment can carry the value, and fails at the
+# `int(...)` the cap is counted with, on a tick nobody is watching.
+_SPENDABLE_FIELDS = MappingProxyType({
+    "review_round": _counted,
+    "pending_fix_at": _cleared,
+    "pending_fix_issue_max_id": _cleared,
+    "pending_fix_review_max_id": _cleared,
+    "pending_fix_review_summary_max_id": _cleared,
+    "pending_fix_issue_ids": _cleared,
+    "pending_fix_review_ids": _cleared,
+    "pending_fix_review_summary_ids": _cleared,
+    "pending_fix_reviewer_comment_id": _cleared,
+    "conflict_settled_outcome": _named_outcome,
+    "conflict_settled_sha": _settled_commit,
+    "docs_settled_sha": _settled_commit,
+})
+
+
+# The fields themselves, for the guard that proves every route spends one this
+# table knows.
+SPENDABLE_FIELDS = frozenset(_SPENDABLE_FIELDS)
 
 
 def read_retired_cycle(state: PinnedState) -> Optional[int]:
@@ -367,6 +436,69 @@ def write_late_generation(
         clear_retired_cycle(state)
     for key, written in _written_fields(generation).items():
         state.set(key, written)
+
+
+def read_late_spends(state: PinnedState) -> tuple:
+    """The route bookkeeping a hold on this frozen pair still owes.
+
+    All of it or none of it. What a hold owed is ONE claim -- the round a fix
+    spends together with the feedback bookmarks that round consumed -- and the
+    caller that restores it cannot tell which half it got. Dropping members
+    individually is what turns a damaged record into a half-applied one: the
+    round advances, the bookmark it was spent for stays pending, the spend
+    record is discarded as paid, and the next in_review re-entry correlates
+    the same comments again and reruns a developer over feedback that was
+    already answered. So a single member the comment cannot vouch for refuses
+    the whole group, and `late_claims` parks on the raw key still being there.
+
+    What a member may be is bounded on both ends. The key has to name a field
+    this domain knows a route closes, because what comes back is APPLIED to
+    the pinned comment and an arbitrary one is a write into any field the
+    workflow has -- a label, a watermark, a park flag -- made by a retry
+    nobody is watching. The value has to be one that FIELD may take, since the
+    owners behind the write read each one for what it is: a round is counted,
+    a settled head is compared against a commit, a bookmark is only ever
+    cleared.
+
+    Empty for every generation frozen by a seam with no bookkeeping behind it,
+    which is the whole implementing side: there is no reviewer to have spent a
+    round and no stage tail to have been interrupted.
+    """
+    recorded = state.get(_SPENDS)
+    if not isinstance(recorded, list) or not recorded:
+        return ()
+    if not all(_spendable(pair) for pair in recorded):
+        return ()
+    return tuple(tuple(pair) for pair in recorded)
+
+
+def _spendable(pair: Any) -> bool:
+    """Whether one recorded pair is a field a write may set, at a value it may.
+
+    Both halves, because the field is what says what the value MEANS: a
+    counter that came back as text is not a smaller claim than an unknown key,
+    it is the same damage one owner further on -- applied to the comment and
+    then read by the cap that counts rounds.
+    """
+    if not isinstance(pair, list) or len(pair) != _PAIR:
+        return False
+    field, spent = pair
+    spendable = _SPENDABLE_FIELDS.get(field)
+    return spendable is not None and spendable(spent)
+
+
+def write_late_spends(state: PinnedState, fields: tuple) -> None:
+    """Record what a hold on this pair owes, or drop the key where nothing is.
+
+    Written beside the generation and inside `LATE_STATE_KEYS`, so it lives
+    and dies with the pair it is about: the retirement that ends a generation
+    drops it in the same write, and no later cycle can be handed a round an
+    earlier one was owed.
+    """
+    if not fields:
+        state.data.pop(_SPENDS, None)
+        return
+    state.set(_SPENDS, [[key, spent] for key, spent in fields])
 
 
 def clear_late_generation(state: PinnedState) -> None:

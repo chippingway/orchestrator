@@ -82,10 +82,35 @@ _DETOUR_TO_RESOLVING: frozenset[WorkflowLabel] = frozenset(
     ),
 )
 
+# The states a candidate the remote ALREADY carries can be measured from:
+# every one that pushes onto an open pull request -- the reviewer's own fix
+# loop, the human one, the body-edit resume an open PR takes, the conflict
+# rebase's, and the final documentation pass. The size gate holds an oversized
+# one off the pull request and hands the issue to the same adjudication an
+# unpublished candidate gets, so each of them owes the edge `implementing`
+# already has -- and owes it for the label a human moved by hand too, which
+# the relabel guard puts back on `decomposing` from wherever it landed.
+_ENTER_ADJUDICATION_PUBLISHED: frozenset[WorkflowLabel] = frozenset(
+    (
+        WorkflowLabel.VALIDATING,
+        WorkflowLabel.DOCUMENTING,
+        WorkflowLabel.IN_REVIEW,
+        WorkflowLabel.FIXING,
+        WorkflowLabel.RESOLVING_CONFLICT,
+    ),
+)
+
 _FORWARD: Mapping[
     Optional[WorkflowLabel], frozenset[WorkflowLabel]
 ] = MappingProxyType({
     None: frozenset((WorkflowLabel.DECOMPOSING, WorkflowLabel.IMPLEMENTING)),
+    # The published states are the size gate's way BACK. An adjudication
+    # entered on work the remote already carries settles at the stage it was
+    # taken out of, because that stage is the only owner of the completion the
+    # candidate still owes -- the docs watermark and its `in_review` handoff,
+    # a conflict round, another reviewer look. Sending every one of them to
+    # `implementing` instead would walk the issue back to a point it had
+    # already passed.
     WorkflowLabel.DECOMPOSING: frozenset(
         (
             WorkflowLabel.READY,
@@ -93,7 +118,7 @@ _FORWARD: Mapping[
             WorkflowLabel.BLOCKED,
             WorkflowLabel.UMBRELLA,
         ),
-    ),
+    ) | _ENTER_ADJUDICATION_PUBLISHED,
     WorkflowLabel.READY: frozenset(
         (WorkflowLabel.IMPLEMENTING, WorkflowLabel.DECOMPOSING),
     ),
@@ -177,6 +202,7 @@ _INTERRUPT_SOURCES: Mapping[
         ),
     ),
     WorkflowLabel.RESOLVING_CONFLICT: _DETOUR_TO_RESOLVING,
+    WorkflowLabel.DECOMPOSING: _ENTER_ADJUDICATION_PUBLISHED,
 })
 
 
@@ -375,6 +401,19 @@ def is_allowed_transition(
     if current == new:
         return True
     return new in ALLOWED_TRANSITIONS.get(current, frozenset())
+
+
+def publishes_onto_a_pull_request(label: Optional[WorkflowLabel]) -> bool:
+    """Whether this stage pushes onto a pull request the remote already has.
+
+    The five the size gate can take an issue out of, named off the same set
+    the edges to the adjudication are built from so the two cannot drift.
+    Derived instead -- from "has an edge to `workflow:decomposing`" -- it
+    would admit `workflow:implementing`, whose own gate routes there too and
+    whose approval carries no pull-request head because its push is the one
+    that opens the pull request.
+    """
+    return label in _ENTER_ADJUDICATION_PUBLISHED
 
 
 def guard_transition(

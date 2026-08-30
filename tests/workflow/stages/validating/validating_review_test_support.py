@@ -43,6 +43,7 @@ _PatchedWorkflowMixin = fixtures._PatchedWorkflowMixin
 _TEST_SPEC = fixtures._TEST_SPEC
 _agent = fixtures._agent
 _issue_branch = fixtures._issue_branch
+_open_pr_for = fixtures._open_pr_for
 
 FRESH_REVIEW_ISSUE = 5
 FRESH_REVIEW_PR = 11
@@ -62,11 +63,27 @@ FOLLOWUP_COMMENT_ID = 1200
 CAP_COMMAND_ID = 2000
 ACTION_COMMENT_ID = 950
 DEV_SESSION = "dev-sess"
+
+# The head a fix run starts on and the head it leaves the checkout at. The
+# second IS the commit the size gate proves that checkout to, because in
+# production the two are one read of one worktree: the route names the commit
+# it means to publish and the gate refuses a checkout standing anywhere else,
+# so a fixture spelling them apart would model the race rather than the tick.
+#
+# The first is the head the pull request is standing on for the same reason:
+# the branch is in sync with its publication when a fix round opens, since the
+# reviewer just read that head. It is what the round names to the gate, so a
+# pull request somebody moved while the agent was out refuses the push.
+BEFORE_FIX_SHA = fakes.DEFAULT_PR_HEAD_SHA
+AFTER_FIX_SHA = fixtures.MEASURED_CANDIDATE_SHA
+FIX_HEAD_SHAS = (BEFORE_FIX_SHA, AFTER_FIX_SHA)
+
 BACKEND_CLAUDE = "claude"
 BACKEND_CODEX = "codex"
 HUMAN_LOGIN = "alice"
 REVIEW_CAP = "review_cap"
 RUN_AGENT = "run_agent"
+PR_NUMBER = "pr_number"
 REVIEW_ROUND = "review_round"
 AWAITING_HUMAN = "awaiting_human"
 
@@ -77,13 +94,18 @@ class FreshReviewFixtureMixin(_PatchedWorkflowMixin):
         issue = make_issue(FRESH_REVIEW_ISSUE, label=LABEL_VALIDATING)
         github.add_issue(issue)
         defaults = {
-            "pr_number": FRESH_REVIEW_PR,
+            PR_NUMBER: FRESH_REVIEW_PR,
             "branch": _issue_branch(FRESH_REVIEW_ISSUE),
             "codex_session_id": DEV_SESSION,
             REVIEW_ROUND: 0,
         }
         defaults.update(state)
         github.seed_state(FRESH_REVIEW_ISSUE, **defaults)
+        _open_pr_for(
+            github,
+            issue_number=FRESH_REVIEW_ISSUE,
+            pr_number=defaults[PR_NUMBER],
+        )
         return github, issue
 
     def _assert_dev_fix_call(self, mocks) -> None:
@@ -110,13 +132,18 @@ class FixLoopFixtureMixin(_PatchedWorkflowMixin):
         issue = make_issue(FIX_LOOP_ISSUE, label=LABEL_VALIDATING)
         github.add_issue(issue)
         defaults = {
-            "pr_number": FIX_LOOP_PR,
+            PR_NUMBER: FIX_LOOP_PR,
             "branch": _issue_branch(FIX_LOOP_ISSUE),
             "codex_session_id": DEV_SESSION,
             REVIEW_ROUND: 0,
         }
         defaults.update(state)
         github.seed_state(FIX_LOOP_ISSUE, **defaults)
+        _open_pr_for(
+            github,
+            issue_number=FIX_LOOP_ISSUE,
+            pr_number=defaults[PR_NUMBER],
+        )
         return github, issue
 
     def _changes_requested_review(self):
@@ -151,6 +178,7 @@ class ContinueCommandFixtureMixin(_PatchedWorkflowMixin):
             branch=_issue_branch(number),
             user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
+        _open_pr_for(github, issue_number=number, pr_number=RESUME_PR)
         return github, issue
 
     def _assert_retry_result(self, github, mocks) -> None:
@@ -191,11 +219,16 @@ class ReviewCapFixtureMixin(_PatchedWorkflowMixin):
             REVIEW_ROUND: config.MAX_REVIEW_ROUNDS,
             "dev_session_id": DEV_SESSION,
             "dev_agent": BACKEND_CODEX,
-            "pr_number": REVIEW_CAP_PR,
+            PR_NUMBER: REVIEW_CAP_PR,
             "branch": _issue_branch(REVIEW_CAP_ISSUE),
         }
         defaults.update(state)
         github.seed_state(REVIEW_CAP_ISSUE, **defaults)
+        _open_pr_for(
+            github,
+            issue_number=REVIEW_CAP_ISSUE,
+            pr_number=defaults[PR_NUMBER],
+        )
         return github, issue
 
     def _assert_reviewer_spawn(self, github) -> None:
@@ -242,6 +275,9 @@ class ResumeTrustFixtureMixin(_PatchedWorkflowMixin):
             pr_number=CAP_REASON_PR,
             branch=_issue_branch(TRUST_CAP_ISSUE),
         )
+        _open_pr_for(
+            github, issue_number=TRUST_CAP_ISSUE, pr_number=CAP_REASON_PR,
+        )
         return issue
 
     def _seed_reviewer_timeout_park(self, github, *, author):
@@ -264,6 +300,9 @@ class ResumeTrustFixtureMixin(_PatchedWorkflowMixin):
             dev_agent=BACKEND_CODEX,
             pr_number=SECONDARY_PR,
             branch=_issue_branch(TRUST_RETRY_ISSUE),
+        )
+        _open_pr_for(
+            github, issue_number=TRUST_RETRY_ISSUE, pr_number=SECONDARY_PR,
         )
         return issue
 

@@ -5,12 +5,26 @@ from __future__ import annotations
 import unittest
 
 
-from tests.support.fakes import FakeGitHubClient, FakePR, make_issue
+from tests.support.fakes import (
+    DEFAULT_PR_HEAD_SHA,
+    FakeGitHubClient,
+    FakePR,
+    make_issue,
+)
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
 )
+
+# The head this stage reads before the resume and the one it leaves the
+# checkout at. The second IS the commit the size gate proves that checkout to,
+# because in production the two are one read of one worktree: the route names
+# the commit it means to publish and the gate refuses a checkout standing
+# anywhere else.
+BEFORE_SHA = DEFAULT_PR_HEAD_SHA
+RESOLVED_SHA = MEASURED_CANDIDATE_SHA
 
 DRIFT_ISSUE = 500
 DRIFT_PR = 5000
@@ -75,7 +89,7 @@ class HandleResolvingConflictHashDriftTest(
             # Three SHAs: drift before/after for the post-resume head
             # delta, plus the third for the `conflict_round` audit emit
             # that records the pushed worktree HEAD.
-            head_shas=["before", "after", "after"],
+            head_shas=[BEFORE_SHA, RESOLVED_SHA, RESOLVED_SHA],
         )
 
         # Pushed drift fix -> hand straight back to `validating`; the
@@ -109,7 +123,7 @@ class HandleResolvingConflictHashDriftTest(
             ),
             has_new_commits=True,
             push_branch=True,
-            head_shas=["before-sha", "after-sha"],
+            head_shas=[BEFORE_SHA, RESOLVED_SHA],
         )
 
         # The drift resume spawned, then was seen interrupted.

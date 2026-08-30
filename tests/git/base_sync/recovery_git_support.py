@@ -23,7 +23,13 @@ from orchestrator import config
 from orchestrator.git import authentication
 from orchestrator.git.base_sync import recovery
 
-from tests.support.fakes import FakeGitHubClient, FakePR, make_issue
+from tests.git.base_sync.gate_reads_support import _gate_base_reads
+from tests.support.fakes import (
+    FakeGitHubClient,
+    FakePR,
+    FakePRRef,
+    make_issue,
+)
 
 ISSUE = 7
 
@@ -131,15 +137,19 @@ class _LocalLeasePush:
     def __init__(self) -> None:
         self.leases: list[str] = []
 
-    def __call__(self, _spec, worktree, branch, *, force_with_lease=None):
+    def __call__(
+        self, _spec, worktree, branch, *,
+        force_with_lease=None, revision=None,
+    ):
         self.leases.append(force_with_lease or "")
+        source = revision or HEAD_REF
         pushed = subprocess.run(
             [
                 GIT,
                 PUSH,
                 f"--force-with-lease=refs/heads/{branch}:{force_with_lease}",
                 REMOTE_NAME,
-                f"{HEAD_REF}:refs/heads/{branch}",
+                f"{source}:refs/heads/{branch}",
             ],
             cwd=str(worktree),
             capture_output=True,
@@ -212,7 +222,20 @@ class _RecoveryRepositoryBuilder:
             branch=BRANCH,
             pending_auto_base_rebase_push_sha=fixture.anchor,
         )
-        fixture.gh.add_pr(FakePR(number=PR_NUMBER, head_branch=BRANCH))
+        # Standing on the head this recovery leases its push against, which
+        # is the commit the interrupted rebase left the remote on: the size
+        # gate compares the two readings of that one fact and refuses a call
+        # whose publication moved out from under it.
+        fixture.gh.add_pr(FakePR(
+            number=PR_NUMBER,
+            head_branch=BRANCH,
+            head=FakePRRef(sha=fixture.anchor),
+        ))
+        # The recovered head is measured before it is pushed, and this
+        # fixture has no token to read a remote base with -- the reading gets
+        # its ordinary answers so the test stays about the git side of the
+        # recovery.
+        _gate_base_reads(fixture)
 
 
 class RecoveryGitFixtureMixin:

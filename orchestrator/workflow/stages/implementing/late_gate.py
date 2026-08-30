@@ -67,29 +67,31 @@ that came back oversized there would hold nothing back and route a published
 branch to adjudication. The fourth is a NEW candidate while `DECOMPOSE` is
 off -- the switch decides whether new work enters the gate and decides nothing
 about work already in it, about a reconciliation answering a reading the gate
-itself recorded, or about a commit it has already approved or published.
+itself recorded, or about a commit it has already approved or published. In it
+means a generation naming THIS commit: one naming another is a record a
+resumed developer's fresh commit has moved past, so the fresh commit is the
+new work the switch publishes untouched and the superseded record is retired
+rather than left over a commit nothing will push.
 
 This owner is the order those questions are asked in and nothing else. What a
 tick is ABOUT is `late_records`, the pair it measures over is `late_freeze`,
-what a recovery proves first is `late_evidence`, what an answer earns is
-`late_verdict`, and what a refusal costs is `late_parks`.
+the reading itself is `late_reading`, what a recovery proves first is
+`late_evidence`, what an answer earns is `late_verdict`, and what a refusal
+costs is `late_parks`.
 """
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
 
 from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.git.measurement import (
-    additions as _additions,
     models as _measurement,
 )
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import (
-    events as _events,
     exemption as _exemption,
     state as _late_state,
 )
@@ -97,6 +99,7 @@ from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
     late_freeze as _freeze,
     late_parks as _parks,
+    late_reading as _reading,
     late_verdict as _verdict_owner,
     models as _models,
 )
@@ -107,6 +110,26 @@ from orchestrator.workflow.stages.implementing import (
 log = logging.getLogger("orchestrator.workflow")
 
 # Why a candidate skips the measurement, spelled as the log line reads it.
+# What a checkout standing somewhere other than the commit its caller named
+# is reported and parked as.
+_MOVED_OFF_THE_CALLER = (
+    "the commit handed to it was `{named}` and its checkout stands on "
+    "`{head}`"
+)
+
+
+_MOVED_OFF_THE_CALLER_PARK = (
+    "{mentions} this stage read `{named}` as the commit it was about to "
+    "publish, and the checkout it would publish from stands on `{head}`. "
+    "Something committed over the worktree between the two readings, so the "
+    "two are not one candidate -- measured and pushed as it stands, this "
+    "issue would put `{head}` on the pull request while recording `{named}` "
+    "as what it published. Nothing was pushed and nothing was recorded. "
+    "Reconcile the worktree with what landed and the next tick reads it "
+    "afresh."
+)
+
+
 _ADJUDICATED = "was adjudicated as one change"
 
 _APPROVED = "is the commit this gate approved and has still to push"
@@ -139,28 +162,113 @@ def _holds_committed_work(
     mid-flight, and a crash between the count and the label costs a label
     write rather than another reading of the same diff.
     """
-    gate = _records._Gate(
+    return _holds_candidate(_records._Gate(
         gh=gh, spec=spec, issue=issue, state=state, worktree=work.worktree,
         reconciling=isinstance(work, _models._RecoveredWork),
+        # Every recovery here answers a reading this gate itself recorded --
+        # a late park a human replied to, an approval whose push never went
+        # out, a frozen pair a crash stranded -- so the switch has nothing
+        # left to say about any of them.
+        answering=isinstance(work, _models._RecoveredWork),
+    ))
+
+
+def _holds_candidate(gate: _records._Gate) -> _records._GateVerdict:
+    """The size question one committed candidate answers, whatever asked it.
+
+    The order of the questions rather than the seam that reaches them, which
+    is what lets the gate stand in front of the initial publication and in
+    front of a push onto a pull request the remote already carries without
+    either seam re-deriving the contract. Every difference between the two is
+    in the subject it is handed: the publication the call was entered on, the
+    checkout, and whether a developer ran.
+    """
+    _parks._retire_spent_park(gate.state)
+    recorded = _records._entered(
+        gate, _late_state.read_late_generation(gate.state),
     )
-    _parks._retire_spent_park(state)
-    recorded = _late_state.read_late_generation(state)
     candidate = _freeze._candidate_commit(gate, recorded)
     if candidate is None:
-        return _unmeasured_verdict(gate, recorded)
+        return _verdict_owner._unmeasured_verdict(gate, recorded)
     if not candidate.is_frozen:
         return _unnameable(gate, recorded, candidate)
-    unmeasured = _needs_no_measuring(gate, recorded, candidate.sha)
+    if _moved_off_the_caller(gate, recorded, candidate.sha):
+        return _records._HELD
+    return _decided(gate, recorded, candidate.sha)
+
+
+def _decided(
+    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
+) -> _records._GateVerdict:
+    """What one proved candidate earns, once the checkout is its caller's.
+
+    The two answers past the proof, in the order the record decides them: a
+    commit this workflow has already ruled on publishes without a reading, and
+    everything else is measured -- the recorded count acted on where there is
+    one, a fresh pair frozen and counted where there is not.
+    """
+    unmeasured = _needs_no_measuring(gate, recorded, candidate_sha)
     if unmeasured:
         log.info(
             "issue=#%d candidate %s %s; publishing it without a reading",
-            issue.number, candidate.sha, unmeasured,
+            gate.issue.number, candidate_sha, unmeasured,
         )
-        return _unmeasured_verdict(gate, recorded, candidate.sha)
-    if _freeze._already_measured(recorded, candidate.sha):
-        return _verdict(_reconciled_measurement(gate, recorded), candidate.sha)
-    return _verdict(
-        _freshly_measured(gate, recorded, candidate.sha), candidate.sha,
+        return _verdict_owner._unmeasured_verdict(
+            gate, recorded, candidate_sha,
+        )
+    answered = (
+        recorded.candidate_sha == candidate_sha
+        and recorded.additions is not None
+    )
+    held = (
+        _reading._reconciled_measurement(gate, recorded) if answered
+        else _reading._freshly_measured(gate, recorded, candidate_sha)
+    )
+    if held:
+        return _records._HELD
+    return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
+
+
+def _moved_off_the_caller(
+    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
+) -> bool:
+    """Refuse a checkout that is not the commit its caller named.
+
+    The caller read a head for itself -- the commit its docs pass made, the
+    one its squash collapsed to, the resolution it just committed -- and this
+    owner proves the checkout's head again, because everything past here is a
+    claim about one object id and a caller's word is not a proof. Between the
+    two reads the worktree is writable, so a commit landing in that window is
+    a DIFFERENT candidate: measured here, pushed here, and recorded here,
+    while the caller goes on to stamp the id it read as the one it published.
+
+    So the two are made one decision. Asked before anything is persisted or
+    pushed, because that is the whole point: a refusal after the freeze leaves
+    a record about the wrong commit, and one after the push leaves the wrong
+    commit on the pull request.
+
+    Silent where the caller named nothing, which is every seam that publishes
+    a checkout it did not just write -- the no-feedback bounce, the recovery
+    answering a recorded pair -- and where the two agree, which is every
+    ordinary tick.
+    """
+    if not gate.candidate or gate.candidate == candidate_sha:
+        return False
+    log.error(
+        "issue=#%d was handed %s to publish and its checkout stands on %s; "
+        "refusing to measure a candidate its caller never read",
+        gate.issue.number, gate.candidate, candidate_sha,
+    )
+    return _parks._parked(
+        gate, _records._named(gate, recorded, candidate_sha),
+        _MOVED_OFF_THE_CALLER.format(
+            named=gate.candidate, head=candidate_sha,
+        ),
+        _MOVED_OFF_THE_CALLER_PARK.format(
+            mentions=config.HITL_MENTIONS,
+            named=gate.candidate,
+            head=candidate_sha,
+        ),
     )
 
 
@@ -217,7 +325,11 @@ def _needs_no_measuring(
     route work a human already adjudicated straight back into adjudication.
 
     The publication record is that same window read from its far end, and the
-    one that matters most because the effects are already out: past the push
+    one that matters most because the effects are already out, and it is the
+    one asked against the REMOTE rather than off the record alone: a receipt
+    naming a commit the pull request has since moved off records a
+    publication that is over, and work the remote no longer carries is work
+    this gate has not decided about. past the push
     the branch is on the remote and a pull request carries it, while the label
     still says implementing until the relabel lands. A relabel that failed
     leaves the next tick reading a published branch as work nobody has ruled
@@ -233,93 +345,41 @@ def _needs_no_measuring(
     commit, which nothing can check until the head is proved. Past that proof
     and not it, the approval describes work this branch has moved past: the
     candidate in hand is new work, and new work is exactly what the switch
-    keeps out of the gate. A record already in the gate, and a reconciliation
-    answering a reading the gate itself took, are neither.
+    keeps out of the gate. A record already in the gate, and a call answering
+    a reading the gate itself took, are neither -- and the second is asked as
+    `answering` rather than as the wider "no developer ran", which a rebase, a
+    resolution, and a recovery push each set over work this gate has never
+    seen.
+
+    "A record already in the gate" is a record about THIS commit, which is the
+    same claim by one commit and only it the three above are recognized by. A
+    generation naming some OTHER candidate is one a resumed developer's fresh
+    commit has moved past, and the fresh commit is new work: measured where
+    the switch is on, published untouched where it is off, and in both cases
+    the superseded record is retired rather than left over a commit nothing
+    will publish. Read as "in the gate" instead, an install with the switch
+    off measures exactly the work it turned the gate off for.
     """
     if _exemption.is_exempt(gate.state, candidate_sha):
         return _ADJUDICATED
     if _parks._approved_commit(gate.state) == candidate_sha:
         return _APPROVED
     if _parks._published_commit(gate.state) == candidate_sha:
-        return _PUBLISHED
-    if config.DECOMPOSE or recorded.candidate_sha or gate.reconciling:
+        # The receipt is a local note, and what it is evidence FOR is that the
+        # pull request carries the commit. On the published side this call has
+        # already frozen the head that pull request is on, so the two are read
+        # together: a receipt naming a commit the remote has moved off records
+        # a publication that is over, and skipping the reading for it would
+        # wave through work the pull request no longer has. Where nothing was
+        # frozen the receipt answers alone -- that is the initial publication,
+        # whose window is between the push that opened a pull request and the
+        # relabel that never landed.
+        frozen = gate.entry.published_sha if gate.entry else ""
+        if not frozen or frozen == candidate_sha:
+            return _PUBLISHED
+    already_read = (
+        recorded.candidate_sha == candidate_sha or gate.answering
+    )
+    if config.DECOMPOSE or already_read:
         return ""
     return _SWITCHED_OFF
-
-
-def _unmeasured_verdict(
-    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str = "",
-) -> _records._GateVerdict:
-    """Publish a candidate this gate did not measure -- unless a close beat it.
-
-    The three ways past the measurement, and they share the step that is easy
-    to miss: a record may still be standing. The switch being off does not
-    retire what an earlier tick froze, and an exemption names one commit
-    rather than ending the generation that granted it -- so the retirement
-    that has to land before the push runs here too, and with it the close
-    protocol it carries. Held is the answer where a close ended the cycle: an
-    issue nobody wants gets no branch, no pull request, and no relabel.
-
-    An approval naming some OTHER commit is the same problem one field over,
-    and it is dropped for the same reason: the debt it records is for a commit
-    this publication is going past, and a record left over work nothing will
-    push freezes the branch and parks every later tick asking for it back.
-    """
-    _verdict_owner._supersedes_approval(gate, candidate_sha)
-    if _verdict_owner._superseded(gate, recorded):
-        return _records._HELD
-    return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
-
-
-def _verdict(held: bool, candidate_sha: str) -> _records._GateVerdict:
-    """Name the commit a candidate that may publish is published under."""
-    if held:
-        return _records._HELD
-    return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
-
-
-def _reconciled_measurement(gate: _records._Gate, recorded: LateGeneration) -> bool:
-    """Act on a measurement this issue already took, or park on what is left.
-
-    A count on the record is not on its own a measurement anything may act on.
-    It is one END of a reading whose other fields say what it MEANS: without a
-    base there is no pair it was taken over, without a threshold there is no
-    ceiling to compare it to -- and `is_oversized` answers False on a missing
-    one, which is the shape of a damaged record publishing as a small
-    candidate -- and without a boundary there is nothing saying which step
-    wrote it. Without a whole identity naming THIS issue there is nothing to
-    join it to afterwards, or it is somebody else's reading entirely. A record
-    short of any of them is repaired by a human or measured again, never read
-    as an answer.
-
-    The recorded base is proved present for the same reason it is on the way
-    in: a host that cannot show the object the count was taken against cannot
-    show the diff a verdict is defended by either, and acting on the number
-    while the evidence behind it is missing is the substitution this whole
-    contract refuses.
-    """
-    if _freeze._damaged_record(gate, recorded):
-        return True
-    if _freeze._refrozen_base(gate, recorded) is None:
-        return True
-    return _verdict_owner._settled(gate, recorded)
-
-
-def _freshly_measured(
-    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
-) -> bool:
-    """Freeze the pair, count between it, and act on what came back."""
-    frozen = _freeze._frozen_pair(gate, recorded, candidate_sha)
-    if frozen is None:
-        return True
-    counted = _additions._count_added_lines(
-        gate.worktree, frozen.base_sha, frozen.candidate_sha,
-    )
-    if not counted.is_measured:
-        return _parks._unmeasured(gate, frozen, counted.failure)
-    measured = replace(frozen, additions=counted.additions)
-    _parks._emit(
-        gate, measured,
-        _events.LateEvent(family=_events.LateEventFamily.MEASUREMENT),
-    )
-    return _verdict_owner._settled(gate, measured)

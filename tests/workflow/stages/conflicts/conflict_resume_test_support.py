@@ -7,6 +7,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from tests.workflow import fixtures
+from tests.workflow.mid_run_effects import (
+    _MovesThePullRequest as _MovesThePullRequest,
+)
 
 CONFLICT_ISSUE = 200
 HUMAN_REPLY_ID = 2000

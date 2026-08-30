@@ -10,10 +10,12 @@ approval. So a fetch, probe, reset, or clean that cannot prove the worktree is
 back on `<remote>/<branch>` parks the issue rather than letting the unwind
 report success.
 
-The ahead/behind probe is spelled out here instead of reusing
-`_branch_ahead_behind` for the same reason: that helper reports a git error as
-`(0, 0)`, which is indistinguishable from a clean worktree and would let the
-stale commit survive. The reset is paired with `git clean -fd` because
+The ahead/behind probe is spelled out here rather than reached through the
+shared divergence reading, and what it buys is the DETAIL: this park is the one
+an operator has to debug a git invocation from, so the exit code, stderr, and
+stdout the probe answered with go into the log beside it. Both fail closed --
+neither reports a reading that did not happen as a clean worktree, which is
+what would let the stale commit survive. The reset is paired with `git clean -fd` because
 `reset --hard` leaves untracked files -- and a docs agent's output is often a
 new file or a new directory under `docs/` that no reviewer ever approved.
 """
@@ -68,12 +70,14 @@ def _documenting_drift_fetch(ctx: _models._DocumentingContext, wt) -> bool:
 def _documenting_drift_probe(ctx: _models._DocumentingContext, wt):
     """Probe the worktree's ahead/behind vs. `<remote>/<branch>`.
 
-    Run the ahead/behind probe inline (rather than via `_branch_ahead_behind`)
-    so a probe failure is distinguishable from a real "in sync" result:
-    `_branch_ahead_behind` swallows git errors as `(0, 0)`, which would
-    silently let an unpushed local docs commit against the OLD body survive
-    into the next final-docs hop's recovered-commit shortcut. Use the same git
-    invocation but check the exit code + parse here.
+    Run the probe inline rather than through the shared divergence reading,
+    which answers the same question and fails closed the same way: what this
+    road wants beside its park is the exit code, stderr, and stdout git
+    answered with, since this is the park an operator debugs a git invocation
+    from. A reading that established nothing is a park either way -- read as
+    "in sync" it would silently let an unpushed local docs commit against the
+    OLD body survive into the next final-docs hop's recovered-commit
+    shortcut.
 
     Returns `(ahead, behind)` on success; on a probe failure parks with
     `worktree_reset_failed` and returns None.

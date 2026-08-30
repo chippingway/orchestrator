@@ -227,6 +227,24 @@ then `SQUASH_ON_APPROVAL`, then hands off to `workflow:documenting`; `CHANGES_RE
 **before** the dev spawn. `MAX_REVIEW_ROUNDS` parks with the `/orchestrator add-review-rounds N` escape hatch. Full
 flow: [`state-machine/delivery-stages.md`][validating].
 
+### The size gate on a published pull request (every push onto an open PR)
+
+Ten pushes reach a pull request the remote already carries — the shared dev-fix publication, the fixing handler's
+no-feedback bounce, the two validating recoveries, the three conflict publications (agent-resolved, clean rebase, and
+recovered commits), the base sync's own auto-rebase and crash recovery, the final docs pass, and the squash on
+approval — and the same late size gate stands in front of every one of them, through one call that measures, pushes,
+and spends the debt the push pays. What it measures is what the pull request would **come to**
+— three-dot from the base the remote names to the candidate, so the whole pull request rather than the diff this one
+push adds — and a candidate strictly past `MAX_ADDED_LINES` is held off the branch and routed to
+`workflow:decomposing` from whichever of `workflow:validating` / `workflow:documenting` / `in_review` /
+`workflow:fixing` / `workflow:resolving_conflict` that push was reached under. The stage, the pull request, and the
+head it stands on are frozen into the record before any effect; the push it allows is named against the measured
+commit and leased against that frozen head; a tree that is not provably clean, an unreadable or closed pull request,
+and a head that moved off the frozen one each park rather than push. A pair frozen and never counted is measured
+ahead of the handler on the next tick, by the dispatcher, on the stage the record names — and one whose checkout is
+not on this host stops the tick instead of letting the stage run over a candidate nobody read. Full flow:
+[`state-machine/delivery-stages.md`][published-gate].
+
 ### `_handle_in_review` (label `in_review`)
 
 A PR is open and humans drive the merge — the orchestrator never merges from here, so any `merged` state it observes
@@ -284,6 +302,7 @@ the shared awaiting-human park — is in [`state-machine/lifecycle.md`](state-ma
 [pickup]: state-machine/delivery-stages.md#_handle_pickup-no-label--workflowdecomposing-or-workflowimplementing
 [drift]: state-machine/delivery-stages.md#user-content-drift-detection
 [decomposing]: state-machine/delivery-stages.md#_handle_decomposing-label-workflowdecomposing
+[published-gate]: state-machine/delivery-stages.md#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr
 [ready]: state-machine/delivery-stages.md#_handle_ready-label-workflowready--workflowimplementing
 [blocked]: state-machine/delivery-stages.md#_handle_blocked-label-workflowblocked
 [umbrella]: state-machine/delivery-stages.md#_handle_umbrella-label-workflowumbrella

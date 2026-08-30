@@ -34,12 +34,17 @@ ROLE_REVIEWER = review_support.ROLE_REVIEWER
 _PatchedWorkflowMixin = review_support._PatchedWorkflowMixin
 _agent = review_support._agent
 _issue_branch = review_support._issue_branch
+_open_pr_for = review_support._open_pr_for
 _FreshReviewFixtureMixin = review_support.FreshReviewFixtureMixin
 _FixLoopFixtureMixin = review_support.FixLoopFixtureMixin
 _ContinueCommandFixtureMixin = review_support.ContinueCommandFixtureMixin
 
 FIX_LOOP_ISSUE = 6
 RESUME_PR = 13
+KEY_SOURCE_STAGE = "late_source_stage"
+MAX_ADDED_LINES = "MAX_ADDED_LINES"
+CEILING = 5
+PAST_THE_CEILING = 6
 SILENT_STREAK_ISSUE = 70
 SILENT_STREAK_PR = 14
 HUMAN_COMMENT_ID = 1100
@@ -49,9 +54,9 @@ STDERR_PREFIX_SIZE = 4096
 DEV_SESSION = "dev-sess"
 RUN_AGENT = "run_agent"
 FIXED_MESSAGE = "fixed"
-BEFORE_FIX_SHA = "aaa"
-AFTER_FIX_SHA = "bbb"
-FIX_HEAD_SHAS = (BEFORE_FIX_SHA, AFTER_FIX_SHA)
+BEFORE_FIX_SHA = review_support.BEFORE_FIX_SHA
+AFTER_FIX_SHA = review_support.AFTER_FIX_SHA
+FIX_HEAD_SHAS = review_support.FIX_HEAD_SHAS
 CF_BLOB = (
     "cf_chl_opt … Enable JavaScript and cookies to continue. "
     "Verifying you are human. This may take a few seconds."
@@ -103,7 +108,7 @@ class HandleValidatingFreshReviewTest(
                     session_id="rev-sess",
                     last_message=REVIEW_CHANGES_REQUESTED_MESSAGE,
                 ),
-                _agent(session_id=DEV_SESSION, last_message=FIXED_MESSAGE),
+                _fixed(),
             ],
             dirty_files=(),
             push_branch=True,
@@ -354,7 +359,8 @@ class HandleValidatingFixLoopEdgeCasesTest(
         edge_state = edge_github.pinned_data(6)
         self.assertTrue(edge_state.get(AWAITING_HUMAN))
         self.assertEqual(edge_state.get(PARK_REASON), "agent_timeout")
-        # `head_shas` are consumed in order: before_sha is "aaa", which
+        # `head_shas` are consumed in order: before_sha is the pre-run head,
+        # which
         # is what gets persisted.
         self.assertEqual(edge_state.get("pre_dev_fix_sha"), BEFORE_FIX_SHA)
         last_comment = edge_github.posted_comments[-1][1]
@@ -377,7 +383,7 @@ class HandleValidatingFixLoopEdgeCasesTest(
             ],
             dirty_files=(),
             push_branch=True,
-            # before_sha + after_sha (both "aaa" -> no commit).
+            # before_sha + after_sha (both the pre-run head -> no commit).
             head_shas=[BEFORE_FIX_SHA, BEFORE_FIX_SHA],
         )
 
@@ -455,11 +461,63 @@ class HandleValidatingFixLoopEdgeCasesTest(
         self.assertIn("review still has comments", last_comment)
 
 
+def _fixed():
+    """The dev run a CHANGES_REQUESTED tick spends after the reviewer's."""
+    return _agent(session_id=DEV_SESSION, last_message=FIXED_MESSAGE)
+
+
 class HandleValidatingFixLoopRoutingTest(
     unittest.TestCase,
     _FixLoopFixtureMixin,
 ):
     """Expose the fixing subphase and return pushed fixes to validating."""
+
+    def test_a_held_fix_records_its_own_stage(self) -> None:
+        # `set_labels(FIXING)` writes the remote and leaves the cached labels
+        # at `validating`, so the size gate reading them back would freeze the
+        # state the issue has LEFT -- and a settled adjudication continues at
+        # whatever the record names, which would skip the fix loop's own
+        # completion entirely.
+        held_github, held_issue = self._seeded(stale_label_cache=True)
+
+        with patch.object(config, MAX_ADDED_LINES, CEILING):
+            self._run_validating(
+                held_github,
+                held_issue,
+                run_agent=[self._changes_requested_review(), _fixed()],
+                dirty_files=(),
+                push_branch=True,
+                head_shas=FIX_HEAD_SHAS,
+                added_lines=PAST_THE_CEILING,
+            )
+
+        pinned = held_github.pinned_data(FIX_LOOP_ISSUE)
+        self.assertEqual(pinned[KEY_SOURCE_STAGE], LABEL_FIXING)
+
+    def test_a_held_fix_still_spends_its_round(self) -> None:
+        # This route counts the reviewer's round on a landed fix, and a held
+        # one supersedes the rejected head just the same: the commit is on the
+        # branch and a `single` verdict publishes it from there. The caller
+        # returns before its own count, and nothing behind it counts either --
+        # the settlement pushes the accepted commit and the resumed route
+        # finds nothing left to publish -- so the round rides the gate's own
+        # write, ahead of the relabel that hands the issue away.
+        held_github, held_issue = self._seeded(stale_label_cache=True)
+
+        with patch.object(config, MAX_ADDED_LINES, CEILING):
+            self._run_validating(
+                held_github,
+                held_issue,
+                run_agent=[self._changes_requested_review(), _fixed()],
+                dirty_files=(),
+                push_branch=True,
+                head_shas=FIX_HEAD_SHAS,
+                added_lines=PAST_THE_CEILING,
+            )
+
+        pinned = held_github.pinned_data(FIX_LOOP_ISSUE)
+        self.assertEqual(pinned[REVIEW_ROUND], 1)
+        self.assertIsNone(pinned.get("pending_fix_reviewer_comment_id"))
 
     def test_enters_fixing_before_dev_spawn(self) -> None:
         # The dev-fix subphase must run under the `fixing` label so the
@@ -618,6 +676,7 @@ class HandleValidatingAwaitingHumanResumeTest(unittest.TestCase, _PatchedWorkflo
             pr_number=RESUME_PR,
             branch=_issue_branch(7),
         )
+        _open_pr_for(github, issue_number=7, pr_number=RESUME_PR)
         return github, issue
 
     def assert_human_resume(self, github, mocks) -> None:

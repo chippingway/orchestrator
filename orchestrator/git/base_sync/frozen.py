@@ -31,8 +31,8 @@ from orchestrator.github import pinned_state as _pinned_state
 
 # Every record that freezes a branch on its own, whatever the labels and flags
 # beside it say: the tip a read-only relabel handed over and has not spent, the
-# two a discussion tick leaves while it is mid-flight, and the two commits the
-# late size gate is deciding about. They are spelled here the way every pinned
+# two a discussion tick leaves while it is mid-flight, and the two groups the
+# late size gate is deciding by. They are spelled here the way every pinned
 # key this package reads is -- what this gate pins down is how the refresh
 # reads state written by stages it never calls into, so a shared constant would
 # let a rename pass unnoticed on the side that has to keep understanding it.
@@ -49,7 +49,8 @@ from orchestrator.github import pinned_state as _pinned_state
 # whatever HEAD had become. The candidate is dropped by the write that ends the
 # generation, and the approved commit by whichever handoff spends it -- the
 # publication that hands the issue to review, or the recovery that republishes
-# it -- so both freezes end with the question they belong to.
+# it -- so both freezes end with the question they belong to, and every field
+# written beside either goes with it.
 #
 # The approved commit picks the candidate's freeze up exactly where it ends. It
 # is written by the same write that APPROVES a candidate for publication -- the
@@ -61,12 +62,60 @@ from orchestrator.github import pinned_state as _pinned_state
 # worktree back, and a rebase between their `git checkout` and the tick that
 # would have noticed moves the head off that commit again, leaving the park
 # with nothing to recover on.
+#
+# Both are read as GROUPS rather than as the two commits alone, and that is
+# what a partial record is answered by. Every key in either group goes down in
+# one durable write, so a comment carrying part of one is a comment something
+# edited -- and the owner that notices parks the issue rather than acting on
+# it. That owner runs at dispatch, which is AFTER this. Held only by the
+# commit, a reading whose candidate a hand edit took would be rebased and
+# force-pushed while it still named the base it was measured from, the ceiling
+# it was measured against, the count, and the publication it was entered on --
+# every one of which the retry is bound to -- and a lease with no approval
+# beside it names the head a push was owed against and nothing else. So the
+# branch is frozen for anything the damage read would refuse, and the park
+# lands on a checkout still standing where the record says it is.
+_LATE_READING_KEYS: tuple[str, ...] = (
+    "late_cycle_id",
+    "late_generation",
+    "late_root_issue",
+    "late_current_issue",
+    "late_candidate_sha",
+    "late_base_sha",
+    "late_threshold",
+    "late_additions",
+    "late_phase",
+    "late_post_publication",
+    "late_source_stage",
+    "late_published_pr_number",
+    "late_published_sha",
+)
+
+
+_LATE_APPROVAL_KEYS: tuple[str, ...] = (
+    "late_approved_sha",
+    "late_approved_lease",
+)
+
+
 _FROZEN_BY_KEYS: tuple[str, ...] = (
     "read_only_baseline_sha",
     "discussion_round_open",
     "discussion_publishing_sha",
-    "late_candidate_sha",
-    "late_approved_sha",
+)
+
+
+# The late groups, and the one difference in how they are read: a key CARRIED
+# at all holds the branch, whatever value it carries. That is the damage
+# guard's own test, and the two have to agree or the freeze covers less than
+# the refusal it exists to make reachable -- a count of `0` is what a
+# candidate adding nothing really measures to, a ceiling of `0` is one an
+# operator can configure, and a marker reading `false` is what a hand edit
+# leaves. Read for truth, each of those is a record this refresh cannot vouch
+# for and rebases anyway, while the dispatcher parks a tick later on a branch
+# that has already moved.
+_LATE_CLAIM_KEYS: tuple[str, ...] = (
+    _LATE_READING_KEYS + _LATE_APPROVAL_KEYS
 )
 
 # The two records the list above cannot cover, because no write is guaranteed
@@ -149,8 +198,19 @@ _PARKED_ON_A_COMMIT: tuple[str, ...] = (
 
 
 def _held_records(state: _pinned_state.PinnedState) -> tuple[str, ...]:
-    """The records on this issue that freeze its branch by their presence."""
-    return tuple(key for key in _FROZEN_BY_KEYS if state.get(key))
+    """The records on this issue that freeze its branch by their presence.
+
+    The three read for what they HOLD are records whose value is the claim --
+    a tip, a round, a publication in flight -- and each is cleared to `None`
+    by the step that spends it. The late groups are read for the key being
+    there AT ALL, which is how the guard that refuses a partial one reads
+    them: the two agree, so nothing this refresh rebases is something that
+    guard would go on to park.
+    """
+    held = tuple(key for key in _FROZEN_BY_KEYS if state.get(key))
+    return held + tuple(
+        key for key in _LATE_CLAIM_KEYS if state.get(key) is not None
+    )
 
 
 def _awaits_a_commit_of_its_own(state: _pinned_state.PinnedState) -> bool:

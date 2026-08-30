@@ -12,7 +12,6 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
-from dataclasses import dataclass
 from pathlib import Path
 from unittest import mock
 
@@ -21,7 +20,12 @@ from orchestrator.git import authentication
 from orchestrator.git.publication import squash
 
 from tests.support.fakes import make_issue
-from tests.git.publication.publication_helpers import _spec
+from tests.git.publication.squash_gate_support import (
+    PublicationSeed,
+    SquashRun,
+    _driven_reads,
+    _squash_gate,
+)
 
 BASE_BRANCH_NAME = "main"
 GIT_AUTHOR_NAME = "GIT_AUTHOR_NAME"
@@ -43,14 +47,6 @@ REMOTE_BASE_REF = "origin/main"
 GIT_REV_PARSE = "rev-parse"
 HEAD_REF = "HEAD"
 
-
-@dataclass(frozen=True)
-class SquashRun:
-    success: bool
-    sha: str | None
-    count: int
-    error: str | None
-    push_mock: mock.MagicMock
 
 
 def run_git(*args: str, cwd: Path, env_extra: dict | None = None) -> str:
@@ -148,9 +144,34 @@ class _SquashRepositoryFixtureMixin:
         run_git("fetch", REMOTE_NAME, cwd=self.work)
 
 
-class _SquashScenarioMixin:
-    def _make_issue(self, title: str = "test issue", number: int = 9):
-        return make_issue(number, title=title)
+class _SquashReadsMixin:
+    """What a case reads off the repository the squash runs against.
+
+    Kept apart from the scenario builders below because the two answer
+    different questions: these say where the branch stands, and those put it
+    somewhere. The size gate reads the base through here too -- a real fixture
+    answers the tree and the candidate for itself, and only the remote-side
+    base freeze has to be stood in for.
+    """
+
+    def _head_sha(self) -> str:
+        return run_git(GIT_REV_PARSE, HEAD_REF, cwd=self.work).strip()
+
+    def _base_sha(self) -> str:
+        """The commit the remote says the base branch is standing at."""
+        return run_git(GIT_REV_PARSE, REMOTE_BASE_REF, cwd=self.work).strip()
+
+    def _commits_over(self, marker: int) -> None:
+        """Commit over this checkout, the way a stray agent run would."""
+        (self.work / f"stray{marker}.txt").write_text(f"stray {marker}\n")
+        run_git(GIT_ADD, ".", cwd=self.work)
+        run_git(
+            GIT_COMMIT,
+            GIT_MESSAGE_FLAG,
+            "stray: not the squash",
+            cwd=self.work,
+            env_extra=author_env(),
+        )
 
     def _commits_on_branch(self) -> list[str]:
         """Subjects of all commits between origin/main and HEAD, oldest first."""
@@ -162,6 +183,11 @@ class _SquashScenarioMixin:
             cwd=self.work,
         )
         return [line for line in out.splitlines() if line.strip()]
+
+
+class _SquashScenarioMixin:
+    def _make_issue(self, title: str = "test issue", number: int = 9):
+        return make_issue(number, title=title)
 
     def _rebuild_topic(
         self,
@@ -201,39 +227,44 @@ class _SquashScenarioMixin:
             "t",
         )
 
-    def _head_sha(self) -> str:
-        return run_git(
-            GIT_REV_PARSE,
-            HEAD_REF,
-            cwd=self.work,
-        ).strip()
-
     def _squash(
         self,
         *,
-        issue=None,
         push_result: bool = True,
+        publication: PublicationSeed | None = None,
+        head_reads=None,
+        proved_heads=None,
         **config_overrides,
     ) -> SquashRun:
-        push_mock = mock.MagicMock(return_value=push_result)
+        # A case about the window the push itself opens hands in a callable:
+        # the worktree is writable for the whole of the request, so what it
+        # does to the checkout has to happen inside the seam rather than
+        # before or after it.
+        push_mock = (
+            mock.MagicMock(side_effect=push_result) if callable(push_result)
+            else mock.MagicMock(return_value=push_result)
+        )
         self.enterContext(
             mock.patch.object(authentication, PUSH_BRANCH_HELPER, push_mock),
         )
+        # A case about the window between the squash and the gate's own proof
+        # of the checkout drives the head reads itself; every other one takes
+        # the repository's real answer.
+        _driven_reads(self, head_reads=head_reads, proved_heads=proved_heads)
         for setting, setting_value in config_overrides.items():
             self.enterContext(
                 mock.patch.object(config, setting, setting_value),
             )
         raw_result = squash._squash_and_force_push(
-            _spec(base_branch=BASE_BRANCH_NAME, remote_name=REMOTE_NAME),
-            self.work,
+            _squash_gate(self, publication or PublicationSeed()),
             self.branch,
-            issue or self._make_issue(),
         )
-        return SquashRun(*raw_result, push_mock=push_mock)
+        return SquashRun(outcome=raw_result, push_mock=push_mock)
 
 
 class SquashGitFixtureMixin(
     _SquashRepositoryFixtureMixin,
+    _SquashReadsMixin,
     _SquashScenarioMixin,
 ):
-    """Compose repository setup with squash scenario operations."""
+    """Compose repository setup, its reads, and the squash scenarios."""

@@ -430,24 +430,31 @@ The orchestrator (not the agent) pushes. The push is hardened against the agent-
 - Pushes via an explicit refspec (no upstream stored): `HEAD:refs/heads/<branch>` by default, or
   `<revision>:refs/heads/<branch>` when the caller names the commit it means. Every caller that decided to push by
   INSPECTING a commit names it, because `HEAD` between the reading and the push is not necessarily the commit that
-  was checked. Two do: the discussion stage's plan publication, which proves the branch carries the agreed plan and
-  nothing else; and the implementing stage's publication, which decides on one commit before the push and names the
-  push, the record it leaves, and the proof it takes afterwards against that same one — the commit the size gate
-  measured or the exemption accepted where there is one, and the commit the checkout is standing on where the gate
-  proved none (a new candidate while `DECOMPOSE=off`), since the switch keeps candidates out of the measurement
-  rather than making them unnameable. **Neither of those two falls back to `HEAD`**: a checkout that cannot name the
-  commit it is on is refused rather than published as it stands — the plan publication reads an unread tip as
+  was checked. Two publish for the FIRST time: the discussion stage's plan publication, which proves the branch
+  carries the agreed plan and nothing else; and the implementing stage's publication, which decides on one commit
+  before the push and names the push, the record it leaves, and the proof it takes afterwards against that same one
+  — the commit the size gate measured or the exemption accepted where there is one, and the commit the checkout is
+  standing on where the gate proved none (a new candidate while `DECOMPOSE=off`), since the switch keeps candidates
+  out of the measurement rather than making them unnameable. **Neither of those two falls back to `HEAD`**: a
+  checkout that cannot name the commit it is on is refused rather than published as it stands — the plan
+  publication reads an unread tip as
   unpublishable, and the implementing publication parks (`late_candidate_moved`), because a push named against
   nothing sends whatever the branch has become by the time git runs it, records no receipt, and leaves the proofs
   around it with no commit to compare against. Implementing additionally refuses the handoff when the checkout has
   left that commit — before the push and again once the pull request is open, since every stage past it works from
   the checkout rather than from the refspec.
-- The bare `HEAD` form belongs to the callers that never inspected a commit and publish whatever the worktree
-  currently is: the docs pass, the `validating` dev-fix and its transient-park recovery, the `fixing` push, the three
-  `conflicts` publications, the squash rewrite, and the two base-sync rebase publications. What those refuse is a
-  moved REMOTE rather than a moved local head — the rewrite, the conflict publications, and the base-sync rebases pin
-  `force_with_lease` to the SHA they observed before the rewrite, and the rest take the default lease `_push_branch`
-  reads for itself at push time.
+- Every push onto a pull request the remote ALREADY carries names its commit too, and the size gate is what names
+  it: the gate measures before each of them and hands back the commit it measured, which is what the push publishes,
+  what the receipt records, and what the proof behind it compares against. Those are the docs pass, the `validating`
+  dev-fix and both its transient-park recoveries, the `fixing` bounce, the three `conflicts` publications, the squash
+  rewrite, and the base-sync auto rebase and its crash recovery. Each of them refuses a moved REMOTE as well — the
+  rewrite, the conflict publications, and the base-sync rebases pin `force_with_lease` to the SHA they observed
+  before the rewrite, and the rest are pinned to the head the gate's own entry froze.
+- The bare `HEAD` form is left for the one push that could name no commit at all: a gated push on an install running
+  with `DECOMPOSE=off` whose checkout would not prove its own head. The switch keeps candidates out of the
+  MEASUREMENT and not out of a push that knows what it is publishing, so the commit is named off the checkout there
+  too — only a reading that failed outright falls through, publishing whatever the worktree currently is with the
+  receipt and the post-push proof skipped, since neither has a commit to be about.
 
 ## Observability
 

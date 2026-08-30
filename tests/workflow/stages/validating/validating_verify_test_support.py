@@ -7,6 +7,7 @@ from tests.workflow.fixtures import (
     LABEL_VALIDATING,
     _PatchedWorkflowMixin,
     _issue_branch,
+    _open_pr_for,
 )
 
 ISSUE = 7
@@ -27,4 +28,5 @@ class VerifyGateFixtureMixin(_PatchedWorkflowMixin):
         )
         defaults.update(state)
         gh.seed_state(ISSUE, **defaults)
+        _open_pr_for(gh, issue_number=ISSUE, pr_number=defaults["pr_number"])
         return gh, issue

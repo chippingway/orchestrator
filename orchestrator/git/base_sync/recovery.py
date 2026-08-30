@@ -18,8 +18,12 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from orchestrator.git import authentication
-from orchestrator.git.base_sync import outcomes, persistence, snapshot
+from orchestrator.git.base_sync import (
+    outcomes,
+    persistence,
+    publication,
+    snapshot,
+)
 from orchestrator.git.base_sync.models import (
     _AutoRebaseRecoveryContext,
     _AutoRebaseRecoverySnapshot,
@@ -52,18 +56,44 @@ def _retry_recovery_push(
     context: _AutoRebaseRecoveryContext,
     recovery_snapshot: _AutoRebaseRecoverySnapshot,
 ) -> bool:
-    """Publish a verified ahead-only recovery head and finalize its state."""
+    """Publish a verified ahead-only recovery head and finalize its state.
+
+    Measured before it is published, like every other push onto a pull request
+    the remote already carries: the head this recovery found is one an earlier
+    tick rebased and never pushed, so nothing on this branch has been read
+    against the base it now sits on.
+    """
     dirty_files = verification_probes._worktree_dirty_files(context.worktree)
     if dirty_files:
         return outcomes._park_dirty_recovery(
             context, recovery_snapshot, dirty_files,
         )
-    if not authentication._push_branch(
-        context.spec,
-        context.worktree,
+    records = publication._gate_records()
+    published = publication._gated_publication()._publishes(
+        records._gate(
+            context.gh, context.spec, context.issue, context.state,
+            context.worktree,
+        ),
         recovery_snapshot.branch,
-        force_with_lease=context.pending_pre_rebase_sha,
-    ):
+        records._Entered(
+            head=context.pending_pre_rebase_sha or "", reconciling=True,
+            # The head this recovery verified against the remote and the one
+            # the finalize below records as published. The gate proves the
+            # checkout again, and a commit that landed between the two
+            # readings would be the one pushed while the notice and the event
+            # named this one -- so the candidate is bound and a moved checkout
+            # refuses instead.
+            candidate=recovery_snapshot.local_head or "",
+        ),
+    )
+    if published.held:
+        # The gate took the candidate this recovery was finishing, so the
+        # finalize below -- the notice, the event, the `validating` route --
+        # is not this tick's. The park it left is written here, since nothing
+        # behind this call would.
+        context.gh.write_pinned_state(context.issue, context.state)
+        return True
+    if not published.landed:
         return outcomes._park_failed_recovery_push(context, recovery_snapshot)
     return persistence._finalize_recovered_rebase(
         context,

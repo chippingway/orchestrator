@@ -5,6 +5,8 @@ from __future__ import annotations
 import unittest
 
 from tests.workflow.stages.conflicts.conflicts_test_support import (
+    RESOLVED_HEAD_SHA,
+    CONFLICT_PR_HEAD_SHA,
     _ResolvingConflictMixin,
 )
 from tests.workflow.fixtures import (
@@ -12,8 +14,10 @@ from tests.workflow.fixtures import (
     EVENT_PR_MERGED,
 )
 
-BEFORE_HEAD = "before"
-MERGED_HEAD = "merged"
+# The head this stage reads before the rebase and leases its push against,
+# which is the head the pull request is standing on.
+BEFORE_HEAD = CONFLICT_PR_HEAD_SHA
+MERGED_HEAD = RESOLVED_HEAD_SHA
 CONFLICT_ROUND = "conflict_round"
 
 

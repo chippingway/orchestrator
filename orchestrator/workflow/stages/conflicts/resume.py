@@ -108,7 +108,7 @@ def _resume_on_user_content_change(
 
 
 def _resume_awaiting_human(
-    ctx: _models._ConflictContext, conflict_round: int,
+    ctx: _models._ConflictContext, conflict_round: int, pr,
 ) -> None:
     """Resume a parked rebase on a fresh human reply.
 
@@ -117,12 +117,22 @@ def _resume_awaiting_human(
     `_post_conflict_resolution_result`. Returns without writing pinned
     state when no reply has arrived yet or a live pause landed mid-run; on
     a real reply the shared funnel owns the push / relabel / state write.
+
+    The lease is the head the pull request is standing on BEFORE the session
+    resumes, read off the object this tick fetched. It is not `before_sha`:
+    a parked worktree may be mid-rebase or ahead of its publication, so the
+    local head is no claim about the remote. And it may not be left for the
+    size gate to read afterwards either -- the agent is out for minutes, so
+    whatever landed on that pull request meanwhile would become the head the
+    gate freezes and the lease this force-push replaces, which is the one
+    move a lease exists to refuse.
     """
     followup = _awaiting_human_followup(ctx)
     if followup is None:
         return
     wt = _conflict_guards._ensure_conflict_worktree(ctx)
     before_sha = _verification_probes._head_sha(wt)
+    entered_head = pr.head.sha
     run = _run_conflict_resume(ctx, followup)
     # Live pause applied mid-run: honor the helper's decision and return
     # before `_post_conflict_resolution_result` (which parses the result,
@@ -130,10 +140,10 @@ def _resume_awaiting_human(
     # on the branch until the label is removed.
     if run.paused:
         return
-    # No explicit lease here: resume worktrees may be mid-rebase or ahead of
-    # the remote PR head, so `before_sha` is not necessarily the remote SHA.
-    # Let `_push_branch` lease against live ls-remote.
-    _outcomes._post_conflict_resolution_result(ctx, run, before_sha, conflict_round)
+    _outcomes._post_conflict_resolution_result(
+        ctx, run, before_sha, conflict_round,
+        force_with_lease=entered_head or None,
+    )
 
 
 def _awaiting_human_followup(ctx: _models._ConflictContext) -> Optional[str]:

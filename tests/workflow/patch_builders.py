@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+from orchestrator.git.publication import probes as _publication_probes
 from orchestrator.git.verification.models import VerifyResult
 
 from tests.workflow.patch_measurement import _measurement_mocks
@@ -17,6 +18,7 @@ from tests.workflow.patch_models import (
     _as_mock,
     _default_infer_subject_prefix,
 )
+from tests.workflow.patch_models import _published_branch, _squashed
 from tests.workflow.repo_values import _FAKE_WT
 
 
@@ -83,7 +85,11 @@ def _publication_mocks(context: _WorkflowRunContext) -> dict[str, object]:
     else:
         prefix_mock = MagicMock(return_value=context.fallback_prefix)
     return {
-        "_push_branch": MagicMock(return_value=bool(context.push_branch)),
+        # A bool is the ordinary seed -- the push lands, or it does not. A
+        # callable is taken as the push itself, which is what a tick pushing
+        # twice needs: the second push is leased against the head the first
+        # left, so the pull request has to move under it.
+        "_push_branch": _published_branch(context.push_branch),
         "_head_sha": MagicMock(side_effect=_HeadReadings(context)),
         "_head_on_branch": MagicMock(
             return_value=bool(context.head_on_branch),
@@ -119,9 +125,7 @@ def _validation_mocks(context: _WorkflowRunContext) -> dict[str, object]:
     if verify_result is None:
         verify_result = VerifyResult(status="ok")
     return {
-        "_squash_and_force_push": MagicMock(
-            return_value=tuple(context.squash_result),
-        ),
+        "_squash_and_force_push": _squashed(context.squash_result),
         "_run_verify_commands": MagicMock(return_value=verify_result),
         "_rebase_in_progress": MagicMock(
             return_value=bool(context.rebase_in_progress),
@@ -135,8 +139,17 @@ def _conflict_mocks(context: _WorkflowRunContext) -> dict[str, object]:
         fetch_result = MagicMock(returncode=0, stdout="", stderr="")
     return {
         "_authed_fetch": MagicMock(return_value=fetch_result),
-        "_branch_ahead_behind": MagicMock(
-            return_value=tuple(context.branch_ahead_behind),
+        # Where the checkout stands against the remote tip it was compared
+        # with, as ONE reading: the counts, the head they were taken against
+        # -- which is what the push they license is pinned to -- and whether
+        # the reading happened at all.
+        "_branch_divergence": MagicMock(
+            return_value=_publication_probes._BranchDivergence(
+                tip=context.fetched_branch_tip,
+                ahead=context.branch_ahead_behind[0],
+                behind=context.branch_ahead_behind[1],
+                readable=context.branch_divergence_readable,
+            ),
         ),
     }
 

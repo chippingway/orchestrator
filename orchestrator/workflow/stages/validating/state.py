@@ -62,6 +62,13 @@ _OUTCOME_PUSHED = "pushed"
 
 _OUTCOME_STUCK = "stuck"
 
+# The recovery finished and the tick is over, without anything having healed.
+# The size gate took the candidate the retry was about -- parked on a reading
+# nobody could take, or handed the issue to the adjudication -- so the caller
+# owes no follow-up, no park clear, and no relabel: it would be announcing a
+# recovery that did not happen and moving a label the gate has just set.
+_OUTCOME_HELD = "held"
+
 _OUTCOME_RETURN = "return"
 
 _SHORT_SHA_LEN = 12

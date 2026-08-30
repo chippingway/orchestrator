@@ -43,10 +43,13 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
-from orchestrator.github.client import GitHubClient
-from orchestrator.github.comments import filter_trusted
-from orchestrator.github.pinned_state import PinnedState
+from orchestrator.github import (
+    client as _client,
+    comments as _github_comments,
+    pinned_state as _pinned_state,
+)
 from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.state import WorkflowLabel
 from orchestrator.workflow.stages.validating import state as _state
 
 
@@ -78,29 +81,74 @@ class _DevFixRun:
     agent_result: AgentResult
     before_sha: str
     after_sha: Optional[str] = None
+    # The state this run belongs to, where the caller relabelled the issue
+    # remotely in the same tick. PyGithub does not refresh a fetched issue's
+    # labels after `set_labels`, so the size gate reading them back would
+    # freeze the state the issue has LEFT -- and a settled adjudication
+    # continues at whatever the record names. The reviewer's
+    # `CHANGES_REQUESTED` route is the one that flips before it publishes;
+    # every other reaches this with the label already current and names none.
+    stage: Optional[WorkflowLabel] = None
+    # The round bookkeeping this route owes if the size gate HOLDS the fix.
+    # The hold relabels to the adjudication, so a caller that counted after
+    # the call would lose the count to a crash in that window -- and no later
+    # tick counts it, because the settlement pushes the accepted commit itself
+    # and the resumed route finds nothing left to publish. Handed in, it rides
+    # the gate's own durable write, ahead of the label it moves.
+    spends: Any = None
+    # The remote head a STRANDED publication was proved ahead of, where this
+    # run committed nothing and what is being published is a commit an earlier
+    # tick left on the branch. It is the head that push replaces, and the one
+    # the gate is pinned to -- read from the ref the ahead/behind proof was
+    # taken against rather than from the pull request afterwards, which is the
+    # reading a head somebody moved in between would win.
+    stranded_head: str = ""
+
+    @property
+    def entered_head(self) -> str:
+        """The publication head this run's own commit was made on top of.
+
+        Named to the size gate so a pull request somebody pushed to WHILE the
+        agent was out refuses the push instead of being overwritten by work
+        built on the head it used to be on. A fix round starts with the branch
+        in sync with its pull request -- the reviewer just read that head --
+        so the head this run began at is the head the publication was standing
+        on, and the gate compares the two rather than adopting whichever one
+        it happens to read afterwards.
+
+        Where this run committed nothing and what is being published is a
+        commit an earlier tick stranded on the branch, the head is the remote
+        tip that publication was proved ahead of: the branch this push
+        replaces is that one, and naming it is what makes a pull request
+        somebody moved between the proof and the push refuse rather than be
+        adopted as the lease.
+        """
+        if not self.after_sha or self.after_sha == self.before_sha:
+            return self.stranded_head
+        return self.before_sha
 
 
 @dataclass(frozen=True)
 class _RequestedChanges:
-    gh: GitHubClient
+    gh: _client.GitHubClient
     spec: config.RepoSpec
     issue: Issue
-    state: PinnedState
+    state: _pinned_state.PinnedState
     decision: _ReviewerDecision
 
 
 @dataclass(frozen=True)
 class _AwaitingValidation:
-    gh: GitHubClient
+    gh: _client.GitHubClient
     spec: config.RepoSpec
     issue: Issue
-    state: PinnedState
+    state: _pinned_state.PinnedState
     park_reason: Any
     comments: list
 
     @classmethod
     def build(
-        cls, gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
+        cls, gh: _client.GitHubClient, spec: config.RepoSpec, issue: Issue, state: _pinned_state.PinnedState,
     ) -> _AwaitingValidation:
         # Filtered by recorded id AND by `_ORCH_COMMENT_MARKER`, the same
         # pair `_rescan_fixing_feedback` uses and for the same two reasons:
@@ -122,7 +170,7 @@ class _AwaitingValidation:
             issue,
             state,
             state.get(_state._PARK_REASON),
-            filter_trusted(unread),
+            _github_comments.filter_trusted(unread),
         )
 
     def clear_park(self) -> None:
@@ -142,13 +190,17 @@ class _AwaitingDevAttempt:
     paused: bool
 
 
-def _dev_fix_run(context_args: tuple, fields: dict) -> tuple[PinnedState, _DevFixRun]:
+def _dev_fix_run(context_args: tuple, fields: dict) -> tuple[_pinned_state.PinnedState, _DevFixRun]:
     if len(context_args) != 4:
         raise TypeError("expected state, worktree, result, and before_sha")
     state, worktree, agent_result, before_sha = context_args
-    unknown = set(fields) - {"after_sha"}
+    unknown = set(fields) - {
+        "after_sha", "stage", "spends", "stranded_head",
+    }
     if unknown:
         raise TypeError(f"unexpected fix-result option(s): {sorted(unknown)!r}")
     return state, _DevFixRun(
-        worktree, agent_result, before_sha, fields.get("after_sha"),
+        worktree, agent_result, before_sha,
+        fields.get("after_sha"), fields.get("stage"),
+        fields.get("spends"), fields.get("stranded_head") or "",
     )

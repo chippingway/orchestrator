@@ -49,6 +49,9 @@ _ACCEPTED_COMMIT_ISSUE_NUMBER = 995
 _UNREADABLE_HEAD_ISSUE_NUMBER = 996
 _STALE_EXEMPTION_ISSUE_NUMBER = 997
 _PUBLISHED_COMMIT_ISSUE_NUMBER = 1001
+_PARTIAL_RECORD_ISSUE_NUMBER = 1010
+_FALSEY_RECORD_ISSUE_NUMBER = 1015
+_LONE_LEASE_ISSUE_NUMBER = 1020
 _HANDED_ON_ISSUE_NUMBER = 1002
 _PUBLISHED_EXEMPTION_ISSUE_NUMBER = 1003
 _UNREAD_MEASUREMENT_ISSUE_NUMBER = 998
@@ -76,6 +79,33 @@ _UNCONSUMED_PARKS = (
 _IN_FLIGHT_RECORDS = (
     {"discussion_round_open": True},
     {"discussion_publishing_sha": "head-a-publication-was-pushing"},
+)
+
+
+# A late reading with its candidate gone, one field at a time: every one of
+# these is a key the write that froze the pair put down beside the commit, and
+# every one is something the retry reads. A comment carrying any of them and
+# no candidate is the damage the dispatcher parks on a tick later.
+_PARTIAL_READINGS: tuple[dict, ...] = (
+    {"late_base_sha": _ACCEPTED_COMMIT},
+    {"late_threshold": 400},
+    {"late_additions": 12},
+    {"late_phase": "measuring"},
+    {"late_cycle_id": 1},
+    {"late_published_pr_number": 42},
+)
+
+# The same records at values that read FALSE, which is how the key being there
+# is told from the value it holds. A count of `0` is what a candidate adding
+# nothing measures to, a ceiling of `0` is one an operator can configure, and
+# a marker reading `false` is what a hand edit leaves -- so a freeze asking
+# for truth covers none of them while the guard that refuses them asks only
+# whether the comment carries the key.
+_FALSEY_READINGS: tuple[dict, ...] = (
+    {"late_additions": 0},
+    {"late_threshold": 0},
+    {"late_post_publication": False},
+    {"late_base_sha": ""},
 )
 
 
@@ -282,6 +312,39 @@ class LateRecordBaseRefreshSkipTest(_SkipCase, unittest.TestCase):
             park_reason=_MEASUREMENT_PARK,
         )
 
+    def test_a_partial_reading_holds_the_branch(self) -> None:
+        # A record carrying part of a group is a record something edited, and
+        # the owner that notices parks the issue rather than acting on it --
+        # at DISPATCH, which is after this. Held by the candidate alone, a
+        # reading whose commit a hand edit took is rebased and force-pushed
+        # while it still names the base it was measured from, the ceiling, the
+        # count, and the publication it was entered on. Every one of those is
+        # what the retry is bound to, and the park would land on a checkout
+        # standing somewhere else.
+        for offset, record in enumerate(_PARTIAL_READINGS):
+            with self.subTest(record=record):
+                self._assert_skipped(
+                    _PARTIAL_RECORD_ISSUE_NUMBER + offset,
+                    LABEL_IMPLEMENTING,
+                    awaiting_human=False,
+                    park_reason=None,
+                    **record,
+                )
+
+    def test_a_lone_lease_holds_the_branch(self) -> None:
+        # The approval read from its other end. The pair is written together
+        # and means nothing apart, so a lease with no commit beside it names
+        # the head a push was owed against and nothing else -- and a rebase
+        # under it leaves the human repairing the comment with a branch that
+        # has moved too.
+        self._assert_skipped(
+            _LONE_LEASE_ISSUE_NUMBER,
+            LABEL_IMPLEMENTING,
+            awaiting_human=False,
+            park_reason=None,
+            late_approved_lease=_ACCEPTED_COMMIT,
+        )
+
     def test_a_published_commit_holds_the_branch(self) -> None:
         # The window a relabel that did not land leaves: the branch is pushed
         # and its pull request open, the issue is still implementing, and the
@@ -295,6 +358,29 @@ class LateRecordBaseRefreshSkipTest(_SkipCase, unittest.TestCase):
             head=_ACCEPTED_COMMIT,
             implementing_published_sha=_ACCEPTED_COMMIT,
         )
+
+
+class FalseyLateRecordSkipTest(_SkipCase, unittest.TestCase):
+    """A late key CARRIED at a value that reads false still holds the branch.
+
+    The key being there is the claim rather than what it holds, which is how
+    the guard that refuses a partial record reads it. A count of `0` is what a
+    candidate adding nothing really measures to, a ceiling of `0` is one an
+    operator can configure, and a marker reading `false` is what a hand edit
+    leaves -- so a freeze asking for truth rebases every one of them a tick
+    before the dispatcher parks the issue.
+    """
+
+    def test_a_falsey_member_holds_the_branch(self) -> None:
+        for offset, record in enumerate(_FALSEY_READINGS):
+            with self.subTest(record=record):
+                self._assert_skipped(
+                    _FALSEY_RECORD_ISSUE_NUMBER + offset,
+                    LABEL_IMPLEMENTING,
+                    awaiting_human=False,
+                    park_reason=None,
+                    **record,
+                )
 
 
 class LateRecordBaseRefreshEndTest(_SkipCase, unittest.TestCase):

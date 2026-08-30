@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import unittest
 
 from tests.workflow.stages.fixing import fixing_test_support as support
@@ -12,6 +13,11 @@ IssueScenario = support.IssueScenario
 
 ALICE = support.ALICE
 AWAITING_HUMAN = support.AWAITING_HUMAN
+LATE_APPROVED_SHA = "late_approved_sha"
+LATE_APPROVED_LEASE = "late_approved_lease"
+PR_HEAD_SHA = support.PR_HEAD_SHA
+PARK_MEASUREMENT_FAILED = "late_measurement_failed"
+MEASURED_CANDIDATE_SHA = support.fixtures.MEASURED_CANDIDATE_SHA
 DEBOUNCE_CONFIG = support.DEBOUNCE_CONFIG
 DEBOUNCE_SECONDS = support.DEBOUNCE_SECONDS
 DEV_SESSION = support.DEV_SESSION
@@ -186,6 +192,37 @@ class FixingAwaitingHumanResumeTest(unittest.TestCase, _FixingFixtureMixin):
         self.assertIn((ISSUE, VALIDATING), scenario.github.label_history)
 
 
+class _WriteFailingAfter:
+    """A pinned write that lets the first `landed` writes through, then dies.
+
+    The durable clear a landed push takes is a write of its own, and it lands
+    BEFORE the follow-up this test is about. So the crash is modelled where it
+    can actually happen: past the push and past the comment, on the write that
+    would have cleared the park.
+    """
+
+    def __init__(self, landed: int, wrapped) -> None:
+        self._landed = landed
+        self._wrapped = wrapped
+        self._writes = 0
+
+    def __call__(self, *called, **options):
+        self._writes += 1
+        if self._writes > self._landed:
+            raise RuntimeError(WRITE_FAILED)
+        return self._wrapped(*called, **options)
+
+
+@contextlib.contextmanager
+def _debounced_in(worktree):
+    """The quiet window and the checkout one parked-recovery tick runs in."""
+    with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
+        with patch.object(
+            _worktree_paths, WORKTREE_PATH, return_value=worktree,
+        ):
+            yield
+
+
 class FixingTransientParkRecoveryTest(
     unittest.TestCase,
     _FixingFixtureMixin,
@@ -219,6 +256,13 @@ class FixingTransientParkRecoveryTest(
                 PENDING_FIX_AT: None,
                 PENDING_FIX_ISSUE_MAX_ID: None,
                 REVIEW_ROUND: 1,
+                # What a `push_failed` park really carries: the size gate
+                # approved this commit and the push it licensed is what
+                # failed. The retry recognizes it rather than measuring it
+                # again, so the only pinned write on this tick is the one the
+                # follow-up rides out on.
+                LATE_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+                LATE_APPROVED_LEASE: PR_HEAD_SHA,
             },
         )
 
@@ -273,12 +317,15 @@ class FixingTransientParkRecoveryTest(
                 PENDING_FIX_AT: None,
                 PENDING_FIX_ISSUE_MAX_ID: None,
                 REVIEW_ROUND: 1,
+                LATE_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+                LATE_APPROVED_LEASE: PR_HEAD_SHA,
             },
         )
 
         with patch.object(_worktree_paths, WORKTREE_PATH, return_value=TEMP_ROOT):
             with patch.object(
-                gh, WRITE_PINNED_STATE, side_effect=RuntimeError(WRITE_FAILED),
+                gh, WRITE_PINNED_STATE,
+                _WriteFailingAfter(1, gh.write_pinned_state),
             ):
                 with self.assertRaises(RuntimeError):
                     self._run_fixing(
@@ -317,10 +364,7 @@ class FixingTransientParkRecoveryTest(
             },
         )
 
-        with (
-            patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS),
-            patch.object(_worktree_paths, WORKTREE_PATH, return_value=TEMP_ROOT),
-        ):
+        with _debounced_in(TEMP_ROOT):
             mocks = self._run_fixing(
                 gh,
                 issue,
@@ -337,6 +381,43 @@ class FixingTransientParkRecoveryTest(
         self.assertNotIn((ISSUE, VALIDATING), gh.label_history)
         # Did NOT re-post the park comment (would be repetitive churn).
         self.assertEqual(gh.posted_comments, [])
+
+    def test_a_refused_retry_persists_its_park(self) -> None:
+        # The size gate refused the reading this retry was about, so the
+        # recovery is neither healed nor stuck: the drift reroute to
+        # `resolving_conflict` is not this tick's to take, and the park the
+        # gate left has to reach the pinned comment -- otherwise the durable
+        # state still says `push_failed` at the old watermark and the same
+        # retry fires next tick.
+        pr = self._open_pr()
+        gh, issue = self._seed(
+            pr=pr,
+            extra_state={
+                AWAITING_HUMAN: True,
+                PARK_REASON: PARK_PUSH_FAILED,
+                PR_LAST_COMMENT_ID: TRANSIENT_PARK_WATERMARK,
+                LAST_ACTION_COMMENT_ID: TRANSIENT_PARK_WATERMARK,
+                PENDING_FIX_AT: None,
+                PENDING_FIX_ISSUE_MAX_ID: None,
+                REVIEW_ROUND: 1,
+                LATE_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+                LATE_APPROVED_LEASE: PR_HEAD_SHA,
+            },
+        )
+
+        with _debounced_in(TEMP_ROOT):
+            mocks = self._run_fixing(
+                gh, issue, run_agent=_agent(),
+                push_branch=True, tree_readable=False,
+            )
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        self.assertEqual(gh.label_history, [])
+        pinned_data = gh.pinned_data(ISSUE)
+        self.assertTrue(pinned_data.get(AWAITING_HUMAN))
+        self.assertEqual(
+            pinned_data.get(PARK_REASON), PARK_MEASUREMENT_FAILED,
+        )
 
     def test_timeout_park_clears_without_commit(self) -> None:
         # An `agent_timeout` park with `pre_dev_fix_sha == head_sha` means
@@ -415,8 +496,11 @@ class FixingTransientParkRecoveryTest(
                 gh,
                 issue,
                 run_agent=_agent(),
-                # HEAD moved past pre-agent SHA -- the dev had committed.
-                head_shas=("bbb",),
+                # HEAD moved past pre-agent SHA -- the dev had committed. It
+                # is the commit the gate proves the checkout to, because the
+                # recovery's own reading and that proof are one read of one
+                # worktree.
+                head_shas=(SHA_AFTER,),
                 push_branch=True,
                 dirty_files=(),
             )

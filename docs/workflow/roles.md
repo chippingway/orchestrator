@@ -234,7 +234,13 @@ host that made the commit still has it sitting in the object store it shares. Th
 been restored, which is what tells the two hosts apart: a commit the branch already carries comes back with it and the
 tick proceeds, while a checkout standing anywhere else parks as `late_candidate_moved` — nothing published, no second
 developer, and the same quiet republication settling it once the worktree is back on that commit with a provably
-clean tree around it. Both halves are asked there, or the republication would walk straight back into the refusal
+clean tree around it. What that park records is what the side of the gate it was taken on can promise: an INITIAL
+publication writes the commit alone, since its push is the one that opens the pull request and reads the remote for
+itself, while a push onto a pull request the remote already carries writes the commit AND the head to pin the
+republication against — both being the commit that just landed, which is where that push left the branch. Half a pair
+there is not a smaller debt but a claim the reconciliation refuses as damage, under a reason only a human clears, so
+restoring the worktree would never finish the retry this park documents.
+Both halves are asked there, or the republication would walk straight back into the refusal
 the park was taken on and post a fresh notice every poll for a checkout nobody has touched. The record is spent by the
 handoff that pays the debt, and spent *durably before the relabel*: past that label the issue belongs to
 `validating` and implementing never runs on it again, so an approval still standing there is one nothing will ever
@@ -247,11 +253,17 @@ because a branch with no commits ahead of base reads as an issue with nothing to
 object while standing on the base would be handed a second developer run for an implementation already written. An
 adjudication takes the record off again, since a candidate being decomposed is one nobody is publishing yet.
 
-**A reconciliation is never new work**, and that is what keeps `DECOMPOSE=off` from failing open on it. A tick
-answering a reading a previous one recorded — the bare-continue retry, the stranded pair — reaches the gate with the
-switch off exactly as it does with the switch on. Publishing the current head there would publish the very commit
-whose reading is what somebody asked for. New work is still bypassed; a question the gate already asked is still
-answered.
+**Answering a recorded reading is never new work**, and that is what keeps `DECOMPOSE=off` from failing open on it.
+A tick answering a reading a previous one recorded — the bare-continue retry, the stranded pair — reaches the gate
+with the switch off exactly as it does with the switch on. Publishing the current head there would publish the very
+commit whose reading is what somebody asked for. New work is still bypassed; a question the gate already asked is
+still answered.
+
+The claim is narrower than *no developer ran*, and the two are separate facts for that reason. A base rebase, a
+conflict resolution, a divergence publish, and a recovery push each reach the gate with no agent behind them and with
+nothing on the record asking for their commit to be read — fresh work, which the switch off publishes unmeasured.
+Answering the switch with the wider fact would measure them, which is the same failure one direction over: an install
+that turned the gate off having its branches routed into an adjudication it never opted into.
 
 **Every refusal keeps the identity it managed to establish**, and one that established none refuses the retry
 outright. A revision that *resolved* and would not peel — an object a prune took, work made on a host this one is
@@ -290,6 +302,53 @@ What the number earns:
   with the measurement durable ahead of it. The commit stays exactly where the developer left it, which is where the
   adjudicator reads it and where a `single` verdict publishes it from. A tick that dies between the write and the
   label leaves a live generation under `workflow:implementing`, which the dispatcher's relabel guard puts back.
+
+The same three answers stand one seam later, where a pull request already carries the work. Every push onto one is
+measured first — the reviewer's requested changes, a human's reply, a body edit, a stranded commit a bounce
+republishes, a deferred push or a timeout's commit a recovery finishes, all three conflict publications, the base
+sync's own auto-rebase and crash recovery, and the final docs pass —
+and measured for what the pull request would **come to** rather than for what that push adds: the pair is the frozen
+remote base and the candidate, so what a reviewer would open and read is the number the ceiling is applied to, and no
+branch can be grown past it one small fix at a time. What such a call has to freeze first, and could re-derive from
+nothing afterwards, is which publication it was entered on: the stage the gate is taking the issue out of, the pull
+request the work already has, and the head that pull request is standing on. A candidate at or below the ceiling is
+pushed as it always was — named against the commit that was measured and leased against that frozen head, so neither
+a checkout that moved nor a pull request somebody pushed to can turn an approved reading into an unmeasured
+publication. That head outlives the record it came from: the write that approves a candidate retires the generation
+while the push it licenses has not run, so the head rides on the approval and pins every later push for that commit —
+the retry after a failed one, which skips the measurement because the commit is already approved, and the ordinary
+publication a settled verdict hands it back to. One past the ceiling is held with the pull request left exactly
+where it stood, and the issue is adjudicated from whichever of `workflow:validating`, `workflow:documenting`,
+`in_review`, `workflow:fixing`, or `workflow:resolving_conflict` that push was reached under. A tree that is not
+provably clean, a pull request nothing could read, one that is closed or merged, and a head that moved off what a
+live record froze are each a refusal rather than a reading: nothing is pushed and a human is asked.
+
+The freeze that precedes the count is a step, not a window. A tick that dies between the two leaves a pair with no
+number on it, and the next tick answers that reading before its stage runs at all — on the stage the record names,
+with no developer having run, so a checkout that has left the recorded candidate is refused rather than measured. It
+is the same contract the implementing recovery keeps, asked one seam later. A checkout that is not on this host at
+all stops the tick rather than letting the stage carry on: the commit is on a machine this one is not, so the pair
+keeps the branch and the record exactly as they are and a human is asked once.
+
+A verdict taken past publication publishes the candidate itself and then continues at the stage the record names,
+rather than sending every one of them back to `implementing`: that stage is the only owner of the completion the
+candidate still owes, and the settlement is the last tick holding the head the reading was taken over. It proves its
+pull request before either — and a pull request already standing on the accepted candidate is that proof answering
+"this settlement's own push landed and the tick died before the label", not "somebody moved it", but only where a
+durable record vouches for the push: the approval written in the write ahead of it, or the receipt the push itself
+leaves read with the head that receipt replaced. On a fresh pass neither is written and nothing of this workflow's
+has reached the remote, so that same head is something ELSE having pushed — an agent that published its own commit
+is the plain case — and it refuses with every other moved head. The receipt needs its head because it is never
+cleared: an accepted candidate published in an earlier round is one it goes on naming, and a pull request rewound
+onto that commit would otherwise agree with every local fact there is. Vouched for, the retry finishes
+what it never reached instead of refusing the publication this verdict made. A pre-publication one
+searches for the pull request its commit is on and drops a recorded pointer that turns out settled, because losing it
+costs nothing — the publication opens the pull request the work needs. This one already knows which pull request the
+reading was about, so it checks instead: still open, and still standing where the reading found it. A check that
+fails parks. Dropping the number there would push onto a branch whose pull request a human settled and open a second
+one for a change adjudicated against the first, and publishing over a head that moved would publish on a reading the
+branch has already overtaken.
+
 - **Answered small after a revision** — the one record that wears `workflow:decomposing` with nothing left to
   decompose. A developer revision guidance bought comes back re-frozen and re-measured, and a candidate now at or
   below the ceiling has had its question answered: the label goes back to `workflow:implementing` and the ordinary
@@ -800,20 +859,39 @@ are indistinguishable from the outside, so the marker this generation stamps int
 among the issue's comments before another is posted. That search is asked only when the flag is unset, so a resume
 past the announcement costs nothing.
 
-The held plan PR then gets its original description back and is superseded through the new `supersede_pr` helper:
-one marked notice linking forward to the umbrella, every child, the snapshot ref, and the exact commit, and a close
-if it is still open. Idempotent through the **thread** rather than through a receipt, since the comment and the
+The pull request this cycle's work is on then gets superseded through the new `supersede_pr` helper: one marked notice
+linking forward to the umbrella, every child, the snapshot ref, and the exact commit, and a close if it is still open.
+Which pull request that is depends on the side of publication the generation was entered on, and the two are never
+both there. A generation entered BEFORE the first push names the plan PR this cycle held, which gets its original
+description back first. One entered PAST it names the implementation pull request the candidate was measured on — and
+that one is the sharper of the two, because the tail behind this step deletes the branch and hands the work to
+children: left unsuperseded it is an open change carrying work nobody will finish, pointing at a branch that is gone.
+It is PROVED before it is closed, on the settlement's own reading and for the same reason — the entry the gate froze
+names it and the head it was standing on, and neither can be re-derived — so a pull request nothing could read, one a
+human merged or closed while the adjudication was open, and one somebody pushed to are each a park with the children
+durable, the pull request left where its human put it, and a retry that settles the same recorded verdict once the
+disagreement is reconciled. One already CLOSED over this adjudication's own receipt is none of those: the retirement
+behind this step is not the last, so a tick that closed the pull request and died before it comes back to a `closed`
+reading it cannot tell from a human's without the thread -- read as a settlement it would park for good with the
+children blocked behind a supersession already made. What the receipt answers is the STATE and only that: the head is
+proved on that path exactly as on the open one, because a close does not freeze the branch behind it — somebody
+pushing between the crash and the retry leaves a commit the snapshot does not hold, and waved through the retry would
+settle the split, activate the children, and reclaim that branch. A MERGED one stays a refusal whatever the thread
+says, since a human who reopened and landed the work decided the opposite of what the supersession claims; a reopened
+one reads `open`, so the same head proof runs and the close is made again with the receipt keeping the notice from
+repeating. Every one of those refusals parks under a notice naming the disagreement rather than the write-failure
+sentence, since a supersession this transaction already made is not one that could not be made.
+Idempotent through the **thread** rather than through a receipt, since the comment and the
 record of it cannot be made one operation. Both markers are scoped to the exact adjudication — the pull request
-outlives a cycle and the issue thread outlives everything, so an unscoped one would read an earlier episode's
-receipt as this one's — and both are honored only on a comment **this orchestrator authored**, since an HTML comment
-is invisible in the rendered thread and anybody could otherwise post the marker to suppress the sentence it gates. A
-merged or closed pull request is told and left alone; one that could not be read, or a release that failed on a
-still-open plan PR, parks — and nothing is activated while a pull request carrying the superseded work is still
-open. That last part is why the supersession runs on **every** pass, including one whose ledger already reads
-`reconciled`: that entry records what an earlier pass did, and a human who reopens the pull request between the write
-and the resume would otherwise have the resume skip straight past, report settled, and let the children loose beside
-a change still carrying the superseded work. Re-asking costs one fetch and one comment listing, and neither step
-repeats anything.
+outlives a cycle and the issue thread outlives everything, so an unscoped one would read an earlier episode's receipt
+as this one's — and both are honored only on a comment **this orchestrator authored**, since an HTML comment is
+invisible in the rendered thread and anybody could otherwise post the marker to suppress the sentence it gates. A
+merged or closed plan PR is told and left alone; one that could not be read, or a release that failed on a still-open
+plan PR, parks — and nothing is activated while a pull request carrying the superseded work is still open. That last
+part is why the supersession runs on **every** pass, including one whose ledger already reads `reconciled`: that entry
+records what an earlier pass did, and a human who reopens the pull request between the write and the resume would
+otherwise have the resume skip straight past, report settled, and let the children loose beside a change still
+carrying the superseded work. Re-asking costs one fetch and one comment listing, and neither step repeats anything.
 
 **Then the label, the retirement, and the activation, in that order.** The generation is retired in the same write
 that hands the issue to `workflow:umbrella`: identity, both commits, and both ledgers kept, the measurement dropped,
