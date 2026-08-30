@@ -793,17 +793,28 @@ rather than preserving.
   original can be restored. The `plan_pr` spelling is what live pinned comments carry and stays for that reason; what
   the group NAMES is whichever pull request the cycle holds — the plan one a design discussion left standing where the
   generation was entered before publication, and the implementation one the work is already on where it was entered
-  past it. All three go down in one write before the pull request is edited, so the only thing a crash can lose is the
-  edit — and a head this orchestrator cannot name refuses the hold outright rather than being recorded absent, since
-  the write drops an empty one and what it would leave is an identity and a body with no head between them, on a
-  change already wearing the notice. What restores the body is the release the `single` reconciliation runs: the
-  identity says which pull request this cycle marked, and the body has to BE that hold verbatim before it is written
-  over, so a description a human rewrote — or edited a sentence of, leaving the hidden marker in place — is left as
-  theirs. The hold text is keyed to the cycle and quotes nothing that moves inside one precisely so that comparison is
-  possible: the generation counter advances on every reconciliation that lands, and a body keyed to it could never be
-  reconstructed after a re-measurement. `late_plan_pr_head` is a reading rather than a claim, and neither the retry
-  nor the release is decided by it: it says which change wore the notice, so a pull request somebody pushed to under
-  the hold is reported and left holding the same notice against the same recorded reading. It is **not**
+  past it. Which of the two it names can CHANGE inside a cycle: a generation whose publication entry names a pull
+  request the hold does not is one the adjudication has moved off — guidance resumed the developer, their push landed,
+  and the re-measurement entered the gate on the pull request the work is now on. The old hold is released, the slot
+  freed, and the new one taken, in that order and never both at once, since there is one identity and one preserved
+  body to hold them in; a release that could not be made on a reusable pull request parks the tick instead of
+  spawning. A `pr_number` somebody re-aimed is deliberately not that signal — it names whichever pull request the
+  issue currently records rather than the change under adjudication. All three go down in one write before the pull
+  request is edited, so the only thing a crash can lose is the edit — and a head this orchestrator cannot name refuses
+  the hold outright rather than being recorded absent, since the write drops an empty one and what it would leave is
+  an identity and a body with no head between them, on a change already wearing the notice. What restores the body is
+  the release the `single` reconciliation runs: the identity says which pull request this cycle marked, and the body
+  has to BE that hold verbatim before it is written over, so a description a human rewrote — or edited a sentence of,
+  leaving the hidden marker in place — is left as theirs. The hold text is keyed to the cycle and quotes nothing that
+  moves inside one precisely so that comparison is possible: the generation counter advances on every reconciliation
+  that lands, and a body keyed to it could never be reconstructed after a re-measurement. What the notice SAYS differs
+  by side of publication, because the sentence has to be true of the change its author is looking at: one nothing has
+  pushed to is adjudicated *before anything is published*, while the one the work is already on was published long ago
+  and its notice names the push the adjudication stands in front of instead. Both spellings are recognized and only
+  ever one written, so a record that crosses publication mid-cycle has the notice already standing rewritten rather
+  than read as somebody's own words. `late_plan_pr_head` is a reading rather than a claim, and neither the retry nor
+  the release is decided by it: it says which change wore the notice, so a pull request somebody pushed to under the
+  hold is reported and left holding the same notice against the same recorded reading. It is **not**
   `late_published_sha` below — that one is the head the gate was entered on and what a settlement pins its push to,
   and the hold never writes it.
 - **Publication provenance.** `late_post_publication`, `late_source_stage`, `late_published_pr_number`, and
@@ -841,9 +852,10 @@ rather than preserving.
   instead would walk the issue back to a point it had already passed.
   The push itself is not left to that stage: the settlement makes it, because the settlement is the last tick holding
   the head the verdict was measured over. `late_published_pr_number` is the pull request the work already has, and
-  `late_plan_pr_number` beside it is whichever pull request this cycle's hold marked: the two name the same change on
-  a generation entered past publication, and different ones on a cycle that held a plan pull request and was then
-  re-measured on the far side of a push. `late_published_sha` is the head that pull request was left on, frozen at
+  `late_plan_pr_number` beside it is whichever pull request this cycle's hold marked, and on a generation entered past
+  publication the two settle on the same change: a cycle that held a plan pull request and was then re-measured on the
+  far side of a push reads back with them disagreeing only until the next tick, which releases the first hold and
+  takes the second (see *Held PR* above). `late_published_sha` is the head that pull request was left on, frozen at
   entry like every other late SHA because the branch moves under a reconciliation that re-read it. It is the late
   group's own copy rather than a reading of `implementing_published_sha` above: that key is the publishing stage's
   live record and is overwritten by the next push, while this one is evidence one generation is reconciled against and
