@@ -504,8 +504,11 @@ transaction reconciled (`reconciled`) or could not (`failed`) — the latter bes
 steps park instead. The third producer is the reclamation, and it has three entries into the same emission. One
 is the umbrella's terminal gate, where what the transaction could not reclaim is retried: it emits the same pair
 under `stage: umbrella` on every tick that finds every child resolved and something still owed — the branch
-unconditionally, and the snapshot ref once every recorded direct consumer is terminal, carrying
-`snapshot_delete_failed` where the remote refuses one. The same gate's *park* is the second, and it emits the
+whenever it is owed, and the snapshot ref once every recorded direct consumer is terminal, carrying
+`snapshot_delete_failed` where the remote refuses one. One case emits nothing at all for an owed branch: a split
+entered past publication does not delete the branch while the pull request it superseded is open again, and nothing
+was attempted there, so no `late_cleanup` and no `branch_cleanup_failed` describe it — the terminal that never fires
+and the log line on every visit that holds are what say so. The same gate's *park* is the second, and it emits the
 same way: a child `rejected` or closed by hand ends every consumer exactly as all-resolved does, so an umbrella
 stopped for a human settles from the same scan on its way out. The third is the closed-owner cleanup sweep
 ([`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)),

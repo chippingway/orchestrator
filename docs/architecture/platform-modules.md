@@ -121,7 +121,10 @@ orchestrator/
                         takes, its parser, and the comment watermarks beside it
     pull_requests.py    PR lookup by open state, by commit, and when GitHub could not be asked at all, plus creation,
                         comments, body, labels, SHA-pinned merge, remote-branch delete, and the supersession that
-                        says once on a thread of ours that this change is not to be merged and then closes it
+                        says once on a thread of ours that this change is not to be merged and then closes it --
+                        taking that "already said" answer from the caller where it has one, since the search is a
+                        request and a caller that proved the pull request a moment earlier may not put one between
+                        its proof and the write
     reviews.py          current-head review aggregation: approval verdicts and unread-feedback watermarks
   agents/               publishes the run models, `run_agent`, and `terminate_all_running`
     models.py           the agent result, run-option, and subprocess-result models
