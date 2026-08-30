@@ -260,7 +260,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       activation.py         the dep-graph walk that releases the next children, the child it passes over because
                             GitHub reports it closed or the scan holds no issue for it, the latch asked before
                             EVERY relabel -- a relabel is a request, so a close observed after the first child was
-                            released may not release the second -- and the held-dependency line it logs
+                            released may not release the second -- the pull request a late split superseded these
+                            children out from under asked in the same place and off this parent's own record, so
+                            a caller cannot answer it a child scan too early and a parent that never entered the
+                            gate pays nothing, that ask itself a request and so the latch taken on BOTH sides of
+                            it, the one behind having nothing between it and the relabel, and the
+                            held-dependency line it logs
       blocked.py            the `workflow:blocked` poll and the `workflow:ready` handoff to implementing with its
                             consumed-comment ratchet
       umbrella.py           the `workflow:umbrella` poll, the barriers around everything that acts on the child
@@ -271,7 +276,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             process's -- which is what leaves no live cycle under a `done` no sweep queries, with
                             that write held inside the retirement window and the latch asked once more BEHIND it,
                             where a close is answered by putting the cycle back cancelled rather than refused; the
-                            resolution said once off that same stamp, the label and close asked of a record that
+                            resolution said once off that same stamp -- and, on an umbrella a POST-PUBLICATION
+                            split made and no other, off a marker naming this cycle and generation on the thread,
+                            since only there can the barrier behind it refuse a terminal whose sentence has
+                            already gone out and only there may an umbrella held on a reopened pull request repeat
+                            itself every poll, while a restart out of a rejected cycle keeps the thread; the
+                            publication that split closed asked about once more immediately in front of the
+                            retirement write, which is the boundary past which the group is gone and nothing could
+                            ask again, a refusal there writing nothing at all; the label and close
+                            asked of a record that
                             already says the terminal is due, the close its all-done branch earns
                             instead of
                             an implementation pass, and the reconciliation that close waits on -- the one boundary at
@@ -373,7 +386,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             closed over THIS adjudication's own receipt recognised as the supersession a crashed
                             tick already made rather than as a human's settlement -- though never a MERGED one,
                             whatever the thread says, and never one whose head moved behind the close, since a
-                            close does not freeze the branch the tail behind it reclaims -- the
+                            close does not freeze the branch the tail behind it reclaims -- the publication
+                            asked about between every step of the tail on the same rule the owner is -- in
+                            front of the close, the retirement, EVERY child released, and the branch delete,
+                            the last two from inside the walk and the reclamation rather than in front of
+                            either, since a child scan and a snapshot probe are requests of their own -- since
+                            each is licensed by that supersession being on it and a human can merge, reopen, or
+                            push in between any two; the close itself made against a SECOND
+                            reading taken with no comment listing behind it, so a change settled or pushed to
+                            inside the first window is left untouched rather than marked and closed and only
+                            then refused, with the receipt that reading skipped handed to the write so no thread
+                            scan stands in the interval either; a refusal before the retirement a park with the
+                            record still live and one past it the step declined and left to the umbrella's own
+                            walk or its terminal, which ask the same question themselves, per relabel and per
+                            delete, off the publication group the retirement keeps -- the
                             generation retired onto `workflow:umbrella` in the write that hands the issue on, the
                             activation behind it -- through the shared dep-graph walk, so a child that ended while
                             the supersession was parked is left where it is -- and the branch cleanup recorded as
@@ -388,8 +414,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             log goes on naming what is held: the fresh per-consumer
                             scan every rule here is proved against (a read that fails keeps its own ref and stops
                             nothing else), the branch obligations in every state but reconciled and the refs still
-                            held, the exact-name check a branch and a snapshot ref each have to pass before anything
-                            is deleted by it, the rule that decides whether a ref's recorded consumers have all
+                            held, the refusal -- taken immediately in front of the delete, since the snapshot rule
+                            beside it may spend a probe first -- to delete a branch at all while the pull request
+                            it was superseded under is open again, nothing attempted, nothing recorded failed, the
+                            entry left owed and the terminal held, that same pull request asked about once more by
+                            the settlement the terminal waits on, which is the hold no ledger carries -- a
+                            reclamation that FINISHED owes nothing, so a branch restored and a change reopened
+                            after it would find every entry settled and `done` free to fire over them -- and
+                            nothing written back for it, since nothing is owed and an entry saying so would send a
+                            later pass to delete a branch a human put back, the exact-name check a branch and a snapshot ref each have to
+                            pass before anything is deleted by it, the rule that decides whether a ref's recorded consumers have all
                             ended -- read off each consumer's issue state, since a reopen keeps the terminal label,
                             and whether the list names all of them read off the record's phase, since a child is
                             created before it is recorded, with a PRE-SPLIT phase corroborated against the ledgers
@@ -542,7 +576,17 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             lookup leaves them to raise out of a road whose every other refusal parks -- and a
                             caller's own receipt is read there too, since one that CLOSED the pull request itself
                             and died before the work behind that close was finished cannot tell its own close
-                            from a human's by the state alone
+                            from a human's by the state alone -- and the pull request those facts were read off
+                            travels back with them, so a caller that has to ACT acts on what it proved rather
+                            than on a second lookup a human can move something between; plus the question a
+                            SETTLED split keeps asking, which three owners share: whether the pull request it
+                            closed is still closed over the head it froze, published as the ASK rather than as a
+                            fact and taken off the record every time it is put -- the generation for the
+                            transaction and the reclamation, the pinned comment for the activation walk -- since
+                            a step licensed by an answer the step in front of it took is one a human had time to
+                            overtake, and since the retirement that hands the issue to `workflow:umbrella`
+                            outlives neither the children still to be released nor the branch still to be
+                            deleted
       late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
                             lineage, and the three outcomes with the bounds they are judged against
       late_reply.py         the late reply's own fence, its three structured decisions, and the envelope and split rules

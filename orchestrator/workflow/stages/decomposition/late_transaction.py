@@ -39,9 +39,50 @@ the cancellation reads back: an ending entered at the supersession still owns
 the held pull request, and one entered just past it takes on the superseded
 branch the retirement never got to write down.
 
+**And the publication between every one of them too, on the road that has
+one.** The owner is not the only thing a human moves mid-pass: the pull
+request the close is made on can be merged, reopened, or pushed to, and every
+step of the tail is licensed by that close being on it. So it is asked on the
+same rule and at the same barriers -- in front of the close, in front of the
+retirement, in front of EVERY child released, and immediately in front of the
+branch delete. No step is ever run on evidence a step before it took, and
+"before it" includes the reading a step of its own spent: the child scan a
+release is decided on is a request per child, and the probe the reclamation
+may spend on an ordered ref is another, so the last two barriers live inside
+the walk and inside the reclamation rather than in front of either.
+
+The one in front of the close is why the close is made against a second
+reading rather than the first: the receipt the first carries costs a comment
+listing, which is a round-trip standing between the state and head read beside
+it and the write those two license. Asked again with no listing behind them,
+they are the last thing to reach GitHub before the write -- so a change a
+human settled or somebody pushed to inside that window is left untouched,
+rather than marked and closed and only then refused.
+
+What a refusal costs depends on which side of the retirement it lands. Before
+it the pass parks: the record is live, so the issue stays on `decomposing`
+with the children blocked and the branch intact, and the next tick supersedes
+the same pull request again. Past it there is no live adjudication left to
+park, so the last two barriers decline the step in front of them and leave it
+to the retry that owns it: the umbrella's own walk for the children, its
+terminal for the branch. Which is why the pre-retirement barrier is placed as
+the very last thing before that write, with the branch resolved ahead of it
+rather than between.
+
+Those two retries ask the same question themselves, and that is what makes
+declining a step safe rather than a one-tick delay. The retirement keeps the
+publication group on purpose -- it is the only thing left on the issue naming
+which pull request this split closed -- so the shared activation walk re-asks
+it in front of every relabel it makes and `late_cleanup` re-asks it in front
+of every branch it deletes, on this pass and on every umbrella tick after it.
+Dropped there, a change reopened afterwards would have its work handed to
+children on the very next poll and the ref it points at reaped by the
+terminal.
+
 **Then the label, the retirement, and the activation, in that order.** The
-generation is retired -- identity, commits, and both ledgers kept, the
-measurement dropped -- in the same write that hands the issue to `umbrella`,
+generation is retired -- identity, commits, both ledgers, and the publication
+group kept, the measurement dropped -- in the same write that hands the issue
+to `umbrella`,
 because a live generation pins `workflow:decomposing` and the relabel guard
 would put an early flip straight back. Activation runs after that write for the
 reason the initial split's does: a crash between them must not leave a runnable
@@ -200,8 +241,14 @@ _AT_BOUND_PARK = (
 _SETTLED_PUBLICATION = "PR #{number} is {state} rather than open"
 
 
-_MOVED_PUBLICATION = (
-    "PR #{number} was standing at `{frozen}` and stands at `{moved}` now"
+# What is logged where the barrier past the retirement declines the delete in
+# front of it. Not a park: the issue is an umbrella by then and its own
+# terminal is what comes back for this, so what the sentence owes an operator
+# is the reason and the retry that will take it.
+_HELD_BACK_RECLAMATION = (
+    "issue=#%d is an umbrella and %s, so branch %s was left on the ledger "
+    "rather than deleted behind a change that still points at it; the "
+    "umbrella's terminal reclaims it once every child resolves"
 )
 
 
@@ -223,6 +270,17 @@ _DISAGREEING_PUBLICATION_PARK = (
     "behind it would hand the work to children -- and delete the branch it "
     "points at -- over a change nobody adjudicated. Reconcile the pull "
     "request by hand, and the next tick settles the same recorded verdict."
+)
+
+
+_UNDONE_SUPERSESSION_PARK = (
+    "the committed candidate for this issue was split, its snapshot and "
+    "children are safe, and the supersession was made -- but {disagreement}. "
+    "So no child was activated and the branch was not reclaimed: the "
+    "supersession is what licenses both, and neither may run beside a pull "
+    "request that no longer carries it. Reconcile the pull request by hand, "
+    "and the next tick supersedes it again and settles the same recorded "
+    "verdict."
 )
 
 
@@ -351,26 +409,87 @@ def _retired_split(
     which is the state the third and last owner read is asked from: past it
     an agent runs on somebody's repository, so a close observed anywhere
     between the supersession and here ends the cycle instead.
+
+    The publication is asked again on the same rule and at the same barriers,
+    because the supersession is one round-trip and each step below is another:
+    a human can reopen, merge, or push to the change between any two of them.
+    Every effect here is one nothing takes back -- the children run, the
+    pointer is cleared, and the branch behind the pull request is deleted --
+    and the supersession is what licenses all three, so each is asked for
+    afresh rather than once for the lot.
+
+    What a refusal costs differs by which barrier takes it, and that is the
+    retirement's doing. Before it, the answer is a park: the record is still
+    live, so the issue stays on `decomposing` with the children blocked and
+    the branch intact, and the next tick supersedes the pull request again.
+    Past it there is no record left to park -- the write drops the generation
+    and hands the issue to `umbrella` -- so what the later barriers do is
+    decline the step in front of them and leave it to the retry that owns it:
+    the umbrella's own walk for the children, its terminal for the branch.
+    Narrower than a park and the strongest thing still available, which is why
+    the pre-retirement barrier is placed as the very last thing before that
+    write, with the branch resolved ahead of it rather than between.
     """
     stopped = _stopped_publishing(context)
     if stopped is not None:
         return stopped
-    # Resolved once, ahead of the write that clears `pr_number`: the resolver
-    # falls back to the legacy ref while a pull request is recorded, so a
-    # second reading after that write could name a different branch from the
-    # one this transaction just recorded as owed.
+    # Resolved ahead of the barrier, and ahead of the write that clears
+    # `pr_number`: the resolver falls back to the legacy ref while a pull
+    # request is recorded, so a second reading after that write could name a
+    # different branch from the one this transaction just recorded as owed.
     branch = _worktree_paths._resolve_branch_name(
         context.state, context.spec, context.issue.number,
     )
+    undone = _publication_holds(context)
+    if undone:
+        return _late_outcome._finished(
+            context, _parked_undone(context, undone),
+        )
     ended = _handed_to_children(context, plan, branch)
     if ended is not None:
         return _late_outcome._finished(context, ended)
-    _reclaimed_branch(context, branch)
+    _reclaimed_or_held(context, branch)
     return replace(
         finished,
         disposition=_LateDisposition.SETTLED,
         generation=context.generation,
     )
+
+
+def _parked_undone(
+    context: _LateContext, undone: str,
+) -> _LateDisposition:
+    """Park the pass whose supersession came undone before the retirement."""
+    _parked_publication(
+        context,
+        context.generation.published_pr_number,
+        undone,
+        _UNDONE_SUPERSESSION_PARK,
+    )
+    return _LateDisposition.PARKED
+
+
+def _reclaimed_or_held(context: _LateContext, branch: str) -> None:
+    """Take the branch back, unless the change pointing at it came back.
+
+    The last irreversible act of the whole road, and the furthest from the
+    proof that licensed it: a pinned write, a label write, an owner read, a
+    child scan, and one relabel per child all stand in between. So the
+    publication is asked once more here, and a pull request that is open again
+    keeps its branch -- deleting the ref behind a change somebody reopened is
+    the one part of this tail a later pass could never undo.
+
+    Held rather than failed. The obligation went onto the ledger as `pending`
+    in the retirement write and stays exactly there, so the umbrella's own
+    terminal reclaims it once every child resolves -- which is the retry that
+    already owns this, and the reason no typed failure is emitted for a delete
+    this pass deliberately never attempted.
+    """
+    held = _publication_holds(context)
+    if not held:
+        _reclaimed_branch(context, branch)
+        return
+    log.error(_HELD_BACK_RECLAMATION, context.issue.number, held, branch)
 
 
 def _stopped_publishing(
@@ -511,6 +630,26 @@ def _supersession_marker(context: _LateContext) -> str:
     )
 
 
+def _supersession_notice(
+    context: _LateContext, plan: _SplitPlan, snapshot_ref: str,
+) -> str:
+    """What either road tells the pull request it is closing.
+
+    One sentence for both, because what it says is a fact about the SPLIT
+    rather than about which pull request carried the work: the umbrella it
+    became, the children it went to, the ref it is preserved on, and the exact
+    commit. Which pull request hears it is the caller's question.
+    """
+    return _SUPERSESSION_NOTICE.format(
+        parent=context.issue.number,
+        count=len(plan.created),
+        ref=snapshot_ref,
+        sha=context.generation.candidate_sha,
+        children=_child_lines(plan),
+        marker=_supersession_marker(context),
+    )
+
+
 def _superseded(
     context: _LateContext, plan: _SplitPlan, snapshot_ref: str,
 ) -> bool:
@@ -555,14 +694,7 @@ def _superseded(
     if number is None:
         return True
     settled = _released_hold(context) and _closed_over_notice(
-        context, number, _SUPERSESSION_NOTICE.format(
-            parent=context.issue.number,
-            count=len(plan.created),
-            ref=snapshot_ref,
-            sha=context.generation.candidate_sha,
-            children=_child_lines(plan),
-            marker=_supersession_marker(context),
-        ),
+        context, number, _supersession_notice(context, plan, snapshot_ref),
     )
     if not settled:
         return _unsuperseded(context, number)
@@ -636,12 +768,44 @@ def _superseded_publication(
     transaction had already made. What the receipt answers is the STATE and
     only that: the head is proved on that path exactly as on the open one,
     because a close does not stop anybody pushing to the branch behind it.
+
+    What that reading licenses, and what it may not be spent on, is the owner
+    below.
     """
     number = context.generation.published_pr_number
     if number is None:
         return True
     if not _released_hold(context):
         return _unsuperseded(context, number)
+    return _proved_and_closed(
+        context, number, _supersession_notice(context, plan, snapshot_ref),
+    )
+
+
+def _proved_and_closed(
+    context: _LateContext, number: int, notice: str,
+) -> bool:
+    """Prove the publication is still the one, then supersede it.
+
+    The reading here is not what the close is made against, and that is the
+    other half of the rule the caller states. The receipt costs a comment
+    listing, which is a round-trip of its own standing between the state and
+    head read beside it and the write those two license -- so the state and
+    the head are asked ONCE MORE by the owner below, immediately in front of
+    that write and with no listing behind them. A change a human settled or
+    somebody pushed to inside this window is therefore left untouched: no
+    notice on it, no close, and a park. Discovering it one step later would
+    mean marking and closing a change nobody adjudicated and only then
+    refusing to finish.
+
+    A pull request already closed over this adjudication's own receipt is the
+    one shape that writes nothing at all, and it is recognized here rather
+    than below. `supersede_pr` would post no second notice and close nothing
+    already closed, so both the confirming read and the write would be spent
+    on a call with no effect -- and the state this reading proved is the
+    evidence that says so. Every other way of being closed was refused a
+    statement earlier, so reaching this line closed means closed by us.
+    """
     reading = _late_publication._read_publication(
         context.gh, context.issue, number, _supersession_marker(context),
     )
@@ -649,8 +813,12 @@ def _superseded_publication(
         return _unsuperseded(context, number)
     unsettled = _publication_is_still_the_one(context, reading, number)
     if unsettled:
-        return _parked_publication(context, number, unsettled)
-    return _closed_publication(context, plan, snapshot_ref, number)
+        return _parked_publication(
+            context, number, unsettled, _DISAGREEING_PUBLICATION_PARK,
+        )
+    if reading.state == _late_publication.CLOSED:
+        return _recorded_supersession(context, number)
+    return _closed_publication(context, number, notice, reading.superseded)
 
 
 def _publication_is_still_the_one(
@@ -729,13 +897,13 @@ def _publication_moved(
     frozen = context.generation.published_sha
     if head == frozen:
         return ""
-    return _MOVED_PUBLICATION.format(
+    return _late_publication._MOVED_PUBLICATION.format(
         number=number, frozen=frozen, moved=head or "an unreadable head",
     )
 
 
 def _parked_publication(
-    context: _LateContext, number: int, disagreement: str,
+    context: _LateContext, number: int, disagreement: str, park: str,
 ) -> bool:
     """Park with the children durable and the pull request left alone.
 
@@ -746,38 +914,64 @@ def _parked_publication(
 
     Parked with the disagreement in the notice rather than with the write
     failure's sentence, because this is not a supersession that failed. It is
-    one this transaction refuses to finish -- and on the receipt path it is
-    one it already MADE -- so telling the human it "could not be superseded"
-    would send them looking for a write that never went wrong.
+    one this transaction refuses to finish -- and past the close it is one it
+    already MADE -- so telling the human it "could not be superseded" would
+    send them looking for a write that never went wrong. Which of the two the
+    human is reading is `park`: a pull request that may not be superseded and
+    one whose supersession came undone are different things to reconcile, and
+    only the caller knows which side of the close it is on.
     """
     log.error(
         "issue=#%d was adjudicated as a split against PR #%d and %s; "
-        "refusing to finish a split over a publication this verdict "
-        "is not about",
+        "refusing to finish that split behind it",
         context.issue.number, number, disagreement,
     )
     return _unsuperseded(
-        context, number,
-        _DISAGREEING_PUBLICATION_PARK.format(disagreement=disagreement),
+        context, number, park.format(disagreement=disagreement),
     )
 
 
 def _closed_publication(
-    context: _LateContext, plan: _SplitPlan, snapshot_ref: str, number: int,
+    context: _LateContext, number: int, notice: str, said: bool,
 ) -> bool:
-    """Put the supersession on the proved publication, and record it."""
-    settled = _closed_over_notice(
-        context, number, _SUPERSESSION_NOTICE.format(
-            parent=context.issue.number,
-            count=len(plan.created),
-            ref=snapshot_ref,
-            sha=context.generation.candidate_sha,
-            children=_child_lines(plan),
-            marker=_supersession_marker(context),
-        ),
+    """Confirm the publication has not moved, then close it, then record it.
+
+    The confirming read is what separates this from a close made on evidence
+    one round-trip old. What it asks is the state and the head and nothing
+    else -- no receipt, since the caller already read that one -- so it is the
+    last thing to reach GitHub before the write it licenses, and the window
+    left is the write itself.
+
+    `said` is that receipt, carried down rather than looked up again. The
+    helper below would otherwise scan the thread for it before posting, which
+    is a request standing between this confirmation and the close it
+    authorizes -- long enough for a human to settle the change, and the notice
+    would then land on a settlement somebody else made and report success.
+    Nothing can move the answer in between: the marker counts only on a
+    comment of OURS, and this pass has posted none since the caller looked.
+
+    A publication that moved inside the first window is left exactly as its
+    human put it. Nothing is posted onto it and nothing is closed: a change
+    somebody settled while this was reading is theirs, and a branch somebody
+    pushed to is not the one the verdict was taken over.
+    """
+    confirmed = _late_publication._read_publication(
+        context.gh, context.issue, number,
     )
-    if not settled:
+    if confirmed.refused:
         return _unsuperseded(context, number)
+    overtaken = _publication_is_still_the_one(context, confirmed, number)
+    if overtaken:
+        return _parked_publication(
+            context, number, overtaken, _DISAGREEING_PUBLICATION_PARK,
+        )
+    if not _superseded_pull_request(context, confirmed, notice, said):
+        return _unsuperseded(context, number)
+    return _recorded_supersession(context, number)
+
+
+def _recorded_supersession(context: _LateContext, number: int) -> bool:
+    """Write the supersession this pass either made or found already made."""
     _recorded_resource(
         context,
         LateResourceKind.PLAN_PR,
@@ -785,6 +979,53 @@ def _closed_publication(
         LateResourceState.RECONCILED,
     )
     return True
+
+
+def _superseded_pull_request(
+    context: _LateContext,
+    confirmed: _late_publication._PublicationReading,
+    notice: str,
+    said: bool,
+) -> bool:
+    """Hand one just-confirmed pull request its supersession, and nothing else.
+
+    `said` goes with the call so the helper spends no request of its own
+    looking for a receipt this pass already read. What is left between the
+    confirmation above and the write is nothing at all.
+
+    Guarded for the reason the plan road guards its fetch: by the time this
+    runs the children are already live, so an exception would strand them
+    behind a traceback instead of behind a retry. A reading that carried no
+    pull request carried a refusal, which the caller has already answered --
+    this is the floor under it, superseding nothing it was handed nothing for.
+    """
+    if confirmed.pull_request is None:
+        return False
+    try:
+        return context.gh.supersede_pr(
+            confirmed.pull_request,
+            notice=notice,
+            marker=_supersession_marker(context),
+            carries_marker=said,
+        )
+    except Exception:
+        log.exception(
+            "issue=#%d could not supersede the publication it had confirmed",
+            context.issue.number,
+        )
+        return False
+
+
+def _publication_holds(context: _LateContext) -> str:
+    """Why the close this pass made no longer holds, or "".
+
+    The shared reading one owner down, taken off the record this pass is
+    carrying -- which still names the publication past the retirement, since
+    that write keeps the group.
+    """
+    return _late_publication._publication_undone(
+        context.gh, context.issue, context.generation,
+    )
 
 
 def _closed_over_notice(
@@ -837,6 +1078,14 @@ def _handed_to_children(
     write that reads nothing -- the transition guard only warns by default, so
     nothing else would stop it. The walk reads each child fresh and moves only
     the ones still `blocked` with their recorded dependencies satisfied.
+
+    And the publication is asked about again inside that walk rather than
+    here, immediately in front of each relabel it makes. Here would be one
+    child scan too early: the scan is a request per child, and a walk licensed
+    by a reading taken in front of it would release its second child on
+    evidence taken before its first. A pull request that came back leaves
+    every child exactly where it is -- the umbrella's own walk is the retry,
+    and it asks the same question in the same place on its next tick.
     """
     context.generation = _settled_generation(context.generation, branch)
     # The pull request this issue recorded is closed and carries superseded
@@ -934,6 +1183,17 @@ def _settled_generation(
     child register stays with them: it is what says which child owns which
     slice of the manifest, and a transaction re-entered against a retired
     generation has to adopt them rather than open a second set.
+
+    And the publication group stays, which is the one part of this that is
+    about a question rather than an obligation. Everything the supersession
+    licenses is not finished when this write lands: children are still to be
+    released and a branch is still to be deleted, and both run on later ticks
+    under `umbrella`, where nothing else on the issue could say which pull
+    request this split closed or what head it closed over. Dropping the group
+    here would leave those two steps with nothing to re-ask, so a change
+    somebody reopened afterwards would have its branch deleted under it and
+    its work handed to children anyway. It costs no live adjudication: what
+    pins `workflow:decomposing` is the measurement, and that is what goes.
     """
     owed = _late_cleanup._record_branch_obligation(generation, branch)
     return LateGeneration(
@@ -946,6 +1206,10 @@ def _settled_generation(
         candidate_sha=owed.candidate_sha,
         base_sha=owed.base_sha,
         phase=LatePhase.CLEANING_UP,
+        post_publication=owed.post_publication,
+        source_stage=owed.source_stage,
+        published_pr_number=owed.published_pr_number,
+        published_sha=owed.published_sha,
         resources=owed.resources,
         consumers=owed.consumers,
         split_children=owed.split_children,

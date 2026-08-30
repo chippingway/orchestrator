@@ -31,6 +31,7 @@ per-file-ignores =
     orchestrator/workflow/stages/conflicts/publication.py:WPS201
     orchestrator/workflow/stages/conflicts/resume.py:WPS201
     orchestrator/workflow/stages/conflicts/routing.py:WPS201
+    orchestrator/workflow/stages/decomposition/activation.py:WPS201
     orchestrator/workflow/stages/decomposition/blocked.py:WPS201
     orchestrator/workflow/stages/decomposition/outcomes.py:WPS201
     orchestrator/workflow/stages/decomposition/run.py:WPS201
@@ -96,4 +97,6 @@ per-file-ignores =
     orchestrator/github/pull_requests.py:WPS214
     tests/workflow/fixtures.py:WPS201
     tests/workflow/patch_models.py:WPS202
+    tests/workflow/stages/decomposition/test_late_cleanup_publication.py:WPS201
+    tests/workflow/stages/decomposition/test_late_transaction_published.py:WPS201
     tests/workflow/stages/implementing/test_late_gate_retry.py:WPS202

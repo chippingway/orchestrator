@@ -136,21 +136,32 @@ class _PullStatusService:
         pr.state = _STATE_CLOSED
         return True
 
-    def supersede_pr(self, pr: FakePR, *, notice: str, marker: str) -> bool:
+    def supersede_pr(
+        self,
+        pr: FakePR,
+        *,
+        notice: str,
+        marker: str,
+        carries_marker: Optional[bool] = None,
+    ) -> bool:
         """Post one marked supersession notice and close an open PR.
 
         Idempotent through the thread, exactly as the real helper is: the
         marker is looked for among the pull request's own conversation
         comments, so a second call after a crash adds nothing and closes
         nothing that is already settled.
+
+        `carries_marker` is that search already made, and it is honored here
+        for the reason the real helper honors it: the search is a request, and
+        a caller that hands over an answer it already has leaves no round-trip
+        between its own proof and this write. Every scan this fake DOES make
+        is recorded, so a test can say that a mutation path took none.
         """
         if pr.number in self.unsupersedable_prs:
             return False
-        carried = any(
-            marker in (pr_comment.body or "")
-            for pr_comment in pr.issue_comments
-        )
-        if not carried:
+        if carries_marker is None:
+            carries_marker = self._pr_carries_marker(pr, marker)
+        if not carries_marker:
             self.pr_comment(pr.number, notice)
         if self.pr_state(pr) == _STATE_OPEN:
             pr.state = _STATE_CLOSED
@@ -163,6 +174,14 @@ class _PullStatusService:
     def delete_remote_branch(self, branch: str) -> bool:
         self.deleted_remote_branches.append(branch)
         return self.delete_remote_branch_returns_ok
+
+    def _pr_carries_marker(self, pr: FakePR, marker: str) -> bool:
+        """Whether this thread already carries `marker`, recording the ask."""
+        self.marker_scans.append(pr.number)
+        return any(
+            marker in (pr_comment.body or "")
+            for pr_comment in pr.issue_comments
+        )
 
     def _pr_carries(
         self, pr: FakePR, branch: str, head_sha: str,

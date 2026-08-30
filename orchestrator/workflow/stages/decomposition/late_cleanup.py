@@ -43,6 +43,21 @@ either delete. A target that does not match is recorded `failed` and holds the
 terminal open for a human, which is the one answer that neither deletes
 somebody else's work nor quietly forgets the obligation.
 
+**Except while the change it was superseded under is back.** A branch is taken
+away from a pull request a split closed, so a human who reopened that change
+has one pointing at a ref this pass would remove out from under them -- and
+that is the one answer here no later visit could put back. What still names
+the pull request is the record: the split's retirement keeps the publication
+group for exactly this. Nothing is attempted and nothing is recorded `failed`,
+since no delete went out; the entry stays owed, which holds the terminal, and
+the log line beside it is what says why.
+
+Asked immediately in front of the delete rather than while the work list is
+built, and the difference is a request: the snapshot rule below may spend a
+read-only probe deciding whether an ordered ref is already gone, and a human
+can reopen a pull request inside it. An answer good enough to build a list
+with is not one good enough to delete on.
+
 **The snapshot is not.** A ref may be deleted only once every recorded direct
 consumer has ENDED, and all-children-resolved is exactly when that becomes
 true for the consumers this split created. Ended is read off the consumer's
@@ -89,6 +104,19 @@ it. What the child would have read the receipt FOR still reaches it: the
 transport drops this host's copy of the ref before it touches the remote and
 refuses the reclamation outright if that copy cannot be proved gone, so a
 child reopened afterwards asks the remote once and its own guard stops it.
+
+**And the terminal is held by one thing the ledger cannot hold it by.** A
+split entered past publication owes an answer as well as its obligations:
+whether the pull request it closed is still closed. The two can disagree
+exactly where it matters -- a reclamation that FINISHED leaves nothing owed,
+so a human who restores the branch and reopens the change afterwards finds
+every entry settled and the terminal free. What that terminal writes is `done`
+and a close, and the write ahead of it drops the publication group, so nothing
+would ask again and an open change carrying superseded work would be left
+under a parent this workflow had declared finished. The answer is not written
+back to the ledger: nothing IS owed the remote there, and an entry claiming
+otherwise would send a later pass to delete a branch a human put back on
+purpose.
 
 **Nothing that cannot be proved settled lets a terminal fire.** An obligation
 ledger this binary could not fully type blocks outright: the entries it could
@@ -149,6 +177,9 @@ from orchestrator.workflow.late_split.models import (
     LateResource,
     LateResourceKind,
     LateResourceState,
+)
+from orchestrator.workflow.stages.decomposition import (
+    late_publication as _late_publication,
 )
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
@@ -212,6 +243,15 @@ _RELEASED_NOTICE = (
 # cannot be read. It names no resource because there is no resource to name --
 # only the fact that what is owed is unknown.
 _OPAQUE = "an obligation this orchestrator cannot read"
+
+# What is logged where a branch is owed and the change it was superseded under
+# is open again. Said on every visit that holds, for the reason the held
+# terminal is: a reclamation that will not happen and never says why is the
+# one shape an operator cannot act on.
+_HELD_BACK_BRANCH = (
+    "issue=#%d %s, so branch %s was left on the ledger rather than deleted "
+    "out from under a change that points at it"
+)
 
 # The phases that come BEFORE the split loop, where the whole account of the
 # children cut from this generation's ref is "there are none yet": `splitting`
@@ -1189,21 +1229,59 @@ def _reclaimed(walk: _Pass, generation: LateGeneration) -> _Reclamation:
     but what the settling owes anybody: a cancelled cycle tells its consumers
     nothing, and its owner takes no terminal until its own ending has run.
     """
-    asked = _asked_of(walk, generation)
     settled = generation
-    for kind, target in asked:
+    acted = []
+    for owed in _asked_of(walk, generation):
         settled = _observed_close(walk, settled)
-        if kind == _BRANCH:
-            settled = _reclaim_branch(
-                walk.gh, walk.spec, walk.issue.number, settled, target,
-            )
-        else:
-            settled = _reclaim_snapshot(walk, settled, target)
-    entries = _settled_entries(settled, asked)
+        reclaimed = _reclaimed_one(walk, settled, *owed)
+        if reclaimed is not None:
+            settled = reclaimed
+            acted.append(owed)
+    entries = _settled_entries(settled, tuple(acted))
     return _Reclamation(
         generation=settled,
         entries=entries,
         moved=_moved_entries(generation, entries),
+    )
+
+
+def _reclaimed_one(
+    walk: _Pass,
+    generation: LateGeneration,
+    kind: LateResourceKind,
+    target: str,
+) -> Optional[LateGeneration]:
+    """Settle one obligation, or None where this pass may not touch it.
+
+    The branch is the one that can be refused here, and it is refused HERE
+    rather than where the work list was assembled because of what stands
+    between the two: the snapshot rule may spend a remote probe deciding
+    whether an ordered ref is already gone, and a human can reopen the pull
+    request inside it. An answer good enough to build a list with is not one
+    good enough to delete on.
+
+    What it protects is the one act on this pass nothing could undo. A split
+    closed that pull request and this delete is what takes its branch away, so
+    a human who reopened it has a change pointing at a ref this would remove
+    out from under them. The record is what still names it: the retirement
+    keeps the publication group for exactly this.
+
+    Declined rather than recorded `failed`, and the difference matters.
+    Nothing was attempted, so there is nothing to report and nothing to write;
+    the entry stays owed, which holds the umbrella's terminal open, and the log
+    line is what says why. A `failed` entry would claim a delete that never
+    went out.
+    """
+    if kind != _BRANCH:
+        return _reclaim_snapshot(walk, generation, target)
+    undone = _late_publication._publication_undone(
+        walk.gh, walk.issue, generation,
+    )
+    if undone:
+        log.error(_HELD_BACK_BRANCH, walk.issue.number, undone, target)
+        return None
+    return _reclaim_branch(
+        walk.gh, walk.spec, walk.issue.number, generation, target,
     )
 
 
@@ -1320,21 +1398,57 @@ def _settled_for_terminal(
     `workflow:umbrella` for the next tick to ask again, which is what makes an
     unreclaimed remote loud instead of silent. An issue with no recorded
     generation owes nothing and answers without a write.
+
+    The ledger is not the whole of what holds it. A split entered past
+    publication owes the terminal one question as well as its obligations --
+    whether the pull request it closed is still closed -- and that is asked
+    HERE rather than left to the ledger, because the two can disagree: a
+    reclamation that finished leaves nothing owed, so a human who restores the
+    branch and reopens the change afterwards would find every entry settled
+    and the terminal free to fire. What that terminal writes is `done` and a
+    close, and the write ahead of it drops the publication group -- so nothing
+    would ever ask again, and an open change carrying superseded work would be
+    left under a parent this workflow had declared finished.
+
+    Asked before anything is SAID, which is why it belongs to this owner and
+    not to the completion behind it: the resolution comment is gated on a
+    stamp the retirement write puts down, so a refusal taken past that comment
+    would repeat it on every tick that holds.
     """
     generation = _late_state.read_late_generation(state)
     if not generation.is_present:
         return _owes_nothing_uncorrelated(issue, generation)
-    held = _blocking(_settle(gh, spec, issue, state, scan))
+    settled = _settle(gh, spec, issue, state, scan)
+    held = _blocking(settled) + _unsettled_publication(gh, issue, settled)
     if not held:
         return True
     # Said on every tick that holds, because a hold with nothing attempted
     # writes nothing and emits nothing: an umbrella that will not close and
     # never says why is the one shape an operator cannot act on.
     log.info(
-        "issue=#%d holds its terminal until the remote lets go of: %s",
-        issue.number, ", ".join(held),
+        "issue=#%d holds its terminal on: %s", issue.number, ", ".join(held),
     )
     return False
+
+
+def _unsettled_publication(
+    gh: GitHubClient, issue: Issue, generation: LateGeneration,
+) -> tuple[str, ...]:
+    """What holds a terminal when the change a split closed has come back.
+
+    A reason rather than an obligation, and it is deliberately not written to
+    the ledger. Nothing here is owed the remote: the branch really was
+    reclaimed and the ref really was let go, and an entry claiming otherwise
+    would send a later pass to delete a branch a human put back on purpose.
+    What is unfinished is the pull request, and the only thing this workflow
+    may do about that is decline to close over it and say so.
+
+    Empty for everything that never had a publication, and no request is spent
+    on any of them -- which is every umbrella the initial decomposer made and
+    every split entered before the first push.
+    """
+    undone = _late_publication._publication_undone(gh, issue, generation)
+    return (undone,) if undone else ()
 
 
 def _owes_nothing_uncorrelated(

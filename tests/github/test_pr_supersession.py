@@ -131,6 +131,76 @@ class PullRequestSupersessionTest(unittest.TestCase):
                 pull_request.edit.assert_not_called()
 
 
+class SuppliedReceiptTest(unittest.TestCase):
+    """The answer a caller already has, handed over instead of re-read.
+
+    The search this helper makes for its own marker is a request, and there
+    are callers for whom that request is one too many: a split proves the
+    state and head of the pull request it is about to close and then writes,
+    and a scan standing between those two is long enough for a human to settle
+    the change -- after which the notice lands on their settlement and this
+    reports success. Nothing else can move the answer in that window, since
+    the marker counts only on a comment of ours, so a caller that looked a
+    moment ago may say what it saw.
+
+    Both values are proved against a thread that says the OPPOSITE, because
+    that is the only way to show which of the two the helper acted on.
+    """
+
+    def setUp(self) -> None:
+        self.gh = GitHubClient.__new__(GitHubClient)
+        self.gh._bot_login = _BOT_LOGIN
+
+    def test_a_supplied_receipt_says_nothing_twice(self) -> None:
+        pull_request = _unmarked_pr()
+
+        superseded = self.gh.supersede_pr(
+            pull_request,
+            notice=_NOTICE,
+            marker=_MARKER,
+            carries_marker=True,
+        )
+
+        self.assertTrue(superseded)
+        pull_request.get_issue_comments.assert_not_called()
+        pull_request.create_issue_comment.assert_not_called()
+        pull_request.edit.assert_called_once_with(state=_STATE_CLOSED)
+
+    def test_a_supplied_absence_says_it(self) -> None:
+        pull_request = _unmarked_pr()
+        pull_request.get_issue_comments.return_value = [
+            _bot_comment(f"earlier notice\n\n{_MARKER}"),
+        ]
+
+        superseded = self.gh.supersede_pr(
+            pull_request,
+            notice=_NOTICE,
+            marker=_MARKER,
+            carries_marker=False,
+        )
+
+        self.assertTrue(superseded)
+        pull_request.get_issue_comments.assert_not_called()
+        pull_request.create_issue_comment.assert_called_once_with(_NOTICE)
+        pull_request.edit.assert_called_once_with(state=_STATE_CLOSED)
+
+    def test_a_settled_pr_is_still_not_reclosed(self) -> None:
+        # The close is decided by the state either way: what the supplied
+        # answer replaces is the search, and nothing else.
+        pull_request = _unmarked_pr(merged=True)
+
+        self.gh.supersede_pr(
+            pull_request,
+            notice=_NOTICE,
+            marker=_MARKER,
+            carries_marker=False,
+        )
+
+        pull_request.get_issue_comments.assert_not_called()
+        pull_request.create_issue_comment.assert_called_once_with(_NOTICE)
+        pull_request.edit.assert_not_called()
+
+
 class PullRequestSupersessionRefusalTest(unittest.TestCase):
     """What a marker nobody here wrote, and a refused call, are worth."""
 

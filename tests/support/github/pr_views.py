@@ -27,6 +27,10 @@ class _PullHistoryView:
     def deleted_remote_branches(self) -> list[str]:
         return self._pull_history._deleted_remote_branches
 
+    @property
+    def marker_scans(self) -> list[int]:
+        return self._pull_history._marker_scans
+
 
 class _PullStateView:
     @property
