@@ -858,8 +858,14 @@ rather than preserving.
   takes the second (see *Held PR* above). `late_published_sha` is the head that pull request was left on, frozen at
   entry like every other late SHA because the branch moves under a reconciliation that re-read it. It is the late
   group's own copy rather than a reading of `implementing_published_sha` above: that key is the publishing stage's
-  live record and is overwritten by the next push, while this one is evidence one generation is reconciled against and
-  is dropped with the generation. The flag alone proves none of it — `LateGeneration.has_publication_context` holds
+  live record and is overwritten by the next push, while this one is evidence one generation is reconciled against.
+  Which generation drops it matters: a settled `single` retires the whole record, and so does an umbrella's own
+  terminal, but the **split's** retirement onto `workflow:umbrella` keeps the group where it drops the measurement.
+  Everything that supersession licensed is still to come at that point — the children the umbrella's walk releases
+  and the branch its terminal reclaims, both on later ticks — and this group is the only thing left on the issue
+  naming which pull request was closed and the head it was closed over, so the walk, the reclamation, and the
+  terminal each re-read it before they act. The terminal's retirement drops it last, immediately behind the barrier
+  that asks it one final time. The flag alone proves none of it — `LateGeneration.has_publication_context` holds
   only while the stage, the pull request, and the head are all readable beside it, so a group a hand edit half-damaged
   reads as context nothing may act on rather than as a publication with no pull request to name, and
   `LateGeneration.with_publication` refuses to record one that cannot name all three. A restart's fresh cycle keeps

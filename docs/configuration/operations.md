@@ -404,7 +404,7 @@ pinned comment, a `late_failure` carrying `restart_failed` reaches both sinks, a
 that is still owed rather than starting over. `backlog` or `paused` on the issue defers the whole restart until the
 control label comes off; the authorization is not lost meanwhile.
 
-**What to look at when something is not going away.** Three signals, and they mean different things:
+**What to look at when something is not going away.** Four signals, and they mean different things:
 
 - A `late_failure` carrying `snapshot_delete_failed` or `branch_cleanup_failed` (see
   [`../observability/event-streams.md`](../observability/event-streams.md#late-split-records-both-sinks)), together
@@ -422,6 +422,15 @@ control label comes off; the authorization is not lost meanwhile.
   waiting for on each tick. A child that stays open forever keeps its ancestor's ref forever, which is the
   deliberate trade — invalidating a live child's only copy of the work it was told to reuse is worse. Closing (or
   finishing) the child is what lets both go.
+- An umbrella that will not close with **nothing owed at all** — every obligation `reconciled`, no failure on
+  either sink. The issue was split on the far side of publication, and the pull request that split superseded is
+  open again (or was merged, or has been pushed to since). Everything the umbrella still had to do was licensed by
+  that change being closed, so the parent holds rather than handing itself `done` over a live change carrying
+  superseded work: no child is released, the branch is left wherever it is, and the terminal waits. There is nothing
+  on the ledger to look at because nothing is owed the remote — the reason is only in the log line, said on every
+  tick that holds and naming the pull request. Settling that pull request is what clears it; the label staying put
+  is the retry. Do not expect the orchestrator to re-delete a branch you restored — a branch put back by hand is
+  yours, and refusing to remove it is the point.
 - A `late_cleanup` carrying `outcome: reclaiming`, and an umbrella that will not close over a ref that is already
   **gone**. That state is progress, not failure: the decision is written down before the delete, so an entry left in
   it is one whose delete landed while a child it owes a receipt could not be reached. Every obligation short of
