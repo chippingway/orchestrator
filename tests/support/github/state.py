@@ -28,6 +28,10 @@ class _FakePullHistory:
     _edited_pr_bodies: _CommentHistory = field(default_factory=list)
     _merge_calls: list[tuple[int, str, str]] = field(default_factory=list)
     _deleted_remote_branches: list[str] = field(default_factory=list)
+    # Every thread scan a supersession made for itself. A caller that already
+    # holds the answer hands it over instead, so this stays empty on the paths
+    # that may not put a request between their proof and their write.
+    _marker_scans: list[int] = field(default_factory=list)
 
 
 @dataclass

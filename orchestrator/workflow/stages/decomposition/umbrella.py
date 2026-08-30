@@ -26,6 +26,33 @@ request of its own. A remote that refuses holds the parent open, because an
 umbrella closed over an unreclaimed ref is an obligation nobody would ever
 settle, while one still open is a retry every tick.
 
+A parent that became an umbrella through a split entered PAST publication owes
+one more thing, and it is a question rather than an obligation: the pull
+request that split closed has to still be closed. Everything this handler does
+for such a parent is licensed by that supersession -- the children it releases
+are taking over the work that change carried, and the branch its terminal
+reclaims is the one that change points at -- and the transaction that proved
+it is several ticks gone. So the record's own publication group, which the
+retirement keeps for exactly this, is asked again -- immediately in front of
+each act it licenses, never once for the handler. The activation walk asks
+before every relabel it makes; the reclamation asks before the delete; the
+settlement the terminal waits on asks before anything is SAID; and the
+completion asks once more immediately in front of the retirement write, which
+is the boundary itself.
+
+The last two are one question at two moments, and both are needed. It is the
+answer no ledger carries -- a reclamation that finished owes nothing, so an
+entry-driven terminal would fire over a change reopened afterwards, and the
+write behind it drops the very group that could have said so. And the sentence
+between them is a request of its own, so a reopen can land inside it: refusing
+there costs a sentence already gone out, which is why THAT umbrella's sentence
+is gated on the thread as well as on the stamp the retirement write puts down.
+Only that one. Nothing refuses the others past their sentence, so none of them
+pays for a comment listing or carries a receipt nothing would read -- and the
+receipt names the cycle and generation, since an operator restarting a
+rejected cycle keeps the thread and one scoped to the issue alone would
+silence the sentence the cycle after it owes.
+
 All-resolved is not the only reading that makes it true, which is why the same
 settlement runs on the way OUT. A child rejected and a child closed by hand
 both park this parent for a human, and both closed the child -- which is what
@@ -42,6 +69,7 @@ import logging
 from github.Issue import Issue
 
 from orchestrator import config
+from orchestrator.github import comments as _github_comments
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
@@ -57,12 +85,27 @@ from orchestrator.workflow.stages.decomposition import (
 from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
 )
+from orchestrator.workflow.stages.decomposition import (
+    late_publication as _late_publication,
+)
 from orchestrator.workflow.stages.decomposition import parents as _parents
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
+
+# Stamped into the sentence a resolved umbrella says, so a terminal refused
+# after that sentence went out does not say it again on the next poll. Scoped
+# to the exact cycle and generation, because the thread outlives both: an
+# operator who takes a settled cancellation's terminal off starts a fresh
+# cycle on the same issue, and a receipt naming only the issue would silence
+# the sentence that cycle owes its humans. An HTML comment, so it is
+# invisible in the rendered thread.
+_RESOLVED_MARKER = (
+    "<!--orchestrator-umbrella-resolved:issue={issue}"
+    ":cycle={cycle}:generation={generation}-->"
+)
 
 
 def _handle_empty_umbrella(
@@ -128,6 +171,8 @@ def _complete_umbrella(
     state.set(_state._UMBRELLA_RESOLVED_AT, _usage._now_iso())
     if _late_cancellation._latched_close_ends(gh, spec, issue, state):
         return
+    if _publication_holds_the_terminal(gh, issue, state):
+        return
     live = _retired_cycle(state)
     retiring = _observations.retiring(spec.slug, issue.number, live.cycle_id)
     with retiring.held():
@@ -135,6 +180,39 @@ def _complete_umbrella(
     if _reinstated(gh, issue, state, live, retiring):
         return
     _finished_umbrella(gh, issue)
+
+
+def _publication_holds_the_terminal(
+    gh: GitHubClient, issue: Issue, state: PinnedState,
+) -> bool:
+    """Whether the change this split closed still lets the terminal fire.
+
+    Asked immediately in front of the retirement write, because that write IS
+    the boundary: past it the publication group is gone, and the label and
+    close behind it take the issue off every surface a tick would come back
+    through. Nothing would ever ask again, and what would be left is an open
+    change carrying superseded work under a parent this workflow had declared
+    finished.
+
+    The settlement the terminal waits on asks the same question before
+    anything is said, so what reaches here is only a reopen that landed inside
+    the resolution comment or the latches beside it -- each of them a request,
+    and none of them a moment a reading taken in front of them survives.
+
+    A refusal writes nothing at all. The record on the remote is exactly as
+    this pass found it: the group intact, the cycle live, the label `umbrella`
+    -- so the next tick asks earlier, where refusing costs nothing, and every
+    tick after that until a human settles the pull request. The one thing
+    already spent is the sentence, and the thread is what stops that repeating.
+    """
+    undone = _late_publication._release_undone(gh, issue, state)
+    if not undone:
+        return False
+    log.error(
+        "issue=#%s holds the terminal its children earned: %s",
+        issue.number, undone,
+    )
+    return True
 
 
 def _reinstated(
@@ -210,16 +288,69 @@ def _resolution_said(
 ) -> None:
     """Say once that every child resolved, with what the issue cost.
 
-    Gated on the stamp rather than on a marker of its own, because the stamp
-    is what a resumed terminal has instead of memory: a pass that died
-    between this comment and the write that records it says it again, and one
-    that died after that write does not.
+    Gated on the stamp, which is what a resumed terminal has instead of
+    memory: a pass that died between this comment and the write that records
+    it says it again, and one that died after that write does not. That is
+    every umbrella there has ever been, and it stays exactly that.
+
+    A post-publication split's is gated on the THREAD as well, and only that
+    one. What the second gate covers is a window only that road has: the
+    barrier immediately in front of the retirement write can refuse a terminal
+    whose sentence has already gone out, and an umbrella held on a reopened
+    pull request would otherwise repeat itself on every poll for as long as a
+    human took to settle it. Nothing refuses the others there, so none of them
+    pays for a comment listing or carries a receipt nothing would read.
+
+    Walked whole rather than from a watermark, for the reason the split's own
+    announcement is: this post moves every watermark the mode keeps past
+    itself, so a bounded scan would start above the very comment it looks for.
     """
+    generation = _late_state.read_late_generation(state)
+    if not generation.has_publication_context:
+        _comments._post_issue_comment(
+            gh, issue, state, _resolution_body(state),
+        )
+        return
+    marker = _resolved_marker(issue, generation)
+    if _resolution_on_thread(gh, issue, marker):
+        return
+    _comments._post_issue_comment(
+        gh, issue, state, f"{_resolution_body(state)}\n\n{marker}",
+    )
+
+
+def _resolution_body(state: PinnedState) -> str:
+    """The sentence a resolved umbrella owes its thread, and what it cost."""
     close_body = ":white_check_mark: all children resolved; closing umbrella issue."
     verdict = _usage._format_issue_usage_verdict(state)
-    if verdict:
-        close_body = f"{close_body}\n\n{verdict}"
-    _comments._post_issue_comment(gh, issue, state, close_body)
+    if not verdict:
+        return close_body
+    return f"{close_body}\n\n{verdict}"
+
+
+def _resolved_marker(issue: Issue, generation: LateGeneration) -> str:
+    """The receipt this cycle's resolution sentence carries."""
+    return _RESOLVED_MARKER.format(
+        issue=issue.number,
+        cycle=generation.cycle_id,
+        generation=generation.generation,
+    )
+
+
+def _resolution_on_thread(
+    gh: GitHubClient, issue: Issue, marker: str,
+) -> bool:
+    """Whether THIS cycle has already said its children all resolved.
+
+    Ours, because an HTML comment is invisible in the rendered thread and
+    anybody could otherwise post the marker that silences the one sentence
+    saying this issue is finished.
+    """
+    return _github_comments.carries_own_marker(
+        gh.comments_after(issue, None),
+        marker,
+        bot_login=getattr(gh, "_bot_login", None),
+    )
 
 
 def _finished_umbrella(gh: GitHubClient, issue: Issue) -> None:
@@ -342,7 +473,6 @@ def _acted_on_children(
     if all(label == _state._DONE for label in scan.labels.values()):
         _completed_or_cancelled(gh, spec, issue, state, scan)
         return
-
     held = _activation._activate_ready_children(
         gh, spec, issue, state, scan,
     )

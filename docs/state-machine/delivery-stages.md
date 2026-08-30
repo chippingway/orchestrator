@@ -265,6 +265,35 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   difference is the all-done terminal: when every child reaches `done`, reconcile whatever the issue still owes a
   remote, and only then post a checkmark comment, stamp `umbrella_resolved_at`, set label `done`, and close the issue.
   A `children`-less umbrella is treated as corrupt state and parks.
+- **A publication a split superseded is asked about again here.** An umbrella made by a split entered PAST
+  publication has two things left that the closed pull request licensed: the children this walk releases, which are
+  taking over the work that change carried, and the branch its terminal reclaims, which is the one that change points
+  at. The transaction proved the supersession before each of its own steps and then stopped; this handler is what
+  runs from then on. So the record's own publication group — which the split's retirement keeps for exactly this,
+  alongside the identity, the commits, and both ledgers — is re-read **immediately in front of each of those two
+  acts**: by the activation walk before *every* relabel it makes, and by the reclamation before *every* branch it
+  deletes. Neither is asked here, one layer up, and that is the point — the child scan this handler takes is a
+  request per child and the snapshot rule may spend a read-only probe of its own, so a reading taken before either
+  is one the act behind it has already outlived. It is asked a **third and fourth** time on the terminal road — by
+  the settlement the terminal waits on, before anything is said, and once more immediately in front of the
+  retirement write, since the resolution comment and the latches between them are requests a reopen can land inside.
+  A refusal at the second of those writes nothing, so the next tick reads the record exactly as this one found it;
+  what it does cost is a sentence already sent, which is why that sentence carries a marker and is gated on the
+  **thread** as well as on the stamp the retirement write puts down. That marker names the cycle and generation,
+  since an operator restarting a rejected cycle keeps the thread, and it is stamped **only** on an umbrella a
+  post-publication split made — nothing refuses the others past their sentence, so they keep the stamp as their
+  sole gate and spend no listing. Those two are the answer no ledger
+  carries: a reclamation that finished owes nothing, so a human who
+  restores the branch and reopens the change afterwards finds every entry settled and `done` free to fire — over an
+  open change carrying superseded work, with the retirement write behind it dropping the group that could have said
+  so. Nothing is written back for it; nothing IS owed the remote, and an entry claiming otherwise would send a later
+  pass to delete a branch a human put back on purpose. A pull request somebody reopened, merged, or pushed to holds
+  all three:
+  the children stay where they are (the walk latches, so a reopen between two relabels releases the first and not
+  the second), the branch entry stays owed (nothing was attempted, so nothing is recorded `failed`), the terminal
+  stays held, and the reason is logged on every tick that holds. It costs one lookup per release and one per delete;
+  an umbrella the initial decomposer made, or one from a split entered before publication, reads back as no
+  publication and pays nothing.
 - **What the terminal waits on.** An umbrella made by a late split
   ([`../workflow/roles.md`](../workflow/roles.md#what-a-cleared-split-actually-does)) owes two things — the branch its
   superseded candidate was committed on, and the immutable ref that candidate was preserved under — and this is the
@@ -536,7 +565,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   - **each publication step** — the announcement, the supersession, and the retirement that hands the parent to
     `workflow:umbrella`;
   - **the activation walk** (`activation.py`), before *every* relabel rather than once for the walk: a relabel is a
-    request, and a close latched after the first child was released must not release the second;
+    request, and a close latched after the first child was released must not release the second. Asked on **both**
+    sides of the publication licence a late split's children carry, since that licence is a lookup of its own and a
+    close observed inside it would reach nothing else before the relabel landed;
   - **the spawn** (`late_coordinator`), asked twice and the second time right against it — a worktree probe, a
     retry-budget write, a hold reconcile, and the write that records what this attempt IS all stand between a tick's
     own gates and the one step that puts an agent on somebody's repository. What the record then claims is an

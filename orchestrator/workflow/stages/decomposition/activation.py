@@ -15,6 +15,22 @@ started it would relabel a closed issue `ready`, overriding the close and
 handing the umbrella a child that will never report. It is skipped rather than
 held, because nothing is going to release it.
 
+A parent whose children a late split handed over is asked one more thing, at
+exactly the same place and for exactly the same reason: those children start
+on the strength of the pull request their work was superseded on still being
+closed, and that can stop being true between one relabel and the next. A walk
+that asked once -- or that let its caller ask, one scan of the children
+earlier -- would release its second child on evidence taken before its first.
+So it is asked off this parent's own record, immediately in front of every
+relabel, and a refusal latches: a licence that has lapsed does not come back
+inside one walk. A parent that never entered the size gate carries no such
+record and answers without a request.
+
+That ask is itself a request, so the latch is taken on both sides of it: once
+in front, where it costs nothing to refuse early, and once behind, where a
+close a poll observed during the lookup would otherwise reach nothing before
+the relabel lands.
+
 Held children are logged rather than parked, because the tree is still making
 progress: their siblings run concurrently and are what will eventually release
 them. The line names the exact unfinished dependencies so an operator reading a
@@ -34,6 +50,9 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import observations as _observations
+from orchestrator.workflow.stages.decomposition import (
+    late_publication as _late_publication,
+)
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import WorkflowLabel
@@ -88,6 +107,53 @@ class _ChildActivation:
         self.stopped = True
         return True
 
+    def licence_lapsed(self) -> bool:
+        """Whether a split's own children may still be released, right now.
+
+        Asked before EVERY relabel on the rule the close is asked on: what
+        licenses a release here is a fact about a pull request somewhere else,
+        and that moves between two requests. Asked off this parent's own
+        record rather than handed in, so a caller cannot answer it a scan of
+        the children too early -- and so a parent that never entered the gate
+        answers without a request at all.
+
+        Latched with the close, because the two mean the same thing to this
+        walk -- release none of the rest -- and because re-asking past the
+        first refusal spends a request to be told what it already knows.
+        """
+        if self.stopped:
+            return True
+        lapsed = _late_publication._release_undone(
+            self.gh, self.owner, self.state,
+        )
+        if not lapsed:
+            return False
+        log.error(
+            "repo=%s issue=#%s may release no child: %s",
+            self.slug, self.owner.number, lapsed,
+        )
+        self.stopped = True
+        return True
+
+    def may_release(self) -> bool:
+        """Whether this walk may still relabel the child in front of it.
+
+        The latch first, because it is already in this process and costs
+        nothing; then the publication, which is a request; then the latch
+        AGAIN, because that request is exactly the kind of window a poll
+        observes a close inside. Asking it only in front would license a
+        release on a reading the lookup behind it had already outlived --
+        the same mistake this walk exists to stop one layer up.
+
+        The last ask is the one with nothing between it and the write, which
+        is the whole rule: every barrier here belongs immediately in front of
+        the effect it licenses, and the cheapest one can afford to be the
+        barrier twice.
+        """
+        if self.parent_is_gone() or self.licence_lapsed():
+            return False
+        return not self.parent_is_gone()
+
     def consider(self, idx: int, child_number) -> None:
         number = int(child_number)
         child = self.scan.issues.get(number)
@@ -99,7 +165,7 @@ class _ChildActivation:
         if pending:
             self.held.append((number, pending))
             return
-        if self.parent_is_gone():
+        if not self.may_release():
             self.held.append((number, []))
             return
         self.gh.set_workflow_label(child, WorkflowLabel.READY)
@@ -140,7 +206,9 @@ def _activate_ready_children(
     A parent a poll observed closed stops the walk where it stands, asked
     again before every relabel: this walk is the one step of a late split
     that puts an agent on somebody's repository, and a close latched after
-    the first child was released may not release the second.
+    the first child was released may not release the second. A pull request a
+    split superseded these children out from under is asked about in the same
+    place and stops the walk the same way.
     """
     activation = _ChildActivation.start(gh, spec, issue, state, scan)
     for idx, child_number in enumerate(scan.children):

@@ -751,11 +751,13 @@ repository on a resumed pass — once behind it, and once between the read of th
 write that adds to it: the create is a request too, and so is that read, and what a close landing inside either
 leaves is a real GitHub issue, recorded either way and written to never.
 **Each publication step.** **Every relabel** the activation walk makes, since a close latched after the first child
-was released must not release the second — and the transaction asks again behind the walk, because the walk holds
-children but does not own this issue's record. **The spawn**, asked last of all, because a worktree probe, a
-retry-budget write and a hold to reconcile stand between a tick's own gates and the one step that puts an agent on
-somebody's repository. **Both sides of a developer revision**, which is the same step under another name, with the
-poisoned-session retry inside the shared resume guarded alongside it. **Each step of the `single` publication**,
+was released must not release the second — asked on *both* sides of the publication licence beside it, since that
+licence is a lookup and a close observed inside it would reach nothing else before the relabel landed — and the
+transaction asks again behind the walk, because the walk holds children but does not own this issue's record.
+**The spawn**, asked last of all, because a worktree probe, a retry-budget write and a hold to reconcile stand
+between a tick's own gates and the one step that puts an agent on somebody's repository. **Both sides of a
+developer revision**, which is the same step under another name, with the poisoned-session retry inside the shared
+resume guarded alongside it. **Each step of the `single` publication**,
 which is where the barriers protect the record rather than an effect: the last write drops the generation entirely,
 and both the sweep and a receipt adopted from the thread read that generation to decide there is anything to end —
 so past that write the answer is a *reinstatement* rather than a refusal, from the generation still in the call's
@@ -919,8 +921,75 @@ and a human who reopens the pull request between the write and the resume would 
 straight past, report settled, and let the children loose beside a change still carrying the superseded work.
 Re-asking costs one fetch and one comment listing, and neither step repeats anything.
 
+On the published road the pull request is asked about **between every step of the tail, on the same rule the owner
+is** — in front of the close, in front of the retirement, in front of **every** child released, and immediately in
+front of the branch delete. The owner is not the only thing a human moves mid-pass: every one of those steps is
+licensed by the supersession being on that pull request, and a merge, a reopen, or a push takes the licence away. So
+no step is run on evidence a step before it took — and "before it" includes a reading the step itself spent. The
+child scan a release is decided on is a request per child and each relabel is another, so the ask lives inside the
+activation walk rather than in front of it; the reclamation may spend a read-only probe deciding whether an ordered
+snapshot ref is already gone, so its ask sits immediately before the delete rather than where the work list is
+assembled. It is that road's alone: a generation entered before publication froze no head to prove a plan PR
+against, and what that pull request carries is a design document rather than the superseded work.
+
+The barrier in front of the close is why the close is made against a **second** reading. The receipt the first
+carries costs a comment listing, and that listing is a round-trip standing between the state and head read beside it
+and the write those two license. Asked again with no listing behind them, they are the last thing to reach GitHub
+before the write — so a change a human merged, closed, or pushed to inside that window is left **untouched**: no
+notice posted onto it, no close, and a park. Discovering it one step later would mean marking and closing a change
+nobody adjudicated and only then refusing to finish. A pull request already closed over this adjudication's own
+receipt writes nothing at all, since `supersede_pr` would post no second notice and close nothing already closed.
+
+The receipt that second reading skipped is then **handed to the write** rather than looked up again. `supersede_pr`
+searches the thread for its own marker before posting, and that search is one more request in exactly the interval
+this barrier exists to empty: a human closing the change inside it would have the notice land on their settlement and
+the helper report success. Nothing else can move that answer — the marker counts only on a comment of *ours*, and
+this pass has posted none since it looked — so the answer travels with the call and the close is the first thing it
+sends.
+
+What a refusal costs depends on which side of the retirement it lands. **Before** it the pass parks, with the
+disagreement named and the obligation written back as owed: the issue stays on `workflow:decomposing`, the children
+stay `blocked`, the branch stays intact, and the next tick supersedes the same pull request again. **Past** it there
+is no live adjudication left to park, so the last two barriers decline the step in front of them and leave it to the
+retry that already owns it: the umbrella's own walk for the children, its terminal for the branch. That is why the
+pre-retirement barrier is the very last thing before that write, with the branch resolved ahead of it rather than
+between: the window it cannot close is the write, and a reopen inside it costs a label that lands rather than a child
+that runs or a branch that goes.
+
+Declining a step is only safe because those retries ask the same question themselves, and that is what the
+retirement **keeps the publication group for**. It is the only thing left on the issue naming which pull request the
+split closed and the head it was closed over, so the shared activation walk re-asks it in front of every relabel it
+makes — under `workflow:umbrella` and under `workflow:blocked` alike, since the walk reads the parent's own record
+rather than being told — `late_cleanup` re-asks it in front of every branch it deletes, and the settlement the
+umbrella's terminal waits on asks it once more before `done` may be written at all. Dropped there, a reopened pull
+request would have its work handed to children on the very next poll and the ref it points at reaped by the
+terminal, with nothing in between having looked. It costs one lookup per release, one per delete, and one per
+terminal decision, and a parent that never entered the size gate answers without a request at all.
+
+That last ask is the one no ledger could make, and it happens **twice**. A reclamation that **finished** owes
+nothing, so a human who restores the branch and reopens the change afterwards leaves every entry settled and the
+terminal free — and what it writes is `done`, a close, and the drop of the publication group, after which nothing
+would ever ask again. The answer is deliberately not written back as an obligation: nothing *is* owed the remote,
+and an entry claiming otherwise would send a later pass to delete a branch a human put back on purpose. The label
+staying put is the whole of the response.
+
+Once before anything is **said**, where refusing costs nothing, and once immediately in front of the **retirement
+write**, which is the boundary itself. Between the two stands the resolution comment and the latch checks beside it,
+each a request a reopen can land inside — and a refusal there costs a sentence that has already gone out. So that
+sentence carries a marker and is gated on the **thread** as well as on the stamp: the stamp is what a resumed
+terminal has past the write, and the thread is what covers the window the stamp cannot, so an umbrella held on a
+reopened pull request does not repeat itself on every poll for as long as a human takes to settle it. A refusal at
+that second barrier writes nothing at all, so the record the next tick reads is exactly what this one found.
+
+Both halves of that receipt are scoped deliberately. It names the **cycle and generation**, because an operator
+restarting a rejected cycle keeps the thread — a marker naming only the issue would silence the sentence the cycle
+after it owes its humans. And it is stamped **only on an umbrella a post-publication split made**: nothing refuses
+the others past their sentence, so the initial decomposer's umbrellas and plan-PR splits keep the stamp as their
+sole gate, spend no comment listing per completion, and carry no receipt anything would read.
+
 **Then the label, the retirement, and the activation, in that order.** The generation is retired in the same write
-that hands the issue to `workflow:umbrella`: identity, both commits, and both ledgers kept, the measurement dropped,
+that hands the issue to `workflow:umbrella`: identity, both commits, both ledgers, and the publication group kept,
+the measurement dropped,
 and the recorded `pr_number` cleared. Dropping the measurement is what makes the label stick — a parent that has
 become an umbrella has no candidate to measure, and a record still answering "oversized" is exactly what pins
 `workflow:decomposing` and would have the relabel guard put the umbrella label back every tick. Activation runs after

@@ -154,7 +154,12 @@ class GitHubPullRequestMixin(GitHubStateMixin):
         return self.repo.get_pull(pr_number).create_issue_comment(body)
 
     def supersede_pr(
-        self, pr: PullRequest, *, notice: str, marker: str,
+        self,
+        pr: PullRequest,
+        *,
+        notice: str,
+        marker: str,
+        carries_marker: Optional[bool] = None,
     ) -> bool:
         """Say once on a pull request that it is superseded, and close it.
 
@@ -178,6 +183,17 @@ class GitHubPullRequestMixin(GitHubStateMixin):
         exactly as it is, which also keeps a merged one from being reopened
         and re-closed.
 
+        `carries_marker` is that search already made, and a caller that has
+        one hands it over rather than paying for it again. The search is a
+        request, so a caller that proved this pull request's state and head a
+        moment ago and then let one run has put a round-trip between its proof
+        and this write -- long enough for a human to close the change, and
+        this helper would then post its notice onto a settlement somebody else
+        made and report success. Nothing else can move the answer in that
+        window: the marker only counts on a comment of OURS, and the caller
+        has posted none since it looked. So the answer travels, and with it
+        the write below is the first thing this call sends.
+
         False is every way this did not finish, and the caller retries the
         whole thing: the notice is idempotent and the close is a no-op on the
         second pass, so a retry costs a read. Every exception is caught rather
@@ -186,7 +202,7 @@ class GitHubPullRequestMixin(GitHubStateMixin):
         could not be made must hand the tick back rather than end it.
         """
         try:
-            self._supersede(pr, notice, marker)
+            self._supersede(pr, notice, marker, carries_marker)
         except Exception:
             log.warning(
                 "could not supersede PR #%s", getattr(pr, "number", "?"),
@@ -319,9 +335,17 @@ class GitHubPullRequestMixin(GitHubStateMixin):
             return False
         return True
 
-    def _supersede(self, pr: PullRequest, notice: str, marker: str) -> None:
+    def _supersede(
+        self,
+        pr: PullRequest,
+        notice: str,
+        marker: str,
+        carries_marker: Optional[bool],
+    ) -> None:
         """Post the notice this thread does not carry, then close it."""
-        if not self._pr_carries_marker(pr, marker):
+        if carries_marker is None:
+            carries_marker = self._pr_carries_marker(pr, marker)
+        if not carries_marker:
             pr.create_issue_comment(notice)
         if pr_state(pr) == _ISSUE_STATE_OPEN:
             pr.edit(state=_ISSUE_STATE_CLOSED)
