@@ -454,9 +454,12 @@ family describing two different steps. That answer is the `publication` field be
 
 **What a stream carries.** Four producers write to these families. The first is the publication seam itself
 ([`../workflow/roles.md`](../workflow/roles.md#the-size-gate-a-committed-candidate-passes)), which is where a
-candidate is measured at all: it writes one `late_measurement` per clean committed candidate measured under
-`stage: implementing` — small and oversized alike, since a threshold study needs the candidates that *passed* as
-much as the ones that did not — and a `late_failure` carrying `measurement_failed` for **every** reading it
+candidate is measured at all: it writes one `late_measurement` per clean committed candidate — small and oversized
+alike, since a threshold study needs the candidates that *passed* as much as the ones that did not. `stage` is the
+one the reading was taken in rather than this package's own name: `implementing` for the push that opens the pull
+request, and `validating` / `documenting` / `in_review` / `fixing` / `resolving_conflict` for a push onto one the
+remote already carries, so a measurement is never filed under a stage no developer of it ran in. Beside them it
+writes a `late_failure` carrying `measurement_failed` for **every** reading it
 could not take: a base the remote would not name, a base or candidate object this host does not hold, a diff
 nothing could pin, and a recorded candidate a reaped worktree took with it. A candidate refused before either
 end of the diff was frozen has no generation of its own to be correlated by, so the identity is *minted* for the
@@ -475,7 +478,7 @@ and acted on twice. The switch is not silence either — a candidate this issue 
 for is still measured with it off, and so is a reconciliation answering a reading a previous tick recorded, so a
 repository running with the switch off still writes these families for the work already in the gate. What it
 stops is records for work that never enters it. The seam writes one more family, and rarely:
-a `late_cancellation` under `stage: implementing` where a close a poll latched reaches the retirement that runs
+a `late_cancellation` — under the same entry stage — where a close a poll latched reaches the retirement that runs
 ahead of a publication — asked before that write and again on the window it is held inside, so a close arriving
 as the record stops naming its cycle is reported rather than lost. It is the same family and the same shape the
 adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended. The remaining three

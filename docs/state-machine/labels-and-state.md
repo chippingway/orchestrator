@@ -113,7 +113,7 @@ plus interrupt / detour edges declared per-target. It is keyed by `WorkflowLabel
 resolves to its member before the guard sees it and is checked against the same edges. Operator relabels via the
 GitHub UI bypass both guards, so the guard never fights a human.
 
-Nine of those edges belong to the late size gate and are declared ahead of the handlers that write them.
+Fourteen of those edges belong to the late size gate and are declared ahead of the handlers that write them.
 `workflow:implementing → workflow:decomposing` is the route a clean committed candidate measured past the threshold
 takes instead of publishing — adjudication runs under the existing decomposing label rather than a state of its own.
 `workflow:validating`, `workflow:documenting`, `in_review`, `workflow:fixing`, and `workflow:resolving_conflict` each
@@ -121,23 +121,28 @@ own the same edge, and they own it because the gate stands in front of every pus
 already carries: a commit joining a branch a pull request is open on is measured for what that pull request would COME
 TO, and one past the ceiling is held off it and adjudicated from whichever of the five states that push was reached
 under. The pre-PR states own no such edge — nothing there has a publication to be measured against.
-The existing `workflow:decomposing → workflow:implementing` edge beside it is the way back that a `single` verdict
-takes, carrying the exemption naming the adjudicated commit, so the ordinary publication reconciles that exact commit
-the way it does for any other change.
+The same five own the edge BACK — `workflow:decomposing → workflow:validating` / `workflow:documenting` /
+`in_review` / `workflow:fixing` / `workflow:resolving_conflict` — because a settled `single` verdict returns the
+issue to the stage it was taken out of rather than to `workflow:implementing`: that stage is the only owner of the
+completion the candidate still owes, and the record names which one it was
+([below](#late-generation-state)). Both directions are declared from one set, so the way in and the way back cannot
+drift apart.
+The existing `workflow:decomposing → workflow:implementing` edge beside it is the way back a verdict on work nothing
+had published takes, carrying the exemption naming the adjudicated commit, so the ordinary publication reconciles
+that exact commit the way it does for any other change.
 `workflow:decomposing → rejected` and `workflow:umbrella → rejected` are the one terminal a late generation whose
 owner was closed mid-adjudication reaches, once its external cleanup is reconciled, under whichever of the two labels
-it had reached; they are also the only way a pre-PR state reaches a terminal at all. `done → rejected` is the fourth
-and the only edge out of a terminal this orchestrator declares, and it is there for an owner a human moved onto the
-terminal over a cycle that still has an ending to reach. The umbrella's own terminal needs none of it: the write that
-records the resolution **retires the cycle with it**, one write before the label, so a close arriving past that write
-finds nothing left to cancel and no `done` issue is ever left carrying a late cycle. A close observed *inside* that
-write is answered behind it — the generation is still in the pass's own memory, so it goes back cancelled and the
-owner keeps `workflow:umbrella`, where the closed-owner sweep reaches the ending. Nothing else may leave a terminal —
-the edge set is asserted whole, so the exception cannot grow a second. A restart after such a cancellation needs no
-edge of its own: the operator authorizes it by *removing*
-`rejected`, so the label a restart applies is written from the unlabeled entry and `rejected` keeps its empty edge
-set — a rejected issue left labeled stays inert. The pinned state those transitions move an issue through is
-[below](#late-generation-state).
+it had reached; they are also the only way a pre-PR state reaches a terminal at all. `done → rejected` is the last of
+the fourteen and the only edge out of a terminal this orchestrator declares, and it is there for an owner a human
+moved onto the terminal over a cycle that still has an ending to reach. The umbrella's own terminal needs none of it:
+the write that records the resolution **retires the cycle with it**, one write before the label, so a close arriving
+past that write finds nothing left to cancel and no `done` issue is ever left carrying a late cycle. A close observed
+*inside* that write is answered behind it — the generation is still in the pass's own memory, so it goes back
+cancelled and the owner keeps `workflow:umbrella`, where the closed-owner sweep reaches the ending. Nothing else may
+leave a terminal — the edge set is asserted whole, so the exception cannot grow a second. A restart after such a
+cancellation needs no edge of its own: the operator authorizes it by *removing* `rejected`, so the label a restart
+applies is written from the unlabeled entry and `rejected` keeps its empty edge set — a rejected issue left labeled
+stays inert. The pinned state those transitions move an issue through is [below](#late-generation-state).
 
 - _(none)_ — Open issue not yet picked up by the orchestrator.
 - `workflow:decomposing` — The decomposer is deciding whether the issue is single-context or should become child
@@ -510,12 +515,16 @@ machine fall into a few groups:
   `late_snapshot_failed`, `late_children_failed`, `late_supersession_failed`, `late_content_drift`,
   `late_revision_dirty`, `late_revision_unmeasured`, `late_revision_unanswered`, and `late_question` — see
   [the late run](#the-late-run) for which of them the next attempt retires. `late_measurement_failed` is the only one
-  of them taken under `workflow:implementing` rather than `workflow:decomposing`, because it is the gate's own and
-  the gate runs before any adjudication exists: it is answered there too, one step ahead of the generic continue
+  of them taken outside `workflow:decomposing`, because it is the gate's own and the gate runs before any
+  adjudication exists — under `workflow:implementing` where the push would open the pull request, and under any of
+  the five states that push onto one the remote already carries. It is answered wherever it was taken, one step
+  ahead of the generic continue
   classifier, since a content-free `/orchestrator continue` on it means "take the reading again" rather than the
-  guidance a park needing a real answer would be refused for. `late_candidate_moved` is the second taken under
-  `workflow:implementing`, and it is the publication's own: the checkout is not the one the gate approved, so
-  nothing is pushed and the issue is not handed on. Two readings answer for "the checkout", because the head answers
+  guidance a park needing a real answer would be refused for. `late_candidate_moved` is the second taken outside the
+  adjudication, and it is the publication's own: the checkout is not the one the gate approved, so
+  nothing is pushed and the issue is not handed on. It reaches the same five states for the same reason — every
+  gated push proves its checkout again on the far side of the effect, not just the one that opens the pull
+  request. Two readings answer for "the checkout", because the head answers
   only half of what it means. A head somewhere else is one. A tree carrying work no push would publish — or one
   `git status` could not report on, which is not a clean tree but a reading that never happened — is the other, and
   it is the half that can be true with the head never having moved, so every proof about the commit passes over it.
