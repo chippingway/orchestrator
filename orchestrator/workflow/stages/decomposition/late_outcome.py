@@ -45,7 +45,7 @@ straight after the state they describe, and keeping them beside the writes is
 what stops one of them reporting a step whose durable half never landed.
 
 What this owner deliberately does NOT do is publish. It records a verdict
-and returns; announcing a question, restoring or superseding the held plan PR,
+and returns; announcing a question, restoring or superseding the held PR,
 creating children, and pushing an accepted candidate all belong to the steps
 that act on the verdict.
 """

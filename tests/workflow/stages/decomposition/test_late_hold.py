@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The generation-marked plan-PR hold and every boundary it persists across."""
+"""The generation-marked hold on a pull request, and every boundary it crosses."""
 from __future__ import annotations
 
 import unittest
@@ -47,6 +47,21 @@ FOREIGN_HOLD = (
 
 HUMAN_REPLACEMENT = "a human rewrote the description mid-hold"
 
+# The hold exactly as this binary writes it on a pull request nothing has
+# pushed to. Spelled out here rather than built from the owner under test,
+# because these are the bytes already standing on live pull requests: a word
+# changed under one reads it as a human's own description, and the copy it
+# replaced is then never put back.
+CURRENT_HOLD = (
+    "<!--orchestrator-late-hold:cycle={cycle}-->\n"
+    ":hourglass: **Held by the orchestrator.** The committed implementation "
+    "for issue #{issue} measured past the size ceiling, so it is being "
+    "adjudicated before anything is published. Do not merge this pull "
+    "request while the hold stands.\n\n"
+    "This description is temporary. The original is preserved in the issue's "
+    "pinned orchestrator state and is restored when adjudication finishes."
+).format(cycle=CYCLE_ID, issue=LATE_ISSUE_NUMBER)
+
 # The hold exactly as the binary before this one wrote it: marked by
 # generation as well as cycle, and quoting what the candidate measured.
 # Spelled out here rather than built from the owner under test, because what
@@ -79,6 +94,10 @@ CLOSED = "closed"
 
 OPEN = "open"
 
+# A head GitHub could not be made to name: text this domain records as no
+# commit at all, which is what the pinned write would then drop.
+UNNAMEABLE_HEAD = "HEAD"
+
 GET_PR = "get_pr"
 
 SPEC_FLAGS = 800
@@ -108,7 +127,7 @@ class _HoldCase(unittest.TestCase):
         self.plan_pr = seed_plan_pr(self.github)
 
     def _reconcile(self, generation=None):
-        return _late_hold._reconcile_plan_pr_hold(
+        return _late_hold._reconcile_hold(
             self.github,
             self.issue,
             self.github.read_pinned_state(self.issue),
@@ -148,6 +167,19 @@ class PlanPrHoldTest(_HoldCase):
         self.assertEqual(
             [held.get(KEYS.plan_pr_body) for held in recorder.snapshots],
             [PLAN_PR_BODY],
+        )
+        self.assertEqual(
+            [held.get(KEYS.plan_pr_head) for held in recorder.snapshots],
+            [self.plan_pr.head.sha],
+        )
+
+    def test_the_unpublished_notice_is_frozen(self) -> None:
+        # The spelling is the compatibility contract, not the marker inside
+        # it: holds earlier ticks wrote are standing on live pull requests,
+        # and a word changed here reads every one of them as somebody's own
+        # description -- refusing to restore what it replaced, for good.
+        self.assertEqual(
+            _late_hold._hold_body(late_generation()), CURRENT_HOLD,
         )
 
     def test_hold_body_carries_the_generation(self) -> None:
@@ -275,7 +307,7 @@ class SettledPlanPrTest(_HoldCase):
             plan_pr_number=PLAN_PR_NUMBER, plan_pr_body=PLAN_PR_BODY,
         )
 
-        release = _late_hold._release_plan_pr_hold(
+        release = _late_hold._release_hold(
             self.github, self.issue, held,
         )
 
@@ -449,7 +481,7 @@ class _UnreadablePr:
 
 
 class PlanPrHoldFailureTest(_HoldCase):
-    """The three ways a hold refuses, each of them before any spawn."""
+    """Every way a hold refuses, each of them before any spawn."""
 
     def test_an_unreadable_plan_pr_fails_closed(self) -> None:
         # Everything downstream is decided from this one read -- the
@@ -489,6 +521,25 @@ class PlanPrHoldFailureTest(_HoldCase):
         for failing in ("body", "head", "merged"):
             with self.subTest(field=failing):
                 self._assert_unreadable(_UnreadablePr(failing))
+
+    def test_a_head_it_cannot_record_is_refused(self) -> None:
+        # The identity, the head, and the body are ONE record, and the pinned
+        # write drops a head that is not a commit -- so a hold taken over one
+        # would replace the description and start an agent under a notice no
+        # later tick could show which change it was written over. The plan
+        # path is where that bites: provenance is settled by the recorded
+        # plan path, so the head is never asked before this.
+        self.plan_pr.head.sha = UNNAMEABLE_HEAD
+
+        with self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            hold = self._reconcile()
+
+        self.assertTrue(hold.failed)
+        self.assertFalse(hold.held)
+        self.assertEqual(self.github.edited_pr_bodies, [])
+        self.assertEqual(self.plan_pr.body, PLAN_PR_BODY)
+        self.assertNotIn(KEYS.plan_pr_head, self._pinned())
+        self.assertNotIn(KEYS.plan_pr_body, self._pinned())
 
     def test_a_foreign_hold_is_refused(self) -> None:
         # Capturing a hold as though it were somebody's description would

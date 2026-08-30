@@ -33,7 +33,7 @@ stands even when the label write itself fails.
 Neither of these clears, cancels, or decides anything. A generation an
 operator really wants gone is cancelled through the late domain's own
 cancellation, which records what was owed; coercing it through a label or a
-switch would leave the plan-PR hold, the frozen commit, and the external
+switch would leave the hold, the frozen commit, and the external
 ledgers behind with nothing on the issue pointing at them.
 
 The third question this owner answers is the opposite one, and it is what

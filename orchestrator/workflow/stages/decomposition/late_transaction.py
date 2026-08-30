@@ -21,12 +21,13 @@ reclamation wait for it, which is why it has to be durable before the child can
 run.
 
 **Then the links, and only then the supersession.** The parent says what it
-became and where its children are; the plan pull request says it is superseded,
-names the umbrella, the children, the snapshot ref, and the exact commit, and
-is closed. Neither can be undone, and both are idempotent -- the parent's
-announcement is gated on the durable stamp beside it, and the pull request's is
-gated on its own hidden marker on the thread, so a crash between a post and the
-write recording it costs at most a repeat that never happens twice.
+became and where its children are; the pull request its work is on says it is
+superseded, names the umbrella, the children, the snapshot ref, and the exact
+commit, and is closed. Neither can be undone, and both are idempotent -- the
+parent's announcement is gated on the durable stamp beside it, and the pull
+request's is gated on its own hidden marker on the thread, so a crash between a
+post and the write recording it costs at most a repeat that never happens
+twice.
 
 **And the owner between every one of them.** A close is not something this run
 is told about: a poll that observes one while this worker holds the issue can
@@ -35,8 +36,8 @@ before each child, before the announcement, before the supersession, and before
 the retirement that hands the parent to `umbrella` and lets its children run.
 What a close ends is the CYCLE rather than the tick, and where it lands is what
 the cancellation reads back: an ending entered at the supersession still owns
-the held plan pull request, and one entered just past it takes on the
-superseded branch the retirement never got to write down.
+the held pull request, and one entered just past it takes on the superseded
+branch the retirement never got to write down.
 
 **Then the label, the retirement, and the activation, in that order.** The
 generation is retired -- identity, commits, and both ledgers kept, the
@@ -127,8 +128,8 @@ _PR_NUMBER = "pr_number"
 
 # Stamped on the two comments this transaction owes, so a retry recognizes one
 # it posted even when the write that was supposed to record it never landed.
-# Both are scoped to the exact adjudication: a plan pull request outlives a
-# cycle and an issue thread outlives everything, so an unscoped marker would
+# Both are scoped to the exact adjudication: a pull request outlives a cycle
+# and an issue thread outlives everything, so an unscoped marker would
 # read an earlier episode's receipt as this one's. HTML comments, so neither is
 # visible in the rendered thread.
 _SUPERSESSION_MARKER = (
@@ -306,8 +307,8 @@ def _published_split(
     """Finish a transaction whose children exist: announce, supersede, hand.
 
     Every step here is one the remote keeps: a comment saying what the parent
-    became, the plan pull request closed over a supersession notice, the
-    umbrella label, and the children this walk lets start. A cycle a close
+    became, the pull request its work is on closed over a supersession notice,
+    the umbrella label, and the children this walk lets start. A cycle a close
     ended takes none of them -- what it has already put on the remote is on
     the ledger, and the cleanup path is what settles it, closing that same
     pull request over a cancellation instead.
@@ -322,8 +323,8 @@ def _published_split(
 
     Each of the three checks leaves the record where the interruption
     actually happened, and the cancellation reads it from there: an ending
-    entered at the supersession closes the plan pull request over a
-    cancellation notice, and one entered between the supersession and the
+    entered at the supersession closes that pull request over a cancellation
+    notice, and one entered between the supersession and the
     retirement takes the superseded branch on as owed rather than retiring
     over a branch nothing names.
     """
@@ -513,13 +514,13 @@ def _supersession_marker(context: _LateContext) -> str:
 def _superseded(
     context: _LateContext, plan: _SplitPlan, snapshot_ref: str,
 ) -> bool:
-    """Close the held plan PR over a notice that links forward, or park.
+    """Close the pull request this candidate stands on, or park.
 
-    Only the pull request this generation actually HELD. `pr_number` is
-    whichever one the issue currently records and may name an implementation
-    somebody else opened; the hold's own record names the one this cycle
-    marked, and superseding anything else would close a change nobody
-    adjudicated.
+    Only the pull request this generation was entered on or actually HELD.
+    `pr_number` is whichever one the issue currently records and may name an
+    implementation somebody else opened; the publication entry and the hold's
+    own record each name one this cycle acted on, and superseding anything
+    else would close a change nobody adjudicated.
 
     The hold comes off first, so a pull request that ends up closed does not
     also end up wearing a "do not merge" notice forever. A release that failed
@@ -536,23 +537,24 @@ def _superseded(
     on this generation's own marker already on the thread, and a pull request
     that is not open is left exactly as it is.
 
-    Which pull request that IS depends on the side of publication the
-    generation was entered on, and the two are never both there. A hold names
-    the plan pull request this cycle marked. A generation entered past the
-    first push names the pull request the work is already on -- and that one
-    is the sharper of the two, because the transaction behind this deletes the
-    branch and hands the work to children: left unsuperseded it is an open
-    change carrying work nobody will finish, pointing at a branch that is
-    gone.
+    Which pull request that IS is decided by the side of publication the
+    generation was entered on, and by the ENTRY rather than by the hold beside
+    it -- both can name the same pull request, since a generation entered past
+    the first push holds the one the work is already on. That one goes through
+    the proof one owner down: its head unmoved and its state its human's,
+    because the transaction behind this deletes the branch and hands the work
+    to children, and a change superseded over a commit nobody adjudicated is
+    one nothing takes back. A generation entered before publication has only
+    the hold's record to go on, and that names the plan pull request this
+    cycle marked. A record with neither has no pull request to close, and the
+    absence is the answer: its candidate has never been on one.
     """
+    if context.generation.has_publication_context:
+        return _superseded_publication(context, plan, snapshot_ref)
     number = context.generation.plan_pr_number
     if number is None:
-        return _superseded_publication(context, plan, snapshot_ref)
-    release = _late_hold._release_plan_pr_hold(
-        context.gh, context.issue, context.generation,
-    )
-    context.generation = release.generation
-    settled = not release.failed and _closed_over_notice(
+        return True
+    settled = _released_hold(context) and _closed_over_notice(
         context, number, _SUPERSESSION_NOTICE.format(
             parent=context.issue.number,
             count=len(plan.created),
@@ -571,6 +573,27 @@ def _superseded(
         LateResourceState.RECONCILED,
     )
     return True
+
+
+def _released_hold(context: _LateContext) -> bool:
+    """Take this cycle's hold off before anything closes what wears it.
+
+    A pull request closed while it still carries a "do not merge" notice
+    carries it for good, and the description that notice displaced is the only
+    copy there was -- so the release runs first, and a failure stops the close
+    rather than shortening it. Which failures stop anything is the release's
+    own answer: one on a pull request a human has already settled reports
+    nothing, since a hold nobody can merge under is untidy and no more.
+
+    A generation that took no hold releases nothing and answers yes. What says
+    which pull request to close is the record beside it, and that says so with
+    or without a notice on it.
+    """
+    release = _late_hold._release_hold(
+        context.gh, context.issue, context.generation,
+    )
+    context.generation = release.generation
+    return not release.failed
 
 
 def _superseded_publication(
@@ -595,8 +618,15 @@ def _superseded_publication(
     tick's to do. One somebody PUSHED to is the same refusal one field over:
     what the verdict was taken over is not what the pull request carries now.
 
-    An entry taken before publication reaches here with nothing to close, and
-    that absence is the answer: its candidate has no pull request yet.
+    The hold comes off first, for the reason the caller takes it off before
+    closing a held pull request: a change closed while it still wears a "do
+    not merge" notice wears it for good. The release is where the refusals
+    that matter are decided, so one it reports parks here rather than being
+    stepped over.
+
+    That the entry names a pull request at all is the caller's gate, which
+    routes here on the whole group being readable. The check below is the
+    floor under it, closing nothing where a record could not name one.
 
     The reading carries this adjudication's own receipt with it, because the
     step behind this one is not the last: a tick that closed the pull request
@@ -610,6 +640,8 @@ def _superseded_publication(
     number = context.generation.published_pr_number
     if number is None:
         return True
+    if not _released_hold(context):
+        return _unsuperseded(context, number)
     reading = _late_publication._read_publication(
         context.gh, context.issue, number, _supersession_marker(context),
     )
@@ -770,7 +802,7 @@ def _closed_over_notice(
         held = context.gh.get_pr(number)
     except Exception:
         log.exception(
-            "issue=#%d could not read plan PR #%d to supersede it",
+            "issue=#%d could not read held PR #%d to supersede it",
             context.issue.number, number,
         )
         return False

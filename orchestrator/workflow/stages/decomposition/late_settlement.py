@@ -17,10 +17,10 @@ was still answering it. It is the only external effect a question earns --
 no publication, no snapshot, no supersession, no activation.
 
 A `split` is handed on rather than acted on. Creating children, taking the
-snapshot they are cut from, and superseding the plan pull request are one
-transaction and belong together; what this owner owes it is the guarantee it
-cannot check for itself -- that the outcome it is given was re-checked against
-an owner read taken after the agent finished.
+snapshot they are cut from, and superseding the pull request its work is on are
+one transaction and belong together; what this owner owes it is the guarantee
+it cannot check for itself -- that the outcome it is given was re-checked
+against an owner read taken after the agent finished.
 
 A `single` is reconciled here, and what that means splits on which side of
 publication the candidate was measured on.
@@ -52,7 +52,7 @@ Two things it deliberately does not do. It creates no snapshot: a snapshot
 exists so children can be cut from a candidate that is about to be superseded,
 and an accepted candidate is superseded by nothing -- it publishes as itself,
 from the branch it is already on. And it restores rather than rewrites: the
-held plan PR gets back the description this generation replaced, and what
+held pull request gets back the description this generation replaced, and what
 happens to that pull request afterwards is the ordinary reconciliation's --
 the publication that follows reuses it and rewrites its body when the push
 lands on it, and leaves it alone when it does not.
@@ -128,8 +128,8 @@ _OPEN_PR_STATE = "open"
 
 _RELEASE_FAILED_PARK = (
     "this issue's committed candidate was adjudicated as one coherent change, "
-    "but the hold on its plan PR could not be taken off -- so nothing was "
-    "handed on for publication and the pull request still reads as held. "
+    "but the hold on its pull request could not be taken off -- so nothing "
+    "was handed on for publication and the pull request still reads as held. "
     "Settle the pull request, then the next tick retries the same release "
     "against the same recorded description."
 )
@@ -263,9 +263,9 @@ def _reconcile_single(
     """Exempt exactly the measured commit and hand the candidate back.
 
     Two reconciliations, and the second is the one a search by branch and open
-    state cannot make: the hold comes off the plan pull request, and the pull
-    request this issue RECORDS is settled against the measured commit, so what
-    the handoff names is a change the accepted candidate is actually in.
+    state cannot make: the hold comes off the pull request it marked, and the
+    pull request this issue RECORDS is settled against the measured commit, so
+    what the handoff names is a change the accepted candidate is actually in.
     Everything durable goes out in one write ahead of the label that hands it
     on, since the label is what makes another stage read it.
 
@@ -316,8 +316,8 @@ def _handed_back(context: _LateContext) -> Optional[_LateDisposition]:
     record names none, so a replacement host -- rebuilding the checkout from
     the base or the plan pull request -- would publish that head or spawn a
     second developer over an implementation a human has already ruled on.
-    Recorded, the implementing gate proves the commit before anything runs
-    and parks for the checkout instead.
+    Recorded, the implementing gate proves the commit before anything runs and
+    parks for the checkout instead.
     """
     stopped = _late_owner._latch_stops(context)
     if stopped is not None:
@@ -524,13 +524,13 @@ def _settled_lease(context: _LateContext) -> str:
 
 
 def _released_hold(context: _LateContext) -> bool:
-    """Give the held plan PR its description back, or park without publishing.
+    """Give the held pull request its description back, or park unpublished.
 
     Run before anything else this reconciliation does, so a release that fails
     leaves the generation exactly as it arrived: live, oversized, and carrying
     the same recorded verdict, which is what makes the retry free.
     """
-    release = _late_hold._release_plan_pr_hold(
+    release = _late_hold._release_hold(
         context.gh, context.issue, context.generation,
     )
     context.generation = release.generation
@@ -748,7 +748,7 @@ def _dropped_settled_pr(context: _LateContext) -> bool:
 
     Reached only when nothing carries the measured commit, so what the issue
     records is about some other change. An OPEN one is left exactly where it
-    is: that is the plan pull request the ordinary publication reuses. A
+    is: that is the pull request the ordinary publication reuses. A
     merged or closed one is dropped, because carrying it into `implementing`
     is what lets the merged-PR terminal end the issue on a change the
     adjudicated candidate is not in.

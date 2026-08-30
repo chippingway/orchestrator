@@ -107,7 +107,7 @@ IN_FLIGHT_PHASES = frozenset((
 ))
 
 # The boundaries that come before a transaction. Every retry above one -- the
-# plan-PR hold reconciled on each tick, the spawn, the owner read a completion
+# hold reconciled on each tick, the spawn, the owner read a completion
 # claims -- writes one of these, and writing it over an in-flight boundary is
 # the rewind `at_phase` refuses.
 _BEFORE_TRANSACTION = frozenset((
@@ -230,6 +230,19 @@ class LateGeneration:
     read -- a below-threshold revision and an issue parked for a human both
     stop the tick long before the guard would run again.
 
+    `plan_pr_number`, `plan_pr_head`, and `plan_pr_body` are one hold's whole
+    record: the pull request a cycle-marked notice was written onto, the tip
+    it was standing on when that happened, and the description the notice
+    replaced. The `plan_pr` spelling is what live pinned comments carry, so it
+    stays; what the group NAMES is whichever pull request the cycle holds --
+    the plan one a discussion left standing where the generation was entered
+    before publication, and the implementation one the work is already on
+    where it was entered past it. The head is a reading rather than a claim:
+    it says which change wore the notice, and it is not `published_sha` one
+    field over, which is the tip the GATE was entered on and the evidence a
+    settlement pins its push to. A hold reads the head it marks and never
+    writes that one.
+
     `post_publication`, and the `source_stage`, `published_pr_number`, and
     `published_sha` beside it, are the only context saying a generation was
     entered on work the remote already has. A record carrying none of them was
@@ -258,6 +271,7 @@ class LateGeneration:
     comment_hash: Optional[str] = None
     comment_watermark_id: Optional[int] = None
     plan_pr_number: Optional[int] = None
+    plan_pr_head: str = ""
     plan_pr_body: Optional[str] = None
     post_publication: bool = False
     source_stage: Optional[WorkflowLabel] = None
@@ -333,8 +347,9 @@ class LateGeneration:
         marker standing with the stage, the pull request, or the head it named
         gone -- and none of the three can be recovered from anywhere else: the
         label the adjudication runs under has replaced the one it came from by
-        the time anything asks, the pull request is not the plan PR beside it,
-        and the head is a commit the branch has already moved off. A group
+        the time anything asks, the hold beside it names a pull request only
+        because this group named one first, and the head is a commit the
+        branch has already moved off. A group
         that cannot say all three says nothing an entry is reconciled from.
 
         The stage is asked what it IS as well as whether it is there, and by
@@ -477,7 +492,7 @@ class LateGeneration:
         Ordinarily whatever the step that reached it says. The one move
         refused is BACKWARDS out of a transaction that has begun, and it is
         refused here rather than at each caller because every retry ABOVE the
-        transaction makes it: the plan-PR hold is reconciled on every tick, a
+        transaction makes it: the hold is reconciled on every tick, a
         spawn names its own boundary, and each completion claims the owner
         read. Any of them writing its own phase over `splitting` would erase
         the only evidence there is in the window that matters -- a child is

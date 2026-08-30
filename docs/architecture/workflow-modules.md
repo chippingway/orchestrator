@@ -237,7 +237,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             kill-switch order before the agent, and the pause, dirty-worktree, and interruption
                             checks after it
       handoff.py            the two ways this label hands an issue to implementation -- the kill switch and a
-                            candidate the size gate settled, the latter releasing the plan-PR hold and moving
+                            candidate the size gate settled, the latter releasing the hold and moving
                             `pr_number` onto the pull request the measured commit is on first -- and the re-read
                             the inline handler is given
       session.py            the locked decomposer session: the spec read, the fresh spawn that pins it, the
@@ -279,7 +279,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             back if it cannot
       late_coordinator.py   the additive late mode's order: the owed owner read and the undelivered park notice both
                             reconciled ahead of every gate, the live-generation gate, the frozen-evidence proof, the
-                            plan-PR hold before any spawn -- and the displaced one no new agent is started under --
+                            hold on the pull request the candidate stands on before any spawn -- and the displaced
+                            one no new agent is started under --
                             the content settlement that can end the tick, the completed-result short circuit, the
                             retry-budgeted run whose pre-spawn write holds the accounting back, the read-only proof
                             over the candidate worktree, the fresh owner read every completion but a declined
@@ -290,11 +291,18 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             refused past, the rules it is read back through, and the tracked spawn in the candidate's
                             own worktree, resuming the pinned session only for the run that carries a human's answer
                             to the question it asked
-      late_hold.py          the cycle-marked hold a reusable open plan PR wears: the one guarded read every
-                            decision is made from, the discussion provenance that decides whether that snapshot may be
-                            touched at all, the original body persisted (and proved persisted) before the edit, the
-                            spelling an earlier binary wrote and the one question that recognizes either as ours, and
-                            the retry, the refusal, and the settled pull request it reconciles to
+      late_hold.py          the cycle-marked hold a reusable open pull request wears: which one that is -- a hold
+                            already recorded (released first and re-taken where the publication entry has since
+                            named another, since the record holds one identity and one preserved body), then that
+                            entry naming the implementation PR the work is already on, then the issue's own
+                            `pr_number` -- the one guarded read every decision is
+                            made from, the discussion provenance the last of those three has to establish, the
+                            identity, head, and original body persisted (and proved persisted) before the edit --
+                            a head this reading could not name refusing the hold rather than being recorded absent --
+                            the notice worded by the side of publication it is written onto, the spelling an earlier
+                            binary wrote beside the two this one does, and the one question that recognizes any of
+                            the three as ours, the head that moved under a standing hold reported and never
+                            restamped, and the retry, the refusal, and the settled pull request it reconciles to
       late_outcome.py       what one finished reply becomes: the lineage-bound refusal, the durable write that precedes
                             every external effect and closes a completion by carrying the owner read it now owes --
                             under `owner_check` unless a split transaction was interrupted, whose boundary the
@@ -357,8 +365,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             worker held the issue reaches no cleanup pass on the tick it happened -- the children
                             before any link, the forward links behind the receipt that stops them repeating, the
                             pull request this cycle's work is on superseded and closed under a marker scoped to
-                            this adjudication -- the held plan one where the gate was entered before publication,
-                            and the implementation one where it was entered past it, which is proved still open
+                            this adjudication -- the plan one where the gate was entered before publication, and
+                            the implementation one where it was entered past it, which is proved still open
                             and still standing where the reading found it before it is closed, since the tail
                             behind this deletes the branch and hands the work to children and an unsuperseded one
                             is an open change carrying work nobody will finish, with a pull request already
@@ -489,23 +497,22 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             `late_restart`, asked one guard ahead of this one. The pass
                             itself is the cancellation persisted (with the boundary it interrupted, since
                             `cancelling` overwrites the phase every later rule reads) and reported once, before any
-                            external call; the held plan PR -- the one obligation no other pass ever sees --
+                            external call; the held pull request -- the one obligation no other pass ever sees --
                             released, told once over a cycle-scoped marker, and closed, re-asked on every visit
                             because its state is a human's to change and recorded only where that state moved; the
                             branch a supersession left behind but never wrote down taken on as owed, off the
                             announcement's own receipt rather than the phase a retry rewinds, only where the record
-                            names none, and only once that plan PR is settled -- the boundary is written before the
-                            attempt, so it says nothing about whether it landed; the child receipts discharged so
-                            the terminal a restart reads is one it will accept; the rest handed to
-                            `late_cleanup`'s own
-                            rules unchanged, with the consumer
-                            scan taken only where a ref is actually held; that plan PR asked ONCE MORE on the far
-                            side of all of it, since a branch delete, a ref delete and a consumer read apiece
+                            names none, and only once that pull request is settled -- the boundary is written
+                            before the attempt, so it says nothing about whether it landed; the child receipts
+                            discharged so the terminal a restart reads is one it will accept; the rest handed to
+                            `late_cleanup`'s own rules unchanged, with the consumer
+                            scan taken only where a ref is actually held; that pull request asked ONCE MORE on
+                            the far side of all of it, since a branch delete, a ref delete and a consumer read apiece
                             stand between the first ask and the terminal; and the `rejected` terminal, written last,
                             only for a closed owner, and only once nothing is owed -- which is what takes the issue
                             out of the sweep for good
       late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the exemption
-                            naming the measured commit, the plan-PR hold released and the pull request reconciled
+                            naming the measured commit, the hold released and the pull request reconciled
                             against that commit in any state -- with a settled pointer dropped rather than handed on
                             -- or, where the verdict was taken PAST publication, the frozen pull request proved
                             rather than searched for: still open and still standing where the reading found it -- or
@@ -563,7 +570,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             back off: what the record has to prove before that gesture counts -- a cycle that
                             exists, one a close already ended, and one that owes nothing under BOTH readings, since
                             the ending's outstanding list and the domain's settled ledger overlap without
-                            containing each other (only the first reports a plan PR this generation cannot show it
+                            containing each other (only the first reports a held PR this generation cannot show it
                             held, which no pass can settle and a restart would erase; only the second counts a
                             child receipt or an untypeable consumer ledger, over which the retirement would refuse
                             with the marker already down) -- the proof half of the terminal record, saying

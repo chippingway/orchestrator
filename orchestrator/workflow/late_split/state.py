@@ -73,6 +73,7 @@ _TITLE_BODY_HASH = "late_title_body_hash"
 _COMMENT_HASH = "late_comment_hash"
 _COMMENT_WATERMARK_ID = "late_comment_watermark_id"
 _PLAN_PR_NUMBER = "late_plan_pr_number"
+_PLAN_PR_HEAD = "late_plan_pr_head"
 _PLAN_PR_BODY = "late_plan_pr_body"
 _POST_PUBLICATION = "late_post_publication"
 _SOURCE_STAGE = "late_source_stage"
@@ -109,6 +110,7 @@ LATE_STATE_KEYS = (
     _COMMENT_HASH,
     _COMMENT_WATERMARK_ID,
     _PLAN_PR_NUMBER,
+    _PLAN_PR_HEAD,
     _PLAN_PR_BODY,
     _POST_PUBLICATION,
     _SOURCE_STAGE,
@@ -374,6 +376,9 @@ def read_late_generation(state: PinnedState) -> LateGeneration:
             state.get(_COMMENT_WATERMARK_ID),
         ),
         plan_pr_number=_payloads.as_identity(state.get(_PLAN_PR_NUMBER)),
+        plan_pr_head=_payloads.as_hex(
+            state.get(_PLAN_PR_HEAD), _formats.COMMIT_LENGTHS,
+        ) or "",
         plan_pr_body=_payloads.as_text(state.get(_PLAN_PR_BODY)),
         post_publication=_payloads.as_flag(state.get(_POST_PUBLICATION)),
         source_stage=_payloads.as_member(
@@ -581,6 +586,7 @@ def _evidence_fields(generation: LateGeneration) -> dict[str, Any]:
         _COMMENT_HASH: generation.comment_hash,
         _COMMENT_WATERMARK_ID: generation.comment_watermark_id,
         _PLAN_PR_NUMBER: generation.plan_pr_number,
+        _PLAN_PR_HEAD: generation.plan_pr_head or None,
         _PLAN_PR_BODY: generation.plan_pr_body,
     }
 

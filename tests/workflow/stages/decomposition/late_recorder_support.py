@@ -33,7 +33,7 @@ class SpawnSnapshot:
 
 
 class HoldSnapshot:
-    """What pinned state held each time the plan PR body was rewritten."""
+    """What pinned state held each time the held PR body was rewritten."""
 
     def __init__(self, github) -> None:
         self.snapshots: list[dict] = []

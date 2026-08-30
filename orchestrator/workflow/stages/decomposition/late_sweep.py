@@ -7,8 +7,8 @@ umbrella's terminal settle it. That works for every issue that reaches the
 terminal. It does not work for the one a human closed halfway: a closed
 `decomposing` or `umbrella` issue is outside every other pass this
 orchestrator makes, so the branch its superseded candidate sat on, the
-immutable ref its children were cut from, and the plan pull request it was
-holding would be held by a repository nothing ever asked about again.
+immutable ref its children were cut from, and the pull request it was holding
+would be held by a repository nothing ever asked about again.
 
 So this owner exists, and its whole shape is decided by what it must NOT do.
 It is cleanup, not recovery: no agent is spawned, no workflow is resumed, no
@@ -19,8 +19,8 @@ ledger, which is the record of what the orchestrator put on somebody's
 repository and is therefore the one thing it still owes.
 
 What that ending consists of is the cancellation owner's, next door: the mark
-that goes down before any external call, the held plan PR it closes over one
-notice, the branch and the ref it hands to the reclamation rules unchanged,
+that goes down before any external call, the held pull request it closes over
+one notice, the branch and the ref it hands to the reclamation rules unchanged,
 and the `rejected` terminal a fully settled cycle earns. What is here is one
 of the two entries into it -- the re-read of the close, and the one reading
 that says whether there is a cycle to end at all. The other is the

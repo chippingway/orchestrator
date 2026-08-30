@@ -159,15 +159,15 @@ def _settled_candidate_owns_the_tick(
 
     What this owes the pull requests first is exactly what an accepted verdict
     owes them, and for the same reasons: this generation put a "do not merge"
-    notice on the plan pull request and holds the only copy of the description
-    it displaced, and `pr_number` still names whichever change the issue
-    carried into the gate. Both are dropped by the retirement the implementing
-    gate takes a moment later -- which reads a record about SIZE and knows
-    nothing about either -- so a notice left standing has nothing left to
-    reclaim it, and a recorded plan pull request a human merged while the
-    revision ran ends the issue as `done` before the revised candidate is ever
-    published. So the hold comes off and the pointer is moved to the pull
-    request the measured commit is actually on, before anything else moves.
+    notice on a pull request and holds the only copy of the description it
+    displaced, and `pr_number` still names whichever change the issue carried
+    into the gate. Both are dropped by the retirement the implementing gate
+    takes a moment later -- which reads a record about SIZE and knows nothing
+    about either -- so a notice left standing has nothing left to reclaim it,
+    and a recorded pull request a human merged while the revision ran ends the
+    issue as `done` before the revised candidate is ever published. So the hold
+    comes off and the pointer is moved to the pull request the measured commit
+    is actually on, before anything else moves.
 
     The record itself is deliberately KEPT across the handoff, and retiring it
     is the implementing gate's own step rather than this one's. It is what

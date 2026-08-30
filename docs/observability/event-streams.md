@@ -492,8 +492,8 @@ under `stage: decomposing`, which is where a re-measurement happens, unlike the 
 `late_cancellation` per cycle whose owner the post-agent guard found closed after ANY completed run — a question
 and a timeout included
 ([`../workflow/roles.md`](../workflow/roles.md#the-owner-read-a-finished-run-has-to-pass)) — and a
-`late_failure` carrying `plan_pr_hold_failed` when the plan-PR hold cannot be reconciled or released on a
-still-open plan PR (a notice a human removed from one included, which starts no new agent under it),
+`late_failure` carrying `plan_pr_hold_failed` when the cycle-marked hold cannot be reconciled or released on a
+still-open pull request (a notice a human removed from one included, which starts no new agent under it),
 `measurement_failed` when a revised candidate could not be measured, `owner_read_failed` on every read that
 guard could not take, or `pr_reconcile_failed` when the pull request an accepted candidate would be handed on
 against could not be established. Two more arrive with the split transaction
@@ -515,7 +515,7 @@ named by the caller, so a record says where the reclamation happened rather than
 also the second producer of `late_cancellation`, under the same bound: the record rides the write that first
 marks the cycle, so a close at a boundary no agent was running at is reported exactly once however many passes
 the cleanup behind it takes. And it adds one `late_cleanup` member no other producer emits — `resource:
-plan_pr`, for the held plan pull request a cancelled cycle closes — carrying `pr_reconcile_failed` where that
+plan_pr`, for the held pull request a cancelled cycle closes — carrying `pr_reconcile_failed` where that
 pull request could not be released or closed.
 
 The fourth producer is the **restart** an operator authorizes by taking a settled cancellation's `rejected` back off
@@ -609,7 +609,8 @@ event — and every field that could otherwise smuggle text through is closed at
 - **A pull request's own text.** What a `post_publication` record says about the pull request it overflowed is the
   number, the head it was standing on, and the stage the issue came from — three bounded fields. The title, the body,
   and the body the adjudication holds in pinned state (`late_plan_pr_body`) are free-form text a human and an agent
-  both write into, and no argument here reaches them.
+  both write into, and no argument here reaches them. The head a hold was taken over (`late_plan_pr_head`) is bounded
+  and still not recorded: it is the hold's own reading, and nothing a record is correlated by.
 - **The generation's own fields** are checked by `workflow/late_split/validation.py` before anything is built, because
   `candidate_sha`, `base_sha`, `published_sha`, `phase`, `source_stage`, and `restart_target` are typed `str` — or
   annotated with a vocabulary that a lookalike string satisfies every comparison of — and would otherwise be written

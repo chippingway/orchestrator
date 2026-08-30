@@ -23,7 +23,7 @@ of one mean anything.
 
 An unlabeled issue whose record says anything else is not this owner's
 business, and it is not ordinary work either: a cancellation still owing the
-remote a branch, a ref, a child receipt, or a plan pull request belongs to the
+remote a branch, a ref, a child receipt, or a held pull request belongs to the
 cleanup until it does not, and one whose terminal is unproved is owed that
 terminal first. Every one of those is refused by the guard beside this one
 rather than let through, because the pickup path behind them greets an issue
@@ -33,7 +33,7 @@ deciding. A rejection from anywhere else in the workflow is refused there for
 the same reason, and stays exactly as inert as it was.
 
 "Owes nothing" is one question over two readings, asked of the cancellation
-owner so this guard and that one cannot disagree. A plan pull request this
+owner so this guard and that one cannot disagree. A pull request this
 generation names and cannot prove it held is a record only a human can repair,
 carried on no ledger and reported only by the ending; a child receipt and an
 untypeable consumer ledger are obligations only the domain's settled-ledger
@@ -266,8 +266,8 @@ def _restartable(
 
     It has to owe nothing, which is `_unsettled` on the cancellation owner --
     one question over two readings, because neither contains the other. What
-    the ending lists counts a plan pull request this generation names and
-    cannot show it ever held, an obligation no ledger entry carries and only a
+    the ending lists counts a pull request this generation names and cannot
+    show it ever held, an obligation no ledger entry carries and only a
     human can repair; projecting the fresh cycle over one would delete the
     last thing on the issue pointing at a pull request this orchestrator left
     marked and open. What the domain's settled-ledger answer adds is a child

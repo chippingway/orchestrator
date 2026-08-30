@@ -272,7 +272,7 @@ def _pinned_state_refuses(
     The fourth is an owner whose cycle a close already ended and whose cleanup
     has not finished. Cancellation is irreversible within a cycle, so a human
     who reopens the issue gets a fresh one -- but not while the old one still
-    holds a branch, a ref, or a plan pull request, because both labels an
+    holds a branch, a ref, or a held pull request, because both labels an
     adjudication can be wearing name a handler that would act on the issue
     rather than settle it.
 
@@ -288,7 +288,7 @@ def _pinned_state_refuses(
     them can refuse indefinitely. The reuse guard HOLDS a dispatch -- writing
     nothing, on purpose -- for as long as an ancestor's ref cannot be asked
     about, and an owner of its own cancelled cycle nested under such an
-    ancestor would spend that entire outage never reconciling its own plan PR,
+    ancestor would spend that entire outage never reconciling its own held PR,
     branch, or ref. Nothing is lost by the order: neither a cancelled cycle
     nor a restart mid-transaction starts any work, so neither question below
     is about anything either is going to do, and both are asked again on the

@@ -65,7 +65,7 @@ _IDENTITY_FLOORS = MappingProxyType({
     "current_issue": 1,
 })
 
-_SHA_FIELDS = ("candidate_sha", "base_sha", "published_sha")
+_SHA_FIELDS = ("candidate_sha", "base_sha", "plan_pr_head", "published_sha")
 
 # What a family's own record is read without. A measurement and the verdict
 # answering it are the two an analysis joins on: which commits were frozen,

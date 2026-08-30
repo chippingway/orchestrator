@@ -20,10 +20,12 @@ make freezing them fail closed rather than open.
 The entry is frozen BEFORE any effect and travels with the record because a
 reconciliation could re-derive none of it. The stage is gone the moment the
 adjudication label replaces it. The pull request is the one the work already
-has, which is not the plan pull request a hold is placed on. And the head is
-the tip that pull request was left standing on, which the next push to the
-branch moves. Recorded, a later tick can say which publication a generation
-was entered on; re-read, it would answer with whatever the issue has become.
+has, and it is recorded here rather than read back off the hold beside it: that
+record names whichever pull request the cycle marked, which is this one only
+because this entry named it first. And the head is the tip that pull request
+was left standing on, which the next push to the branch moves. Recorded, a
+later tick can say which publication a generation was entered on; re-read, it
+would answer with whatever the issue has become.
 
 Five readings refuse rather than report, and each of them is a push this gate
 would otherwise wave through on evidence nobody took. A tree that is not

@@ -7,13 +7,13 @@ under the same `workflow:decomposing` label the initial decomposer runs under,
 by a separate set of owners that share these records. They sit together
 because each of them crosses a boundary the call stack alone would lose it
 across -- the tick's own subject, which advances as the generation is
-persisted; what reconciling the plan-PR hold left behind; the run this issue is
-locked to as the pinned comment records it; what one late reply decided; what a
-fresh read said about the issue that reply belongs to; the split that reading
-cleared for the transaction which creates its children; what
-the requirements behind the frozen candidate currently hash to and what the
-humans have said about them since; and what the whole call did with the tick it
-was given.
+persisted; what reconciling the hold on the pull request its candidate stands
+on left behind; the run this issue is locked to as the pinned comment records
+it; what one late reply decided; what a fresh read said about the issue that
+reply belongs to; the split that reading cleared for the transaction which
+creates its children; what the requirements behind the frozen candidate
+currently hash to and what the humans have said about them since; and what the
+whole call did with the tick it was given.
 
 `_LateRun` is the durable half. It records what the failure contract calls the
 late agent's own facts -- the role it ran as, the backend spec it is locked
@@ -201,8 +201,8 @@ class _LateRun:
 
 
 @dataclass(frozen=True)
-class _PlanPr:
-    """One plan pull request, read once and under one guard.
+class _HeldPr:
+    """One pull request a hold is taken on, read once and under one guard.
 
     A PyGithub pull request is lazy: the object a fetch returns has asked
     GitHub nothing, and the request that can fail is the FIRST attribute read.
@@ -223,16 +223,16 @@ class _PlanPr:
 
 
 @dataclass(frozen=True)
-class _PlanPrHold:
-    """What reconciling the cycle-marked plan-PR hold left behind.
+class _HeldPrHold:
+    """What reconciling the cycle-marked hold left behind.
 
     `held` and `failed` are not opposites. A generation with no reusable open
-    plan PR is neither -- there is nothing to hold and nothing went wrong --
-    and the caller spawns exactly as it would have.
+    pull request to mark is neither -- there is nothing to hold and nothing
+    went wrong -- and the caller spawns exactly as it would have.
 
     `displaced` is the third answer, and it is the one that looks like the
-    second and is not: an open plan pull request this generation DID hold,
-    wearing a description a human wrote over the notice. Their words are left
+    second and is not: an open pull request this generation DID hold, wearing
+    a description a human wrote over the notice. Their words are left
     alone -- overwriting them is what the release below already refuses -- but
     the change is now mergeable with nothing on it saying an adjudication is
     open, which is exactly the state the hold exists to prevent. So it stops a
@@ -301,8 +301,8 @@ class _LateContext:
 
     `displaced_hold` is the fifth, and it travels the length of the call: the
     hold is reconciled at the top and what it found only matters at the spawn,
-    several steps down. An open plan pull request whose notice a human removed
-    may not have an agent started under it, but may still have an answer this
+    several steps down. An open pull request whose notice a human removed may
+    not have an agent started under it, but may still have an answer this
     issue already recorded settled -- so the fact is carried rather than acted
     on where it is learned.
     """

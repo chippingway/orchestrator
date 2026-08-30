@@ -39,7 +39,7 @@ state every stage shares.
 
 Both ends of that are bounded rather than trusted. What a recorded outcome is
 measured against is the whole comment the write would produce -- the preserved
-plan-PR body and every other stage's keys included, since a result small on
+held-PR body and every other stage's keys included, since a result small on
 its own can still be the one that pushes the comment past what GitHub accepts
 -- and an outcome past that budget is refused whole, because shortening it
 would record a question nobody asked or children nobody proposed. On the way
@@ -119,7 +119,7 @@ _RESULT_KEYS = (
 )
 
 # What a recorded outcome is measured against: not its own size, but what the
-# WHOLE pinned comment would become with it in -- the preserved plan-PR body
+# WHOLE pinned comment would become with it in -- the preserved held-PR body
 # and every other stage's keys included. A result small enough on its own can
 # still be the one that pushes the comment past what GitHub accepts, and
 # finding that out from the failed write means the agent has already been paid
@@ -255,10 +255,11 @@ def _drop_late_result(state: PinnedState) -> None:
 def _record_late_session(state: PinnedState, agent_result: AgentResult) -> None:
     """Pin the session a finished run opened, when it surfaced one.
 
-    Bounded, because the room for it was reserved before the plan PR was ever
-    held. A token longer than any backend issues is not one this may pin: it
-    would push the comment past what the hold proved would fit, and the write
-    that follows -- a park, or the outcome itself -- has nowhere else to go.
+    Bounded, because the room for it was reserved before any pull request was
+    ever held. A token longer than any backend issues is not one this may pin:
+    it would push the comment past what the hold proved would fit, and the
+    write that follows -- a park, or the outcome itself -- has nowhere else to
+    go.
     """
     session_id = agent_result.session_id
     if not session_id:
@@ -389,7 +390,7 @@ def _spawn_record_for(
 def _holdable(state_data: dict, generation: LateGeneration) -> bool:
     """Whether a comment holding this could still record the run beside it.
 
-    Asked before a plan PR's description is replaced, because the write that
+    Asked before a held PR's description is replaced, because the write that
     starts the run has no safe failure of its own: parking is another write of
     the same oversized comment, so a refusal there would strand the pull
     request held with nothing recorded and every retry raising again.

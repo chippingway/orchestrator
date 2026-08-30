@@ -6,7 +6,7 @@ Home of what a late generation IS, apart from anything that drives one. A
 generation is the record an oversized committed candidate is adjudicated
 under -- its identities, the commits frozen for it, what it measured, which
 phase its reconciliation reached, the fingerprints it re-reads human content
-against, the plan PR it holds, the external resources it still owes the
+against, the pull request it holds, the external resources it still owes the
 remote, whether it was cancelled, and whether a restart is half-written. The
 owners divide by what a reader is asking about it: what any late value has to
 look like (``formats``), the vocabularies and the frozen record itself
