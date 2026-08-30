@@ -18,6 +18,8 @@ BASE_TIP_SHA = "base-branch-tip"
 # the pinned comment -- which reads a frozen commit at its exact length and
 # drops anything else, so a readable stand-in would come back absent.
 SHA_LENGTH = 40
+# How many times an eight-character group repeats to fill one whole id.
+SHA_LENGTH_EIGHTHS = SHA_LENGTH // 8
 MEASURED_BASE_SHA = "b" * SHA_LENGTH
 MEASURED_CANDIDATE_SHA = "c" * SHA_LENGTH
 
@@ -27,8 +29,14 @@ MEASURED_CANDIDATE_SHA = "c" * SHA_LENGTH
 # ends, so a single value says "the head never moved" and no value at all says
 # "the probe failed" -- both of which are refusals a test should have to ask
 # for. A test about either seeds the readings it is about.
-HEAD_BEFORE_RUN = "head-before-the-run"
-HEAD_AFTER_RUN = "head-after-the-run"
+#
+# The post-run head IS the commit the size gate proves the checkout to, because
+# in production the two are one read of one worktree: a route names the commit
+# it means to publish and the gate refuses a checkout standing anywhere else.
+# Both are whole object ids for the same reason the pair above is -- a commit
+# field is read at its exact length.
+HEAD_BEFORE_RUN = "be40e5ba" * SHA_LENGTH_EIGHTHS
+HEAD_AFTER_RUN = MEASURED_CANDIDATE_SHA
 
 STATE_CLOSED = "closed"
 STATE_OPEN = "open"

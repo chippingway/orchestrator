@@ -26,6 +26,7 @@ per-file-ignores =
     orchestrator/workflow/engine/terminals.py:WPS201,WPS202
     orchestrator/workflow/engine/tick.py:WPS201,WPS202
     orchestrator/workflow/engine/usage.py:WPS201,WPS202
+    orchestrator/workflow/stages/conflicts/divergence.py:WPS202
     orchestrator/workflow/stages/conflicts/outcomes.py:WPS201
     orchestrator/workflow/stages/conflicts/publication.py:WPS201
     orchestrator/workflow/stages/conflicts/resume.py:WPS201

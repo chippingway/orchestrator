@@ -7,6 +7,7 @@ from __future__ import annotations
 import unittest
 
 from tests.git.publication import squash_git_support as squash_support
+from tests.git.publication.squash_gate_support import PublicationSeed
 
 GIT_LOG = "log"
 LAST_COMMIT = "-1"
@@ -67,7 +68,9 @@ class SquashSubjectSelectionTest(
         # Reset and rebuild the branch with non-conv-commit first subject.
         self._rebuild_topic(("typo fix", "feat: add foo"), "g")
         squash_run = self._squash(
-            issue=self._make_issue(title="rename frobnicator"),
+            publication=PublicationSeed(
+                issue=self._make_issue(title="rename frobnicator"),
+            ),
         )
         self.assertTrue(squash_run.success, squash_run.error)
         self.assertEqual(squash_run.count, 2)
@@ -86,7 +89,9 @@ class SquashSubjectSelectionTest(
             "c",
         )
         squash_run = self._squash(
-            issue=self._make_issue(title="hiring page"),
+            publication=PublicationSeed(
+                issue=self._make_issue(title="hiring page"),
+            ),
         )
         self.assertTrue(squash_run.success, squash_run.error)
         self.assertEqual(squash_run.count, 2)
@@ -103,7 +108,9 @@ class SquashSubjectSelectionTest(
         # Seed the base branch with a history dominated by `event:`.
         self._seed_inferred_prefix_history()
         squash_run = self._squash(
-            issue=self._make_issue(title="redesign the homepage"),
+            publication=PublicationSeed(
+                issue=self._make_issue(title="redesign the homepage"),
+            ),
         )
         self.assertTrue(squash_run.success, squash_run.error)
         self.assertEqual(squash_run.count, 2)

@@ -19,6 +19,7 @@ from orchestrator.github.labels import PAUSED_LABEL
 
 from tests.support.fakes import FakeComment, FakeLabel, FakeUser, make_issue
 from tests.workflow.stages.conflicts.conflicts_test_support import (
+    RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
 )
 from tests.workflow.fixtures import _agent
@@ -87,7 +88,7 @@ class ResolvingConflictLivePauseTest(unittest.TestCase, _ResolvingConflictMixin)
                 issue,
                 merge_succeeded=False,
                 conflicted_files=["a.py"],
-                head_shas=["beforehead", "merged"],
+                head_shas=["beforehead", RESOLVED_HEAD_SHA],
                 push_branch=True,
             )
 
@@ -135,7 +136,7 @@ class ResolvingConflictLivePauseTest(unittest.TestCase, _ResolvingConflictMixin)
                 gh,
                 issue,
                 merge_succeeded=True,  # unused: the resume path does not rebase
-                head_shas=["beforehead", "merged"],
+                head_shas=["beforehead", RESOLVED_HEAD_SHA],
                 run_agent_result=_agent(
                     session_id="dev-sess",
                     last_message="resolved",
@@ -165,7 +166,7 @@ class ResolvingConflictLivePauseTest(unittest.TestCase, _ResolvingConflictMixin)
                 gh,
                 issue,
                 merge_succeeded=True,  # unused: drift returns before the rebase
-                head_shas=["beforehead", "merged"],
+                head_shas=["beforehead", RESOLVED_HEAD_SHA],
                 run_agent_result=_agent(
                     session_id="dev-sess",
                     last_message="addressed",

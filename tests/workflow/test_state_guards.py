@@ -86,6 +86,38 @@ class IsAllowedTransitionTest(unittest.TestCase):
         ):
             self.assertTrue(is_allowed_transition(cur, nxt), (cur, nxt))
 
+    def test_published_candidate_edges_are_declared(self) -> None:
+        # The size gate runs in front of every push onto a pull request the
+        # remote already carries, so a cumulative candidate past the ceiling
+        # is held and adjudicated from whichever state that push was reached
+        # under -- the fix loop, the conflict rebase, or the final docs pass.
+        # The pre-PR states own no such edge: nothing there has a publication
+        # to be measured against.
+        # Each is also the way BACK: a settled adjudication continues at the
+        # stage it was taken out of, because that stage is the only owner of
+        # the completion the candidate still owes.
+        for source in (
+            WorkflowLabel.VALIDATING,
+            WorkflowLabel.DOCUMENTING,
+            WorkflowLabel.IN_REVIEW,
+            WorkflowLabel.FIXING,
+            WorkflowLabel.RESOLVING_CONFLICT,
+        ):
+            with self.subTest(source=source):
+                self.assertTrue(
+                    is_allowed_transition(source, WorkflowLabel.DECOMPOSING),
+                )
+                self.assertTrue(
+                    is_allowed_transition(WorkflowLabel.DECOMPOSING, source),
+                )
+        # `ready` and `blocked` own the edge already, as the re-decompose
+        # route rather than as a size hold; `question` owns none at all.
+        self.assertFalse(
+            is_allowed_transition(
+                WorkflowLabel.QUESTION, WorkflowLabel.DECOMPOSING,
+            ),
+        )
+
     def test_a_restart_re_enters_from_unlabeled(self) -> None:
         # A restart after a completed cancellation is authorized by the
         # operator REMOVING `rejected`, so the label it writes starts from the

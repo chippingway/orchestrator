@@ -272,9 +272,9 @@ CARRYING_PR_NUMBER = 92
 class GuardedLateCase(LateCase):
     """One late issue, adjudicated once, reported by what it decided."""
 
-    def _decide(self, agent_result=SPLIT_RUN):
+    def _decide(self, agent_result=SPLIT_RUN, **run_fields):
         """Adjudicate once and report only the outcome."""
-        outcome, _spawn = self._adjudicate(agent_result)
+        outcome, _spawn = self._adjudicate(agent_result, **run_fields)
         return outcome
 
     def _decide_unread(self, agent_result=SPLIT_RUN):

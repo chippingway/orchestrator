@@ -39,3 +39,28 @@ class _RecoveryFollowupAssertions:
         self.assertIn(detail, bodies[0])
         self.assertIn(NO_ACTION_LINE, bodies[0])
         self.assertNotIn("@", bodies[0])
+
+
+# What a pinned write refuses with, for the tick that has to survive it.
+_WRITE_FAILED = "pinned write rejected"
+
+
+class _WriteFailingAfter:
+    """A pinned write that lets the first `landed` writes through, then dies.
+
+    Shared by every recovery whose durable step is a write of its own: the
+    clear a landed push takes lands BEFORE the follow-up a test is about, so
+    the crash has to be modelled where it can actually happen -- past the
+    push and past the comment, on the write that would have cleared the park.
+    """
+
+    def __init__(self, landed: int, wrapped) -> None:
+        self._landed = landed
+        self._wrapped = wrapped
+        self._writes = 0
+
+    def __call__(self, *called, **options):
+        self._writes += 1
+        if self._writes > self._landed:
+            raise RuntimeError(_WRITE_FAILED)
+        return self._wrapped(*called, **options)

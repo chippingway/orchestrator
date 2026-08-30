@@ -6,9 +6,12 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator.git import commands as _git_commands
+from orchestrator.git.measurement.models import FrozenCommit
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 
+from tests.support.publication import LandingPush
 from tests.workflow.stages.conflicts.conflicts_test_support import (
+    RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
 )
 from tests.workflow.fixtures import (
@@ -16,6 +19,15 @@ from tests.workflow.fixtures import (
 )
 
 CONFLICT_ISSUE = 200
+
+# The commit the recovered push publishes, and the one the rebase behind it
+# rewrites it into: two pushes in one tick carry two commits, which is what
+# tells a second push from the receipt of the first.
+RECOVERED_CANDIDATE = "1ec04e5e" * 5
+REBASED_CANDIDATE = "5eba5ed1" * 5
+# What the checkout stands on once the rebase has rewritten the recovered
+# commit, which is what the second push is named against and leased by.
+REBASED_SHA = REBASED_CANDIDATE
 
 
 def _assert_completed_round(test_case, github) -> None:
@@ -51,12 +63,13 @@ class ResolvingConflictRecoveryPushTest(unittest.TestCase, _ResolvingConflictMix
         gh, issue, _ = self._seed()
 
         merge_mock = MagicMock(return_value=(True, []))
-        # After the recovered push the handler probes whether the
+        # Before the recovered push the handler probes whether the
         # worktree is still behind base via `git rev-list --count
-        # HEAD..origin/<base>`. The crash-recovery scenario this test
-        # exercises has HEAD already on base, so the probe returns 0
-        # and the handler takes the fast path to validating without a
-        # follow-up rebase.
+        # HEAD..origin/<base>` -- the reading is the same either side of a
+        # push, and taken first it says which round a held candidate would
+        # owe. The crash-recovery scenario this test exercises has HEAD
+        # already on base, so the probe returns 0 and the handler takes the
+        # fast path to validating without a follow-up rebase.
         git_on_base = MagicMock(
             return_value=MagicMock(returncode=0, stdout="0\n", stderr=""),
         )
@@ -73,6 +86,10 @@ class ResolvingConflictRecoveryPushTest(unittest.TestCase, _ResolvingConflictMix
                 # HEAD ahead of `origin/<branch>` by one commit (the
                 # unpushed resolution); not behind.
                 branch_ahead_behind=(1, 0),
+                # The recovered head this stage reads and the commit the gate
+                # proves the checkout to are one read of one worktree, so the
+                # push, the receipt, and the round all name the same commit.
+                head_shas=[RESOLVED_HEAD_SHA, RESOLVED_HEAD_SHA],
             )
         # Recovered work pushed; rebase NOT attempted (we already have a
         # resolution waiting to ship).
@@ -96,14 +113,25 @@ class ResolvingConflictRecoveryPushTest(unittest.TestCase, _ResolvingConflictMix
         gh, issue, _ = self._seed()
 
         merge_mock = MagicMock(return_value=(True, []))
+        # The behind-base probe runs BEFORE the push, because the round a
+        # held candidate would owe has to be decided while the gate can still
+        # be told about it. On base here, so this push would have completed
+        # the round had it landed.
+        git_on_base = MagicMock(
+            return_value=MagicMock(returncode=0, stdout="0\n", stderr=""),
+        )
 
-        with patch.object(_base_sync_pre_pr, "_rebase_base_into_worktree", merge_mock):
+        with (
+            patch.object(_base_sync_pre_pr, "_rebase_base_into_worktree", merge_mock),
+            patch.object(_git_commands, "_git", git_on_base),
+        ):
             mocks = self._run_resolving_conflict(
                 gh,
                 issue,
                 run_agent=_agent(),
                 push_branch=False,
                 branch_ahead_behind=(1, 0),
+                head_shas=[RESOLVED_HEAD_SHA, RESOLVED_HEAD_SHA],
             )
         mocks["_push_branch"].assert_called_once()
         merge_mock.assert_not_called()
@@ -143,15 +171,31 @@ class ResolvingConflictRecoveryPushTest(unittest.TestCase, _ResolvingConflictMix
                 gh,
                 issue,
                 run_agent=_agent(),
-                push_branch=True,
-                # Recovered push first (force-with-lease=None on a
-                # straight-ahead push), then the rebased-head push
-                # (force-with-lease=before_sha). The handler also reads
-                # HEAD for the round-emit on success, so feed enough
-                # SHAs through `_head_sha` for both the rebase-path's
-                # before/after compare and the audit emit.
+                # The recovered push lands, so the pull request stands on
+                # what it published when the rebase behind it leases its own
+                # push against the head that push left.
+                push_branch=LandingPush(gh, self.pr_number),
+                # Recovered push first, leased against the head the pull
+                # request was standing on; then the rebased-head push, leased
+                # against the head this stage reads back before it rebases.
+                # The handler also reads HEAD for the round-emit on success,
+                # so feed enough SHAs through `_head_sha` for both the
+                # rebase-path's before/after compare and the audit emit.
                 branch_ahead_behind=(1, 0),
-                head_shas=["before", "after", "after"],
+                head_shas=[
+                    RECOVERED_CANDIDATE, REBASED_SHA, REBASED_SHA,
+                ],
+                # The rebase rewrites the recovered commit, so the second
+                # push publishes a different one -- which is why it is a
+                # push at all rather than the receipt of the first being
+                # recognized. Reading by reading: the recovered push
+                # measures it and then proves the checkout still on it, and
+                # only the rebase behind that moves the head.
+                candidate_commit=(
+                    FrozenCommit(sha=RECOVERED_CANDIDATE),
+                    FrozenCommit(sha=RECOVERED_CANDIDATE),
+                    FrozenCommit(sha=REBASED_CANDIDATE),
+                ),
             )
 
         # Both the recovered push AND the rebased-head push fired this

@@ -9,6 +9,9 @@ import unittest
 from orchestrator.workflow.stages.fixing import handler as _fixing
 
 from tests.workflow.stages.fixing import (
+    fixing_drift_test_support as drift_support,
+)
+from tests.workflow.stages.fixing import (
     fixing_routing_test_support as support,
 )
 
@@ -24,7 +27,9 @@ QUESTION_PARK_ISSUE = support.QUESTION_PARK_ISSUE
 REVIEW_TRANSIENT_ISSUE = support.REVIEW_TRANSIENT_ISSUE
 SILENT_PARK_ISSUE = support.SILENT_PARK_ISSUE
 UNPUSHED_REBASE_ISSUE = support.UNPUSHED_REBASE_ISSUE
-_FixingWorktreeDriftFixtureMixin = support._FixingWorktreeDriftFixtureMixin
+_FixingWorktreeDriftFixtureMixin = (
+    drift_support._FixingWorktreeDriftFixtureMixin
+)
 _TEST_SPEC = support._TEST_SPEC
 
 

@@ -51,6 +51,21 @@ _UNMEASURED_PARK = (
     "developer."
 )
 
+# The same refusal where the work already has a pull request. It is worded
+# apart because both halves of the recovery differ: nothing is waiting to be
+# published for the first time, and a bare continue on these stages resumes
+# the developer rather than re-reading a pair -- so the notice says what is
+# true here and asks for nothing that would spend an agent.
+_UNMEASURED_PUBLISHED_PARK = (
+    "{mentions} what this issue's pull request would come to could not be "
+    "measured ({failure}), so the commit in the worktree has not been pushed "
+    "to it: a candidate whose cumulative size is unknown is not a small one, "
+    "and pushing it would grow a pull request nobody adjudicated. Nothing was "
+    "discarded -- the commit is still in the worktree, the pull request still "
+    "stands where it did, and the exact pair this attempt froze is recorded. "
+    "Fix what the reading needs and the same pair is measured again."
+)
+
 def _parked(
     gate: _records._Gate, generation: LateGeneration, failure, message: str,
 ) -> bool:
@@ -91,27 +106,52 @@ def _unmeasured(
     which is what a candidate that changes nothing writes too, so publishing
     on that reading is precisely how an unadjudicated implementation goes out.
     """
+    unmeasured = _UNMEASURED_PARK
+    if gate.entry is not None:
+        unmeasured = _UNMEASURED_PUBLISHED_PARK
     return _parked(
         gate, generation, failure,
-        _UNMEASURED_PARK.format(
-            mentions=config.HITL_MENTIONS, failure=failure,
-        ),
+        unmeasured.format(mentions=config.HITL_MENTIONS, failure=failure),
     )
 
 
 def _retire_spent_park(state: PinnedState) -> None:
-    """Drop a measurement park this attempt is the answer to.
+    """Drop a measurement park this attempt is the answer to, latch and all.
 
-    The reason is durable and the flag it sits beside is cleared by whatever
-    resumed the developer, so without this a park a fresh disposition has
-    superseded travels on -- into the stage the publication hands the issue
-    to, where it is state describing a step nothing is waiting on. Every exit
-    below either publishes, hands the issue on, or takes a park of its own
-    with the reason it fails for NOW, so there is nothing left for the old one
-    to say.
+    The reason is durable and so is the flag beside it, so without this a park
+    a fresh reading has superseded travels on -- into the stage the
+    publication hands the issue to, where it is state describing a step
+    nothing is waiting on. Every exit below either publishes, hands the issue
+    on, or takes a park of its own with the reason it fails for NOW, so there
+    is nothing left for the old one to say.
+
+    The LATCH goes with the reason, and it is the half that decides whether
+    the reading was worth taking. A reconciliation the dispatcher drives has
+    no run behind it to clear the flag, so a pair that measured small would
+    retire its record, record the commit as owed a push, and hand the tick to
+    a source stage that reads `awaiting_human` and takes its parked road --
+    waiting for a reply to a question this very tick answered, while the
+    approved commit sits unpushed. Only a measurement park is retired here, so
+    a question, a dirty tree, or a timeout is left exactly where it stands.
     """
     if state.get(_state._PARK_REASON) == PARK_MEASUREMENT_FAILED:
         state.set(_state._PARK_REASON, None)
+        state.set(_state._AWAITING_HUMAN, False)
+
+
+def _retire_superseded_park(state: PinnedState) -> None:
+    """Drop a park the adjudication is taking the issue out of.
+
+    A hold hands every later tick to the late coordinator, and what the issue
+    is waiting on from that moment is a verdict rather than whatever the park
+    asked a human about. Left standing the flag reaches the coordinator as an
+    issue already parked -- its own parked dispatch fires on a mention nobody
+    made about the question now open -- and the reason beside it describes a
+    step no one is retrying. Every road into a hold either had no park or has
+    one this hold supersedes, so the clear is unconditional.
+    """
+    state.set(_state._AWAITING_HUMAN, False)
+    state.set(_state._PARK_REASON, None)
 
 
 def _recorded_candidate(state: PinnedState) -> str:
@@ -141,6 +181,50 @@ def _approved_commit(state: PinnedState) -> str:
     ) or ""
 
 
+def _approved_lease(state: PinnedState) -> str:
+    """The head a published approval was frozen against, or "" where none was.
+
+    The other half of an approval taken on the published side, and the half
+    the retry after a failed push cannot re-derive: the generation that froze
+    the pull request's head was retired by the write that approved the
+    commit, and re-reading the pull request answers with wherever it has
+    moved to since. Read fail-closed like every other late commit field.
+
+    Empty is the ordinary answer and means a pre-publication approval -- what
+    every implementing-seam approval is -- whose push correctly takes its own
+    reading of the remote.
+    """
+    return _payloads.as_hex(
+        state.get(_state._APPROVED_LEASE), _formats.COMMIT_LENGTHS,
+    ) or ""
+
+
+def _approve(state: PinnedState, candidate_sha: str, lease: str) -> None:
+    """Record the commit a publication is owed, and what it is pinned to.
+
+    The pair is written together because it is spent together and means
+    nothing apart: a lease with no approval names a head nobody owes a push
+    for, and an approval whose lease was dropped is the one that force-pushes
+    over whatever the pull request has become.
+    """
+    state.set(_state._APPROVED_SHA, candidate_sha)
+    state.set(_state._APPROVED_LEASE, lease or None)
+
+
+def _forget_approval(state: PinnedState) -> None:
+    """Drop a debt that is paid, superseded, or being adjudicated instead.
+
+    What the route still owed goes with it. Those obligations outlive the
+    generation that froze them only so the tick that finally lands this commit
+    can close them; past that push there is nothing left to close, and a group
+    left standing would be restored by the next approval on this issue and
+    applied to a round it was never owed for.
+    """
+    state.set(_state._APPROVED_SHA, None)
+    state.set(_state._APPROVED_LEASE, None)
+    _late_state.write_late_spends(state, ())
+
+
 def _published_commit(state: PinnedState) -> str:
     """The commit this stage last pushed, or "" where none was.
 
@@ -157,19 +241,95 @@ def _published_commit(state: PinnedState) -> str:
     ) or ""
 
 
+def _published_lease(state: PinnedState) -> str:
+    """The head the recorded publication replaced, or "" where none is named.
+
+    What scopes the receipt beside it to one publication attempt. A receipt is
+    never cleared, so on its own it goes on naming a commit this stage pushed
+    rounds ago and answers "this tick's push landed" for any pull request
+    somebody rewound onto it. The head it REPLACED is the fact that dates it,
+    and a caller that froze its own head is what compares the two.
+
+    Read fail-closed like every other late commit field, and empty is a
+    receipt that vouches for no moved head at all -- an initial publication,
+    which froze no head, or one written before this pair was recorded.
+    """
+    return _payloads.as_hex(
+        state.get(_state._PUBLISHED_LEASE), _formats.COMMIT_LENGTHS,
+    ) or ""
+
+
+def _publication_from(state: PinnedState, head: str) -> str:
+    """The commit recorded as pushed FROM this head, or "" where none is.
+
+    The receipt and its head asked as the one question every caller of them
+    actually has: is the publication this record names the one I am about to
+    act on? Neither half answers it. A receipt is never cleared, so on its own
+    it goes on naming a commit this stage pushed rounds ago and vouches for
+    any pull request somebody rewound onto it; a head with no receipt beside
+    it names no push at all. Together they date one push to one attempt, and
+    a caller that froze its own head is what the date is checked against.
+
+    A caller with no head of its own is claiming nothing here, and gets "".
+    """
+    if not head or _published_lease(state) != head:
+        return ""
+    return _published_commit(state)
+
+
+def _record_publication(
+    state: PinnedState, published: str, superseded: str,
+) -> None:
+    """Record the commit a push put on the remote, and the head it replaced.
+
+    The pair is written together for the reason the approval's is, and the
+    danger is the mirror image: a receipt whose head was dropped is the one
+    that vouches for a publication somebody else moved, so the second half is
+    written on EVERY receipt -- cleared where there is no head to name rather
+    than left for the next receipt to inherit from the last.
+    """
+    state.set(_state._PUBLISHED_SHA, published)
+    state.set(_state._PUBLISHED_LEASE, superseded or None)
+
+
 def _persisted(gate: _records._Gate, generation: LateGeneration) -> None:
-    """Write the generation this step reached, and the state around it."""
+    """Write the generation this step reached, and the state around it.
+
+    What the caller's hold owes rides the same write, because the freeze is
+    durable and the count that follows it is not: a tick that dies in between
+    leaves a pair for the reconciliation ahead of the next handler to answer,
+    and that tick has no run behind it to re-derive a reviewer round, a
+    cleared bookmark, or a stage tail from. Written after the generation and
+    inside its own key group, so the retirement that ends the pair drops it in
+    the same write.
+
+    Only while the pair still AWAITS its count, which is exactly the window it
+    pays for. A record carrying a number has been answered -- the routed hold
+    that carries it spent this on the way past -- and rewriting it there would
+    leave a spent claim on the comment for a later reader to apply twice.
+    """
     _late_state.write_late_generation(gate.state, generation)
+    if generation.additions is None:
+        _late_state.write_late_spends(gate.state, gate.spends.fields)
     gate.gh.write_pinned_state(gate.issue, gate.state)
 
 
 def _emit(
     gate: _records._Gate, generation: LateGeneration, event: _events.LateEvent,
 ) -> None:
-    """Report one late event from the stage the measurement happened in."""
-    _telemetry.emit_late_event(
-        gate.gh, event, generation, stage=_state._IMPLEMENTING_STAGE,
-    )
+    """Report one late event from the stage the measurement happened in.
+
+    Which stage that is comes off the entry the call was taken on rather than
+    off this package's own name: the same gate runs at the seam that publishes
+    a pull request for the first time and at the one that pushes to a pull
+    request the remote already carries, and a record filed under
+    `implementing` for a reading taken in `fixing` would put a measurement in
+    a stage no developer of it ever ran under.
+    """
+    stage = _state._IMPLEMENTING_STAGE
+    if gate.entry is not None:
+        stage = gate.entry.stage
+    _telemetry.emit_late_event(gate.gh, event, generation, stage=stage)
 
 
 def _answers_the_measurement_park(

@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
+
+from orchestrator import config
 
 from tests.workflow.stages.conflicts.conflicts_test_support import (
+    RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
 )
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _FAKE_WT,
     _TEST_SPEC,
     _agent,
@@ -15,7 +20,12 @@ from tests.workflow.fixtures import (
 
 CONFLICT_ISSUE = 200
 CONFLICT_FILE = "a.py"
-BEFORE_HEAD = "beforehead"
+BEFORE_HEAD = "be40e5ba" * 5
+LATE_APPROVED_SHA = "late_approved_sha"
+KEY_PUBLISHED_SHA = "late_published_sha"
+MAX_ADDED_LINES = "MAX_ADDED_LINES"
+CEILING = 5
+PAST_THE_CEILING = 6
 RUN_AGENT = "run_agent"
 PUSH_BRANCH = "_push_branch"
 LABEL_VALIDATING = "workflow:validating"
@@ -35,6 +45,11 @@ def _assert_resolved_state(test_case, github) -> None:
     test_case.assertEqual(pinned_state.get("review_round"), 0)
     test_case.assertEqual(pinned_state.get("conflict_round"), 1)
     test_case.assertIn("last_conflict_resolved_at", pinned_state)
+    # The size gate approves the resolution before it goes out and records it
+    # as one still owed a push; the push that lands pays that debt. Left
+    # standing it would freeze this branch out of the pre-tick base refresh
+    # with nothing coming back to drop it.
+    test_case.assertIsNone(pinned_state.get(LATE_APPROVED_SHA))
 
 
 def _assert_interrupted_state(test_case, github) -> None:
@@ -70,22 +85,49 @@ class ResolvingConflictAgentExecutionTest(unittest.TestCase, _ResolvingConflictM
             issue,
             merge_succeeded=False,
             conflicted_files=[CONFLICT_FILE, "b.py"],
-            head_shas=[BEFORE_HEAD, "merged"],
+            head_shas=[BEFORE_HEAD, RESOLVED_HEAD_SHA],
             push_branch=True,
         )[0]
         # Agent IS spawned with the conflict-resolution prompt.
         self.assertEqual(mocks[RUN_AGENT].call_count, 1)
         prompt = mocks[RUN_AGENT].call_args.args[1]
         _assert_resolution_prompt(self, prompt)
+        # Named against the commit the size gate measured rather than
+        # against whatever the checkout became, and leased against the
+        # pre-rebase head this stage read for itself -- the tighter claim
+        # about a ref it is rewriting.
         mocks[PUSH_BRANCH].assert_called_once_with(
             _TEST_SPEC,
             _FAKE_WT,
             self.issue_branch,
+            revision=MEASURED_CANDIDATE_SHA,
             force_with_lease=BEFORE_HEAD,
         )
         self.assertIn((CONFLICT_ISSUE, LABEL_VALIDATING), gh.label_history)
         self.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), gh.label_history)
         _assert_resolved_state(self, gh)
+
+    def test_it_freezes_the_head_it_read(self) -> None:
+        # This stage read the remote for itself and pinned its push to what it
+        # read. Freezing anything else would leave the immediate push refusing
+        # a head that moved while a settled adjudication -- which re-pins from
+        # the record -- pinned to the head that moved and overwrote it.
+        gh, issue = self._seed()[:2]
+
+        with patch.object(config, MAX_ADDED_LINES, CEILING):
+            self._run_with_merge(
+                gh,
+                issue,
+                merge_succeeded=False,
+                conflicted_files=[CONFLICT_FILE, "b.py"],
+                head_shas=[BEFORE_HEAD, RESOLVED_HEAD_SHA],
+                push_branch=True,
+                added_lines=PAST_THE_CEILING,
+            )
+
+        self.assertEqual(
+            gh.pinned_data(CONFLICT_ISSUE)[KEY_PUBLISHED_SHA], BEFORE_HEAD,
+        )
 
     def test_agent_timeout_parks_awaiting_human(self) -> None:
         gh, issue, _ = self._seed()
@@ -117,7 +159,7 @@ class ResolvingConflictAgentExecutionTest(unittest.TestCase, _ResolvingConflictM
             issue,
             merge_succeeded=False,
             conflicted_files=[CONFLICT_FILE],
-            head_shas=[BEFORE_HEAD, "merged"],
+            head_shas=[BEFORE_HEAD, RESOLVED_HEAD_SHA],
             push_branch=False,
         )
         # Agent ran successfully and committed, but the push failed.

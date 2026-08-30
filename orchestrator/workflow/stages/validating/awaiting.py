@@ -121,9 +121,13 @@ def _transient_awaiting_action(
     ):
         return None
     recovery = _recovery._try_recover_validating_transient_park(
-        context.spec, context.issue, context.state,
+        context.gh, context.spec, context.issue, context.state,
     )
-    if recovery != _state._OUTCOME_STUCK:
+    # `held` joins `stuck` in owing nothing: the size gate took the candidate
+    # and has already parked the issue or moved it to the adjudication, so
+    # clearing the park here would announce a recovery that did not happen and
+    # step on the state the gate just wrote.
+    if recovery not in (_state._OUTCOME_STUCK, _state._OUTCOME_HELD):
         followup = _recovery._recovery_followup_comment(
             context.gh,
             context.issue,

@@ -15,12 +15,17 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _TEST_SPEC,
     _agent,
+    _open_pr_for,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
+from tests.workflow.stages.documenting import (
+    documenting_test_support as documenting_support,
+)
 from tests.workflow.stages.documenting.documenting_test_support import (
     _branch,
     _DocumentingWorkflowMixin,
@@ -35,10 +40,15 @@ DEV_AGENT = "codex"
 DEV_SESSION = "dev-sess"
 
 # --- Worktree HEAD SHAs threaded through the docs / recovery flows ------
-SHA_BEFORE = "aaa"
-SHA_AFTER = "bbb"
-SHA_DOCS = "docs-sha"
-SHA_RECOVERED = "recovered-sha"
+SHA_BEFORE = documenting_support.SHA_BEFORE
+# The head a docs pass leaves the checkout on. Each IS the commit the size
+# gate proves that checkout to, because in production they are one read of one
+# worktree: the stage names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else, so a fixture that spelled them
+# differently would be modelling the race rather than the tick.
+SHA_AFTER = MEASURED_CANDIDATE_SHA
+SHA_DOCS = MEASURED_CANDIDATE_SHA
+SHA_RECOVERED = MEASURED_CANDIDATE_SHA
 SHA_PR_HEAD = "pr-head-sha"
 
 # --- Pinned-state field keys read back from `gh.pinned_data(...)` -------
@@ -142,6 +152,17 @@ PARK_COMMENT_ID = 950
 HUMAN_REPLY_ID = 1100
 
 
+def _registered(gh, issue, pr_number: int) -> None:
+    """Register the issue and the open pull request its pinned state names.
+
+    A number in pinned state with no pull request behind it is a state the
+    size gate refuses on every route that pushes onto one, so a fixture that
+    reaches the docs push seeds both.
+    """
+    gh.add_issue(issue)
+    _open_pr_for(gh, issue_number=issue.number, pr_number=pr_number)
+
+
 class HandleDocumentingAwaitingHumanResumeTest(unittest.TestCase, _DocumentingWorkflowMixin):
     """Awaiting-human resume: a human reply re-runs the full
     documentation prompt (NOT the short human-reply followup that
@@ -162,7 +183,7 @@ class HandleDocumentingAwaitingHumanResumeTest(unittest.TestCase, _DocumentingWo
                 user=FakeUser(TRUSTED_AUTHOR),
             )
         )
-        gh.add_issue(issue)
+        _registered(gh, issue, COMMIT_REPLY_PR_NUMBER)
         gh.seed_state(
             COMMIT_REPLY_ISSUE_NUMBER,
             pr_number=COMMIT_REPLY_PR_NUMBER,
@@ -228,7 +249,7 @@ class HandleDocumentingAwaitingHumanResumeTest(unittest.TestCase, _DocumentingWo
                 user=FakeUser(TRUSTED_AUTHOR),
             )
         )
-        gh.add_issue(issue)
+        _registered(gh, issue, NO_COMMIT_REPLY_PR_NUMBER)
         gh.seed_state(
             NO_COMMIT_REPLY_ISSUE_NUMBER,
             pr_number=NO_COMMIT_REPLY_PR_NUMBER,
@@ -292,7 +313,7 @@ class HandleDocumentingAwaitingHumanResumeTest(unittest.TestCase, _DocumentingWo
                 user=FakeUser(TRUSTED_AUTHOR),
             )
         )
-        gh.add_issue(issue)
+        _registered(gh, issue, RECOVERED_REPLY_PR_NUMBER)
         gh.seed_state(
             RECOVERED_REPLY_ISSUE_NUMBER,
             pr_number=RECOVERED_REPLY_PR_NUMBER,
@@ -346,7 +367,7 @@ class HandleDocumentingAwaitingHumanResumeTest(unittest.TestCase, _DocumentingWo
                 user=FakeUser(TRUSTED_AUTHOR),
             )
         )
-        gh.add_issue(issue)
+        _registered(gh, issue, FAILED_PUSH_REPLY_PR_NUMBER)
         gh.seed_state(
             FAILED_PUSH_REPLY_ISSUE_NUMBER,
             pr_number=FAILED_PUSH_REPLY_PR_NUMBER,
@@ -385,7 +406,7 @@ class HandleDocumentingAwaitingHumanResumeTest(unittest.TestCase, _DocumentingWo
     def test_no_new_comments_keeps_parked(self) -> None:
         gh = FakeGitHubClient()
         issue = make_issue(NO_NEW_COMMENT_ISSUE_NUMBER, label=DOCUMENTING)
-        gh.add_issue(issue)
+        _registered(gh, issue, NO_NEW_COMMENT_PR_NUMBER)
         gh.seed_state(
             NO_NEW_COMMENT_ISSUE_NUMBER,
             pr_number=NO_NEW_COMMENT_PR_NUMBER,
@@ -442,7 +463,7 @@ class HandleDocumentingAwaitingHumanResumeTest(unittest.TestCase, _DocumentingWo
                 user=FakeUser(TRUSTED_AUTHOR),
             )
         )
-        gh.add_issue(issue)
+        _registered(gh, issue, FULL_PROMPT_REPLY_PR_NUMBER)
         gh.seed_state(
             FULL_PROMPT_REPLY_ISSUE_NUMBER,
             pr_number=FULL_PROMPT_REPLY_PR_NUMBER,
@@ -503,7 +524,7 @@ class HandleDocumentingAwaitingHumanResumeTest(unittest.TestCase, _DocumentingWo
                 user=FakeUser(TRUSTED_AUTHOR),
             )
         )
-        gh.add_issue(issue)
+        _registered(gh, issue, NO_CHANGE_REPLY_PR_NUMBER)
         gh.seed_state(
             NO_CHANGE_REPLY_ISSUE_NUMBER,
             pr_number=NO_CHANGE_REPLY_PR_NUMBER,

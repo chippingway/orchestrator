@@ -16,7 +16,6 @@ one to recover from.
 """
 from __future__ import annotations
 
-from orchestrator.git import authentication
 from orchestrator.git.base_sync import guards
 from orchestrator.git.base_sync.models import _AutoRebaseContext
 from orchestrator.git.base_sync.state import (
@@ -27,6 +26,31 @@ from orchestrator.git.base_sync.state import (
 from orchestrator.git.verification import probes
 from orchestrator.git.worktrees import paths
 from orchestrator.workflow.state import WorkflowLabel, stage_name
+
+
+def _gated_publication():
+    """The size gate the rebase push passes, imported where it is used.
+
+    A rebase onto a base that has moved changes what the branch adds to it, so
+    the pull request can cross the ceiling with nobody having written a line.
+    Lazily bound for the reason the comment owner beside it is: the gate sits
+    in the workflow layer above this package, and binding it at module load
+    would make every git-side import pay for the stage tree it pulls in.
+    """
+    from orchestrator.workflow.stages.implementing import late_push
+    return late_push
+
+
+def _gate_records():
+    """The subject and terms one gated publication is described by.
+
+    The gate's own record owner, reached the same way and for the same
+    reason: what this package hands the gate is a subject built from the
+    context it already holds, and building one costs the same upward hop the
+    call does.
+    """
+    from orchestrator.workflow.stages.implementing import late_records
+    return late_records
 
 
 def _post_auto_rebase_notice(
@@ -120,12 +144,35 @@ def _publish_auto_rebase(
     branch = paths._resolve_branch_name(
         context.state, context.spec, context.issue.number,
     )
-    if not authentication._push_branch(
-        context.spec,
-        context.worktree,
+    records = _gate_records()
+    published = _gated_publication()._publishes(
+        records._gate(
+            context.gh, context.spec, context.issue, context.state,
+            context.worktree,
+        ),
         branch,
-        force_with_lease=before_sha or None,
-    ):
+        records._Entered(
+            head=before_sha or "",
+            reconciling=True,
+            # The head this refresh read for itself, and the one the notice,
+            # the audit event, and the log line below all name. Between that
+            # read and the gate's own the worktree is writable, so a commit
+            # landing in the window would be pushed and receipted here while
+            # the tail went on to finalize the SHA this owner read. Named, the
+            # two are one decision and a checkout that moved refuses before
+            # anything reaches the remote.
+            candidate=after_sha,
+        ),
+    )
+    if published.held:
+        # The size gate owns the issue from here -- parked, or handed to the
+        # adjudication under `workflow:decomposing` -- so the notice, the
+        # audit event, and the `validating` route below are not this refresh's
+        # to make. The pinned write still is: a park leaves its flags in
+        # memory for the caller that took it.
+        context.gh.write_pinned_state(context.issue, context.state)
+        return
+    if not published.landed:
         guards._park_failed_auto_rebase_push(context, before_sha, branch)
         return
     _finalize_auto_rebase(context, branch, after_sha)

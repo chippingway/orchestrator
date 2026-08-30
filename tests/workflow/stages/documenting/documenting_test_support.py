@@ -6,12 +6,15 @@ from __future__ import annotations
 from orchestrator.workflow.stages.documenting import handler as _documenting
 
 from tests.support.fakes import (
+    DEFAULT_PR_HEAD_SHA,
     FakeGitHubClient,
     make_issue,
 )
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _PatchedWorkflowMixin,
     _TEST_SPEC,
+    _open_pr_for,
 )
 
 
@@ -25,10 +28,20 @@ DEV_AGENT = "codex"
 DEV_SESSION = "dev-sess"
 
 # --- Worktree HEAD SHAs threaded through the docs / recovery flows ------
-SHA_BEFORE = "aaa"
-SHA_AFTER = "bbb"
-SHA_DOCS = "docs-sha"
-SHA_RECOVERED = "recovered-sha"
+# The head a docs pass begins on, which is the head its pull request is
+# standing on: the branch is in sync with its publication when the round
+# opens, since the reviewer just approved that head. It is what the pass names
+# to the size gate, so a pull request somebody moved while the agent was out
+# refuses the push rather than being overwritten.
+SHA_BEFORE = DEFAULT_PR_HEAD_SHA
+# The head a docs pass leaves the checkout on. Each IS the commit the size
+# gate proves that checkout to, because in production they are one read of one
+# worktree: the stage names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else, so a fixture that spelled them
+# differently would be modelling the race rather than the tick.
+SHA_AFTER = MEASURED_CANDIDATE_SHA
+SHA_DOCS = MEASURED_CANDIDATE_SHA
+SHA_RECOVERED = MEASURED_CANDIDATE_SHA
 SHA_PR_HEAD = "pr-head-sha"
 
 # --- Pinned-state field keys read back from `gh.pinned_data(...)` -------
@@ -48,6 +61,9 @@ PARK_FETCH_FAILED = "fetch_failed"
 PARK_DIRTY = "dirty_worktree"
 PARK_AGENT_QUESTION = "agent_question"
 PARK_RESET_FAILED = "worktree_reset_failed"
+# What a reading nobody could take earns, told apart from the branch that
+# really is in sync: both answer zero and zero.
+PARK_UNREADABLE_DIVERGENCE = "unreadable_divergence"
 
 # --- Docs verdict values persisted on a successful pass -----------------
 VERDICT_UPDATED = "updated"
@@ -158,6 +174,12 @@ class _BasicDocumentingFixture(_DocumentingWorkflowMixin):
         )
         defaults.update(state)
         gh.seed_state(self.issue_number, **defaults)
+        if defaults["pr_number"] not in gh.pulls:
+            _open_pr_for(
+                gh,
+                issue_number=self.issue_number,
+                pr_number=defaults["pr_number"],
+            )
         return gh, issue
 
 

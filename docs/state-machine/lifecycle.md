@@ -91,6 +91,62 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      being what was measured -- and nothing
                                      past the handoff reads it again
 
+   Late size gate (a fix, before it joins a PR the remote already carries;
+   the same questions above, over what the PR would COME TO -- the count is
+   three-dot from the frozen remote base to the candidate, so it is the whole
+   pull request rather than the commit this run made):
+     entered from                 ─► workflow:validating / workflow:
+                                     documenting / in_review /
+                                     workflow:fixing / workflow:resolving_
+                                     conflict -- every state that pushes onto
+                                     a pull request the remote already has:
+                                     the shared dev-fix publication and the
+                                     no-feedback bounce behind it, the
+                                     validating push/timeout recoveries, the
+                                     three conflict publications, the base
+                                     sync's auto-rebase and crash recovery,
+                                     and the final docs pass
+     the push it allows           ─► named against the commit the gate
+                                     measured and leased against the head the
+                                     entry froze, so a checkout that moved
+                                     publishes the measured commit and a pull
+                                     request somebody pushed to in the same
+                                     window rejects the push instead of being
+                                     overwritten
+     a pair frozen and never      ─► measured ahead of the handler on the next
+     counted                         tick, by the stage the record names --
+                                     the freeze is durable and the count is
+                                     not, so a crash in between is a step to
+                                     resume rather than a record nothing
+                                     goes back for
+     ... with no checkout here    ─► park late_measurement_failed and stop the
+                                     tick, announced once: the commit is on a
+                                     host this one is not, and letting the
+                                     stage run would bounce a candidate
+                                     nobody read back to the reviewer
+     additions <= MAX_ADDED_LINES ─► push onto the branch as usual; the
+                                     generation is dropped and the
+                                     late_approved_sha the push paid with it
+     additions >  MAX_ADDED_LINES ─► NOTHING pushed; the PR stays on the head
+                                     it was standing on and the record naming
+                                     that head, its number, and the stage it
+                                     came from goes down before
+                                     label=workflow:decomposing
+     tree not provably clean      ─► park late_measurement_failed. A dirty
+                                     tree parks naming its paths one step
+                                     earlier; the gate refuses the reading a
+                                     `git status` that established nothing
+                                     would have been taken beside
+     PR unreadable, closed, merged ► the same park: nothing to measure
+                                     against, and nowhere for the push to land
+     PR head moved off the frozen  ► the same park, the record left naming the
+     one                             head it froze -- somebody pushed in
+                                     between, so the frozen pair no longer
+                                     says what the PR would come to
+     DECOMPOSE=off, no generation ─► push unmeasured, and the pull request is
+                                     never read: the switch is asked ahead of
+                                     everything the entry would cost
+
    Validating fix loop:
      workflow:validating --(CHANGES_REQUESTED)──► label=workflow:fixing
        (pre-spawn flip; dev runs with stage="fixing")

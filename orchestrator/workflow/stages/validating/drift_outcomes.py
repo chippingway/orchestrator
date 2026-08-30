@@ -58,7 +58,8 @@ def _dispose_user_content_change_result(
     if run.agent_result.timed_out:
         _dev_fix._park_dev_fix_timeout(gh, issue, state, run.before_sha)
         return _state._OUTCOME_PARKED
-    if not _dev_fix._dev_fix_is_publishable(spec, issue, state, run):
+    publishable = _dev_fix._publishable_dev_fix(spec, issue, state, run)
+    if publishable is None:
         ack_reason = _messages._drift_ack_reason(
             run.agent_result.last_message or "",
         )
@@ -69,7 +70,7 @@ def _dispose_user_content_change_result(
         return _state._OUTCOME_PARKED
     return (
         _state._OUTCOME_PUSHED
-        if _dev_fix._publish_dev_fix(gh, spec, issue, state, run)
+        if _dev_fix._publish_dev_fix(gh, spec, issue, state, publishable)
         else _state._OUTCOME_PARKED
     )
 
@@ -79,6 +80,7 @@ def _post_user_content_change_result(
     spec: config.RepoSpec,
     issue: Issue,
     *context_args,
+    **fields,
 ) -> str:
     """Post-resume handling for a user-content-change dev resume.
 
@@ -118,5 +120,5 @@ def _post_user_content_change_result(
     "existing work satisfies" comment AND continue the workflow with
     `awaiting_human=False`, stranding the real question.
     """
-    state, run = _models._dev_fix_run(context_args, {})
+    state, run = _models._dev_fix_run(context_args, fields)
     return _dispose_user_content_change_result(gh, spec, issue, state, run)

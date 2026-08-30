@@ -41,7 +41,7 @@ from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import drift as _engine_drift
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.implementing import resume as _dev_resume
-from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
+from orchestrator.workflow.stages.validating import rounds as _rounds
 from orchestrator.workflow.stages.validating import drift_outcomes as _outcomes
 from orchestrator.workflow.stages.validating import state as _state
 
@@ -93,6 +93,7 @@ def _finish_validating_drift(
     state: PinnedState,
     run: _ValidatingDriftRun,
 ) -> None:
+    owed = _rounds._spends_next_round(state)
     outcome = _outcomes._post_user_content_change_result(
         gh,
         spec,
@@ -101,11 +102,12 @@ def _finish_validating_drift(
         run.worktree,
         run.agent_result,
         run.before_sha,
+        spends=owed,
     )
     if run.agent_result.interrupted:
         return
     if outcome == _state._OUTCOME_PUSHED:
-        _dev_fix._bump_review_round(state)
+        _rounds._bump_review_round(state, owed)
     gh.write_pinned_state(issue, state)
 
 

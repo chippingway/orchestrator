@@ -36,6 +36,9 @@ from tests.workflow.stages.decomposition.late_test_support import (
 # has taken one down.
 _ABSENT_CHECKOUT = "/nonexistent/orchestrator-test-checkout"
 
+# The revision a checkout's own head is named by.
+_HEAD_REVISION = "HEAD"
+
 
 @dataclass(frozen=True)
 class WorktreeSeed:
@@ -55,6 +58,18 @@ class WorktreeSeed:
     # about a host the branch never reached says so here.
     candidate_object: bool = True
     base_object: bool = True
+    # Whether the push a settled post-publication verdict makes lands. A
+    # `single` taken over a pull request the remote already carries publishes
+    # from the settlement itself -- it is the last tick holding the head the
+    # verdict was measured over -- so a case about a lease that refused says
+    # so here.
+    push: bool = True
+    # What the checkout becomes while that push runs. A push is a request and
+    # the worktree is writable for the whole of it, so the two reads the
+    # settlement takes on the far side can answer differently from the two it
+    # took before; empty means nothing touched it and both readings agree.
+    head_after_push: str = ""
+    dirty_after_push: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -103,12 +118,32 @@ class LocalTeardown:
         self.issues.append(issue_number)
         shutil.rmtree(self.checkout, ignore_errors=True)
 
+    @classmethod
+    @contextlib.contextmanager
+    def held(cls, *, local_gone: bool = True):
+        """Hold the local half of a reclamation and the read behind it.
+
+        A real `git worktree remove` in a unit test is a command against
+        whatever directory the configured root happens to name, and the read
+        that decides whether it happened would shell out to a clone that is
+        not there. What a case says is only the answer: `local_gone=False` is
+        the checkout that would not come down.
+        """
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(seam_patch(
+                "_worktree_path",
+                MagicMock(return_value=Path(_ABSENT_CHECKOUT)),
+            ))
+            yield cls(Path(_ABSENT_CHECKOUT))._hold(
+                stack, local_gone=local_gone,
+            )
+
     @property
     def attempted(self) -> bool:
         """Whether both local surfaces were asked to come down."""
         return bool(self.issues) and self.branch_deleted.called
 
-    def hold(self, stack, *, local_gone: bool = True) -> "LocalTeardown":
+    def _hold(self, stack, *, local_gone: bool) -> "LocalTeardown":
         """Hold this teardown and the read that decides it happened."""
         stack.enter_context(seam_patch("_remove_issue_worktree", self))
         stack.enter_context(
@@ -120,23 +155,49 @@ class LocalTeardown:
         return self
 
 
-@contextlib.contextmanager
-def local_teardown(*, local_gone: bool = True):
-    """Hold the local half of a branch reclamation and the read behind it.
+# The local half of a reclamation, held for one case. Bound to the holder's
+# own entry point so a caller reads one name rather than two.
+local_teardown = LocalTeardown.held
 
-    A real `git worktree remove` in a unit test is a command against whatever
-    directory the configured root happens to name, and the read that decides
-    whether it happened would shell out to a clone that is not there. What a
-    case says is only the answer: `local_gone=False` is the checkout that
-    would not come down.
+
+class _Checkout:
+    """The three reads one checkout answers, on both sides of the push.
+
+    One holder rather than three independent seams, because a case about a
+    worktree something wrote to while the push ran states a single fact and
+    the reads that answer for it have to flip together -- on the push, and
+    not before. The head proof carries two questions rather than one: what
+    the checkout's own HEAD is, and whether the commit a record NAMES is an
+    object this host still holds.
     """
-    with contextlib.ExitStack() as stack:
-        stack.enter_context(seam_patch(
-            "_worktree_path", MagicMock(return_value=Path(_ABSENT_CHECKOUT)),
-        ))
-        yield LocalTeardown(Path(_ABSENT_CHECKOUT)).hold(
-            stack, local_gone=local_gone,
-        )
+
+    def __init__(self, seed: WorktreeSeed) -> None:
+        self._seed = seed
+        self._pushed = False
+
+    def pushes(self, *_called, **_options) -> bool:
+        """Publish the branch, leaving the checkout however the case says."""
+        self._pushed = True
+        return self._seed.push
+
+    def status(self, _worktree) -> _WorktreeStatus:
+        """What `git status` establishes about this checkout right now."""
+        dirty = self._seed.dirty
+        if self._pushed and self._seed.dirty_after_push:
+            dirty = self._seed.dirty_after_push
+        return _WorktreeStatus(readable=self._seed.readable, paths=tuple(dirty))
+
+    def proves(self, _worktree, revision: str) -> FrozenCommit:
+        """What one revision this checkout names peels to right now."""
+        if not self._seed.candidate_object:
+            return FrozenCommit(
+                failure=MeasurementFailure.CANDIDATE_ABSENT,
+            )
+        if revision != _HEAD_REVISION:
+            return FrozenCommit(sha=CANDIDATE_SHA)
+        if self._pushed and self._seed.head_after_push:
+            return FrozenCommit(sha=self._seed.head_after_push)
+        return FrozenCommit(sha=self._seed.head)
 
 
 def hold_late_seams(
@@ -156,21 +217,20 @@ def hold_late_seams(
         "_measure_candidate": measurement or UNASKED_MEASUREMENT,
         "_worktree_path": checkout,
         "_head_sha": seed.head,
-        "_prove_candidate_commit": FrozenCommit(
-            sha=CANDIDATE_SHA,
-        ) if seed.candidate_object else FrozenCommit(
-            failure=MeasurementFailure.CANDIDATE_ABSENT,
-        ),
         "_base_object_present": seed.base_object,
-        "_worktree_status": _WorktreeStatus(
-            readable=seed.readable, paths=tuple(seed.dirty),
-        ),
         "create_snapshot_ref": (snapshot or SnapshotSeed()).create,
         "prove_snapshot_ref": (snapshot or SnapshotSeed()).prove,
     }
     for name, answer in held.items():
         stack.enter_context(seam_patch(name, MagicMock(return_value=answer)))
-    LocalTeardown(checkout).hold(
+    reads = _Checkout(seed)
+    for name, answer in (
+        ("_push_branch", reads.pushes),
+        ("_worktree_status", reads.status),
+        ("_prove_candidate_commit", reads.proves),
+    ):
+        stack.enter_context(seam_patch(name, MagicMock(side_effect=answer)))
+    LocalTeardown(checkout)._hold(
         stack, local_gone=(snapshot or SnapshotSeed()).local_gone,
     )
 
@@ -195,7 +255,7 @@ def snapshot_seams(snapshot: SnapshotSeed):
         stack.enter_context(seam_patch(
             "_worktree_path", MagicMock(return_value=Path(_ABSENT_CHECKOUT)),
         ))
-        yield LocalTeardown(Path(_ABSENT_CHECKOUT)).hold(
+        yield LocalTeardown(Path(_ABSENT_CHECKOUT))._hold(
             stack, local_gone=snapshot.local_gone,
         )
 

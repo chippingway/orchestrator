@@ -9,17 +9,22 @@ from tests.workflow.stages.documenting.documenting_assertion_test_support import
     _pr_comment_text,
 )
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _agent,
 )
 
 
 # --- Workflow labels this stage routes between --------------------------
+from tests.workflow.stages.documenting import (
+    documenting_test_support as documenting_support,
+)
 from tests.workflow.stages.documenting.documenting_test_support import (
     _FreshDocumentingFixture,
 )
 
 DOCUMENTING = "workflow:documenting"
 IN_REVIEW = "in_review"
+LATE_APPROVED_SHA = "late_approved_sha"
 VALIDATING = "workflow:validating"
 
 # --- Dev agent identity pinned into per-issue state ---------------------
@@ -27,10 +32,15 @@ DEV_AGENT = "codex"
 DEV_SESSION = "dev-sess"
 
 # --- Worktree HEAD SHAs threaded through the docs / recovery flows ------
-SHA_BEFORE = "aaa"
-SHA_AFTER = "bbb"
-SHA_DOCS = "docs-sha"
-SHA_RECOVERED = "recovered-sha"
+SHA_BEFORE = documenting_support.SHA_BEFORE
+# The head a docs pass leaves the checkout on. Each IS the commit the size
+# gate proves that checkout to, because in production they are one read of one
+# worktree: the stage names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else, so a fixture that spelled them
+# differently would be modelling the race rather than the tick.
+SHA_AFTER = MEASURED_CANDIDATE_SHA
+SHA_DOCS = MEASURED_CANDIDATE_SHA
+SHA_RECOVERED = MEASURED_CANDIDATE_SHA
 SHA_PR_HEAD = "pr-head-sha"
 
 # --- Pinned-state field keys read back from `gh.pinned_data(...)` -------
@@ -161,6 +171,13 @@ class HandleDocumentingFreshOutcomeTest(
         self.assertEqual(call_kwargs.get("resume_session_id"), DEV_SESSION)
         mocks[PUSH_BRANCH].assert_called_once()
         self.assertIn((self.issue_number, IN_REVIEW), gh.label_history)
+        # The size gate approves the docs commit before it goes out and
+        # records it as one still owed a push; the push that lands pays that
+        # debt. Left standing it would freeze this branch out of the pre-tick
+        # base refresh with nothing coming back to drop it.
+        self.assertIsNone(
+            gh.pinned_data(self.issue_number).get(LATE_APPROVED_SHA),
+        )
 
     def test_lifecycle_events_carry_review_round(self) -> None:
         # Documenting runs once per reviewer-approval handoff between

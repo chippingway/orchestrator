@@ -35,7 +35,9 @@ this path:
    publishes as it always did — but one already recorded goes on being measured and adjudicated, so flipping the
    switch never publishes work nobody looked at.
 3. `workflow:validating` — a fresh reviewer checks the diff. Requested changes enter `workflow:fixing` and return
-   here after the dev agent addresses them.
+   here after the dev agent addresses them. Every fix is measured before it is pushed too, and for what the pull
+   request would come to rather than for what the fix changed, so a PR cannot be grown past `MAX_ADDED_LINES` one
+   small fix at a time; one that would goes back to `workflow:decomposing` with nothing pushed.
 4. `workflow:documenting` — the dev agent makes the final documentation pass after reviewer approval.
 5. `in_review` — the orchestrator pings you once for each PR head that becomes ready; you merge by hand.
 6. `done` / `rejected` — the terminal result after the PR is merged or closed without merging.

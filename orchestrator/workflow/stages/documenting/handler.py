@@ -28,6 +28,7 @@ from orchestrator.workflow.stages.documenting import (
     models as _models,
     outcomes as _outcomes,
     preconditions as _preconditions,
+    publication as _publication,
     run as _run,
 )
 
@@ -37,18 +38,15 @@ def _drive_documenting_pass(ctx: _models._DocumentingContext):
 
     Returns a `_DocumentingRun` ready for disposition, or None when the tick
     is already fully handled and the caller must return without disposition:
-    a fetch / diverged-branch park, an awaiting-human resume with no new
-    comment, a shutdown-sweep interruption, or an operator pause.
+    a fetch / diverged-branch park, a docs pass a settled adjudication
+    finished, an awaiting-human resume with no new comment, a shutdown-sweep
+    interruption, or an operator pause.
     """
     wt = _worktree_creation._ensure_pr_worktree(
         ctx.spec, ctx.issue.number, branch=ctx.branch,
     )
 
-    ahead = _run._prepare_documenting_worktree(ctx, wt)
-    if ahead is None:
-        return None
-
-    run = _run._run_documenting_dev(ctx, wt, ahead)
+    run = _documenting_run(ctx, wt)
     if run is None:
         return None
 
@@ -73,6 +71,30 @@ def _drive_documenting_pass(ctx: _models._DocumentingContext):
         return None
 
     return run
+
+
+def _documenting_run(ctx: _models._DocumentingContext, wt):
+    """Prepare the checkout and produce the run this tick disposes.
+
+    Returns None wherever there is nothing left for a disposition to act on: a
+    fetch or diverged-branch park, a docs pass a settled adjudication finished
+    here, or one of the run shapes that ends the tick on its own.
+
+    The settled pass is asked between the two because it is a claim about the
+    reading above and an answer instead of the run below. The size gate holds
+    a docs commit off its pull request, the adjudication publishes it, and the
+    label comes back here with the handoff still owed -- so the branch reads
+    as in sync with its remote, which is what an issue no docs pass has run
+    for reads as, and the run below would spawn a second agent over work the
+    first one already published.
+    """
+    standing = _run._prepare_documenting_worktree(ctx, wt)
+    if standing is None:
+        return None
+    ahead, remote_head = standing
+    if _publication._finished_settled_docs(ctx, wt, ahead):
+        return None
+    return _run._run_documenting_dev(ctx, wt, ahead, remote_head)
 
 
 def _handle_documenting(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:

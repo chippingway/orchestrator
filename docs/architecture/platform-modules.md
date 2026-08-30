@@ -21,10 +21,17 @@ last is held by the loader itself rather than by a check.
 - **At module scope, one exception.** The only name a lower layer may bind above itself is `workflow/state.py`, for
   the label vocabulary it is typed by, and only `github/` and `git/` may bind it — matched on the module boundary in
   the same check, so a sibling of the state owner cannot inherit the exemption by wearing the same prefix.
-- **Over every scope, three more, each declared per module.** A base sync runs in the git layer but reports to the
+- **Over every scope, six more, each declared per module.** A base sync runs in the git layer but reports to the
   issue it was started for: `base_sync/conflicts.py`, `base_sync/persistence.py`, and `base_sync/publication.py`
-  reach `workflow/engine/comments.py`, and `persistence` also `workflow/engine/guards.py`, inside the call that needs
-  them. The same check declares those three per module: an undeclared hop fails wherever it is written, and one of
+  reach `workflow/engine/comments.py`; `persistence` also `workflow/engine/guards.py` and
+  `workflow/stages/implementing/late_parks.py`, to drop the debt the size gate recorded when a refused push sends
+  the branch back to where it started; and `publication` also
+  `workflow/stages/implementing/late_push.py` and `late_records.py` — the gated push the rebase it is about to
+  force-push goes through, since a base that moved changes what the branch adds to it and a pull request may not be
+  grown past the ceiling by a refresh either. `publication/rewrite.py` reaches `late_rewrite.py` for the same reason
+  one seam over: a squash-on-approval force-pushes onto a pull request the remote already carries, so it is entered
+  on that publication before it rewrites anything and pushes through the gate's own call. Each waits for the call
+  that needs it. The same check declares them per module: an undeclared hop fails wherever it is written, and one of
   these fails if it is bound at module scope after all — where it would be a cycle, since the workflow imports base
   sync back.
 - **Package surfaces.** `github/`, `agents/`, and `scheduler/` publish a narrow `__all__` of their owners' own
@@ -144,9 +151,12 @@ orchestrator/
       refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
                         in -- including the label scope on the two freezes no write ever ends -- and the
                         per-worktree route
-      frozen.py         which records hold a checkout still and what ends each freeze: the five that freeze a
-                        branch by their presence -- a frozen late candidate and a refused handoff's approved
-                        commit among them -- the two parks that freeze one with no record behind them at all
+      frozen.py         which records hold a checkout still and what ends each freeze: the ones that freeze a
+                        branch by their presence -- the late reading and the approval among them, each read as
+                        the whole GROUP its write puts down rather than as its commit alone, since a record
+                        carrying part of one is what the dispatcher parks on a tick LATER and a hold keyed to
+                        the commit would rebase and push it first -- the two parks that freeze one with no
+                        record behind them at all
                         (a size reading nobody could take, and an implementer timeout whose watermark names a
                         commit not yet made), and the two no write ever ends (the accepted commit and the
                         published one), which freeze only while the checkout still stands on the commit they
@@ -155,24 +165,56 @@ orchestrator/
       pre_pr.py         the hardened rebase / merge probes and the aborting pre-PR local rebase
       pr.py             the order a PR-having worktree's gates, rebase, and publication are asked in
       startup.py        the pre-rebase HEAD guard and the anchor persisted before git runs
-      publication.py    the post-rebase checks, the lease-pinned force-push, and what an accepted push writes
+      publication.py    the post-rebase checks, the size gate the rebase passes before it publishes -- reached
+                        through a call-time import, since it sits in the workflow layer above this one, and named
+                        against the head this owner read, so a checkout something moved between that read and the
+                        gate's own refuses rather than publishing one commit while the notice, the event, and the
+                        `validating` route name another -- the lease-pinned force-push, and what an accepted push
+                        writes
       conflicts.py      the counter, notice, event, and relabel a genuinely conflicted rebase is handed to its stage
                         with
       guards.py         the no-op completion and the unreadable-HEAD, dirty-tree, and failed-push refusals
       snapshot.py       the branch fetch, the local / remote head reads and divergence counts, and the abort an
                         unreadable one takes
-      recovery.py       the order a crash recovery asks its questions in, and the dirty-guarded reissued push
+      recovery.py       the order a crash recovery asks its questions in, and the dirty-guarded reissued push,
+                        measured by the same gate and named against the head this recovery verified against the
+                        remote: one an earlier tick rebased and never pushed is a head nothing has read against
+                        the base it now sits on, and one something moved since is not the head the finalize
+                        behind the push records
       outcomes.py       the already-published, unknown-comparison, diverged, dirty, and failed-push answers
-      persistence.py    the parks, the reset-and-park tail, and the state / notice / event writes a recovery ends in
+      persistence.py    the parks, the reset-and-park tail -- which drops the debt it abandons only once the reset
+                        has actually landed, since a refused one may leave the branch still standing on the
+                        approved commit -- and the state / notice / event writes a recovery ends in
       models.py         the frozen contexts, requests, snapshots, and decisions
       state.py          the pinned-state keys, park reasons, refresh detour labels, and the shared logger
     publication/        what a branch becomes before review reads it
+      models.py         the record a squash hands back, in the three shapes it can end in -- published, refused, or
+                        held by the size gate for the adjudication
       planning.py       the merge-base, HEAD, dirty, and subject preconditions plus the squash message they select
-      probes.py         the subject vocabulary and predicates, the ahead/behind counts, and the first-commit and
-                        recent-base subject reads
-      rewrite.py        the soft reset, the orchestrator-identity commit, the lease force-push, and the rollback a
-                        post-reset failure takes
-      squash.py         the plan-then-rewrite entry point a stage handler calls
+      probes.py         the subject vocabulary and predicates, one divergence reading -- the fetched ref resolved
+                        ONCE and HEAD counted against that immutable commit, since the counts are a claim about the
+                        tip and a ref something moves between two readings would leave a branch proved against one
+                        head and its push pinned to another -- and the first-commit and recent-base subject reads.
+                        A reading that did not happen says so (`readable`) rather than answering `(0, 0)`, which is
+                        what an in-sync branch answers and what every caller acting on it would rebase, spawn over,
+                        and force-push on
+      rewrite.py        the soft reset, the orchestrator-identity commit, the gated publication of the commit it
+                        just made -- measured, then named against it and pinned to the head the entry froze -- and
+                        the rollback a post-reset failure takes -- the ref and the index, never the working tree,
+                        since a squash has the same tree as the head it replaces and the only thing taking the
+                        worktree too would restore is an edit somebody made while the rewrite ran -- which drops the
+                        approval it abandons only once the reset has actually landed -- a reset that failed may
+                        leave the branch still standing on the approved commit, and the approval is the only record
+                        naming the one commit this issue may publish. A HELD candidate is spared that rollback only
+                        where the squash is somebody's: a
+                        live record naming it -- oversized, or a pair still owed its count -- already on the remote,
+                        or under a commit something else made. A hold the gate REFUSED is none of those, and froze
+                        nothing to say otherwise -- a pull request closed or moved in the window the reset and the
+                        commit sit in -- and the branch goes back there, since a squash nobody measured, published,
+                        or recorded is the one commit a retry finds, and one commit is the nothing-to-squash road
+                        reporting success
+      squash.py         the plan-then-enter-then-rewrite entry point a stage handler calls, over the gate subject
+                        that handler builds
       titles.py         subject-prefix inference and PR-title selection
     measurement/        how large a committed candidate is, and why a size is sometimes unknown
       models.py         the typed failure vocabulary, one frozen end of a diff, and the measurement record

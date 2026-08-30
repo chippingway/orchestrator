@@ -51,13 +51,18 @@ from typing import Optional
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
-from orchestrator.workflow.stages.validating import state as _state
+from orchestrator.workflow.stages.implementing import (
+    late_push as _late_push,
+    late_records as _late_records,
+)
+from orchestrator.workflow.stages.validating import (
+    rounds as _rounds,
+    state as _state,
+)
 
 # Stamped on every follow-up so a later tick can recognize one it posted even
 # when the pinned write that was supposed to record it never landed. An HTML
@@ -86,21 +91,51 @@ _RECOVERY_DETAILS = MappingProxyType({
 
 
 def _recover_failed_push(
-    spec: config.RepoSpec, issue: Issue, state: PinnedState,
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
 ) -> str:
+    """Retry a push the previous tick could not land, through the gate.
+
+    The commit is one an earlier tick already measured, so the ordinary answer
+    here is the approval bypass: the gate recognizes the commit it approved
+    and has still to push and hands it straight back. What the call buys is
+    the case that bypass does not cover -- a developer who committed again
+    since, or a pull request that moved or closed under the park -- and the
+    push named and pinned by what came back.
+
+    The debt is spent on the push that pays it. Without that the approval
+    outlives the publication it was recorded for and freezes this branch out
+    of the pre-tick base refresh for the rest of the issue's life, with the
+    recovery that would have dropped it already finished.
+    """
     worktree = _worktree_paths._worktree_path(spec, issue.number)
     if not worktree.exists():
         return _state._OUTCOME_STUCK
-    branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
-    if not _authentication._push_branch(spec, worktree, branch):
-        return _state._OUTCOME_STUCK
-    _dev_fix._bump_review_round(state)
-    return _state._OUTCOME_PUSHED
+    # No commit is named, because this recovery read none: the park says a
+    # push failed, and which commit it was for lives on the approval the gate
+    # recognizes for itself.
+    return _publish_recovered_fix(
+        _late_records._gate(gh, spec, issue, state, worktree),
+    )
 
 
 def _recover_timed_out_fix(
-    spec: config.RepoSpec, issue: Issue, state: PinnedState,
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
 ) -> str:
+    """Publish a commit the timeout killed the disposition before it saw.
+
+    The one road to a published pull request that never reached the gate: the
+    park was taken because the run timed out, so nothing measured the commit
+    it turned out to have made. Pushing it from here would grow the pull
+    request by an unadjudicated diff -- the exact publication the gate exists
+    to stop -- so the reading happens before the push, with no developer
+    having run on this tick.
+    """
     worktree = _worktree_paths._worktree_path(spec, issue.number)
     if (
         not worktree.exists()
@@ -114,22 +149,112 @@ def _recover_timed_out_fix(
     if not current_sha or current_sha == before_sha:
         state.set(_state._PRE_DEV_FIX_SHA, None)
         return _state._OUTCOME_CLEARED
-    branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
-    if not _authentication._push_branch(spec, worktree, branch):
+    recovered = _publish_recovered_fix(
+        # The commit this recovery read and is publishing AS the timed-out
+        # run's. The gate proves the checkout again, and something landing
+        # between the two reads would otherwise be measured, pushed, and
+        # receipted here as the work that run left behind.
+        _late_records._gate(gh, spec, issue, state, worktree), current_sha,
+        # The head the killed run began at, which is the head its pull request
+        # was standing on: the branch is in sync with its publication when a
+        # fix round opens. Named, a pull request somebody pushed to while that
+        # run was out refuses this push rather than being overwritten by work
+        # built on the head it used to be on.
+        before_sha,
+    )
+    if recovered == _state._OUTCOME_PUSHED:
+        state.set(_state._PRE_DEV_FIX_SHA, None)
+    return recovered
+
+
+def _publish_recovered_fix(
+    gate: _late_records._Gate, candidate: str = "", entered_head: str = "",
+) -> str:
+    """Measure a commit a park left unpublished, then push what it earned.
+
+    The tail both recoveries share, because the question they ask is the same
+    one: a commit is sitting on this branch that the pull request does not
+    carry, and what decides whether it may join it is what the pull request
+    would come to with it. No developer ran on either tick, so the reading is
+    taken as a reconciliation -- a head that is not the commit the record
+    names is a checkout something moved, not a run's output.
+
+    `entered_head` is the head the publication was standing on before the
+    work being published was made, where the caller can name one. The timed-out
+    recovery can: the run it is finishing began on a branch in sync with its
+    pull request, and the anchor it left behind is that head -- so a pull
+    request somebody pushed to while that run was out refuses this push
+    instead of being overwritten by a commit built on the head it used to be
+    on. The failed-push recovery names none, and needs none: its commit was
+    already measured against a publication whose head the approval records,
+    and that recorded head is what its push is pinned to.
+
+    `candidate` is the commit the CALLER read and is publishing as, where it
+    read one. The timed-out recovery does: it compares the head against the
+    pre-run SHA to decide there is anything to publish at all, and between
+    that reading and the proof the gate takes the worktree is writable -- so a
+    commit landing in the window would be measured, pushed, and receipted as
+    the work the killed run left. Named, the two are one decision and a
+    checkout standing anywhere else refuses. The failed-push recovery names
+    none: it read no head, and the commit it owes a push for is the one the
+    approval on the record already identifies.
+
+    The push is named and pinned by what the gate handed back, and the debt it
+    pays is spent on it: an approval that outlives the publication it was
+    recorded for freezes this branch out of the pre-tick base refresh with the
+    recovery that would have dropped it already finished.
+
+    The round rides that same write and is counted NOWHERE else here, which is
+    what makes a recovery that runs twice count once. This tick has no run
+    behind it, so the value it would compute is read off the counter itself --
+    and a retry over a publication that is already settled would read a
+    counter the tick which settled it has already moved. The gate is silent on
+    exactly that reading, so leaving the count to it is what ties the round to
+    the push that earned it rather than to the poll that noticed.
+    """
+    branch = _worktree_paths._resolve_branch_name(
+        gate.state, gate.spec, gate.issue.number,
+    )
+    owed = _rounds._spends_next_round(gate.state)
+    published = _late_push._publishes(
+        gate, branch,
+        _late_records._Entered(
+            reconciling=True,
+            spends=owed,
+            candidate=candidate,
+            head=entered_head,
+        ),
+    )
+    if published.held:
+        # The park the gate took mutates state in memory, and no caller of a
+        # held recovery writes it: they clear nothing and announce nothing,
+        # which is right, and would leave a posted notice with the OLD reason
+        # and watermark still durable -- so the same retry fires next tick and
+        # the human is asked again.
+        gate.gh.write_pinned_state(gate.issue, gate.state)
+        return _state._OUTCOME_HELD
+    if not published.landed:
         return _state._OUTCOME_STUCK
-    state.set(_state._PRE_DEV_FIX_SHA, None)
-    _dev_fix._bump_review_round(state)
     return _state._OUTCOME_PUSHED
 
 
 def _try_recover_validating_transient_park(
-    spec: config.RepoSpec, issue: Issue, state: PinnedState
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
 ) -> str:
     """Quietly attempt to clear a transient validating park.
 
     Returns one of:
       * ``"stuck"`` -- the underlying condition has not resolved; caller
         leaves the park flags in place and returns silently.
+      * ``"held"`` -- the size gate took the candidate this retry was about,
+        so nothing was published and the tick is over. The gate has already
+        parked the issue or handed it to the adjudication and written its own
+        state, so the caller clears nothing, announces nothing, and moves no
+        label: a follow-up would say a recovery happened and a relabel would
+        move the issue off the state the gate just put it in.
       * ``"cleared"`` -- the park can be cleared, but nothing new
         landed on the PR (reviewer-only crash, or a dev-timeout that
         had not actually produced a commit). Caller clears the flags
@@ -153,11 +278,11 @@ def _try_recover_validating_transient_park(
     """
     park_reason = state.get(_state._PARK_REASON)
     if park_reason == _state._REASON_PUSH_FAILED:
-        return _recover_failed_push(spec, issue, state)
+        return _recover_failed_push(gh, spec, issue, state)
     if park_reason in (_state._REASON_REVIEWER_TIMEOUT, _state._REASON_REVIEWER_FAILED):
         return _state._OUTCOME_CLEARED
     if park_reason == _state._REASON_AGENT_TIMEOUT:
-        return _recover_timed_out_fix(spec, issue, state)
+        return _recover_timed_out_fix(gh, spec, issue, state)
     return _state._OUTCOME_STUCK
 
 

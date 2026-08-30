@@ -55,9 +55,17 @@ class FakeIssue:
             self.closed = True
 
 
+# The head every fake pull request stands on unless a case moves it. Named
+# rather than repeated, because it is also the head a stage fixture's round
+# STARTS on: in production the branch is in sync with its pull request when a
+# fix or docs round opens -- the reviewer just read that head -- so a fixture
+# spelling the two apart would model a race rather than a tick.
+DEFAULT_PR_HEAD_SHA = "deadbeef" * 5
+
+
 @dataclass
 class FakePRRef:
-    sha: str = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    sha: str = DEFAULT_PR_HEAD_SHA
     ref: str = ""
 
 

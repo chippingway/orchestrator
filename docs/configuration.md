@@ -178,9 +178,12 @@ examples.
   durable state (issue body + recent comments + the committed branch), so a growing `--resume` transcript cannot creep
   into a `Prompt is too long` context overflow. `0` = resume forever. The reactive overflow handler still recovers a
   session that blows the window in fewer resumes.
-- `MAX_ADDED_LINES` — default `4000`. size ceiling one implementation candidate may publish under, counted in the
-  textual lines its prospective pull request **adds**: the frozen remote base commit against the exact committed
-  candidate commit, across every path. Binary content contributes nothing (git has no lines to report for it), a
+- `MAX_ADDED_LINES` — default `4000`. size ceiling a pull request may publish under, counted in the
+  textual lines it **adds**: the frozen remote base commit against the exact committed
+  candidate commit, across every path. It is applied to the first publication and to every dev fix pushed onto a
+  pull request the remote already carries, and in both cases to that same cumulative pair — so a branch cannot
+  be grown past the ceiling one small fix at a time.
+  Binary content contributes nothing (git has no lines to report for it), a
   moved file counts where it lands (rename detection is off, so relocating work cannot buy a smaller number), and
   there is no exemption for lockfiles, generated code, migrations, snapshots, golden fixtures, i18n catalogs,
   notebooks, or vendored trees — an exemption list is a bypass anybody can move work into, and the number has to be
@@ -195,7 +198,12 @@ examples.
   telemetry that shows repository skew. Where it is spent is the one seam every clean committed candidate publishes
   through: a candidate at or below it pushes and opens its pull request as always, one past it is held unpublished
   and routed to `workflow:decomposing` for adjudication, and one that could not be measured parks rather than
-  publishing; the seam is the implementing stage's own, in
+  publishing. It is spent at every seam that publishes a committed candidate, not just the first: the implementing
+  stage's own push that opens the pull request, and the ten that push onto one the remote already carries -- the
+  dev-fix publication and the no-feedback bounce behind it, both validating recoveries, the three conflict
+  publications, the base sync's auto-rebase and its crash recovery, the final docs pass, and the squash on approval.
+  There the count is what the pull request would COME TO rather than what one push adds, so a branch cannot be grown
+  past the ceiling a commit at a time. See
   [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#_handle_implementing-label-workflowimplementing)
 - `ORCHESTRATOR_BASE_BRANCH` — default `main`. base branch of the orchestrator's own repo, used by the self-update
   path

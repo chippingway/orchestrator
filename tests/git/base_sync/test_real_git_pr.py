@@ -9,7 +9,12 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.git import authentication
 
-from tests.support.fakes import FakeGitHubClient, FakePR, make_issue
+from tests.support.fakes import (
+    FakeGitHubClient,
+    FakePR,
+    FakePRRef,
+    make_issue,
+)
 from tests.workflow.fixtures import (
     LABEL_IN_REVIEW,
     LABEL_RESOLVING_CONFLICT,
@@ -84,12 +89,17 @@ class RefreshPrRealGitTest(_RefreshBaseRealGitFixture, unittest.TestCase):
         if review_round is not None:
             state["review_round"] = review_round
         self._gh.seed_state(7, **state)
+        # Standing on the head this refresh reads out of the checkout and
+        # leases its force-push against: the branch is in sync with its
+        # remote here, so the two are one fact and the size gate refuses a
+        # call whose readings of it disagree.
         self._gh.add_pr(
             FakePR(
                 number=PR_NUMBER,
                 head_branch=PR_BRANCH,
                 merged=False,
                 state=STATE_OPEN,
+                head=FakePRRef(sha=self._wt_head()),
             )
         )
 

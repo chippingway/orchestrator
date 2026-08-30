@@ -15,6 +15,17 @@ _STAGE = "stage"
 _PR_NUMBER = "pr_number"
 _PUBLISHED_SHA = "published_sha"
 
+# Every workflow state with an edge to the adjudication that no publication is
+# entered from: three that have that edge for reasons of their own and no pull
+# request behind any of them, and the seam whose own push OPENS the pull
+# request. They are what tells the general graph from the exact predicate.
+_UNPUBLISHED_STAGES = (
+    WorkflowLabel.READY,
+    WorkflowLabel.BLOCKED,
+    WorkflowLabel.UMBRELLA,
+    WorkflowLabel.IMPLEMENTING,
+)
+
 # What each of the three fields reads back as once a hand edit has taken it,
 # keyed by the name on the record rather than the argument that set it.
 _UNNAMED_CONTEXT = (
@@ -89,6 +100,34 @@ class PublicationEntryTest(unittest.TestCase):
                     _support.measured_generation().with_publication(
                         **_entered_at(**{field: damaged}),
                     )
+
+    def test_a_stage_nothing_publishes_from_refuses(self) -> None:
+        # Being a workflow state is not enough for the one field that says
+        # where a settled adjudication puts the issue back and which stage a
+        # reconciliation may measure and push from. Recorded from a state that
+        # publishes onto no pull request, the group would send a later tick to
+        # push a candidate no post-publication stage ever committed.
+        for named in _UNPUBLISHED_STAGES:
+            with self.subTest(named=named):
+                with self.assertRaises(InvalidLateValue):
+                    _support.measured_generation().with_publication(
+                        **_entered_at(stage=str(named)),
+                    )
+
+    def test_a_hand_edited_stage_names_no_publication(self) -> None:
+        # The read side of the same rule, because the write is not the only
+        # road onto the pinned comment: an older binary and an operator's edit
+        # each leave a whole-LOOKING group behind, and read back as context it
+        # would be reconciled and pushed from a stage that publishes nothing.
+        entered = _support.measured_generation().with_publication(
+            **_entered_at(),
+        )
+        for named in _UNPUBLISHED_STAGES:
+            with self.subTest(named=named):
+                damaged = replace(entered, source_stage=named)
+
+                self.assertTrue(damaged.post_publication)
+                self.assertFalse(damaged.has_publication_context)
 
     def test_the_marker_alone_names_no_publication(self) -> None:
         # Every field beside the flag is read fail-closed, so a hand-edited

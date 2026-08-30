@@ -9,6 +9,7 @@ from orchestrator.git import commands as _git_commands
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 
 from tests.workflow.stages.conflicts.conflicts_test_support import (
+    RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
 )
 from tests.workflow.fixtures import (
@@ -122,7 +123,7 @@ class ResolvingConflictDirtyParkingTest(unittest.TestCase, _ResolvingConflictMix
             gh,
             issue,
             merge_succeeded=True,
-            head_shas=["beforehead", "merged"],
+            head_shas=["beforehead", RESOLVED_HEAD_SHA],
             push_branch=True,
             dirty_files=["leftover.py"],
         )

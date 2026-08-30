@@ -22,15 +22,31 @@ transaction and belong together; what this owner owes it is the guarantee it
 cannot check for itself -- that the outcome it is given was re-checked against
 an owner read taken after the agent finished.
 
-A `single` is reconciled here, and the whole of it is an EXEMPTION rather than
-a publication. The candidate is already committed in the developer's own
-worktree and the ordinary implementing publication is what pushes it, reuses
-or opens its pull request, and hands it to review; what the size gate needs is
-a durable record that this exact commit has been adjudicated, or it would
-measure the same candidate past the same ceiling and adjudicate it again
-forever. So the exemption names the measured commit and only it -- work
-committed after the verdict is work nobody adjudicated, and the gate measures
-it as the fresh candidate it is.
+A `single` is reconciled here, and what that means splits on which side of
+publication the candidate was measured on.
+
+Every one of them earns an EXEMPTION: a durable record that this exact commit
+has been adjudicated, or the gate would measure the same candidate past the
+same ceiling and adjudicate it again forever. The exemption names the measured
+commit and only it -- work committed after the verdict is work nobody
+adjudicated, and the gate measures it as the fresh candidate it is.
+
+A candidate nothing had published earns only that. It is already committed in
+the developer's own worktree, and the ordinary `implementing` publication the
+issue is handed back to is what pushes it, opens or reuses its pull request,
+and hands it to review.
+
+A candidate measured against a pull request the remote ALREADY carries earns
+the push as well, and this owner makes it. Only this tick still holds the
+evidence: the verdict was taken against one pull request standing on one head,
+the reconciliation above proves both are still what they were, and the
+retirement below takes the record that said so away. The stage the issue is
+then handed back to -- the one the record names, not `implementing` -- has its
+own completion to finish and no way to re-derive any of that, and two of the
+five have no publication seam a resumed tick would even reach. So the branch
+is put where the verdict said it may go, named against the accepted commit and
+pinned to the head the reading was taken over, and the stage picks up from a
+pull request that carries it.
 
 Two things it deliberately does not do. It creates no snapshot: a snapshot
 exists so children can be cut from a candidate that is about to be superseded,
@@ -43,12 +59,21 @@ lands on it, and leaves it alone when it does not.
 
 The order is chosen so every window a crash can land in is one the next tick
 repairs. The hold is released first, while nothing else has moved. The
-exemption is written next and the generation is still live behind it, so the
-issue is still an adjudication in flight. Only then is the label handed on,
-and only after that is the generation cleared -- because a `decomposing` issue
-with no generation on it is one the INITIAL decomposer would pick up and
-re-decompose, and a `implementing` issue with a live generation is one the
-relabel guard puts back and this tick re-settles.
+exemption is written next -- with the commit a push is still owed for beside
+it -- and the generation is still live behind them, so the issue is still an
+adjudication in flight. Then the push, then the label, and only after that is
+the generation cleared: a `decomposing` issue with no generation on it is one
+the INITIAL decomposer would pick up and re-decompose, and an issue back on
+its own stage with a live generation is one the relabel guard puts back and
+this tick re-settles.
+
+The window between the push and the label is the one the record alone cannot
+answer, and it has its own recognition. The retry comes back to a live
+generation whose pull request is standing on the accepted candidate rather
+than on the frozen head -- which is this settlement's own push, not somebody
+else's movement. Read as movement it would refuse the very publication this
+verdict made, forever; recognized, the tick finishes the label and the
+retirement it never reached and pushes nothing a second time.
 """
 from __future__ import annotations
 
@@ -61,6 +86,7 @@ from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import exemption as _exemption
+from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split import payloads as _payloads
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import (
@@ -73,6 +99,9 @@ from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
 )
 from orchestrator.workflow.stages.decomposition import (
+    late_publication as _late_publication,
+)
+from orchestrator.workflow.stages.decomposition import (
     late_owner as _late_owner,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
@@ -81,8 +110,10 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateContext,
     _LateDisposition,
 )
-from orchestrator.workflow.stages.implementing.state import (
-    _APPROVED_SHA as _IMPLEMENTING_APPROVED_SHA,
+from orchestrator.workflow.stages.implementing import (
+    late_accepted as _late_accepted,
+    late_records as _late_records,
+    late_parks as _late_parks,
 )
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -119,6 +150,50 @@ _RECORDED_PR_UNREADABLE_PARK = (
     "implementing stage ends the issue on a change the candidate is not in. "
     "The next tick asks again, against the same frozen commit, without "
     "re-running any agent."
+)
+
+_SETTLED_PUBLICATION_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change, "
+    "but pull request #{number} -- the one it was measured against -- is "
+    "{state} rather than open, so it was not handed on for publication. The "
+    "reading that accepted it is a claim about what THAT pull request would "
+    "come to, and there is nowhere for the commit to land any more: pushing "
+    "would grow a branch whose pull request a human has already settled, or "
+    "open a second one for a change that was adjudicated against the first. "
+    "Reopen it, or close this issue, and the next tick asks again."
+)
+
+_MOVED_PUBLICATION_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change "
+    "against pull request #{number} standing at `{frozen}`, and it is "
+    "standing at `{moved}` now. Something pushed to it during the "
+    "adjudication, so what the verdict was taken over is not what the branch "
+    "would come to -- and it was not handed on for publication. Reconcile the "
+    "branch with what landed, then commit again so the candidate is measured "
+    "afresh."
+)
+
+_ACCEPTED_PUSH_FAILED_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change, "
+    "but it could not be pushed onto the pull request it was measured against "
+    "-- so the issue is still under adjudication and nothing has moved. The "
+    "verdict is recorded: the next tick pushes the same commit against the "
+    "same head, without re-running any agent. A push refused here is usually "
+    "the lease doing its job, which means something landed on that pull "
+    "request while the adjudication was open."
+)
+
+_UNPROVED_CHECKOUT_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change "
+    "and `{candidate}` is on the pull request it was measured against, but "
+    "the checkout it was accepted from is not standing cleanly on that commit "
+    "any more -- so the issue is still under adjudication and the stage it "
+    "came from has not been handed the worktree. Every stage past this one "
+    "works from that checkout, so one carrying loose edits or an unmeasured "
+    "descendant would reach a review, a squash, and a merge with nobody "
+    "having read it. Put the worktree back on that commit with a clean "
+    "tree and the next tick finishes the settlement, without re-running any "
+    "agent."
 )
 
 _ACCEPTED_NOTICE = (
@@ -250,18 +325,202 @@ def _handed_back(context: _LateContext) -> Optional[_LateDisposition]:
     _exemption.record_exemption(
         context.state, context.generation.candidate_sha,
     )
-    context.state.set(
-        _IMPLEMENTING_APPROVED_SHA, context.generation.candidate_sha,
-    )
+    _recorded_debt(context)
     _late_outcome._persist(context)
     stopped = _late_owner._latch_stops(context)
     if stopped is not None:
         return stopped
-    context.gh.set_workflow_label(context.issue, WorkflowLabel.IMPLEMENTING)
+    return _continued(context)
+
+
+def _recorded_debt(context: _LateContext) -> None:
+    """Record the push this handoff owes, or drop one already paid.
+
+    The approval says a commit is owed a publication and no other may be
+    pushed in its place, which is exactly what a retry finishing an
+    interrupted settlement does NOT owe: the pull request is already standing
+    on that commit. Recording it there would leave a debt nothing will ever
+    pay -- the push below is skipped -- and a debt on the record freezes this
+    branch out of the pre-tick base refresh for the rest of the issue's life.
+    """
+    if context.already_published:
+        _late_parks._forget_approval(context.state)
+        return
+    _late_parks._approve(
+        context.state,
+        context.generation.candidate_sha,
+        _settled_lease(context),
+    )
+
+
+def _continued(context: _LateContext) -> Optional[_LateDisposition]:
+    """Publish where the verdict was measured, then hand the label on.
+
+    Split from the exemption above it so each half is one crash-ordered
+    sequence rather than one long one: what is durable before this call is the
+    decision, and what this call does is the effects the decision licenses.
+    """
+    if not _pushed_where_it_was_measured(context):
+        return _LateDisposition.PARKED
+    stopped = _late_owner._latch_stops(context)
+    if stopped is not None:
+        return stopped
+    context.gh.set_workflow_label(context.issue, _continues_at(context))
     stopped = _late_owner._latch_stops(context)
     if stopped is not None:
         return stopped
     return _published(context)
+
+
+def _continues_at(context: _LateContext) -> WorkflowLabel:
+    """The state a settled adjudication puts this issue back into.
+
+    The record's own answer where it has one. A generation entered on the
+    published side names the stage the gate took the issue out of, and that
+    stage is the only one whose completion the candidate still owes: a docs
+    commit owes the watermark, the notice, and the `in_review` handoff; a
+    conflict resolution owes its round; a fix owes the reviewer another look.
+    Sending every one of them to `implementing` instead publishes the commit
+    and then walks the issue back to a point in the pipeline it had already
+    passed, skipping the bookkeeping the stage it came from is the only owner
+    of.
+
+    `implementing` is the answer for a candidate nothing had published, which
+    is the only other kind: there is no other stage it could have come from.
+    """
+    if not context.generation.has_publication_context:
+        return WorkflowLabel.IMPLEMENTING
+    return context.generation.source_stage
+
+
+def _pushed_where_it_was_measured(context: _LateContext) -> bool:
+    """Put an accepted post-publication candidate on its pull request.
+
+    The push belongs HERE rather than to the stage the issue continues at,
+    and the reason is that only this tick still holds the evidence. The
+    verdict was taken against one pull request standing on one head; the
+    reconciliation a moment ago proved both are still what they were; and the
+    retirement below takes the record that said so away. The stage resumed
+    behind this one has its own work to finish and no way to re-derive any of
+    that -- and two of the five have no publication seam a resumed tick would
+    even reach.
+
+    So the branch is put where the verdict said it may go, and the stage picks
+    up from a pull request that carries the commit. A push that did not land
+    parks with the label still on the adjudication: the exemption and the
+    approval are already durable, so the retry asks for the same commit
+    against the same head and settles from there.
+
+    A pre-publication verdict pushes nothing here. Its candidate has no pull
+    request yet, and the `implementing` publication it is handed back to is
+    what opens one. Neither does a retry finishing a settlement whose push
+    already landed: the reconciliation above found the pull request standing
+    on the accepted candidate, so what is left to finish is the label and the
+    retirement, not a second push of a commit that is already there.
+
+    Both of those still owe the checkout, which is why the proof below is on
+    the road out rather than inside the push: what the verdict licensed is one
+    commit, and the worktree it was accepted from is writable through the
+    whole adjudication, through the push itself, and through the tick that
+    died between a landed push and this retry.
+    """
+    if not context.generation.has_publication_context:
+        return True
+    worktree = _worktree_paths._worktree_path(
+        context.spec, context.issue.number,
+    )
+    if not context.already_published and not _accepted_push_landed(
+        context, worktree,
+    ):
+        return False
+    return _proved_before_the_handoff(context, worktree)
+
+
+def _accepted_push_landed(context: _LateContext, worktree) -> bool:
+    """Put the accepted commit on its pull request, or park for the retry.
+
+    A push that did not land leaves the label on the adjudication: the
+    exemption and the approval are already durable, so the retry asks for the
+    same commit against the same head and settles from there.
+    """
+    if worktree.exists() and _late_accepted._publishes_approved(
+        _late_records._gate(
+            context.gh, context.spec, context.issue, context.state, worktree,
+        ),
+        _worktree_paths._resolve_branch_name(
+            context.state, context.spec, context.issue.number,
+        ),
+    ):
+        return True
+    log.error(
+        "issue=#%d could not publish the accepted candidate %s onto PR #%d; "
+        "leaving it under adjudication for the retry",
+        context.issue.number, context.generation.candidate_sha,
+        context.generation.published_pr_number,
+    )
+    _late_outcome._emit_failure(context, LateFailure.PR_RECONCILE_FAILED)
+    _late_outcome._park(
+        context, _ACCEPTED_PUSH_FAILED_PARK,
+        reason=_late_outcome.PARK_PR_UNRECONCILED,
+    )
+    return False
+
+
+def _proved_before_the_handoff(context: _LateContext, worktree) -> bool:
+    """Refuse the handoff where the checkout is not what the verdict accepted.
+
+    The last thing this settlement owns is the worktree, and the two ticks
+    that reach here have left it unwatched for different stretches: the one
+    that pushes leaves it writable across the push, the pull-request read, and
+    the label; the one finishing an interrupted settlement has left it
+    writable since a previous process died. Either way what a human accepted
+    is one commit with nothing loose beside it, and every stage the label is
+    about to hand this issue to works from the CHECKOUT -- the reviewer reads
+    a head ahead of the pushed branch as unpublished work, the squash rewrites
+    what is on it, the docs pass commits on top.
+
+    So the publication stands and the handoff stops. The branch carries the
+    accepted commit either way, the generation stays live and the label stays
+    on the adjudication, and a tick taken once the worktree is back on that
+    commit finds the pull request already standing on it and finishes from
+    there -- no second push, no agent re-run.
+
+    Reached with a checkout in hand on both roads: a push is made from one or
+    not at all, and a recorded verdict is refused for a missing worktree well
+    before it is settled.
+    """
+    if _late_accepted._standing_on(
+        worktree, context.generation.candidate_sha,
+    ):
+        return True
+    _late_outcome._emit_failure(context, LateFailure.PR_RECONCILE_FAILED)
+    _late_outcome._park(
+        context,
+        _UNPROVED_CHECKOUT_PARK.format(
+            candidate=context.generation.candidate_sha,
+        ),
+        reason=_late_outcome.PARK_PR_UNRECONCILED,
+    )
+    return False
+
+
+def _settled_lease(context: _LateContext) -> str:
+    """The head the publication this verdict was taken over is pinned to.
+
+    The retirement below takes the generation -- and the head it froze -- off
+    the record, and the push the handoff licenses runs in another stage
+    entirely. Without this the publication would read the remote for itself,
+    which is right for a candidate nothing has published and wrong for one
+    adjudicated against a pull request that already exists: between the proof
+    a moment ago and the push, that pull request can move, and an unpinned
+    force-push adopts whoever landed as the lease.
+
+    Empty for a pre-publication verdict, whose push has no pull request to be
+    pinned to and correctly takes its own reading.
+    """
+    if not context.generation.has_publication_context:
+        return ""
+    return context.generation.published_sha
 
 
 def _released_hold(context: _LateContext) -> bool:
@@ -287,6 +546,12 @@ def _released_hold(context: _LateContext) -> bool:
 def _reconciled_pr(context: _LateContext) -> bool:
     """Point this issue at the pull request the MEASURED commit is on.
 
+    A generation entered on the PUBLISHED side is not searched for at all:
+    the record already names the pull request the work is on and the head it
+    was standing on when the reading was taken, and neither can be re-derived.
+    What that one owes is a proof rather than a lookup, and it is asked one
+    owner over.
+
     The exact-commit half, and the one a search by branch and open state
     cannot do. `pr_number` is whatever the issue recorded when it entered the
     gate -- most often the plan pull request a design discussion opened -- and
@@ -309,6 +574,8 @@ def _reconciled_pr(context: _LateContext) -> bool:
     PR is exactly what the ordinary publication reuses -- unless the recorded
     one is settled, which is the pointer that would end the issue.
     """
+    if context.generation.has_publication_context:
+        return _reconciled_publication(context)
     carrying = context.gh.find_pr_for_commit(
         branch=_worktree_paths._resolve_branch_name(
             context.state, context.spec, context.issue.number,
@@ -328,6 +595,152 @@ def _reconciled_pr(context: _LateContext) -> bool:
     )
     context.state.set(_PR_NUMBER, carrying.number)
     return True
+
+
+def _reconciled_publication(context: _LateContext) -> bool:
+    """Prove the publication this candidate was measured against is still it.
+
+    The pre-publication road searches for a pull request because it does not
+    know of one. This road knows: the entry the gate froze names the pull
+    request the work is already on and the head it was standing on, and the
+    verdict a human reached is a claim about what THAT pull request would come
+    to with the candidate in it. So the two are checked rather than looked up,
+    and a check that fails refuses instead of dropping what it could not
+    confirm.
+
+    A settled pull request is a refusal here where the pre-publication road
+    drops it, and the asymmetry is the point: there, a merged or closed number
+    is a stale pointer at a change the candidate is not in, and losing it
+    costs nothing because the publication opens the pull request this work
+    needs. Here it IS the change -- the branch is on the remote and a human
+    settled the pull request carrying it -- so dropping the number would push
+    onto that branch and open a second pull request for a change adjudicated
+    against the first.
+
+    A head that moved is the same refusal one field over. Something pushed to
+    the pull request while the adjudication was open, so what the verdict was
+    taken over is not what the branch would come to, and the candidate is
+    measured afresh rather than published on a reading that has been overtaken.
+
+    The number is recorded on the way out for the reason the road below
+    records one: the publication asks its recorded pull request first, and the
+    one this issue entered the gate with may not be the one it was measured
+    against.
+    """
+    generation = context.generation
+    number = generation.published_pr_number
+    reading = _late_publication._read_publication(
+        context.gh, context.issue, number,
+    )
+    if reading.refused:
+        return _unreconciled(context, _RECORDED_PR_UNREADABLE_PARK)
+    settled = reading.state
+    if settled != _late_publication.OPEN:
+        log.error(
+            "issue=#%d was adjudicated against PR #%d, which is %s; refusing "
+            "to publish the accepted candidate onto a settled publication",
+            context.issue.number, number, settled,
+        )
+        return _unreconciled(
+            context,
+            _SETTLED_PUBLICATION_PARK.format(number=number, state=settled),
+        )
+    return _reconciled_head(context, reading.head, number)
+
+
+def _reconciled_head(
+    context: _LateContext, observed: Optional[str], number: int,
+) -> bool:
+    """Prove the pull request is standing somewhere this verdict may act on.
+
+    Two heads qualify and everything else is external movement. The frozen one
+    is the ordinary answer: nothing has touched the pull request since the
+    reading, and the push this verdict earns is still owed.
+
+    The other is the ACCEPTED CANDIDATE where the RECORD says this road put
+    it there, and it is this settlement's own push having already landed.
+    That push happens before the relabel and the retirement, so a tick that
+    died in between comes back to a live generation over a pull request the
+    commit is already on -- and read as movement, the one thing that would be
+    refused forever is the publication this very verdict made. Recognized,
+    the tick carries on from where it stopped: nothing is pushed a second
+    time, and the label and the retirement it never reached are what it
+    finishes.
+
+    The record is what qualifies it, and asking for one is the whole of the
+    safety. On a FRESH pass this call runs before the exemption, the approval,
+    and the push behind them, so nothing of this workflow's has touched the
+    remote yet: a pull request that moved off the frozen head onto the
+    candidate moved because something else -- an agent that pushed its own
+    commit is the plain case -- put it there, and taking that for a landed
+    settlement would publish and hand on a candidate the adjudication was
+    never allowed to release. It refuses with every other moved head instead.
+    """
+    head = _payloads.as_hex(observed, _formats.COMMIT_LENGTHS)
+    if head and head == _this_settlements_own_push(context):
+        log.info(
+            "issue=#%d finds PR #%d already standing on the accepted "
+            "candidate %s; finishing the settlement its push interrupted",
+            context.issue.number, number, head,
+        )
+        context.already_published = True
+    elif head != context.generation.published_sha:
+        return _moved_publication(context, number, head)
+    context.state.set(_PR_NUMBER, number)
+    return True
+
+
+def _this_settlements_own_push(context: _LateContext) -> str:
+    """The accepted candidate where a record vouches for its push, or "".
+
+    The two halves of the one window this road opens, and each is durable
+    where the candidate on its own is not. The approval is written with the
+    exemption in the write immediately ahead of the push and says this
+    settlement owes exactly that commit a publication; the receipt is written
+    by the push itself, in the same write that drops the approval, and says
+    the commit reached the remote. A crash anywhere past that write leaves one
+    of the two on the pinned comment, so the retry recognizes the publication
+    it made -- and a pass that has written neither has made no push to
+    recognize.
+
+    The receipt is read with the head it REPLACED, which is what dates it to
+    this settlement. It is never cleared, so on its own it goes on naming a
+    commit this issue published rounds ago -- and where the accepted candidate
+    IS that commit, a pull request somebody rewound onto it would read as this
+    settlement's push having landed. The head this verdict was measured over
+    is the one this settlement's push was pinned to, so a receipt recording
+    any other head belongs to some earlier publication and answers for
+    nothing.
+    """
+    candidate = context.generation.candidate_sha
+    vouched = (
+        _late_parks._approved_commit(context.state),
+        _late_parks._publication_from(
+            context.state, context.generation.published_sha,
+        ),
+    )
+    return candidate if candidate and candidate in vouched else ""
+
+
+def _moved_publication(
+    context: _LateContext, number: int, head: str,
+) -> bool:
+    """Refuse a verdict whose pull request somebody else has moved."""
+    frozen = context.generation.published_sha
+    log.error(
+        "issue=#%d was adjudicated against PR #%d standing at %s and it "
+        "stands at %s now; refusing to publish against a publication "
+        "that moved",
+        context.issue.number, number, frozen, head or "an unreadable head",
+    )
+    return _unreconciled(
+        context,
+        _MOVED_PUBLICATION_PARK.format(
+            number=number,
+            frozen=frozen,
+            moved=head or "an unreadable head",
+        ),
+    )
 
 
 def _dropped_settled_pr(context: _LateContext) -> bool:

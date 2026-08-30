@@ -14,6 +14,9 @@ from tests.git.base_sync.refresh_scenarios import (
     _scenario,
 )
 from tests.git.base_sync.refresh_test_support import (
+    _diverged,
+    AFTER_SHA,
+    REBASED_SHA,
     _RebaseAnchorRecorder,
     _RemoteHeadGit,
     _SyncWorktreeWithBaseFixture,
@@ -29,9 +32,10 @@ from tests.git.base_sync.anchor_assertions import (
 ISSUE = 7
 
 # Worktree HEAD SHAs threaded through the rebase / push / recovery flows.
-BEFORE_SHA = "before-sha"
-AFTER_SHA = "after-sha"
-REBASED_SHA = "rebased-sha"
+# The post-rebase and recovered heads come off the shared fixture, where they
+# are the commit the size gate proves the checkout to: the refresh names what
+# it means to publish and the gate refuses a checkout standing anywhere else.
+BEFORE_SHA = "be40e5ba" * 5
 
 LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
 
@@ -141,7 +145,7 @@ class CrashRecoveryAnchorUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCas
             dirty=MagicMock(return_value=["scratch.py"]),
             rebase=MagicMock(),
             head_sha=MagicMock(return_value=REBASED_SHA),
-            ahead_behind=MagicMock(return_value=(1, 0)),
+            ahead_behind=MagicMock(return_value=_diverged(1, 0)),
             fetch=MagicMock(return_value=_git_result()),
             push=MagicMock(),
             git=MagicMock(

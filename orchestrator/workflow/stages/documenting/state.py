@@ -17,3 +17,11 @@ _PARK_REASON = "park_reason"
 _AWAITING_HUMAN = "awaiting_human"
 
 _LAST_ACTION_COMMENT_ID = "last_action_comment_id"
+
+# The head a docs pass produced and the size gate held before it reached the
+# pull request. Written inside the gate's own routed write, ahead of the
+# relabel to `workflow:decomposing`, because a hold is the end of this stage's
+# tick: the pass is finished and paid for, and the settlement that publishes
+# the accepted commit hands the label back to a stage whose ordinary reading
+# of a branch in sync with its remote is "no docs pass has run".
+_SETTLED_DOCS_SHA = "docs_settled_sha"

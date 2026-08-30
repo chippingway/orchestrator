@@ -42,7 +42,7 @@ _BASE_SYNC_TARGETS = MappingProxyType(
         "git": (commands, "_git"),
         "hardened": (commands, "_git_hardened"),
         "fetch": (authentication, "_authed_fetch"),
-        "ahead_behind": (publication_probes, "_branch_ahead_behind"),
+        "ahead_behind": (publication_probes, "_branch_divergence"),
         "target_fetch": (authentication, "_authed_target_fetch"),
         "worktrees_root": (paths, "_repo_worktrees_root"),
         "sync": (refresh, "_sync_worktree_with_base"),
@@ -61,3 +61,16 @@ def _patch_base_sync(**mocks):
             module, attribute = _BASE_SYNC_TARGETS[alias]
             stack.enter_context(patch.object(module, attribute, mock))
         yield
+
+
+def _diverged(ahead: int, behind: int, *, tip: str = "remote-sha"):
+    """One divergence reading, as the probe answers it.
+
+    The counts and the head they were taken against travel together, so a
+    case that seeds counts is seeding a claim about one commit -- and one
+    that seeds none is seeding a reading that never happened, which is what
+    `readable=False` says and what no caller may act on.
+    """
+    return publication_probes._BranchDivergence(
+        tip=tip, ahead=ahead, behind=behind, readable=True,
+    )

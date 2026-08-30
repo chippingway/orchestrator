@@ -33,7 +33,29 @@ refusal is reported under is `late_records`, the pair a count is taken over is
 `late_evidence`, what a measured candidate earns -- the push, the
 `workflow:decomposing` hold, and the retirement each is durable behind -- is
 `late_verdict`, and the one park shape every unreadable reading takes, with
-the typed failure both sinks carry, is `late_parks`. The last four
+the typed failure both sinks carry, is `late_parks`.
+
+A candidate the remote already carries is the same gate one seam further on,
+and eight more owners divide it the way the seam itself divides: what a call
+taken past publication has to freeze before it may measure at all -- the
+stage, the pull request, the head it stands on, and the five refusals that
+make freezing them fail closed -- is `late_overflow`; the switch, the record,
+and the count asked in one place so the seam that reached the gate makes no
+difference to the answer is `late_publication`; the one call every push onto a
+pull request the remote already carries goes through -- measure, push named
+and leased, spend the debt, prove the checkout again -- is `late_push`, so a
+pull request cannot be grown past the ceiling a commit at a time; the push a
+human's adjudication already accepted, taken with no measurement but over a
+checkout re-proved, is `late_accepted`; the push a squash-on-approval makes
+over the branch it just rewrote -- entered on that publication before anything
+destructive runs, then measuring the commit the squash MADE, since that is
+what would go onto the pull request -- is `late_rewrite`; the reading the dispatcher
+takes ahead of every handler for a pair this issue froze and never counted is
+`late_reconcile`; the approval that same dispatcher pays ahead of it,
+where a crash past the write that granted one left no record to reconcile
+from, is `late_debt`; and what a pinned record CLAIMS about either -- and the
+claims nothing may act on, since every field here is read fail-closed and a
+group missing a member parses as no group -- is `late_claims`. The last four
 own the signals that arrive between runs -- a body edit (`drift`), a body edit
 before any session existed plus the quiet timeout recovery
 (`drift_preflight`), an operator's `/orchestrator continue` (`continue_command`),

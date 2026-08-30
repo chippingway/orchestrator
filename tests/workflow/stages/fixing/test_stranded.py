@@ -39,12 +39,59 @@ datetime = support.datetime
 patch = support.patch
 timedelta = support.timedelta
 timezone = support.timezone
+PR_NUMBER = support.PR_NUMBER
+
+# A pull request somebody else pushed to while the resume was out.
+MOVED_PR_HEAD = "cafef00d" * 5
 
 
-class StrandedFixRecoveryTest(
-    unittest.TestCase,
-    _StrandedFixingFixtureMixin,
-):
+class _StrandedResumeMixin(_StrandedFixingFixtureMixin):
+    """The one tick every case here is, with a single fact moved.
+
+    Each stranded case asks what a resume does when the dev commits nothing
+    and the branch is already carrying work: the debounce the route reads
+    before it spawns, the two identical head reads a no-commit run leaves,
+    and the dev's answer are the same throughout, so they are named once and
+    only what a case is ABOUT is spelled in it.
+    """
+
+    def _resumed(
+        self,
+        gh,
+        issue,
+        *,
+        message: str = NOTHING_TO_DO_MESSAGE,
+        **run_options,
+    ):
+        run_options.setdefault("head_shas", (SHA_SAME, SHA_SAME))
+        with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
+            return self._run_fixing(
+                gh,
+                issue,
+                run_agent=_agent(
+                    session_id=DEV_SESSION, last_message=message,
+                ),
+                **run_options,
+            )
+
+    def _pushes(self, mocks):
+        """The seam every one of these cases is decided at."""
+        return mocks[PUSH_BRANCH]
+
+    def _acked_scenario(self):
+        """A resume the dev was woken for by a human's `continue`."""
+        comment = FakeComment(
+            id=TRIGGER_ID,
+            body=CONTINUE_WORD,
+            user=FakeUser(ALICE),
+            created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        )
+        return IssueScenario(
+            *self._seed(pr=self._open_pr(), issue_comments=[comment]),
+        )
+
+
+class StrandedFixRecoveryTest(unittest.TestCase, _StrandedResumeMixin):
     def test_no_commit_with_stranded_fix_publishes_it(self) -> None:
         # The resume produced no new commit, but the clean worktree HEAD
         # is ahead of the remote PR branch: a prior parked run committed
@@ -53,19 +100,14 @@ class StrandedFixRecoveryTest(
         # route) instead of parking on a question the dev cannot answer.
         gh, issue = self._seed_stranded()
 
-        with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
-            mocks = self._run_fixing(
-                gh,
-                issue,
-                run_agent=_agent(
-                    session_id=DEV_SESSION,
-                    last_message="nothing new to commit; the fix is already on HEAD",
-                ),
-                head_shas=(SHA_BEFORE, SHA_BEFORE),
-                branch_ahead_behind=(1, 0),
-            )
+        mocks = self._resumed(
+            gh,
+            issue,
+            message="nothing new to commit; the fix is already on HEAD",
+            branch_ahead_behind=(1, 0),
+        )
 
-        mocks[PUSH_BRANCH].assert_called_once()
+        self._pushes(mocks).assert_called_once()
         pinned_data = gh.pinned_data(ISSUE)
         self.assertFalse(pinned_data.get(AWAITING_HUMAN))
         self.assertEqual(pinned_data.get(REVIEW_ROUND), 3)
@@ -77,19 +119,9 @@ class StrandedFixRecoveryTest(
         # handler must fall back to the question park.
         gh, issue = self._seed_stranded()
 
-        with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
-            mocks = self._run_fixing(
-                gh,
-                issue,
-                run_agent=_agent(
-                    session_id=DEV_SESSION,
-                    last_message=NOTHING_TO_DO_MESSAGE,
-                ),
-                head_shas=(SHA_BEFORE, SHA_BEFORE),
-                branch_ahead_behind=(1, 2),
-            )
+        mocks = self._resumed(gh, issue, branch_ahead_behind=(1, 2))
 
-        mocks[PUSH_BRANCH].assert_not_called()
+        self._pushes(mocks).assert_not_called()
         pinned_data = gh.pinned_data(ISSUE)
         self.assertTrue(pinned_data.get(AWAITING_HUMAN))
         self.assertNotIn((ISSUE, VALIDATING), gh.label_history)
@@ -100,20 +132,14 @@ class StrandedFixRecoveryTest(
         # the handler must not push and falls back to the question park.
         gh, issue = self._seed_stranded()
 
-        with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
-            mocks = self._run_fixing(
-                gh,
-                issue,
-                run_agent=_agent(
-                    session_id=DEV_SESSION,
-                    last_message=NOTHING_TO_DO_MESSAGE,
-                ),
-                head_shas=(SHA_BEFORE, SHA_BEFORE),
-                branch_ahead_behind=(1, 0),
-                authed_fetch_result=MagicMock(returncode=1, stderr="boom"),
-            )
+        mocks = self._resumed(
+            gh,
+            issue,
+            branch_ahead_behind=(1, 0),
+            authed_fetch_result=MagicMock(returncode=1, stderr="boom"),
+        )
 
-        mocks[PUSH_BRANCH].assert_not_called()
+        self._pushes(mocks).assert_not_called()
         self.assertTrue(gh.pinned_data(ISSUE).get(AWAITING_HUMAN))
 
     def test_no_commit_stranded_fix_dirty_tree_parks(self) -> None:
@@ -123,20 +149,14 @@ class StrandedFixRecoveryTest(
         # keep the question park.
         gh, issue = self._seed_stranded()
 
-        with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
-            mocks = self._run_fixing(
-                gh,
-                issue,
-                run_agent=_agent(
-                    session_id=DEV_SESSION,
-                    last_message=NOTHING_TO_DO_MESSAGE,
-                ),
-                head_shas=(SHA_BEFORE, SHA_BEFORE),
-                branch_ahead_behind=(1, 0),
-                dirty_files=("AGENTS.md",),
-            )
+        mocks = self._resumed(
+            gh,
+            issue,
+            branch_ahead_behind=(1, 0),
+            dirty_files=("AGENTS.md",),
+        )
 
-        mocks[PUSH_BRANCH].assert_not_called()
+        self._pushes(mocks).assert_not_called()
         self.assertTrue(gh.pinned_data(ISSUE).get(AWAITING_HUMAN))
 
     def test_stranded_fix_push_error_parks_transient(self) -> None:
@@ -145,20 +165,11 @@ class StrandedFixRecoveryTest(
         # next tick's silent recovery can retry).
         gh, issue = self._seed_stranded()
 
-        with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
-            mocks = self._run_fixing(
-                gh,
-                issue,
-                run_agent=_agent(
-                    session_id=DEV_SESSION,
-                    last_message=NOTHING_TO_DO_MESSAGE,
-                ),
-                head_shas=(SHA_BEFORE, SHA_BEFORE),
-                branch_ahead_behind=(1, 0),
-                push_branch=False,
-            )
+        mocks = self._resumed(
+            gh, issue, branch_ahead_behind=(1, 0), push_branch=False,
+        )
 
-        mocks[PUSH_BRANCH].assert_called_once()
+        self._pushes(mocks).assert_called_once()
         pinned_data = gh.pinned_data(ISSUE)
         self.assertTrue(pinned_data.get(AWAITING_HUMAN))
         self.assertEqual(pinned_data.get(PARK_REASON), PARK_PUSH_FAILED)
@@ -174,32 +185,19 @@ class StrandedFixRecoveryTest(
         # watermarks while the PR head still lacks the fix. The handler
         # publishes the stranded HEAD through the normal push tail and
         # routes to `validating` with the in_review-route round reset.
-        old = datetime.now(timezone.utc) - timedelta(hours=1)
-        comment = FakeComment(
-            id=TRIGGER_ID,
-            body=CONTINUE_WORD,
-            user=FakeUser(ALICE),
-            created_at=old,
+        scenario = self._acked_scenario()
+
+        mocks = self._resumed(
+            scenario.github,
+            scenario.issue,
+            message=(
+                "The branch already satisfies the comment.\n\n"
+                "ACK: nothing to fix; the change is already on HEAD"
+            ),
+            branch_ahead_behind=(1, 0),
         )
-        pr = self._open_pr()
-        scenario = IssueScenario(*self._seed(pr=pr, issue_comments=[comment]))
 
-        with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
-            mocks = self._run_fixing(
-                scenario.github,
-                scenario.issue,
-                run_agent=_agent(
-                    session_id=DEV_SESSION,
-                    last_message=(
-                        "The branch already satisfies the comment.\n\n"
-                        "ACK: nothing to fix; the change is already on HEAD"
-                    ),
-                ),
-                head_shas=(SHA_SAME, SHA_SAME),
-                branch_ahead_behind=(1, 0),
-            )
-
-        mocks[PUSH_BRANCH].assert_called_once()
+        self._pushes(mocks).assert_called_once()
         self.assertNotIn((ISSUE, IN_REVIEW), scenario.github.label_history)
         self.assertIn((ISSUE, VALIDATING), scenario.github.label_history)
         self._pinned_data = scenario.github.pinned_data(ISSUE)
@@ -216,31 +214,39 @@ class StrandedFixRecoveryTest(
         # rather than racing a head we have not reconciled, so the ACK
         # fast path proceeds as before -- return to `in_review` without
         # pushing blind.
-        old = datetime.now(timezone.utc) - timedelta(hours=1)
-        comment = FakeComment(
-            id=TRIGGER_ID,
-            body=CONTINUE_WORD,
-            user=FakeUser(ALICE),
-            created_at=old,
+        scenario = self._acked_scenario()
+
+        mocks = self._resumed(
+            scenario.github,
+            scenario.issue,
+            message=(
+                "The branch already satisfies the comment.\n\nACK: nothing to fix; 'continue' names no defect"
+            ),
+            branch_ahead_behind=(1, 2),
         )
-        pr = self._open_pr()
-        scenario = IssueScenario(*self._seed(pr=pr, issue_comments=[comment]))
 
-        with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
-            mocks = self._run_fixing(
-                scenario.github,
-                scenario.issue,
-                run_agent=_agent(
-                    session_id=DEV_SESSION,
-                    last_message=(
-                        "The branch already satisfies the comment.\n\nACK: nothing to fix; 'continue' names no defect"
-                    ),
-                ),
-                head_shas=(SHA_SAME, SHA_SAME),
-                branch_ahead_behind=(1, 2),
-            )
-
-        mocks[PUSH_BRANCH].assert_not_called()
+        self._pushes(mocks).assert_not_called()
         self.assertIn((ISSUE, IN_REVIEW), scenario.github.label_history)
         self.assertNotIn((ISSUE, VALIDATING), scenario.github.label_history)
         self.assertFalse(scenario.github.pinned_data(ISSUE).get(AWAITING_HUMAN))
+
+
+class StrandedPublicationRaceTest(unittest.TestCase, _StrandedResumeMixin):
+    """A pull request somebody moved between the proof and the push.
+
+    The stranded probe fetches, proves the branch ahead of the remote and not
+    behind it, and hands that head on: it is what the push replaces. Left for
+    the gate to read afterwards, a head somebody landed in between becomes the
+    lease and is force-overwritten by work proved against the head it used to
+    be on.
+    """
+
+    def test_a_head_moved_after_the_proof_refuses(self) -> None:
+        gh, issue = self._seed_stranded()
+        gh.get_pr(PR_NUMBER).head.sha = MOVED_PR_HEAD
+
+        mocks = self._resumed(gh, issue, branch_ahead_behind=(1, 0))
+
+        self._pushes(mocks).assert_not_called()
+        self.assertNotIn((ISSUE, VALIDATING), gh.label_history)
+        self.assertTrue(gh.pinned_data(ISSUE).get(AWAITING_HUMAN))

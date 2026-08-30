@@ -19,13 +19,28 @@ re-reading the code.
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
+from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.late_split import (
+    formats as _formats,
+    payloads as _payloads,
+)
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.conflicts import models as _models
 from orchestrator.workflow.stages.conflicts import state as _state
+from orchestrator.workflow.stages.implementing import (
+    late_records as _late_records,
+)
 from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
+
+
+# The revision a checkout's own head is named by.
+_HEAD = "HEAD"
 
 
 def _park_conflict(
@@ -92,6 +107,7 @@ def _hand_resolved_round_to_validating(
     ctx.state.set(_state._REVIEW_ROUND, 0)
     ctx.state.set(_state._CONFLICT_ROUND, conflict_round + 1)
     ctx.state.set("last_conflict_resolved_at", _usage._now_iso())
+    _forget_settled_round(ctx)
     _emit_conflict_round_incremented(
         ctx,
         pr_number=int(pr_number),
@@ -101,3 +117,104 @@ def _hand_resolved_round_to_validating(
     )
     ctx.gh.set_workflow_label(ctx.issue, WorkflowLabel.VALIDATING)
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
+
+
+def _settles_the_held_round(outcome: str, sha: Optional[str]):
+    """The round a hold owes this stage, named for the gate to write it down.
+
+    A hold ends the tick: the resolution is committed, the issue is on
+    `workflow:decomposing`, and the tail above never runs. But the round IS
+    resolved -- a settled `single` verdict publishes the accepted commit from
+    the adjudication -- and the resumed tick could not work out which of the
+    two resolutions it was: the branch it comes back to already carries its
+    base, which is the no-op flip's own reading and the one exit that resolves
+    nothing and stamps no `last_conflict_resolved_at`.
+
+    So the pair is handed to the gate and written inside its routed write,
+    ahead of the relabel, and the resumed tick finishes the ORIGINAL outcome
+    from it rather than re-deriving a wrong one.
+    """
+    return _late_records._Spends(fields=(
+        (_state._SETTLED_OUTCOME, outcome),
+        (_state._SETTLED_SHA, sha or ""),
+    ))
+
+
+def _finished_settled_round(
+    ctx: _models._ConflictContext,
+    sync: _models._WorktreeSync,
+    conflict_round: int,
+    pr_number,
+) -> bool:
+    """Finish a resolution the size gate held and an adjudication published.
+
+    The receipt is the whole of what this tick knows about a round it did not
+    run: the resolution was reached, committed, and read by a human as one
+    coherent change, and the settlement put it on the pull request. What is
+    left is the tail above, with the outcome the round actually had.
+
+    `sync.ahead` is what says the commit reached the remote, and it is asked
+    because the receipt cannot: a verdict that parked, or a human who moved
+    the label by hand, leaves the same receipt over a commit still on disk
+    only. Ahead of the remote the receipt stands and the recovered-commit push
+    below carries it through the gate, which is the one road that measures it
+    again -- and the tail clears the receipt wherever it finally runs.
+
+    In sync is not the same claim as CARRYING it. A replacement host rebuilds
+    the checkout from a pull request that has moved on, and what it gets is a
+    branch level with its remote and standing on somebody else's head -- so
+    the head the receipt names is proved against the checkout rather than
+    inferred from the counters. That proof carries the remote with it: the
+    caller fetched the branch before counting and refuses a checkout behind
+    it, so a head that is in sync AND is the settled commit says the remote
+    is standing there too.
+
+    Fail closed on every other reading. A receipt whose head is not a whole
+    object id is not one a checkout can be compared to, and a head this host
+    cannot peel is not one anything may be compared against -- both leave the
+    receipt exactly where it is for a tick that can prove it.
+    """
+    settled = _payloads.as_hex(
+        ctx.state.get(_state._SETTLED_SHA), _formats.COMMIT_LENGTHS,
+    )
+    outcome = ctx.state.get(_state._SETTLED_OUTCOME)
+    if not outcome or not settled or sync.ahead > 0 or pr_number is None:
+        return False
+    if not _standing_on(ctx, sync.worktree, settled):
+        return False
+    _hand_resolved_round_to_validating(
+        ctx, conflict_round, pr_number, outcome=str(outcome), sha=settled,
+    )
+    return True
+
+
+def _standing_on(
+    ctx: _models._ConflictContext, worktree, settled: str,
+) -> bool:
+    """Whether this checkout is the commit a settled receipt names.
+
+    Proved rather than read, because everything past it is a claim about one
+    object id: a revision this host cannot peel is not a head that matches
+    anything, and a host that never had the commit answers exactly that.
+    """
+    proved = _measurement_commits._prove_candidate_commit(worktree, _HEAD)
+    if proved.is_frozen and proved.sha == settled:
+        return True
+    log.error(
+        "issue=#%d stands on %s rather than the settled resolution %s; "
+        "leaving the receipt for a tick that can prove it",
+        ctx.issue.number, proved.sha or "an unreadable head", settled,
+    )
+    return False
+
+
+def _forget_settled_round(ctx: _models._ConflictContext) -> None:
+    """Drop a receipt the round it was owed for has now been paid on.
+
+    Cleared by the tail rather than by the reader above, so a recovered-commit
+    push that publishes a held resolution on its own -- reaching the tail
+    under its own outcome -- leaves nothing behind for a later tick to finish
+    a second time.
+    """
+    ctx.state.set(_state._SETTLED_OUTCOME, None)
+    ctx.state.set(_state._SETTLED_SHA, None)

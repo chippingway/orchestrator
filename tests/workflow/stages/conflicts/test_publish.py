@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
+from orchestrator import config
 from orchestrator.git import commands as _git_commands
 from orchestrator.workflow.stages.conflicts import guards as _guards
 
@@ -15,6 +16,8 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    LABEL_DECOMPOSING,
+    MEASURED_CANDIDATE_SHA,
     _FAKE_WT,
     _PatchedWorkflowMixin,
     _TEST_SPEC,
@@ -24,7 +27,14 @@ from tests.workflow.fixtures import (
 PUBLISH_ISSUE = 310
 PUBLISH_BRANCH = "orchestrator/issue-310"
 PUBLISH_PR = 910
-PUBLISH_PR_HEAD = "stalehead00"
+# A whole git object id, because the size gate freezes the head its pull
+# request stands on before it measures and reads a commit field at its exact
+# length -- an abbreviation is no head at all there.
+PUBLISH_PR_HEAD = "5da1e" * 8
+
+CEILING = 5
+PAST_THE_CEILING = 6
+MAX_ADDED_LINES = "MAX_ADDED_LINES"
 
 
 def _assert_diverged_park(test_case, gh) -> None:
@@ -65,7 +75,13 @@ class _PublishFixtureMixin(_PatchedWorkflowMixin):
         )
         return gh, issue, pr
 
-    def _run_diverged(self, gh, issue, *, on_base, recognized):
+    def _publish(self, gh, issue, **run_options):
+        """The recovered-push route, with the reading it is measured by."""
+        return self._run_diverged(
+            gh, issue, on_base=True, recognized=True, **run_options,
+        )
+
+    def _run_diverged(self, gh, issue, *, on_base, recognized, **run_options):
         # The worktree is 4 ahead / 2 behind the remote PR head (a rebase
         # rewrote history). Patch the two safety probes on the owner the
         # divergence guard calls them through, so the handler's
@@ -96,7 +112,11 @@ class _PublishFixtureMixin(_PatchedWorkflowMixin):
                 run_agent=_agent(session_id="dev-sess"),
                 branch_ahead_behind=(4, 2),
                 push_branch=True,
-                head_shas=("local", "local"),
+                # The head this stage reads is the commit the gate proves
+                # the checkout to: one read of one worktree, and a push named
+                # against anything else is the race the gate refuses.
+                head_shas=(MEASURED_CANDIDATE_SHA, MEASURED_CANDIDATE_SHA),
+                **run_options,
             )
 
 
@@ -131,7 +151,27 @@ class ResolvingConflictPublishesAlreadyRebasedTest(
             _TEST_SPEC,
             _FAKE_WT,
             PUBLISH_BRANCH,
+            revision=MEASURED_CANDIDATE_SHA,
             force_with_lease=PUBLISH_PR_HEAD,
+        )
+
+    def test_an_oversized_recovery_is_held(self) -> None:
+        # A crash between a commit and the gate is exactly the window this
+        # recovery exists for, so the commits it finds are the ones least
+        # likely ever to have been read. Publishing them on the strength of
+        # "an earlier tick meant to" is the unmeasured publication the gate
+        # exists to stop.
+        gh, issue, _pr = self._seed()
+
+        with patch.object(config, MAX_ADDED_LINES, CEILING):
+            mocks = self._publish(gh, issue, added_lines=PAST_THE_CEILING)
+
+        mocks["_push_branch"].assert_not_called()
+        self.assertNotIn(
+            (PUBLISH_ISSUE, "workflow:validating"), gh.label_history,
+        )
+        self.assertIn(
+            (PUBLISH_ISSUE, LABEL_DECOMPOSING), gh.label_history,
         )
 
     def test_parks_when_not_on_base(self) -> None:

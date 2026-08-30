@@ -2,12 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 """The two ways a rebase attempt ends, and what each publishes.
 
-A clean rebase has three exits and the dirty check gates all of them, including
-the one that pushes nothing. A no-op flip carries the worktree into
+A clean rebase has three exits and a PROVED clean tree gates all of them,
+including the one that pushes nothing. A no-op flip carries the worktree into
 `validating` untouched, where the reviewer agent reads the tree directly -- so
 an uncommitted edit left by a tick that crashed before its own dirty check
 would put the reviewer's vote against content the PR does not have, and the
-in_review ready-ping would then advertise that approval to a human merger.
+in_review ready-ping would then advertise that approval to a human merger. A
+status nobody could read is that same edit with nothing to name it, so it
+refuses too.
+
+What the branch is standing on afterwards is proved rather than assumed, for
+one step further on: an unreadable head read as "the base had not moved" hands
+the round back to validating without anything having established whether the
+rebase left a rewritten commit the pull request never received.
 
 The no-op flip still bumps `conflict_round`. Nothing was resolved, but PyGithub
 cannot tell a content conflict from a PR blocked by branch protection or
@@ -25,7 +32,6 @@ import logging
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import prompts as _prompts
@@ -34,9 +40,62 @@ from orchestrator.workflow.stages.conflicts import outcomes as _outcomes
 from orchestrator.workflow.stages.conflicts import resume as _resume
 from orchestrator.workflow.stages.conflicts import state as _state
 from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.stages.implementing import (
+    late_push as _late_push,
+    late_records as _late_records,
+)
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
+
+
+# What a tree this stage could not prove clean is parked as. Both readings are
+# the same refusal to an operator -- the checkout may not be handed on -- and
+# they are worded apart because what has to be put back differs: uncommitted
+# work is removed or committed, while a status nobody could read is a checkout
+# to repair.
+_DIRTY_TREE_PARK = (
+    "{mentions} worktree has {count} uncommitted change(s) after `git rebase "
+    "{base_ref}`; refusing to push or hand back to validating with a dirty "
+    "tree."
+)
+
+
+_UNREADABLE_TREE_PARK = (
+    "{mentions} nothing could read what the worktree is carrying after `git "
+    "rebase {base_ref}`, so it cannot be proved clean. A reading that "
+    "established nothing names no paths, which is exactly what an empty tree "
+    "names too -- and the reviewer this round hands to reads the checkout "
+    "directly, so an uncommitted edit waved through here becomes a vote "
+    "against content the pull request does not carry. Nothing was pushed and "
+    "no round was counted. Repair the checkout so its status reads, and the "
+    "next tick rebases it again."
+)
+
+
+_UNREADABLE_HEAD_PARK = (
+    "{mentions} `git rebase {base_ref}` reported clean and nothing could then "
+    "read the commit the worktree is standing on. Read as \"already up to "
+    "date\" the round would go back to validating without anyone knowing "
+    "whether the rebase left a rewritten head the pull request never "
+    "received -- and the reviewer would vote on the head it already has. "
+    "Nothing was pushed and no round was counted. Repair the checkout and the "
+    "next tick rebases it again."
+)
+
+
+# Why this stage may not hand a checkout on, spelled as the park records it.
+# The two tree readings are told apart the way every other seam tells them
+# apart: a list of paths a human removes or commits, against a repository to
+# look at, which names no count because naming one would report a failed read
+# as an empty tree.
+_UNREADABLE_HEAD = "unreadable_head"
+
+
+_UNREADABLE_WORKTREE = "unreadable_worktree"
+
+
+_DIRTY_WORKTREE = "dirty_worktree"
 
 
 def _publish_clean_rebase(
@@ -48,42 +107,64 @@ def _publish_clean_rebase(
 ) -> None:
     """Dispose of a clean `git rebase <remote>/<base>` outcome.
 
-    Parks on a dirty tree; flips to `validating` without a push when the
-    base had not moved (no-op rebase, still counted against the cap); or
-    force-pushes the rebased head and flips to `validating`. The caller
-    returns immediately after; every exit writes pinned state.
+    Parks on a tree nothing proved clean and on a head nothing could read;
+    flips to `validating` without a push when the base had not moved (no-op
+    rebase, still counted against the cap); or force-pushes the rebased head
+    and flips to `validating`. The caller returns immediately after; every
+    exit writes pinned state.
     """
     spec = ctx.spec
-    # Dirty check before EITHER clean-rebase exit (no-op flip OR rebased-head
-    # push): a pre-existing uncommitted edit (left by a previous tick that
-    # crashed before its own dirty check ran) would otherwise survive a no-op
-    # flip into validating, where the reviewer agent reads the worktree
-    # directly. The reviewer would then vote on a tree that does NOT match the
-    # PR head; the in_review HITL ready-ping would later advertise the PR as
-    # ready for human merge with the reviewer's approval sitting against an
-    # incorrect SHA, inviting a human merge over unreviewed content. Park
-    # rather than push or flip, mirroring `_on_dirty_worktree`'s "refuse to
-    # publish an incomplete branch" rule.
-    dirty = _verification_probes._worktree_dirty_files(wt)
-    if dirty:
-        _transitions._park_conflict(
-            ctx,
-            f"{config.HITL_MENTIONS} worktree has {len(dirty)} "
-            f"uncommitted change(s) after `git rebase "
-            f"{spec.remote_name}/{spec.base_branch}`; refusing to "
-            "push or hand back to validating with a dirty tree.",
-            reason="dirty_worktree",
-        )
+    if _unprovable_tree(ctx, wt):
         return
     after_sha = _verification_probes._head_sha(wt)
-    if not after_sha or after_sha == before_sha:
+    if not after_sha:
+        # An unreadable head is not "the base had not moved". Read as one, the
+        # no-op flip hands the round back to validating without anything
+        # having established whether the rebase left a commit the pull request
+        # does not carry -- and no later tick goes back for it, since the
+        # branch it comes back to already carries its base.
+        log.error(
+            "issue=#%d resolving_conflict: could not read the head a clean "
+            "`git rebase %s/%s` left; refusing to flip to validating over a "
+            "checkout nobody read",
+            ctx.issue.number, spec.remote_name, spec.base_branch,
+        )
+        _transitions._park_conflict(
+            ctx,
+            _UNREADABLE_HEAD_PARK.format(
+                mentions=config.HITL_MENTIONS, base_ref=_base_ref(spec),
+            ),
+            reason=_UNREADABLE_HEAD,
+        )
+        return
+    if after_sha == before_sha:
         _flip_base_up_to_date(ctx, conflict_round, pr_number, after_sha)
         return
-    if not _authentication._push_branch(
-        spec, wt,
+    published = _late_push._publishes(
+        _late_records._gate(ctx.gh, spec, ctx.issue, ctx.state, wt),
         _worktree_paths._resolve_branch_name(ctx.state, spec, ctx.issue.number),
-        force_with_lease=before_sha or None,
-    ):
+        _late_records._Entered(
+            head=before_sha or "", reconciling=True,
+            # The head the rebase left, so a commit landing between that read
+            # and the gate's own is refused rather than published in its
+            # place under this round's name.
+            candidate=after_sha,
+            # The round this rebase resolved, handed to the gate for the exit
+            # where this caller never reaches the tail: a hold relabels to the
+            # adjudication, and the resumed tick would read the published
+            # commit as a branch already carrying its base -- the no-op flip,
+            # which resolves nothing and stamps no `last_conflict_resolved_at`.
+            spends=_transitions._settles_the_held_round(
+                "base_rebased_clean", after_sha,
+            ),
+        ),
+    )
+    if published.held:
+        # The gate owns the issue from here -- parked, or handed to the
+        # adjudication -- so the hand back to validating is not this tick's.
+        ctx.gh.write_pinned_state(ctx.issue, ctx.state)
+        return
+    if not published.landed:
         _transitions._park_conflict(
             ctx,
             f"{config.HITL_MENTIONS} git push failed after auto-rebasing "
@@ -98,6 +179,57 @@ def _publish_clean_rebase(
         ctx, conflict_round, pr_number,
         outcome="base_rebased_clean", sha=after_sha,
     )
+
+
+def _base_ref(spec: config.RepoSpec) -> str:
+    """The remote-tracking ref this stage rebases onto."""
+    return f"{spec.remote_name}/{spec.base_branch}"
+
+
+def _unprovable_tree(ctx: _models._ConflictContext, wt: Path) -> bool:
+    """Refuse a clean-rebase exit over a tree nothing proved clean.
+
+    Asked once, ahead of BOTH clean-rebase exits -- the no-op flip and the
+    rebased-head push -- because the no-op is the one that carries the
+    worktree into `validating` untouched, where the reviewer agent reads the
+    tree directly. An uncommitted edit a crashed tick left behind would put
+    that vote against content the pull request does not have, and the
+    in_review ready-ping would advertise the approval to a human merger.
+
+    Proved, not merely un-named. A status read that established nothing names
+    no paths, and so does a tree with nothing in it: taken as an absence, a
+    checkout whose `git status` could not be run at all is handed on as a
+    clean one. So the reading has to have HAPPENED and named nothing, which is
+    the one question `is_clean` answers.
+    """
+    tree = _verification_probes._worktree_status(wt)
+    if tree.is_clean:
+        return False
+    base_ref = _base_ref(ctx.spec)
+    if tree.readable:
+        _transitions._park_conflict(
+            ctx,
+            _DIRTY_TREE_PARK.format(
+                mentions=config.HITL_MENTIONS,
+                count=len(tree.paths),
+                base_ref=base_ref,
+            ),
+            reason=_DIRTY_WORKTREE,
+        )
+        return True
+    log.error(
+        "issue=#%d resolving_conflict: could not prove the worktree clean "
+        "after `git rebase %s`; refusing to push or flip",
+        ctx.issue.number, base_ref,
+    )
+    _transitions._park_conflict(
+        ctx,
+        _UNREADABLE_TREE_PARK.format(
+            mentions=config.HITL_MENTIONS, base_ref=base_ref,
+        ),
+        reason=_UNREADABLE_WORKTREE,
+    )
+    return True
 
 
 def _flip_base_up_to_date(

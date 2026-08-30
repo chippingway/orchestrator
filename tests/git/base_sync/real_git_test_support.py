@@ -13,10 +13,15 @@ from orchestrator import config
 from orchestrator.git import authentication
 from orchestrator.git.base_sync import refresh
 
-from tests.support.fakes import FakeGitHubClient, FakePR, make_issue
-from tests.workflow.fixtures import (
+from tests.git.base_sync.gate_reads_support import _gate_base_reads
+# The label and pull-request state this tree spells for itself, beside
+# the fixture literals every other base-sync case reads them from.
+from tests.git.base_sync.refresh_test_support import (
     LABEL_IMPLEMENTING,
     STATE_OPEN,
+    FakeGitHubClient,
+    FakePR,
+    make_issue,
 )
 
 REPO_SLUG = "acme/widget"
@@ -27,6 +32,7 @@ KEY_REVIEW_ROUND = "review_round"
 GIT_COMMAND = "git"
 ADD_COMMAND = "add"
 PUSH_COMMAND = "push"
+HEAD_REVISION = "HEAD"
 ORIGIN_REMOTE = "origin"
 WORKTREES_DIR_NAME = "worktrees"
 WORKTREES_DIR_ATTR = "WORKTREES_DIR"
@@ -52,6 +58,7 @@ class _LocalBranchPusher:
     def __init__(self) -> None:
         self.branch = ""
         self.force_with_lease = ""
+        self.revision = ""
 
     def __call__(
         self,
@@ -60,17 +67,20 @@ class _LocalBranchPusher:
         branch,
         *,
         force_with_lease=None,
+        revision=None,
     ) -> bool:
         self.branch = branch
         self.force_with_lease = force_with_lease or ""
+        self.revision = revision or ""
         expected_lease = self.force_with_lease
+        source = revision or HEAD_REVISION
         push_result = subprocess.run(
             [
                 GIT_COMMAND,
                 PUSH_COMMAND,
                 f"--force-with-lease=refs/heads/{branch}:{expected_lease}",
                 ORIGIN_REMOTE,
-                f"HEAD:refs/heads/{branch}",
+                f"{source}:refs/heads/{branch}",
             ],
             cwd=str(worktree),
             capture_output=True,
@@ -169,6 +179,11 @@ class _FixtureBuilder:
         )
         fixture._gh = FakeGitHubClient()
         fixture._gh.add_issue(make_issue(7, label=LABEL_IMPLEMENTING))
+        # The rebased head is measured before it is pushed, and this fixture
+        # has no token to read a remote base with -- the reading gets its
+        # ordinary answers so the test stays about the git side of the
+        # refresh.
+        _gate_base_reads(fixture)
         fixture._fetch_patch = patch.object(
             authentication,
             "_authed_target_fetch",

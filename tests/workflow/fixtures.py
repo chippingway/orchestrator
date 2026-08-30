@@ -64,6 +64,7 @@ BASE_TIP_SHA = _repo_values.BASE_TIP_SHA
 BACKEND_CODEX = _repo_values.BACKEND_CODEX
 MEASURED_BASE_SHA = _repo_values.MEASURED_BASE_SHA
 SHA_LENGTH = _repo_values.SHA_LENGTH
+DEFAULT_PR_HEAD_SHA = _patch_models.DEFAULT_PR_HEAD_SHA
 MEASURED_CANDIDATE_SHA = _repo_values.MEASURED_CANDIDATE_SHA
 STATE_CLOSED = _repo_values.STATE_CLOSED
 STATE_OPEN = _repo_values.STATE_OPEN
@@ -95,6 +96,7 @@ REVIEWER_TIMEOUT_PARK = _recovery_followup.REVIEWER_TIMEOUT
 TIMEOUT_EMPTY_DETAIL = _recovery_followup.TIMEOUT_EMPTY_DETAIL
 TIMEOUT_PUSHED_DETAIL = _recovery_followup.TIMEOUT_PUSHED_DETAIL
 _RecoveryFollowupAssertions = _recovery_followup._RecoveryFollowupAssertions
+_WriteFailingAfter = _recovery_followup._WriteFailingAfter
 
 PROVIDER_OVERLOAD_MENTION = _agent_failure_values.PROVIDER_OVERLOAD_MENTION
 PROVIDER_OVERLOAD_MESSAGE = _agent_failure_values.PROVIDER_OVERLOAD_MESSAGE
@@ -113,6 +115,7 @@ _fake_worktree = _value_helpers._fake_worktree
 _iso_hours_ago = _value_helpers._iso_hours_ago
 _issue_branch = _value_helpers._issue_branch
 _manifest = _value_helpers._manifest
+_open_pr_for = _value_helpers._open_pr_for
 _state_with_pr_number = _value_helpers._state_with_pr_number
 
 _agent = _patch_models._agent

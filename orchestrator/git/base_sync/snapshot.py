@@ -186,13 +186,16 @@ def _complete_recovery_snapshot(
             local_head=snapshot.local_head,
             remote_head=remote_head,
         )
-    ahead, behind = publication_probes._branch_ahead_behind(
+    # A reading that did not happen answers zero and zero, which is what an
+    # in-sync branch answers -- and the heads above already disagree, so the
+    # classifier behind this rejects that pair rather than acting on it.
+    divergence = publication_probes._branch_divergence(
         context.spec, context.worktree, snapshot.branch,
     )
     return _AutoRebaseRecoverySnapshot(
         branch=snapshot.branch,
         local_head=snapshot.local_head,
         remote_head=remote_head,
-        ahead=ahead,
-        behind=behind,
+        ahead=divergence.ahead,
+        behind=divergence.behind,
     )

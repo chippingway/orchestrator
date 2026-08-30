@@ -398,13 +398,19 @@ def _push_branch(
     """Push via GIT_ASKPASS so the token never appears in argv.
 
     `revision`, when provided, is the exact commit to publish, and it exists
-    for every caller that decided to push by INSPECTING one. Two do. The
-    `discussion` stage's plan publication reads a branch and proves it carries
-    the agreed plan and nothing else; the `implementing` stage's publication
-    decides on one commit ahead of the push -- the one the size gate measured
-    or an adjudication accepted, or the one the checkout is standing on where
-    the gate proved none -- and names the push, the receipt it records, and
-    the proof it takes once the pull request is open against that same commit.
+    for every caller that decided to push by INSPECTING one. Nearly all of
+    them do. The `discussion` stage's plan publication reads a branch and
+    proves it carries the agreed plan and nothing else; the `implementing`
+    stage's publication decides on one commit ahead of the push -- the one the
+    size gate measured or an adjudication accepted, or the one the checkout is
+    standing on where the gate proved none -- and names the push, the receipt
+    it records, and the proof it takes once the pull request is open against
+    that same commit. Every push onto a pull request the remote ALREADY
+    carries names one too, and for the same reason: the size gate measures
+    before each of them and hands back the commit it measured -- the dev-fix
+    publication and the bounce behind it, both validating recoveries, the
+    three conflict publications, the base sync's auto-rebase and its crash
+    recovery, and the final docs pass.
     `HEAD` between the reading and the push is not necessarily what was proven
     -- another tick, an operator, or a stray agent can move it -- and pushing
     whatever HEAD says would publish work no check ever saw while the record
@@ -412,15 +418,20 @@ def _push_branch(
     only place it can be closed: a revision the local repo no longer has is
     refused by git rather than substituted.
 
-    Neither of those two has a fallback here, which is a fact about them
-    rather than about this helper: a checkout that cannot name the commit it
-    is on is refused by its own caller before this is reached, because a push
-    named against nothing would send whatever the branch had become and leave
-    the receipt and both proofs with no commit to compare against. What
-    reaches this function with no `revision` is a caller that never inspected
-    one -- the docs pass, the `validating` and `fixing` pushes, the conflict
-    publications, the squash rewrite, and the base-sync rebases -- publishing
-    whatever its own worktree currently is.
+    The two initial publications have no fallback here, which is a fact about
+    them rather than about this helper: a checkout that cannot name the commit
+    it is on is refused by its own caller before this is reached, because a
+    push named against nothing would send whatever the branch had become and
+    leave the receipt and both proofs with no commit to compare against.
+
+    What reaches this function with no `revision` is one push and only one: a
+    gated one on an install running with `DECOMPOSE=off` whose checkout would
+    not prove its own head. The switch keeps candidates out of the
+    MEASUREMENT rather than out of a push that knows what it is publishing, so
+    the commit is named off the checkout there too -- only a reading that
+    failed outright falls through, publishing whatever the worktree currently
+    is with the receipt and the post-push proof skipped, since neither has a
+    commit to be about.
 
     `force_with_lease`, when provided, is the SHA the caller expects the
     remote ref to be at. The push then uses
@@ -430,9 +441,13 @@ def _push_branch(
     that DECIDED to push by reading the remote belongs on this path: the
     squash/rewrite, which pins the pre-rewrite HEAD it approved; the
     `discussion` stage's plan publication, which pins the tip it
-    established the branch was safe to move; and the conflict and base-sync
+    established the branch was safe to move; the conflict and base-sync
     publications, each pinning the SHA it read for itself -- the pre-rebase
-    head, or the pull-request head it validated as this orchestrator's own.
+    head, or the pull-request head it validated as this orchestrator's own;
+    and every push the size gate let through, which pins the head the pull
+    request was standing on when the reading was taken, so a pull request
+    somebody pushed to since rejects work measured against the head it used
+    to be on.
     Pinning is what prevents the
     "out-of-band update happened in the window between the reading and the
     push" race -- a fresh `ls-remote` would treat the unexpected new remote

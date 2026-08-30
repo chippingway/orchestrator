@@ -267,7 +267,7 @@ class _StagedPark:
 class _LateContext:
     """The one tick a late adjudication runs inside.
 
-    Mutable in five fields. `generation` is replaced as each step persists
+    Mutable in six fields. `generation` is replaced as each step persists
     what it reached, so every owner after that step reads the record the pinned
     comment now holds rather than the one the tick opened on. `retired_park`
     is what this tick cleared, kept because clearing a park is not the same as
@@ -290,6 +290,15 @@ class _LateContext:
     `answering` does -- a tick that dies before releasing it leaves the park
     itself standing, and whatever re-takes that park announces it then.
 
+    `already_published` is the sixth, and it is the answer to the one window a
+    settled `single` verdict cannot repair from the record alone. The push
+    that verdict earns happens before the relabel and the retirement, so a
+    tick that died in between comes back to a live generation whose pull
+    request is standing on the accepted candidate rather than on the head the
+    reading was frozen at. That is this settlement's own push having landed,
+    not somebody else's -- and the proof reads it where the pull request is
+    read, several steps before the push it makes unnecessary.
+
     `displaced_hold` is the fifth, and it travels the length of the call: the
     hold is reconciled at the top and what it found only matters at the spawn,
     several steps down. An open plan pull request whose notice a human removed
@@ -307,6 +316,7 @@ class _LateContext:
     answering: bool = False
     staged_park: Optional[_StagedPark] = None
     displaced_hold: bool = False
+    already_published: bool = False
 
 
 @dataclass(frozen=True)

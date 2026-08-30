@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.git.base_sync import refresh as _base_refresh
@@ -19,6 +19,7 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.git.base_sync.sync_test_support import (
+    _diverged as _diverged,
     _git_result as _git_result,
     _patch_base_sync as _patch_base_sync,
 )
@@ -38,11 +39,36 @@ PRIVATE_BASE_BRANCH = "cache-main"
 PRIVATE_REMOTE = "private"
 
 # Worktree HEAD SHAs threaded through the rebase / push / recovery flows.
-BEFORE_SHA = "before-sha"
-AFTER_SHA = "after-sha"
-REBASED_SHA = "rebased-sha"
-# Remote PR head planted so the conflict-round event can assert its `sha`.
-CONFLICT_PR_HEAD_SHA = "cafef00dcafef00d"
+BEFORE_SHA = "be40e5ba" * 5
+# The head the refreshed pull request is standing on. It IS the pre-rebase
+# head this refresh reads and leases its force-push against, because the two
+# are one fact: an auto rebase publishes over the branch it reconciled with.
+CONFLICT_PR_HEAD_SHA = BEFORE_SHA
+
+# A pull request somebody else pushed to while this refresh was in flight.
+MOVED_PR_HEAD_SHA = "cafef00d" * 5
+
+# The world the size gate reads before a refresh may push: a provably clean
+# tree, a candidate this host holds, a base the remote named, and a diff well
+# under any ceiling. A refresh test is about the rebase rather than the size
+# question, so it gets the ordinary answers and a test about the gate itself
+# seeds what it is about.
+GATE_CANDIDATE_SHA = "ca11ab1e" * 5
+GATE_BASE_SHA = "ba5e0000" * 5
+
+# The head a rebase leaves the checkout on, and the head a crash recovery finds
+# already there. Both ARE the commit the gate proves that checkout to, because
+# in production the two are one read of one worktree: the refresh names the
+# commit it means to publish and the gate refuses a checkout standing anywhere
+# else. Spelled differently a fixture would model the race rather than the
+# tick -- pushing one commit while the notice, the event, and the finalize name
+# another.
+AFTER_SHA = GATE_CANDIDATE_SHA
+REBASED_SHA = GATE_CANDIDATE_SHA
+
+# What the checkout stands on once something has moved it out from under the
+# reading its caller took, which is the race the bound candidate refuses.
+MOVED_CHECKOUT_SHA = "m0vedc0m" * 5
 
 # Workflow labels the refresh routes between.
 LABEL_IN_REVIEW = "in_review"
@@ -50,6 +76,9 @@ LABEL_VALIDATING = "workflow:validating"
 LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
 LABEL_DOCUMENTING = "workflow:documenting"
 LABEL_IMPLEMENTING = "workflow:implementing"
+
+# The pull-request state a refresh may act on.
+STATE_OPEN = "open"
 
 # Audit event names emitted by the base-sync flow.
 EVENT_BASE_REBASED = "base_rebased"
@@ -90,7 +119,14 @@ OUTSIDER_COMMENT_ID = 201
 UNREAD_COMMENT_ID = 500
 GIT_FAILURE_EXIT_CODE = 128
 MISSING_ISSUE_NUMBER = 9999
-NEW_REBASED_SHA = "new-rebased-sha"
+NEW_REBASED_SHA = "9ea5eba0" * 5
+
+
+def _patched(test_case, owner, name: str, replacement) -> None:
+    """Install one replacement on its owner for the rest of the test."""
+    patcher = patch.object(owner, name, replacement)
+    patcher.start()
+    test_case.addCleanup(patcher.stop)
 
 
 class _RemoteHeadGit:
@@ -148,18 +184,27 @@ class _SyncWorktreeWithBaseFixture:
         self.wt = Path("/tmp/refresh-wt")
         self.gh = FakeGitHubClient()
         self.gh.add_issue(make_issue(ISSUE, label=LABEL_IMPLEMENTING))
+        from tests.git.base_sync.gate_reads_support import _gate_reads
+
+        _gate_reads(self)
 
     def _seed_pr_issue(
         self,
         *,
         label: str = LABEL_IN_REVIEW,
         extra_labels=(),
+        with_pr: bool = True,
         **state,
     ) -> FakeIssue:
         """Seed issue #7 at `label` with pinned PR #42 on the canonical
         branch. `extra_labels` are appended to the issue (backlog / paused
         markers); `state` fields merge into the pinned state. Returns the
-        issue so callers can seed comments on its thread."""
+        issue so callers can seed comments on its thread.
+
+        The pull request itself is registered with it, because a number in
+        pinned state with nothing behind it is a state the size gate refuses
+        before any refresh may push. `with_pr=False` is for the tests whose
+        premise IS that `gh.get_pr` cannot answer."""
         issue = make_issue(ISSUE, label=label)
         for name in extra_labels:
             issue.labels.append(FakeLabel(name))
@@ -170,6 +215,8 @@ class _SyncWorktreeWithBaseFixture:
             branch=PR_BRANCH,
             **state,
         )
+        if with_pr and PR_NUMBER not in self.gh.pulls:
+            self._add_pr(head=FakePRRef(sha=CONFLICT_PR_HEAD_SHA))
         return issue
 
     def _add_pr(
@@ -181,15 +228,16 @@ class _SyncWorktreeWithBaseFixture:
         state: str = "open",
         head: FakePRRef | None = None,
     ) -> FakePR:
-        kwargs = dict(
+        # Standing on the head this refresh reads and leases against unless a
+        # case says otherwise: the size gate compares the two and refuses a
+        # pull request that moved out from under the reading.
+        pr = FakePR(
             number=pr_number,
             head_branch=head_branch,
             merged=merged,
             state=state,
+            head=head or FakePRRef(sha=CONFLICT_PR_HEAD_SHA),
         )
-        if head is not None:
-            kwargs["head"] = head
-        pr = FakePR(**kwargs)
         self.gh.add_pr(pr)
         return pr
 
@@ -236,7 +284,9 @@ class _CrashRecoveryVerificationFixture(_SyncWorktreeWithBaseFixture):
             "dirty": MagicMock(return_value=[]),
             REBASE_COMMAND: MagicMock(),
             "head_sha": MagicMock(return_value=local_head),
-            "ahead_behind": MagicMock(return_value=ahead_behind),
+            "ahead_behind": MagicMock(
+                return_value=_diverged(*ahead_behind),
+            ),
             "fetch": MagicMock(
                 return_value=_git_result(returncode=fetch_returncode),
             ),

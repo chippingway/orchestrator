@@ -23,6 +23,10 @@ from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
     _PatchedWorkflowMixin,
     _agent,
+    _open_pr_for,
+)
+from tests.workflow.stages.validating import (
+    validating_review_test_support as review_support,
 )
 
 PR_NUMBER_OFFSET = 2_000
@@ -47,7 +51,8 @@ SECOND_HANDOFF_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-99"
 CONSUMED_FEEDBACK_ID = 2000
 REVIEW_FEEDBACK_WATERMARK = 4242
 DEV_SESSION = "dev-sess"
-BEFORE_FIX_SHA = "aaa"
+BEFORE_FIX_SHA = review_support.BEFORE_FIX_SHA
+AFTER_FIX_SHA = review_support.AFTER_FIX_SHA
 REVIEW_ROUND = "review_round"
 LABEL_DOCUMENTING = "workflow:documenting"
 LABEL_IN_REVIEW = "in_review"
@@ -81,6 +86,12 @@ class _ValidatingHandoffFixtureMixin(_PatchedWorkflowMixin):
         )
         defaults.update(state)
         gh.seed_state(issue_number, **defaults)
+        if not gh.pulls.get(defaults["pr_number"]):
+            _open_pr_for(
+                gh,
+                issue_number=issue_number,
+                pr_number=defaults["pr_number"],
+            )
         return gh, issue
 
 
@@ -105,7 +116,7 @@ class ValidatingPushedFixesStayOnValidatingTest(
             dirty_files=(),
             push_branch=True,
             # before_sha + after_sha (push landed).
-            head_shas=[BEFORE_FIX_SHA, "bbb"],
+            head_shas=[BEFORE_FIX_SHA, AFTER_FIX_SHA],
         )
 
         state = gh.pinned_data(PUSHED_FIX_ISSUE)
@@ -163,7 +174,7 @@ class ValidatingPushedFixesStayOnValidatingTest(
             run_agent=_agent(session_id=DEV_SESSION, last_message="done"),
             dirty_files=(),
             push_branch=True,
-            head_shas=[BEFORE_FIX_SHA, "bbb"],
+            head_shas=[BEFORE_FIX_SHA, AFTER_FIX_SHA],
         )
 
         state = gh.pinned_data(HUMAN_RESUME_ISSUE)
@@ -185,7 +196,7 @@ class ValidatingPushedFixesStayOnValidatingTest(
             run_agent=_agent(session_id=DEV_SESSION, last_message="fixed"),
             dirty_files=(),
             push_branch=True,
-            head_shas=["before-sha", "after-sha"],
+            head_shas=[BEFORE_FIX_SHA, AFTER_FIX_SHA],
         )
 
         state = gh.pinned_data(DRIFT_FIX_ISSUE)
@@ -273,7 +284,7 @@ class ValidatingRecoveryStaysOnValidatingTest(
             issue_number=CLEAN_DEV_RECOVERY_ISSUE,
             awaiting_human=True,
             park_reason="agent_timeout",
-            pre_dev_fix_sha="cafe1234",
+            pre_dev_fix_sha=BEFORE_FIX_SHA,
             last_action_comment_id=RECOVERY_WATERMARK,
             review_round=1,
         )
@@ -285,7 +296,7 @@ class ValidatingRecoveryStaysOnValidatingTest(
                 run_agent=_agent(),
                 dirty_files=(),
                 push_branch=True,
-                head_shas=("cafe1234",),  # HEAD == pre-agent SHA: no commit.
+                head_shas=(BEFORE_FIX_SHA,),  # HEAD == pre-agent SHA: no commit.
             )
 
         recovery_state = recovery_gh.pinned_data(CLEAN_DEV_RECOVERY_ISSUE)
@@ -302,7 +313,7 @@ class ValidatingRecoveryStaysOnValidatingTest(
             issue_number=PUSHED_DEV_RECOVERY_ISSUE,
             awaiting_human=True,
             park_reason="agent_timeout",
-            pre_dev_fix_sha="cafe1234",
+            pre_dev_fix_sha=BEFORE_FIX_SHA,
             last_action_comment_id=RECOVERY_WATERMARK,
             review_round=1,
         )
@@ -314,7 +325,7 @@ class ValidatingRecoveryStaysOnValidatingTest(
                 run_agent=_agent(),
                 dirty_files=(),
                 push_branch=True,
-                head_shas=("beef5678",),  # HEAD moved past pre-agent SHA.
+                head_shas=(AFTER_FIX_SHA,),  # HEAD moved past pre-agent SHA.
             )
 
         recovery_state = recovery_gh.pinned_data(PUSHED_DEV_RECOVERY_ISSUE)

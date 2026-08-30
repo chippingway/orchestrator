@@ -113,9 +113,14 @@ plus interrupt / detour edges declared per-target. It is keyed by `WorkflowLabel
 resolves to its member before the guard sees it and is checked against the same edges. Operator relabels via the
 GitHub UI bypass both guards, so the guard never fights a human.
 
-Four of those edges belong to the late size gate and are declared ahead of the handlers that write them.
+Nine of those edges belong to the late size gate and are declared ahead of the handlers that write them.
 `workflow:implementing → workflow:decomposing` is the route a clean committed candidate measured past the threshold
 takes instead of publishing — adjudication runs under the existing decomposing label rather than a state of its own.
+`workflow:validating`, `workflow:documenting`, `in_review`, `workflow:fixing`, and `workflow:resolving_conflict` each
+own the same edge, and they own it because the gate stands in front of every push onto a pull request the remote
+already carries: a commit joining a branch a pull request is open on is measured for what that pull request would COME
+TO, and one past the ceiling is held off it and adjudicated from whichever of the five states that push was reached
+under. The pre-PR states own no such edge — nothing there has a publication to be measured against.
 The existing `workflow:decomposing → workflow:implementing` edge beside it is the way back that a `single` verdict
 takes, carrying the exemption naming the adjudicated commit, so the ordinary publication reconciles that exact commit
 the way it does for any other change.
@@ -440,6 +445,46 @@ machine fall into a few groups:
   takes.
 - **Decomposition.** `children`, `dep_graph` (`{child_idx_str: [child_idx, ...]}` — GitHub has no first-class blocks
   relation), `decomposed_at`, `pickup_comment_id`.
+- **A debt with no record behind it.** `late_approved_sha` + `late_approved_lease` outlive the generation that
+  granted them, because the write that approves a candidate retires that generation before the push. Where the lease
+  is set the approval was taken over a pull request the remote already carries, and the dispatcher pays it ahead of
+  every handler rather than leaving a stage to run over a publication the commit never joined — but only from a
+  checkout still standing on the commit, and never while the issue is under `workflow:decomposing`, where the
+  settlement owns the push. A checkout that is absent, unreadable, or standing elsewhere parks instead. The pair is
+  dropped by whatever settles the commit: the push that lands it, an approval superseded, a hold that routes it to
+  the adjudication, or a reset that sends the branch back off it — the auto rebase's after a refused push, and the
+  squash's own rollback after one.
+- **A held pair's continuation.** `late_spends` records what the tick that froze a pair owed if its hold went
+  through — the reviewer round a fix spends, the bookmarks a consumed batch clears, the head a finished docs pass
+  produced, the outcome a resolution earned — as `[[field, value], ...]`. It is one of `LATE_STATE_KEYS`, so it lives
+  and dies with the generation it is about, and each member is bounded by the FIELD it names rather than by what a
+  comment can carry: a round is a real non-negative count, a bookmark is only ever cleared, a settled head is a whole
+  object id or none, an outcome is one bounded single-line name. A counter that came back as text would pass any
+  looser check and fail at the `int(...)` the round cap is counted with, on a tick nobody is watching. One exception
+  to living and dying with the generation: the write that APPROVES a small candidate retires that
+  generation before the push it licenses runs, and puts these back inside the same write. Otherwise a push that misses
+  leaves an approval the next tick can pay and nothing that says what paying it closes — the caller parked, and the
+  stage it returns to short-circuits on that park. The reconciliation ahead of the next handler restores them for the
+  same reason it restores an interrupted reading's: a tick with no run behind it could re-derive none of it. Whatever
+  finally settles the approval drops them with it, so no later cycle inherits a round it was never owed — and a
+  landed push settles it in the write that carries the receipt, so the fields go down with the publication rather
+  than in a write behind it that a crash can take.
+  Read back as ONE group, and bounded on both ends: the key has to name a field this workflow's routes actually
+  close (`late_split/state.py` spells that vocabulary as literals so the domain does not import the four stage
+  packages that own the keys, and a guard test proves the two agree), and the value has to be one the pinned comment
+  can carry. A single member that fails either refuses the whole group and `late_claims` parks on the raw key still
+  being there — half-applied is worse than none, since the caller restoring the hold cannot tell which half it got:
+  the round advances, the bookmark it was spent for stays pending, the record is discarded as paid, and the next
+  re-entry reruns a developer over feedback that was already answered. On the allowed road the
+  retirement drops this key in the same write that grants the approval, so the recovery reads it BEFORE its own push
+  and the fields ride the receipt that push writes — one write, so no window exists in which the publication is
+  recorded and the round it spent is not.
+- **Conflict rounds.** `conflict_settled_outcome` + `conflict_settled_sha` name a resolution the size gate held —
+  which of the two it was (`agent_resolved` / `base_rebased_clean`) and the head it produced. Written inside the
+  routed hold's own write ahead of the relabel, and read back by the resumed `resolving_conflict` tick, which could
+  not re-derive either: the settlement publishes the commit, so the branch it comes back to already carries its base
+  and would be flipped as `base_up_to_date` — the one exit that resolves nothing and stamps no
+  `last_conflict_resolved_at`. Dropped by whichever pushed-round tail finally pays the round.
 - **PR / branch.** `branch`, `pr_number`, `review_round`, `conflict_round`. The first two are also what a published
   discussion plan records, beside `discussion_plan_path` — the path of the Markdown file that PR carries. The stage
   reads the plan path and `pr_number` together as its "already published" gate, since an issue relabeled into
@@ -525,7 +570,14 @@ machine fall into a few groups:
   non-empty `CHANGES_REQUESTED` or `COMMENTED` review IDs ever advance the summary watermark; `APPROVED`, `DISMISSED`,
   `PENDING`, and empty-body reviews are filtered before the bump.
 - **Final-docs handoff.** `docs_checked_sha` + `docs_verdict` (`updated` / `no_change`) set by `_handle_documenting`'s
-  success exits. `ready_ping_sha` records the head the in_review handler already posted a `:bell:` HITL ping for.
+  success exits. `docs_settled_sha` is the head a docs pass produced and the size gate held off the pull request,
+  written inside the gate's own routed write ahead of the relabel to `workflow:decomposing`: the pass is finished and
+  only the `in_review` handoff is still owed, so the tick a settled verdict hands the label back to finishes from the
+  receipt rather than reading a branch in sync with its remote as an issue no docs pass has run for. Read back only
+  over a checkout standing ON the head it names — in sync is what a replacement host rebuilt at a moved pull request
+  reads as too. Dropped by every
+  terminal docs success, including a republication that carries the held commit to the remote itself.
+  `ready_ping_sha` records the head the in_review handler already posted a `:bell:` HITL ping for.
   `docs_drift_unwind_pending` is set while `_handle_documenting`'s drift block is reconciling and cleared only on the
   relabel back to `workflow:validating`.
 - **Fix routing.** `pending_fix_at` + per-namespace `pending_fix_issue_max_id` / `pending_fix_review_max_id` /
@@ -735,7 +787,18 @@ rather than preserving.
   inside one precisely so that comparison is possible: the generation counter advances on every reconciliation that
   lands, and a body keyed to it could never be reconstructed after a re-measurement.
 - **Publication provenance.** `late_post_publication`, `late_source_stage`, `late_published_pr_number`, and
-  `late_published_sha` say how the gate was entered and what it was entered from. They are additive inside an additive
+  `late_published_sha` say how the gate was entered and what it was entered from — one durable write puts all four
+  down together, and a comment carrying only some of them is damage read from either end: the marker gone would say
+  the entry was taken before publication, and any of the other three gone would leave the marker over nothing. Asked
+  as a group ahead of every handler, on the five stages that publish onto a pull request and on `workflow:decomposing`
+  too: the adjudication decides which pull request the verdict was taken over, which head to pin the push it licenses
+  to, and which stage to hand the issue back to, entirely from this group — so a partial one there would settle a
+  post-publication candidate as though nothing had published it, route it to `workflow:implementing`, and retire the
+  evidence behind it.
+  What writes them is the gate standing in front of every push onto a pull request the remote already carries — the
+  shared dev-fix publication and the no-feedback bounce behind it, both validating recoveries, the three conflict
+  publications, the base sync's auto-rebase and its crash recovery, and the final docs pass; the implementing seam,
+  which opens the pull request rather than pushing onto one, writes none of them. They are additive inside an additive
   group, and their absence is the answer rather than a gap: a generation carrying none of them was entered *before*
   the work was published, which is what every record written without this group describes — so a live pinned comment
   answers the question with no migration having reached it, and the write leaves the group off rather than spelling
@@ -746,7 +809,18 @@ rather than preserving.
   workflow label the issue was taken out of and the state a settled adjudication continues at — read through the label
   vocabulary, so a value that is not one of them reads back absent rather than as a state a later tick would obey, and
   the adjudication runs under `decomposing` rather than the label it came from, so a stage that was not recorded is
-  not one anything could recover. `late_published_pr_number` is the pull request the work already has, which is
+  not one anything could recover. Being a label is not enough: the group is written and read as context only while
+  this field names one of the five that publish onto a pull request the remote already carries. `workflow:ready`,
+  `workflow:blocked`, and `workflow:umbrella` each own an edge to the adjudication for reasons of their own and have
+  no pull request behind them, and `workflow:implementing`'s own push is what *opens* the pull request — so a group
+  naming one of them is refused at the write and reads back as no publication context, rather than sending a later
+  reconciliation to measure and push a candidate no post-publication stage committed. It is also where a settled
+  `single` verdict puts the issue BACK, which is what the five `workflow:decomposing → <published state>` edges
+  exist for: that stage is the only owner of the completion the candidate still owes — a docs watermark and its
+  `in_review` handoff, a conflict round, another reviewer look — and returning every one of them to `implementing`
+  instead would walk the issue back to a point it had already passed.
+  The push itself is not left to that stage: the settlement makes it, because the settlement is the last tick holding
+  the head the verdict was measured over. `late_published_pr_number` is the pull request the work already has, which is
   **not** `late_plan_pr_number` beside it: that one is the plan PR a cycle-marked hold is placed on, and one record
   can be standing on both. `late_published_sha` is the head that pull request was left on, frozen at entry like every
   other late SHA because the branch moves under a reconciliation that re-read it. It is the late group's own copy
@@ -873,9 +947,26 @@ rather than preserving.
 
   It shares that window with `late_approved_sha`, and the two are not duplicates of each other. The approval is
   written in the same breath and answers a different question: *this commit is owed a push, and no other may be
-  pushed in its place*. So it freezes by presence, is proved before anything spawns, and is spent by the publication
+  pushed in its place*. So it freezes by presence — as the whole pair, `late_approved_lease` included, because the
+  two go down in one write and a lease standing alone is the damage the dispatcher parks on a tick later, by which
+  time a hold keyed to the commit alone would have rebased and force-pushed the branch that park is about. The late
+  reading freezes the same way, on any of the fields the write that mints a generation puts down rather than on
+  `late_candidate_sha` alone. It is proved before anything spawns, and is spent by the publication
   that lands — durably ahead of the relabel that hands the issue to `validating`, since past that label implementing
-  never runs on the issue again and nothing else would ever drop it. After that the exemption is on its own, still
+  never runs on the issue again and nothing else would ever drop it. `late_approved_lease` rides with it and is spent
+  by the same write: the head the pull request stood on when the approval was taken, for an approval on the
+  **published** side. The generation that froze that head is retired by the very write that approves the commit, and
+  the push it licenses has not run yet — so if that push fails, or the settlement hands the candidate to another
+  stage, the only head left to read is whatever the pull request has become since, and the retry skips the
+  measurement because the commit is already approved. Pinned to what was frozen, a pull request somebody moved in
+  between rejects the push; pinned to what can be read now, it is force-overwritten by work measured against the head
+  it used to be on. Read fail-closed like every other late commit field, and refused where it cannot be read: an
+  approval on the published side whose lease is absent or hand-edited has nothing left to pin against, and the one
+  head still available is the one the lease exists to catch, so it parks `late_measurement_failed` with nothing
+  pushed. The one exception is a pull request already standing ON the approved commit: the push it licenses has
+  already been made, so there is nothing left to pin and the debt is settled instead of parked. Empty is the ordinary
+  answer for a pre-publication approval — which is what every implementing-seam approval is, and whose push correctly
+  takes its own reading of the remote. After that the exemption is on its own, still
   saying *this commit needs no measuring* for every later tick that finds the branch where the verdict left it — a
   claim the gate keeps reading and the base refresh stops honouring, since past the handoff the branch is review's. Each
   covers what the other cannot: the approval covers the wait for the push and could not survive it without freezing
@@ -973,9 +1064,19 @@ rather than preserving.
   long as it stands, and there the freeze IS the remedy: what settles this park is an operator putting the worktree
   back, so a rebase between their `git checkout` and the tick that would have noticed moves the head off the approved
   commit again and leaves the one park answerable without a comment with nothing left to answer it.
-- **Published commit.** `implementing_published_sha` is the commit this stage last pushed — the one that passed the
-  gate, or the checkout's own head on a push the switch named none for, since `DECOMPOSE` keeps candidates out of the
-  gate rather than off the remote and is an operator's to turn back on. It is the same commit the push was named
+- **Published commit.** `implementing_published_sha` is the commit the last gated push carried — the one that passed
+  the gate, or the checkout's own head on a push the switch named none for, since `DECOMPOSE` keeps candidates out of
+  the gate rather than off the remote and is an operator's to turn back on. It keeps the implementing spelling it was
+  minted under, but it is written by every seam the gate stands in front of, the pushes onto an already-open pull
+  request included: each of those has the same window behind it, and a receipt naming what reached the remote is
+  what tells a candidate a later tick still owes a push from one it has already made. On that side it is read
+  together with the head the gate froze, because it is a local note about a remote fact: a receipt naming a commit
+  the pull request has since moved off is a record of a publication that is over, and the candidate goes back through
+  the ordinary reading rather than being waved past as already published. For the same reason it is not evidence that
+  a pull request found somewhere OTHER than where a caller entered it got there by this issue's own push: it is never
+  cleared, so a branch a revert or a rewrite rewound onto a commit published rounds ago would be measured and
+  force-pushed over. Only the three readings a live window drops — the candidate a caller names, `late_approved_sha`,
+  and a live generation's `late_candidate_sha` — answer that question. It is the same commit the push was named
   against rather than a second reading of the checkout, which could have moved while the push and the pull request
   were in flight; the pre-push half of that decision is durable as `late_approved_sha`, so a tick that died in the
   window leaves a receipt either way. It is written in the same pinned
@@ -996,6 +1097,17 @@ rather than preserving.
   it to re-decide a published branch. The freeze ends with the handoff: past `workflow:validating` the label no
   longer matches, and keeping a pushed branch in step with base is the PR-aware sync's own job, which is the only
   route that can move it without stranding the reviewer's SHA.
+- **The head that publication replaced.** `implementing_published_lease` is written with the receipt above and never
+  on its own, exactly as `late_approved_lease` is written with its approval: it names the head the recorded push was
+  PINNED to — the one the gate's entry froze, or, for the accepted push a `single` settlement makes from its own
+  approval, the lease beside that approval. An initial publication froze no head and records none. It exists because
+  the receipt cannot date itself. Read alone the receipt goes on naming a commit this stage pushed rounds ago and so
+  vouches for any pull request somebody rewound onto it; read with the head it replaced it answers for one window and
+  no other — a push made from the head a caller froze, on a tick that died before the relabel behind it. Both the
+  size gate's entry and the `single` settlement's own reconciliation ask for the pair, and a receipt whose head is
+  absent or names some other commit forgives no moved head at all. Cleared with every receipt that is written rather
+  than left for the next one to inherit, since a receipt wearing an earlier attempt's head is the one that vouches
+  for a publication somebody else moved.
 - **Retired cycle.** `late_retired_cycle_id` is the one fact about a dropped generation that outlives the drop: the
   write that clears late mode records which cycle it was clearing. It exists for a single window — a poll observing
   the close *inside* that write leaves a cycle-scoped receipt on the thread, and the record it would be adopted

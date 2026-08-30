@@ -10,20 +10,47 @@ from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import drift as _drift
 
+from tests.support.publication import LandingPush
 from tests.support.fakes import (
+    DEFAULT_PR_HEAD_SHA,
     FakeComment,
     FakeGitHubClient,
     FakePR,
     FakeUser,
     make_issue,
 )
+from orchestrator.git.measurement.models import FrozenCommit
+
 from tests.workflow import fixtures as _fixtures
 from tests.workflow.fixtures import (
+    LABEL_DECOMPOSING,
+    MEASURED_CANDIDATE_SHA,
     REVIEW_APPROVED_MESSAGE,
     _PatchedWorkflowMixin,
     _agent,
+    _open_pr_for,
 )
 
+LATE_APPROVED_SHA = "late_approved_sha"
+# The head the pull request stood on when the approval was written: an
+# approval with no lease is one nothing can pin a push against, which the
+# gate refuses rather than falling back to whatever it can read now.
+PR_HEAD_SHA = "deadbeef" * 5
+COUNT_ADDED_LINES = "_count_added_lines"
+RECOVERED_PREFIX = _fixtures.RECOVERED_PREFIX
+PARK_MEASUREMENT_FAILED = "late_measurement_failed"
+# The head a timed-out run left the checkout on, past `pre_dev_fix_sha`. It IS
+# the commit the size gate proves that checkout to, because the two are one
+# read of one worktree: the recovery names the commit it is publishing as that
+# run's, and the gate refuses a checkout standing anywhere else.
+TIMEOUT_HEAD = MEASURED_CANDIDATE_SHA
+# What the checkout stands on once something has moved it out from under the
+# head this recovery read.
+MOVED_HEAD = "m0vedc0m" * 5
+MAX_ADDED_LINES = "MAX_ADDED_LINES"
+DECOMPOSE = "DECOMPOSE"
+CEILING = 5
+PAST_THE_CEILING = 6
 VALIDATING_ISSUE = 170
 VALIDATING_PR = 99
 VALIDATING_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-170"
@@ -44,7 +71,11 @@ ACTION_WATERMARK = 10_000
 HUMAN_REPLY_ID = 10_500
 DEV_SESSION = "dev-sess"
 HUMAN_LOGIN = "alice"
-PRE_FIX_SHA = "cafe1234"
+# The head a run starts on, which is the head its pull request is standing
+# on: the branch is in sync with its publication when a round opens.
+PRE_FIX_SHA = DEFAULT_PR_HEAD_SHA
+# The pinned watermark a dev timeout park leaves the head it was taken at on.
+PRE_DEV_FIX_SHA = "pre_dev_fix_sha"
 REBASE_REQUEST = "please rebase first"
 WORKTREE_ROOT = "/tmp"
 WORKTREE_PATH = "_worktree_path"
@@ -52,6 +83,7 @@ RUN_AGENT = "run_agent"
 PUSH_BRANCH = "_push_branch"
 AWAITING_HUMAN = "awaiting_human"
 PARK_REASON = "park_reason"
+LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 REVIEW_ROUND = "review_round"
 
 AGENT_TIMEOUT = _fixtures.AGENT_TIMEOUT_PARK
@@ -68,6 +100,14 @@ class _TransientParkFixtureMixin(
     _PatchedWorkflowMixin,
     _fixtures._RecoveryFollowupAssertions,
 ):
+    def _pinned(self, github) -> dict:
+        """What this issue's pinned comment says once the tick has finished."""
+        return github.pinned_data(VALIDATING_ISSUE)
+
+    def _pushes(self, mocks):
+        """The seam a recovery's size question is decided at."""
+        return mocks[PUSH_BRANCH]
+
     def _parked_issue(self, *, park_reason: str, **extra_state):
         gh = FakeGitHubClient()
         # `last_action_comment_id` is well above any existing comment id, so
@@ -87,6 +127,9 @@ class _TransientParkFixtureMixin(
         )
         seed.update(extra_state)
         gh.seed_state(VALIDATING_ISSUE, **seed)
+        _open_pr_for(
+            gh, issue_number=VALIDATING_ISSUE, pr_number=VALIDATING_PR,
+        )
         return gh, issue
 
     def _run_parked_validating(self, github, issue, **kwargs):
@@ -138,10 +181,14 @@ class ValidatingTransientParkRecoveryTest(
         # Push retried and succeeded: park flags cleared, review_round
         # incremented so the next reviewer run starts a fresh round.
         mocks[PUSH_BRANCH].assert_called_once()
-        state = gh.pinned_data(VALIDATING_ISSUE)
+        state = self._pinned(gh)
         self.assertFalse(state.get(AWAITING_HUMAN))
         self.assertIsNone(state.get(PARK_REASON))
         self.assertEqual(state.get(REVIEW_ROUND), 2)
+        # The push that landed paid the debt the approval recorded; left
+        # standing it would freeze this branch out of the base refresh with
+        # the recovery that owed the drop already finished.
+        self.assertIsNone(state.get(LATE_APPROVED_SHA))
         # Stays on `validating` (no documenting hop) so the reviewer
         # re-evaluates the recovered head on the next tick.
         self._assert_stays_validating(gh)
@@ -158,32 +205,76 @@ class ValidatingTransientParkRecoveryTest(
             # the park's mention -- where the next tick looks for it.
             last_action_comment_id=PARK_MENTION_ID,
             user_content_hash=UNCHANGED_CONTENT_HASH,
+            # What a `push_failed` park really carries: the size gate approved
+            # this commit and the push it licensed is what failed. The retry
+            # recognizes it rather than measuring it again, so the only pinned
+            # write on this tick is the one the follow-up rides out on.
+            late_approved_sha=MEASURED_CANDIDATE_SHA,
+            late_approved_lease=PR_HEAD_SHA,
         )
 
         with patch.object(
-            gh, WRITE_PINNED_STATE, side_effect=RuntimeError(WRITE_FAILED),
+            gh, WRITE_PINNED_STATE,
+            _fixtures._WriteFailingAfter(1, gh.write_pinned_state),
         ):
             with self.assertRaises(RuntimeError):
                 self._run_parked_validating(
-                    gh, issue, run_agent=_agent(), push_branch=True,
+                    gh, issue, run_agent=_agent(),
+                    # The push lands, so the pull request stands on what it
+                    # published: the retry below reads a publication that is
+                    # over rather than one to make again.
+                    push_branch=LandingPush(gh, VALIDATING_PR),
                 )
         # The comment really did land before the write blew up; without this
         # the retry below would be exercising a first announcement.
         self.assertEqual(len(gh.posted_comments), 1)
 
         mocks = self._run_parked_validating(
-            gh, issue, run_agent=_agent(), push_branch=True,
+            gh, issue, run_agent=_agent(),
+            push_branch=LandingPush(gh, VALIDATING_PR),
         )
 
         # The dev was NOT resumed on the orchestrator's own comment.
         mocks[RUN_AGENT].assert_not_called()
         self._assert_recovery_followup(gh, PUSH_RETRIED_DETAIL)
-        state = gh.pinned_data(VALIDATING_ISSUE)
+        state = self._pinned(gh)
         self.assertFalse(state.get(AWAITING_HUMAN))
         self.assertIsNone(state.get(PARK_REASON))
-        # The discarded write took the first tick's bump with it, so the
-        # round advances exactly once for the one fix that landed.
+        # The round rode the write the receipt did, so the discarded one took
+        # nothing with it -- and the retry reads a settled publication and
+        # counts nothing more. One fix landed; one round advanced.
         self.assertEqual(state.get(REVIEW_ROUND), 2)
+
+    def test_a_refused_retry_persists_what_it_parked(self) -> None:
+        # The gate's refusal posts a notice and moves the watermark in
+        # memory, and no caller of a held recovery writes state: they clear
+        # nothing and announce nothing, which is right. Without the write the
+        # durable comment would still say `push_failed` at the old watermark,
+        # so the same retry fires next tick and the human is asked again.
+        refused = self._parked_issue(
+            park_reason=PUSH_FAILED,
+            last_action_comment_id=PARK_MENTION_ID,
+            user_content_hash=UNCHANGED_CONTENT_HASH,
+            late_approved_sha=MEASURED_CANDIDATE_SHA,
+            late_approved_lease=PR_HEAD_SHA,
+        )
+        gh = refused[0]
+
+        mocks = self._run_parked_validating(
+            *refused, run_agent=_agent(), push_branch=True,
+            tree_readable=False,
+        )
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        state = self._pinned(gh)
+        self.assertTrue(state.get(AWAITING_HUMAN))
+        self.assertEqual(state.get(PARK_REASON), PARK_MEASUREMENT_FAILED)
+        self.assertGreater(
+            state.get(LAST_ACTION_COMMENT_ID), PARK_MENTION_ID,
+        )
+        self.assertFalse(
+            any(RECOVERED_PREFIX in body for _, body in gh.posted_comments),
+        )
 
     def test_repeat_push_failure_stays_parked(self) -> None:
         # Recovery must not re-post the park message when the push still
@@ -202,7 +293,7 @@ class ValidatingTransientParkRecoveryTest(
         # No new park comment posted on this tick.
         self.assertEqual(gh.posted_comments, [])
         # Park flags preserved for the next recovery attempt.
-        state = gh.pinned_data(VALIDATING_ISSUE)
+        state = self._pinned(gh)
         self.assertTrue(state.get(AWAITING_HUMAN))
         self.assertEqual(state.get(PARK_REASON), PUSH_FAILED)
         # review_round NOT bumped while still stuck.
@@ -226,7 +317,7 @@ class ValidatingTransientParkRecoveryTest(
 
         mocks[RUN_AGENT].assert_not_called()
         mocks[PUSH_BRANCH].assert_not_called()
-        state = gh.pinned_data(VALIDATING_ISSUE)
+        state = self._pinned(gh)
         self.assertTrue(state.get(AWAITING_HUMAN))
         self.assertEqual(state.get(PARK_REASON), PUSH_FAILED)
 
@@ -247,7 +338,7 @@ class ValidatingTransientParkRecoveryTest(
 
         mocks[RUN_AGENT].assert_not_called()
         mocks[PUSH_BRANCH].assert_not_called()
-        state = gh.pinned_data(VALIDATING_ISSUE)
+        state = self._pinned(gh)
         self.assertTrue(state.get(AWAITING_HUMAN))
         self.assertEqual(state.get(REVIEW_ROUND), 1)
 
@@ -410,7 +501,7 @@ class ValidatingDevParkRecoveryTest(
                 last_message="rebased",
             ),
             push_branch=True,
-            head_shas=["aaa", "bbb"],
+            head_shas=[PRE_FIX_SHA, MEASURED_CANDIDATE_SHA],
         )
 
         # The dev was resumed with the human's feedback (NOT the reviewer).
@@ -443,12 +534,12 @@ class ValidatingDevParkRecoveryTest(
         developer_mocks[RUN_AGENT].assert_not_called()
         developer_mocks[PUSH_BRANCH].assert_not_called()
         self._assert_recovery_followup(developer_gh, TIMEOUT_EMPTY_DETAIL)
-        developer_state = developer_gh.pinned_data(VALIDATING_ISSUE)
+        developer_state = self._pinned(developer_gh)
         self.assertFalse(developer_state.get(AWAITING_HUMAN))
         self.assertIsNone(developer_state.get(PARK_REASON))
         self.assertEqual(developer_state.get(REVIEW_ROUND), 1)
         # Watermark cleared so a future timeout cycle starts fresh.
-        self.assertIsNone(developer_state.get("pre_dev_fix_sha"))
+        self.assertIsNone(developer_state.get(PRE_DEV_FIX_SHA))
 
     def test_timeout_with_only_pr_commits_recovers(self) -> None:
         # Regression: a normal PR worktree is always ahead of
@@ -479,7 +570,7 @@ class ValidatingDevParkRecoveryTest(
         developer_mocks[RUN_AGENT].assert_not_called()
         developer_mocks[PUSH_BRANCH].assert_not_called()
         self._assert_recovery_followup(developer_gh, TIMEOUT_EMPTY_DETAIL)
-        developer_state = developer_gh.pinned_data(VALIDATING_ISSUE)
+        developer_state = self._pinned(developer_gh)
         self.assertFalse(developer_state.get(AWAITING_HUMAN))
         self.assertIsNone(developer_state.get(PARK_REASON))
         # MUST NOT bump: nothing landed.
@@ -502,21 +593,115 @@ class ValidatingDevParkRecoveryTest(
             run_agent=_agent(),
             dirty_files=(),
             push_branch=True,
-            head_shas=("beef5678",),  # HEAD moved past pre-agent SHA
+            head_shas=(TIMEOUT_HEAD,),  # HEAD moved past pre-agent SHA
         )
 
         developer_mocks[RUN_AGENT].assert_not_called()
         developer_mocks[PUSH_BRANCH].assert_called_once()
         self._assert_recovery_followup(developer_gh, TIMEOUT_PUSHED_DETAIL)
-        developer_state = developer_gh.pinned_data(VALIDATING_ISSUE)
+        developer_state = self._pinned(developer_gh)
         self.assertFalse(developer_state.get(AWAITING_HUMAN))
         self.assertIsNone(developer_state.get(PARK_REASON))
         # Bumped: a real fix landed.
         self.assertEqual(developer_state.get(REVIEW_ROUND), 2)
-        self.assertIsNone(developer_state.get("pre_dev_fix_sha"))
+        self.assertIsNone(developer_state.get(PRE_DEV_FIX_SHA))
         # Stays on `validating` (no documenting hop) so the reviewer
         # re-evaluates the recovered head on the next tick.
         self.assertNotIn((VALIDATING_ISSUE, "workflow:documenting"), developer_gh.label_history)
+
+    def test_timeout_work_is_measured_first(self) -> None:
+        # The one road to a published pull request that never reached the
+        # gate: the park was taken because the run timed out, so nothing
+        # measured the commit it turned out to have made. The recovery
+        # measures it here and names the push against what came back.
+        measured = self._parked_issue(
+            park_reason=AGENT_TIMEOUT,
+            pre_dev_fix_sha=PRE_FIX_SHA,
+        )
+        gh = measured[0]
+
+        mocks = self._run_parked_validating(
+            *measured,
+            run_agent=_agent(),
+            dirty_files=(),
+            push_branch=True,
+            head_shas=(TIMEOUT_HEAD,),
+        )
+
+        mocks[COUNT_ADDED_LINES].assert_called_once()
+        pushed = self._pushes(mocks).call_args
+        self.assertEqual(pushed.kwargs["revision"], MEASURED_CANDIDATE_SHA)
+        self.assertIsNone(self._pinned(gh).get(LATE_APPROVED_SHA))
+
+    def test_the_switch_publishes_oversized_work(self) -> None:
+        # The same commit on an install that turned the gate off. No developer
+        # ran on this tick -- the one that did was killed -- but nothing on the
+        # record ever asked for this commit to be read, so it is the new work
+        # `DECOMPOSE=off` publishes untouched rather than a reading the gate
+        # already took.
+        switched_off = self._parked_issue(
+            park_reason=AGENT_TIMEOUT,
+            pre_dev_fix_sha=PRE_FIX_SHA,
+        )
+        gh = switched_off[0]
+
+        with patch.object(config, DECOMPOSE, False):
+            with patch.object(config, MAX_ADDED_LINES, CEILING):
+                mocks = self._run_parked_validating(
+                    *switched_off,
+                    run_agent=_agent(),
+                    dirty_files=(),
+                    push_branch=True,
+                    head_shas=(TIMEOUT_HEAD,),
+                    added_lines=PAST_THE_CEILING,
+                )
+
+        mocks[COUNT_ADDED_LINES].assert_not_called()
+        self._pushes(mocks).assert_called_once()
+        self.assertNotIn(
+            (VALIDATING_ISSUE, LABEL_DECOMPOSING), gh.label_history,
+        )
+
+    def test_oversized_timeout_work_is_held(self) -> None:
+        # Nothing is pushed and the issue goes to the adjudication instead of
+        # back to the reviewer -- and no follow-up is posted, because no
+        # recovery happened for the operator to be told about.
+        oversized = self._parked_issue(
+            park_reason=AGENT_TIMEOUT,
+            pre_dev_fix_sha=PRE_FIX_SHA,
+        )
+        gh = oversized[0]
+
+        with patch.object(config, MAX_ADDED_LINES, CEILING):
+            mocks = self._run_parked_validating(
+                *oversized,
+                run_agent=_agent(),
+                dirty_files=(),
+                push_branch=True,
+                head_shas=(TIMEOUT_HEAD,),
+                added_lines=PAST_THE_CEILING,
+            )
+
+        self._pushes(mocks).assert_not_called()
+        self.assertEqual(
+            gh.label_history, [(VALIDATING_ISSUE, LABEL_DECOMPOSING)],
+        )
+        self.assertFalse(
+            any(RECOVERED_PREFIX in body for _, body in gh.posted_comments),
+        )
+        # The recovery counts a round for a fix that reaches the reviewer, and
+        # a held one reaches it just the same: the commit is on the branch and
+        # a `single` verdict publishes it from there. Left uncounted, nothing
+        # goes back for it -- the settlement pushes the accepted commit itself
+        # and the resumed recovery finds nothing to publish -- so
+        # `MAX_REVIEW_ROUNDS` stops meaning what it says on this issue.
+        self.assertEqual(self._pinned(gh).get(REVIEW_ROUND), 2)
+
+class ValidatingDevParkSafetyTest(
+    unittest.TestCase,
+    _TransientParkFixtureMixin,
+):
+    """Keep unsafe or unanchored dev timeout recoveries parked."""
 
     def test_timeout_push_error_stays_parked(
         self,
@@ -532,24 +717,45 @@ class ValidatingDevParkRecoveryTest(
             run_agent=_agent(),
             dirty_files=(),
             push_branch=False,
-            head_shas=("beef5678",),
+            head_shas=(TIMEOUT_HEAD,),
         )
 
         developer_mocks[PUSH_BRANCH].assert_called_once()
         self.assertEqual(developer_gh.posted_comments, [])
-        developer_state = developer_gh.pinned_data(VALIDATING_ISSUE)
+        developer_state = self._pinned(developer_gh)
         self.assertTrue(developer_state.get(AWAITING_HUMAN))
         self.assertEqual(developer_state.get(PARK_REASON), AGENT_TIMEOUT)
         # NOT bumped while still stuck; watermark preserved for next try.
         self.assertEqual(developer_state.get(REVIEW_ROUND), 1)
-        self.assertEqual(developer_state.get("pre_dev_fix_sha"), PRE_FIX_SHA)
+        self.assertEqual(developer_state.get(PRE_DEV_FIX_SHA), PRE_FIX_SHA)
 
+    def test_a_head_moved_between_the_reads_stops(self) -> None:
+        # This recovery reads the head to decide the killed run committed at
+        # all, and the gate proves the checkout again before it measures.
+        # Unbound, a commit landing between the two would be measured, pushed,
+        # and receipted as the work that run left behind. Nothing is measured
+        # and nothing goes out; the watermark stands, so the retry asks for the
+        # same commit once the checkout is back where it was left.
+        moved = self._parked_issue(
+            park_reason=AGENT_TIMEOUT,
+            pre_dev_fix_sha=PRE_FIX_SHA,
+        )
 
-class ValidatingDevParkSafetyTest(
-    unittest.TestCase,
-    _TransientParkFixtureMixin,
-):
-    """Keep unsafe or unanchored dev timeout recoveries parked."""
+        moved_mocks = self._run_parked_validating(
+            *moved,
+            run_agent=_agent(),
+            dirty_files=(),
+            push_branch=True,
+            head_shas=(TIMEOUT_HEAD,),
+            candidate_commit=FrozenCommit(sha=MOVED_HEAD),
+        )
+
+        moved_mocks[COUNT_ADDED_LINES].assert_not_called()
+        moved_mocks[PUSH_BRANCH].assert_not_called()
+        moved_state = self._pinned(moved[0])
+        self.assertTrue(moved_state.get(AWAITING_HUMAN))
+        self.assertEqual(moved_state.get(PARK_REASON), PARK_MEASUREMENT_FAILED)
+        self.assertEqual(moved_state.get(PRE_DEV_FIX_SHA), PRE_FIX_SHA)
 
     def test_dirty_timeout_stays_parked(self) -> None:
         # The dev edited files without committing before timing out.
@@ -624,7 +830,7 @@ class ValidatingDevParkSafetyTest(
                 last_message="rebased",
             ),
             push_branch=True,
-            head_shas=["aaa", "bbb"],
+            head_shas=[PRE_FIX_SHA, MEASURED_CANDIDATE_SHA],
         )
 
         # Dev was resumed with the human's feedback (recovery did NOT run).
@@ -667,7 +873,7 @@ class HandleValidatingResumeOnHashChangeTest(
             has_new_commits=True,
             dirty_files=(),
             push_branch=True,
-            head_shas=["before-sha", "after-sha"],
+            head_shas=[PRE_FIX_SHA, MEASURED_CANDIDATE_SHA],
         )
 
         # Stays on `validating`: no documenting hop, and the reviewer

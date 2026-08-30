@@ -9,6 +9,9 @@ from orchestrator import config
 from orchestrator.git.verification.models import VerifyResult
 
 from tests.workflow.stages.validating import (
+    validating_review_test_support as review_support,
+)
+from tests.workflow.stages.validating import (
     validating_verify_test_support as verify_support,
 )
 from tests.workflow.fixtures import (
@@ -126,7 +129,10 @@ class HandleValidatingVerifyRefusalTest(
                 ],
                 dirty_files=(),
                 push_branch=True,
-                head_shas=["aaa", "bbb"],
+                head_shas=[
+                    review_support.BEFORE_FIX_SHA,
+                    review_support.AFTER_FIX_SHA,
+                ],
                 verify_result=VerifyResult(
                     status=VERIFY_FAILED,
                     command=VERIFY_PYTEST,

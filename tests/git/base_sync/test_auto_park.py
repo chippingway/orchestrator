@@ -117,6 +117,7 @@ class AutoRebaseParkUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase):
         # transient PR fetch failure must leave the park on disk so
         # the same-tick handlers do not run on the still-behind PR.
         self._seed_pr_issue(
+            with_pr=False,
             awaiting_human=True,
             park_reason=PARK_PUSH_FAILED,
             last_action_comment_id=PARK_WATERMARK_COMMENT_ID,

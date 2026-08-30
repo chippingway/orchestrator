@@ -31,6 +31,9 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.git.publication import squash as _squash
+from orchestrator.workflow.stages.implementing import (
+    late_records as _late_records,
+)
 from orchestrator.git.verification import runner as _verify_runner
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
@@ -194,15 +197,31 @@ def _squash_approved_work(
 ) -> Optional[int]:
     if not config.SQUASH_ON_APPROVAL:
         return 0
-    squash_result = _squash._squash_and_force_push(
-        spec,
-        reviewer_run.wt,
+    # The subject the size gate decides about, built here rather than in the
+    # git layer: this stage already holds every part of it, and the squash
+    # owner would have to reach up a layer for the record otherwise.
+    squashed = _squash._squash_and_force_push(
+        _late_records._gate(gh, spec, issue, state, reviewer_run.wt),
         _worktree_paths._resolve_branch_name(state, spec, issue.number),
-        issue,
     )
-    if squash_result[0]:
-        return squash_result[2]
-    _park_squash_failure(gh, issue, state, squash_result[3])
+    if squashed.success:
+        return squashed.count
+    if squashed.held:
+        # The gate owns the issue from here, and it owns it in one of two
+        # shapes. Routed, the squashed commit is on the branch, the label is
+        # the adjudication's, and a settled verdict publishes it -- so a
+        # `_park_squash_failure` over that would post a notice about a failure
+        # that did not happen and put `awaiting_human` on an issue an agent is
+        # about to run for. PARKED, the gate has already worded the notice its
+        # own reading earned and left the flags in memory for whoever ran it.
+        # The write is this caller's either way: the routed hold made its own
+        # and this one changes nothing, while the park has nothing behind it
+        # to carry the flags to the pinned comment -- and an issue left with a
+        # frozen candidate, no `awaiting_human`, and no `park_reason` is one
+        # every later tick re-runs the reviewer on.
+        gh.write_pinned_state(issue, state)
+        return None
+    _park_squash_failure(gh, issue, state, squashed.error)
     return None
 
 

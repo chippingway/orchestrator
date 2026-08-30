@@ -18,10 +18,12 @@ from tests.support.fakes import (
     FakeUser,
     make_issue,
 )
+from tests.support.fakes import DEFAULT_PR_HEAD_SHA
 from tests.workflow.fixtures import (
     LABEL_DOCUMENTING,
     LABEL_IN_REVIEW,
     LABEL_VALIDATING,
+    MEASURED_CANDIDATE_SHA,
     _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
@@ -51,8 +53,14 @@ UPDATED_BODY = "new acceptance"
 STALE_HASH = "stale-hash"
 BACKEND_CLAUDE = "claude"
 DEV_SESSION = "dev-sess"
-BEFORE_SHA = "before"
-UNCHANGED_SHA = "same-sha"
+# The head this route reads before the resume, the head it leaves the checkout
+# at, and the head a run that committed nothing never moved off. The last two
+# ARE the commit the size gate proves that checkout to, because in production
+# the reading this route takes and the proof the gate takes are one read of one
+# worktree -- unmoved is still the commit a stranded publication would send.
+BEFORE_SHA = DEFAULT_PR_HEAD_SHA
+RESUMED_SHA = MEASURED_CANDIDATE_SHA
+UNCHANGED_SHA = MEASURED_CANDIDATE_SHA
 RUN_AGENT = "run_agent"
 MALICIOUS_URL = "https://example.invalid/malicious-patch.zip"
 
@@ -101,7 +109,7 @@ class HandleInReviewResumeOnHashChangeTest(
             has_new_commits=True,
             dirty_files=(),
             push_branch=True,
-            head_shas=[BEFORE_SHA, "after"],
+            head_shas=[BEFORE_SHA, RESUMED_SHA],
         )
 
         # Bounced directly to validating after the pushed drift resume.
@@ -429,7 +437,7 @@ class InReviewDriftPromptTrustFilterTest(
                 has_new_commits=True,
                 dirty_files=(),
                 push_branch=True,
-                head_shas=[BEFORE_SHA, "after"],
+                head_shas=[BEFORE_SHA, RESUMED_SHA],
             )
 
         # The drift path ran (not the fixing route): the dev resumed and the

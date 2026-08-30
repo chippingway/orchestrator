@@ -51,6 +51,22 @@ class _ParkedFixingDecision:
 
 
 @dataclass(frozen=True)
+class _StrandedPublication:
+    """What the no-feedback bounce did with a commit an earlier run stranded.
+
+    Three answers rather than two, because the bounce owes a different thing
+    to each. A push earns the reviewer round the fresh head spends. Nothing to
+    push is the ordinary case and costs no round. And HELD is neither: the
+    size gate has already handed the issue to the adjudication under
+    `workflow:decomposing`, so the bounce may not relabel over it or spend a
+    round on a head the reviewer is not going to see.
+    """
+
+    pushed: bool = False
+    held: bool = False
+
+
+@dataclass(frozen=True)
 class _FixingContext:
     """The per-tick `fixing` invocation handles, bundled so the parked-dispatch,
     validating-recovery, continue-command, resume, and reconcile helpers thread

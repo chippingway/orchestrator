@@ -1,0 +1,401 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""A pair this issue froze for a published pull request and never counted.
+
+The freeze is durable and the count that follows it is not, so a tick that dies
+between them leaves a record naming both commits with no number on it -- and
+nothing on the stage it was entered on would go back for that by itself. The
+handler there spawns a reviewer, resumes a developer, or reads a pull request
+still standing where the gate froze it, while the record goes on freezing the
+branch out of the base refresh and describing a reading nobody took.
+
+So the reading is taken HERE, ahead of every handler, and the three answers are
+the gate's own: measured small retires the record and leaves the commit owed a
+push, measured past the ceiling routes the issue to the adjudication, and a
+refusal parks. Two states have no reading to take at all, and both stop the
+tick rather than letting the stage carry on over unmeasured, unpushed work: a
+checkout that is not on this host, and a record entered on a stage the issue
+has since left.
+"""
+from __future__ import annotations
+
+import logging
+from typing import Optional
+
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.github.client import GitHubClient
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split.models import LateGeneration
+from orchestrator.workflow.stages.implementing import (
+    late_claims as _claims,
+    late_debt as _debt,
+    late_parks as _parks,
+    late_push as _push,
+    late_records as _records,
+    state as _state,
+)
+from orchestrator.workflow.state import WorkflowLabel
+
+log = logging.getLogger("orchestrator.workflow")
+
+
+# What the absent-checkout refusal is logged and reported as: not a reading
+# that failed but one there is nowhere to take.
+_ABSENT_CHECKOUT = "the checkout the frozen pair names is not on this host"
+
+
+# What the stranded-reading refusal is logged and reported as.
+_STRANDED_READING = "the frozen pair was entered on a stage this issue left"
+
+
+_STRANDED_READING_PARK = (
+    "{mentions} this issue froze `{candidate}` for a size reading on "
+    "`{frozen}` and never finished it, and the issue is on `{label}` now. The "
+    "reading may not be re-entered from there -- it would be measured against "
+    "a publication it was never taken on -- and that stage may not run over "
+    "it either, since the candidate is unmeasured and unpushed. Nothing was "
+    "pushed and nothing was discarded. Put the label back, or repair the "
+    "pinned comment, and the same pair is measured again."
+)
+
+
+# What a reconciliation whose own push did not land is reported as.
+_UNPUBLISHED_RECONCILIATION = (
+    "the candidate this reading allowed could not be pushed onto pull "
+    "request #{number}"
+)
+
+
+_UNPUBLISHED_PARK = (
+    "{mentions} this issue froze `{candidate}` for a size reading it never "
+    "finished, and the reading taken now says it may join pull request "
+    "#{number} -- but the push did not land, so the pull request has not "
+    "received it and no stage has been run over it. A push refused here is "
+    "usually the lease doing its job, which means something landed on that "
+    "pull request while the reading was outstanding. Reconcile the branch "
+    "with what landed and the same commit is published from there, without "
+    "re-running any agent."
+)
+
+
+_ABSENT_CHECKOUT_PARK = (
+    "{mentions} this issue froze `{candidate}` for pull request #{number} and "
+    "has no checkout to measure it in, so nothing has been pushed and no "
+    "stage has run over it: a candidate whose cumulative size is unknown is "
+    "not a small one. The commit is on whichever host made it. Restore that "
+    "worktree -- or repair the pinned comment if the work is gone -- and the "
+    "same pair is measured again."
+)
+
+
+def _reconciles_published_work(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    label: Optional[WorkflowLabel],
+    state: PinnedState,
+) -> bool:
+    """Answer a pair this issue froze and never counted, before anything else.
+
+    The freeze is durable and the count is not, so a tick that dies between
+    them leaves a generation naming both commits with no number on it. Nothing
+    on the stage it was entered on would go back for that on its own: the
+    handler spawns a reviewer, resumes a developer, or reads a pull request
+    that is still standing on the head the gate froze -- while the record goes
+    on freezing this branch out of the base refresh and describing a reading
+    nobody took. So the reading is taken HERE, ahead of the handler, and the
+    same answers apply: measured at or under the ceiling the candidate is
+    published -- named against the commit that was measured and pinned to the
+    head the pair froze -- measured past it the issue is routed to the
+    adjudication, and a refusal parks. So does a push that was allowed and did
+    not land, since a settled reading whose effect never happened is the one
+    thing the stage may not run behind.
+
+    Scoped by the record rather than by the label the issue happens to wear.
+    Only a generation carrying a whole publication group is one of these, and
+    only one recorded against the stage this issue is ON may be re-entered
+    here -- a record entered on `fixing` and read while the issue sits
+    somewhere else would be measured under a publication it was never taken
+    on. That one is refused rather than waved past: the reading is still
+    unresolved, the commit it named is still unpushed, and whichever stage the
+    label now names would run over both.
+
+    True is a tick this owner finished. False is every other issue on every
+    other tick, and also the small candidate this call just published: the
+    record is gone, the pull request carries the commit, the debt it earned is
+    paid, and the handler below carries on with an issue whose size question
+    is answered and whose branch is where that answer says it may be.
+
+    A record that CLAIMS one of these and cannot produce it is refused ahead
+    of both, and that order is the point: every field here is read
+    fail-closed, so a publication group missing a member parses as no group
+    and an approval missing its lease parses as no approval -- and read that
+    way, both of the questions below answer "nothing owed" and the stage runs
+    over a claim nothing can check.
+
+    A checkout that is not on disk stops the tick too. There is nothing to
+    measure without one, and the stage below would carry on regardless -- the
+    fixing bounce would relabel to `validating` and hand the reviewer a head
+    the pull request never received, on a candidate nobody has read the size
+    of. The recorded pair keeps the branch and the record exactly as they are
+    until a host that has the checkout comes back, which is what the recorded
+    pair is for.
+    """
+    recorded = _late_state.read_late_generation(state)
+    damage = _claims._unreadable_record(label, state)
+    owed = _debt._owes_a_published_push(label, state)
+    if not damage and not owed and not _claims._awaits_its_count(
+        recorded,
+    ):
+        return False
+    gate = _records._gate(
+        gh, spec, issue, state,
+        _worktree_paths._worktree_path(spec, issue.number),
+    )
+    if damage:
+        return _claims._parks_the_damage(gate, damage)
+    if owed:
+        return _debt._publishes_the_debt(gate, label)
+    return _answers_the_frozen_pair(gate, recorded, label)
+
+
+def _answers_the_frozen_pair(
+    gate: _records._Gate,
+    recorded: LateGeneration,
+    label: Optional[WorkflowLabel],
+) -> bool:
+    """Take the reading a pair frozen and never counted is owed, or refuse it.
+
+    Scoped by the record rather than by the label the issue happens to wear:
+    only one recorded against the stage this issue is ON may be re-entered
+    here, since a pair frozen on `fixing` and read while the issue sits
+    somewhere else would be measured under a publication it was never taken
+    on. And there is nothing to measure without a checkout, which is its own
+    refusal rather than a reason to let the stage carry on.
+    """
+    if recorded.source_stage != label:
+        return _stranded_reading(gate, recorded, label)
+    if not gate.worktree.exists():
+        return _absent_checkout(gate, recorded)
+    log.info(
+        "issue=#%d records a frozen pair for pull request #%d with no count "
+        "on it; measuring it before the stage runs",
+        gate.issue.number, recorded.published_pr_number,
+    )
+    return _settles_the_frozen_pair(gate, recorded)
+
+
+def _settles_the_frozen_pair(
+    gate: _records._Gate, recorded: LateGeneration,
+) -> bool:
+    """Take the reading the crash interrupted, and spend what it earns.
+
+    The whole gated call rather than its answer alone, because an allowed
+    candidate earns a PUSH and this is the tick that owes it. Read for the
+    answer only, the record retires naming a commit still owed a publication
+    and the handler below runs over a pull request that never received it: the
+    reviewer is spawned again over the head it already rejected, and an
+    approval past that finds one commit on the branch, squashes nothing, and
+    hands an unpushed head to the docs pass -- which reads it as recovered
+    work and skips the pass it was relabelled for.
+
+    So the effects come first and the stage runs behind them. Held is the tick
+    this owner finished. Landed leaves the pull request carrying the commit,
+    the debt paid, and the receipt written, so the handler runs over the same
+    world the tick that froze the pair would have handed it. A push that was
+    allowed and did not land is neither, and it stops the tick: the reading is
+    settled but its effect is not, and the stage would run over a publication
+    the branch never reached.
+
+    What the hold owed is read BEFORE the call, because the retirement an
+    allowed candidate earns drops the record those fields were written beside
+    -- read after it they are gone. Which event closes them differs by exit: a
+    routed hold spends inside the gate, ahead of the relabel it makes, and an
+    allowed candidate is closed by the push it earns.
+
+    That push carries them, in the write the receipt already makes rather than
+    in one behind it. There is no tick behind this push to do the closing, so
+    a second write is a window: a process dying in it comes back to a
+    published commit, a paid debt, and an uncounted round with nothing left on
+    the comment saying one was owed. Every gated push closes what its caller
+    owed the same way and for the same reason; what is particular here is only
+    where the pairs come FROM -- the record, since no run behind this tick
+    could re-derive them.
+    """
+    owed = _records._Spends(fields=_late_state.read_late_spends(gate.state))
+    published = _push._publishes(
+        gate,
+        _worktree_paths._resolve_branch_name(
+            gate.state, gate.spec, gate.issue.number,
+        ),
+        # What the tick that froze this pair said its hold owed. Restored
+        # rather than re-derived, because there is no run behind this one to
+        # derive it from: the reviewer round a fix spends, the bookmarks a
+        # consumed batch clears, the head a finished docs pass produced, the
+        # outcome a resolution earned. Without it an oversized retry routes to
+        # the adjudication having closed none of it, and the stage the
+        # settlement hands back to reruns a developer over feedback that was
+        # already answered.
+        _records._Entered(
+            # The reading this call is answering is the one the pinned record
+            # names, which is what the switch has nothing left to say about:
+            # publishing the head here would publish the very commit whose
+            # reading somebody asked for.
+            reconciling=True, answering=True, spends=owed,
+        ),
+    )
+    if published.held:
+        # No handler runs behind this, so the write the park's own caller
+        # would have made is this owner's: a park posts its notice and leaves
+        # the flags in memory, and one that never reached the pinned comment
+        # is a mention nobody can answer on an issue nothing is waiting on.
+        gate.gh.write_pinned_state(gate.issue, gate.state)
+        return True
+    if not published.landed:
+        return _unpublished_reconciliation(gate, recorded)
+    return False
+
+
+def _unpublished_reconciliation(
+    gate: _records._Gate, recorded: LateGeneration,
+) -> bool:
+    """Stop a tick whose reading was settled and whose push was not.
+
+    The measurement is durable and the record it settled is gone, so nothing
+    goes back for this on its own: what is left on the pinned comment is the
+    approval naming the commit, and the retry publishes it from there. What
+    may not happen meanwhile is the stage, which would work from a pull
+    request the candidate never joined.
+    """
+    _parks._parked(
+        gate, _records._reportable(gate, recorded),
+        _UNPUBLISHED_RECONCILIATION.format(
+            number=recorded.published_pr_number,
+        ),
+        _UNPUBLISHED_PARK.format(
+            mentions=config.HITL_MENTIONS,
+            candidate=recorded.candidate_sha,
+            number=recorded.published_pr_number,
+        ),
+    )
+    gate.gh.write_pinned_state(gate.issue, gate.state)
+    return True
+
+
+def _holds_absent_checkout(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+) -> bool:
+    """Whether a frozen pair with no checkout stops a publication outright.
+
+    The dispatcher asks the same question ahead of every handler, and this is
+    the answer for the seam that reaches a missing checkout on its own: a
+    publication that finds no worktree has always simply not published, and
+    with a pair frozen and never counted that is not enough. The caller's next
+    move -- the no-feedback bounce's relabel -- would hand the reviewer a head
+    the pull request never received on a candidate nobody has read the size
+    of, so the tick stops here instead.
+    """
+    recorded = _late_state.read_late_generation(state)
+    if not _claims._awaits_its_count(recorded):
+        return False
+    return _absent_checkout(
+        _records._gate(
+            gh, spec, issue, state,
+            _worktree_paths._worktree_path(spec, issue.number),
+        ),
+        recorded,
+    )
+
+
+def _stranded_reading(
+    gate: _records._Gate,
+    recorded: LateGeneration,
+    label: Optional[WorkflowLabel],
+) -> bool:
+    """Stop a tick whose frozen pair belongs to a stage the issue has left.
+
+    The record names one publication and one stage, and both are the terms the
+    reading was taken under. Re-entering it here would measure it under a
+    publication it was never taken on; letting the handler run instead is
+    worse, because the reading is still unresolved and the commit it named is
+    still unpushed -- so whichever stage the label now names would work over
+    an unmeasured candidate and, on the roads that publish, push it.
+
+    Nothing this process can repair either: the label was moved by something
+    outside the gate, and only a human can say whether it should go back or
+    the record should be dropped. So the refusal owes a human, and owes them
+    one notice rather than one per poll.
+    """
+    if gate.state.get(_state._PARK_REASON) == _parks.PARK_MEASUREMENT_FAILED:
+        log.warning(
+            "issue=#%d still carries a frozen pair entered on %s while it is "
+            "on %s; holding the tick without a second notice",
+            gate.issue.number, recorded.source_stage, label,
+        )
+        return True
+    log.error(
+        "issue=#%d records an unmeasured candidate entered on %s and is on "
+        "%s now; refusing to run that stage over a reading nothing settled",
+        gate.issue.number, recorded.source_stage, label,
+    )
+    _parks._parked(
+        gate, _records._reportable(gate, recorded), _STRANDED_READING,
+        _STRANDED_READING_PARK.format(
+            mentions=config.HITL_MENTIONS,
+            candidate=recorded.candidate_sha,
+            frozen=recorded.source_stage,
+            label=label or "no workflow state",
+        ),
+    )
+    gate.gh.write_pinned_state(gate.issue, gate.state)
+    return True
+
+
+def _absent_checkout(
+    gate: _records._Gate, recorded: LateGeneration,
+) -> bool:
+    """Stop a tick whose frozen pair has no checkout to be measured in.
+
+    Fail closed rather than open, because open means the stage runs: the
+    bounce relabels, the reviewer is handed a head the pull request never
+    received, and the candidate the record still names goes on being one
+    nobody has read the size of. Nothing here can be repaired by this process
+    either -- the commit is on a host this one is not -- so what the refusal
+    owes is a human.
+
+    Announced ONCE. The park is durable and the condition is not one that
+    clears on its own, so a checkout that stays gone would otherwise put a
+    fresh notice on the thread every poll and bury the first one. A tick that
+    finds the park already standing is held silently, and the moment the
+    checkout is back the ordinary reading resumes: the measurement park is
+    retired by the freeze that re-reads the pair it names.
+    """
+    if gate.state.get(_state._PARK_REASON) == _parks.PARK_MEASUREMENT_FAILED:
+        log.warning(
+            "issue=#%d still has no checkout at %s for the pair it froze; "
+            "holding the tick without a second notice",
+            gate.issue.number, gate.worktree,
+        )
+        return True
+    log.error(
+        "issue=#%d records a frozen pair and has no checkout at %s to "
+        "measure it in; refusing to run the stage over an unread candidate",
+        gate.issue.number, gate.worktree,
+    )
+    _parks._parked(
+        gate, _records._reportable(gate, recorded), _ABSENT_CHECKOUT,
+        _ABSENT_CHECKOUT_PARK.format(
+            mentions=config.HITL_MENTIONS,
+            candidate=recorded.candidate_sha,
+            number=recorded.published_pr_number,
+        ),
+    )
+    gate.gh.write_pinned_state(gate.issue, gate.state)
+    return True

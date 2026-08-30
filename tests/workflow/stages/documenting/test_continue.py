@@ -2,10 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
+from tests.workflow.stages.documenting import (
+    documenting_test_support as documenting_support,
+)
+
 import unittest
 
 
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _agent,
 )
 
@@ -28,10 +33,15 @@ DEV_AGENT = "codex"
 DEV_SESSION = "dev-sess"
 
 # --- Worktree HEAD SHAs threaded through the docs / recovery flows ------
-SHA_BEFORE = "aaa"
-SHA_AFTER = "bbb"
-SHA_DOCS = "docs-sha"
-SHA_RECOVERED = "recovered-sha"
+SHA_BEFORE = documenting_support.SHA_BEFORE
+# The head a docs pass leaves the checkout on. Each IS the commit the size
+# gate proves that checkout to, because in production they are one read of one
+# worktree: the stage names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else, so a fixture that spelled them
+# differently would be modelling the race rather than the tick.
+SHA_AFTER = MEASURED_CANDIDATE_SHA
+SHA_DOCS = MEASURED_CANDIDATE_SHA
+SHA_RECOVERED = MEASURED_CANDIDATE_SHA
 SHA_PR_HEAD = "pr-head-sha"
 
 # --- Pinned-state field keys read back from `gh.pinned_data(...)` -------

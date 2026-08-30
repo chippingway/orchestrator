@@ -21,6 +21,7 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _TEST_SPEC,
     _agent,
 )
@@ -28,6 +29,7 @@ from tests.workflow.fixtures import (
 
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting.documenting_test_support import (
+    SHA_BEFORE as _SHA_BEFORE,
     _branch,
 )
 from tests.workflow.stages.documenting.documenting_scenario_test_support import (
@@ -43,10 +45,15 @@ DEV_AGENT = "codex"
 DEV_SESSION = "dev-sess"
 
 # --- Worktree HEAD SHAs threaded through the docs / recovery flows ------
-SHA_BEFORE = "aaa"
-SHA_AFTER = "bbb"
-SHA_DOCS = "docs-sha"
-SHA_RECOVERED = "recovered-sha"
+SHA_BEFORE = _SHA_BEFORE
+# The head a docs pass leaves the checkout on. Each IS the commit the size
+# gate proves that checkout to, because in production they are one read of one
+# worktree: the stage names the commit it means to publish and the gate
+# refuses a checkout standing anywhere else, so a fixture that spelled them
+# differently would be modelling the race rather than the tick.
+SHA_AFTER = MEASURED_CANDIDATE_SHA
+SHA_DOCS = MEASURED_CANDIDATE_SHA
+SHA_RECOVERED = MEASURED_CANDIDATE_SHA
 SHA_PR_HEAD = "pr-head-sha"
 
 # --- Pinned-state field keys read back from `gh.pinned_data(...)` -------
@@ -211,7 +218,7 @@ class HandleDocumentingFinalDocsHandoffTest(unittest.TestCase, _FinalDocsFixture
             # before_sha (awaiting-human resume snapshot) == after_sha
             # (no new commit), but ahead=1 (the recovered docs commit
             # from a prior tick) -- the helper pushes it and routes.
-            head_shas=["recoveredDocsSha", "recoveredDocsSha"],
+            head_shas=[SHA_RECOVERED, SHA_RECOVERED],
             branch_ahead_behind=(1, 0),
         )
 
@@ -298,7 +305,7 @@ class HandleDocumentingFinalDocsHandoffTest(unittest.TestCase, _FinalDocsFixture
             FakePR(
                 number=WATERMARK_PR_NUMBER,
                 head_branch=_branch(WATERMARK_ISSUE_NUMBER),
-                head=FakePRRef(sha="docsSha"),
+                head=FakePRRef(sha=SHA_BEFORE),
                 mergeable=True,
                 check_state="success",
             ),
@@ -328,7 +335,7 @@ class HandleDocumentingFinalDocsHandoffTest(unittest.TestCase, _FinalDocsFixture
                 last_message="docs: cover edge case X",
             ),
             push_branch=True,
-            head_shas=["approvedSha", "docsSha"],
+            head_shas=[SHA_BEFORE, SHA_DOCS],
             branch_ahead_behind=(0, 0),
         )
 

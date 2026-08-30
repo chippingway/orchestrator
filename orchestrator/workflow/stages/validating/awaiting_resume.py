@@ -31,7 +31,10 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.validating import awaiting as _awaiting
-from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
+from orchestrator.workflow.stages.validating import (
+    dev_fix as _dev_fix,
+    rounds as _rounds,
+)
 from orchestrator.workflow.stages.validating import models as _models
 from orchestrator.workflow.stages.validating import state as _state
 
@@ -51,6 +54,10 @@ def _resume_validating_awaiting_dev(context: _models._AwaitingValidation) -> str
     context.state.set("last_agent_action_at", _usage._now_iso())
     if attempt.paused:
         return _state._OUTCOME_RETURN
+    # Frozen before the push: the gate closes it beside its own receipt, and
+    # the line below re-applies the same pair rather than re-reading a counter
+    # that write may already have moved.
+    owed = _rounds._spends_next_round(context.state)
     pushed = _dev_fix._handle_dev_fix_result(
         context.gh,
         context.spec,
@@ -59,12 +66,13 @@ def _resume_validating_awaiting_dev(context: _models._AwaitingValidation) -> str
         attempt.run.worktree,
         attempt.run.agent_result,
         attempt.run.before_sha,
+        spends=owed,
     )
     if not pushed:
         if not attempt.run.agent_result.interrupted:
             context.gh.write_pinned_state(context.issue, context.state)
         return _state._OUTCOME_RETURN
-    _dev_fix._bump_review_round(context.state)
+    _rounds._bump_review_round(context.state, owed)
     context.gh.write_pinned_state(context.issue, context.state)
     return _state._OUTCOME_RETURN
 

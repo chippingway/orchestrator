@@ -21,16 +21,36 @@ from __future__ import annotations
 import logging
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
+from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.late_split import (
+    formats as _formats,
+    payloads as _payloads,
+)
 from orchestrator.workflow.engine import comments as _comments, messages as _messages
 from orchestrator.workflow.stages.documenting import (
     handoff as _handoff,
     models as _models,
     parks as _parks,
+    state as _state,
+)
+from orchestrator.workflow.stages.implementing import (
+    late_push as _late_push,
+    late_records as _late_records,
 )
 
 log = logging.getLogger("orchestrator.workflow")
+
+
+# The revision a checkout's own head is named by.
+_HEAD = "HEAD"
+
+
+# What a `DOCS: NO_CHANGE` verdict tells the pull request, with the agent's own
+# justification quoted under it where it supplied one.
+_NO_CHANGE_NOTICE = (
+    ":books: documenting pass: no docs changes required.\n\n{justification}"
+)
 
 
 def _stamp_docs_verdict(
@@ -38,10 +58,16 @@ def _stamp_docs_verdict(
 ) -> None:
     """Stamp the docs watermarks after a terminal success: record the
     evaluated head, the verdict (`updated` / `no_change`), and reset the
-    silent-park counter."""
+    silent-park counter.
+
+    The held pass's receipt is dropped in the same breath, since every
+    terminal success ends the pass the receipt was owed for -- including the
+    republication that carries a held commit to the remote itself.
+    """
     state.set("docs_checked_sha", checked_sha)
     state.set("docs_verdict", verdict)
     state.set("silent_park_count", 0)
+    state.set(_state._SETTLED_DOCS_SHA, None)
 
 
 def _post_docs_notice(ctx: _models._DocumentingContext, note: str) -> None:
@@ -57,7 +83,11 @@ def _post_docs_notice(ctx: _models._DocumentingContext, note: str) -> None:
 
 
 def _push_docs_and_advance(
-    ctx: _models._DocumentingContext, wt, after_sha: str, notice: str,
+    ctx: _models._DocumentingContext,
+    wt,
+    after_sha: str,
+    notice: str,
+    entered_head: str = "",
 ) -> None:
     """Push docs commit(s) and hand off to `in_review`.
 
@@ -65,8 +95,45 @@ def _push_docs_and_advance(
     success, stamp the docs watermarks (`docs_checked_sha`,
     `docs_verdict=updated`), post `notice` on the PR, and route to
     `in_review`. Writes pinned state; the caller returns unconditionally.
+
+    A docs commit is a candidate for a pull request the remote already carries
+    like any other, so the size gate stands in front of this push too. It is
+    the last one before a human is asked to merge, which is what makes it
+    matter rather than what makes it an exception: a pass that took the diff
+    past the ceiling would put an unadjudicated pull request in front of the
+    person who merges it. A held candidate ends the tick -- the gate has
+    parked the issue or handed it to the adjudication, and the `in_review`
+    handoff below would move it off the state the gate just set -- but the
+    pass itself is over, so the head it produced is handed to the gate as the
+    receipt this stage is owed. Written inside the gate's routed write, ahead
+    of the relabel, the resumed tick below reads it back and finishes the
+    handoff; without it that tick would find a branch in sync with its remote,
+    read it as an issue no docs pass has run for, and spawn a second one over
+    a commit the first pass already published.
     """
-    if not _authentication._push_branch(ctx.spec, wt, ctx.branch):
+    published = _late_push._publishes(
+        _late_records._gate(ctx.gh, ctx.spec, ctx.issue, ctx.state, wt),
+        ctx.branch,
+        _late_records._Entered(
+            # The commit this pass made, so the gate measures and pushes THAT
+            # rather than whatever the checkout became between the two reads
+            # -- which the stamp below would then record as documented.
+            candidate=after_sha,
+            # The head the pull request was standing on before the pass ran.
+            # Left for the gate to read afterwards, a pull request somebody
+            # pushed to while the agent was out becomes the lease and this
+            # force-push drops it -- the last push before a human is asked to
+            # merge, so what it would drop is what that human would not see.
+            head=entered_head,
+            spends=_late_records._Spends(fields=(
+                (_state._SETTLED_DOCS_SHA, after_sha),
+            )),
+        ),
+    )
+    if published.held:
+        ctx.gh.write_pinned_state(ctx.issue, ctx.state)
+        return
+    if not published.landed:
         _parks._park_documenting(
             ctx,
             f"{config.HITL_MENTIONS} git push failed; see "
@@ -80,19 +147,84 @@ def _push_docs_and_advance(
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 
 
-def _documenting_no_change_note(body: str) -> str:
-    """Build the `DOCS: NO_CHANGE` PR notice, quoting the agent's
-    justification when it supplied one."""
-    justification = body.strip()
-    base = ":books: documenting pass: no docs changes required."
-    if not justification:
-        return base
-    quoted = _messages._as_blockquote(justification)
-    return f"{base}\n\n{quoted}"
+_SETTLED_DOCS_NOTICE = (
+    ":books: documenting pass: docs commit `{commit}` reached this pull "
+    "request through the late adjudication, which read it as one coherent "
+    "change. No second pass was run."
+)
+
+
+def _finished_settled_docs(
+    ctx: _models._DocumentingContext, wt, ahead: int,
+) -> bool:
+    """Finish a docs pass the size gate held and an adjudication published.
+
+    The receipt says the pass is over: an agent ran, it committed, and the
+    only thing between that commit and `in_review` was a push the gate would
+    not let this stage make. A settled `single` verdict makes that push from
+    the adjudication and hands the label back here, so what is left is the
+    stamp, the notice, and the handoff -- and running the docs agent again
+    instead would commit a second time over work the first pass already
+    published, which the gate would measure and could route to a second
+    adjudication.
+
+    `ahead` is what says the commit reached the remote, and it is asked
+    because the receipt cannot: a verdict that parked, or a human who moved
+    the label by hand, leaves the same receipt over a commit still on disk
+    only. Ahead of the remote the receipt is left exactly where it is and the
+    recovered-commit path below republishes it through the gate, which is the
+    one road that measures it again.
+
+    In sync is not the same claim as CARRYING it. A replacement host rebuilds
+    the checkout from a pull request that has moved on, and what it gets is a
+    branch level with its remote and standing on somebody else's head -- so
+    the receipt is proved against the commit the checkout is on, not merely
+    against the counters. That proof carries the remote with it: the caller
+    fetched the branch before counting and parks a checkout behind it, so a
+    head that is in sync AND is the settled commit says the remote is
+    standing there too.
+
+    Fail closed on every other reading. A receipt that is not a whole object
+    id is not one a checkout can be compared to, and a head this host cannot
+    peel is not one anything may be compared against -- both leave the
+    receipt exactly where it is for a tick that can prove it.
+    """
+    settled = _payloads.as_hex(
+        ctx.state.get(_state._SETTLED_DOCS_SHA), _formats.COMMIT_LENGTHS,
+    )
+    if not settled or ahead > 0 or not _standing_on(wt, settled):
+        return False
+    _stamp_docs_verdict(ctx.state, settled, "updated")
+    _post_docs_notice(ctx, _SETTLED_DOCS_NOTICE.format(commit=settled))
+    _handoff._advance_after_docs_push(ctx.gh, ctx.issue, ctx.state)
+    ctx.gh.write_pinned_state(ctx.issue, ctx.state)
+    return True
+
+
+def _standing_on(wt, settled: str) -> bool:
+    """Whether this checkout is the commit a settled receipt names.
+
+    Proved rather than read, because everything past it is a claim about one
+    object id: a revision this host cannot peel is not a head that matches
+    anything, and a host that never had the commit answers exactly that.
+    """
+    proved = _measurement_commits._prove_candidate_commit(wt, _HEAD)
+    if proved.is_frozen and proved.sha == settled:
+        return True
+    log.error(
+        "the checkout at %s stands on %s rather than the settled docs commit "
+        "%s; leaving the receipt for a tick that can prove it",
+        wt, proved.sha or "an unreadable head", settled,
+    )
+    return False
 
 
 def _route_documenting_no_change(
-    ctx: _models._DocumentingContext, wt, ahead: int, after_sha: str, body: str,
+    ctx: _models._DocumentingContext,
+    wt,
+    run: _models._DocumentingRun,
+    after_sha: str,
+    body: str,
 ) -> None:
     """Route a `DOCS: NO_CHANGE` verdict to `in_review`.
 
@@ -103,11 +235,12 @@ def _route_documenting_no_change(
     no-change verdict against the evaluated head and advance. Writes
     pinned state; the caller returns unconditionally.
     """
-    if ahead > 0:
+    if run.ahead > 0:
         _push_docs_and_advance(
             ctx, wt, after_sha,
             ":books: documenting pass: pushed recovered docs "
             "commit(s) after no-change confirmation.",
+            entered_head=run.entered_head,
         )
         return
     # Persist the SHA the dev evaluated even on a "nothing changed" outcome.
@@ -117,7 +250,12 @@ def _route_documenting_no_change(
     # explicit and covers any future entry path that bypasses them.
     # `after_sha == before_sha` in this branch by construction (no commit).
     _stamp_docs_verdict(ctx.state, after_sha, "no_change")
-    _post_docs_notice(ctx, _documenting_no_change_note(body))
+    _post_docs_notice(ctx, _NO_CHANGE_NOTICE.format(
+        # Quoted where the agent supplied a justification, so the PR carries
+        # the reasoning rather than only the verdict.
+        justification=_messages._as_blockquote(body.strip()) if body.strip()
+        else "",
+    ).rstrip())
     _handoff._advance_after_docs_no_change(ctx.gh, ctx.issue, ctx.state)
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 

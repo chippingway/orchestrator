@@ -46,6 +46,9 @@ from orchestrator.workflow.engine import messages as _messages
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
+from orchestrator.workflow.stages.implementing import (
+    late_records as _late_records,
+)
 from orchestrator.workflow.stages.fixing import feedback as _feedback
 from orchestrator.workflow.stages.fixing import models as _models
 from orchestrator.workflow.stages.fixing import state as _state
@@ -85,25 +88,61 @@ def _fixing_debounce_open(
     )
 
 
-def _apply_fix_review_round(state, pending_fix_at_was_set: bool) -> None:
-    """Update `review_round` on a pushed fix per the route discriminator.
+def _spends_fix_round(state, pending_fix_at_was_set: bool):
+    """What a HELD fix closes for this route, handed to the gate up front.
 
-      * in_review->fixing (`pending_fix_at` was set): reset to 0. The
-        previous reviewer round was APPROVED (the in_review HITL ping is
-        gated on approval); the new fix starts a fresh round-count so
-        MAX_REVIEW_ROUNDS does not trip prematurely on issues that pass
-        back through review after a human PR comment.
-      * validating->fixing (a CHANGES_REQUESTED dev fix that parked and
-        was finished via a human reply): bump. The previous round was
-        CHANGES_REQUESTED, not APPROVED, so we are still in the same
-        review cycle and the round counter must advance to keep
-        MAX_REVIEW_ROUNDS accounting honest.
+    The gate holding a candidate is not a park: the commit is on the branch,
+    the issue is on `workflow:decomposing`, and a `single` verdict publishes
+    it from there. So the round IS spent -- the head the reviewer rejected is
+    superseded either way -- and the bookkeeping that says so cannot wait for
+    a later fixing tick. The bounce that would otherwise do it applies the
+    round only when it pushes a stranded commit itself, and a settled
+    adjudication publishes before handing the issue back, so the bounce finds
+    nothing ahead and counts nothing.
+
+    Left undone, the in_review route keeps a round count that should have
+    reset and the validating route never advances one -- so `MAX_REVIEW_ROUNDS`
+    stops meaning what it says on exactly the issues that have been through
+    an adjudication.
+
+    Handed to the gate rather than applied on the way out, because the hold
+    relabels: a caller that counted afterwards would lose the count to any
+    crash in the window between that relabel and its own write, and the
+    adjudication would settle onto a stage whose round was never spent. The
+    same write that carries the measurement carries this, ahead of the label.
+
+    Only the ROUTED hold spends it. A reading nobody could take also stops the
+    tick with a generation on the pinned comment, and THAT one is a park --
+    the developer's work is still pending and its round is not spent.
+    """
+    return _late_records._Spends(fields=(
+        *_bookmarks._cleared_pending_fix_bookmarks(),
+        (_state._REVIEW_ROUND, _fix_review_round(state, pending_fix_at_was_set)),
+    ))
+
+
+def _fix_review_round(state, pending_fix_at_was_set: bool) -> int:
+    """The value `review_round` takes on this route, spent or landed.
+
+      * in_review->fixing (`pending_fix_at` was set): reset to 0. The previous
+        reviewer round was APPROVED (the in_review HITL ping is gated on
+        approval); the new fix starts a fresh round-count so
+        MAX_REVIEW_ROUNDS does not trip prematurely on issues that pass back
+        through review after a human PR comment.
+      * validating->fixing (a CHANGES_REQUESTED dev fix that parked and was
+        finished via a human reply): bump. The previous round was
+        CHANGES_REQUESTED, not APPROVED, so we are still in the same review
+        cycle and the round counter must advance to keep MAX_REVIEW_ROUNDS
+        accounting honest.
+
+    Read ONCE per route, before the push, and carried as a frozen pair from
+    there: the bump reads the counter off the pinned comment, so a second
+    reading taken after the write that already applied it would count the same
+    round twice.
     """
     if pending_fix_at_was_set:
-        state.set(_state._REVIEW_ROUND, 0)
-    else:
-        round_n = int(state.get(_state._REVIEW_ROUND) or 0)
-        state.set(_state._REVIEW_ROUND, round_n + 1)
+        return 0
+    return int(state.get(_state._REVIEW_ROUND) or 0) + 1
 
 
 def _run_fixing_resume(
@@ -282,9 +321,17 @@ def _resume_fixing_and_dispatch_result(
     ):
         return
 
+    # What this route owes for the candidate, computed BEFORE the push and
+    # handed to the gate: a hold closes it in the write that carries the
+    # measurement, ahead of the relabel it makes, and a landed push closes it
+    # in the write that carries the receipt. Either way the same frozen pairs
+    # are what the tail below re-applies, so the two cannot disagree -- and
+    # re-applying a value already written is a no-op rather than a second
+    # count, which recomputing the round from the pinned comment would be.
+    owed = _spends_fix_round(ctx.state, pending_fix_at_was_set)
     pushed = _dev_fix._handle_dev_fix_result(
         ctx.gh, ctx.spec, ctx.issue, ctx.state, run.worktree, run.dev_result,
-        run.before_sha, after_sha=run.after_sha,
+        run.before_sha, after_sha=run.after_sha, spends=owed,
     )
 
     # Advance the three in_review watermarks ONLY to the max id actually fed to
@@ -315,18 +362,19 @@ def _resume_fixing_and_dispatch_result(
     _feedback._advance_consumed_watermarks(ctx.state, feedback)
 
     if not pushed:
+        # A hold has already spent this route's round durably, from inside the
+        # gate's own write: what is left here is the caller's ordinary write.
         ctx.gh.write_pinned_state(ctx.issue, ctx.state)
         return
 
-    # Bookmarks served their purpose; clear them so a later in_review->fixing
-    # route writes fresh values rather than mixing rounds.
-    # `_apply_fix_review_round` then updates `review_round` per the route
-    # discriminator (`pending_fix_at_was_set`), and we flip DIRECTLY to
+    # The bookmarks this route consumed and the round it lands on, in the
+    # values frozen before the push. The gate has already written them beside
+    # the receipt, so this is what covers the one push it could not: a commit
+    # nothing could name never reaches that write. We flip DIRECTLY to
     # `validating` so the reviewer re-evaluates the new head next tick. Docs do
     # not run on this exit -- the single docs pass is deferred to the final-docs
     # handoff after reviewer approval, so running the docs stage against an
     # unapproved diff here would just push a no-op and waste a tick.
-    _bookmarks._clear_pending_fix_bookmarks(ctx.state)
-    _apply_fix_review_round(ctx.state, pending_fix_at_was_set)
+    _late_records._spend(ctx.state, owed)
     ctx.gh.set_workflow_label(ctx.issue, WorkflowLabel.VALIDATING)
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)

@@ -60,15 +60,23 @@ def _candidate_commit(
     which no commit is proved at all, since there is no question to prove one
     for.
 
-    A RECONCILIATION is never that issue, whatever the record says. It is a
-    reading a previous tick recorded an intent to take -- a park a human
-    answered, a frozen pair a crash stranded -- and the commonest way to reach
-    one with no candidate recorded is the refusal that happens before a
-    generation can be minted: the candidate could not be proved, so there was
-    nothing to freeze. Reading that as new work is the switch failing OPEN,
-    publishing the very head whose reading is what somebody asked for. The
-    switch keeps new candidates out of the gate; it does not answer a question
-    the gate already asked.
+    A call ANSWERING a recorded reading is never that issue, whatever the
+    record says. It is a reading a previous tick recorded an intent to take --
+    a park a human answered, a frozen pair a crash stranded -- and the
+    commonest way to reach one with no candidate recorded is the refusal that
+    happens before a generation can be minted: the candidate could not be
+    proved, so there was nothing to freeze. Reading that as new work is the
+    switch failing OPEN, publishing the very head whose reading is what
+    somebody asked for. The switch keeps new candidates out of the gate; it
+    does not answer a question the gate already asked.
+
+    "No developer ran" is NOT that claim, and the two are separate fields
+    because the seams that borrow the first outnumber the ones that mean the
+    second: a clean rebase, a conflict resolution, a divergence publish, and a
+    recovery push are each taken with no agent behind them and are each a
+    candidate this gate has never seen. Answering the switch with the wider
+    fact would measure exactly the fresh work `DECOMPOSE=off` exists to
+    publish untouched.
 
     An issue that still OWES a push is never that issue either, and for the
     same reason one step later: the gate approved a commit, the record naming
@@ -82,10 +90,17 @@ def _candidate_commit(
     claim about one object id: a revision this host cannot peel to a commit is
     work made somewhere else, and nothing here may stand the current head in
     for it.
+
+    A caller that NAMED its candidate is proved even where the switch keeps it
+    out, because the switch keeps candidates out of the MEASUREMENT and not
+    out of a push that knows which commit it is sending. That proof is local
+    -- a revision peeled in this checkout -- so an install with the gate off
+    still reads no pull request and parks over none; what it buys is the one
+    comparison the naming exists for, and without it a commit landing between
+    the caller's read and this one is published in its place.
     """
-    if not config.DECOMPOSE and not recorded.candidate_sha:
-        if not gate.reconciling and not _parks._approved_commit(gate.state):
-            return None
+    if _outside_the_gate(gate, recorded) and not gate.candidate:
+        return None
     head = _measurement_commits._prove_candidate_commit(gate.worktree, _HEAD)
     if not recorded.candidate_sha:
         return head
@@ -94,9 +109,31 @@ def _candidate_commit(
     return _reconciled_candidate(gate, recorded, head)
 
 
+def _outside_the_gate(
+    gate: _records._Gate, recorded: LateGeneration,
+) -> bool:
+    """Whether the switch keeps this candidate out of the gate entirely.
+
+    The one state `DECOMPOSE=off` answers outright, spelled once so every seam
+    that measures asks it the same way -- and asks it before spending a read
+    on anything the answer makes pointless. New work is all it decides: a
+    record already in the gate, a call answering a reading the gate itself
+    recorded, and a commit an approval still owes a push are each work the
+    switch has nothing left to say about.
+
+    The middle one is asked as `answering` rather than as `reconciling`, which
+    is the wider fact that no developer ran: a rebase, a resolution, and a
+    recovery push each set that and are each new work this gate has never
+    seen.
+    """
+    if config.DECOMPOSE or recorded.candidate_sha:
+        return False
+    return not gate.answering and not _parks._approved_commit(gate.state)
+
+
 def _reconciled_candidate(
     gate: _records._Gate, recorded: LateGeneration, head: FrozenCommit,
-) -> Optional[FrozenCommit]:
+) -> FrozenCommit:
     """What a record whose candidate is not the current head is reconciled as.
 
     The recorded commit is asked for FIRST, and that order is the whole
@@ -116,6 +153,15 @@ def _reconciled_candidate(
     supersedes is retired rather than left standing: a `late_candidate_sha`
     naming work no longer on the branch freezes this branch out of the base
     refresh for good, and describes a commit nothing is going to publish.
+
+    Either way the head is HANDED BACK by name. Which of the two it earns is
+    the switch's answer and is decided one owner on, where the record is
+    compared against the commit in hand; answering here with "no candidate at
+    all" would drop the one fact every step past this needs. Downstream an
+    unnamed verdict is not a smaller claim -- the push has no commit to send,
+    the receipt has none to record, and the debt reader finds the empty SHA
+    equal to an approval nobody wrote and parks the round for a lease that
+    does not exist.
 
     On a RECONCILIATION none of that is available, and the checkout having
     been on the recorded commit a moment ago does not make it available. No
@@ -160,17 +206,7 @@ def _reconciled_candidate(
         return FrozenCommit(
             failure=MeasurementFailure.CANDIDATE_UNREADABLE,
         )
-    if not head.is_frozen:
-        return head
-    return head if config.DECOMPOSE else None
-
-
-def _already_measured(recorded: LateGeneration, candidate_sha: str) -> bool:
-    """Whether the record already answers the size question for this commit."""
-    return (
-        recorded.candidate_sha == candidate_sha
-        and recorded.additions is not None
-    )
+    return head
 
 
 def _frozen_pair(
@@ -245,7 +281,7 @@ def _refrozen_base(
     return None
 
 
-def _incomplete_measurement(
+def _unusable_record(
     gate: _records._Gate, recorded: LateGeneration,
 ) -> Optional[str]:
     """Why a recorded measurement may not be acted on, or None if it may.
@@ -285,7 +321,7 @@ def _damaged_record(gate: _records._Gate, recorded: LateGeneration) -> bool:
     The failure reaches both sinks like every other refusal, so a record that
     fails open in the log is not what an operator has to notice.
     """
-    damaged = _incomplete_measurement(gate, recorded)
+    damaged = _unusable_record(gate, recorded)
     if damaged is None:
         return False
     log.error(

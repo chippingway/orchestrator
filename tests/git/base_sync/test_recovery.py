@@ -10,7 +10,7 @@ import unittest
 from types import MappingProxyType
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication
+from orchestrator.git import authentication, commands as _commands
 from orchestrator.git.base_sync import (
     outcomes,
     persistence,
@@ -20,6 +20,8 @@ from orchestrator.git.base_sync import (
 from orchestrator.git.verification import probes as verification_probes
 
 from tests.git.base_sync import base_sync_helpers as fixtures
+from tests.git.base_sync.gate_reads_support import _gate_candidates, _gate_reads
+from tests.git.base_sync.refresh_test_support import MOVED_CHECKOUT_SHA
 
 FETCH_SNAPSHOT = "_fetch_recovery_snapshot"
 
@@ -40,6 +42,12 @@ PUSH_BRANCH = "_push_branch"
 DIRTY_FILES = "_worktree_dirty_files"
 
 PUSHED_METHOD = "crash_recovery_pushed"
+
+# The keyword a gated push names the commit it publishes by, and the one the
+# finalize behind it records the same commit under.
+REVISION = "revision"
+
+LOCAL_HEAD = "local_head"
 
 LEFTOVERS = ("scratch.txt",)
 
@@ -82,6 +90,26 @@ _OWNERS = MappingProxyType(
 )
 
 
+# The commit an approval owes a push for, which the rollback would abandon.
+_ABANDONED_SHA = "ab5e0000" * 5
+
+_APPROVED_SHA = "late_approved_sha"
+_APPROVED_LEASE = "late_approved_lease"
+_SPENDS = "late_spends"
+
+# The round that publication's route still owes, recorded beside the approval.
+_OWED_ROUND = ("review_round", 2)
+
+_OWED = MappingProxyType({
+    _APPROVED_SHA: _ABANDONED_SHA,
+    _APPROVED_LEASE: fixtures.PRE_REBASE_SHA,
+    _SPENDS: [list(_OWED_ROUND)],
+})
+
+_PARK_MESSAGE = "the push did not land"
+_GIT_FAILED = 128
+
+
 def _handled() -> MagicMock:
     """A collaborator stub that reports the tick as handled."""
     return MagicMock(return_value=True)
@@ -106,6 +134,57 @@ def _every_answer(selected: dict):
             selected[name] = _handled()
             stack.enter_context(patch.object(owner, name, selected[name]))
         yield
+
+
+class RolledBackDebtTest(unittest.TestCase):
+    """What a reset-and-park keeps when the reset itself will not go through.
+
+    The reset is what makes an approved commit unreachable, and so what
+    licenses dropping the record naming it. Refused, the branch may still be
+    standing on that commit -- and the approval, the head its push is pinned
+    to, and the route bookkeeping that push closes are the only things naming
+    any of it.
+    """
+
+    def test_a_failed_reset_keeps_the_whole_debt(self) -> None:
+        owing = fixtures._sync_context(**_OWED)
+
+        with self._reset_refusing(_GIT_FAILED):
+            persistence._reset_clear_and_park(
+                owing, fixtures.PRE_REBASE_SHA,
+                message=_PARK_MESSAGE, reason=fixtures.PARK_PUSH_FAILED,
+            )
+
+        pinned = owing.gh.pinned_data(fixtures.ISSUE)
+        self.assertEqual(pinned[_APPROVED_SHA], _ABANDONED_SHA)
+        self.assertEqual(pinned[_APPROVED_LEASE], fixtures.PRE_REBASE_SHA)
+        self.assertEqual(tuple(pinned[_SPENDS][0]), _OWED_ROUND)
+
+    def test_a_landed_reset_drops_it(self) -> None:
+        # What says the refusal above is about the reset rather than about the
+        # record never being dropped: reset, the approved commit is only in
+        # the reflog and a debt naming it is one nothing can pay.
+        owing = fixtures._sync_context(**_OWED)
+
+        with self._reset_refusing(0):
+            persistence._reset_clear_and_park(
+                owing, fixtures.PRE_REBASE_SHA,
+                message=_PARK_MESSAGE, reason=fixtures.PARK_PUSH_FAILED,
+            )
+
+        pinned = owing.gh.pinned_data(fixtures.ISSUE)
+        self.assertIsNone(pinned[_APPROVED_SHA])
+        self.assertIsNone(pinned[_APPROVED_LEASE])
+        self.assertNotIn(_SPENDS, pinned)
+
+    @contextlib.contextmanager
+    def _reset_refusing(self, returncode: int):
+        """Answer every hardened git command with `returncode`."""
+        with patch.object(
+            _commands, "_git_hardened",
+            MagicMock(return_value=fixtures._git_result(returncode=returncode)),
+        ):
+            yield
 
 
 class RecoveryRouteTest(unittest.TestCase):
@@ -228,6 +307,13 @@ class RecoveryComparisonTest(unittest.TestCase):
 class RetryRecoveryPushTest(unittest.TestCase):
     """The reissued push is guarded, leased, and finalized as its own method."""
 
+    def setUp(self) -> None:
+        # The recovered head is a candidate for a pull request the remote
+        # already carries, so it is measured before it is pushed. These tests
+        # are about the guard, the lease, and the finalize -- the reading gets
+        # its ordinary answers.
+        _gate_reads(self)
+
     def test_ahead_head_is_pushed_under_lease(self) -> None:
         context = fixtures._recovery_context()
         push = _handled()
@@ -256,6 +342,47 @@ class RetryRecoveryPushTest(unittest.TestCase):
             finalize.call_args.kwargs.get("local_head"),
             fixtures.RECOVERED_SHA,
         )
+
+    def test_the_push_names_the_head_it_finalizes(self) -> None:
+        # This recovery verified ONE head against the remote, and the gate
+        # proves the checkout again before it measures. Left unbound, a commit
+        # landing between the two reads is what the push carries while the
+        # notice, the event, and the finalize all name the head the snapshot
+        # holds -- a pull request standing on one commit under a record naming
+        # another.
+        context = fixtures._recovery_context()
+        push = _handled()
+        finalize = _handled()
+
+        with self._push_patches(push=push, finalize=finalize):
+            recovery._retry_recovery_push(
+                context, fixtures._snapshot(ahead=1),
+            )
+
+        self.assertEqual(
+            push.call_args.kwargs.get(REVISION), fixtures.RECOVERED_SHA,
+        )
+        self.assertEqual(
+            finalize.call_args.kwargs.get(LOCAL_HEAD),
+            push.call_args.kwargs.get(REVISION),
+        )
+
+    def test_a_checkout_that_moved_refuses_the_push(self) -> None:
+        # The same window, seen from the race it closes: the checkout is no
+        # longer standing on the head this recovery verified, so nothing is
+        # published and the finalize never runs.
+        push = MagicMock()
+        finalize = MagicMock()
+        _gate_candidates(self, MOVED_CHECKOUT_SHA)
+
+        with self._push_patches(push=push, finalize=finalize):
+            handled = recovery._retry_recovery_push(
+                fixtures._recovery_context(), fixtures._snapshot(ahead=1),
+            )
+
+        self.assertTrue(handled)
+        push.assert_not_called()
+        finalize.assert_not_called()
 
     def test_dirty_worktree_parks_without_pushing(self) -> None:
         push = MagicMock()

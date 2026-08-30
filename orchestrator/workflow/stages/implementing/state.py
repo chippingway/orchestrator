@@ -85,6 +85,24 @@ _CANDIDATE_MOVED = "late_candidate_moved"
 # by the adjudication that supersedes it.
 _APPROVED_SHA = "late_approved_sha"
 
+# The head the pull request stood on when the approval beside it was written,
+# for a candidate the gate approved on the PUBLISHED side. It outlives the
+# generation that froze it for exactly as long as the push it licenses is
+# still owed, and it is what that push is leased against.
+#
+# Without it the retry after a failed push has nothing but the pull request's
+# CURRENT head to pin to -- and the retry skips the measurement, because the
+# commit is already approved -- so a head somebody moved in between would be
+# adopted as the lease and force-overwritten by work measured against the head
+# it used to be on. Recorded, the retry pins to what was frozen and git
+# refuses the push, which is the answer a moved publication is owed.
+#
+# Written, dropped, and spent with the approval it belongs to, never on its
+# own: an approval with no lease is a pre-publication one, which is what every
+# implementing-seam approval is and what the push there correctly takes its
+# own reading for.
+_APPROVED_LEASE = "late_approved_lease"
+
 # The commit this stage last PUSHED, written durably ahead of the relabel that
 # hands the issue to review. Between those two the branch is on the remote and
 # a pull request carries it, while the label still says implementing and every
@@ -101,6 +119,23 @@ _APPROVED_SHA = "late_approved_sha"
 # publication overwrites it, and a developer's next commit moves the head off
 # it.
 _PUBLISHED_SHA = "implementing_published_sha"
+
+# The head the recorded publication REPLACED -- the one the entry it was made
+# under froze, which is the head the push was pinned to. Written and dropped
+# with the receipt beside it, never on its own, because it is what scopes that
+# receipt to one publication attempt.
+#
+# The receipt alone cannot say which attempt it is evidence for. It is never
+# cleared, so a pull request a revert or a rewrite rewound onto a commit this
+# stage published rounds ago reads exactly as this tick's own push having
+# landed -- and where the checkout is standing on that same commit, the
+# rewound head would be adopted as a publication nobody moved and the
+# candidate handed on unmeasured. Paired with the head it replaced it answers
+# for one window and no other: a push made from THIS head, on a tick that died
+# before the relabel behind it.
+#
+# Empty for an initial publication, whose push froze no head to be pinned to.
+_PUBLISHED_LEASE = "implementing_published_lease"
 
 _PARK_REASON = "park_reason"
 

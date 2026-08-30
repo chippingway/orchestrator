@@ -45,3 +45,29 @@ class _DocumentingRun:
     recovered: bool
     paused: bool
     ahead: int
+    # The head `<remote>/<branch>` was at when `ahead` was counted, from the
+    # same fetch. The count says a recovered docs commit is waiting; this says
+    # which head the push that ships it replaces, and it is what the size gate
+    # is pinned to -- read afterwards instead, a pull request somebody moved
+    # between the probe and the push is adopted as the lease and overwritten.
+    publication_head: str = ""
+
+    @property
+    def entered_head(self) -> str:
+        """The head the push this run earns would replace.
+
+        The remote tip this tick fetched, because that is what a force-push
+        replaces whatever produced the commit. On a pass that ran with the
+        branch in sync it is the head the run began at too -- one fact read
+        twice -- and where they differ the branch was already AHEAD, so the
+        head this run started on says nothing about the remote at all: the
+        commit being shipped was made on an earlier tick.
+
+        `before_sha` stands in only where nothing could read the tip, which is
+        the reading the gate then refuses rather than pinning to nothing.
+
+        Named to the size gate either way, which is what makes a pull request
+        somebody moved while the agent was out refuse the push rather than be
+        adopted as its lease and force-overwritten.
+        """
+        return self.publication_head or self.before_sha

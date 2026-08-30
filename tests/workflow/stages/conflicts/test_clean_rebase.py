@@ -16,15 +16,22 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.stages.conflicts.conflicts_test_support import (
+    RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
 )
 from tests.workflow.fixtures import (
+    MEASURED_CANDIDATE_SHA,
     _FAKE_WT,
     _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
     _issue_branch,
 )
+
+# The pre-rebase head this stage reads for itself and pins its push to. A
+# whole object id, because the size gate freezes what the caller established
+# and reads a commit field at its exact length.
+BEFORE_HEAD = "be40e5ba" * 5
 
 FETCH_ISSUE = 450
 FETCH_PR = 850
@@ -144,18 +151,22 @@ class ResolvingConflictCleanRebaseTest(unittest.TestCase, _ResolvingConflictMixi
             gh,
             issue,
             merge_succeeded=True,
-            head_shas=["beforehead", "merged"],
+            head_shas=[BEFORE_HEAD, RESOLVED_HEAD_SHA],
             push_branch=True,
         )
         # Agent must NOT be spawned -- a clean base rebase does not need
         # the dev to do anything.
         mocks[RUN_AGENT].assert_not_called()
         merge_mock.assert_called_once()
+        # Named against the commit the size gate measured, and leased against
+        # the pre-rebase head this stage read for itself -- the tighter claim
+        # about a ref it is rewriting.
         mocks["_push_branch"].assert_called_once_with(
             _TEST_SPEC,
             _FAKE_WT,
             self.issue_branch,
-            force_with_lease="beforehead",
+            revision=MEASURED_CANDIDATE_SHA,
+            force_with_lease=BEFORE_HEAD,
         )
         self.assertIn((CONFLICT_ISSUE, "workflow:validating"), gh.label_history)
         self.assertNotIn((CONFLICT_ISSUE, "workflow:documenting"), gh.label_history)
