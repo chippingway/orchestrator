@@ -76,6 +76,11 @@ _NOT_LIVE_STATE = (
     (_COMMENT_HASH_KEY, _TRUNCATED_DIGEST),
     ("late_comment_watermark_id", 0),
     ("late_plan_pr_number", -3),
+    # The head a hold was taken over is a commit field like every other, and
+    # a reading that is not one says nothing about which change wore the
+    # notice.
+    ("late_plan_pr_head", _ABBREVIATION),
+    ("late_plan_pr_head", "the tip the pull request was standing on"),
     (_DEPTH_KEY, 9),
     (_SOURCE_STAGE_KEY, "workflow:sharpening"),
     (_PUBLISHED_PR_KEY, 0),

@@ -412,7 +412,7 @@ than a second source of truth: where the two disagree, the handler pages are aut
      any generation            ─► mark the cycle cancelled, once, before any
                                    external call; emit one late_cancellation
                                    from that write
-     held plan PR              ─► release the hold, one marked notice, close
+     held pull request         ─► release the hold, one marked notice, close
                                    it; re-asked every visit, recorded only
                                    where the state moved
      opaque ledger             ─► nothing more but a warning; no entry on it

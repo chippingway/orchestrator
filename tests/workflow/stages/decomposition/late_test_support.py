@@ -104,6 +104,7 @@ class _StateKeys:
     question: str = "late_result_question"
     children: str = "late_result_children"
     plan_pr_number: str = "late_plan_pr_number"
+    plan_pr_head: str = "late_plan_pr_head"
     plan_pr_body: str = "late_plan_pr_body"
     candidate_sha: str = "late_candidate_sha"
     base_sha: str = "late_base_sha"
@@ -118,6 +119,7 @@ class _StateKeys:
     exempt_sha: str = "late_exempt_sha"
     post_publication: str = "late_post_publication"
     published_pr_number: str = "late_published_pr_number"
+    published_sha: str = "late_published_sha"
     approved_sha: str = "late_approved_sha"
     approved_lease: str = "late_approved_lease"
     # The publishing stage's own receipt rather than a late field: it is what

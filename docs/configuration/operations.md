@@ -310,11 +310,11 @@ The sweep runs on the existing `CLOSED_ISSUE_SWEEP_EVERY_N_TICKS` cadence and ad
 raising that knob (the multi-repo rate-limit advice in
 [`../configuration.md`](../configuration.md#github-rate-limits)) also stretches how long an unreclaimed branch or ref
 survives, by the same factor. It is cleanup-only: it never spawns an agent, resumes a workflow, activates a child, or
-touches one that already exists. It does end the cycle the close interrupted — the cancellation is marked, any plan
-pull request that cycle was holding is closed over one notice, and the issue moves to `rejected` once nothing is
-owed. That last write is the only label it makes, and it is also what stops the sweep: an owner still owing the
-remote keeps its label and keeps being visited, so a repository whose closed owners stay on `workflow:decomposing`
-or `workflow:umbrella` is a repository with something the orchestrator could not reclaim.
+touches one that already exists. It does end the cycle the close interrupted — the cancellation is marked, any pull
+request that cycle was holding is closed over one notice, and the issue moves to `rejected` once nothing is owed. That
+last write is the only label it makes, and it is also what stops the sweep: an owner still owing the remote keeps its
+label and keeps being visited, so a repository whose closed owners stay on `workflow:decomposing` or
+`workflow:umbrella` is a repository with something the orchestrator could not reclaim.
 
 Reopening such an owner does not get the workflow going again. The same cleanup runs from the dispatcher instead,
 once per tick, the issue reaches no stage handler, and the same `rejected` is written once the ledger settles —
@@ -362,8 +362,8 @@ finished does not authorize anything: the ending was never in a state it could w
 once the cleanup settles, and the handshake starts from there. Neither does a `rejected` the orchestrator tried and
 failed to apply — what is recorded is a label a pass could see on the issue, not an attempt, so a refused write is
 simply retried. And an issue whose cancellation is still owing the remote is refused until the cleanup finishes —
-including the one obligation no pass can clear for you, a recorded plan pull request with no preserved description
-beside it, which the held-terminal warning names as `plan PR #<n> (no preserved description)`. Repair that record
+including the one obligation no pass can clear for you, a recorded held pull request with no preserved description
+beside it, which the held-terminal warning names as `held PR #<n> (no preserved description)`. Repair that record
 first; nothing restarts over it.
 
 Cancellations the orchestrator ended itself need nothing from you, closed owners included: the pass that writes

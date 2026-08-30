@@ -11,7 +11,7 @@ from orchestrator.workflow.stages.decomposition import (
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
-    _PlanPrHold,
+    _HeldPrHold,
 )
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -183,8 +183,8 @@ class SupersessionTest(HeldPlanPrSplitCase, unittest.TestCase):
         # children are already live by then.
         released = patch.object(
             _late_transaction._late_hold,
-            "_release_plan_pr_hold",
-            return_value=_PlanPrHold(generation=self.generation),
+            "_release_hold",
+            return_value=_HeldPrHold(generation=self.generation),
         )
         with released:
             with refusing(self.github, "get_pr"):

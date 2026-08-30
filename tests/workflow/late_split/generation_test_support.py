@@ -50,6 +50,7 @@ TITLE_BODY_HASH = "c" * DIGEST_LENGTH
 COMMENT_HASH = "d" * DIGEST_LENGTH
 COMMENT_WATERMARK_ID = 555
 PLAN_PR_NUMBER = 12
+PLAN_PR_HEAD = "f" * SHA_LENGTH
 PLAN_PR_BODY = "the plan PR body held while adjudication runs"
 # What a post-publication entry froze: the stage the gate took the issue out
 # of, the pull request the work already had, and the head it was left on.
@@ -186,6 +187,7 @@ def full_generation() -> LateGeneration:
         comment_hash=COMMENT_HASH,
         comment_watermark_id=COMMENT_WATERMARK_ID,
         plan_pr_number=PLAN_PR_NUMBER,
+        plan_pr_head=PLAN_PR_HEAD,
         plan_pr_body=PLAN_PR_BODY,
         **ENTERED_ON_PUBLICATION,
         resources=(SNAPSHOT,),

@@ -24,8 +24,10 @@ label, for the issue whose implementation is already committed and turns out
 to be oversized. They are named apart rather than folded in because what a
 missing or malformed INITIAL manifest means may not change: `late_prompt` and
 `late_reply` are the question that mode asks and the fence it is answered on,
-`late_hold` owns the cycle-marked hold a reusable plan PR wears while the
-question is open, `late_session` owns the run's pinned record and the tracked
+`late_hold` owns the cycle-marked hold a reusable pull request wears while the
+question is open -- the plan one where the gate was entered before publication,
+and the implementation one the work is already on where it was entered past it
+-- `late_session` owns the run's pinned record and the tracked
 spawn over it, `late_content` fingerprints the requirements the candidate was
 frozen against and `late_guidance` decides what a change to them or an answer
 about them earns, `late_revision` owns the developer run guidance buys and the

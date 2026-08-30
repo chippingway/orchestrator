@@ -5,20 +5,24 @@
 The transaction closes the pull request this cycle's work is on, hands the
 issue to `umbrella`, activates the children, and reclaims the branch. Which
 pull request that is depends on the side of publication the generation was
-entered on -- a held plan one before the first push, the implementation one
-past it -- and the second is the sharper of the two: left unsuperseded it is
-an open change carrying work nobody will finish, pointing at a branch the
+entered on -- the plan one before the first push, the implementation one past
+it -- and the second is the sharper of the two: left unsuperseded it is an
+open change carrying work nobody will finish, pointing at a branch the
 reclamation has already deleted.
 
 So it is proved before it is closed, and the proof is the settlement's own.
 A pull request nothing could read, one a human settled while the adjudication
 was open, and one somebody pushed to are each a refusal with a durable retry
-rather than a supersession taken on evidence that has been overtaken.
+rather than a supersession taken on evidence that has been overtaken. The
+hold this cycle put on that same pull request comes off ahead of all of it,
+because a change closed while it still wears a "do not merge" notice wears it
+for good.
 """
 from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
 from orchestrator.workflow.stages.decomposition import (
     late_transaction as _late_transaction,
 )
@@ -38,6 +42,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     PUBLISHED_PR_NUMBER,
 )
 from tests.workflow.stages.decomposition.late_published_split_support import (
+    PUBLISHED_BODY,
     PublishedSplitCase,
 )
 from tests.workflow.stages.decomposition.late_transaction_support import (
@@ -59,6 +64,7 @@ STATE_CLOSED = "closed"
 STATE_RECONCILED = "reconciled"
 RESOURCE_PLAN_PR = "plan_pr"
 GET_PR = "get_pr"
+EDIT_PR_BODY = "edit_pr_body"
 # The step a crash lands past on this road: the close is made and its
 # obligation recorded, and the retirement behind it never runs.
 SUPERSEDED = "_superseded"
@@ -77,6 +83,15 @@ class PublishedSupersessionTest(PublishedSplitCase, unittest.TestCase):
         self.assertIn(
             SUPERSESSION_MARKER, self.github.posted_pr_comments[-1][1],
         )
+
+    def test_it_restores_the_description_it_held(self) -> None:
+        # A change closed while it still wears this cycle's "do not merge"
+        # notice wears it for good, and the description that notice displaced
+        # is the only copy there was.
+        self._transact(generation=self.held_publication())
+
+        self.assertEqual(self.published_pr.body, PUBLISHED_BODY)
+        self.assertEqual(self.published_pr.state, STATE_CLOSED)
 
     def test_the_notice_links_forward_to_everything(self) -> None:
         self._transact(generation=self.generation)
@@ -149,6 +164,19 @@ class PublishedSupersessionRefusalTest(
                 outcome = self._transact(generation=self.generation)
 
         self._assert_left_alone(outcome)
+
+    def test_a_release_that_fails_leaves_it_open(self) -> None:
+        # The preserved description is not back where it belongs, so the
+        # close waits: settling the entry over a hold nothing could take off
+        # is what the order between the two exists to prevent.
+        held = self.held_publication()
+
+        with refusing(self.github, EDIT_PR_BODY):
+            with self.assertLogs(level=ERROR):
+                outcome = self._transact(generation=held)
+
+        self._assert_left_alone(outcome)
+        self.assertEqual(self.published_pr.body, _late_hold._hold_body(held))
 
     def test_a_refused_supersession_parks(self) -> None:
         # The proof passed and the close itself did not land.

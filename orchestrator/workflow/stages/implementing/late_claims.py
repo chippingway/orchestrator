@@ -23,8 +23,9 @@ top of either. So the raw fields are read here, before anything is parsed into
 a shape that can lose them, and a claim that cannot be made whole parks.
 
 Nothing here repairs anything. The pieces are not recoverable from elsewhere
--- the label the record names has been replaced, the pull request is not the
-plan PR beside it, the head is a commit the branch has moved off -- so what
+-- the label the record names has been replaced, the hold beside it names a
+pull request only because this record named one first, the head is a commit
+the branch has moved off -- so what
 the refusal owes is a human, and it owes them one notice rather than one per
 poll.
 """

@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""One late adjudication, from the plan-PR hold to the run it settles.
+"""One late adjudication, from the pull-request hold to the run it settles.
 
 The coordinator an oversized committed candidate is adjudicated by. What puts
 an issue in front of it is the size gate at the clean-committed pre-publication
@@ -11,19 +11,21 @@ the initial decomposition runs for it. What a finished reply becomes is the
 
 The order is the contract, and each step persists what it reached before it
 acts. A generation that is not a live oversized one is not this owner's
-business at all. Past that, the plan PR is held BEFORE anything is spawned,
-because the hold is what stops a human from merging a change while the
-question of whether it should exist as one issue is still open -- so a hold
-that could not be reconciled parks and spawns nothing, and every retry
-re-reconciles the same pull request rather than mutating it again. Then a
-result already recorded for this cycle, generation, and exact commit short
-circuits the spawn entirely: an agent that finished is not paid for twice
-because the tick that read its answer died before acting on it, and a second
-run is free to decide differently. Either way, the park a previous attempt
-left is retired the moment the hold reconciles -- that attempt is the answer
-to it, and a stale `awaiting_human` would go on to silence the announcement a
-question verdict earns, whether the question came from this run or from a
-recorded one whose own announcement never landed.
+business at all. Past that, the pull request standing over the candidate is
+held BEFORE anything is spawned -- the plan one a discussion left behind where
+the generation was entered before publication, and the implementation one the
+work is already on where it was entered past it -- because the hold is what
+stops a human from merging a change while the question of whether it should
+exist as one issue is still open. So a hold that could not be reconciled parks
+and spawns nothing, and every retry re-reconciles the same pull request rather
+than mutating it again. Then a result already recorded for this cycle,
+generation, and exact commit short circuits the spawn entirely: an agent that
+finished is not paid for twice because the tick that read its answer died
+before acting on it, and a second run is free to decide differently. Either
+way, the park a previous attempt left is retired the moment the hold reconciles
+-- that attempt is the answer to it, and a stale `awaiting_human` would go on
+to silence the announcement a question verdict earns, whether the question came
+from this run or from a recorded one whose own announcement never landed.
 
 What the humans have said since the candidate was frozen is settled next, and
 deliberately before that short circuit rather than after it: an answer to a
@@ -40,27 +42,27 @@ Past all of that, what comes back is the whole outcome rebuilt from the record
 -- the children a split named included -- and whatever that answer still owed
 the issue is reconciled instead of re-earned.
 
-Every completed run goes through one more gate before anything acts on what
-it left: the owner is read again. This call began by fetching an issue and
-then spent minutes to hours running an agent, so the snapshot it is holding
-cannot say whether a human has closed the issue since -- and publishing,
-snapshotting, superseding, activating, or even announcing on the strength of
-it would act on an issue nobody wants. It is asked of every completion, a
-question and a timeout included, since a closure during one of those strands
-the same generation and the same plan-PR hold. A read that fails records
-itself on the generation, which is why the very first thing this call does is
-reconcile one an earlier tick left owed -- ahead of the live-generation gate,
-because the state that gate routes past is exactly where such a read gets
-stranded. What the read costs each of the three answers is the `late_owner`
-owner's; what a verdict past it EARNS is `late_settlement`'s; and the
-transaction a cleared `split` becomes -- the snapshot every child is cut from,
-the children themselves, the supersession of the held plan PR, and the cleanup
-obligation left behind -- is `late_transaction`'s, which this owner reaches
-only through the guarded handoff that read carries.
+Every completed run goes through one more gate before anything acts on what it
+left: the owner is read again. This call began by fetching an issue and then
+spent minutes to hours running an agent, so the snapshot it is holding cannot
+say whether a human has closed the issue since -- and publishing, snapshotting,
+superseding, activating, or even announcing on the strength of it would act on
+an issue nobody wants. It is asked of every completion, a question and a
+timeout included, since a closure during one of those strands the same
+generation and the same hold. A read that fails records itself on the
+generation, which is why the very first thing this call does is reconcile one
+an earlier tick left owed -- ahead of the live-generation gate, because the
+state that gate routes past is exactly where such a read gets stranded. What
+the read costs each of the three answers is the `late_owner` owner's; what a
+verdict past it EARNS is `late_settlement`'s; and the transaction a cleared
+`split` becomes -- the snapshot every child is cut from, the children
+themselves, the supersession of the pull request the candidate stands on, and
+the cleanup obligation left behind -- is `late_transaction`'s, which this owner
+reaches only through the guarded handoff that read carries.
 
 Nothing gets that far on a generation that cannot be acted on. The prompt, the
 hold, and every record afterwards are derived from the frozen fields, so the
-identities and both commits are proved before the plan PR is touched or an
+identities and both commits are proved before a pull request is touched or an
 agent is started: a candidate whose base was never recorded produces a diff
 against nothing, and finding that out from a refused telemetry record means
 the run has already been paid for.
@@ -150,19 +152,20 @@ _LAST_AGENT_ACTION_AT = "last_agent_action_at"
 _ACCOUNTING_FIELDS = ("retry_count", "retry_window_start")
 
 _HOLD_FAILED_PARK = (
-    "could not put the adjudication hold on this issue's plan PR, so no late "
-    "decomposer was spawned and the committed candidate stays unpublished. "
-    "Settle the pull request, then the next tick retries the same "
-    "reconciliation against the same frozen commit."
+    "could not put the adjudication hold on the pull request this issue's "
+    "candidate stands on, so no late decomposer was spawned and the committed "
+    "candidate stays unpublished. Settle the pull request, then the next tick "
+    "retries the same reconciliation against the same frozen commit."
 )
 
 _HOLD_DISPLACED_PARK = (
-    "this issue's plan PR carries a description this orchestrator did not "
-    "write, so the adjudication hold cannot be put back without overwriting "
-    "it -- and no late decomposer is started while that pull request is open "
-    "with nothing on it saying the committed candidate is still being "
-    "adjudicated. Settle the pull request, or put its description back, and "
-    "the next tick continues against the same frozen commit."
+    "the pull request this issue's candidate stands on carries a description "
+    "this orchestrator did not write, so the adjudication hold cannot be put "
+    "back without overwriting it -- and no late decomposer is started while "
+    "that pull request is open with nothing on it saying the committed "
+    "candidate is still being adjudicated. Settle the pull request, or put "
+    "its description back, and the next tick continues against the same "
+    "frozen commit."
 )
 
 _INCOMPLETE_PARK = (
@@ -217,9 +220,10 @@ def _adjudicate_late_generation(
 ) -> _LateAdjudicationRun:
     """Adjudicate this issue's recorded late generation, if it has a live one.
 
-    The whole late question in one call: hold the plan PR, settle what the
-    humans have said since the candidate was frozen, then reuse a completed
-    answer or spawn for a new one and record what it decided. Nothing is
+    The whole late question in one call: hold the pull request the candidate
+    stands on, settle what the humans have said since the candidate was
+    frozen, then reuse a completed answer or spawn for a new one and record
+    what it decided. Nothing is
     published here and no label is written -- the caller owns what a verdict
     earns.
     """
@@ -288,7 +292,7 @@ def _blocked_before_running(
         return _LateDisposition.NOT_LATE
     if not _has_frozen_evidence(context) or not _holds_the_objects(context):
         return _LateDisposition.PARKED
-    if not _hold_plan_pr(context):
+    if not _hold_pull_request(context):
         return _LateDisposition.PARKED
     return None
 
@@ -297,7 +301,7 @@ def _holds_the_objects(context: _LateContext) -> bool:
     """Prove this host really has the two commits the record names.
 
     The step between the record being well SHAPED and it being usable, and it
-    runs before the plan-PR hold for the same reason the shape check does:
+    runs before the hold for the same reason the shape check does:
     everything past this point is an external effect. The hold rewrites a
     human-visible description, and the spawn behind it puts an agent on
     somebody's repository for as long as an agent runs -- both spent on a
@@ -369,7 +373,7 @@ def _guarded(
     Every completion comes through here, not only the ones that decided
     something: a question, a timeout, an unusable reply, and a reply refused
     for a moved candidate are all runs the issue paid for, and a closure
-    during any of them strands the same generation and the same plan-PR hold.
+    during any of them strands the same generation and the same hold.
 
     A run the tick DECLINED is the one exception, and it is not a completion:
     an operator's `paused` label and a shutdown sweep both mean this tick did
@@ -471,7 +475,7 @@ def _incomplete_evidence(
     return None
 
 
-def _hold_plan_pr(context: _LateContext) -> bool:
+def _hold_pull_request(context: _LateContext) -> bool:
     """Reconcile the cycle-marked hold, or park without spawning.
 
     The boundary goes down through the record's own rule, because this runs
@@ -482,7 +486,7 @@ def _hold_plan_pr(context: _LateContext) -> bool:
     context.generation = context.generation.at_phase(
         LatePhase.HOLDING_PLAN_PR,
     )
-    hold = _late_hold._reconcile_plan_pr_hold(
+    hold = _late_hold._reconcile_hold(
         context.gh, context.issue, context.state, context.generation,
     )
     context.generation = hold.generation

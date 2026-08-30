@@ -25,12 +25,14 @@ phase and it overwrites the one it interrupted. That phase is what says whether
 the consumer ledger accounts for every child cut from the snapshot, so a record
 that forgot it could never prove a ref reclaimable again.
 
-**Then the plan pull request, which is the one external thing a cancellation
-owns that the umbrella's terminal never sees.** A cycle that reached the size
-gate through a design discussion may be holding one under a "do not merge"
-notice with the original description preserved on the issue. Nobody is going
-to adjudicate it now, so the hold comes off, one notice says why, and the pull
-request is closed -- in that order, so a change that ends up closed is not also
+**Then the pull request this cycle holds, which is the one external thing a
+cancellation owns that the umbrella's terminal never sees.** A cycle that
+reached the size gate may be holding one under a "do not merge" notice with
+the original description preserved on the issue -- the plan pull request a
+design discussion left behind, or the implementation one the work is already
+on where the gate was entered past publication. Nobody is going to adjudicate
+it now, so the hold comes off, one notice says why, and the pull request is
+closed -- in that order, so a change that ends up closed is not also
 left wearing a hold nothing will ever take back. Said at most once, proved from
 the pull request's own thread rather than from a record, because the comment
 and the entry that records it cannot be made one operation.
@@ -53,7 +55,7 @@ A cancellation buys no shortcut through any of it -- a child that is live again
 keeps the ref whether or not its owner is closed.
 
 One branch is this ending's own to take ON, though, and it is the one the
-transaction could not write down in time: the plan PR is superseded and the
+transaction could not write down in time: the held PR is superseded and the
 branch it carried recorded in two writes, so a close between them leaves a
 branch nothing names. Settling around that is retiring over it -- see
 `_superseded_branch`.
@@ -101,7 +103,7 @@ accident, and the authorization for a fresh attempt is a human taking
 `rejected` off, not a human reopening the issue.
 
 **The terminal comes last, and only once nothing is owed** -- branch, ref, and
-every unreconciled plan-PR entry the LEDGER holds, which is a wider reading
+every unreconciled `plan_pr` entry the LEDGER holds, which is a wider reading
 than what this pass acts on. Acting takes the hold's own record, since
 releasing one means knowing which pull request this cycle marked; being owed
 takes the ledger, because an entry left under a number a later write cleared
@@ -178,7 +180,7 @@ _PLAN_PR = LateResourceKind.PLAN_PR
 
 _BRANCH = LateResourceKind.BRANCH
 
-# Stamped on the notice a cancelled cycle leaves on the plan pull request it
+# Stamped on the notice a cancelled cycle leaves on the pull request it
 # was holding, so a pass that repeats after a crash recognizes its own. Scoped
 # to the cycle, which is the scope of a cancellation: a pull request outlives
 # a cycle, and a restart mints a fresh one, so an unscoped marker would read a
@@ -216,15 +218,15 @@ _OBSERVED_CLOSE_NOTICE = (
     "fresh attempt.\n\n{marker}"
 )
 
-# How a still-owed plan pull request is named in the line that says what a
+# How a still-owed held pull request is named in the line that says what a
 # closed owner is waiting on. The ledger's own targets are bare identifiers,
 # and a bare number beside a branch and a ref would not say what it was.
-_OWED_PLAN_PR = "plan PR #{0}"
+_OWED_PLAN_PR = "held PR #{0}"
 
 # The same, for the one shape no pass can settle: a number with no
 # preserved description beside it, which is a hold nothing can prove and
 # a human has to repair.
-_UNPROVABLE_HOLD = "plan PR #{0} (no preserved description)"
+_UNPROVABLE_HOLD = "held PR #{0} (no preserved description)"
 
 # The two labels a cancelled cycle's own decomposer can leave its owner on: a
 # run spawned before the close writes one of them as its ordinary outcome, and
@@ -265,7 +267,7 @@ def _cleanup_settled(
     What the dispatcher asks before it drops the close a cleanup was carrying,
     and the reason it has to ask at all: a pass can return having finished
     nothing. A consumer that is live again holds the ref, a remote that
-    refuses a delete holds the branch, a plan pull request a human reopened
+    refuses a delete holds the branch, a held pull request a human reopened
     holds itself, and the terminal write is one more request that can be
     declined -- each of them leaves the pass returning normally with the
     ending still owed.
@@ -897,7 +899,7 @@ def _parked_ending(spec: config.RepoSpec, issue: Issue) -> bool:
     """Whether a control label defers everything past the mark.
 
     `backlog` and `paused` park an issue outside the state machine, and the
-    ending is external work: a plan pull request closed, a branch deleted, a
+    ending is external work: a held pull request closed, a branch deleted, a
     ref reclaimed. Doing any of it would be reacting exactly where an operator
     said not to.
 
@@ -971,7 +973,7 @@ def _reconciled(
 
     The order is the contract. The cancellation is durable before any external
     call, so nothing below can happen against a record that does not already
-    say the cycle is over; the plan pull request is settled before the branch
+    say the cycle is over; the held pull request is settled before the branch
     and the ref, because it is the only obligation here a human is still
     looking at.
 
@@ -979,7 +981,7 @@ def _reconciled(
     says what this visit would say -- so the pass a refusal keeps bringing
     back costs only the obligations that are actually still owed.
 
-    And the plan pull request is asked once more at the end, because the
+    And the held pull request is asked once more at the end, because the
     steps between the two asks are a branch delete, a ref delete, and a
     consumer read apiece -- long enough for a human to reopen it inside them.
     """
@@ -999,7 +1001,7 @@ def _reverified(
     state: PinnedState,
     generation: LateGeneration,
 ) -> LateGeneration:
-    """Ask the held plan PR again, on the far side of everything else owed.
+    """Ask the held PR again, on the far side of everything else owed.
 
     The terminal is the write that cannot be taken back: it takes the issue
     off every label the closed-owner sweep queries, so an owner that reaches
@@ -1023,7 +1025,7 @@ def _reverified(
     delete is one the sweep is bringing back anyway, and the ask at the top
     of that next pass is the same ask.
     """
-    if _outstanding(generation) or _held_plan_pr(generation) is None:
+    if _outstanding(generation) or _held_pull_request(generation) is None:
         return generation
     return _plan_pr_settled(gh, issue, state, generation)
 
@@ -1088,12 +1090,12 @@ def _superseded_branch(
 ) -> LateGeneration:
     """Take on the branch a supersession left behind but never wrote down.
 
-    The transaction settles the held plan pull request and records the branch
+    The transaction settles the held pull request and records the branch
     that pull request carried in two separate writes, and it must: the second
     is the retirement that hands the parent to `umbrella`, and retiring ahead
     of a supersession that might not land would leave the children loose
     beside a change still carrying their work. A close landing in that window
-    leaves a cycle whose candidate is preserved on the ref, whose plan PR is
+    leaves a cycle whose candidate is preserved on the ref, whose held PR is
     closed, and whose branch nothing on the record names -- so the
     reclamation, which walks the record, would settle around it and retire
     the owner over a branch the remote keeps for good.
@@ -1124,7 +1126,7 @@ def _superseded_branch(
     whether it landed -- and inferring the branch from it while the pull
     request is still open would delete, out from under a change a human can
     still see, the branch that change is built on. The obligation is not lost
-    by waiting: the plan PR is re-asked on every visit, and the visit that
+    by waiting: the held PR is re-asked on every visit, and the visit that
     closes it is the one that takes the branch on.
     """
     if not generation.links_announced:
@@ -1133,14 +1135,14 @@ def _superseded_branch(
         return generation
     if _owed_plan_pr(generation):
         log.warning(
-            "issue=#%d was cancelled at its supersession and its plan PR is "
+            "issue=#%d was cancelled at its supersession and its held PR is "
             "not settled; leaving the branch that PR carries alone until it "
             "is", issue.number,
         )
         return generation
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     log.warning(
-        "issue=#%d was cancelled between the supersession of its plan PR and "
+        "issue=#%d was cancelled between the supersession of its held PR and "
         "the write that records the branch it superseded; taking %r on as "
         "owed rather than retiring over it", issue.number, branch,
     )
@@ -1204,13 +1206,15 @@ def _plan_pr_settled(
     state: PinnedState,
     generation: LateGeneration,
 ) -> LateGeneration:
-    """Take the hold off the held plan PR, say why, and close it.
+    """Take the hold off the pull request it marked, say why, and close it.
 
-    Only the pull request this generation actually held. `pr_number` on the
+    Only the pull request this generation actually held -- the plan one where
+    the cycle was entered before publication, and the implementation one the
+    work is already on where it was entered past it. `pr_number` on the
     stage's own keys is whichever one the issue currently records and may name
-    an implementation somebody else opened; the hold's record names the one
-    this cycle marked, and closing anything else would end a change no
-    adjudication ever touched.
+    a change somebody else opened; the hold's record names the one this cycle
+    marked, and closing anything else would end a change no adjudication ever
+    touched.
 
     The hold comes off first, so a pull request that ends up closed is not
     also left carrying a "do not merge" notice forever. A release that failed
@@ -1234,7 +1238,7 @@ def _plan_pr_settled(
     not news -- reporting it every visit would put one `late_cleanup` per
     cadence on an owner that is simply waiting for something else.
     """
-    number = _held_plan_pr(generation)
+    number = _held_pull_request(generation)
     if number is None:
         return generation
     released, reached = _reached(gh, issue, generation, number)
@@ -1266,7 +1270,7 @@ def _reached(
     pull request closed while the hold is still on it is a human's words
     replaced for good.
     """
-    release = _late_hold._release_plan_pr_hold(gh, issue, generation)
+    release = _late_hold._release_hold(gh, issue, generation)
     if release.failed:
         return release.generation, LateResourceState.FAILED
     if not _closed_over_notice(gh, issue, release.generation, number):
@@ -1297,7 +1301,7 @@ def _closed_over_notice(
         held = gh.get_pr(number)
     except Exception:
         log.exception(
-            "issue=#%d could not read plan PR #%d to close it",
+            "issue=#%d could not read held PR #%d to close it",
             issue.number, number,
         )
         return False
@@ -1316,8 +1320,8 @@ def _cancelled_marker(issue: Issue, generation: LateGeneration) -> str:
     )
 
 
-def _held_plan_pr(generation: LateGeneration) -> Optional[int]:
-    """The plan pull request this pass may act on, if there is one.
+def _held_pull_request(generation: LateGeneration) -> Optional[int]:
+    """The held pull request this pass may act on, if there is one.
 
     Both halves of the hold or neither. The number alone is not a hold this
     generation can prove it took: the identity and the description it
@@ -1342,7 +1346,7 @@ def _held_plan_pr(generation: LateGeneration) -> Optional[int]:
 
 
 def _unprovable_hold(generation: LateGeneration) -> bool:
-    """Whether this record names a plan PR it cannot show it ever held."""
+    """Whether this record names a PR it cannot show it ever held."""
     return (
         generation.plan_pr_number is not None
         and generation.plan_pr_body is None
@@ -1350,7 +1354,7 @@ def _unprovable_hold(generation: LateGeneration) -> bool:
 
 
 def _owed_plan_pr(generation: LateGeneration) -> tuple[str, ...]:
-    """Every plan pull request this cancellation has still to settle.
+    """Every held pull request this cancellation has still to settle.
 
     What the terminal is held by, and a different question from what the pass
     ACTS on. Acting takes the hold's own record, since releasing one means
@@ -1635,8 +1639,8 @@ def _outstanding(generation: LateGeneration) -> tuple[str, ...]:
     """Everything this cancellation may not leave the remote holding.
 
     The reclamation owner's own reading of the branch and the ref, plus the
-    plan pull request that owner never sees: a cycle cancelled before its
-    split landed is the one case where a held plan PR is still open, since
+    held pull request that owner never sees: a cycle cancelled before its
+    split landed is the one case where one is still open, since
     every path that reaches an umbrella superseded it on the way.
 
     What it names is what this ending ACTS on and reports, which is why it is
@@ -1685,7 +1689,7 @@ def _reported(
     generation: LateGeneration,
     target: str,
 ) -> None:
-    """Say on both sinks what this pass did to the held plan PR.
+    """Say on both sinks what this pass did to the held PR.
 
     Read back off the record rather than inferred from what GitHub said, for
     the reason every other obligation is: the entry is the only thing that
@@ -1699,7 +1703,7 @@ def _reported(
     )
     if entry.resource_state != LateResourceState.RECONCILED:
         log.warning(
-            "issue=#%d could not close the plan PR its cancelled cycle held "
+            "issue=#%d could not close the PR its cancelled cycle held "
             "(%s); it is retried on every visit until it is",
             issue.number, target,
         )
@@ -1708,7 +1712,7 @@ def _reported(
 def _plan_pr_entry(
     generation: LateGeneration, target: str,
 ) -> Optional[LateResource]:
-    """The ledger entry this pass just wrote for the held plan PR.
+    """The ledger entry this pass just wrote for the held PR.
 
     None where the update could not be applied at all, which the recording
     helper already logged: there is nothing to report about an obligation the

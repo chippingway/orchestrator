@@ -175,7 +175,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      written. That issue is relabelled `workflow:implementing` and falls into that handler on the same tick, exactly
      as the kill-switch route below does — so the ordinary publication reconciles the exact commit already on the
      branch. What the handback owes the pull requests first is what an accepted verdict owes them: this generation's
-     "do not merge" notice comes off the plan PR (a refusal parks under `decomposing` with the record untouched, so
+     "do not merge" notice comes off the held PR (a refusal parks under `decomposing` with the record untouched, so
      the retry is free), and `pr_number` is moved to the pull request the measured commit is actually on — or
      dropped where the recorded one is settled, since a merged plan PR carried into `implementing` ends the issue as
      `done` on a design the revision was never published under.
@@ -294,7 +294,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   the ref.
 - **The boundary an interrupted transaction stood at is kept, and a phase before the loop is believed only as far as
   the record bears it out.** A phase is not written only forwards: a transaction re-entered after a crash comes back
-  through the whole coordinator, so the plan-PR hold reconciled before anything spawns, the spawn itself, and the
+  through the whole coordinator, so the hold reconciled before anything spawns, the spawn itself, and the
   claim each completion writes would each name a boundary of their own. None of them is written over
   `snapshotting`, `splitting`, or `superseding` — the record refuses that move itself — so a re-entered split
   carries every one of those steps under the boundary it interrupted. That
@@ -451,7 +451,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - They come first because they are the ones that have to *run* rather than merely answer, and the two above can
   refuse indefinitely — the reuse guard *holds* a dispatch, writing nothing, for as
   long as an ancestor's ref cannot be asked about, and an owner of its own cancelled cycle nested under one would
-  spend that whole outage never reconciling its own plan PR, branch, or ref. Nothing is lost by the order: neither a
+  spend that whole outage never reconciling its own held PR, branch, or ref. Nothing is lost by the order: neither a
   cancelled cycle nor a restart mid-transaction starts any work, so neither question above is about anything either
   is going to do, and both are asked again on the tick after the ending or the fresh cycle is written.
 
@@ -726,7 +726,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   written once the obligations settle. Falling through is what does not happen either way — the pickup path behind
   the guard would greet a cancelled cycle as new.
 - **A control label defers everything past the mark, and nothing before it.** `backlog` / `paused` park an issue
-  outside the state machine, and the ending is external work — a plan pull request closed, a branch deleted, a ref
+  outside the state machine, and the ending is external work — a held pull request closed, a branch deleted, a ref
   reclaimed — so none of it runs while the label is on. The cancellation itself is still persisted, because the pass
   the park would drop is the only one that would ever record the close: an owner parked while closed would otherwise
   come back from a reopen and an unpause with a live generation. That reading also survives the partition filter, so
@@ -759,9 +759,10 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      interrupted (`late_cancelled_phase`), because `late_phase` is about to name the cancellation itself and the
      boundary is what the whole-ledger rule reads. Both are kept from the *first* observation: a reopen and a
      second close re-mark the same cancellation and move neither.
-  2. **A held plan pull request is released, told once, and closed.** This is the one obligation a cancellation
-     owns that no other pass ever sees — every path that reaches an umbrella superseded its plan PR on the way, so
-     a cancelled cycle is the only shape where one is still open under a "do not merge" notice. The hold comes off
+  2. **A held pull request is released, told once, and closed.** This is the one obligation a cancellation
+     owns that no other pass ever sees — every path that reaches an umbrella superseded the pull request its work
+     was on along the way, so a cancelled cycle is the only shape where one is still open under a "do not merge"
+     notice. The hold comes off
      first, so a pull request that ends up closed is not also left wearing one forever; a release that failed on a
      still-open pull request stops the close, since the preserved description is the only copy of what the hold
      replaced. The notice carries a cycle-scoped marker and is proved from the pull request's own thread, and the
@@ -784,10 +785,10 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      **resumed** walk stopped before it reached the first unrecorded index seals nothing: a create is a request and
      the write recording it is another, so a child an earlier attempt made and never recorded would not be on the
      register, and there the ref stays held on the count.
-  3b. **A branch a supersession left unrecorded is taken on here.** The transaction settles the held plan PR and
-     records the branch that PR carried in two writes — the second is the retirement, and retiring ahead of a
+  3b. **A branch a supersession left unrecorded is taken on here.** The transaction settles the held pull request
+     and records the branch that PR carried in two writes — the second is the retirement, and retiring ahead of a
      supersession that might not land would let the children loose beside a change still carrying their work. A
-     close landing in that window leaves a cycle whose candidate is preserved on the ref, whose plan PR is closed,
+     close landing in that window leaves a cycle whose candidate is preserved on the ref, whose held PR is closed,
      and whose branch nothing on the record names; settling around it would retire the owner over a branch the
      remote keeps for good. So a cancellation whose kept boundary is `superseding` resolves that branch and records
      it as owed — but off the **announcement's own receipt**, not off the phase. A park at the supersession is
@@ -795,12 +796,12 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      stepping over the announcement it already made, so a second failed attempt stands at `splitting` with the
      receipt still set and the phase no longer says what was reached. Not before that receipt, since the snapshot
      is created *and proved* ahead of the first child and the branch stops being the only copy there. Only where
-     the record names no branch already, in any state. And only once the plan PR of step 2 is actually
+     the record names no branch already, in any state. And only once the held PR of step 2 is actually
      **settled** — the boundary is written before the supersession is attempted, so it says the attempt was reached
      and nothing about whether it landed, and inferring the branch while that pull request is still open would
      delete, out from under a change a human can still see, the branch that change is built on. Nothing is lost by
      waiting: the pull request is re-asked on every visit, and the visit that closes it takes the branch on.
-  3c. **The held plan pull request is asked once more, immediately before the terminal.** Step 2 settled it at the
+  3c. **The held pull request is asked once more, immediately before the terminal.** Step 2 settled it at the
      top of the pass; what stands between that ask and the write below is a branch delete, a ref delete, and a
      fresh read of every recorded consumer — long enough for a human to reopen the change inside them, which leaves
      the record saying `reconciled` and the remote saying open. `rejected` takes the owner off both swept labels,
@@ -811,12 +812,13 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      nothing else is owed, since that is the only visit whose terminal is actually due — an owner still holding a
      branch the remote refuses is one the sweep is bringing back anyway, and the ask at the top of that pass is the
      same ask.
-  4. **`rejected` last, and only once nothing is owed** — branch, ref, and *every* unreconciled plan-PR entry on
+  4. **`rejected` last, and only once nothing is owed** — branch, ref, and *every* unreconciled `plan_pr` entry on
      the ledger, which is a wider reading than what the pass acts on: acting takes the hold's own record, since
      releasing one means knowing which pull request this cycle marked, while being owed takes the ledger, because
      an entry left under a number a later write cleared is still an obligation and a `rejected` owner is one
      nothing revisits. It is what a restart counts too, so retiring over one would refuse the fresh cycle that
-     terminal is meant to authorize. A recorded plan-PR number with no preserved description beside it is owed as
+     terminal is meant to authorize. A recorded `late_plan_pr_number` with no preserved description beside it is
+     owed as
      well, and is the one entry no pass can settle: the description that hold displaced is the only copy there
      was, so nothing may put it back or close over it, and the terminal is held until a human repairs the record.
      An opaque resource ledger blocks outright beside all of them.
@@ -1420,10 +1422,11 @@ publish on a reading the branch has already overtaken.
 
 The entry is what a call taken past publication has and one taken before it does not, and all three of its facts are
 frozen before any effect because a later tick could re-derive none of them: the **stage** the gate is taking the issue
-out of (gone the moment `workflow:decomposing` replaces it), the **pull request** the work already has (which is not
-the `late_plan_pr_number` a hold is placed on), and the **head** that pull request is standing on (which the next push
-to the branch moves). They are written as `late_post_publication`, `late_source_stage`, `late_published_pr_number`,
-and `late_published_sha` beside the frozen pair, so a record on the pinned comment says which side of publication it
+out of (gone the moment `workflow:decomposing` replaces it), the **pull request** the work already has (which is what
+the cycle-marked hold then goes on, recorded under `late_plan_pr_number` beside its own head and the description it
+displaced), and the **head** that pull request is standing on (which the next push to the branch moves). They are
+written as `late_post_publication`, `late_source_stage`, `late_published_pr_number`, and `late_published_sha` beside
+the frozen pair, so a record on the pinned comment says which side of publication it
 was entered on and an analysis groups on the field rather than on its absence
 ([`labels-and-state.md`](labels-and-state.md#late-generation-state)). The stage is checked against the five that
 publish onto a pull request the remote already carries rather than against "has an edge to `workflow:decomposing`":

@@ -27,6 +27,7 @@ from tests.workflow.stages.decomposition.late_published_support import (
 )
 from tests.workflow.stages.decomposition.late_run_support import WorktreeSeed
 from tests.workflow.stages.decomposition.late_settlement_support import (
+    PARK_HOLD_FAILED,
     PARK_PR_UNRECONCILED,
     SINGLE_RUN,
     GuardedLateCase,
@@ -54,6 +55,26 @@ LABEL_WRITE_REJECTED = "label write rejected"
 def _CRASHES(*_called, **_options):
     """The label write a settled verdict dies on, past its own push."""
     raise RuntimeError(LABEL_WRITE_REJECTED)
+
+
+class _RefusingMidRun:
+    """A finished run that leaves the publication refusing one lazy read.
+
+    Installed from inside the spawn rather than from the seed, because the
+    hold this tick takes reads the same pull request before the agent starts:
+    a fixture refusing from the first request would stop the tick there and
+    never reach the settlement at all.
+    """
+
+    def __init__(self, github, failing: str) -> None:
+        self._github = github
+        self._failing = failing
+
+    def __call__(self, *_called, **_options):
+        self._github.add_pr(LazyPullRequest(
+            self._github.get_pr(PUBLISHED_PR_NUMBER), failing=self._failing,
+        ))
+        return SINGLE_RUN
 
 ACCEPTED_NOTICE = "one coherent change"
 
@@ -304,26 +325,26 @@ class PublishedVerdictRefusalTest(
 
     def test_a_state_nothing_could_read_is_refused(self) -> None:
         # A fetched pull request asks GitHub nothing, so the request that
-        # fails is the attribute read behind the lookup. Left to raise, the
-        # settlement stops with the branch still carrying the accepted
-        # candidate and nothing on the thread saying why.
+        # fails is an attribute read behind the lookup -- and the settlement
+        # meets it taking this cycle's hold back off the same pull request,
+        # one step ahead of the proof. Left to raise, the tick would end with
+        # the branch still carrying the accepted candidate and nothing on the
+        # thread saying why.
         self._seed_published()
-        self._refuses_one_read("state")
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._decide(_RefusingMidRun(self.github, "state"))
 
-        self._assert_unpublished(outcome)
+        self._assert_unreleased(outcome)
 
     def test_a_head_nothing_could_read_is_refused(self) -> None:
-        # The other lazy read, and the one this verdict rests on: the head is
-        # what says the publication is still the one the reading was taken
-        # over.
+        # The other lazy read, refused for the same reason: neither the
+        # description this generation displaced nor the candidate it accepted
+        # may be acted on through a pull request nobody could read.
         self._seed_published()
-        self._refuses_one_read("head")
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._decide(_RefusingMidRun(self.github, "head"))
 
-        self._assert_unpublished(outcome)
+        self._assert_unreleased(outcome)
 
     def test_a_moved_publication_is_refused(self) -> None:
         # Something pushed to it during the adjudication, so what the verdict
@@ -342,11 +363,13 @@ class PublishedVerdictRefusalTest(
 
         self.assertIsNone(self._pinned().get(KEYS.approved_lease))
 
-    def _refuses_one_read(self, failing: str) -> None:
-        """Leave the published pull request refusing one attribute read."""
-        self.github.add_pr(LazyPullRequest(
-            self.github.get_pr(PUBLISHED_PR_NUMBER), failing=failing,
-        ))
+    def _assert_unreleased(self, outcome) -> None:
+        """Nothing handed on, and the hold left for the next tick to retry."""
+        self.assertNotEqual(outcome.disposition, _LateDisposition.SETTLED)
+        self.assertEqual(self._label(), LABEL_DECOMPOSING)
+        pinned = self._pinned()
+        self.assertEqual(pinned.get(KEYS.park_reason), PARK_HOLD_FAILED)
+        self.assertEqual(pinned.get(KEYS.candidate_sha), CANDIDATE_SHA)
 
 
 class PublishedOwnPushTest(

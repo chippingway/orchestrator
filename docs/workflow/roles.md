@@ -354,7 +354,7 @@ branch has already overtaken.
   below the ceiling has had its question answered: the label goes back to `workflow:implementing` and the ordinary
   publication reconciles the exact commit already on the branch. Handing it to the initial decomposer instead would
   re-plan an implementation that is already written. It owes the pull requests the same two reconciliations an
-  accepted verdict does, and for the same reasons: the "do not merge" notice comes off the plan PR before anything
+  accepted verdict does, and for the same reasons: the "do not merge" notice comes off the held PR before anything
   else moves — a refusal parks under `decomposing` with the record untouched — and `pr_number` is moved onto the
   pull request the measured commit is on, or dropped where the recorded one is settled, since a merged plan PR
   carried across ends the issue as `done` on a design. The record is kept across that handoff and retired by the gate
@@ -436,7 +436,7 @@ asks the human instead of paying for the same forbidden split again.
 A completed run is recorded whole so a crashed tick does not pay for a second one — a second run is not free, and it
 is free to decide differently. What "whole" means is per verdict: a `single` needs nothing beside itself, a `question`
 carries its category and the sentence it asked, and a `split` carries the ordered child manifest that *is* its
-decision. Whether it fits is measured on the whole comment the write would produce — the preserved plan-PR body and
+decision. Whether it fits is measured on the whole comment the write would produce — the preserved held-PR body and
 every other stage's keys included — because a result small on its own can still be the one that pushes the comment
 past what GitHub accepts, and learning that from the failed write means the agent has already been paid for. An
 outcome past that budget is refused entire rather than shortened, and the issue parks for a human; an incomplete one
@@ -456,23 +456,40 @@ shutdown sweep killed can have written before it died.
 
 None of it starts on a generation that cannot be acted on. The prompt names both frozen commits and tells the agent to
 diff between them, the hold marks a pull request in the generation's name, and the verdict is reported under its
-identities — so the identities and both SHAs are proved before the plan PR is touched or an agent is started. That
+identities — so the identities and both SHAs are proved before a pull request is touched or an agent is started. That
 includes the generation naming THIS issue, which a positive `late_current_issue` on its own does not say. A candidate
 whose base was never recorded would otherwise produce a `git diff` against nothing and a record two sinks refuse
 afterwards, with the run already paid for; one carrying somebody else's number would show the agent a prompt naming two
 issues and file the verdict against the one it names. Either parks instead, saying which field is wrong.
 
-Before any of that runs, a reusable open plan PR is put under a cycle-marked hold (`late_hold.py`). *Plan* is
-checked, not assumed: `pr_number` names whichever pull request the issue currently records, and that is an
-implementation as often as a plan, so the hold reads the discussion provenance through the implementing stage's own
-`_recorded_pr_is_the_plan` — about the one snapshot it read, since past the handoff a plan is told from an
-implementation by the commit its head is on and two reads would leave a window for a human push. That snapshot is read
-whole where the fetch is guarded, because a PyGithub pull request is lazy and the request that can fail is the first
-attribute access rather than the fetch itself; anything unreadable parks rather than escaping. An implementation PR is
-left alone — rewriting an implementation PR's description would replace a human's account of a change under review with
-a notice about a different one. A provenance that could not be established is not the same answer and fails closed. Past
-that gate, the original body is written to pinned state BEFORE the pull request is edited, so a crash can lose the edit
-— which the next tick re-applies, since every branch is idempotent — but never the only copy of the description.
+Before any of that runs, the reusable open pull request the candidate stands on is put under a cycle-marked hold
+(`late_hold.py`). Which one that is, the owner decides from the record and in one order. A hold this generation
+already took names its own, and outranks the rest: the preserved body beside that identity is the only copy of a
+description there is, so a tick that went looking for a target instead could take a second hold and overwrite it —
+which is exactly what an issue re-pointed at another change would otherwise arrange. It outranks them only up to a
+record that has **moved**, though. A generation re-measured past its own push is adjudicating the change on the
+published pull request, and a "do not merge" left standing on the plan one marks nothing while the change a human
+could merge carries no notice at all — so a hold whose publication entry names a different pull request is settled
+first: the old one released, the slot freed, the new one taken, never both at once, and a release that could not be
+made on a reusable pull request parks instead of spawning. Failing that, a generation carrying a publication entry
+names the implementation pull request the work is already on: the gate proved it open and froze it there, so nothing
+is looked up and no provenance is derived. Failing both, there is only `pr_number` — whichever pull request the issue
+currently records, which is an implementation as often as a plan — so the hold reads the discussion provenance through
+the implementing stage's own `_recorded_pr_is_the_plan`, about the one snapshot it read, since past the handoff a plan
+is told from an implementation by the commit its head is on and two reads would leave a window for a human push. That
+snapshot is read whole where the fetch is guarded, because a PyGithub pull request is lazy and the request that can
+fail is the first attribute access rather than the fetch itself; anything unreadable parks rather than escaping. An
+implementation PR that no entry says the candidate was measured against is left alone — rewriting its description
+would replace a human's account of a change under review with a notice about a different one. A provenance that could
+not be established is not the same answer and fails closed. Past that gate, the identity, the head the pull request is
+standing on, and the original body are written to pinned state in one write BEFORE the pull request is edited, so a
+crash can lose the edit — which the next tick re-applies, since every branch is idempotent — but never the only copy
+of the description. Two of three is not that record: a head no reading could name refuses the hold while nothing has
+been touched, because the write drops an empty one and a notice already on somebody's change would be left with
+nothing on the issue saying which change it was written over. The head is a reading rather than a claim: it says which
+change wore the notice, so a pull request somebody pushes to while the adjudication runs is reported and left wearing
+the same notice against the same recorded reading, and the `late_published_sha` a settlement pins its push to is never
+restamped from it.
 What the retry re-applies over is decided by the WHOLE body, not by the hidden marker inside it: exactly two bodies
 are this issue's to replace — the hold it wrote, **verbatim**, and the description recorded beside the identity, which
 is what a crash between the persist and the edit leaves and what the first application starts from. Anything else is a
@@ -482,16 +499,22 @@ back over their words a step later. That comparison is only affordable because t
 reconstructible, which is why the marker is scoped to the **cycle** and the notice quotes nothing that moves inside
 one — the generation counter advances on every reconciliation that lands, so a body keyed to it would leave every
 re-measured candidate wearing a notice its own record no longer recognized, and the measurement belongs on the issue
-thread, where each reading is announced anyway. Being reconstructible is a property of a *spelling*, and a hold
-outlives the binary that wrote it, so the spelling before this one — marked by generation as well as cycle, and
-quoting the measurement — is kept as something to **recognize** and never to write: a body found in it is ours, and
-the same edit that would have applied a fresh hold rewrites it in the current spelling, so every later comparison has
-one answer to make. A hold a binary cannot reconstruct is a "do not merge" notice nothing can ever take back off, on
-a pull request nothing can start an agent under. Leaving it alone is
-not the same as being *held*, though, and the answer says so: an open plan PR whose notice a human removed is a change
-they can merge with nothing on it saying an adjudication is running, so the reconciliation reports it **displaced** and
-no late decomposer is started under it. An answer already recorded may still be settled — settling releases a hold
-that is already gone, and only a NEW run would leave a human free to merge under one. A write
+thread, where each reading is announced anyway. What the notice *says* is decided by the side of publication and by
+nothing else: a pull request nothing has pushed to is being adjudicated before anything is published, while the one
+the work is already **on** was published long before the hold — so telling its author their change is held "before
+anything is published" would describe a change that is not theirs, and what that notice names instead is the push the
+adjudication stands in front of. Being reconstructible is a property of a *spelling*, and a hold outlives the binary
+that wrote it, so the spelling before this one — marked by generation as well as cycle, and quoting the measurement —
+is kept as something to **recognize** and never to write. All three are recognized and only ever one is written: a
+body found in the older spelling is ours, and so is one found in the side of publication the record has since crossed,
+which a developer resumed on guidance and re-measured past their own push is exactly how a cycle reaches. The same
+edit that would have applied a fresh hold rewrites either in the current spelling, so every later comparison has one
+answer to make. A hold a binary cannot reconstruct is a "do not merge" notice nothing can ever take back off, on a
+pull request nothing can start an agent under. Leaving it alone is
+not the same as being *held*, though, and the answer says so: an open pull request whose notice a human removed is a
+change they can merge with nothing on it saying an adjudication is running, so the reconciliation reports it
+**displaced** and no late decomposer is started under it. An answer already recorded may still be settled — settling
+releases a hold that is already gone, and only a NEW run would leave a human free to merge under one. A write
 that *refuses* is the same rule read the other way: with no preserved copy there is no hold to take, so nothing is
 edited and the issue parks. How long a description may be preserved is decided the same way, before it is replaced: the
 whole prospective comment is rendered with the run's record already in it — the spec this issue is locked to, an
@@ -509,14 +532,15 @@ role, locked spec, session, cycle, source commit, generation, and the whole of w
 
 Everything above is about the candidate. This is about the issue the candidate belongs to, and it exists because of
 how long a late run takes: the issue was fetched when the tick began, an agent then ran for minutes to hours, and
-everything a completed run leads to — publishing an accepted candidate, taking a snapshot, superseding a plan pull
-request, activating children, even announcing a question — lands on an issue somebody may have closed in between. So
+everything a completed run leads to — publishing an accepted candidate, taking a snapshot, superseding the pull
+request its work is on, activating children, even announcing a question — lands on an issue somebody may have closed
+in between. So
 after **every** completed late run, the adjudicator's and the developer revision's alike, the result is persisted and
 then the owner is read again, once, before any of that happens (`late_owner.py`).
 
 Every completion, not only the ones that decided something. A `question`, a timeout, an unusable reply, a candidate
 the adjudicator moved, an outcome too large to record, and a developer reconciliation that could not be made are all
-runs the issue paid for, and a closure during any of them strands the same generation and the same plan-PR hold as a
+runs the issue paid for, and a closure during any of them strands the same generation and the same hold as a
 closure during a `single` would. The one exception is a
 run the tick *declined* — an operator's `paused` label, a shutdown sweep — which is not a completion at all and must
 leave durable state exactly as the prior tick left it.
@@ -541,7 +565,7 @@ Three answers, and each is a different obligation.
 That marker is the load-bearing half, because nothing else would bring a tick back to the read. A revision that came
 back under the ceiling is not adjudicable and an issue parked for a human is not adjudicating, so a retry hanging off
 either would never run — which is why reconciling a pending check is the **first** thing a tick does, ahead of the
-size gate, the plan-PR hold, and any spawn. The retry costs no agent: the run has already been paid for and its
+size gate, the hold, and any spawn. The retry costs no agent: the run has already been paid for and its
 result is already recorded, so the recorded answer is what settles the candidate once the read succeeds.
 
 It is written **before** the read rather than derived from its failure, because a read that fails is not the only one
@@ -551,8 +575,8 @@ that carry the next tick past the point a retry could hang off.
 What the claim does *not* do is move the phase backwards, and neither does anything else above the transaction.
 A boundary before the split — `measuring`, `holding_plan_pr`, `adjudicating`, `owner_check` — is never written over
 `snapshotting`, `splitting`, or `superseding`, and the record refuses that move itself rather than each writer
-remembering to: a transaction re-entered after a crash comes back through the *whole* coordinator, so the plan-PR
-hold it reconciles before anything spawns, the spawn that names its own boundary, and the claim each completion
+remembering to: a transaction re-entered after a crash comes back through the *whole* coordinator, so the hold it
+reconciles before anything spawns, the spawn that names its own boundary, and the claim each completion
 writes would each erase it in turn. The window that matters most has nothing recorded at all — a child is created
 before the write that records it — so the phase is the only thing left that says a loop was in flight, and a
 cancellation observed there keeps exactly what it found. The guard reads a kept boundary back as the standing claim
@@ -606,9 +630,9 @@ has to go out between them, so a question is not posted to a thread somebody clo
 answering it.
 
 A **split** is handed on rather than acted on. Creating the children, taking the snapshot they are cut from, and
-superseding the plan pull request are one transaction; what the guard owes it is the guarantee it cannot check for
-itself, that the outcome was re-checked against an owner read taken after the agent finished. Nothing is created here.
-What that transaction then does is [the section below](#what-a-cleared-split-actually-does).
+superseding the pull request its work is on are one transaction; what the guard owes it is the guarantee it cannot
+check for itself, that the outcome was re-checked against an owner read taken after the agent finished. Nothing is
+created here. What that transaction then does is [the section below](#what-a-cleared-split-actually-does).
 
 A **single** is reconciled as an EXEMPTION for the measured commit (`late_settlement.py`). The
 candidate is already committed in the developer's own worktree, and the ordinary implementing publication is what
@@ -633,13 +657,14 @@ nobody gave.
 
 Two things the reconciliation deliberately does not do. It creates **no snapshot** — a snapshot exists so children
 can be cut from a candidate about to be superseded, and an accepted candidate supersedes nothing, so preserving a
-copy of it would record an obligation with nothing on the other end. And it does not rewrite the held plan PR: the
+copy of it would record an obligation with nothing on the other end. And it does not rewrite the held pull request:
+the
 description this generation replaced is restored over the hold text, and what happens to that pull request afterwards
 is the ordinary reconciliation's — the publication that follows reuses it and rewrites its body when the push lands
 on it, and leaves it alone when it does not. Only a body that IS this cycle's hold, verbatim, in either spelling
 this orchestrator can reconstruct, is restored — so a description a human rewrote, or edited a sentence of, marker
-and all, while the hold stood stays theirs, and a settled plan PR still wearing an older binary's hold is still put
-back. That settled case is the one release the retry above cannot have migrated first: a pull request nobody can
+and all, while the hold stood stays theirs, and a settled pull request still wearing an older binary's hold is still
+put back. That settled case is the one release the retry above cannot have migrated first: a pull request nobody can
 merge is left exactly as it is by the reconciliation, so what the release meets there is whichever spelling wrote it.
 
 What a failed release may *stop* is narrower than what a failed hold stops, and for the reason the hold exists: the
@@ -861,37 +886,38 @@ past the announcement costs nothing.
 
 The pull request this cycle's work is on then gets superseded through the new `supersede_pr` helper: one marked notice
 linking forward to the umbrella, every child, the snapshot ref, and the exact commit, and a close if it is still open.
-Which pull request that is depends on the side of publication the generation was entered on, and the two are never
-both there. A generation entered BEFORE the first push names the plan PR this cycle held, which gets its original
-description back first. One entered PAST it names the implementation pull request the candidate was measured on — and
-that one is the sharper of the two, because the tail behind this step deletes the branch and hands the work to
-children: left unsuperseded it is an open change carrying work nobody will finish, pointing at a branch that is gone.
-It is PROVED before it is closed, on the settlement's own reading and for the same reason — the entry the gate froze
-names it and the head it was standing on, and neither can be re-derived — so a pull request nothing could read, one a
-human merged or closed while the adjudication was open, and one somebody pushed to are each a park with the children
-durable, the pull request left where its human put it, and a retry that settles the same recorded verdict once the
-disagreement is reconciled. One already CLOSED over this adjudication's own receipt is none of those: the retirement
-behind this step is not the last, so a tick that closed the pull request and died before it comes back to a `closed`
-reading it cannot tell from a human's without the thread -- read as a settlement it would park for good with the
-children blocked behind a supersession already made. What the receipt answers is the STATE and only that: the head is
-proved on that path exactly as on the open one, because a close does not freeze the branch behind it — somebody
-pushing between the crash and the retry leaves a commit the snapshot does not hold, and waved through the retry would
-settle the split, activate the children, and reclaim that branch. A MERGED one stays a refusal whatever the thread
-says, since a human who reopened and landed the work decided the opposite of what the supersession claims; a reopened
-one reads `open`, so the same head proof runs and the close is made again with the receipt keeping the notice from
-repeating. Every one of those refusals parks under a notice naming the disagreement rather than the write-failure
-sentence, since a supersession this transaction already made is not one that could not be made.
-Idempotent through the **thread** rather than through a receipt, since the comment and the
-record of it cannot be made one operation. Both markers are scoped to the exact adjudication — the pull request
-outlives a cycle and the issue thread outlives everything, so an unscoped one would read an earlier episode's receipt
-as this one's — and both are honored only on a comment **this orchestrator authored**, since an HTML comment is
-invisible in the rendered thread and anybody could otherwise post the marker to suppress the sentence it gates. A
-merged or closed plan PR is told and left alone; one that could not be read, or a release that failed on a still-open
-plan PR, parks — and nothing is activated while a pull request carrying the superseded work is still open. That last
-part is why the supersession runs on **every** pass, including one whose ledger already reads `reconciled`: that entry
-records what an earlier pass did, and a human who reopens the pull request between the write and the resume would
-otherwise have the resume skip straight past, report settled, and let the children loose beside a change still
-carrying the superseded work. Re-asking costs one fetch and one comment listing, and neither step repeats anything.
+Which pull request that is is decided by the side of publication the generation was entered on, and by the **entry**
+rather than by the hold beside it — both can name the same pull request, since a generation entered past the first
+push holds the one the work is already on. A generation entered BEFORE the first push has only the hold's record to go
+on, and that names the plan PR this cycle marked. One entered PAST it names the implementation pull request the
+candidate was measured on — and that one is the sharper of the two, because the tail behind this step deletes the
+branch and hands the work to children: left unsuperseded it is an open change carrying work nobody will finish,
+pointing at a branch that is gone. It is PROVED before it is closed, on the settlement's own reading and for the same
+reason — the entry the gate froze names it and the head it was standing on, and neither can be re-derived — so a pull
+request nothing could read, one a human merged or closed while the adjudication was open, and one somebody pushed to
+are each a park with the children durable, the pull request left where its human put it, and a retry that settles the
+same recorded verdict once the disagreement is reconciled. One already CLOSED over this adjudication's own receipt is
+none of those: the retirement behind this step is not the last, so a tick that closed the pull request and died before
+it comes back to a `closed` reading it cannot tell from a human's without the thread -- read as a settlement it would
+park for good with the children blocked behind a supersession already made. What the receipt answers is the STATE and
+only that: the head is proved on that path exactly as on the open one, because a close does not freeze the branch
+behind it — somebody pushing between the crash and the retry leaves a commit the snapshot does not hold, and waved
+through the retry would settle the split, activate the children, and reclaim that branch. A MERGED one stays a refusal
+whatever the thread says, since a human who reopened and landed the work decided the opposite of what the supersession
+claims; a reopened one reads `open`, so the same head proof runs and the close is made again with the receipt keeping
+the notice from repeating. Every one of those refusals parks under a notice naming the disagreement rather than the
+write-failure sentence, since a supersession this transaction already made is not one that could not be made.
+Idempotent through the **thread** rather than through a receipt, since the comment and the record of it cannot be made
+one operation. Both markers are scoped to the exact adjudication — the pull request outlives a cycle and the issue
+thread outlives everything, so an unscoped one would read an earlier episode's receipt as this one's — and both are
+honored only on a comment **this orchestrator authored**, since an HTML comment is invisible in the rendered thread
+and anybody could otherwise post the marker to suppress the sentence it gates. A merged or closed pull request is told
+and left alone; one that could not be read, or a release that failed on a still-open one, parks — and nothing is
+activated while a pull request carrying the superseded work is still open. That last part is why the supersession runs
+on **every** pass, including one whose ledger already reads `reconciled`: that entry records what an earlier pass did,
+and a human who reopens the pull request between the write and the resume would otherwise have the resume skip
+straight past, report settled, and let the children loose beside a change still carrying the superseded work.
+Re-asking costs one fetch and one comment listing, and neither step repeats anything.
 
 **Then the label, the retirement, and the activation, in that order.** The generation is retired in the same write
 that hands the issue to `workflow:umbrella`: identity, both commits, and both ledgers kept, the measurement dropped,
@@ -1162,9 +1188,10 @@ sweep. The mark keeps the boundary as well as the moment, because `cancelling` i
 one it interrupted — and the interrupted one is what the retention rule falls back on when the record cannot prove
 for itself that the split loop finished.
 
-**Then the held plan pull request**, which is the one external thing a cancellation owns that the umbrella's terminal
-never sees: every path that reaches an umbrella superseded its plan PR on the way, so a cancelled cycle is the only
-shape where one is still open under a "do not merge" notice with its original description preserved on the issue.
+**Then the held pull request**, which is the one external thing a cancellation owns that the umbrella's terminal
+never sees: every path that reaches an umbrella superseded the pull request its work was on along the way, so a
+cancelled cycle is the only shape where one is still open under a "do not merge" notice with its original description
+preserved on the issue.
 Nobody is going to adjudicate it now, so the hold comes off, one marked notice says why, and the pull request is
 closed — in that order, so a change that ends up closed is not also left wearing a hold nothing will ever take back.
 A release that failed on a still-open pull request stops the close, since the preserved copy is the only record of
@@ -1194,17 +1221,18 @@ A create is a request and the write recording it is another, so a pass that died
 with nothing naming it; the adoption lookup is what answers that, and until this walk has asked it the register
 cannot be called complete. There the ref stays held on the count, exactly as before.
 
-**One branch is this ending's own to take on**, and only one. The transaction settles the held plan PR and records
+**One branch is this ending's own to take on**, and only one. The transaction settles the held pull request and
+records
 the branch that PR carried in two writes — the second is the retirement, and retiring ahead of a supersession that
 might not land would let the children loose beside a change still carrying their work. A close in that window leaves
-a cycle whose candidate is preserved, whose plan PR is closed, and whose branch nothing on the record names, so
+a cycle whose candidate is preserved, whose held PR is closed, and whose branch nothing on the record names, so
 settling around it would retire the owner over a branch the remote keeps for good. A cancellation whose kept
 cycle therefore resolves that branch and records it as owed — off the announcement's own *receipt* rather than off
 the phase, because a park at the supersession is resumed from the top of the transaction, which rewrites the
 earlier boundaries while stepping over the announcement it already made; a second failed attempt stands at
 `splitting` with the receipt still set. Not before that receipt, since the snapshot is created *and proved* ahead
 of the first child and the branch stops being the only copy there. Only where the record names no branch already,
-in any state. And only once the plan PR above is actually *settled* — that boundary is written *before* the
+in any state. And only once the held PR above is actually *settled* — that boundary is written *before* the
 supersession is attempted, so it says the attempt was reached and nothing about whether it landed, and inferring
 the branch while the pull request is still open would delete, out from under a change a human can still see, the
 branch that change is built on. Nothing is lost by waiting: the pull request is re-asked every visit, and the one
@@ -1248,7 +1276,7 @@ label mid-cleanup, and an ending whose terminal write GitHub refused. A cycle wh
 not handed it back, which would undo the one authorization a restart has; one carrying no such proof is owed the
 write and gets it once its obligations settle.
 
-**The terminal comes last, and only once nothing is owed** — branch, ref, and *every* unreconciled plan-PR entry on
+**The terminal comes last, and only once nothing is owed** — branch, ref, and *every* unreconciled `plan_pr` entry on
 the ledger, a recorded number with no preserved description beside it included. That last one is the entry no pass can
 settle: the description the hold displaced is the only copy there was, so nothing may put it back or close over it,
 and the terminal is held until a human repairs the record rather than closing a pull request this cycle cannot show it
@@ -1290,14 +1318,14 @@ before this record existed is brought into it, since any visit that finds the is
 the proof down.
 
 Everything else stays inert, and inert means *undispatched*. A cancellation still owing the remote a branch, a ref,
-a child receipt, or a plan pull request belongs to the cleanup above until it does not, unlabeled or otherwise; a
+a child receipt, or a held pull request belongs to the cleanup above until it does not, unlabeled or otherwise; a
 closed issue is the sweep's whatever its record says; and an unlabeled issue that already carries a pinned comment
 at all — a rejection from anywhere else in the workflow included — is left where it is rather than greeted a second
 time, since a second pinned comment is invisible from the moment it is written while the finished workflow in the
 first goes on deciding.
 
 "Owes nothing" is the ending's own outstanding list *and* the domain's settled-ledger reading, because neither
-contains the other. The plan pull request a generation names and cannot show it held is carried on no ledger and
+contains the other. The pull request a generation names and cannot show it held is carried on no ledger and
 reported only by the ending — restarting over one would delete the last thing on the issue pointing at a change this
 orchestrator left marked and open — while a child receipt and an untypeable consumer ledger are counted only by the
 domain, and a restart that reached its retirement over one of those would be refused there with its marker already
@@ -1371,7 +1399,7 @@ against, and nothing on the thread counts as an answer to it. Every tick after t
 changes what the candidate is supposed to BE, and an answer that arrived in the same window was written about the scope
 as it stood before — applying it would adjudicate a reply against requirements it never saw. So the tick that first
 sees drift parks (`late_content_drift`) and consumes nothing: the frozen commit, the late session, the recorded
-generation, and any plan-PR hold are all left exactly as they were, because none of them is wrong, only unadjudicable
+generation, and any hold are all left exactly as they were, because none of them is wrong, only unadjudicable
 until a human says what the edit meant. A comment rewritten in place is drift for the same reason a title edit is —
 it moves no comment id, so there is no new comment to read the change out of.
 

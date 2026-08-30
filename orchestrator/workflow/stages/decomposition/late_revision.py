@@ -575,7 +575,7 @@ def _guarded_revision(
 
     Asked of a reconciliation that PARKED as well as one that landed, because
     the run was paid for either way and a closure during it strands the same
-    generation and the same plan-PR hold. What the answers change differs:
+    generation and the same hold. What the answers change differs:
     a park keeps its own reason and records the read as still owed, since
     replacing what a human is being asked about with a read failure they
     cannot answer would cost them the question.

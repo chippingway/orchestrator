@@ -126,7 +126,7 @@ def retire_restart(generation: LateGeneration) -> LateGeneration:
     Only the identities that keep the new cycle joinable to the old one
     survive -- the cycle it is, the issue and root it belongs to, and the
     cycle it succeeds. The generation counter, the frozen SHAs, the
-    measurement, the plan-PR hold, both ledgers, and the cancellation are
+    measurement, the hold, both ledgers, and the cancellation are
     gone, and the lineage depth is back to the root's 0 rather than unknown,
     because a restarted issue is a fresh attempt with room to split -- not a
     cancelled one wearing a new number, and not one whose depth nothing could

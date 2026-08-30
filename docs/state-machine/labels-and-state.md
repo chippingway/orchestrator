@@ -383,7 +383,7 @@ committed on, and the immutable snapshot ref its children were cut from — and 
 nothing else would ever bring a tick back to. So the dispatcher reads *closed* first and routes both to the cleanup
 sweep ([`delivery-stages.md`](delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own)) rather than to
 `_handle_decomposing` or `_handle_umbrella`, which would spawn the decomposer or activate children on an issue whose
-close was a decision to stop. The pass ends the cycle: it marks the cancellation, closes any plan pull request that
+close was a decision to stop. The pass ends the cycle: it marks the cancellation, closes any pull request that
 cycle was holding, re-reads every recorded snapshot consumer, settles what can be settled, and moves the issue to
 `rejected` once nothing is owed. Being routed there at all is what says a close was *observed*, so an issue the pass
 finds open again — reopened between the poll and the worker's refetch — is marked cancelled and stopped there, with
@@ -397,7 +397,7 @@ the repository reclaiming refs for as long as its decomposer stayed busy.
 
 - Closed `workflow:decomposing` / `workflow:umbrella` / `workflow:ready` / `workflow:blocked` — a snapshot owner a
   human closed mid-cycle, or one whose own decomposition outcome landed after that close. Its generation
-  ledger may still hold a superseded branch, an immutable snapshot ref, and a plan pull request under a hold, and no
+  ledger may still hold a superseded branch, an immutable snapshot ref, and a pull request under a hold, and no
   other pass revisits a closed issue. It is the one sweep entry that resumes no workflow: what it ends is the late
   cycle, and it reaches a terminal only once that cycle owes the remote nothing (see above). An issue on any of the
   four with no late cycle at all costs the pass its one pinned read and nothing else — it is not written to, not
@@ -544,7 +544,7 @@ machine fall into a few groups:
   the answer possible at all — the generation is retired ahead of the effects it licenses, so once the approval lands
   nothing else on the issue still names the commit — and the read is silent, so an operator who leaves the checkout
   where it is is not told the same thing once a tick. `late_evidence_missing` is the adjudication's counterpart, taken
-  under `workflow:decomposing` before the plan-PR hold or any spawn: the checkout is there and one of the two recorded
+  under `workflow:decomposing` before the hold or any spawn: the checkout is there and one of the two recorded
   commits is not, so the agent would be shown a `git diff <base>...<candidate>` that cannot resolve and its verdict
   would be an answer about nothing. It asks for the worktree at the recorded commit, never another run.
   `late_owner_unreadable` is the one of them that recovers on its own: it is a GitHub read that failed after the
@@ -697,7 +697,7 @@ machine fall into a few groups:
   `orchestrator_comment_ids`. This is a read-only verdict — no budget breaker or control behavior gates on it.
 - **Late generation.** The additive `late_*` group an oversized committed candidate is adjudicated under — cycle and
   generation identity, root / current issue and lineage depth, the declared scope, the frozen candidate and base SHAs,
-  the measurement, the reconciliation phase, the local content fingerprints, the held plan PR, how the gate was
+  the measurement, the reconciliation phase, the local content fingerprints, the held pull request, how the gate was
   entered and what it was entered from, the external-resource ledgers, the owner read a finished run still owes, the
   cancellation marker, and the pending-restart marker. The one commit an accepted candidate publishes under sits
   beside that group rather than in it, since clearing the generation is exactly what it has to survive. Every key,
@@ -788,13 +788,24 @@ rather than preserving.
   to it, so a park that fires while somebody is mid-sentence is not resolved on the next tick by the sentence they had
   already sent. What each comparison earns is in
   [`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer).
-- **Held plan PR.** `late_plan_pr_number` and `late_plan_pr_body` — the pull request whose body a cycle-marked hold
-  replaced, and the body it replaced, kept so the original can be restored. What restores it is the release the
-  `single` reconciliation runs: the identity says which pull request this cycle marked, and the body has to BE that
-  hold verbatim before it is written over, so a description a human rewrote — or edited a sentence of, leaving the
-  hidden marker in place — is left as theirs. The hold text is keyed to the cycle and quotes nothing that moves
-  inside one precisely so that comparison is possible: the generation counter advances on every reconciliation that
-  lands, and a body keyed to it could never be reconstructed after a re-measurement.
+- **Held PR.** `late_plan_pr_number`, `late_plan_pr_head`, and `late_plan_pr_body` — the pull request whose body a
+  cycle-marked hold replaced, the head it was standing on when that happened, and the body it replaced, kept so the
+  original can be restored. The `plan_pr` spelling is what live pinned comments carry and stays for that reason; what
+  the group NAMES is whichever pull request the cycle holds — the plan one a design discussion left standing where the
+  generation was entered before publication, and the implementation one the work is already on where it was entered
+  past it. All three go down in one write before the pull request is edited, so the only thing a crash can lose is the
+  edit — and a head this orchestrator cannot name refuses the hold outright rather than being recorded absent, since
+  the write drops an empty one and what it would leave is an identity and a body with no head between them, on a
+  change already wearing the notice. What restores the body is the release the `single` reconciliation runs: the
+  identity says which pull request this cycle marked, and the body has to BE that hold verbatim before it is written
+  over, so a description a human rewrote — or edited a sentence of, leaving the hidden marker in place — is left as
+  theirs. The hold text is keyed to the cycle and quotes nothing that moves inside one precisely so that comparison is
+  possible: the generation counter advances on every reconciliation that lands, and a body keyed to it could never be
+  reconstructed after a re-measurement. `late_plan_pr_head` is a reading rather than a claim, and neither the retry
+  nor the release is decided by it: it says which change wore the notice, so a pull request somebody pushed to under
+  the hold is reported and left holding the same notice against the same recorded reading. It is **not**
+  `late_published_sha` below — that one is the head the gate was entered on and what a settlement pins its push to,
+  and the hold never writes it.
 - **Publication provenance.** `late_post_publication`, `late_source_stage`, `late_published_pr_number`, and
   `late_published_sha` say how the gate was entered and what it was entered from — one durable write puts all four
   down together, and a comment carrying only some of them is damage read from either end: the marker gone would say
@@ -829,15 +840,16 @@ rather than preserving.
   `in_review` handoff, a conflict round, another reviewer look — and returning every one of them to `implementing`
   instead would walk the issue back to a point it had already passed.
   The push itself is not left to that stage: the settlement makes it, because the settlement is the last tick holding
-  the head the verdict was measured over. `late_published_pr_number` is the pull request the work already has, which is
-  **not** `late_plan_pr_number` beside it: that one is the plan PR a cycle-marked hold is placed on, and one record
-  can be standing on both. `late_published_sha` is the head that pull request was left on, frozen at entry like every
-  other late SHA because the branch moves under a reconciliation that re-read it. It is the late group's own copy
-  rather than a reading of `implementing_published_sha` above: that key is the publishing stage's live record and is
-  overwritten by the next push, while this one is evidence one generation is reconciled against and is dropped with
-  the generation. The flag alone proves none of it — `LateGeneration.has_publication_context` holds only while the
-  stage, the pull request, and the head are all readable beside it, so a group a hand edit half-damaged reads as
-  context nothing may act on rather than as a publication with no pull request to name, and
+  the head the verdict was measured over. `late_published_pr_number` is the pull request the work already has, and
+  `late_plan_pr_number` beside it is whichever pull request this cycle's hold marked: the two name the same change on
+  a generation entered past publication, and different ones on a cycle that held a plan pull request and was then
+  re-measured on the far side of a push. `late_published_sha` is the head that pull request was left on, frozen at
+  entry like every other late SHA because the branch moves under a reconciliation that re-read it. It is the late
+  group's own copy rather than a reading of `implementing_published_sha` above: that key is the publishing stage's
+  live record and is overwritten by the next push, while this one is evidence one generation is reconciled against and
+  is dropped with the generation. The flag alone proves none of it — `LateGeneration.has_publication_context` holds
+  only while the stage, the pull request, and the head are all readable beside it, so a group a hand edit half-damaged
+  reads as context nothing may act on rather than as a publication with no pull request to name, and
   `LateGeneration.with_publication` refuses to record one that cannot name all three. A restart's fresh cycle keeps
   none of the group and needs none: what it puts the issue back into is `decomposing` or `implementing`, which is a
   pre-publication attempt again.
@@ -927,8 +939,8 @@ rather than preserving.
 - **Pending owner check.** `late_owner_check_pending` says a completed run's outcome has not yet been cleared by a
   fresh read of the issue it belongs to. It is written *before* that read is taken and dropped when one succeeds or
   the cycle is cancelled, and while it is set no later tick may treat the generation as settled, however small,
-  decided, or parked it looks: reconciling it is the FIRST thing a tick does, ahead of the size gate, the plan-PR
-  hold, and any spawn — and while it is set the generation counts as live for the kill switch and the hand-relabel
+  decided, or parked it looks: reconciling it is the FIRST thing a tick does, ahead of the size gate, the hold, and
+  any spawn — and while it is set the generation counts as live for the kill switch and the hand-relabel
   guard too, since an undersized revision is exactly the state a size-keyed gate would route out of this mode with
   the read still owed.
   It is durable because nothing else would bring the workflow back to that read — a revision that came back under the
@@ -1146,7 +1158,7 @@ rather than preserving.
   every step the remote keeps: each child it creates, and the announcement, supersession, and activation behind
   them. A child is the one thing created here that nothing takes back, and a close a poll saw while that worker
   held the issue reaches no other pass on the tick it happened. The closed-owner cleanup sweep is the other, and it
-  is what catches a close at any of the boundaries no agent was running at — a measurement, a plan-PR hold, and
+  is what catches a close at any of the boundaries no agent was running at — a measurement, a hold, and
   everything past the transaction — as well as one the scheduler could admit no worker for, which the dispatcher
   holds and this sweep takes on a later tick. Either writes the mark durably *before* any external effect and
   emits `late_cancellation` from that write, so the record is one per cycle rather than one per visit. What the
@@ -1290,7 +1302,7 @@ They are written by [`late_session.py`](../../orchestrator/workflow/stages/decom
 deliberately NOT in `LATE_STATE_KEYS`: clearing late mode drops exactly the domain's group, and a locked backend
 outlives that reset the same way `decomposer_agent` outlives a drift-driven session reset.
 
-How much of a plan PR's description may be preserved is decided by what the run still has to record beside it. The
+How much of a held PR's description may be preserved is decided by what the run still has to record beside it. The
 write that starts the run has no safe failure — parking is another write of the same oversized comment — so before a
 description is replaced, the whole prospective comment is rendered with the run's record already in it: the spec this
 issue is locked to (an operator's command line, bounded by nothing here), the identities, and the bounded session id
@@ -1329,7 +1341,8 @@ thread, and nothing acts on it. A recorded manifest is rewritten from the three 
 of, so nothing an agent put beside them travels into the comment humans read.
 
 Half of an outcome is not one, in either direction. On the way in, what is measured is the whole comment the write would
-produce — the preserved plan-PR body and every other stage's keys included, since a result small on its own can still be
+produce — the preserved held-PR body and every other stage's keys included, since a result small on its own can still
+be
 the one that pushes the comment past what GitHub accepts — and an outcome past that budget (`MAX_RECORDED_BODY`,
 GitHub's limit less headroom for the keys other stages still write) is refused *whole* rather than shortened: a
 truncated question asks something nobody said and a truncated manifest names children nobody proposed. The issue parks

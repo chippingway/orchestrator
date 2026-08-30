@@ -12,7 +12,7 @@ candidate is held rather than published.
 Held, not discarded. Nothing is pushed, no pull request is opened, and the
 commit stays exactly where the developer left it; what changes is the label,
 which hands the issue to the late coordinator under `workflow:decomposing`.
-That coordinator owns everything past this point -- the plan-PR hold, the
+That coordinator owns everything past this point -- the hold, the
 adjudication, and what a `single` or a `split` verdict earns -- and it
 reconciles the very record this gate froze.
 

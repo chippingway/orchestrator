@@ -6,15 +6,16 @@ Every other guard in this mode is about the candidate. This one is about the
 issue the candidate belongs to, and it exists because of how long a late run
 takes: the issue was fetched when the tick began, the adjudicator or the
 developer then ran for minutes to hours, and everything a completed run leads
-to -- publishing an accepted candidate, taking a snapshot, superseding a plan
-pull request, activating children -- is an effect on an issue somebody may
+to -- publishing an accepted candidate, taking a snapshot, superseding the
+pull request its work is on, activating children -- is an effect on an issue
+somebody may
 have closed in the meantime. The snapshot in hand cannot say so, so the owner
 is read again, once, after the result is durable and before any of it happens.
 
 EVERY completion, not only the ones that decided something. A question, a
 timeout, an unusable reply, and a developer reconciliation that could not be
 made are all runs the issue paid for, and a closure during any of them strands
-the same generation and the same plan-PR hold as a closure during a `single`
+the same generation and the same hold as a closure during a `single`
 would. So the read is taken on each of them, and what differs is only what the
 answer is allowed to change.
 
@@ -48,7 +49,7 @@ thing the human is being asked.
 The retry costs no agent. The run has already been paid for and its result is
 already recorded, so what failed is a single GitHub read: the pending check is
 reconciled at the very top of the next eligible tick, ahead of the size gate,
-the plan-PR hold, and any spawn, and the recorded result is what answers the
+the hold, and any spawn, and the recorded result is what answers the
 candidate afterwards.
 
 The claim is not made here, though, and that is the point of it. It rides the
@@ -156,7 +157,7 @@ def _reconcile_pending_owner_check(
     """Take again the owner read an earlier tick could not, if one is owed.
 
     The first thing a tick asks, ahead of the live-generation gate and the
-    plan-PR hold, because the marker it reads is exactly the state those two
+    hold, because the marker it reads is exactly the state those two
     would route past: a revised candidate that came back under the ceiling is
     not adjudicable and an issue parked for a human is not adjudicating, and
     on either of them a pending read would otherwise stand for good.

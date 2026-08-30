@@ -102,10 +102,10 @@ class _PublicationEntry:
     published, and the only three facts about it a reconciliation could not
     re-derive: the stage the gate is taking the issue out of, which the
     adjudication label replaces the moment it is applied; the pull request the
-    work already has, which is not the plan pull request a hold is placed on;
-    and the head that pull request was left standing on, which the next push
-    to the branch moves. All three are read once, before any effect, and
-    travel frozen for the same reason every other late field does.
+    work already has, which the hold beside it names only because this entry
+    named it first; and the head that pull request was left standing on, which
+    the next push to the branch moves. All three are read once, before any
+    effect, and travel frozen for the same reason every other late field does.
 
     Absent where the gate was entered before anything was published, which is
     what the whole implementing seam is, and refused with its reason where the

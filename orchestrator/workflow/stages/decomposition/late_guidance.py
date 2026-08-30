@@ -12,7 +12,7 @@ candidate is supposed to be, and an answer that arrived in the same window was
 written about the scope as it stood before -- applying it would adjudicate a
 reply against requirements it never saw. So the first tick that sees drift
 parks and consumes nothing: the frozen commit, the late session, the
-generation record, and any plan-PR hold are all left exactly as they were,
+generation record, and any hold it took are all left exactly as they were,
 because none of them is wrong, only unadjudicable until a human says what the
 edit meant.
 
@@ -97,9 +97,10 @@ _DRIFT_PARK = (
     "the requirements changed after this issue's oversized committed "
     "candidate was frozen, so its adjudication is on hold. Nothing was "
     "discarded -- the frozen commit, the late session, the recorded "
-    "generation, and any plan-PR hold all stand. Reply `/orchestrator "
-    "continue` if the committed work still answers the updated issue, or "
-    "with the change to make and the developer is resumed against it."
+    "generation, and any hold on its pull request all stand. Reply "
+    "`/orchestrator continue` if the committed work still answers the "
+    "updated issue, or with the change to make and the developer is resumed "
+    "against it."
 )
 
 _CERTIFIED_NOTICE = (
