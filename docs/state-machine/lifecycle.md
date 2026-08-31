@@ -198,9 +198,12 @@ than a second source of truth: where the two disagree, the handler pages are aut
      question / dirty park / silent-crash / in_review-route transient)
      stays parked silently to preserve HITL. If no unread feedback at
      all, publish any commit an earlier round stranded in the worktree
-     (the same clean-and-strictly-ahead probe the fix disposition uses;
+     (the same clean-and-strictly-ahead probe the fix disposition uses,
+     through the same size gate every push onto an open PR passes;
      a push that lands adjusts review_round per pending_fix_at), then
-     clear pending_fix_* and bounce to workflow:validating;
+     clear pending_fix_* and bounce to workflow:validating. A candidate
+     the gate HELD stops the bounce instead: the issue is already on
+     workflow:decomposing and this tick relabels nothing;
      otherwise honour IN_REVIEW_DEBOUNCE_SECONDS. Past the window,
      resume the dev with a `_build_pr_comment_followup` prompt and apply
      the validating fix-loop disposition. Watermarks advance ONLY to the
