@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The relabel to `in_review`, and the two writes that have to precede it.
+"""The relabel to `in_review`, and the watermark and write before it.
 
 Both docs outcomes -- a pushed commit and a confirmed no-change -- leave the
 approval, squash, and PR watermarks validating wrote untouched and advance to

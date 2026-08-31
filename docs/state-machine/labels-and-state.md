@@ -589,13 +589,15 @@ machine fall into a few groups:
   routed write ahead of that gate's relabel to `workflow:decomposing`: the pass is finished and only the `in_review`
   handoff is still owed, so the tick a settled verdict hands the label back to finishes from the receipt rather than
   reading a branch in sync with its remote as an issue no docs pass has run for. The gate writes it whichever way the
-  answer went, so it covers the other ticks that can leave a handoff owed — a push the gate ALLOWED, which landed,
-  whose process died over the documenting stage's own write or over the relabel behind it. Read back
-  only over a checkout standing ON the head it names — in sync is what a replacement host rebuilt at a moved pull
-  request reads as too. Dropped by every terminal docs success in the same write that records it, including a
-  republication that carries the held commit to the remote itself — held past that write to cover the relabel behind
-  it, the receipt outlives the handoff whenever the write that would drop it does not land, and a later `validating`
-  approval at the same head consumes it and skips the docs pass it just bought.
+  answer went, so it covers the other tick that can leave a handoff owed — a push the gate ALLOWED, which landed,
+  whose process died before that write could record the pass. Read back only over a checkout standing ON the head it
+  names — in sync is what a replacement host rebuilt at a moved pull request reads as too. Dropped by every terminal
+  docs success in the same write that records it, including a republication that carries the held commit to the
+  remote itself — held past that write to cover the relabel behind it, the receipt outlives the handoff whenever the
+  write that would drop it does not land, and a later `validating` approval at the same head consumes it and skips
+  the docs pass it just bought. So the relabel window keeps no receipt, and it does not need one: what it leaves is
+  the record a same-head approval leaves, and the next tick runs the pass rather than handing off on evidence that
+  could belong to either.
   `ready_ping_sha` records the head the in_review handler already posted a `:bell:` HITL ping for.
   `docs_drift_unwind_pending` is set while `_handle_documenting`'s drift block is reconciling and cleared only on the
   relabel back to `workflow:validating`.
