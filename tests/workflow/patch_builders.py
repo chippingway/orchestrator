@@ -18,7 +18,11 @@ from tests.workflow.patch_models import (
     _as_mock,
     _default_infer_subject_prefix,
 )
-from tests.workflow.patch_models import _published_branch, _squashed
+from tests.workflow.patch_models import (
+    _fetched,
+    _published_branch,
+    _squashed,
+)
 from tests.workflow.repo_values import _FAKE_WT
 
 
@@ -138,7 +142,7 @@ def _conflict_mocks(context: _WorkflowRunContext) -> dict[str, object]:
     if fetch_result is None:
         fetch_result = MagicMock(returncode=0, stdout="", stderr="")
     return {
-        "_authed_fetch": MagicMock(return_value=fetch_result),
+        "_authed_fetch": _fetched(fetch_result),
         # Where the checkout stands against the remote tip it was compared
         # with, as ONE reading: the counts, the head they were taken against
         # -- which is what the push they license is pinned to -- and whether

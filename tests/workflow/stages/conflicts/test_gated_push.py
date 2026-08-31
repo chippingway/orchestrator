@@ -172,11 +172,13 @@ class _ResolvedTickMixin(_ResolvingConflictMixin):
         run_options.setdefault(
             "candidate_commit", FrozenCommit(sha=RECOVERED_HEAD),
         )
+        run_options.setdefault(
+            "head_shas", [RECOVERED_HEAD, RECOVERED_HEAD],
+        )
         return github, self._run_with_merge(
             github, issue,
             branch_ahead_behind=(1, 0),
             behind_base=ON_BASE,
-            head_shas=[RECOVERED_HEAD, RECOVERED_HEAD],
             push_branch=True,
             **run_options,
         )[0]

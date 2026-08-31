@@ -251,6 +251,18 @@ def _squash_outcome(seed) -> _publication_models._SquashOutcome:
     )
 
 
+def _fetched(seed) -> MagicMock:
+    """The fetch seam, answering once or a reading at a time.
+
+    A sequence is a tick whose two fetches differ -- the pull request's branch
+    lands and the base does not -- which is the only way the second refusal is
+    reached at all.
+    """
+    if isinstance(seed, (list, tuple)):
+        return MagicMock(side_effect=list(seed))
+    return MagicMock(return_value=seed)
+
+
 def _as_mock(value_or_sequence):
     if callable(value_or_sequence):
         return value_or_sequence

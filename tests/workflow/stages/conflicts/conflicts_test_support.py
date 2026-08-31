@@ -70,6 +70,10 @@ class _ConflictRunContext:
     push_branch: bool = True
     run_agent_result: Any = None
     fetch_returncode: int = 0
+    # What `_authed_fetch` answers. A sequence answers one reading at a time,
+    # which is what a tick whose branch fetch lands and whose base fetch does
+    # not needs.
+    authed_fetch_result: Any = None
     # What `git rev-list --count HEAD..origin/<base>` answers. The recovered
     # push is routed by it -- on base it completes a round of its own, behind
     # base it is the preamble to a rebase that owns one -- and it rides the
@@ -178,6 +182,7 @@ def _run_conflict_merge(owner, github, issue, context):
             branch_ahead_behind=context.branch_ahead_behind,
             branch_divergence_readable=context.branch_divergence_readable,
             candidate_commit=context.candidate_commit,
+            authed_fetch_result=context.authed_fetch_result,
         )
     return workflow_mocks, mocks.merge, mocks.git
 
@@ -203,6 +208,10 @@ class _ResolvingConflictMixin(_PatchedWorkflowMixin):
         """
         run_options.setdefault("fetched_branch_tip", self.pr_head_sha)
         return super()._run_resolving_conflict(github, issue, **run_options)
+
+    def _pinned(self, github) -> dict:
+        """What this issue's pinned comment says once a tick has finished."""
+        return github.pinned_data(self.issue_number)
 
     def _seed(self, **seed_options):
         return _seed_conflict(

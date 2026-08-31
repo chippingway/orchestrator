@@ -189,12 +189,27 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             that keeps a sink from reaching workflow
   stages/
     conflicts/              `workflow:resolving_conflict`
-      handler.py            the order one tick asks its questions in: the missing-`pr_number` park, the terminal arcs,
-                            the body-edit resume, and the rebase behind them
-      routing.py            the awaiting-human resume and `MAX_CONFLICT_ROUNDS` cap that gate the rebase, the
-                            worktree it runs in, and the three things a branch can carry into a rebase that are not
-                            one -- a behind-base divergence, a round the size gate held and an adjudication has since
-                            published, and commits a crashed tick never pushed
+      handler.py            the order one tick asks its questions in: the missing-`pr_number` park, the terminal
+                            arcs, and the rebase road behind them -- which owns the two dev resumes as well, since
+                            deciding either needs the branch fetched and the checkout compared to it
+      routing.py            the one reading every road runs behind -- the worktree restored, the branch fetched, the
+                            checkout compared to it -- and everything that reading can report that is not a rebase:
+                            a round the size gate held and an adjudication has since published, a behind-base
+                            divergence, a body edit or a human reply the dev is resumed on, and commits a crashed
+                            tick never pushed. Both resumes sit behind the divergence guard, since what either
+                            starts is an agent whose commit this stage force-pushes and no lease catches a push made
+                            from a checkout the remote has moved past -- the tip it is pinned to is the tip the
+                            resume read. Only the BODY EDIT also defers over a checkout ahead of its remote: it
+                            leases against the head the round began at, a local commit the remote never saw, which
+                            the gate then refuses as somebody else's movement, while a reply's publication freezes
+                            the pull request's own head and carries the unpublished commit out with the resolution.
+                            It defers by falling THROUGH to the reply rather than ending the tick, since the drift
+                            hash covers the thread too and so every reply reaches the routing looking like an edit.
+                            The published round is settled ahead of both. The `MAX_CONFLICT_ROUNDS` cap comes after
+                            all of it, in front of the REBASE alone: what it refuses is another ATTEMPT, and every
+                            reconciliation above it is work already done that only this stage can still finish. A
+                            park left by a reading rather than a question is retried rather than waited on, and
+                            announced once per reason
       guards.py             the worktree restore and the two probes that prove a stale PR head is safe to
                             force-publish over
       divergence.py         the park a behind-base worktree earns, the one lease that excuses it, and the
@@ -209,9 +224,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             BEFORE that push, since the reading is the same either side of one and taken first it
                             says which round a held candidate would owe: on base the push completes a round of its
                             own and leaves the receipt for it, behind base it is the preamble to a rebase that owns
-                            the round instead
-      rebase.py             the branch and base fetches, the rebase, its `merge_attempt` event, and the three-way
-                            disposition
+                            the round instead. The commit the push publishes is NAMED on both roads and a head
+                            nothing could read refuses on both -- unnamed, the gate measures and pushes whatever
+                            landed between this owner's reading and its own -- while only what the push owes turns
+                            on the behind-base count. The tree is PROVED clean rather than asked for its paths,
+                            since a status that established nothing names none either and the gate's own proof is
+                            part of a measurement `DECOMPOSE=off` never takes
+      rebase.py             the branch and base fetches, the pre-rebase head every exit of the round leases its
+                            push against -- refused when nothing could read it, since the gate reads no head as a
+                            caller that established none and pins the push to whatever the pull request has moved to
+                            -- the rebase, its `merge_attempt` event, and the three-way disposition
       publication.py        the unproven-tree and unreadable-head parks, the no-op flip, the rebased-head push
                             (measured by the size gate first, since a base that moved changes what the branch adds
                             to it), and the hand-off of real conflicts to the dev. Both parks are the same refusal
@@ -219,19 +241,31 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             would not resolve reads as the head this stage started on, so taken as absences they
                             hand a reviewer a tree nobody read or a rewritten head the pull request never received
       resume.py             the three dev-resume entry points, the shared run, and the `/orchestrator continue`
-                            classification
+                            classification. Each of the three can end in a commit this stage publishes onto a
+                            pull request the remote already carries, so each passes the size gate -- the fresh
+                            conflict and the reply behind it through the shared conflict disposition, the body edit
+                            through the shared fix publication -- and each names the round it would have counted,
+                            since a held candidate ends the tick on the adjudication and no later tick of this stage
+                            counts one
       outcomes.py           the interrupt / timeout / mid-rebase parks read before HEAD, and the push a completed
                             resolution earns -- measured by the size gate first, since a resolution grows the pull
                             request like any other candidate, and pinned by the pre-rebase head this stage read
-      transitions.py        the park-and-write pair and the pushed-round tail every exit shares, plus the round a
+      transitions.py        the park-and-write pair, the unreadable-head park the rebase and the body-edit resume
+                            share, the one predicate that says whether a standing park is a PERSON's -- which the
+                            same pair reads, so a transient refusal taken over a question records nothing and
+                            leaves the reason the resume turns on where it is -- the pushed-round tail every exit
+                            shares, plus the round a
                             hold owes: named for the gate to write down ahead of its relabel, read back by the tick
-                            the settlement hands the label to -- only over a checkout standing ON the head it names,
+                            the settlement hands the label to -- through the one parse the handler asks in front of
+                            the body-edit resume, so what is outstanding cannot be read two ways -- and only over a
+                            checkout standing ON the head it names,
                             since in sync with its remote is what a replacement host rebuilt at a moved pull request
                             reads as too -- and dropped by whichever tail finally pays it, since the resumed tick
                             reads a published resolution as a branch already standing on its base, which is the no-op
                             flip that resolves nothing
       models.py             the frozen records the owners hand each other
-      state.py              the counter keys they share
+      state.py              the counter keys they share, and the single settled pair one held round at a time is
+                            named by
     decomposition/          `workflow:decomposing`, `workflow:ready`, `workflow:blocked`, and `workflow:umbrella`
       run.py                one `decomposing` tick: the late route asked before anything else, the drift / recovery /
                             kill-switch order before the agent, and the pause, dirty-worktree, and interruption

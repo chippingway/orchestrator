@@ -9,11 +9,13 @@ arcs come next and outrank the rebase entirely: a PR a human merged after
 resolving the conflicts by hand, or one they closed, is the answer to every
 question the loop would otherwise ask.
 
-The body-edit check sits between the terminals and the rebase because an edit
-changes what "resolved" means -- the dev has to see the new body before deciding
-whether its in-flight resolution still applies. A pushed answer hands back to
-`validating`; a bare acknowledgement stays here rather than parking, so a
-harmless clarification does not stall the rebase.
+Everything past the terminals belongs to the rebase road, including the
+body-edit resume an edit mid-rebase earns. It is decided there rather than here
+because deciding it needs the branch fetched and the checkout compared to it:
+what a resume starts is an agent whose commit this stage force-pushes, so a
+reply answered over a checkout the remote has moved past drops the commits that
+moved it, and a round a settlement already published shares the one receipt
+slot that resume's own commit would write.
 
 The manually-closed arc has one known gap: once a PR-still-open issue is
 flipped to `rejected`, nothing observes a later PR close -- the dispatcher's
@@ -28,10 +30,8 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
-from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.engine import terminals as _terminals
 from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import resume as _resume
 from orchestrator.workflow.stages.conflicts import routing as _routing
 from orchestrator.workflow.stages.conflicts import transitions as _transitions
 from orchestrator.workflow.state import WorkflowLabel
@@ -81,19 +81,6 @@ def _handle_resolving_conflict(
     if _terminals._drain_review_pr_terminals(
         gh, spec, issue, state, pr, stage="resolving_conflict",
     ):
-        return
-
-    # User-content drift: a human edited the issue body while the dev
-    # was resolving conflicts. Resuming with the new body+comments lets
-    # the dev decide whether the edit affects the conflict resolution.
-    # On a successful pushed fix we hand straight to `validating` so the
-    # reviewer re-runs against the updated tree; the docs pass is
-    # deferred to the single post-approval hop. On an ack (no commit
-    # but a reply) we stay in `resolving_conflict` without parking so a
-    # harmless clarification doesn't stall the rebase.
-    new_hash = _drift._detect_user_content_change(gh, issue, state)
-    if new_hash is not None:
-        _resume._resume_on_user_content_change(ctx, pr_number, new_hash)
         return
 
     _routing._drive_conflict_rebase(ctx, pr, pr_number)

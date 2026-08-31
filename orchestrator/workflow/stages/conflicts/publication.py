@@ -89,12 +89,6 @@ _UNREADABLE_HEAD_PARK = (
 # apart: a list of paths a human removes or commits, against a repository to
 # look at, which names no count because naming one would report a failed read
 # as an empty tree.
-_UNREADABLE_HEAD = "unreadable_head"
-
-
-_UNREADABLE_WORKTREE = "unreadable_worktree"
-
-
 _DIRTY_WORKTREE = "dirty_worktree"
 
 
@@ -134,7 +128,10 @@ def _publish_clean_rebase(
             _UNREADABLE_HEAD_PARK.format(
                 mentions=config.HITL_MENTIONS, base_ref=_base_ref(spec),
             ),
-            reason=_UNREADABLE_HEAD,
+            reason=_state._REASON_UNREADABLE_HEAD,
+            # Said once: a later tick's own head read is what clears this, so
+            # every tick after this one retries it.
+            once=True,
         )
         return
     if after_sha == before_sha:
@@ -227,7 +224,8 @@ def _unprovable_tree(ctx: _models._ConflictContext, wt: Path) -> bool:
         _UNREADABLE_TREE_PARK.format(
             mentions=config.HITL_MENTIONS, base_ref=base_ref,
         ),
-        reason=_UNREADABLE_WORKTREE,
+        reason=_state._REASON_UNREADABLE_WORKTREE,
+        once=True,
     )
     return True
 
@@ -257,6 +255,7 @@ def _flip_base_up_to_date(
         outcome="base_up_to_date",
         sha=after_sha,
     )
+    _transitions._left_unparked(ctx)
     ctx.gh.set_workflow_label(ctx.issue, WorkflowLabel.VALIDATING)
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 

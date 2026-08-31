@@ -485,7 +485,8 @@ machine fall into a few groups:
   and the fields ride the receipt that push writes — one write, so no window exists in which the publication is
   recorded and the round it spent is not.
 - **Conflict rounds.** `conflict_settled_outcome` + `conflict_settled_sha` name a resolution the size gate held —
-  which of the two it was (`agent_resolved` / `base_rebased_clean`) and the head it produced. Written inside the
+  which of the four content updates it was (`agent_resolved` / `base_rebased_clean` / `recovered_push` /
+  `drift_resolved`) and the head it produced. Written inside the
   routed hold's own write ahead of the relabel, and read back by the resumed `resolving_conflict` tick, which could
   not re-derive either: the settlement publishes the commit, so the branch it comes back to already carries its base
   and would be flipped as `base_up_to_date` — the one exit that resolves nothing and stamps no

@@ -93,6 +93,15 @@ def _clean_state(github):
     return github.pinned_data(CONFLICT_ISSUE)
 
 
+# What `_authed_fetch` answers for a branch fetch that lands and a base fetch
+# that does not, which is the only shape that reaches the second refusal.
+_FETCHED = MagicMock(returncode=0, stdout="", stderr="")
+_REFUSED = MagicMock(returncode=1, stdout="", stderr="no route to host")
+
+FETCH_FAILED = "fetch_failed"
+BASE_FETCH_NOTICE = "failed during conflict resolution"
+
+
 def _terminal_state(github):
     return github.pinned_data(CONFLICT_ISSUE)
 
@@ -133,6 +142,48 @@ class AuthedFetchRoutingTest(unittest.TestCase, _PatchedWorkflowMixin):
         # current `origin/<branch>`), then for the base branch (so the
         # upcoming `git rebase` sees current `origin/<base>`).
         _assert_fetch_calls(self, authed_fetch_mock)
+
+    def test_a_failing_base_fetch_is_said_once(self) -> None:
+        # A fetch that failed is a reading nobody can answer -- what clears it
+        # is the fetch itself -- so the park it leaves is retried by every
+        # tick after it rather than waiting on a human. Which is exactly why
+        # it is said once: a remote that stays unreachable would otherwise put
+        # a fresh notice and a fresh event on the thread every poll and bury
+        # the first. The branch fetch a step earlier already works this way.
+        gh, issue = _seed_fetch_case()
+
+        self._refusing_the_base(gh, issue)
+        self._refusing_the_base(gh, issue)
+
+        self.assertEqual(
+            [
+                event["reason"] for event in gh.recorded_events
+                if event["event"] == "park_awaiting_human"
+            ],
+            [FETCH_FAILED],
+        )
+        self.assertEqual(
+            len([
+                body for _, body in gh.posted_comments
+                if BASE_FETCH_NOTICE in body
+            ]),
+            1,
+        )
+
+    def _refusing_the_base(self, github, issue):
+        """One tick whose branch fetch lands and whose base fetch does not."""
+        with patch.object(
+            _base_sync_pre_pr,
+            "_rebase_base_into_worktree",
+            MagicMock(return_value=(True, [])),
+        ):
+            self._run_resolving_conflict(
+                github, issue,
+                run_agent=_agent(),
+                push_branch=True,
+                head_shas=[UNCHANGED_HEAD, UNCHANGED_HEAD],
+                authed_fetch_result=[_FETCHED, _REFUSED],
+            )
 
 
 class ResolvingConflictCleanRebaseTest(unittest.TestCase, _ResolvingConflictMixin):

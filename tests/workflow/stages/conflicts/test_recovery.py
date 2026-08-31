@@ -178,12 +178,13 @@ class ResolvingConflictRecoveryPushTest(unittest.TestCase, _ResolvingConflictMix
                 # Recovered push first, leased against the head the pull
                 # request was standing on; then the rebased-head push, leased
                 # against the head this stage reads back before it rebases.
-                # The handler also reads HEAD for the round-emit on success,
-                # so feed enough SHAs through `_head_sha` for both the
-                # rebase-path's before/after compare and the audit emit.
+                # Reading by reading: the recovered push names the commit it
+                # publishes, then the rebase path compares its own before and
+                # after, then the audit emit records what it left.
                 branch_ahead_behind=(1, 0),
                 head_shas=[
-                    RECOVERED_CANDIDATE, REBASED_SHA, REBASED_SHA,
+                    RECOVERED_CANDIDATE, RECOVERED_CANDIDATE,
+                    REBASED_SHA, REBASED_SHA,
                 ],
                 # The rebase rewrites the recovered commit, so the second
                 # push publishes a different one -- which is why it is a

@@ -20,6 +20,16 @@ needs a real answer refuses, and an auto-rebase park is left alone entirely
 because the base-sync retry loop -- not this stage -- owns unparking it.
 Untrusted authors are dropped before any of that, so an outsider reply neither
 steers the dev nor advances the consumed-comment watermark.
+
+Each of the three can end in a commit this stage publishes onto a pull request
+the remote already carries, so each goes through the size gate: the fresh
+conflict and the reply behind it through the shared conflict disposition, the
+body edit through the shared fix publication. All three hand the gate the
+round they would have counted, because a held candidate ends the tick on
+`workflow:decomposing` and the tail that counts one never runs -- and no later
+tick of this stage counts it either, since a settled verdict publishes the
+accepted commit and the resumed tick finds a branch already standing on its
+base.
 """
 from __future__ import annotations
 
@@ -43,6 +53,11 @@ from orchestrator.workflow.stages.implementing import resume as _dev_resume
 from orchestrator.workflow.stages.validating import drift_outcomes as _drift_outcomes
 
 
+# What a round a body-edit resume finished is recorded as, in the audit event
+# and in the receipt a hold leaves for the tick that resumes behind it.
+_DRIFT_RESOLVED = "drift_resolved"
+
+
 def _resume_on_user_content_change(
     ctx: _models._ConflictContext,
     pr_number,
@@ -57,7 +72,29 @@ def _resume_on_user_content_change(
     after this helper runs. Persists pinned state on every exit EXCEPT the
     shutdown-sweep-interrupted / live-paused short-circuits, which return
     without writing so the drift stays unconsumed and re-runs next process.
+
+    A body edit resolved into a commit is a content update onto a pull request
+    the remote already carries, so it publishes through the shared fix seam
+    and its size gate like every other one this stage makes. What that costs
+    is a tail this caller may never reach: a held candidate is relabelled to
+    the adjudication, and no later `resolving_conflict` tick can count the
+    round for it, since the settlement publishes the accepted commit itself.
+    So the round rides the gate's own durable write, ahead of the relabel,
+    under the outcome this resume actually had.
     """
+    # The head this resume begins at, read before anything is consumed. It is
+    # the head the publication behind it leases its force-push against, and
+    # the size gate reads "no head" as a caller that established none and pins
+    # the push to whatever the pull request is standing on once the agent
+    # returns -- so a commit somebody landed while it was out becomes the
+    # lease and is force-overwritten. Refused here rather than after, the
+    # refreshed hash and the consumed watermark are never written and the next
+    # tick re-detects the same edit.
+    wt = _conflict_guards._ensure_conflict_worktree(ctx)
+    before_sha = _verification_probes._head_sha(wt)
+    if not before_sha:
+        _transitions._park_unreadable_head(ctx)
+        return
     ctx.state.set("user_content_hash", new_hash)
     _comments._post_pr_comment(
         ctx.gh, int(pr_number), ctx.state,
@@ -68,12 +105,7 @@ def _resume_on_user_content_change(
     # (after a successful pushed resolution flips back to validating) must not
     # replay them.
     _drift._mark_drift_comments_consumed(ctx.gh, ctx.issue, ctx.state)
-    wt = _conflict_guards._ensure_conflict_worktree(ctx)
-    before_sha = _verification_probes._head_sha(wt)
-    followup = _drift._build_user_content_change_prompt(
-        ctx.issue, _comments._recent_comments_text(ctx.issue),
-    )
-    run = _run_conflict_resume(ctx, followup)
+    run = _run_conflict_resume(ctx, _body_edit_followup(ctx))
     # Shutdown-sweep interruption: ignore the partial result and return WITHOUT
     # writing pinned state -- the drift bookkeeping (refreshed
     # `user_content_hash`, consumed comments, session mutations) above is
@@ -91,20 +123,50 @@ def _resume_on_user_content_change(
     # the label is removed.
     if run.paused:
         return
+    # Read once and handed on, because the head this resume produced is what
+    # three separate steps have to agree about: the commit the shared fix
+    # publication measures and pushes, the receipt a hold leaves for the tick
+    # that resumes behind it, and the SHA the round below is recorded under.
+    # Re-read at each, a checkout something moved mid-tick makes them three
+    # different commits.
+    after_sha = _verification_probes._head_sha(run.worktree)
     outcome = _drift_outcomes._post_user_content_change_result(
         ctx.gh, ctx.spec, ctx.issue, ctx.state, run.worktree,
         run.dev_result, before_sha,
+        after_sha=after_sha,
+        # The round this resume earns, handed to the gate for the exit where
+        # the tail below never runs: an oversized resolution is held, the
+        # issue is relabelled to the adjudication, and the resumed tick reads
+        # the published commit as a branch already standing on its base --
+        # the no-op flip, which resolves nothing and stamps no
+        # `last_conflict_resolved_at`.
+        spends=_transitions._settles_the_held_round(
+            _DRIFT_RESOLVED, after_sha,
+        ),
     )
     if outcome == "pushed":
         # Pushed branch diff -> hand straight back to validating; the single
         # docs pass runs after final reviewer approval.
         _transitions._hand_resolved_round_to_validating(
             ctx, int(ctx.state.get(_state._CONFLICT_ROUND) or 0), pr_number,
-            outcome="drift_resolved",
-            sha=_verification_probes._head_sha(run.worktree),
+            outcome=_DRIFT_RESOLVED,
+            sha=after_sha,
         )
         return
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
+
+
+def _body_edit_followup(ctx: _models._ConflictContext) -> str:
+    """The prompt a body edit resumes the dev on.
+
+    The edited body and the thread around it together, because what the dev
+    has to decide is whether the resolution it is in the middle of still
+    applies -- and a comment answering the edit is as much of that question as
+    the edit itself.
+    """
+    return _drift._build_user_content_change_prompt(
+        ctx.issue, _comments._recent_comments_text(ctx.issue),
+    )
 
 
 def _resume_awaiting_human(

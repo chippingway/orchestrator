@@ -86,10 +86,11 @@ class HandleResolvingConflictHashDriftTest(
             has_new_commits=True,
             dirty_files=(),
             push_branch=True,
-            # Three SHAs: drift before/after for the post-resume head
-            # delta, plus the third for the `conflict_round` audit emit
-            # that records the pushed worktree HEAD.
-            head_shas=[BEFORE_SHA, RESOLVED_SHA, RESOLVED_SHA],
+            # Two SHAs, and the second is read once: the head the resume
+            # produced is what the publication measures, what a hold would
+            # name its round by, and what the `conflict_round` audit emit
+            # records, so one reading travels to all three.
+            head_shas=[BEFORE_SHA, RESOLVED_SHA],
         )
 
         # Pushed drift fix -> hand straight back to `validating`; the
