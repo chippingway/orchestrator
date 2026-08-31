@@ -579,13 +579,23 @@ machine fall into a few groups:
   non-empty `CHANGES_REQUESTED` or `COMMENTED` review IDs ever advance the summary watermark; `APPROVED`, `DISMISSED`,
   `PENDING`, and empty-body reviews are filtered before the bump.
 - **Final-docs handoff.** `docs_checked_sha` + `docs_verdict` (`updated` / `no_change`) set by `_handle_documenting`'s
-  success exits. `docs_settled_sha` is the head a docs pass produced and the size gate held off the pull request,
-  written inside the gate's own routed write ahead of the relabel to `workflow:decomposing`: the pass is finished and
-  only the `in_review` handoff is still owed, so the tick a settled verdict hands the label back to finishes from the
-  receipt rather than reading a branch in sync with its remote as an issue no docs pass has run for. Read back only
-  over a checkout standing ON the head it names — in sync is what a replacement host rebuilt at a moved pull request
-  reads as too. Dropped by every
-  terminal docs success, including a republication that carries the held commit to the remote itself.
+  success exits, and the verdict an earlier pass left is dropped as the next one begins — every entry shape re-anchors
+  `docs_checked_sha` to the head it is about, so a stale verdict beside it would say a pass has finished for a head one
+  is only starting on, which the in_review merge gate reads as a head this orchestrator has documented and pings. The
+  success exits announce first, then persist, then relabel: the notice's id has to ride a write or nothing
+  records it, and `in_review` repairs nothing it is handed — its merge gate pings only for a head `docs_checked_sha`
+  names with a `docs_verdict` beside it, so a relabel taken ahead of the write would strand the issue there on the
+  head the pass began on. `docs_settled_sha` is the head a docs pass produced, written inside the size gate's own
+  routed write ahead of that gate's relabel to `workflow:decomposing`: the pass is finished and only the `in_review`
+  handoff is still owed, so the tick a settled verdict hands the label back to finishes from the receipt rather than
+  reading a branch in sync with its remote as an issue no docs pass has run for. The gate writes it whichever way the
+  answer went, so it covers the other ticks that can leave a handoff owed — a push the gate ALLOWED, which landed,
+  whose process died over the documenting stage's own write or over the relabel behind it. Read back
+  only over a checkout standing ON the head it names — in sync is what a replacement host rebuilt at a moved pull
+  request reads as too. Dropped by every terminal docs success in the same write that records it, including a
+  republication that carries the held commit to the remote itself — held past that write to cover the relabel behind
+  it, the receipt outlives the handoff whenever the write that would drop it does not land, and a later `validating`
+  approval at the same head consumes it and skips the docs pass it just bought.
   `ready_ping_sha` records the head the in_review handler already posted a `:bell:` HITL ping for.
   `docs_drift_unwind_pending` is set while `_handle_documenting`'s drift block is reconciling and cleared only on the
   relabel back to `workflow:validating`.
