@@ -61,10 +61,13 @@ file is the durable record.
   `agent_session_limit` (a quota-exhausted agent message, parked retryably as `agent_silent`),
   `agent_provider_unavailable` (a transient provider refusal — `API Error: 529 Overloaded` and its 5xx siblings —
   arriving as the agent's final message, parked retryably as `agent_silent` too), `dirty_worktree`,
-  `unreadable_worktree` (a publication seam — the implementing one, or the conflict stage's clean rebase — could not
-  PROVE the tree clean: `git status` failed, or an index entry is marked `assume-unchanged` / `skip-worktree`, which
-  is a repository to look at rather than the file list `dirty_worktree` carries), `unreadable_head` (a clean rebase
-  whose post-rebase HEAD would not resolve, so nothing could say whether it left a commit the PR does not carry),
+  `unreadable_worktree` (a seam that publishes from a checkout, or resumes an agent over one, could not read what it
+  is carrying — the implementing publication and the conflict stage's clean rebase could not PROVE the tree clean
+  (`git status` failed, or an index entry is marked `assume-unchanged` / `skip-worktree`, which is a repository to
+  look at rather than the file list `dirty_worktree` carries), and the conflict stage's two dev resumes got no
+  reading at all), `unreadable_head` (nothing could name a commit a `resolving_conflict` round turns on — the head a
+  clean rebase left, the head it started from, the head a body-edit resume begins at, or the head recovered commits
+  leave the branch on — so the push behind it would carry neither a lease nor a named candidate),
   `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` /
   `verify_head_changed`, `question_*`, `discussion_*`, ...). `dirty_worktree` carries `dirty_files` (how many paths
   git named); `unreadable_worktree` carries none, since naming a count there would report a failed read as an empty

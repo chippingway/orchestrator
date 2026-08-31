@@ -228,7 +228,17 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                       diverged_branch park
      awaiting-human resume push    ─► push, workflow:validating
                                       (++conflict_round)
-     drift pushed fix              ─► workflow:validating
+     drift pushed fix              ─► push, workflow:validating
+                                      (++conflict_round)
+     any pushed content update     ─► workflow:decomposing (nothing pushed
+       above, past MAX_ADDED_LINES    and no round counted; the round it
+                                      owed and the head it produced are
+                                      recorded as conflict_settled_outcome
+                                      / conflict_settled_sha)
+     settled `single` handed back  ─► workflow:validating for the recorded
+                                      round (++conflict_round, receipt
+                                      dropped); a `split` closes the PR and
+                                      never re-enters this label
      drift ACK / drift _on_question park ─► no relabel; rebase still
                                             unfinished, next tick
                                             re-enters the same label
