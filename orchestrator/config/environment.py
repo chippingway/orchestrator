@@ -31,7 +31,7 @@ ConfigWarning = Callable[[str], None]
 _DEFAULT_ENABLED = "on"
 _CLAUDE = "claude"
 _CODEX = "codex"
-_DEFAULT_REPO = "geserdugarov/agent-orchestrator"
+_DEFAULT_REPO = "chippingway/orchestrator"
 _DEFAULT_HITL = "geserdugarov"
 
 # Added lines a candidate may carry and still publish as one change. Spelled

@@ -75,8 +75,8 @@ is in [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md).
 1. **Clone and enter the repo**
 
    ```sh
-   git clone https://github.com/geserdugarov/agent-orchestrator.git
-   cd agent-orchestrator
+   git clone https://github.com/chippingway/orchestrator.git
+   cd orchestrator
    ```
 
 2. **Install from the lockfile**
@@ -118,8 +118,8 @@ is in [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md).
    path. The default token path is derived from `REPO` (`~/.config/<owner>/<repo>/token`):
 
    ```sh
-   OWNER=geserdugarov
-   REPO=agent-orchestrator
+   OWNER=chippingway
+   REPO=orchestrator
    install -d -m 700 "$HOME/.config/$OWNER/$REPO"
    printf %s "$YOUR_PERSONAL_ACCESS_TOKEN" > "$HOME/.config/$OWNER/$REPO/token"
    chmod 600 "$HOME/.config/$OWNER/$REPO/token"
@@ -304,11 +304,11 @@ agent-workflow input — the versions that are supported, and what a report earn
 
 Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE) for the full text.
 
-[ci-badge]: https://github.com/geserdugarov/agent-orchestrator/actions/workflows/ci.yml/badge.svg
-[ci-link]: https://github.com/geserdugarov/agent-orchestrator/actions/workflows/ci.yml
+[ci-badge]: https://github.com/chippingway/orchestrator/actions/workflows/ci.yml/badge.svg
+[ci-link]: https://github.com/chippingway/orchestrator/actions/workflows/ci.yml
 <!-- Use the canonical JSON feed while https://github.com/ossf/scorecard/issues/5197 leaves the badge path stale. -->
-[scorecard-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2Fgeserdugarov%2Fagent-orchestrator&query=%24.score&label=openssf%20scorecard&color=green&cacheSeconds=600
-[scorecard-link]: https://scorecard.dev/viewer/?uri=github.com/geserdugarov/agent-orchestrator
+[scorecard-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2Fchippingway%2Forchestrator&query=%24.score&label=openssf%20scorecard&color=green&cacheSeconds=600
+[scorecard-link]: https://scorecard.dev/viewer/?uri=github.com/chippingway/orchestrator
 [best-practices-badge]: https://www.bestpractices.dev/projects/14235/badge
 [best-practices-link]: https://www.bestpractices.dev/projects/14235
 [cfg-systemd]: docs/configuration.md#running-under-systemd-user-service
