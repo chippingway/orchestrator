@@ -150,7 +150,7 @@ def _issue_branch(issue_number: int, *, legacy: bool = False) -> str:
     if legacy:
         return f"orchestrator/issue-{issue_number}"
     return (
-        "orchestrator/geserdugarov__agent-orchestrator/"
+        "orchestrator/chippingway__orchestrator/"
         f"issue-{issue_number}"
     )
 

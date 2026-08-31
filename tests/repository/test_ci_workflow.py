@@ -62,7 +62,7 @@ _BUILD_COMMAND = "run: uv build"
 _WHEEL_SMOKE = (
     'wheel="$(ls dist/*.whl)"',
     "uv run --no-project --isolated",
-    '--with "${wheel}" agent-orchestrator --help',
+    '--with "${wheel}" chipping-orchestrator --help',
 )
 
 # The pages that state the tested versions in prose.

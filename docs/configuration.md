@@ -44,7 +44,7 @@ Create the personal access token at <https://github.com/settings/personal-access
 
 The token is deliberately NOT loaded from `.env`. The implementer agent runs in a sibling worktree with sandbox bypass,
 so anything readable inside `REPO_ROOT` (including `.env`) is recoverable by a prompt-injected agent via a relative-path
-read like `cat ../agent-orchestrator/.env`. `GITHUB_TOKEN` (and the aliases `GH_TOKEN`, `GITHUB_PAT`,
+read like `cat ../chipping-orchestrator/.env`. `GITHUB_TOKEN` (and the aliases `GH_TOKEN`, `GITHUB_PAT`,
 `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `GIT_TOKEN`) found in `.env` is logged-and-skipped at startup.
 
 Token resolution order:
@@ -413,8 +413,8 @@ error.
 - `LOG_DIR` — default `<REPO_ROOT>/logs`. directory `runtime/logs.py` attaches its `FileHandler` under
   (`orchestrator.log`, rotated ~10 MiB × 5). Also the default parent for `ANALYTICS_LOG_PATH`
   (`LOG_DIR/analytics.jsonl`). Already covered by the `*.log` `.gitignore` rule.
-- `AGENT_GIT_NAME` — default `agent-orchestrator`. `GIT_AUTHOR_NAME`/`GIT_COMMITTER_NAME` injected into agent spawns
-- `AGENT_GIT_EMAIL` — default `agent-orchestrator@users.noreply.github.com`. `GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_EMAIL`
+- `AGENT_GIT_NAME` — default `chipping-orchestrator`. `GIT_AUTHOR_NAME`/`GIT_COMMITTER_NAME` injected into agent spawns
+- `AGENT_GIT_EMAIL` — default `chipping-orchestrator@users.noreply.github.com`. `GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_EMAIL`
   injected into agent spawns
 
 ## In-review behavior
@@ -447,12 +447,12 @@ The five steps from a JSONL sink to a running Streamlit page — confirm the rec
 
 [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs `ruff check orchestrator tests`,
 `flake8 orchestrator tests --select=WPS`, pytest with an informational missing-line coverage report, `uv build`, and a
-launch of `agent-orchestrator --help` from a throwaway environment holding that wheel and the dependencies it declares
-and nothing else, as five separate mandatory steps for every push to `main` and every pull request. The whole set runs
-twice, once on Python 3.12 and once on Python 3.13 — the two versions a run proves, out of the open-ended range
-`requires-python = ">=3.12"` admits — under a 20-minute job timeout, and a second push to a pull request cancels the
-run its earlier push started while a run on `main` is cancelled by nothing, queued or started. Dependabot opens weekly
-`workflow:dependencies` update PRs. The coverage report has no minimum threshold.
+launch of `chipping-orchestrator --help` from a throwaway environment holding that wheel and the dependencies it
+declares and nothing else, as five separate mandatory steps for every push to `main` and every pull request. The
+whole set runs twice, once on Python 3.12 and once on Python 3.13 — the two versions a run proves, out of the
+open-ended range `requires-python = ">=3.12"` admits — under a 20-minute job timeout. A second push to a pull request
+cancels the run its earlier push started, while a run on `main` is cancelled by nothing, queued or started. Dependabot
+opens weekly `workflow:dependencies` update PRs. The coverage report has no minimum threshold.
 [`../.github/workflows/vulnerability-scan.yml`](../.github/workflows/vulnerability-scan.yml) adds the standing half of
 dependency scanning: on a weekly `schedule` and on `workflow_dispatch` it audits every version pinned in
 [`../uv.lock`](../uv.lock) — not what a PR changes — and fails when a published advisory names one.
@@ -470,7 +470,7 @@ smoke check, the dependency review, and how the scheduled scans work are in
 ## Run modes
 
 `./run.sh` for production polling, `python -m orchestrator --once` for a single tick, `--log-level DEBUG` for verbose
-logs, and the `agent-orchestrator` console script equivalent to all three are in
+logs, and the `chipping-orchestrator` console script equivalent to all three are in
 [`configuration/operations.md#run-modes`](configuration/operations.md#run-modes).
 
 ## Running under systemd (user service)

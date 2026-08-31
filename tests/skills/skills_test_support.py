@@ -12,7 +12,7 @@ from orchestrator import config
 from orchestrator.observability.analytics.recording import events as recording_events
 
 
-_TEST_REPO_SLUG = "geserdugarov/agent-orchestrator"
+_TEST_REPO_SLUG = "chippingway/orchestrator"
 _TEST_BASE_BRANCH = "main"
 _TEST_REMOTE_NAME = "origin"
 

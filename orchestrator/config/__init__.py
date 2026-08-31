@@ -17,7 +17,7 @@ default-spec construction.
 Secrets are deliberately NOT loaded from REPO_ROOT/.env. The implementer agent
 runs in a sibling worktree with sandbox bypass, so anything readable inside
 REPO_ROOT (including .env) is recoverable by a prompt-injected agent via a
-relative-path read like `cat ../agent-orchestrator/.env`. GITHUB_TOKEN is
+relative-path read like `cat ../chipping-orchestrator/.env`. GITHUB_TOKEN is
 only read from the process environment or from a token file outside REPO_ROOT
 (default `~/.config/<owner>/<repo>/token` derived from REPO, override with
 ORCHESTRATOR_TOKEN_FILE).

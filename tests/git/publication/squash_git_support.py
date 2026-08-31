@@ -104,7 +104,7 @@ class _SquashRepositoryFixtureMixin:
         )
         self._init_remote()
         self._seed_base()
-        self.branch = "orchestrator/geserdugarov__agent-orchestrator/issue-9"
+        self.branch = "orchestrator/chippingway__orchestrator/issue-9"
         self._seed_topic()
 
     def _init_remote(self) -> None:

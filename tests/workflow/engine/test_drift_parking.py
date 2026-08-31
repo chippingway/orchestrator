@@ -29,7 +29,7 @@ class DriftNonAckResponseParksTest(
         gh.add_issue(issue)
         pr = support.FakePR(
             number=support._VALIDATING_CLARIFICATION_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-601",
+            head_branch="orchestrator/chippingway__orchestrator/issue-601",
         )
         gh.add_pr(pr)
         gh.seed_state(
@@ -39,7 +39,7 @@ class DriftNonAckResponseParksTest(
             dev_session_id=support.DEV_SESSION,
             user_content_hash=support.STALE_HASH,
             review_round=1,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-601",
+            branch="orchestrator/chippingway__orchestrator/issue-601",
         )
 
         self._run(
@@ -80,7 +80,7 @@ class DriftNonAckResponseParksTest(
         gh.add_issue(issue)
         pr = support.FakePR(
             number=support._IN_REVIEW_CLARIFICATION_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-701",
+            head_branch="orchestrator/chippingway__orchestrator/issue-701",
         )
         gh.add_pr(pr)
         gh.seed_state(
@@ -92,7 +92,7 @@ class DriftNonAckResponseParksTest(
             pr_last_comment_id=0,
             pr_last_review_comment_id=0,
             pr_last_review_summary_id=0,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-701",
+            branch="orchestrator/chippingway__orchestrator/issue-701",
         )
 
         self._run(
@@ -143,7 +143,7 @@ class DriftNonAckResponseParksTest(
             dev_agent=support.BACKEND_CLAUDE,
             dev_session_id=support.DEV_SESSION,
             awaiting_human=False,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-602",
+            branch="orchestrator/chippingway__orchestrator/issue-602",
         )
 
         self._run(

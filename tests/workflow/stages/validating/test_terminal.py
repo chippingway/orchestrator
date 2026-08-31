@@ -25,13 +25,13 @@ from tests.workflow.fixtures import (
 
 MERGED_ISSUE = 120
 MERGED_PR = 12000
-MERGED_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-120"
+MERGED_BRANCH = "orchestrator/chippingway__orchestrator/issue-120"
 CLOSED_ISSUE = 121
 OPEN_PR = 12100
-CLOSED_ISSUE_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-121"
+CLOSED_ISSUE_BRANCH = "orchestrator/chippingway__orchestrator/issue-121"
 APPROVAL_ISSUE = 9
 APPROVAL_PR = 91
-APPROVAL_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-9"
+APPROVAL_BRANCH = "orchestrator/chippingway__orchestrator/issue-9"
 REVIEWED_SHA = "rev91"
 SQUASHED_SHA = "sq91"
 PICKUP_COMMENT_ID = 901

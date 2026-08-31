@@ -172,10 +172,10 @@ For an unattended deployment, drive the sync from `cron`. A typical entry runs h
 `flock`, and captures output:
 
 ```cron
-00 * * * * cd /path/to/agent-orchestrator && /usr/bin/flock -n /tmp/agent-orchestrator-analytics-sync.lock /home/<user>/.local/bin/uv run python -m orchestrator.observability.analytics.sync.cli --log-path /path/to/agent-orchestrator/logs/analytics.jsonl --db-url 'postgresql://<user>:<password>@<host>:<port>/<database>' >> /path/to/agent-orchestrator/logs/analytics-sync.cron.log 2>&1
+00 * * * * cd /path/to/chipping-orchestrator && /usr/bin/flock -n /tmp/chipping-orchestrator-analytics-sync.lock /home/<user>/.local/bin/uv run python -m orchestrator.observability.analytics.sync.cli --log-path /path/to/chipping-orchestrator/logs/analytics.jsonl --db-url 'postgresql://<user>:<password>@<host>:<port>/<database>' >> /path/to/chipping-orchestrator/logs/analytics-sync.cron.log 2>&1
 ```
 
-- `cd /path/to/agent-orchestrator` so `uv run` finds the project's `pyproject.toml`.
+- `cd /path/to/chipping-orchestrator` so `uv run` finds the project's `pyproject.toml`.
 - Absolute `/home/<user>/.local/bin/uv` because cron's `PATH` does not include `~/.local/bin`.
 - `flock -n` makes the run a no-op when a previous invocation is still holding the lock, so a long replay never overlaps
   with the next tick.

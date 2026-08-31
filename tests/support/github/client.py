@@ -63,7 +63,7 @@ class FakeGitHubClient(_IssueClient, _PullClient):
         self,
         issues: Iterable[FakeIssue] = (),
         *,
-        repo_slug: str = "geserdugarov/agent-orchestrator",
+        repo_slug: str = "chippingway/orchestrator",
         stale_label_cache: bool = False,
         bot_login: str = "orchestrator",
     ) -> None:

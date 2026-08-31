@@ -1,7 +1,7 @@
 # Security checklist and operator-owned controls
 
-This page maps the project security checklist to the `agent-orchestrator` repo: what the repo files already enforce and
-what is **operator-owned** (GitHub or org settings that no file in the repo can set).
+This page maps the project security checklist to the `chipping-orchestrator` repo: what the repo files already enforce
+and what is **operator-owned** (GitHub or org settings that no file in the repo can set).
 
 The orchestrator gives `codex` / `claude` CLI subprocesses sandbox-bypass flags on the host, so the host is the real
 trust boundary — see [`architecture.md`](architecture.md#design-constraints).
@@ -49,9 +49,9 @@ trust boundary — see [`architecture.md`](architecture.md#design-constraints).
   ([`configuration.md#continuous-integration`](configuration.md#continuous-integration)). The one install CI makes
   outside that lock is the wheel smoke check, whose throwaway environment resolves the distribution's declared
   dependencies fresh from PyPI, because what it exists to prove is what an installer of the wheel gets rather than
-  what the lockfile pins; it runs `agent-orchestrator --help` and is discarded with the job. Dependabot covers the `uv`
-  and `github-actions` ecosystems in [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every update PR
-  it opens with `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a
+  what the lockfile pins; it runs `chipping-orchestrator --help` and is discarded with the job. Dependabot covers the
+  `uv` and `github-actions` ecosystems in [`../.github/dependabot.yml`](../.github/dependabot.yml), stamping every
+  update PR it opens with `workflow:dependencies` plus `workflow:github_actions` or `workflow:python:uv`, so the queue a
   maintainer has to triage is one label filter. For routine version updates, `github-actions` uses its supported
   ecosystem-wide window to hold every release for 30 days; `uv` holds a major or unclassified release for 30 days and
   a minor or patch for 14 days. These cooldowns do not delay security updates. Dependabot allows only direct
@@ -255,9 +255,9 @@ Mark these checks **required** in the branch-protection rule (job names as they 
 
 - `ci (3.12)` and `ci (3.13)` from [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — Ruff, WPS
   (`flake8 orchestrator tests --select=WPS`), pytest with an informational coverage report, and a launch of
-  `agent-orchestrator --help` from the built wheel, installed from [`../uv.lock`](../uv.lock). The job is a matrix over
-  the two tested interpreters, and a matrix leg reports under its own value, so these are two check names rather than
-  one `ci`
+  `chipping-orchestrator --help` from the built wheel, installed from [`../uv.lock`](../uv.lock). The job is a matrix
+  over the two tested interpreters, and a matrix leg reports under its own value, so these are two check names rather
+  than one `ci`
   ([`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration)).
 - `dependency-review` from [`../.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml)
   — fails when a PR introduces a vulnerable or non-compliant dep.

@@ -18,7 +18,7 @@ _MISSING = object()
 _BASE_ENV = MappingProxyType(
     {
         "ORCHESTRATOR_SKIP_DOTENV": "1",
-        "ORCHESTRATOR_TOKEN_FILE": "/tmp/agent-orchestrator-token-missing",
+        "ORCHESTRATOR_TOKEN_FILE": "/tmp/chipping-orchestrator-token-missing",
     }
 )
 

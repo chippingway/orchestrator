@@ -21,7 +21,7 @@ _PER_REPO_CAP = 3
 _LEVEL_FLAG = "--log-level"
 _DEBUG_LEVEL = "DEBUG"
 _DEFAULT_LEVEL = "INFO"
-_PROCESS_ARGV = ("agent-orchestrator",)
+_PROCESS_ARGV = ("chipping-orchestrator",)
 
 
 class OptionParsingTest(unittest.TestCase):

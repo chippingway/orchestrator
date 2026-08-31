@@ -161,7 +161,7 @@ class ImplementingLivePauseResumeTest(unittest.TestCase, _PatchedWorkflowMixin):
             last_action_comment_id=ACTION_COMMENT_ID,
             dev_agent="claude",
             dev_session_id="sess-old",
-            branch=f"orchestrator/geserdugarov__agent-orchestrator/issue-{POISONED_RESUME_ISSUE}",
+            branch=f"orchestrator/chippingway__orchestrator/issue-{POISONED_RESUME_ISSUE}",
             user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         self._before_writes = gh.write_state_calls

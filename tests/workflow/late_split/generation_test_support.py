@@ -29,7 +29,7 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.state import WorkflowLabel
 
-REPO = "geserdugarov/agent-orchestrator"
+REPO = "chippingway/orchestrator"
 # Where the analytics half of a dual emission lands, patched by every test
 # that has to see what a sink was handed.
 ANALYTICS_APPEND = (

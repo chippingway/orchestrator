@@ -69,7 +69,7 @@ The rules under the map hold for the whole tree, the packages on those pages inc
 orchestrator/
   __init__.py           the package version and the `__all__` naming it, bound
                         here so `import orchestrator` costs no owner behind it
-  cli.py                `agent-orchestrator` console-script entry point and
+  cli.py                `chipping-orchestrator` console-script entry point and
                         the polling process's composition point
   __main__.py           `python -m orchestrator` launch form over `cli.main`;
                         the target `run.sh` launches
@@ -357,7 +357,7 @@ keys).
   too — a verify shell executes untrusted agent-produced code, and the verify-failure park comment publishes the
   offending command verbatim. Advanced deployments (Bedrock, Vertex, custom proxies) extend the allowlist explicitly.
 - **`GIT_AUTHOR_*` / `GIT_COMMITTER_*`** are injected from `AGENT_GIT_NAME` / `AGENT_GIT_EMAIL` (default
-  `agent-orchestrator <agent-orchestrator@users.noreply.github.com>`) so agent commits are stamped with the
+  `chipping-orchestrator <chipping-orchestrator@users.noreply.github.com>`) so agent commits are stamped with the
   orchestrator's identity regardless of the host's `~/.gitconfig`.
 
 ### Hardened local git (`git.commands._git_hardened`)

@@ -15,7 +15,7 @@ from tests.support.import_world_helpers import CONFIG_MODULE, SETTINGS_MODULE
 def _hermetic_env(extra: dict[str, str] | None) -> dict[str, str]:
     environment = {
         "ORCHESTRATOR_SKIP_DOTENV": "1",
-        "ORCHESTRATOR_TOKEN_FILE": "/tmp/agent-orchestrator-token-missing",
+        "ORCHESTRATOR_TOKEN_FILE": "/tmp/chipping-orchestrator-token-missing",
     }
     if extra:
         environment.update(extra)

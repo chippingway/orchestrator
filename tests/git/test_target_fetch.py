@@ -152,7 +152,7 @@ class AuthedTargetFetchTest(unittest.TestCase):
                 _temp_git_repo_with_local_config([(SSL_VERIFY_KEY, "false")]),
             )
             spec = config.RepoSpec(
-                slug="geserdugarov/agent-orchestrator",
+                slug="chippingway/orchestrator",
                 target_root=repo,
                 base_branch=MAIN_BRANCH,
             )

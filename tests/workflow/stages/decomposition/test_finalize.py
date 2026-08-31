@@ -46,7 +46,7 @@ def _seed_child_with_merged_pr(
     gh.add_issue(child)
     pr = FakePR(
         number=pr_number,
-        head_branch=f"orchestrator/geserdugarov__agent-orchestrator/issue-{number}",
+        head_branch=f"orchestrator/chippingway__orchestrator/issue-{number}",
         head=FakePRRef(sha="cafe1234"),
         merged=True,
         state="closed",
@@ -158,7 +158,7 @@ class ChildMergedPrAutoFinalizeTest(unittest.TestCase, _PatchedWorkflowMixin):
         gh.add_issue(closed_child)
         pr = FakePR(
             number=UNMERGED_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-711",
+            head_branch="orchestrator/chippingway__orchestrator/issue-711",
             head=FakePRRef(sha="cafe1234"),
             merged=False,
             state="closed",
