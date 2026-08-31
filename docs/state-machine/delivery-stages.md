@@ -1162,7 +1162,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      then stays parked. A retryable session-failure park (`agent_silent` / `agent_timeout`) and a command carrying
      genuine guidance both fall through: because a bare continue no longer shifts `user_content_hash`, the drift block
      below stays silent (no spurious `routing back to validating`) and the retry reruns the FULL docs pass through the
-     awaiting-human resume (step 7). The parser + classifier are shared with `_handle_implementing` / `_handle_fixing`;
+     awaiting-human resume (step 9). The parser + classifier are shared with `_handle_implementing` / `_handle_fixing`;
      documenting has no preserved feedback batch, so only the refusal needs interception here.
   3. **User-content drift → relabel back to `workflow:validating`** without spawning the docs agent. A title/body edit
      (or fresh human comment) during the final-docs hop invalidates the prior approval, so the reviewer must
@@ -1191,33 +1191,95 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        the recovered docs commit, pinned to the tip this count was taken against rather than to whatever the pull
        request is standing on by then.
      - `(0, 0)` → fall through.
-  7. Awaiting-human resume: rebuild the FULL docs prompt via `_build_documentation_prompt` (this may be the first time
+  7. **A pass whose commit the pull request already carries** (`_finished_settled_docs`), asked between the reading
+     above and the run below. A `docs_settled_sha` receipt is left by any tick that published and did not finish. The
+     size gate in step 11 **held** an oversized docs commit off the pull request and handed the issue to the late
+     coordinator, and a settled `single` verdict publishes that commit from there and hands the label back here with
+     only the handoff owed. Or the gate **allowed** the push, it landed, and the tick died before this stage could
+     record it — the receipt rides the gate's own write either way, which is ahead of everything this stage does with
+     a landed push, and it is the write RECORDING the pass that drops it, so a receipt read here is one no handoff
+     has been made for. So the receipt is read back, and where the branch is in sync AND the checkout is standing on
+     that exact commit this tick stamps `docs_checked_sha` / `docs_verdict="updated"`, announces the handoff, and
+     advances to `in_review`, with no agent run and no push.
+     Without that receipt the tick would read a branch in sync with its remote as an issue no docs pass has run for
+     and spawn a second agent over work that is already published. Ahead of the remote the receipt stands and
+     the `ahead > 0` road republishes it through the gate, which is the one road that measures it again; a receipt
+     that is not a whole object id, or a head this host cannot peel, likewise leaves it for a tick that can prove it —
+     in sync is not the same claim as CARRYING it, since a replacement host rebuilt from a pull request that has moved
+     on reads level with its remote too.
+  8. Whichever shape runs below, the `docs_verdict` an EARLIER pass left is dropped as this one begins. Every shape
+     re-anchors `docs_checked_sha` to the head it is about — the resumed dev that adds nothing to a commit already
+     waiting anchors on that very head — so a stale verdict beside it would say a pass has FINISHED for the head this
+     one is only starting on — which the in_review merge gate reads as a head this orchestrator has documented, and
+     pings as ready for a human to merge, from the moment this pass spawns until it finishes.
+  9. Awaiting-human resume: rebuild the FULL docs prompt via `_build_documentation_prompt` (this may be the first time
      the session sees the docs-stage instructions), persist `docs_checked_sha=before_sha` BEFORE the spawn, then
      `_resume_dev_with_text`.
-  8. Fresh spawn: snapshot `before_sha`, persist `docs_checked_sha=before_sha` and `dev_agent` BEFORE invoking the
-     agent, build the prompt (issue body + recent comments + `DOCS: NO_CHANGE` marker contract), then run.
-  9. Branch on result. Every success exit routes to `in_review` via `_advance_after_docs_push` /
-     `_advance_after_docs_no_change`, which ratchets `pr_last_comment_id` past any issue-thread reply the resume
-     consumed so in_review does not bounce over already-addressed feedback. Branches:
-     - `interrupted` (shutdown sweep killed the run mid-flight) → ignore the partial result and return WITHOUT writing
-       pinned state (the pre-spawn `docs_checked_sha` / watermark writes are discarded), so the next process re-runs the
-       docs pass. Precedes every branch below. The recovered `ahead > 0` path synthesizes a non-interrupted result, so
-       it is unaffected.
-     - `paused` / `backlog` applied mid-run → same short-circuit as `interrupted`: `_paused_during_agent_run` re-reads a
-       FRESHLY fetched issue after the initial-docs and awaiting-human resumes, and on a hit the handler returns WITHOUT
-       pushing, posting the docs notice, advancing to `in_review`, ratcheting watermarks, or writing pinned state. The
-       committed docs work stays on the branch and republishes through the `ahead > 0` recovered path once the label is
-       removed (the recovered path itself runs no agent, so it observes no live-pause window).
-     - `timed_out` → park (`agent_timeout`).
-     - dirty worktree → `_on_dirty_worktree`: park.
-     - new commit on a clean tree → `_push_branch`. On success record `docs_checked_sha=after_sha`,
-       `docs_verdict="updated"`, reset `silent_park_count=0`, post `:books: documenting pass: pushed docs commit.`,
-       advance. A push failure parks (`push_failed`).
-     - no commit + `DOCS: NO_CHANGE` verdict: when `ahead > 0` push the recovered commit and advance; otherwise persist
-       `docs_verdict="no_change"`, post `:books: no docs changes required.`, advance without pushing.
-     - no commit + unknown verdict → `_on_question`: park.
-- **Output**: label moved to `in_review` (success), OR `workflow:validating` (drift unwind), OR terminal `done` /
-  `rejected` (short-circuit), OR a HITL park.
+  10. Fresh spawn: snapshot `before_sha`, persist `docs_checked_sha=before_sha` and `dev_agent` BEFORE invoking the
+      agent, build the prompt (issue body + recent comments + `DOCS: NO_CHANGE` marker contract), then run.
+  11. Branch on result. Every success exit routes to `in_review` via `_advance_after_docs_push` /
+      `_advance_after_docs_no_change`, which ratchets `pr_last_comment_id` past any issue-thread reply the resume
+      consumed so in_review does not bounce over already-addressed feedback. Both end the same way and the order is
+      the crash contract: **stamp, announce, persist, relabel** — one durable write, and the relabel behind it. The
+      notice comes before the write because posting one RECORDS it: the comment id lands in
+      `orchestrator_comment_ids`, which is what has the watermark walk seed past it and the in_review feedback scan
+      drop it rather than resume a dev over an informational post of ours, and there is nothing behind the write to
+      carry it. The write comes before the relabel because `in_review` repairs nothing it is handed: its merge gate
+      pings only for a head that `docs_checked_sha` names with a `docs_verdict` beside it, so a relabel taken first
+      strands the issue on a stage whose handler never looks at either. That same write drops `docs_settled_sha`,
+      and it has to: the receipt says a published pass still owes a handoff, and held past this write to cover the
+      relabel it outlives the handoff whenever the write that would drop it does not land — leaving a record a later
+      `validating` approval at the same head consumes, skipping the docs pass that approval just bought. Two windows
+      are left and both fail toward doing the work again: a tick that posted its notice and died over the write
+      comes back with nothing on the record saying so, and step 7 announces it a second time; a tick whose relabel
+      did not land leaves the record a same-head re-entry leaves, so the next tick runs the pass rather than handing
+      off on evidence that could belong to either. Branches:
+      - `interrupted` (shutdown sweep killed the run mid-flight) → ignore the partial result and return WITHOUT writing
+        pinned state (the pre-spawn `docs_checked_sha` / watermark writes are discarded), so the next process
+        re-runs the docs pass. Precedes every branch below. The recovered `ahead > 0` path synthesizes a
+        non-interrupted result, so it is unaffected.
+      - `paused` / `backlog` applied mid-run → same short-circuit as `interrupted`: `_paused_during_agent_run`
+        re-reads a FRESHLY fetched issue after the initial-docs and awaiting-human resumes, and on a hit the handler
+        returns WITHOUT pushing, posting the docs notice, advancing to `in_review`, ratcheting watermarks, or writing
+        pinned state. The committed docs work stays on the branch and republishes through the `ahead > 0` recovered
+        path once the label is removed (the recovered path itself runs no agent, so it observes no live-pause window).
+      - `timed_out` → park (`agent_timeout`).
+      - dirty worktree → `_on_dirty_worktree`: park.
+      - new commit on a clean tree → the **size gate** every push onto an open pull request goes through
+        (`implementing/late_push._publishes`, reached from `documenting/publication._push_docs_and_advance`). What it
+        counts is what the pull request comes to WITH the docs commit in it, against `MAX_ADDED_LINES`; the push it
+        licenses is named to the commit this pass made and pinned to the head the pass was entered on — the tip the
+        step 6 fetch read — so a pull request somebody pushed to while the agent was out refuses the push instead of
+        being adopted as its lease. What comes back is `held`, `landed`, or neither, and `held` is **not** one
+        outcome — it means only "this tick is finished, publish nothing and hand the issue on to nothing", and the
+        three ways to earn it differ in everything else:
+        - **oversized** → the adjudication hold. Nothing is pushed, no docs verdict is stamped, no `in_review`
+          handoff is made, the issue is relabelled `workflow:decomposing`, and the head the pass produced goes down
+          as `docs_settled_sha` inside the gate's own routed write, ahead of that relabel (step 7 reads it back).
+        - **a reading the gate could not take** → a park, not a relabel. A tree that is not provably clean, a pull
+          request nothing could read or one that is closed or merged, a caller-named head that is no whole object id
+          or that disagrees with the head the gate reads, a head that moved off what a live record froze, a count
+          that never happened, or an approval whose lease cannot be read: each parks `late_measurement_failed` with
+          nothing pushed, no label moved, and no `docs_settled_sha` written.
+        - **the push landed and the checkout stopped being what went out** → the publication stands and only the
+          HANDOFF stops. The branch and its pull request carry the commit, the receipt and the debt are settled, and
+          the issue parks (`late_candidate_moved` for a head that moved, `dirty_worktree` for a tree dirtied under
+          the push) so the reconciliation ahead of the next handler restores the checkout rather than handing a
+          reviewer one nobody read.
+
+        **Landed**: record `docs_checked_sha=after_sha`, `docs_verdict="updated"`, reset `silent_park_count=0`,
+        drop `docs_settled_sha`, post `:books: documenting pass: pushed docs commit.`, persist, and advance — once.
+        **Neither** (allowed, and the push itself failed): park
+        (`push_failed`), with the commit that is owed a publication and the head to pin it against left on the record
+        for the retry.
+      - no commit + `DOCS: NO_CHANGE` verdict: when `ahead > 0` the recovered commit goes through that same gate and
+        earns the same answers — the verdict certifies the local tree and says nothing about what the remote carries;
+        otherwise persist `docs_verdict="no_change"`, post `:books: no docs changes required.`, and advance without
+        pushing.
+      - no commit + unknown verdict → `_on_question`: park.
+- **Output**: label moved to `in_review` (success), OR `workflow:validating` (drift unwind), OR
+  `workflow:decomposing` (a docs commit the size gate held), OR terminal `done` / `rejected` (short-circuit), OR a
+  HITL park.
 
 The docs pass is deliberately a thin dev-session rerun on the existing PR worktree rather than a separate role: there is
 no `documenting_agent` pin and no separate retry budget. The dev session resumes on its locked `(backend, args)` spec,

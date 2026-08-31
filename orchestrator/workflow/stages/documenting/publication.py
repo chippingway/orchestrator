@@ -15,6 +15,26 @@ silent-park counter is reset alongside it, so a park streak that predates a
 successful pass cannot later rotate a healthy session. The PR notice itself is
 best-effort: a comment failure must not strand an issue whose branch is already
 published and whose state is already stamped.
+
+Every terminal success ends the same way too, and the order is the whole of the
+crash contract: stamp, announce, persist, relabel -- one durable write, and the
+relabel behind it. The notice comes before the write because posting one
+RECORDS it: the comment id lands in `orchestrator_comment_ids`, which is what
+keeps the watermark walk and the in_review feedback scan from reading our own
+post as human feedback, and there is nothing behind the write to carry it. The
+write comes before the relabel because `in_review` repairs nothing it is
+handed: relabelled first, a crash in between leaves the merge gate reading the
+head the pass BEGAN on and a verdict nobody wrote, on a stage whose own handler
+never looks at either.
+
+Two windows are left and both fail toward doing the work again rather than
+skipping it. A tick that posted its notice and died over the write comes back
+with nothing on the record saying so, and the tick that finishes the handoff
+from the receipt announces it a second time. And a tick whose relabel did not
+land comes back to a pass this write already called finished, with the receipt
+it dropped: nothing tells that state from a `validating` approval handing the
+same head back, so the pass runs again rather than handing off on a receipt
+that could belong to either.
 """
 from __future__ import annotations
 
@@ -60,9 +80,16 @@ def _stamp_docs_verdict(
     evaluated head, the verdict (`updated` / `no_change`), and reset the
     silent-park counter.
 
-    The held pass's receipt is dropped in the same breath, since every
-    terminal success ends the pass the receipt was owed for -- including the
-    republication that carries a held commit to the remote itself.
+    The receipt is dropped in the same breath, and it has to be: it says a
+    published pass still owes a handoff, and this write is what records that
+    pass as finished. Held past this write to cover the relabel behind it, it
+    outlives the handoff whenever the write that would have dropped it does
+    not land -- and the state that leaves is indistinguishable from the one a
+    failed relabel leaves, since both carry the same commit, the same verdict,
+    and the same head. A later `validating` approval at that same head then
+    reads it as a pass still pending, skips the docs pass the approval just
+    bought, and hands the issue to `in_review` a second time. Between two
+    readings nothing can tell apart, running the pass is the safe one.
     """
     state.set("docs_checked_sha", checked_sha)
     state.set("docs_verdict", verdict)
@@ -110,6 +137,11 @@ def _push_docs_and_advance(
     handoff; without it that tick would find a branch in sync with its remote,
     read it as an issue no docs pass has run for, and spawn a second one over
     a commit the first pass already published.
+
+    The same receipt covers the push that was ALLOWED, because the gate writes
+    it whichever way the answer went -- so a push that landed and a process
+    that died before this stage could record it comes back to a receipt naming
+    the published commit rather than to a pass nothing remembers.
     """
     published = _late_push._publishes(
         _late_records._gate(ctx.gh, ctx.spec, ctx.issue, ctx.state, wt),
@@ -144,29 +176,37 @@ def _push_docs_and_advance(
     _stamp_docs_verdict(ctx.state, after_sha, "updated")
     _post_docs_notice(ctx, notice)
     _handoff._advance_after_docs_push(ctx.gh, ctx.issue, ctx.state)
-    ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 
 
 _SETTLED_DOCS_NOTICE = (
-    ":books: documenting pass: docs commit `{commit}` reached this pull "
-    "request through the late adjudication, which read it as one coherent "
-    "change. No second pass was run."
+    ":books: documenting pass: docs commit `{commit}` is already on this pull "
+    "request; this tick finished the handoff it was still owed. No second "
+    "pass was run."
 )
 
 
 def _finished_settled_docs(
     ctx: _models._DocumentingContext, wt, ahead: int,
 ) -> bool:
-    """Finish a docs pass the size gate held and an adjudication published.
+    """Finish a docs pass whose commit the pull request already carries.
 
     The receipt says the pass is over: an agent ran, it committed, and the
-    only thing between that commit and `in_review` was a push the gate would
-    not let this stage make. A settled `single` verdict makes that push from
-    the adjudication and hands the label back here, so what is left is the
-    stamp, the notice, and the handoff -- and running the docs agent again
-    instead would commit a second time over work the first pass already
-    published, which the gate would measure and could route to a second
-    adjudication.
+    only thing left between that commit and `in_review` is the handoff. The
+    gate HELD the commit, and a settled `single` verdict publishes it from the
+    adjudication and hands the label back here. Or the gate ALLOWED the push,
+    it landed, and the tick died before this stage could record it -- the
+    receipt goes down in the gate's own write either way, which is ahead of
+    everything this stage does with a landed push.
+
+    It is the write that RECORDS the pass which drops it, so a receipt read
+    here is one no handoff has been made for. Kept past that write to cover
+    the relabel behind it as well, it would outlive the handoff whenever the
+    write that dropped it did not land -- and a later approval at that same
+    head would consume it, skipping the docs pass it just bought.
+
+    Running the docs agent again instead of finishing from a live receipt
+    would commit a second time over work that is already published, which the
+    gate would measure and could route to an adjudication.
 
     `ahead` is what says the commit reached the remote, and it is asked
     because the receipt cannot: a verdict that parked, or a human who moved
@@ -197,7 +237,6 @@ def _finished_settled_docs(
     _stamp_docs_verdict(ctx.state, settled, "updated")
     _post_docs_notice(ctx, _SETTLED_DOCS_NOTICE.format(commit=settled))
     _handoff._advance_after_docs_push(ctx.gh, ctx.issue, ctx.state)
-    ctx.gh.write_pinned_state(ctx.issue, ctx.state)
     return True
 
 
@@ -257,7 +296,6 @@ def _route_documenting_no_change(
         else "",
     ).rstrip())
     _handoff._advance_after_docs_no_change(ctx.gh, ctx.issue, ctx.state)
-    ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 
 
 def _documenting_commit_notice(recovered: bool) -> str:

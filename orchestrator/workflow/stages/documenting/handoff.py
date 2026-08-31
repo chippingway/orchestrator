@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The relabel to `in_review`, and the watermark that has to precede it.
+"""The relabel to `in_review`, and the two writes that have to precede it.
 
 Both docs outcomes -- a pushed commit and a confirmed no-change -- leave the
 approval, squash, and PR watermarks validating wrote untouched and advance to
@@ -19,6 +19,13 @@ either surface, and the consumed-through bound applies to the issue thread
 only. `max` keeps a higher in_review watermark from regressing, and a PR fetch
 failure is best-effort -- the handoff still advances, and in_review's own
 rescan is debounced and correct on its own.
+
+The pinned write comes next and the relabel last, because the relabel is the
+one effect that takes the issue off the stage that could finish what a crash
+interrupted. `in_review` repairs nothing: relabelled first, a process dying
+before the write leaves the merge gate reading a `docs_checked_sha` that names
+the commit the pass began on and a `docs_verdict` nobody wrote, and the ready
+ping never fires again for that head.
 """
 from __future__ import annotations
 
@@ -93,6 +100,32 @@ def _ratchet_in_review_watermark_for_final_docs(
     state.set("pr_last_comment_id", candidate)
 
 
+def _hand_off_to_in_review(
+    gh: GitHubClient, issue: Issue, state: PinnedState,
+) -> None:
+    """Persist what the pass decided, then move the issue off this stage.
+
+    The order is the whole of the crash contract. The relabel is what takes
+    the issue out of `workflow:documenting`, and `in_review` repairs nothing
+    it is handed: relabelled ahead of this write, a process dying in between
+    leaves the merge gate reading a head whose `docs_checked_sha` still names
+    the commit the pass STARTED on and whose `docs_verdict` was never written,
+    so the ready ping never fires and no later tick of any stage goes back
+    for it.
+
+    Written first, a crash from here on lands on an issue this stage still
+    owns. The write that did not happen leaves the receipt the gate put down,
+    and the next tick finishes the handoff from it. The relabel that did not
+    happen leaves a pass this write already called finished and no receipt
+    behind it -- which is the same record a `validating` approval handing the
+    same head back leaves, so the next tick runs the pass rather than handing
+    off on evidence that could belong to either.
+    """
+    _ratchet_in_review_watermark_for_final_docs(gh, issue, state)
+    gh.write_pinned_state(issue, state)
+    gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
+
+
 def _advance_after_docs_push(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> None:
@@ -101,10 +134,10 @@ def _advance_after_docs_push(
     Advance to `in_review` -- the approval comment, squash comment, and
     PR watermarks set by validating remain on state untouched, with the
     in-review issue-comment watermark ratcheted past anything the
-    awaiting-human resume already consumed.
+    awaiting-human resume already consumed. Writes pinned state ahead of the
+    relabel; the caller returns unconditionally.
     """
-    _ratchet_in_review_watermark_for_final_docs(gh, issue, state)
-    gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
+    _hand_off_to_in_review(gh, issue, state)
 
 
 def _advance_after_docs_no_change(
@@ -113,8 +146,7 @@ def _advance_after_docs_no_change(
     """Route the issue forward after a clean no-change docs verdict.
 
     No commit landed, so the PR head is unchanged. Ratchet the in-review
-    issue-comment watermark past any issue-thread reply the
-    awaiting-human resume already consumed, and advance to `in_review`.
+    issue-comment watermark past any issue-thread reply the awaiting-human
+    resume already consumed, persist the verdict, and advance to `in_review`.
     """
-    _ratchet_in_review_watermark_for_final_docs(gh, issue, state)
-    gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
+    _hand_off_to_in_review(gh, issue, state)

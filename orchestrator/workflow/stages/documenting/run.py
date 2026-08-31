@@ -21,6 +21,12 @@ no-change verdict afterwards is only trustworthy against the head the agent was
 actually handed, and both go through the shared dev resume rather than a bare
 agent call so the docs pass participates in session rotation and overflow
 recovery instead of replaying the whole transcript untracked.
+
+Whichever shape runs, the verdict an EARLIER pass left is dropped as this one
+begins. That re-anchored `docs_checked_sha` is what makes it necessary: paired
+with a stale verdict it says a pass has FINISHED for the head this one is only
+now starting on, and the in_review merge gate reads that pair as a head this
+orchestrator has documented and pings it as ready for a human to merge.
 """
 from __future__ import annotations
 
@@ -44,6 +50,11 @@ from orchestrator.workflow.stages.implementing import (
 )
 
 log = logging.getLogger("orchestrator.workflow")
+
+
+# The verdict a finished pass stamps, dropped as the next one begins so a
+# record only ever carries one this pass wrote.
+_DOCS_VERDICT = "docs_verdict"
 
 
 def _prepare_documenting_worktree(ctx: _models._DocumentingContext, wt):
@@ -272,7 +283,22 @@ def _run_documenting_dev(
 
     Returns a `_DocumentingRun`, or None when an awaiting-human resume finds
     no new comments and the tick should end without disposition.
+
+    Whichever shape runs, the verdict an EARLIER pass left is dropped first,
+    because from here on a `docs_verdict` on the record means "this pass
+    finished" to the one thing that reads it. The in_review merge gate pings a
+    head it finds a verdict beside, and every shape below re-anchors
+    `docs_checked_sha` to the head it is about -- the resumed dev that adds
+    nothing to a commit already waiting anchors on that very head -- so a
+    stale verdict left alongside would advertise a head no pass has documented
+    as ready for a human to merge, from the moment this pass spawns until it
+    finishes.
+
+    Asked before it is dropped, so an issue that has never carried one is not
+    given the key to carry a null under.
     """
+    if ctx.state.get(_DOCS_VERDICT) is not None:
+        ctx.state.set(_DOCS_VERDICT, None)
     if ctx.state.get(_state._AWAITING_HUMAN):
         return _resume_documenting_dev(ctx, wt, ahead, remote_head)
     if ahead > 0:
