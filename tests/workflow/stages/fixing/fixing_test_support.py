@@ -33,6 +33,7 @@ worktree_paths = _git_worktree_paths
 
 FakeComment = fakes.FakeComment
 FakeGitHubClient = fakes.FakeGitHubClient
+FakeLabel = fakes.FakeLabel
 FakePR = fakes.FakePR
 FakePRRef = fakes.FakePRRef
 FakePRReview = fakes.FakePRReview

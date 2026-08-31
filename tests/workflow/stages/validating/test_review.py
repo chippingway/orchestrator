@@ -62,6 +62,9 @@ CF_BLOB = (
     "Verifying you are human. This may take a few seconds."
 )
 PUSH_BRANCH = "_push_branch"
+# The two keywords a gated push names its commit and pins its ref by.
+REVISION = "revision"
+LEASE = "force_with_lease"
 REVIEW_ROUND = "review_round"
 AWAITING_HUMAN = "awaiting_human"
 PARK_REASON = "park_reason"
@@ -518,6 +521,29 @@ class HandleValidatingFixLoopRoutingTest(
         pinned = held_github.pinned_data(FIX_LOOP_ISSUE)
         self.assertEqual(pinned[REVIEW_ROUND], 1)
         self.assertIsNone(pinned.get("pending_fix_reviewer_comment_id"))
+
+    def test_a_landed_fix_publishes_what_was_measured(self) -> None:
+        # The push a fix earns is named against the commit the gate proved
+        # rather than against the checkout it runs in, so work that landed on
+        # the worktree between the reading and the push does not go out in its
+        # place. It is pinned to the head this round began at -- the head the
+        # reviewer read -- so a pull request somebody pushed to while the dev
+        # was out refuses this push instead of being overwritten by work
+        # measured against the head it used to be on.
+        landed_github, landed_issue = self._seeded()
+
+        landed_mocks = self._run_validating(
+            landed_github,
+            landed_issue,
+            run_agent=[self._changes_requested_review(), _fixed()],
+            dirty_files=(),
+            push_branch=True,
+            head_shas=FIX_HEAD_SHAS,
+        )
+
+        pushed = landed_mocks[PUSH_BRANCH].call_args
+        self.assertEqual(pushed.kwargs[REVISION], AFTER_FIX_SHA)
+        self.assertEqual(pushed.kwargs[LEASE], BEFORE_FIX_SHA)
 
     def test_enters_fixing_before_dev_spawn(self) -> None:
         # The dev-fix subphase must run under the `fixing` label so the
