@@ -19,6 +19,14 @@ from orchestrator.git.worktrees import (
     recovery,
     terminal,
 )
+# The artifact scan's own owners, named apart from the lifecycle ones above
+# because that is the split the map draws: these four are read-only.
+from orchestrator.git.worktrees import (
+    attribution,
+    inventory,
+    models,
+    probes,
+)
 from tests.git.inventory_test_support import inventory_modules
 
 _PACKAGE = "orchestrator"
@@ -36,10 +44,14 @@ _ABSENT_TARGETS = (_AGGREGATE_HUB, _LIFECYCLE_SPELLING)
 
 _MODULES = (
     "orchestrator.git.worktrees",
+    "orchestrator.git.worktrees.attribution",
     "orchestrator.git.worktrees.cleanup",
     "orchestrator.git.worktrees.creation",
     "orchestrator.git.worktrees.decomposition",
+    "orchestrator.git.worktrees.inventory",
+    "orchestrator.git.worktrees.models",
     "orchestrator.git.worktrees.paths",
+    "orchestrator.git.worktrees.probes",
     "orchestrator.git.worktrees.recovery",
     "orchestrator.git.worktrees.terminal",
 )
@@ -59,11 +71,14 @@ _FLAT_MODULES = (
 # The initializer binds nothing, so each name answers on the owner that defines
 # it, never on the package itself.
 _OWNER_ONLY_NAMES = (
+    "ArtifactInventory",
+    "IssueArtifacts",
     "_branch_has_unpushed_commits",
     "_branch_name",
     "_cleanup_terminal_branch",
     "_ensure_worktree",
     "_decompose_worktree_path",
+    "_local_issue_inventory",
     "_remove_issue_worktree",
     "_resolve_branch_name",
     "_sanitize_slug",
@@ -72,16 +87,30 @@ _OWNER_ONLY_NAMES = (
 
 # Every name the owners define, paired with the owner that defines it: the slug
 # pattern and the digest math behind it, the two sanitizers, the branch, root,
-# and worktree-path derivations and the pinned / legacy resolver, the
+# and worktree-path derivations, the pinned / legacy resolver and the
+# `issue-<n>` read that runs back the other way, the
 # candidate-branch and commit-count reads behind the unpushed-commit probe, the
 # two creators, the new-commit probe, the reported fetch and the start point a
 # restore picks, the handoff anchor with the target choice, the ref move, and the
 # revision read under it, and the `worktree` argv they run, the
 # decomposer's path, creation, and removal, the per-issue removal and local
-# branch deletion, and the two teardowns composed from them. Naming the whole
-# surface makes a helper added to an owner an edit here rather than a
+# branch deletion, the two teardowns composed from them, and the local artifact
+# scan: the two records it answers with, the branch listing and checkout reads
+# under it, the attribution rules for a branch and for a checkout directory,
+# the clone resolution, the grouping over it and the shape that grouping
+# takes, and the per-clone, per-repository, and per-issue assembly. Naming the
+# whole surface makes a helper added to an owner an edit here rather than a
 # definition site nothing checks.
 _OWNER_DEFINED = (
+    ("ArtifactInventory", models),
+    ("AttributedIssues", attribution),
+    ("CloneGroups", inventory),
+    ("IssueArtifacts", models),
+    ("IssueBranches", attribution),
+    ("_ISSUE_SEGMENT_RE", paths),
+    ("_LOCAL_BRANCH_PREFIX", probes),
+    ("_ORCHESTRATOR_BRANCH_REFS", probes),
+    ("_REF_SEPARATOR", attribution),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
@@ -90,13 +119,17 @@ _OWNER_DEFINED = (
     ("_WORKTREE_REMOVE_FORCE", creation),
     ("_anchor_pr_worktree", creation),
     ("_anchor_target", creation),
+    ("_attributed_issues", attribution),
+    ("_branch_attribution", attribution),
     ("_branch_commit_count", recovery),
     ("_branch_has_unpushed_commits", recovery),
     ("_branch_name", paths),
     ("_candidate_issue_branches", recovery),
+    ("_checkout_entries", probes),
     ("_cleanup_decompose_worktree", decomposition),
     ("_cleanup_question_worktree", terminal),
     ("_cleanup_terminal_branch", terminal),
+    ("_colliding_worktree_slugs", attribution),
     ("_commit_count_from_stdout", recovery),
     ("_decompose_worktree_path", decomposition),
     ("_delete_local_issue_branch", cleanup),
@@ -105,24 +138,41 @@ _OWNER_DEFINED = (
     ("_ensure_worktree", creation),
     ("_fetch_for_restore", creation),
     ("_has_new_commits", creation),
+    ("_issue_artifacts", inventory),
+    ("_issue_checkout_number", probes),
+    ("_issue_segment_number", paths),
+    ("_local_issue_inventory", inventory),
+    ("_local_orchestrator_branches", probes),
+    ("_matching_owners", attribution),
+    ("_merged", inventory),
     ("_move_branch_onto", creation),
     ("_pr_branch_start_point", creation),
+    ("_read_orchestrator_refs", probes),
+    ("_record_attribution", attribution),
     ("_remove_issue_worktree", cleanup),
     ("_repo_worktrees_root", paths),
     ("_resolve_branch_name", paths),
     ("_resolved_commit", creation),
+    ("_resolved_root", inventory),
+    ("_root_inventory", inventory),
     ("_run_decompose_worktree_removal", decomposition),
     ("_run_issue_worktree_removal", cleanup),
     ("_run_local_branch_deletion", cleanup),
     ("_sanitize_branch_segment", paths),
     ("_sanitize_slug", paths),
     ("_slug_digest", paths),
+    ("_slugs_by_worktrees_root", attribution),
+    ("_spec_inventory", inventory),
+    ("_specs_by_clone", inventory),
+    ("_worktree_issue_numbers", probes),
     ("_worktree_path", paths),
 )
 
 # The owners that report, each binding the channel an operator's level and
 # handler selection is keyed on.
-_REPORTING_OWNERS = (cleanup, creation, decomposition, terminal)
+_REPORTING_OWNERS = (
+    attribution, cleanup, creation, decomposition, inventory, probes, terminal,
+)
 
 
 class CleanProcessImportTest(unittest.TestCase):

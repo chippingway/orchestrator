@@ -97,11 +97,12 @@ orchestrator/
                         holding the twelve labelled handlers the dispatch
                         routes into
   git/                  local git: execution, locks, and authenticated
-                        transport, under the worktree lifecycle, the per-tick
-                        base sync, branch publication, verify runs, the
-                        added-line measurement of a committed candidate, and
-                        the immutable ref namespace one is preserved under
-                        when a split supersedes it
+                        transport, under the worktree lifecycle and the
+                        read-only inventory of the checkouts and branches it
+                        leaves, the per-tick base sync, branch publication,
+                        verify runs, the added-line measurement of a committed
+                        candidate, and the immutable ref namespace one is
+                        preserved under when a split supersedes it
   observability/        the four surfaces that watch a run without steering
                         it: the analytics sink and everything downstream of
                         it, the parser that meters one finished agent run, the
