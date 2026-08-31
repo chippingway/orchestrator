@@ -672,22 +672,26 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       handler.py            the order one final-docs tick asks its questions in
       preconditions.py      the terminals, the missing-`pr_number` guard, the parked-no-input fast path, and the
                             refused bare continue
-      run.py                the branch refresh and diverged-worktree guard, plus the resume, recovered-commit, and
-                            fresh-spawn shapes
+      run.py                the branch refresh and diverged-worktree guard, the verdict an earlier pass left dropped
+                            as this one begins -- every shape re-anchors the checked head, so a stale verdict beside
+                            it would advertise a head no pass has documented as ready to merge -- plus the resume,
+                            recovered-commit, and fresh-spawn shapes
       outcomes.py           the timeout / dirty / commit / `DOCS: NO_CHANGE` order a finished run is read in
       publication.py        the size gate a docs commit passes -- the last one before a human is asked to merge,
                             and handed the commit this pass made so a checkout something moved is refused rather than
                             measured in its place -- then the push, the docs watermarks it stamps, and the PR notice
-                            it posts; a held commit leaves the head it produced as the receipt the handoff is still
-                            owed, and the handler finishes from that only over a checkout standing ON it, since in
-                            sync with its remote is what a replacement host rebuilt at a moved pull request reads as
-                            too
+                            it posts; a commit the gate held and one it let through leave the same receipt, the head
+                            the handoff is still owed for, and the handler finishes from that only over a checkout
+                            standing ON it, since in sync with its remote is what a replacement host rebuilt at a
+                            moved pull request reads as too -- the write that records the pass drops it, so no
+                            receipt outlives the handoff it was written for
       drift.py              a body edit mid-hop: the dropped approval, the unwind sentinel, and the relabel to
                             `workflow:validating`
       drift_reset.py        the fetch / probe / hard-reset that puts the worktree back on the PR head, and the parks
                             each failure earns
-      handoff.py            the `pr_last_comment_id` ratchet that keeps in_review from replaying a consumed reply, and
-                            the relabel
+      handoff.py            the `pr_last_comment_id` ratchet that keeps in_review from replaying a consumed reply,
+                            the write that carries it, and the relabel behind both -- taken ahead of that write, the
+                            relabel leaves `in_review` a pass it reads as unfinished and no stage goes back for it
       parks.py              the shared awaiting-human park and the missing-PR, dirty-tree, and question parks
       models.py             the frozen records the owners hand each other
       state.py              the pinned-state keys they share
