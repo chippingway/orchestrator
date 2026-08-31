@@ -107,6 +107,14 @@ SUPERSEDED_CANDIDATE = "5c" * (fixtures.SHA_LENGTH // 2)
 # pull request rewound onto it needs.
 STALE_RECEIPT = "7a" * (fixtures.SHA_LENGTH // 2)
 
+# The head each successive round of a pull request grown one fix at a time
+# leaves the checkout on. Spelled apart from every other commit here because a
+# candidate the receipt already names is a republication rather than a fresh
+# fix, and a round of growth is about the fix nobody has measured yet.
+GROWN_CANDIDATES = tuple(
+    marker * (fixtures.SHA_LENGTH // 2) for marker in ("a1", "b2", "c3")
+)
+
 
 def recorded_generation(**overrides) -> dict:
     """The pinned fields a post-publication generation is retried from.
