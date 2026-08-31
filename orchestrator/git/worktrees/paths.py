@@ -6,12 +6,19 @@ The two sanitizers live together because the git-ref-safe one layers on the
 filesystem-safe one: a path segment and a branch segment for the same repo
 slug have to stay readable in tandem, and the injectivity hash that keeps
 them distinct is derived from the same untransformed slug.
+
+The one read that runs the other way -- `_issue_segment_number`, which says
+which issue an `issue-<n>` name segment carries -- lives here for the same
+reason: a caller holding an existing directory or branch name is asking what
+these derivations would have produced, and an inverse kept anywhere else is
+free to accept a spelling none of them writes.
 """
 from __future__ import annotations
 
 import hashlib
 import re
 from pathlib import Path
+from typing import Optional
 
 from orchestrator import config
 from orchestrator.github.pinned_state import PinnedState
@@ -21,6 +28,16 @@ _SLUG_SAFE_RE = re.compile(r"[^A-Za-z0-9_.-]")
 _SAFE_CHAR = "_"
 
 _SLUG_DIGEST_LEN = 16
+
+# The `issue-<n>` tail every name below ends in, anchored whole and with no
+# room for a leading zero: `n` is a GitHub issue number, and those start at 1
+# and are written without padding. The digit run is bounded because the match
+# is converted to an int, and `int()` refuses a string past its digit ceiling
+# (4300 by default) by raising: eighteen digits is far past any number a
+# repository issues and far short of that ceiling, so a ref carrying thousands
+# of them is a name that parses to nothing rather than one that raises out of
+# a read whose whole job is to fail closed.
+_ISSUE_SEGMENT_RE = re.compile(r"issue-([1-9][0-9]{0,17})")
 
 
 def _sanitize_slug(slug: str) -> str:
@@ -238,3 +255,31 @@ def _repo_worktrees_root(spec: config.RepoSpec) -> Path:
 
 def _worktree_path(spec: config.RepoSpec, issue_number: int) -> Path:
     return _repo_worktrees_root(spec) / f"issue-{issue_number}"
+
+
+def _issue_segment_number(segment: str) -> Optional[int]:
+    """The issue number an `issue-<n>` name segment carries, or None.
+
+    The inverse of the tail `_branch_name` and `_worktree_path` build, kept
+    beside them so the pair cannot drift: a caller reading an existing branch
+    or worktree directory has only its name to go on, and a name these
+    derivations would never write is not one of this orchestrator's to read.
+
+    Deliberately narrower than `int()`, which answers 7 for `issue-007`,
+    `issue-+7`, and `issue- 7` alike -- three names nothing here published,
+    each of which would arrive at a caller as a claim on issue #7 -- and
+    which raises outright on a run of digits past its conversion ceiling.
+    Only the canonical spelling of a positive number, at a width a repository
+    can actually reach, parses; everything else is answered rather than
+    thrown, because a caller reading a ref store it does not control cannot
+    have one name in it end the read.
+
+    Even a parsed number is half an answer where several repositories share
+    one clone: it says nothing about WHICH of them published the name, so a
+    caller reading that ref store settles it by re-deriving each spec's own
+    name and comparing.
+    """
+    matched = _ISSUE_SEGMENT_RE.fullmatch(segment)
+    if matched is None:
+        return None
+    return int(matched.group(1))

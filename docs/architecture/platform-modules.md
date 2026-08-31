@@ -49,7 +49,7 @@ last is held by the loader itself rather than by a check.
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/authentication.py`,
   `git/snapshots/refs.py`, and the two `git/measurement/` owners that log, which all report on the same `ls-remote`,
   fetch, push, and diff plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the four `git/worktrees/`
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the seven `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
   `tests/git/test_authentication.py`, `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`, and
@@ -255,9 +255,12 @@ orchestrator/
                         the list), and the two a named commit is judged by
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
-    worktrees/          the per-issue checkouts an agent runs in
+    worktrees/          the per-issue checkouts an agent runs in, and the read-only inventory of which issues they
+                        and the branches beside them name
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
-                        resolution, and the exact set of names one issue's branch can be published under
+                        resolution, the exact set of names one issue's branch can be published under, and the
+                        `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
+                        signed number is no issue at all
       creation.py       issue and PR worktree creation, stale-worktree reuse and the probe it turns on, and the one
                         move that re-anchors a reused checkout onto a PR head or its merged base
       cleanup.py        lock-held worktree removal and local branch deletion, each behind its best-effort boundary,
@@ -266,6 +269,23 @@ orchestrator/
                         compared against
       decomposition.py  the decomposer scratch path, its detached creation, and its best-effort removal
       terminal.py       question-stage teardown and terminal local and remote branch cleanup
+      models.py         one issue's local artifacts, and the whole answer a scan gives -- the issues it attributed
+                        beside the repositories it will not answer for
+      probes.py         the two local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
+                        per-issue checkout directories -- a real directory under the exact name, never a symlink
+                        into a tree the creators never wrote, read through the `lstat` that reports what the
+                        `is_dir` predicates suppress -- each answering "could not read", listing and entry alike
+                        and a listing that warned about a ref it skipped included, apart from "nothing here"
+      attribution.py    which configured repository a discovered artifact belongs to, by re-deriving each spec's
+                        own name for it; a name several entries could own -- every legacy flat branch on a shared
+                        clone, every checkout directory two lossily-sanitized slugs are handed -- is attributed to
+                        none of them
+      inventory.py      the read-only scan over both reads: which entries share a clone, one listing per clone,
+                        worktree-only and branch-only candidates deduplicated into one entry per issue, and a
+                        repository whose clone would not resolve, whose checkout directory another entry also
+                        derives, or whose read failed left out of the answer rather than reported empty -- and
+                        still put to the attribution, since a repository this scan will not answer for is one the
+                        flat branch on its clone could equally belong to
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends
@@ -292,7 +312,10 @@ off a facade:
   that proves what the fetch brought. The workflow decides WHEN a snapshot is taken and what its absence costs; this
   package decides only what a snapshot ref IS and refuses everything outside it.
 - `worktrees/` — the creators call `commands`, `locks`, `authentication`, and their `paths` / `recovery` siblings;
-  `decomposition` resolves its own path helper; `terminal` composes its local teardown from `cleanup`.
+  `decomposition` resolves its own path helper; `terminal` composes its local teardown from `cleanup`. The read-only
+  scan sits on the same owners: `inventory` calls `probes` and `attribution`, each of which reaches `paths` for the
+  names it compares against, and only `probes` reaches `commands` and `locks`. `models` carries only data. Nothing
+  in the scan writes, fetches, or names GitHub, which is what lets a caller take it at any point in a tick.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,

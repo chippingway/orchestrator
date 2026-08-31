@@ -1,0 +1,241 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""The read-only scan that derives issue candidates from local artifacts.
+
+Which issues this host has work for is normally GitHub's answer. This scan
+answers the local half of it instead, from what the host already holds: every
+`issue-<n>` checkout under a spec's worktrees root and every branch in that
+clone's orchestrator-owned namespace names an issue this orchestrator has
+already worked on. Nothing here fetches, writes, or asks GitHub anything, so
+the answer costs one directory listing and one `for-each-ref` per clone and
+stays valid to take at any point in a tick.
+
+The two sides are deduplicated into one entry per issue, because they are two
+views of one thing: a checkout whose branch was deleted, a branch whose
+checkout was removed, and an issue still carrying both are all one issue, and
+an issue published under both the namespaced and the legacy branch layout is
+one issue with two names rather than two candidates.
+
+The scan is grouped by clone rather than run per repository because several
+``REPOS`` entries may share one `target_root`, and a shared ref store is the
+one place a name cannot be attributed by looking at it alone -- which is
+``attribution``'s subject. What is decided here is the shape of the answer
+around it: which reads a refusal takes down with it, and in what order the
+result is handed back.
+"""
+from __future__ import annotations
+
+import logging
+from collections.abc import Mapping, Sequence
+from itertools import chain
+from pathlib import Path
+from typing import Optional
+
+from orchestrator import config
+from orchestrator.git.worktrees import attribution, paths, probes
+from orchestrator.git.worktrees.models import ArtifactInventory, IssueArtifacts
+
+# The channel is named for the worktree-lifecycle domain rather than for this
+# module's path: operators filter the rendered `orchestrator.worktree_lifecycle`
+# prefix and attach handlers to it, so a repository this scan will not answer
+# for says so where their filters already point.
+log = logging.getLogger("orchestrator.worktree_lifecycle")
+
+# The specs on each clone a scan reads, keyed by the path their spellings
+# agree on: one group is one ref store, and everyone in it is a claimant to
+# what that store holds.
+CloneGroups = dict[Path, tuple[config.RepoSpec, ...]]
+
+
+def _resolved_root(spec: config.RepoSpec) -> Optional[Path]:
+    """The clone this spec configures, as the one path its spellings agree on.
+
+    `None` when the path cannot be resolved at all, which is a failure worth
+    catching here rather than letting out: resolution is what says whether two
+    entries are on one clone, it runs before any repository has been read, and
+    an exception escaping it ends the whole scan -- every healthy repository
+    in it included -- over one entry's `target_root`. What it costs to fail is
+    also version-dependent, so it cannot be reasoned about from the value: a
+    root reached through a symlink loop raises `RuntimeError` out of
+    `Path.resolve` on Python 3.12 and comes back unchanged on 3.13.
+
+    The caller refuses that entry -- nothing about it is reported -- while
+    still grouping it under the path as written, because the two are different
+    questions. Whether this scan can answer for a repository is one; whether
+    that repository could have published what is on the clone it names is the
+    other, and dropping it from its group answers the second wrongly: the
+    legacy flat branch there would lose a claimant and read as unambiguously
+    some other entry's.
+    """
+    try:
+        return spec.target_root.resolve()
+    except (OSError, RuntimeError) as resolve_error:
+        log.warning(
+            "could not resolve the clone %s is configured at (%s): %s",
+            spec.slug, spec.target_root, resolve_error,
+        )
+        return None
+
+
+def _specs_by_clone(
+    specs: Sequence[config.RepoSpec],
+) -> tuple[CloneGroups, tuple[str, ...]]:
+    """The specs grouped by the clone they name, and whose path did not resolve.
+
+    Grouped on the resolved path, so two entries spelling one clone
+    differently -- through a symlink, with a trailing `.` -- land in one group
+    with one ambiguous legacy branch between them instead of two groups each
+    claiming that branch for itself. The reads still run against a path a spec
+    configures, which is the one the rest of the worktree owners lock and run
+    git in.
+
+    An entry whose path would not resolve is grouped under that path as
+    written rather than dropped: it is still one of the repositories that
+    could have published what its clone holds, and the second half of the
+    answer is what says the scan will not report for it.
+    """
+    grouped: CloneGroups = {}
+    unresolved: list[str] = []
+    for spec in specs:
+        resolved = _resolved_root(spec)
+        if resolved is None:
+            unresolved.append(spec.slug)
+        clone = resolved or spec.target_root
+        grouped[clone] = (*grouped.get(clone, ()), spec)
+    return grouped, tuple(unresolved)
+
+
+def _issue_artifacts(
+    spec: config.RepoSpec,
+    issue_number: int,
+    checkouts: frozenset[int],
+    branched: Mapping[int, tuple[str, ...]],
+) -> IssueArtifacts:
+    """One issue's entry: the checkout it still has, and the branches naming it."""
+    worktree = None
+    if issue_number in checkouts:
+        worktree = paths._worktree_path(spec, issue_number)
+    return IssueArtifacts(
+        spec=spec,
+        issue_number=issue_number,
+        worktree=worktree,
+        branches=branched.get(issue_number, ()),
+    )
+
+
+def _spec_inventory(
+    spec: config.RepoSpec, branched: Mapping[int, tuple[str, ...]],
+) -> ArtifactInventory:
+    """Every issue one repository has an artifact for, or a refusal for it.
+
+    The union of both sides is what makes a candidate: an issue is reported
+    once whether the checkout, the branches, or both are what named it. The
+    checkouts are read for one repository at a time because the directory they
+    sit in is this spec's alone -- an entry that shares it with another was
+    refused before the scan reached here.
+    """
+    checkouts = probes._worktree_issue_numbers(spec)
+    if checkouts is None:
+        return ArtifactInventory(issues=(), refused=(spec.slug,))
+    return ArtifactInventory(
+        issues=tuple(
+            _issue_artifacts(spec, issue_number, checkouts, branched)
+            for issue_number in sorted(checkouts | branched.keys())
+        ),
+        refused=(),
+    )
+
+
+def _root_inventory(
+    root_specs: tuple[config.RepoSpec, ...], refused: frozenset[str],
+) -> ArtifactInventory:
+    """Every issue the repositories sharing one clone hold artifacts for.
+
+    One listing per clone rather than one per repository: the specs on it
+    share a ref store, so a second read would return the same refs and
+    attribute them the same way.
+
+    Every spec on the clone is put to the attribution, the already-refused
+    ones included, and only the rest are reported. Refusing a repository says
+    this scan will not answer for it, not that it never published here: drop
+    it from the claimants and the flat `orchestrator/issue-<n>` this clone
+    holds loses an owner it could equally have, which is how a branch that
+    belongs to nobody ends up charged to whichever entry was left.
+
+    A listing that could not be taken refuses every repository still standing
+    on that clone, checkouts included, even though those were never read for.
+    What a caller does with an issue turns on the shape of its artifacts -- a
+    checkout with no branch and a checkout whose branch simply could not be
+    read are different situations with the same appearance -- so reporting the
+    checkouts alone would hand out that shape as if it had been established.
+    """
+    reportable = tuple(
+        spec for spec in root_specs if spec.slug not in refused
+    )
+    if not reportable:
+        return ArtifactInventory(issues=(), refused=())
+    branches = probes._local_orchestrator_branches(reportable[0].target_root)
+    if branches is None:
+        return ArtifactInventory(
+            issues=(), refused=tuple(spec.slug for spec in reportable),
+        )
+    owned = attribution._attributed_issues(branches, root_specs)
+    return _merged(tuple(
+        _spec_inventory(spec, owned.get(spec, {})) for spec in reportable
+    ))
+
+
+def _merged(
+    inventories: tuple[ArtifactInventory, ...],
+) -> ArtifactInventory:
+    """One answer over several scans, in an order two runs can be compared by.
+
+    Each issue is produced by exactly one repository's scan, so this
+    concatenates rather than combines: the deduplication a single issue needs
+    has already happened where its two sides were read.
+    """
+    return ArtifactInventory(
+        issues=tuple(sorted(
+            chain.from_iterable(scan.issues for scan in inventories),
+            key=lambda artifacts: (artifacts.spec.slug, artifacts.issue_number),
+        )),
+        refused=tuple(sorted({
+            slug for scan in inventories for slug in scan.refused
+        })),
+    )
+
+
+def _local_issue_inventory(
+    specs: Sequence[config.RepoSpec],
+) -> ArtifactInventory:
+    """Every issue this host holds an orchestrator-owned artifact for.
+
+    The entry point to the scan, taking the configured specs rather than
+    reading them, so a caller with a narrower list -- one repository, or the
+    ones a tick actually drives -- asks about exactly those.
+
+    An issue appears here because of what is on this host, which is a
+    different question from what GitHub would say about it: a candidate may
+    name an issue that is closed, merged, or was never this orchestrator's to
+    begin with. Deciding that is the caller's, and the repositories named in
+    `refused` are the ones it cannot decide anything about from this answer.
+
+    Two refusals are settled here, before a repository is read, because both
+    are answers about the configuration rather than about a host: the entries
+    sharing a derived checkout directory, which is ``attribution``'s second
+    ambiguity rule, and the entries whose clone would not resolve. Neither is
+    read, and neither is reported -- but both stay in the group their clone
+    holds, because a repository this scan will not answer for is still one
+    that could have published what is on the clone it names.
+    """
+    configured = tuple(specs)
+    colliding = attribution._colliding_worktree_slugs(configured)
+    grouped, unresolved = _specs_by_clone(configured)
+    refused = frozenset(colliding) | frozenset(unresolved)
+    return _merged((
+        ArtifactInventory(issues=(), refused=(*colliding, *unresolved)),
+        *(
+            _root_inventory(root_specs, refused)
+            for root_specs in grouped.values()
+        ),
+    ))

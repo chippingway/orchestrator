@@ -22,6 +22,18 @@ from tests.git.worktrees.path_test_support import (
 
 SHARED_CLONE_ROOT = Path("/tmp/shared-clone")
 
+# One issue number per digit count a real repository reaches, so the round trip
+# is not asserted on a single-digit case alone.
+ROUND_TRIP_ISSUE_NUMBERS = (1, 42, 1484)
+
+# The two digit runs a name can carry that no issue number does: one digit past
+# the width a name is read as an issue at, and enough digits that converting
+# them is what raises rather than what answers.
+OVER_WIDTH_DIGIT_COUNT = 19
+UNCONVERTIBLE_DIGIT_COUNT = 5000
+OVER_WIDTH_DIGITS = "9" * OVER_WIDTH_DIGIT_COUNT
+UNCONVERTIBLE_DIGITS = "9" * UNCONVERTIBLE_DIGIT_COUNT
+
 
 class WorktreePathSlugNamespaceTest(unittest.TestCase):
     """Two repos with the same issue number must produce distinct worktree
@@ -132,6 +144,53 @@ class BranchNameSlugNamespaceTest(unittest.TestCase):
                 ).startswith("orchestrator/"),
                 repo_slug,
             )
+
+
+class IssueSegmentNumberTest(unittest.TestCase):
+    """The `issue-<n>` tail read back off a name that already exists.
+
+    A reader of a worktree directory or a local branch has only the name to go
+    on, so what this refuses is what keeps a name nothing here published from
+    arriving at a caller as a claim on an issue.
+    """
+
+    def test_it_reads_back_what_the_derivations_write(self) -> None:
+        # The pair that must not drift: every name built for an issue ends in
+        # the tail this reads, so the round trip is the contract.
+        for issue_number in ROUND_TRIP_ISSUE_NUMBERS:
+            with self.subTest(issue_number=issue_number):
+                built = paths._worktree_path(_migration_spec(), issue_number)
+                self.assertEqual(
+                    paths._issue_segment_number(built.name), issue_number,
+                )
+                branch = paths._branch_name(_migration_spec(), issue_number)
+                self.assertEqual(
+                    paths._issue_segment_number(branch.rsplit("/", 1)[-1]),
+                    issue_number,
+                )
+
+    def test_a_spelling_nothing_writes_is_no_issue(self) -> None:
+        # `int()` answers 7 for the first three of these, which would turn
+        # three names this orchestrator never wrote into a claim on issue #7 --
+        # and it does not answer the last two at all: a run of digits past its
+        # conversion ceiling raises, which is how a name in a ref store nobody
+        # controls would end a read instead of being passed over by it.
+        for segment in (
+            "issue-007",
+            "issue-+7",
+            "issue- 7",
+            "issue-0",
+            "issue-",
+            "issue-7-fixup",
+            "issue-7/tail",
+            "decompose-7",
+            "ISSUE-7",
+            "",
+            f"issue-{OVER_WIDTH_DIGITS}",
+            f"issue-{UNCONVERTIBLE_DIGITS}",
+        ):
+            with self.subTest(segment=segment):
+                self.assertIsNone(paths._issue_segment_number(segment))
 
 
 if __name__ == "__main__":
