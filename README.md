@@ -45,7 +45,10 @@ this path:
 6. `done` / `rejected` — the terminal result after the PR is merged or closed without merging.
 
 A PR branch that cannot be rebased cleanly onto the base branch detours through `workflow:resolving_conflict` and
-returns to validation. The operator-applied `question` and `discussion` flows are described below; the complete graph
+returns to validation. Every commit that detour publishes is measured the same way a fix is — for what the pull
+request would come to — so a branch cannot be grown past `MAX_ADDED_LINES` one conflict round at a time either; a
+resolution that would goes back to `workflow:decomposing` with nothing pushed and no round spent against
+`MAX_CONFLICT_ROUNDS`. The operator-applied `question` and `discussion` flows are described below; the complete graph
 is in [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md).
 
 ## Requirements
