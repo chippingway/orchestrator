@@ -1689,9 +1689,15 @@ approval the reconciliation ahead of the next handler pays as a leased no-op and
   1. Awaiting-human path: resume on the dev's locked spec; on a successful pushed fix, bump `review_round` and stay on
      `workflow:validating`. A transient park (`_VALIDATING_TRANSIENT_PARK_REASONS`) with NO new comment goes to
      `_try_recover_validating_transient_park` instead, which retries silently and, on `cleared` / `pushed`, posts the
-     **Recovery follow-up** described below before clearing the park. Exception: on a `review_cap` park the human
-     reply does NOT wake the dev — the operator
-     must post `/orchestrator add-review-rounds N` on its own line (honored only from an allowlisted author when
+     **Recovery follow-up** described below before clearing the park. Its two git-touching retries — the deferred push
+     and the commit a timeout killed the disposition before it saw — publish through the same
+     [size gate](#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr) the shared dev-fix publication
+     passes, which is why it has a fourth answer: `held`, meaning the gate took the candidate and the tick is over.
+     The caller then posts no follow-up, clears no park, and moves no label — the gate has already parked on a reading
+     nobody could take, or handed the issue to `workflow:decomposing`, and written its own state, so a follow-up would
+     announce a recovery that did not happen and a relabel would move the issue off the state the gate just set.
+     Exception: on a `review_cap` park the human reply does NOT wake the dev — the operator must post
+     `/orchestrator add-review-rounds N` on its own line (honored only from an allowlisted author when
      `ALLOWED_ISSUE_AUTHORS` is set — an outsider's command is filtered out before the parse), which resets
      `review_round` to `max(0, MAX_REVIEW_ROUNDS - N)`, clears the park, and falls through to spawn the reviewer this
      same tick. Values at or above the configured maximum grant one full review budget rather than extending the
@@ -1751,8 +1757,8 @@ approval the reconciliation ahead of the next handler pays as a leased no-op and
      is what publishes the discarded run's commit, since the reviewer comment that started the round is filtered out
      of every later rescan.
 - **Output**: label moved to `workflow:documenting` (approval after verify + squash) OR `workflow:fixing`
-  (CHANGES_REQUESTED) OR no label change with `review_round` bumped (awaiting-human resume, drift, transient-park
-  recovery push) OR a HITL park.
+  (CHANGES_REQUESTED) OR `workflow:decomposing` (the size gate held a fix or a transient-park recovery push) OR no
+  label change with `review_round` bumped (awaiting-human resume, drift, transient-park recovery push) OR a HITL park.
 
 ## `_handle_in_review` (label `in_review`)
 - **Trigger**: each tick while label is `in_review`. Set by `_handle_documenting` on the final-docs hop. Also runs on
@@ -1903,7 +1909,10 @@ state. The PR comment that triggers a route to `workflow:fixing` is the human si
        `_try_recover_validating_transient_park`. On `cleared` or `pushed`, post the recovery follow-up (see the
        **Recovery follow-up** note above), clear park, clear `pending_fix_*`, flip back to `workflow:validating`
        (the helper bumps `review_round` on `pushed`). This closes the loop for `_handle_validating`'s
-       CHANGES_REQUESTED route. On `stuck`, fall through to the worktree-drift check below.
+       CHANGES_REQUESTED route. On `stuck`, fall through to the worktree-drift check below. On `held` — the size gate
+       took the candidate the retry was about — the tick stops outright: no follow-up, no clear, no drift reroute, and
+       no relabel, because the gate has already parked the issue or moved it to `workflow:decomposing` and written its
+       own state.
      - **Any other awaiting-human shape** (transient reason on the in_review route, non-transient reason like a real
        agent question, dirty-worktree park, or silent-crash park) → return silently and keep waiting for a human
        reply. We cannot distinguish "agent has a real question" from "agent reported nothing to change" by inspection
@@ -1970,9 +1979,10 @@ state. The PR comment that triggers a route to `workflow:fixing` is the human si
       flip DIRECTLY back to `workflow:validating`. Docs do not run on this exit.
 - **Output**: terminal `done` / `rejected`, OR label flipped to `workflow:validating` (pushed fix OR no-new-feedback
   bounce), OR label flipped to `workflow:resolving_conflict` (stuck validating-route transient park while the worktree
-  is out of sync with the PR — behind base or an unpushed local rebase), OR label flipped to `in_review` (in_review
-  route, ACK fast path on this tick only), OR a HITL park, OR a no-op (quiet-window wait, missing-PR park already
-  set).
+  is out of sync with the PR — behind base or an unpushed local rebase), OR label flipped to `workflow:decomposing`
+  (the size gate held a fix, a stranded-fix bounce, or a transient-park recovery push), OR label flipped to
+  `in_review` (in_review route, ACK fast path on this tick only), OR a HITL park, OR a no-op (quiet-window wait,
+  missing-PR park already set).
 
 ## `_handle_resolving_conflict` (label `workflow:resolving_conflict`)
 - **Trigger**: each tick while label is `workflow:resolving_conflict` (set by an operator relabel, by
