@@ -313,9 +313,10 @@ off a facade:
   package decides only what a snapshot ref IS and refuses everything outside it.
 - `worktrees/` — the creators call `commands`, `locks`, `authentication`, and their `paths` / `recovery` siblings;
   `decomposition` resolves its own path helper; `terminal` composes its local teardown from `cleanup`. The read-only
-  scan sits on the same owners: `inventory` calls `probes` and `attribution`, each of which reaches `paths` for the
-  names it compares against, and only `probes` reaches `commands` and `locks`. `models` carries only data. Nothing
-  in the scan writes, fetches, or names GitHub, which is what lets a caller take it at any point in a tick.
+  scan sits on the same owners: `inventory` calls `probes` and `attribution`, and `paths` itself for the checkout
+  path it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against, and only
+  `probes` reaches `commands` and `locks`. `models` carries only data. Nothing in the scan writes, fetches, or names
+  GitHub, which is what lets a caller take it at any point in a tick.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,
