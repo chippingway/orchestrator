@@ -53,7 +53,11 @@ def _fetch_pr_branch(
         ctx,
         f"{config.HITL_MENTIONS} `git fetch {spec.remote_name} {branch}` "
         "failed during conflict resolution; see orchestrator logs.",
-        reason="fetch_failed",
+        reason=_state._REASON_FETCH_FAILED,
+        # Said once. A settled round is retried through this fetch every tick,
+        # so a branch that goes on failing would bury the notice an operator
+        # has to act on under a fresh copy of itself.
+        once=True,
     )
     return False
 
@@ -79,7 +83,12 @@ def _fetch_base_ref(ctx: _models._ConflictContext, wt: Path) -> bool:
         f"{config.HITL_MENTIONS} "
         f"`git fetch {spec.remote_name} {spec.base_branch}` "
         "failed during conflict resolution; see orchestrator logs.",
-        reason="fetch_failed",
+        reason=_state._REASON_FETCH_FAILED,
+        # Said once, exactly as the branch fetch above is. A fetch that failed
+        # is a reading nobody can answer, so every tick after this one retries
+        # it -- and a remote that stays unreachable would otherwise put a
+        # fresh notice on the thread each poll.
+        once=True,
     )
     return False
 
@@ -92,9 +101,22 @@ def _rebase_and_dispose(
     A clean rebase routes to `_publish_clean_rebase`; a rebase that failed
     without listing conflicted files parks; real content conflicts hand to
     `_resolve_conflicts_with_agent`.
+
+    The pre-rebase head is read BEFORE any of that, and a reading that failed
+    stops the tick. It is not bookkeeping: it is the head both exits lease
+    their force-push against, and the size gate reads "no head" as a caller
+    that established none and pins the push to whatever the pull request is
+    standing on when it looks -- so a commit somebody else landed while the
+    rebase or the dev run was in flight becomes the lease and is
+    force-overwritten by work that was never proved against it. Refused here,
+    nothing is rebased, no agent is spawned over a checkout nobody could read,
+    and the next tick reads it again.
     """
     spec = ctx.spec
     before_sha = _verification_probes._head_sha(wt)
+    if not before_sha:
+        _transitions._park_unreadable_head(ctx)
+        return
     succeeded, conflicted_files = _base_sync_pre_pr._rebase_base_into_worktree(
         spec, wt,
     )

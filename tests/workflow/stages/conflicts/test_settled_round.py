@@ -2,13 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """The round a resolution earns when the size gate holds it off the PR.
 
-A resolution the gate sends to the adjudication is a round this stage
+A content update the gate sends to the adjudication is a round this stage
 finished and could not publish: the commit is on the branch, a settled
 `single` verdict publishes it from there, and the label comes back here with
 the hand to `validating` still owed. What the resumed tick cannot work out for
-itself is which of the two resolutions it was -- the branch it comes back to
-already carries its base, which is the no-op flip's own reading and the one
-exit that resolves nothing.
+itself is which of the four it was -- the branch it comes back to already
+carries its base, which is the no-op flip's own reading and the one exit that
+resolves nothing.
+
+One pair holds one round, which is why nothing may start a fresh resume over a
+receipt that is still standing: the second would write its outcome into the
+slot the first is waiting in, and the round a settlement already published
+would never be counted.
 """
 from __future__ import annotations
 
@@ -20,6 +25,8 @@ from orchestrator.git.measurement.models import (
     FrozenCommit,
     MeasurementFailure,
 )
+
+from tests.workflow.patch_models import _agent
 
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     RESOLVED_HEAD_SHA,
@@ -34,6 +41,9 @@ MERGED_HEAD = RESOLVED_HEAD_SHA
 CEILING = 5
 PAST_THE_CEILING = 6
 MAX_ADDED_LINES = "MAX_ADDED_LINES"
+
+# The flag a park sets, which every road out of one has to clear.
+AWAITING_HUMAN = "awaiting_human"
 
 RUN_AGENT = "run_agent"
 PUSH_BRANCH = "_push_branch"
@@ -50,6 +60,7 @@ SETTLED_SHA = "conflict_settled_sha"
 AGENT_RESOLVED = "agent_resolved"
 BASE_REBASED_CLEAN = "base_rebased_clean"
 RECOVERED_PUSH = "recovered_push"
+DRIFT_RESOLVED = "drift_resolved"
 
 OUTCOME = "outcome"
 SHA = "sha"
@@ -63,8 +74,14 @@ RECOVERED_HEAD = "1ec04e5e" * 5
 # host rebuilds its checkout from.
 MOVED_HEAD = "0d0d0d0d" * 5
 
-# A receipt no checkout can be compared to.
+# The two spellings of a receipt no checkout can be compared to: a value
+# nothing will type, and a round whose commit nobody could read.
 NOT_A_COMMIT = "nope"
+UNNAMED_HEAD = ""
+
+# The head a body-edit resume commits, which is a round of its own and not the
+# one a standing receipt is still owed for.
+EDITED_HEAD = "ed17ed17" * 5
 
 CANDIDATE_ABSENT = MeasurementFailure.CANDIDATE_ABSENT
 
@@ -84,6 +101,12 @@ def _rounds_of(github) -> list[dict]:
 def _outcomes_of(github) -> list[str]:
     """What each recorded round says put the branch where it is."""
     return [round_[OUTCOME] for round_ in _rounds_of(github)]
+
+
+def _receipt_of(github) -> tuple:
+    """The round a hold left for a later tick, as the pair it is written as."""
+    pinned = github.pinned_data(CONFLICT_ISSUE)
+    return (pinned.get(SETTLED_OUTCOME), pinned.get(SETTLED_SHA))
 
 
 def _settlements_of(github) -> list[tuple]:
@@ -106,13 +129,15 @@ class ResolvingConflictHeldRoundTest(
 
         mocks[PUSH_BRANCH].assert_not_called()
         self.assertIn((CONFLICT_ISSUE, LABEL_DECOMPOSING), github.label_history)
-        pinned = github.pinned_data(CONFLICT_ISSUE)
-        self.assertEqual(pinned.get(SETTLED_OUTCOME), AGENT_RESOLVED)
-        self.assertEqual(pinned.get(SETTLED_SHA), MERGED_HEAD)
+        self.assertEqual(_receipt_of(github), (AGENT_RESOLVED, MERGED_HEAD))
+        pinned = self._pinned(github)
         # Nothing is counted yet: the tail that counts is the one the resumed
         # tick runs, and counting here as well would spend the round twice.
         self.assertEqual(pinned.get(CONFLICT_ROUND), 0)
         self.assertNotIn(RESOLVED_AT, pinned)
+        # And nothing is emitted either: a tail of the sink that saw a round
+        # here would attribute one to a push that never went out.
+        self.assertEqual(_rounds_of(github), [])
 
     def test_a_held_recovered_push_names_its_round(self) -> None:
         # The recovered push completes a round of its own when the branch it
@@ -124,9 +149,9 @@ class ResolvingConflictHeldRoundTest(
 
         mocks[PUSH_BRANCH].assert_not_called()
         self.assertIn((CONFLICT_ISSUE, LABEL_DECOMPOSING), github.label_history)
-        pinned = github.pinned_data(CONFLICT_ISSUE)
-        self.assertEqual(pinned.get(SETTLED_OUTCOME), RECOVERED_PUSH)
-        self.assertEqual(pinned.get(SETTLED_SHA), RECOVERED_HEAD)
+        self.assertEqual(
+            _receipt_of(github), (RECOVERED_PUSH, RECOVERED_HEAD),
+        )
 
     def test_a_held_preamble_push_names_no_round(self) -> None:
         # A recovered push that leaves the branch still behind base is a
@@ -135,7 +160,7 @@ class ResolvingConflictHeldRoundTest(
         # have the resumed tick close a round the rebase has not run yet.
         github = self._held_recovered_push(behind=BEHIND_BASE)[0]
 
-        pinned = github.pinned_data(CONFLICT_ISSUE)
+        pinned = self._pinned(github)
         self.assertIsNone(pinned.get(SETTLED_OUTCOME))
 
     def _held_recovered_push(self, *, behind: str = ON_BASE):
@@ -187,7 +212,7 @@ class ResolvingConflictSettledRoundTest(
         self.assertEqual(
             _settlements_of(github), [(AGENT_RESOLVED, MERGED_HEAD)],
         )
-        self.assertIn(RESOLVED_AT, github.pinned_data(CONFLICT_ISSUE))
+        self.assertIn(RESOLVED_AT, self._pinned(github))
 
     def test_a_settled_round_runs_no_agent(self) -> None:
         # Nothing is left to resolve or to push: what came back is a label
@@ -197,12 +222,11 @@ class ResolvingConflictSettledRoundTest(
         mocks[RUN_AGENT].assert_not_called()
         mocks[PUSH_BRANCH].assert_not_called()
         self.assertIn((CONFLICT_ISSUE, LABEL_VALIDATING), github.label_history)
-        pinned = github.pinned_data(CONFLICT_ISSUE)
+        pinned = self._pinned(github)
         self.assertEqual(pinned.get(CONFLICT_ROUND), 1)
         self.assertEqual(pinned.get(REVIEW_ROUND), 0)
         # The receipt is paid, so a later tick finds nothing to finish twice.
-        self.assertIsNone(pinned.get(SETTLED_OUTCOME))
-        self.assertIsNone(pinned.get(SETTLED_SHA))
+        self.assertEqual(_receipt_of(github), (None, None))
 
     def test_a_settled_recovery_keeps_its_outcome(self) -> None:
         # End to end for the third seam: the recovered push is held, the
@@ -217,7 +241,7 @@ class ResolvingConflictSettledRoundTest(
         self.assertEqual(
             _settlements_of(github), [(RECOVERED_PUSH, MERGED_HEAD)],
         )
-        self.assertIn(RESOLVED_AT, github.pinned_data(CONFLICT_ISSUE))
+        self.assertIn(RESOLVED_AT, self._pinned(github))
 
     def test_a_settled_rebase_keeps_its_outcome(self) -> None:
         # The other resolution the gate can hold, and the one the no-op flip
@@ -244,7 +268,7 @@ class ResolvingConflictSettledRoundTest(
 
         self.assertEqual(_outcomes_of(github), [RECOVERED_PUSH])
         self.assertIsNone(
-            github.pinned_data(CONFLICT_ISSUE).get(SETTLED_OUTCOME),
+            self._pinned(github).get(SETTLED_OUTCOME),
         )
 
     def _resumed(self, outcome: str, *, reported: bool = False):
@@ -305,19 +329,27 @@ class ResolvingConflictSettledProofTest(
         self._assert_unclaimed(github)
 
     def test_a_receipt_that_is_no_id_is_refused(self) -> None:
-        # Read fail-closed like every other commit field: a hand-edited head
-        # is no receipt, and comparing a checkout to it would compare it to
-        # nothing. The tick does its ordinary work instead -- what it may not
-        # do is report a round under a claim nothing could prove.
-        github, issue = self._seed(extra_state={
-            SETTLED_OUTCOME: AGENT_RESOLVED, SETTLED_SHA: NOT_A_COMMIT,
-        })[:2]
+        # Read fail-closed like every other commit field: a head no checkout
+        # can be compared to is no receipt, and comparing to it would compare
+        # to nothing. The tick does its ordinary work instead -- what it may
+        # not do is report a round under a claim nothing could prove.
+        #
+        # Which is why the seams that WRITE one must name a commit. A push
+        # that recorded `("recovered_push", "")` and then crashed before its
+        # tail would come back to exactly this: unpayable, so the round that
+        # really landed is reported as the no-op flip below instead.
+        for settled in (NOT_A_COMMIT, UNNAMED_HEAD):
+            with self.subTest(settled=settled):
+                github, issue = self._seed(extra_state={
+                    SETTLED_OUTCOME: AGENT_RESOLVED, SETTLED_SHA: settled,
+                })[:2]
 
-        self._run_with_merge(
-            github, issue, head_shas=[MERGED_HEAD, MERGED_HEAD],
-        )
+                self._run_with_merge(
+                    github, issue, head_shas=[MERGED_HEAD, MERGED_HEAD],
+                )
 
-        self.assertNotIn(AGENT_RESOLVED, _outcomes_of(github))
+                self.assertNotIn(AGENT_RESOLVED, _outcomes_of(github))
+                self.assertIn(BASE_UP_TO_DATE, _outcomes_of(github))
 
     _settled = ResolvingConflictSettledRoundTest._settled
 
@@ -330,3 +362,117 @@ class ResolvingConflictSettledProofTest(
         branch is not standing on that resolution.
         """
         self.assertNotIn(AGENT_RESOLVED, _outcomes_of(github))
+
+
+class ResolvingConflictBodyEditRoundTest(
+    unittest.TestCase, _ResolvingConflictMixin,
+):
+    """The fourth content update, and the receipt it shares with the others.
+
+    A body edit resolved into a commit joins the pull request exactly as the
+    rebase and the two resolutions do, so it is held the same way and owes the
+    same receipt. It is also the one that can arrive while a receipt is
+    already standing, because the handler asks for it ahead of the road that
+    finishes an owed round.
+    """
+
+    def test_a_held_body_edit_names_its_round(self) -> None:
+        # Without the receipt the settlement's tick reads a branch already
+        # standing on its base and records this round as `base_up_to_date` --
+        # the one exit that resolves nothing and stamps no
+        # `last_conflict_resolved_at`.
+        github, mocks = self._held_body_edit()
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        self.assertIn((CONFLICT_ISSUE, LABEL_DECOMPOSING), github.label_history)
+        self.assertEqual(_receipt_of(github), (DRIFT_RESOLVED, MERGED_HEAD))
+        self.assertEqual(self._pinned(github).get(CONFLICT_ROUND), 0)
+
+    def test_a_settled_body_edit_keeps_its_outcome(self) -> None:
+        # End to end: the adjudication publishes the commit and hands the
+        # label back, and the round is counted under the outcome the resume
+        # actually had rather than the one a branch standing on its base
+        # would be re-derived as.
+        github = self._held_body_edit()[0]
+
+        self._run_with_merge(
+            github, github.get_issue(CONFLICT_ISSUE),
+            head_shas=[MERGED_HEAD, MERGED_HEAD],
+        )
+
+        self.assertEqual(
+            _settlements_of(github), [(DRIFT_RESOLVED, MERGED_HEAD)],
+        )
+        self.assertIn(RESOLVED_AT, self._pinned(github))
+
+    def test_a_pending_round_defers_a_body_edit(self) -> None:
+        # The edit arrives on a tick that already owes a round, and the head
+        # seeded here is one a resume would commit. Let that resume run and it
+        # takes the tick: its own outcome goes into the one receipt slot, the
+        # round the settlement already published is never counted, and two
+        # publications come to one increment under the wrong name. Deferred,
+        # this tick pays what it owes under the outcome that earned it and
+        # runs no agent -- there is no resolution in flight to reconsider,
+        # since the receipt says the last one is already on the pull request.
+        github = self._settled_and_edited()
+
+        mocks = self._run_with_merge(
+            github, github.get_issue(CONFLICT_ISSUE),
+            head_shas=[MERGED_HEAD, EDITED_HEAD],
+        )[0]
+
+        self.assertEqual(
+            _settlements_of(github), [(AGENT_RESOLVED, MERGED_HEAD)],
+        )
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertIn((CONFLICT_ISSUE, LABEL_VALIDATING), github.label_history)
+        # Paid rather than replaced: the slot is empty because the round in it
+        # was counted, not because a later resume overwrote it.
+        self.assertIsNone(
+            self._pinned(github).get(SETTLED_OUTCOME),
+        )
+
+    def test_a_deferred_body_edit_is_not_consumed(self) -> None:
+        # The edit has to survive the tick that stepped over it, or the stage
+        # it is handed to has nothing left to detect: the hash is the whole of
+        # what says the body moved, and the notice is what tells a human the
+        # dev was asked about it.
+        github = self._settled_and_edited()
+        baseline = self._pinned(github)["user_content_hash"]
+
+        self._run_with_merge(
+            github, github.get_issue(CONFLICT_ISSUE),
+            head_shas=[MERGED_HEAD, MERGED_HEAD],
+        )
+
+        self.assertEqual(
+            self._pinned(github)["user_content_hash"], baseline,
+        )
+        self.assertEqual(github.posted_pr_comments, [])
+
+    def _held_body_edit(self):
+        """One body-edit resolution the gate measures past the ceiling."""
+        github = self._edited()
+        with patch.object(config, MAX_ADDED_LINES, CEILING):
+            return github, self._run_with_merge(
+                github, github.get_issue(CONFLICT_ISSUE),
+                head_shas=[BEFORE_HEAD, MERGED_HEAD],
+                push_branch=True,
+                added_lines=PAST_THE_CEILING,
+                run_agent_result=_agent(
+                    session_id="dev-sess", last_message="resolved the edit",
+                ),
+            )[0]
+
+    def _settled_and_edited(self):
+        """A round the settlement published, and a body edit on top of it."""
+        return self._edited(**{
+            SETTLED_OUTCOME: AGENT_RESOLVED, SETTLED_SHA: MERGED_HEAD,
+        })
+
+    def _edited(self, **extra_state):
+        """One conflict issue whose body has moved since it was baselined."""
+        github, issue = self._seed(extra_state=extra_state or None)[:2]
+        self._seed_with_baseline_hash(github, issue)
+        issue.body = "the requirement moved while the rebase was in flight"
+        return github
