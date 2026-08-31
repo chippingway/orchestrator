@@ -11,7 +11,7 @@ from typing import Any, Optional, get_type_hints
 from orchestrator.observability.dashboard import page_models, windows
 
 
-_REPO = "geserdugarov/agent-orchestrator"
+_REPO = "chippingway/orchestrator"
 
 _ISSUE = 1174
 

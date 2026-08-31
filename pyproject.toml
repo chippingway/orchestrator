@@ -1,7 +1,7 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
 [project]
-name = "agent-orchestrator"
+name = "chipping-orchestrator"
 version = "0.11.0"
 description = "GitHub-Issue-driven AI agent workflow."
 requires-python = ">=3.12"
@@ -10,7 +10,7 @@ license-files = ["LICENSE"]
 dependencies = ["PyGithub>=2.1", "psycopg[binary]>=3.3.4"]
 
 [project.scripts]
-agent-orchestrator = "orchestrator.cli:main"
+chipping-orchestrator = "orchestrator.cli:main"
 
 # A console script is only installed for a built project, so the flat-layout
 # `orchestrator` package is declared explicitly here; auto-discovery would

@@ -19,7 +19,7 @@ _LaunchForm = tuple[str, Optional[list[str]]]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PACKAGE = "orchestrator"
 _MODULE_LAUNCH = f"{_PACKAGE}.__main__"
-_CONSOLE_SCRIPT = "agent-orchestrator"
+_CONSOLE_SCRIPT = "chipping-orchestrator"
 _ENTRY_POINT = "orchestrator.cli:main"
 _HELP_FLAG = "--help"
 _ONCE_FLAG = "--once"
@@ -59,7 +59,7 @@ def _run_help(command: list[str]) -> subprocess.CompletedProcess:
 class EntryPointTargetTest(unittest.TestCase):
     """Both launch forms name the one composition point.
 
-    The `agent-orchestrator` console script is the canonical launch command,
+    The `chipping-orchestrator` console script is the canonical launch command,
     so its declared target has to keep resolving to the CLI's `main` even when
     the project is not installed into the environment; `python -m orchestrator`
     is the form `run.sh` starts and reaches the same function.
@@ -69,9 +69,11 @@ class EntryPointTargetTest(unittest.TestCase):
         manifest = tomllib.loads(
             (_REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
         )
-        declared_target = manifest["project"]["scripts"][_CONSOLE_SCRIPT]
+        declared_scripts = manifest["project"]["scripts"]
+        declared_target = declared_scripts[_CONSOLE_SCRIPT]
         module_name, attribute_name = declared_target.split(":")
 
+        self.assertEqual(declared_scripts, {_CONSOLE_SCRIPT: _ENTRY_POINT})
         self.assertEqual(declared_target, _ENTRY_POINT)
         self.assertIs(
             getattr(import_module(module_name), attribute_name),

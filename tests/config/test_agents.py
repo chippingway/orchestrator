@@ -33,10 +33,10 @@ class AgentGitIdentityConfigTest(unittest.TestCase):
     def test_defaults_to_orchestrator_identity(self) -> None:
         config = _reload.load_config()
 
-        self.assertEqual(config.AGENT_GIT_NAME, "agent-orchestrator")
+        self.assertEqual(config.AGENT_GIT_NAME, "chipping-orchestrator")
         self.assertEqual(
             config.AGENT_GIT_EMAIL,
-            "agent-orchestrator@users.noreply.github.com",
+            "chipping-orchestrator@users.noreply.github.com",
         )
 
     def test_env_overrides_take_effect(self) -> None:

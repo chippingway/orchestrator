@@ -245,9 +245,9 @@ class _SettingsResolver:
         resolved.update({
             "CODEX_BIN": env.get("CODEX_BIN", _CODEX),
             "CLAUDE_BIN": env.get("CLAUDE_BIN", _CLAUDE),
-            "AGENT_GIT_NAME": env.get("AGENT_GIT_NAME", "agent-orchestrator"),
+            "AGENT_GIT_NAME": env.get("AGENT_GIT_NAME", "chipping-orchestrator"),
             "AGENT_GIT_EMAIL": env.get(
-                "AGENT_GIT_EMAIL", "agent-orchestrator@users.noreply.github.com",
+                "AGENT_GIT_EMAIL", "chipping-orchestrator@users.noreply.github.com",
             ),
             "HITL_HANDLES": handles,
             "HITL_HANDLE": ",".join(handles),

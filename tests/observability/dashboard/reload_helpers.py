@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 SKIP_DOTENV_ENV = "ORCHESTRATOR_SKIP_DOTENV"
 TOKEN_FILE_ENV = "ORCHESTRATOR_TOKEN_FILE"
-MISSING_TOKEN_FILE = "/tmp/agent-orchestrator-token-missing"
+MISSING_TOKEN_FILE = "/tmp/chipping-orchestrator-token-missing"
 READ_MODE_OWNER = "orchestrator.observability.dashboard.read_mode"
 
 

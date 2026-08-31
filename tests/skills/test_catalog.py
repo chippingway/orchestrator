@@ -18,7 +18,7 @@ from tests.skills.skills_test_support import (
 )
 
 
-_TEST_REPO_SLUG = "geserdugarov/agent-orchestrator"
+_TEST_REPO_SLUG = "chippingway/orchestrator"
 _REFRESH_BASE = "_refresh_base_and_worktrees"
 _TEST_BASE_BRANCH = "main"
 _TEST_REMOTE_NAME = "origin"

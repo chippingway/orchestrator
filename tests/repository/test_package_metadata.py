@@ -1,16 +1,32 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The root package publishes its version and nothing else."""
+"""Distribution identity and the root package's published version."""
 from __future__ import annotations
 
 import subprocess
 import sys
+import tomllib
 import unittest
 from importlib import import_module
+from pathlib import Path
 
 from orchestrator import __version__ as imported_version
 
 _ORCHESTRATOR_PACKAGE = import_module("orchestrator")
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_NAME = "chipping-orchestrator"
+
+
+class DistributionMetadataTest(unittest.TestCase):
+    """The manifest names this distribution and shares the package version."""
+
+    def test_manifest_identity(self) -> None:
+        manifest = tomllib.loads(
+            (_REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
+        )["project"]
+
+        self.assertEqual(manifest["name"], _PROJECT_NAME)
+        self.assertEqual(manifest["version"], imported_version)
 
 
 class PackageMetadataTest(unittest.TestCase):

@@ -2,11 +2,11 @@
 name: develop
 description: >-
   Project conventions and recurring gotchas for implementer agents working on
-  agent-orchestrator. Use before committing any change in orchestrator/,
+  chipping-orchestrator. Use before committing any change in orchestrator/,
   tests/, or docs/.
 ---
 
-# Developer skill — agent-orchestrator
+# Developer skill — chipping-orchestrator
 
 ## Environment and commands
 

@@ -21,7 +21,7 @@ from tests.workflow.fixtures import _PatchedWorkflowMixin, _agent
 
 ISSUE = 85
 PR_NUMBER = 805
-BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-85"
+BRANCH = "orchestrator/chippingway__orchestrator/issue-85"
 
 
 def _paused_view(number: int) -> object:

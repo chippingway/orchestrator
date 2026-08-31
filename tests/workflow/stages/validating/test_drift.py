@@ -53,7 +53,7 @@ CEILING = 5
 PAST_THE_CEILING = 6
 VALIDATING_ISSUE = 170
 VALIDATING_PR = 99
-VALIDATING_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-170"
+VALIDATING_BRANCH = "orchestrator/chippingway__orchestrator/issue-170"
 BODY_DRIFT_ISSUE = 70
 BODY_DRIFT_PR = 700
 REVIEWER_RETRY_COMMENT_ID = 4000
@@ -854,7 +854,7 @@ class HandleValidatingResumeOnHashChangeTest(
         body_drift_gh = FakeGitHubClient()
         issue = make_issue(BODY_DRIFT_ISSUE, label="workflow:validating", body="updated criteria")
         body_drift_gh.add_issue(issue)
-        pr = FakePR(number=BODY_DRIFT_PR, head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-70")
+        pr = FakePR(number=BODY_DRIFT_PR, head_branch="orchestrator/chippingway__orchestrator/issue-70")
         body_drift_gh.add_pr(pr)
         body_drift_gh.seed_state(
             BODY_DRIFT_ISSUE,
@@ -863,7 +863,7 @@ class HandleValidatingResumeOnHashChangeTest(
             dev_session_id=DEV_SESSION,
             pr_number=pr.number,
             review_round=0,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-70",
+            branch="orchestrator/chippingway__orchestrator/issue-70",
         )
 
         self._run_validating(
@@ -961,7 +961,7 @@ class ValidatingDriftDefersToReviewerRecoveryTest(
         reviewer_drift_gh.add_pr(
             FakePR(
                 number=REVIEWER_DRIFT_PR,
-                head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-1000",
+                head_branch="orchestrator/chippingway__orchestrator/issue-1000",
             ),
         )
         seed_hash = _drift._compute_user_content_hash(
@@ -974,7 +974,7 @@ class ValidatingDriftDefersToReviewerRecoveryTest(
             dev_agent="claude",
             dev_session_id=DEV_SESSION,
             review_round=1,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-1000",
+            branch="orchestrator/chippingway__orchestrator/issue-1000",
             awaiting_human=True,
             park_reason=REVIEWER_TIMEOUT,
             last_action_comment_id=100,

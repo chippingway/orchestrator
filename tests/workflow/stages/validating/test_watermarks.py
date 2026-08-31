@@ -25,10 +25,10 @@ from tests.workflow.fixtures import (
 
 HUMAN_FEEDBACK_ISSUE = 15
 HUMAN_FEEDBACK_PR = 22
-HUMAN_FEEDBACK_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-15"
+HUMAN_FEEDBACK_BRANCH = "orchestrator/chippingway__orchestrator/issue-15"
 PRE_PICKUP_ISSUE = 20
 PRE_PICKUP_PR = 25
-PRE_PICKUP_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-20"
+PRE_PICKUP_BRANCH = "orchestrator/chippingway__orchestrator/issue-20"
 PICKUP_COMMENT_ID = 900
 PR_OPEN_COMMENT_ID = 901
 HUMAN_FEEDBACK_ID = 950

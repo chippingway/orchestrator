@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""agent-orchestrator: GitHub-Issue-driven AI agent workflow.
+"""chipping-orchestrator: GitHub-Issue-driven AI agent workflow.
 
 The two names below are the whole of the root package's surface, and they are
 bound here rather than resolved on demand so that `import orchestrator` costs

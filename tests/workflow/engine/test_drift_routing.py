@@ -105,7 +105,7 @@ class FirstTimeHashSeedingIsDurableTest(
         gh = support.FakeGitHubClient()
         issue = support.make_issue(100, label=support.LABEL_VALIDATING, body="initial body")
         gh.add_issue(issue)
-        pr = support.FakePR(number=1000, head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-100")
+        pr = support.FakePR(number=1000, head_branch="orchestrator/chippingway__orchestrator/issue-100")
         gh.add_pr(pr)
         gh.seed_state(
             100,
@@ -171,7 +171,7 @@ class NoCommitAckDoesNotParkTest(
         gh.add_issue(issue)
         pr = support.FakePR(
             number=support._VALIDATING_ACK_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-600",
+            head_branch="orchestrator/chippingway__orchestrator/issue-600",
         )
         gh.add_pr(pr)
         gh.seed_state(
@@ -181,7 +181,7 @@ class NoCommitAckDoesNotParkTest(
             dev_session_id=support.DEV_SESSION,
             user_content_hash=support.STALE_HASH,
             review_round=1,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-600",
+            branch="orchestrator/chippingway__orchestrator/issue-600",
         )
 
         self._run(
@@ -225,7 +225,7 @@ class NoCommitAckDoesNotParkTest(
         gh.add_issue(issue)
         pr = support.FakePR(
             number=support._IN_REVIEW_ACK_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-700",
+            head_branch="orchestrator/chippingway__orchestrator/issue-700",
         )
         gh.add_pr(pr)
         gh.seed_state(
@@ -237,7 +237,7 @@ class NoCommitAckDoesNotParkTest(
             pr_last_comment_id=0,
             pr_last_review_comment_id=0,
             pr_last_review_summary_id=0,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-700",
+            branch="orchestrator/chippingway__orchestrator/issue-700",
         )
 
         self._run(

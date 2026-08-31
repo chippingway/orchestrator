@@ -30,11 +30,11 @@ from tests.workflow.fixtures import (
 
 CONSUMED_REPLY_ISSUE = 900
 CONSUMED_REPLY_PR = 1500
-CONSUMED_REPLY_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-900"
+CONSUMED_REPLY_BRANCH = "orchestrator/chippingway__orchestrator/issue-900"
 RESUME_WATERMARK_ISSUE = 901
 ISSUE_THREAD_ISSUE = 800
 ISSUE_THREAD_PR = 1600
-ISSUE_THREAD_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-800"
+ISSUE_THREAD_BRANCH = "orchestrator/chippingway__orchestrator/issue-800"
 PICKUP_COMMENT_ID = 900
 PARK_COMMENT_ID = 910
 CONSUMED_REPLY_ID = 920

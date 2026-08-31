@@ -87,7 +87,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
         gh.seed_state(8, pr_number=support._TIMEOUT_PR_NUMBER, review_round=1)
         pr = support.FakePR(
             number=support._TIMEOUT_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-8",
+            head_branch="orchestrator/chippingway__orchestrator/issue-8",
             base_branch=support.TEST_BASE_BRANCH, mergeable=True, check_state=support.CHECK_SUCCESS,
         )
         gh.add_pr(pr)
@@ -122,7 +122,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
         )
         pr = support.FakePR(
             number=support._REVIEW_CAP_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-10",
+            head_branch="orchestrator/chippingway__orchestrator/issue-10",
             base_branch=support.TEST_BASE_BRANCH, mergeable=True, check_state=support.CHECK_SUCCESS,
         )
         gh.add_pr(pr)
@@ -160,7 +160,7 @@ class ParkAwaitingHumanEventEmissionTest(unittest.TestCase, support._PatchedWork
         gh.add_issue(issue)
         pr = support.FakePR(
             number=support._APPROVAL_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-9",
+            head_branch="orchestrator/chippingway__orchestrator/issue-9",
             base_branch=support.TEST_BASE_BRANCH, mergeable=True, check_state=support.CHECK_SUCCESS,
         )
         gh.add_pr(pr)

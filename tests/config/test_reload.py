@@ -14,7 +14,7 @@ _CONFIG_MODULE = "orchestrator.config"
 _HERMETIC = MappingProxyType(
     {
         "ORCHESTRATOR_SKIP_DOTENV": "1",
-        "ORCHESTRATOR_TOKEN_FILE": "/tmp/agent-orchestrator-token-missing",
+        "ORCHESTRATOR_TOKEN_FILE": "/tmp/chipping-orchestrator-token-missing",
     }
 )
 _POLL_INTERVAL_ENV = "POLL_INTERVAL"

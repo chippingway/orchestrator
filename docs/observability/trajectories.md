@@ -245,9 +245,9 @@ on the receiver. `rrsync` rejects absolute destination paths; keep the destinati
 #!/usr/bin/env bash
 set -euo pipefail
 
-SRC=/path/to/agent-orchestrator/logs/trajectories.jsonl
+SRC=/path/to/chipping-orchestrator/logs/trajectories.jsonl
 DEST=forsync@<host>:trajectories.jsonl
-LOCK=/tmp/agent-orchestrator-trajectory.lock
+LOCK=/tmp/chipping-orchestrator-trajectory.lock
 KEY=/home/<local-user>/.ssh/forsync_ed25519
 
 SSH_CMD="ssh -i $KEY -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new"
@@ -271,11 +271,11 @@ fi
 Install it as executable before adding the cron entry:
 
 ```sh
-chmod +x /path/to/agent-orchestrator/bin/sync-trajectories.sh
+chmod +x /path/to/chipping-orchestrator/bin/sync-trajectories.sh
 ```
 
 ```cron
-10 * * * * /path/to/agent-orchestrator/bin/sync-trajectories.sh >> /path/to/agent-orchestrator/logs/trajectory-sync.cron.log 2>&1
+10 * * * * /path/to/chipping-orchestrator/bin/sync-trajectories.sh >> /path/to/chipping-orchestrator/logs/trajectory-sync.cron.log 2>&1
 ```
 
 - `rsync` is a file mirror, not an append-only archive. When local retention later rewrites or shrinks the JSONL, a
@@ -291,7 +291,7 @@ chmod +x /path/to/agent-orchestrator/bin/sync-trajectories.sh
   bit on `/srv/orchestrator` (`2750`) keeps replaced files in that group, so the dashboard user can read them after a
   fresh login / restarted service picks up its new group membership.
 - If you migrate from an older `/home/forsync/...` landing path, move the existing file once (`sudo mv
-  /home/forsync/agent-orchestrator/trajectories.jsonl /srv/orchestrator/`) and then apply `sudo chgrp orchestrator
+  /home/forsync/chipping-orchestrator/trajectories.jsonl /srv/orchestrator/`) and then apply `sudo chgrp orchestrator
   /srv/orchestrator/trajectories.jsonl && sudo chmod 640 /srv/orchestrator/trajectories.jsonl`.
 - Verify dashboard readability before launching Streamlit: `id` for the dashboard user must show `orchestrator`, and
   `sudo -u <dashboard-user> head /srv/orchestrator/trajectories.jsonl` should print JSONL.
@@ -321,14 +321,14 @@ below resolves inside the call. The cron entry relies on `.env` for both
 `TRAJECTORY_LOG_PATH` and `TRAJECTORY_RETENTION_DAYS`, runs the prune helper, and logs how many records were removed:
 
 ```cron
-25 0 * * * cd /path/to/agent-orchestrator && /usr/bin/flock -n -E 75 /tmp/agent-orchestrator-trajectory.lock /home/<user>/.local/bin/uv run python -c 'from orchestrator.observability.analytics import retention; print(f"trajectory prune removed {retention.prune_trajectory_records()} record(s)")' >> /path/to/agent-orchestrator/logs/trajectory-prune.cron.log 2>&1
+25 0 * * * cd /path/to/chipping-orchestrator && /usr/bin/flock -n -E 75 /tmp/chipping-orchestrator-trajectory.lock /home/<user>/.local/bin/uv run python -c 'from orchestrator.observability.analytics import retention; print(f"trajectory prune removed {retention.prune_trajectory_records()} record(s)")' >> /path/to/chipping-orchestrator/logs/trajectory-prune.cron.log 2>&1
 ```
 
 To make the same cron entry use a one-off retention window instead of `.env`, prefix the command with `env
-TRAJECTORY_LOG_PATH=/path/to/agent-orchestrator/logs/trajectories.jsonl TRAJECTORY_RETENTION_DAYS=30`.
+TRAJECTORY_LOG_PATH=/path/to/chipping-orchestrator/logs/trajectories.jsonl TRAJECTORY_RETENTION_DAYS=30`.
 
 Only run this prune command while the orchestrator is stopped or otherwise guaranteed not to append trajectories. The
-shared `/tmp/agent-orchestrator-trajectory.lock` serializes operator cron jobs with each other, but not with the live
+shared `/tmp/chipping-orchestrator-trajectory.lock` serializes operator cron jobs with each other, but not with the live
 orchestrator process: the lock the append and the prune share (minted on
 `observability/analytics/sink.py`) is a process-local `threading.Lock`, not an interprocess file lock. An
 external prune process can race with the live polling process and lose a record appended to

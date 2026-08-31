@@ -9,7 +9,7 @@ routing change — never to track a moved handler, helper, module, or test.
 
 ## What this project is
 
-`agent-orchestrator` is a GitHub-Issue-driven workflow that watches issues on configured repos, drives them through a
+`chipping-orchestrator` is a GitHub-Issue-driven workflow that watches issues on configured repos, drives them through a
 label-based state machine, and spawns local CLI agents (`codex`, `claude`) in per-issue git worktrees to implement
 them and open PRs. State lives entirely in GitHub (one workflow label + one pinned JSON comment per issue), so the
 orchestrator process is stateless.
@@ -44,7 +44,7 @@ Top level only. Which module owns what is in
 `docs/architecture/`, which are the single place that inventory is maintained.
 
 - `orchestrator/` — the Python package. The root carries the version, `cli.py` (the composition point the
-  `agent-orchestrator` console script calls), and `__main__.py` (the `python -m orchestrator` form over it); every
+  `chipping-orchestrator` console script calls), and `__main__.py` (the `python -m orchestrator` form over it); every
   other module lives under a subpackage named after what it owns: `workflow/` (tick loop, label dispatch, and the
   per-label stage handlers under `workflow/stages/`), `github/`, `git/`, `agents/`, `scheduler/`, `config/`,
   `skills/`, `runtime/` (the polling process), `apps/` (the `streamlit run` targets), and `observability/` (analytics

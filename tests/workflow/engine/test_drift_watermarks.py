@@ -43,7 +43,7 @@ class DriftMarksCommentsConsumedTest(
         gh.add_issue(issue)
         pr = support.FakePR(
             number=support._VALIDATING_WATERMARK_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-900",
+            head_branch="orchestrator/chippingway__orchestrator/issue-900",
         )
         gh.add_pr(pr)
         gh.seed_state(
@@ -53,7 +53,7 @@ class DriftMarksCommentsConsumedTest(
             dev_session_id=support.DEV_SESSION,
             user_content_hash=support.STALE_HASH,
             review_round=1,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-900",
+            branch="orchestrator/chippingway__orchestrator/issue-900",
             last_action_comment_id=100,
         )
 
@@ -104,7 +104,7 @@ class DriftMarksCommentsConsumedTest(
         gh.add_issue(issue)
         pr = support.FakePR(
             number=support._IN_REVIEW_WATERMARK_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-910",
+            head_branch="orchestrator/chippingway__orchestrator/issue-910",
         )
         gh.add_pr(pr)
         gh.seed_state(
@@ -116,7 +116,7 @@ class DriftMarksCommentsConsumedTest(
             pr_last_comment_id=0,
             pr_last_review_comment_id=0,
             pr_last_review_summary_id=0,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-910",
+            branch="orchestrator/chippingway__orchestrator/issue-910",
             last_action_comment_id=100,
         )
 
@@ -181,7 +181,7 @@ class DriftMarksCommentsConsumedTest(
             user_content_hash=support.STALE_HASH,
             awaiting_human=True,
             last_action_comment_id=100,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-920",
+            branch="orchestrator/chippingway__orchestrator/issue-920",
         )
 
         self._run(
@@ -220,7 +220,7 @@ class DriftMarksCommentsConsumedTest(
         gh.add_issue(issue)
         pr = support.FakePR(
             number=support._CONFLICT_WATERMARK_PR_NUMBER,
-            head_branch="orchestrator/geserdugarov__agent-orchestrator/issue-930",
+            head_branch="orchestrator/chippingway__orchestrator/issue-930",
         )
         gh.add_pr(pr)
         gh.seed_state(
@@ -230,7 +230,7 @@ class DriftMarksCommentsConsumedTest(
             dev_session_id=support.DEV_SESSION,
             user_content_hash=support.STALE_HASH,
             conflict_round=0,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-930",
+            branch="orchestrator/chippingway__orchestrator/issue-930",
             last_action_comment_id=100,
         )
 

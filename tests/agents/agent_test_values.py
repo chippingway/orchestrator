@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 
-_CWD = Path("/tmp/agent-orchestrator-test-cwd-doesnt-matter")
+_CWD = Path("/tmp/chipping-orchestrator-test-cwd-doesnt-matter")
 _REAL_CWD = Path(tempfile.gettempdir())
 _POPEN_TARGET = "orchestrator.agents.processes.subprocess.Popen"
 _OS_ENVIRON_TARGET = "os.environ"

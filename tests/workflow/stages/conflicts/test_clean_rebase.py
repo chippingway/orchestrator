@@ -83,7 +83,7 @@ def _assert_fetch_calls(test_case, authed_fetch_mock) -> None:
         "expected base-branch fetch refspec",
     )
     test_case.assertIn(
-        "refs/remotes/origin/orchestrator/geserdugarov__agent-orchestrator/issue-450",
+        "refs/remotes/origin/orchestrator/chippingway__orchestrator/issue-450",
         joined_refspecs,
         "expected PR-branch fetch refspec",
     )

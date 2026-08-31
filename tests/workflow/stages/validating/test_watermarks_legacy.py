@@ -25,10 +25,10 @@ from tests.workflow.fixtures import (
 )
 
 WATERMARK_ISSUE = 300
-WATERMARK_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-300"
+WATERMARK_BRANCH = "orchestrator/chippingway__orchestrator/issue-300"
 LEGACY_ISSUE = 500
 LEGACY_PR = 1000
-LEGACY_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-500"
+LEGACY_BRANCH = "orchestrator/chippingway__orchestrator/issue-500"
 MARKER_WALK_PR = 700
 PICKUP_COMMENT_ID = 900
 PR_OPEN_COMMENT_ID = 901

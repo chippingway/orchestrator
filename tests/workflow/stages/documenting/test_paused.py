@@ -62,7 +62,7 @@ MALICIOUS_URL = "https://example.invalid/malicious-patch.zip"
 
 
 def _branch(number: int) -> str:
-    return f"orchestrator/geserdugarov__agent-orchestrator/issue-{number}"
+    return f"orchestrator/chippingway__orchestrator/issue-{number}"
 
 
 def _paused_view(number: int) -> object:

@@ -1,10 +1,10 @@
-# GitHub issue-driven workflow runner
+# chipping-orchestrator
 
 [![CI][ci-badge]][ci-link]
 [![OpenSSF Scorecard][scorecard-badge]][scorecard-link]
 [![OpenSSF Best Practices][best-practices-badge]][best-practices-link]
 
-This agent orchestrator turns local coding-agent CLIs (`codex`, `claude`) into a hands-off implementer + reviewer
+`chipping-orchestrator` turns local coding-agent CLIs (`codex`, `claude`) into a hands-off implementer + reviewer
 loop. File an issue, and the orchestrator decomposes it if needed, spawns the dev agent in an isolated git worktree,
 opens a PR, runs a fresh reviewer pass, and pings the HITL handles when the PR is ready for a human to merge.
 
@@ -75,8 +75,8 @@ is in [`docs/state-machine/lifecycle.md`](docs/state-machine/lifecycle.md).
 1. **Clone and enter the repo**
 
    ```sh
-   git clone https://github.com/chippingway/orchestrator.git
-   cd orchestrator
+   git clone https://github.com/chippingway/orchestrator.git chipping-orchestrator
+   cd chipping-orchestrator
    ```
 
 2. **Install from the lockfile**

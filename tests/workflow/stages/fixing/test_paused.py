@@ -32,7 +32,7 @@ from tests.workflow.stages.fixing import fixing_test_support as support
 
 ISSUE = 880
 PR_NUMBER = 880
-BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-880"
+BRANCH = "orchestrator/chippingway__orchestrator/issue-880"
 PR_HEAD_SHA = support.PR_HEAD_SHA
 DEV_AGENT = "claude"
 DEV_SESSION = "dev-sess"

@@ -71,7 +71,7 @@ import an owner directly.
 ```
 orchestrator/
   __init__.py           the distribution version and the `__all__` naming it, and nothing else
-  cli.py                the `agent-orchestrator` console script: the polling process's composition point
+  cli.py                the `chipping-orchestrator` console script: the polling process's composition point
   __main__.py           the `python -m orchestrator` launch form over `cli.main`, and what `run.sh` starts
   runtime/              the polling process's own owners
     state.py            the mutable state one run carries and the shell-style code a signal stop exits with

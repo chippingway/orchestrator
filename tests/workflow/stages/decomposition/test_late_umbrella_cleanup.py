@@ -60,7 +60,7 @@ _ERROR = "ERROR"
 
 _MAIN = "main"
 
-_ANOTHER_ISSUE = "orchestrator/geserdugarov__agent-orchestrator/issue-99"
+_ANOTHER_ISSUE = "orchestrator/chippingway__orchestrator/issue-99"
 
 _NOT_OURS = "feature/issue-41"
 

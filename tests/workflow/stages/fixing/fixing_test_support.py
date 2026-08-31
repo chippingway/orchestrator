@@ -74,7 +74,7 @@ _reconstruct_pending_fix_batch = _continue_command._reconstruct_pending_fix_batc
 
 def _branch(issue_number: int) -> str:
     """Return the per-issue PR branch used by the fixing handler."""
-    return f"orchestrator/geserdugarov__agent-orchestrator/issue-{issue_number}"
+    return f"orchestrator/chippingway__orchestrator/issue-{issue_number}"
 
 
 FIXING = "workflow:fixing"

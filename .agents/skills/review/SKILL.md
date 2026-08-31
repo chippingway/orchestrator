@@ -1,11 +1,11 @@
 ---
 name: review
 description: >-
-  Review checklist for reviewer agents on agent-orchestrator PRs. Use when
+  Review checklist for reviewer agents on chipping-orchestrator PRs. Use when
   evaluating a developer-produced branch before approval or change-requests.
 ---
 
-# Reviewer skill — agent-orchestrator
+# Reviewer skill — chipping-orchestrator
 
 ## CI / lint
 

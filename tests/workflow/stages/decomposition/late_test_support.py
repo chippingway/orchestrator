@@ -57,7 +57,7 @@ PLAN_PR_NUMBER = 77
 PUBLISHED_PR_NUMBER = 78
 PUBLISHED_HEAD_SHA = "d" * SHA_LENGTH
 PUBLISHED_SOURCE_STAGE = "workflow:fixing"
-PUBLISHED_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-4242"
+PUBLISHED_BRANCH = "orchestrator/chippingway__orchestrator/issue-4242"
 PLAN_PR_BODY = "the design this plan PR was opened with"
 PLAN_BRANCH = "orchestrator/plan"
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Composition point for the orchestrator polling loop.
 
-`main` is what the `agent-orchestrator` console script and the
+`main` is what the `chipping-orchestrator` console script and the
 `python -m orchestrator` launch form both call. It reads the options, settles
 logging, creates the state one run carries, and hands that state to each owner
 under `orchestrator/runtime/` in turn; the order below is the startup contract

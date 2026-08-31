@@ -27,16 +27,16 @@ require ([`../security.md#required-checks`](../security.md#required-checks)).
 
 The last two steps are about the distribution rather than the tree. `uv build` builds the sdist and, from it, the
 wheel; the step after installs that wheel into an environment created for it alone —
-`uv run --no-project --isolated --python <version> --with <wheel> agent-orchestrator --help` — and requires the console
-script to exit successfully from there. `uv sync` above installs this project into `.venv` as an editable install, so
-the console script does exist by then, but it reaches the package through the source tree and nothing before this step
-reads what the build backend packaged. A wheel that ships no `orchestrator` package — the flat layout is declared
-explicitly under `[tool.hatch.build.targets.wheel]` for that reason — an entry point naming a module the wheel does
-not carry, or a runtime dependency the lockfile supplies while `[project.dependencies]` omits it, passes every other
-step and fails for the first person to install the distribution. `--no-project` and `--isolated` are what keep the
-answer honest: neither the project environment nor the lockfile is on the path the script imports from, so what
-answers `--help` is the wheel's own contents beside the dependencies it declares for itself — resolved fresh from
-PyPI, which is the reading an installer of this distribution gets rather than the one `uv.lock` settles.
+`uv run --no-project --isolated --python <version> --with <wheel> chipping-orchestrator --help` — and requires the
+console script to exit successfully from there. `uv sync` above installs this project into `.venv` as an editable
+install, so the console script does exist by then, but it reaches the package through the source tree and nothing
+before this step reads what the build backend packaged. A wheel that ships no `orchestrator` package — the flat layout
+is declared explicitly under `[tool.hatch.build.targets.wheel]` for that reason — an entry point naming a module the
+wheel does not carry, or a runtime dependency supplied by the lockfile but omitted from `[project.dependencies]`,
+passes every other step and fails for the first person to install the distribution. `--no-project` and `--isolated`
+are what keep the answer honest: neither the project environment nor the lockfile is on the path the script imports
+from. What answers `--help` is the wheel's own contents beside the dependencies it declares for itself, resolved fresh
+from PyPI, which is the reading an installer of this distribution gets rather than the one `uv.lock` settles.
 
 The job declares `timeout-minutes: 20`, generous next to the few minutes a green run takes and far under the six-hour
 default GitHub would otherwise cancel it at; the reasoning that ceiling serves is the same one the scans below are
@@ -216,8 +216,8 @@ those rules do not name is cleared by widening them or by hand rather than by wa
 - `python -m orchestrator --once` — single tick then exit. Useful for tests and debugging.
 - `python -m orchestrator --log-level DEBUG` — verbose logs.
 
-Both forms above call `orchestrator/cli.py`, which is also what the `agent-orchestrator` console script declared in
-[`../../pyproject.toml`](../../pyproject.toml) runs (`uv run agent-orchestrator --once`). The module form is what
+Both forms above call `orchestrator/cli.py`, which is also what the `chipping-orchestrator` console script declared in
+[`../../pyproject.toml`](../../pyproject.toml) runs (`uv run chipping-orchestrator --once`). The module form is what
 `run.sh` launches and what the systemd unit below therefore supervises; the console script is the equivalent for an
 install that has the project on its `PATH`.
 
@@ -236,17 +236,17 @@ unit silently does nothing at boot unless linger is enabled. Keep `screen` / `tm
 
 ### Unit file
 
-Drop this at `~/.config/systemd/user/agent.service`, replacing the working directory and the `PATH` entries:
+Drop this at `~/.config/systemd/user/orchestrator.service`, replacing the working directory and the `PATH` entries:
 
 ```ini
 [Unit]
-Description=Agent orchestrator
+Description=chipping-orchestrator
 After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/path/to/agent-orchestrator
-ExecStart=/path/to/agent-orchestrator/run.sh
+WorkingDirectory=/path/to/chipping-orchestrator
+ExecStart=/path/to/chipping-orchestrator/run.sh
 Restart=always
 RestartSec=5
 Environment=PATH=/home/<user>/.local/bin:/usr/local/bin:/usr/bin:/bin
@@ -267,7 +267,7 @@ WantedBy=default.target
 
 ```sh
 systemctl --user daemon-reload
-systemctl --user enable --now agent.service
+systemctl --user enable --now orchestrator.service
 loginctl enable-linger <user>
 ```
 
@@ -277,10 +277,10 @@ has an active login session.
 ### Operating
 
 ```sh
-systemctl --user status agent.service        # current state and last log lines
-systemctl --user restart agent.service       # bounce the orchestrator
-systemctl --user stop agent.service          # SIGTERM the wrapper (exits 143, no restart)
-journalctl --user-unit agent.service -f      # tail the wrapper's stdout/stderr
+systemctl --user status orchestrator.service        # current state and last log lines
+systemctl --user restart orchestrator.service       # bounce the orchestrator
+systemctl --user stop orchestrator.service          # SIGTERM the wrapper (exits 143, no restart)
+journalctl --user-unit orchestrator.service -f      # tail the wrapper's stdout/stderr
 ```
 
 systemd's journal captures `run.sh` and orchestrator stdout/stderr (process lifecycle, exit codes, restart messages).
@@ -531,7 +531,7 @@ Useful inspection commands:
 ```sh
 pgrep -af 'python -m orchestrator|codex|claude|run.sh'
 tail -f logs/orchestrator.log
-journalctl --user -u agent.service -f   # systemd users
+journalctl --user -u orchestrator.service -f   # systemd users
 ```
 
 ### Per launch style
@@ -557,8 +557,8 @@ A second Ctrl+C while `run.sh` is mid-shutdown terminates immediately.
 1. Edit `.env` in the unit's `WorkingDirectory=`.
 2. **Skip `systemctl --user daemon-reload`** unless the `.service` unit file itself changed — `daemon-reload` reloads
    unit definitions, not `.env`.
-3. When safe (no live agent child), `systemctl --user restart agent.service`.
-4. Tail logs: `journalctl --user -u agent.service -f`.
+3. When safe (no live agent child), `systemctl --user restart orchestrator.service`.
+4. Tail logs: `journalctl --user -u orchestrator.service -f`.
 
 When `GITHUB_TOKEN` is supplied via the unit's `EnvironmentFile=`, edit that file and restart the service. When the
 token is hard-coded in an inline `Environment=` line, changing the value requires editing the unit *and* a

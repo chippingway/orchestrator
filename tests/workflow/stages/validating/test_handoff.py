@@ -44,10 +44,10 @@ PR_OPEN_COMMENT_ID = 901
 REVIEW_DEBOUNCE_SECONDS = 600
 HANDOFF_ISSUE = 5
 HANDOFF_PR = 11
-HANDOFF_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-5"
+HANDOFF_BRANCH = "orchestrator/chippingway__orchestrator/issue-5"
 SECOND_HANDOFF_ISSUE = 99
 SECOND_HANDOFF_PR = 50
-SECOND_HANDOFF_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-99"
+SECOND_HANDOFF_BRANCH = "orchestrator/chippingway__orchestrator/issue-99"
 CONSUMED_FEEDBACK_ID = 2000
 REVIEW_FEEDBACK_WATERMARK = 4242
 DEV_SESSION = "dev-sess"
@@ -79,7 +79,7 @@ class _ValidatingHandoffFixtureMixin(_PatchedWorkflowMixin):
         gh.add_issue(issue)
         defaults = dict(
             pr_number=PR_NUMBER_OFFSET + issue_number,
-            branch=f"orchestrator/geserdugarov__agent-orchestrator/issue-{issue_number}",
+            branch=f"orchestrator/chippingway__orchestrator/issue-{issue_number}",
             dev_agent="claude",
             dev_session_id=DEV_SESSION,
             review_round=0,

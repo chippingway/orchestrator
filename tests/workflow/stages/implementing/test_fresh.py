@@ -225,7 +225,7 @@ class HandleImplementingAwaitingHumanTest(unittest.TestCase, _PatchedWorkflowMix
             awaiting_human=True,
             last_action_comment_id=ACTION_COMMENT_ID,
             codex_session_id=LEGACY_SESSION,
-            branch="orchestrator/geserdugarov__agent-orchestrator/issue-2",
+            branch="orchestrator/chippingway__orchestrator/issue-2",
         )
 
         mocks = self._run_implementing(
@@ -272,7 +272,7 @@ class HandleImplementingInterruptedTest(unittest.TestCase, _PatchedWorkflowMixin
             awaiting_human=True,
             last_action_comment_id=ACTION_COMMENT_ID,
             codex_session_id=LEGACY_SESSION,
-            branch=f"orchestrator/geserdugarov__agent-orchestrator/issue-{INTERRUPTED_RESUME_ISSUE}",
+            branch=f"orchestrator/chippingway__orchestrator/issue-{INTERRUPTED_RESUME_ISSUE}",
             user_content_hash=_drift._compute_user_content_hash(issue, set()),
         )
         before_writes = gh.write_state_calls

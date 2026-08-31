@@ -11,7 +11,7 @@ from orchestrator.github.pinned_state import PINNED_STATE_TEMPLATE, PinnedState
 from tests.support.fakes import FakeComment, FakeUser, make_issue
 
 BOT = "orchestrator-bot"
-REAL_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-5"
+REAL_BRANCH = "orchestrator/chippingway__orchestrator/issue-5"
 _ATTACKER_BRANCH = "orchestrator/evil"
 _BRANCH_KEY = "branch"
 _DEV_AGENT_KEY = "dev_agent"

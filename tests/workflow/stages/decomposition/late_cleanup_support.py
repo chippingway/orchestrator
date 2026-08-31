@@ -65,7 +65,7 @@ CHILD_NUMBER = 411
 # what the crash between the two writes leaves behind.
 UNRECORDED_CHILD = 412
 
-SUPERSEDED_BRANCH = "orchestrator/geserdugarov__agent-orchestrator/issue-41"
+SUPERSEDED_BRANCH = "orchestrator/chippingway__orchestrator/issue-41"
 
 SNAPSHOT_REF = "refs/orchestrator/late-split/issue-41/cycle-3/gen-1"
 

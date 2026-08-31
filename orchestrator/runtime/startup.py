@@ -40,7 +40,7 @@ class PollingOptions:
 def parse_options(argv: Optional[list[str]]) -> PollingOptions:
     """Parse single-tick and log-level command-line options."""
     parser = argparse.ArgumentParser(
-        description="Agent orchestrator polling loop.",
+        description="chipping-orchestrator polling loop.",
     )
     parser.add_argument(
         "--once",
