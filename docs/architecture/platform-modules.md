@@ -119,15 +119,17 @@ orchestrator/
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
     pinned_state.py     the pinned durable-state model, the comment body it is written as and the length GitHub
                         takes, its parser -- which identifies a state-only comment whatever payload it carries
-                        and keeps the one carrying no readable state, whether it would not parse or parsed into
-                        something with no fields, apart from an issue that recorded nothing, since both read back
-                        as `{}` -- and the comment watermarks beside it
-    pull_requests.py    PR lookup by open state, by commit, and when GitHub could not be asked at all, plus creation,
-                        comments, body, labels, SHA-pinned merge, remote-branch delete, and the supersession that
-                        says once on a thread of ours that this change is not to be merged and then closes it --
-                        taking that "already said" answer from the caller where it has one, since the search is a
-                        request and a caller that proved the pull request a moment earlier may not put one between
-                        its proof and the write
+                        and keeps the one carrying no readable state, whether it would not parse or parsed
+                        into anything but an object, apart from an issue that recorded nothing, since both read
+                        back as `{}` -- and the comment watermarks beside it
+    pull_requests.py    PR lookup by open state, by commit, and when GitHub could not be asked at all -- either
+                        search narrowed to one base for a caller choosing the thread it would push onto, or asked of
+                        every base by one asking only whether anybody is still standing on this branch -- plus
+                        creation, comments, body, labels, SHA-pinned merge, remote-branch delete, and the
+                        supersession that says once on a thread of ours that this change is not to be merged and then
+                        closes it -- taking that "already said" answer from the caller where it has one, since the
+                        search is a request and a caller that proved the pull request a moment earlier may not put one
+                        between its proof and the write
     reviews.py          current-head review aggregation: approval verdicts and unread-feedback watermarks
   agents/               publishes the run models, `run_agent`, and `terminate_all_running`
     models.py           the agent result, run-option, and subprocess-result models
@@ -315,7 +317,7 @@ orchestrator/
                         since a thread retargeted onto another base stands on the branch and holds the commit
                         just as squarely. Every read is behind its own boundary, the lazy fields included, and
                         every boundary answers with a retention rather than a default
-      eligibility.py    the side-effect-free classifier over both: the remote gates that settle a candidate on
+      eligibility.py    the side-effect-free classifier over both: the GitHub gates that settle a candidate on
                         their own, then one tip proof run over every commit an artifact holds, with the base
                         established once for the whole candidate. The checkout owes that proof as a branch does
                         -- a worktree whose branch was deleted under it holds its commit through its own HEAD and
@@ -357,8 +359,8 @@ off a facade:
   GitHub, which is what lets a caller take it at any point in a tick. The classification over it keeps that split
   visible: `evidence` calls `commands`, `locks`, `paths`, the `git/verification/` status probe, and
   `authentication` for the one question a local ref may not answer — what the remote says a branch is at;
-  `claims` names GitHub and reads no path; `eligibility` calls both and nothing else. None of the three writes
-  anything, on the host or on GitHub.
+  `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
+  disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,
