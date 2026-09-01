@@ -347,10 +347,13 @@ orchestrator/
                         and still on the commit that was cleared before a `worktree remove` that does not force,
                         the local branch deleted through an `update-ref -d` naming the old value and refused
                         while any live worktree of the clone is still standing on it, since that one protection
-                        `branch -D` has and the ref update does not -- and a refusal read a second time, because
-                        the stated value is refused for a branch that MOVED and for one that WENT alike, and
-                        only the first of those is a failure -- and the remote branch through the same
-                        lease-pinned delete the snapshot namespace is reclaimed under. Ownership is re-derived
+                        `branch -D` has and the ref update does not -- and refused again when the name is a
+                        symbolic ref, which every reading behind the proof resolves through and an update would
+                        follow, and undereferenced besides, so neither can take the ref it names -- and a
+                        refusal read a second time on both hosts, because a stated value and a lease are refused
+                        for a branch that MOVED and for one that WENT alike, and only the first of those is a
+                        failure -- and the remote branch through the same lease-pinned delete the snapshot
+                        namespace is reclaimed under. Ownership is re-derived
                         for every ref, so only the two names this issue publishes under and the one path its
                         creators derive can be touched. Already-absent is success; the checkout comes down
                         before the branch it is on, and the remote branch before the local one, since the local
@@ -362,16 +365,22 @@ orchestrator/
                         is let go only once the branch is gone from the remote; one that could not be written
                         down stops the deletion, a branch no verdict cleared a commit for is neither deleted nor
                         recorded, and the second entry point here finishes the records rather than the
-                        candidates, which is the pass a restart reaches for. A remote that moved past what was
-                        cleared deletes nothing and keeps its record: the branch is still standing there, and
-                        the record is the only thing that would lead anybody back to it
+                        candidates, which is the pass a restart reaches for. That pass takes a client, because a
+                        record is a reminder and never a permission: the ledger is a ref store the agents this
+                        orchestrator runs can write, so each record is put back through the classification --
+                        the issue ended, nobody standing on the branch, the commit surviving its deletion -- and
+                        spent only when what comes back clears the very commit it names. A remote that moved
+                        past what was cleared deletes nothing and keeps its record: the branch is still standing
+                        there, and the record is the only thing that would lead anybody back to it
       obligations.py    the ledger those records live in: one ref per branch under
                         `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
                         classification cleared, so what a later pass may spend it on is a deletion of exactly
                         that commit. A ref rather than a file, because that is where this domain's durable state
                         already lives and it is written under the same lock; outside `refs/heads/`, so the
                         artifact scan does not read one as a candidate of its own, and outside the snapshot
-                        namespace, which is published. The repository segment is the same ref-safe slug the
+                        namespace, which is published. Written and taken away without dereferencing, since a
+                        record pointed at somebody's branch would otherwise have this host's note to itself land
+                        on that branch or take it away. The repository segment is the same ref-safe slug the
                         branch namespace is built from, and it is what keeps two entries sharing a clone off one
                         another's records: the flat legacy branch they both derive is exactly the name the
                         attribution refuses to charge to either, so a ledger keyed on the branch alone would
@@ -418,9 +427,10 @@ off a facade:
   `reclamation` is where that changes: it calls `evidence` for the readings it takes again at the boundary, `paths`
   for the two branch names and the one checkout path a teardown for an issue may touch — and for the issue a record
   names — `commands` and `locks` for the removal and the ref delete, `obligations` for the record either side of the
-  remote deletion, and `authentication` for the lease-pinned delete itself. `obligations` calls `commands` and
-  `locks` and nothing else, and reaches no remote. Neither reaches `eligibility` or GitHub — the verdict a teardown
-  is handed is the whole of the permission, and a record is the same permission written down.
+  remote deletion, and `authentication` for the lease-pinned delete itself. `obligations` calls `commands`, `locks`,
+  and `paths` for the repository segment its namespace is keyed by, and reaches no remote. The verdict a teardown is
+  handed is the whole of its permission, so that path reaches neither `eligibility` nor GitHub; the pass that starts
+  from a record has no verdict and calls `eligibility` for one, which is the only upward reach in this package.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,

@@ -36,17 +36,26 @@ from orchestrator.git.worktrees.models import (
 )
 
 from tests.git.worktrees.artifact_test_support import (
+    BASE_BRANCH,
     GADGET_SLUG,
     _legacy_branch,
     _namespaced_branch,
     _spec,
 )
 from tests.git.worktrees.candidate_host_test_support import _branch_at
-from tests.git.worktrees.eligibility_test_support import ISSUE_NUMBER
+from tests.git.worktrees.eligibility_test_support import (
+    ISSUE_NUMBER,
+    _github,
+    _terminal_issue,
+)
 from tests.git.worktrees.reclamation_test_support import (
     _holds,
     _ReclaimTestCase,
     _surfaces,
+    _tip,
+)
+from tests.workflow.stages.question.question_real_git_test_support import (
+    _run_git,
 )
 
 CLEANED = SurfaceOutcome.CLEANED
@@ -60,9 +69,9 @@ _RECORD_SEAM = "_record_obligation"
 _READ_SEAM = "_recorded_obligations"
 
 
-def _swept(spec) -> tuple:
+def _swept(gh, spec) -> tuple:
     """One pass over the records one repository wrote."""
-    return reclamation._reclaim_recorded_remotes(spec)
+    return reclamation._reclaim_recorded_remotes(gh, spec)
 
 
 def _settled(
@@ -105,7 +114,7 @@ class RecordedRemoteTest(_ReclaimTestCase):
 
         self.assertTrue(reclaimed.settled)
         self.assertEqual(obligations._recorded_obligations(self.spec), ())
-        self.assertEqual(_swept(self.spec), ())
+        self.assertEqual(_swept(self.gh, self.spec), ())
 
     def test_the_record_is_there_before_the_push(self) -> None:
         tip = self.published()
@@ -119,6 +128,32 @@ class RecordedRemoteTest(_ReclaimTestCase):
             obligations._recorded_obligations(self.spec),
             (ProvenTip(self.branch, tip),),
         )
+
+    def test_a_record_made_symbolic_moves_nothing(self) -> None:
+        # The ledger lives in the store the per-issue checkouts share, so a
+        # record can be pointed at somebody's branch -- and an update-ref that
+        # followed it would write this host's note to itself onto that branch,
+        # or take it away. Neither half follows one.
+        self.published()
+        stood_at = _tip(self.clone, BASE_BRANCH)
+        elsewhere = self.world.commit_on(self.clone, f"{self.branch}-other")
+        record = obligations._obligation_ref(self.spec, self.branch)
+        base = f"refs/heads/{BASE_BRANCH}"
+        _run_git("symbolic-ref", record, base, cwd=self.clone)
+
+        obligations._record_obligation(self.spec, self.branch, elsewhere)
+
+        self.assertEqual(_tip(self.clone, BASE_BRANCH), stood_at)
+        self.assertEqual(
+            obligations._recorded_obligations(self.spec),
+            (ProvenTip(self.branch, elsewhere),),
+        )
+
+        _run_git("symbolic-ref", record, base, cwd=self.clone)
+        obligations._discharge_obligation(self.spec, self.branch)
+
+        self.assertEqual(_tip(self.clone, BASE_BRANCH), stood_at)
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
     def test_a_record_that_will_not_write_stops_it(self) -> None:
         # A deletion nothing could write down first is one whose failure
@@ -169,7 +204,7 @@ class ObligationSweepTest(_ReclaimTestCase):
             inventory._local_issue_inventory((self.spec,)).issues, (),
         )
 
-        swept = _swept(self.spec)
+        swept = _swept(self.gh, self.spec)
 
         self.assertEqual(
             _settled(swept),
@@ -199,7 +234,7 @@ class ObligationSweepTest(_ReclaimTestCase):
             inventory._local_issue_inventory((self.spec,)).issues, (),
         )
 
-        swept = _swept(self.spec)
+        swept = _swept(self.gh, self.spec)
 
         self.assertEqual(
             _settled(swept),
@@ -233,7 +268,7 @@ class ObligationSweepTest(_ReclaimTestCase):
             (ProvenTip(self.branch, tip),),
         )
         self.assertEqual(
-            _settled(_swept(self.spec)),
+            _settled(_swept(self.gh, self.spec)),
             ((ArtifactSurface.REMOTE_BRANCH, self.branch, CLEANED),),
         )
 
@@ -262,7 +297,7 @@ class ObligationSweepTest(_ReclaimTestCase):
             (ProvenTip(self.branch, tip),),
         )
         self.assertEqual(
-            _settled(_swept(self.spec)),
+            _settled(_swept(self.gh, self.spec)),
             ((ArtifactSurface.REMOTE_BRANCH, self.branch, FAILED),),
         )
 
@@ -273,7 +308,7 @@ class ObligationSweepTest(_ReclaimTestCase):
         owed = self.owed(self.published())
         self.world.unpublish(self.clone, self.branch)
 
-        swept = _swept(self.spec)
+        swept = _swept(self.gh, self.spec)
 
         self.assertEqual(
             _settled(swept),
@@ -293,14 +328,55 @@ class ObligationSweepTest(_ReclaimTestCase):
         self.world.commit_on(self.clone, ahead, start=self.branch)
         self.world.publish(self.clone, self.branch, ahead)
 
-        swept = _swept(self.spec)
-        again = _swept(self.spec)
+        swept = _swept(self.gh, self.spec)
+        again = _swept(self.gh, self.spec)
 
         self.assertEqual(
             tuple(taken.outcome for taken in swept + again),
             (FAILED, FAILED),
         )
         self.assertEqual(obligations._recorded_obligations(self.spec), (owed,))
+        self.assertTrue(self.standing()[2])
+
+
+class RecordedPermissionTest(_ReclaimTestCase):
+    """A record says which branch to ask about, never that it may go."""
+
+    def test_a_record_for_a_live_issue_is_refused(self) -> None:
+        # The ledger is a ref store the agents this orchestrator runs can
+        # write, so one of them can put a correctly named record at the very
+        # commit the branch is on. What stops it is that a record is not a
+        # proof: the classification is asked again, and this issue has not
+        # ended.
+        obligations._record_obligation(
+            self.spec, self.branch, self.published(),
+        )
+        self.gh = _github(_terminal_issue(closed=False))
+
+        swept = _swept(self.gh, self.spec)
+
+        self.assertEqual(
+            tuple(taken.outcome for taken in swept), (FAILED,),
+        )
+        self.assertTrue(self.standing()[2])
+        self.assertNotEqual(
+            obligations._recorded_obligations(self.spec), (),
+        )
+
+    def test_a_record_of_unproven_work_is_refused(self) -> None:
+        # The same store, and a record naming exactly what the branch is
+        # standing on -- which is all a forger needs when a record is taken as
+        # proof. The commit is on no base and in no pull request, so the
+        # classification keeps it and the deletion never runs.
+        tip = self.world.commit_on(self.clone, self.branch)
+        self.world.publish(self.clone, self.branch, self.branch)
+        obligations._record_obligation(self.spec, self.branch, tip)
+
+        swept = _swept(self.gh, self.spec)
+
+        self.assertEqual(
+            tuple(taken.outcome for taken in swept), (FAILED,),
+        )
         self.assertTrue(self.standing()[2])
 
 
@@ -321,10 +397,10 @@ class LedgerOwnershipTest(_ReclaimTestCase):
         clone_mate = _spec(GADGET_SLUG, self.clone)
 
         self.assertEqual(
-            _swept(clone_mate), (),
+            _swept(self.gh, clone_mate), (),
         )
         self.assertEqual(
-            _settled(_swept(self.spec)),
+            _settled(_swept(self.gh, self.spec)),
             ((ArtifactSurface.REMOTE_BRANCH, legacy, CLEANED),),
         )
 
@@ -337,7 +413,7 @@ class LedgerOwnershipTest(_ReclaimTestCase):
             self.spec, stranger, self.published(stranger),
         )
 
-        swept = _swept(self.spec)
+        swept = _swept(self.gh, self.spec)
 
         self.assertEqual(swept, ())
         self.assertEqual(
@@ -353,7 +429,7 @@ class LedgerOwnershipTest(_ReclaimTestCase):
         # Nothing owed and nobody could say are one answer to a caller that
         # would otherwise report this host as finished.
         with patch.object(obligations, _READ_SEAM, return_value=None):
-            swept = _swept(self.spec)
+            swept = _swept(self.gh, self.spec)
 
         self.assertEqual(
             _settled(swept),

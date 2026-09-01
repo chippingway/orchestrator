@@ -38,6 +38,7 @@ from orchestrator.git.worktrees.models import (
 )
 
 from tests.git.worktrees.artifact_test_support import (
+    BASE_BRANCH,
     WIDGET_SLUG,
     _namespaced_branch,
 )
@@ -47,6 +48,9 @@ from tests.git.worktrees.eligibility_test_support import (
     _candidate,
     _github,
     _terminal_issue,
+)
+from tests.workflow.stages.question.question_real_git_test_support import (
+    _run_git,
 )
 from tests.git.worktrees.reclamation_test_support import (
     OTHER_ISSUE_NUMBER,
@@ -111,7 +115,8 @@ class _DestructiveCalls:
         """One local git call, noted when it is one of the two that destroy."""
         head = " ".join(args[:2])
         if head == _WORKTREE_REMOVE or (
-            head == _LOCAL_DELETE and args[2].startswith(_BRANCH_REFS)
+            head == _LOCAL_DELETE
+            and any(named.startswith(_BRANCH_REFS) for named in args)
         ):
             self.taken.append(head)
         return self._ran_git(*args, **options)
@@ -182,6 +187,36 @@ class WholeCandidateTest(_ReclaimTestCase):
             self.outcomes(reclaimed), _surfaces(None, CLEANED, ABSENT),
         )
         self.assertTrue(reclaimed.settled)
+
+    def unpublished(self, *args, **options) -> bool:
+        """Let another actor take the branch off the remote, then refuse.
+
+        Installed in place of the leased deletion, which is where the window
+        is: the remote was read a moment before, and the lease it carries is
+        refused for a ref that has gone exactly as for one that has moved.
+        """
+        self.world.unpublish(self.clone, self.branch)
+        return False
+
+    def test_a_remote_taken_under_the_lease_goes(self) -> None:
+        # Somebody else deletes the branch on the remote between the reading
+        # and the push. The lease is refused over a ref that is not there,
+        # which is the deletion this was for happening without it -- read as a
+        # failure it would keep a record nobody owes and a branch nothing
+        # needs.
+        self.published()
+        cleared = self.verdict()
+
+        with patch.object(
+            authentication, _REMOTE_DELETE_SEAM, self.unpublished,
+        ):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, ABSENT, CLEANED),
+        )
+        self.assertTrue(reclaimed.settled)
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
     def test_the_order_keeps_a_failure_findable(self) -> None:
         # The checkout before the branch it stands on, which is git's rule,
@@ -404,6 +439,31 @@ class StepFailureTest(_ReclaimTestCase):
             self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
         )
         self.assertEqual(self.standing(worktree)[:2], (True, True))
+
+    def test_a_symbolic_branch_keeps_what_it_names(self) -> None:
+        # `update-ref` follows a symbolic ref, and every reading behind the
+        # proof resolves through one: a branch pointed at the base reads as
+        # standing on the base's own commit, passes, and takes `refs/heads/`
+        # of that base with it while this issue's name is left dangling.
+        # Nothing here makes such a branch, and nothing here deletes one.
+        tip = self.published()
+        cleared = self.verdict()
+        _run_git(
+            "update-ref", f"refs/heads/{BASE_BRANCH}", tip, cwd=self.clone,
+        )
+        _run_git(
+            "symbolic-ref",
+            f"refs/heads/{self.branch}",
+            f"refs/heads/{BASE_BRANCH}",
+            cwd=self.clone,
+        )
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, CLEANED, FAILED),
+        )
+        self.assertEqual(_tip(self.clone, BASE_BRANCH), tip)
 
     def test_a_remote_that_will_not_answer_keeps_it(self) -> None:
         # An unasked question is not a branch the remote does not carry, and

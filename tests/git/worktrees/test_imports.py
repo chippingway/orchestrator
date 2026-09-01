@@ -127,10 +127,12 @@ _OWNER_ONLY_NAMES = (
 # teardown that spends one: the surfaces a candidate is taken from and what
 # each was left in, the checkout's presence, ownership, and revalidation
 # reads, the two lease-pinned deletions and the boundaries around them, the
-# live-checkout read the local one is refused by and the `worktree list`
-# spellings it is written in, the gates ordering the three, the refusals a
-# verdict that clears nothing gets, and the pass that finishes what an earlier
-# one wrote down -- with the ledger under it: the namespace, the repository's
+# live-checkout and symbolic-ref reads the local one is refused by, the
+# `worktree list` spellings and the undereferenced argv they are written in,
+# the second readings a refused deletion is told apart by on either host, the
+# gates ordering the three, the refusals a verdict that clears nothing gets,
+# and the pass that finishes what an earlier one wrote down -- classification
+# and all -- with the ledger under it: the namespace, the repository's
 # own room inside it, the ref one branch is recorded at, the write, the
 # read-back and the parse beneath it, and the discharge -- and the second
 # reading a refused branch deletion is told apart by. Naming the whole surface makes a helper added to an owner
@@ -157,11 +159,14 @@ _OWNER_DEFINED = (
     ("_CLEANLINESS_REASONS", eligibility),
     ("_CLONE", reclamation),
     ("_GIT_NEGATIVE", evidence),
+    ("_GIT_NOT_SYMBOLIC", reclamation),
     ("_HEAD", evidence),
     ("_IDENTITY_REASONS", eligibility),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
+    ("_NO_DEREF", obligations),
+    ("_NO_DEREF", reclamation),
     ("_ON_BRANCH", reclamation),
     ("_OPEN_PULL_REQUEST", claims),
     ("_ORCHESTRATOR_BRANCH_REFS", probes),
@@ -190,8 +195,8 @@ _OWNER_DEFINED = (
     ("_branch_reasons", eligibility),
     ("_branch_ref", reclamation),
     ("_branch_retentions", eligibility),
-    ("_branch_tip", eligibility),
     ("_branch_surfaces", reclamation),
+    ("_branch_tip", eligibility),
     ("_candidate_issue_branches", recovery),
     ("_carrying_pull_request", claims),
     ("_checkout_entries", probes),
@@ -253,14 +258,16 @@ _OWNER_DEFINED = (
     ("_reclaimed_branch", reclamation),
     ("_reclaimed_checkout", reclamation),
     ("_reclaimed_local_branch", reclamation),
+    ("_reclaimed_record", reclamation),
     ("_reclaimed_remote_branch", reclamation),
     ("_record_attribution", attribution),
     ("_record_obligation", obligations),
     ("_recorded_deletion", reclamation),
     ("_recorded_obligations", obligations),
-    ("_refused_delete", reclamation),
-    ("_records_prefix", obligations),
     ("_recorded_pull_request", claims),
+    ("_records_prefix", obligations),
+    ("_refused_delete", reclamation),
+    ("_refused_push", reclamation),
     ("_removal_under_lock", reclamation),
     ("_remove_issue_worktree", cleanup),
     ("_removed_checkout", reclamation),
@@ -283,6 +290,7 @@ _OWNER_DEFINED = (
     ("_specs_by_clone", inventory),
     ("_standing_on", reclamation),
     ("_still_cleared", reclamation),
+    ("_symbolic_branch", reclamation),
     ("_terminal_retentions", claims),
     ("_tip_retentions", eligibility),
     ("_unmoved", reclamation),

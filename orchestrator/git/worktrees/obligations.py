@@ -68,6 +68,13 @@ _RECORD_FORMAT = "--format=%(refname) %(objectname)"
 
 _RECORD_FIELDS = 2
 
+# What keeps a write to a record from travelling somewhere else. The ref store
+# these live in is one the per-issue checkouts share, so a record can be made
+# a symbolic ref pointing anywhere -- and every update-ref that does not say
+# this follows it: the write would move whatever it names, and the delete
+# would take it away.
+_NO_DEREF = "--no-deref"
+
 
 def _records_prefix(spec: config.RepoSpec) -> str:
     """Where one repository's records live, and nowhere else's.
@@ -109,11 +116,16 @@ def _record_obligation(
     Written before the attempt rather than after the failure, because the
     failure that matters most is the one that takes the process with it: a
     record written afterwards is a record the crash in between never reaches.
+
+    Written without dereferencing, because where it goes is a ref store the
+    per-issue checkouts share: a record made symbolic there would have this
+    write land on whatever it points at, and a note to self would become an
+    edit to somebody's branch.
     """
     try:
         with locks._target_root_lock(spec.target_root):
             recorded = commands._git_hardened(
-                "update-ref", _obligation_ref(spec, branch), sha,
+                "update-ref", _NO_DEREF, _obligation_ref(spec, branch), sha,
                 cwd=spec.target_root,
             )
     except Exception:
@@ -138,11 +150,15 @@ def _discharge_obligation(spec: config.RepoSpec, branch: str) -> bool:
     settled finds. No old value is named, unlike every other deletion in this
     domain -- what would be pinned is this host's own note to itself, and a
     note somebody rewrote is not work that could be lost.
+
+    Undereferenced for the reason the write is: a record turned into a
+    symbolic ref would otherwise have this take away the branch it names
+    rather than the record.
     """
     try:
         with locks._target_root_lock(spec.target_root):
             discharged = commands._git_hardened(
-                "update-ref", "-d", _obligation_ref(spec, branch),
+                "update-ref", "-d", _NO_DEREF, _obligation_ref(spec, branch),
                 cwd=spec.target_root,
             )
     except Exception:

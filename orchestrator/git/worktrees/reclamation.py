@@ -4,8 +4,11 @@
 
 The destructive half of the artifact domain, and the only owner in it that
 writes anything: ``eligibility`` decides, and this spends what it decided. A
-verdict is the whole of the permission -- nothing here re-derives it, and one
-that keeps its candidate is refused before a single read is taken.
+verdict is the whole of the permission -- nothing here re-derives one it was
+handed, and one that keeps its candidate is refused before a single read is
+taken. The pass that has no verdict, because it starts from a record rather
+than a candidate, asks that owner for one: what a record carries is which
+branch to go and ask about, never the right to delete it.
 
 What the verdict established is established again at the boundary it is about
 to be spent at, because a proof is a statement about a moment. Between the
@@ -60,7 +63,6 @@ exactly as within one process.
 from __future__ import annotations
 
 import logging
-import subprocess
 from collections.abc import Mapping
 from itertools import chain
 from pathlib import Path
@@ -68,17 +70,30 @@ from types import MappingProxyType
 
 from orchestrator import config
 from orchestrator.git import authentication, commands, locks
-from orchestrator.git.worktrees import evidence, obligations, paths
+from orchestrator.git.worktrees import (
+    eligibility,
+    evidence,
+    obligations,
+    paths,
+)
+# What a teardown is handed: the candidate, the permission over it, the
+# commits that permission cleared, and the answers the reads it retakes come
+# back in.
 from orchestrator.git.worktrees.models import (
-    ArtifactReclamation,
-    ArtifactSurface,
     ArtifactVerdict,
     BranchTip,
     IssueArtifacts,
     ProbeAnswer,
+    ProvenTip,
+)
+# What it answers with, one entry per place an artifact had to be taken from.
+from orchestrator.git.worktrees.models import (
+    ArtifactReclamation,
+    ArtifactSurface,
     SurfaceOutcome,
     SurfaceResult,
 )
+from orchestrator.github.client import GitHubClient
 
 # The channel is named for the worktree-lifecycle domain rather than for this
 # module's path: operators filter the rendered `orchestrator.worktree_lifecycle`
@@ -103,6 +118,16 @@ _REMOTE = "the remote"
 _ON_BRANCH = "branch"
 
 _PRUNABLE = "prunable"
+
+# What keeps a deletion from travelling down a symbolic ref to whatever it
+# names. `update-ref` follows one by default, so a branch made symbolic in the
+# store the checkouts share would have the deletion take its target instead.
+_NO_DEREF = "--no-deref"
+
+# The exit status `symbolic-ref --quiet` answers with when the ref it was
+# asked about is a plain one, or is not there at all. Every other status is a
+# reading that established nothing.
+_GIT_NOT_SYMBOLIC = 1
 
 
 def _branch_ref(branch: str) -> str:
@@ -498,6 +523,32 @@ def _recorded_deletion(
         return SurfaceOutcome.FAILED
     if _deleted_remote_branch(spec, issue_number, branch, cleared_sha):
         return _discharged(spec, branch, SurfaceOutcome.CLEANED)
+    return _refused_push(spec, issue_number, branch)
+
+
+def _refused_push(
+    spec: config.RepoSpec, issue_number: int, branch: str,
+) -> SurfaceOutcome:
+    """What a refused deletion left on the remote, asked a second time.
+
+    The lease is refused for a ref that MOVED and for one that WENT alike --
+    both are "not the commit you named" -- and only the first of those is a
+    failure. Somebody else deleting the branch between the reading and the
+    push is the deletion this was for happening without it, so it is the
+    success it looks like from every other angle, and the record over it has
+    nothing left to cover.
+
+    The same second reading the local deletion takes, for the same reason: a
+    surface reported failed over an artifact that is already gone is one no
+    later pass can settle, and here there may be nothing local left to find
+    the issue by at all.
+    """
+    published = evidence._published_tip(spec, branch)
+    if published.answer is ProbeAnswer.REFUTED:
+        return _discharged(spec, branch, SurfaceOutcome.ABSENT)
+    log.warning(
+        "issue=#%d the remote would not let go of %r", issue_number, branch,
+    )
     return SurfaceOutcome.FAILED
 
 
@@ -547,7 +598,7 @@ def _discharged(
 
 
 def _reclaim_recorded_remotes(
-    spec: config.RepoSpec,
+    gh: GitHubClient, spec: config.RepoSpec,
 ) -> tuple[SurfaceResult, ...]:
     """Finish the remote deletions this host wrote down and did not complete.
 
@@ -556,12 +607,12 @@ def _reclaim_recorded_remotes(
     with nothing left to hold: a remote branch whose local artifacts went
     before the deletion that was to follow them. So this reads what was
     written down rather than what is on disk, which is what makes the retry
-    survive a restart rather than a tick.
+    survive a restart rather than a tick -- and it takes a client, because
+    what a record cannot carry is the permission.
 
     Every record is put back through the steps the teardown that wrote it was
-    on -- the remote asked what the branch is at, the answer measured against
-    the commit that was cleared, the deletion pinned to it -- because a record
-    is a note about a moment too, and the moment has passed.
+    on, the classification included -- because a record is a note about a
+    moment too, and the moment has passed.
 
     Only this repository's own records are read: several `REPOS` entries may
     share a clone and so this ledger, and a branch another of them published
@@ -583,11 +634,62 @@ def _reclaim_recorded_remotes(
             settled.append(SurfaceResult(
                 ArtifactSurface.REMOTE_BRANCH,
                 owed.subject,
-                _reclaimed_remote_branch(
-                    spec, issue_number, owed.subject, owed.sha,
-                ),
+                _reclaimed_record(gh, spec, issue_number, owed),
             ))
     return tuple(settled)
+
+
+def _reclaimed_record(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue_number: int,
+    owed: ProvenTip,
+) -> SurfaceOutcome:
+    """Spend one record, once the classification clears its branch again.
+
+    A record is a reminder, never a permission. It lives in the ref store the
+    per-issue checkouts share, which is a store the agents this orchestrator
+    runs can write: a name under this namespace and a commit beside it are
+    both things one of them can put there, so a pass that took a record as
+    proof would authenticate-delete a branch on the strength of something the
+    work being torn down wrote. What a record says is which branch to go and
+    ask about. The answer comes from where a candidate's does -- the issue has
+    ended, no pull request is standing on the branch, and the commit survives
+    the deletion -- and it is asked again here rather than assumed, because
+    nothing this pass has was established by anybody but the last one.
+
+    The commit has to be the one written down, too. A verdict clearing some
+    other commit is a verdict about some other state of that branch, and the
+    deletion a record authorizes is pinned to what it names.
+
+    An eligible verdict that clears nothing at all is the branch being gone
+    from this clone and from the remote both, which is a record with nothing
+    left to cover: it is let go, as every other absence in this domain is.
+    """
+    verdict = eligibility._classify_artifacts(gh, IssueArtifacts(
+        spec=spec,
+        issue_number=issue_number,
+        worktree=None,
+        branches=(owed.subject,),
+    ))
+    if not verdict.eligible:
+        log.warning(
+            "issue=#%d not spending the record for %r: the classification "
+            "keeps it (%s)",
+            issue_number,
+            owed.subject,
+            ", ".join(sorted(kept.reason for kept in verdict.retentions)),
+        )
+        return SurfaceOutcome.FAILED
+    if not verdict.proven:
+        return _discharged(spec, owed.subject, SurfaceOutcome.ABSENT)
+    if owed not in verdict.proven:
+        log.warning(
+            "issue=#%d not spending the record for %r: what was cleared is "
+            "not the %r it names", issue_number, owed.subject, owed.sha,
+        )
+        return SurfaceOutcome.FAILED
+    return _recorded_deletion(spec, issue_number, owed.subject, owed.sha)
 
 
 def _owed_issue(spec: config.RepoSpec, branch: str) -> int | None:
@@ -678,6 +780,14 @@ def _deleted_local_branch(
     that the pass opened with -- a tree added or moved onto this branch since
     then is a tree that reading never saw.
 
+    Nor does the old value say WHICH ref it was read through. A branch that is
+    a symbolic ref resolves to whatever it names, so the proof would be about
+    that other ref's commit and the deletion, left to follow it, would take
+    that other ref: `refs/heads/main` deleted while this issue's name is left
+    dangling. Both halves are answered here -- the ref is refused when it is
+    symbolic, and the update says so as well, so a ref made symbolic between
+    the two cannot travel either.
+
     Lock-held for that and for the reason every ref this clone holds is
     written under that lock: a concurrent `worktree add` on another thread is
     writing the same store, and the two racing leave one of them reporting a
@@ -685,15 +795,19 @@ def _deleted_local_branch(
     """
     try:
         with locks._target_root_lock(artifacts.spec.target_root):
-            if _checkouts_holding(artifacts, branch):
+            if _checkouts_holding(artifacts, branch) or _symbolic_branch(
+                artifacts, branch,
+            ):
                 return SurfaceOutcome.FAILED
             deleted = commands._git_hardened(
-                "update-ref", "-d", _branch_ref(branch), expected,
+                "update-ref", "-d", _NO_DEREF, _branch_ref(branch), expected,
                 cwd=artifacts.spec.target_root,
             )
             if deleted.returncode == 0:
                 return SurfaceOutcome.CLEANED
-            return _refused_delete(artifacts, branch, deleted)
+            return _refused_delete(
+                artifacts, branch, (deleted.stderr or "").strip(),
+            )
     except Exception:
         log.exception(
             "issue=#%d deleting the local branch %r raised",
@@ -703,9 +817,7 @@ def _deleted_local_branch(
 
 
 def _refused_delete(
-    artifacts: IssueArtifacts,
-    branch: str,
-    deleted: subprocess.CompletedProcess,
+    artifacts: IssueArtifacts, branch: str, complaint: str,
 ) -> SurfaceOutcome:
     """What a refused deletion left, once the ref is asked about again.
 
@@ -727,9 +839,37 @@ def _refused_delete(
         return SurfaceOutcome.ABSENT
     log.warning(
         "issue=#%d local branch %r delete failed: %s",
-        artifacts.issue_number, branch, (deleted.stderr or "").strip(),
+        artifacts.issue_number, branch, complaint,
     )
     return SurfaceOutcome.FAILED
+
+
+def _symbolic_branch(artifacts: IssueArtifacts, branch: str) -> bool:
+    """Whether this issue's branch is a symbolic ref rather than a branch.
+
+    Nothing this orchestrator does makes one: a branch it publishes is created
+    by `worktree add` or by an update naming a commit. What a symbolic one
+    would be is a name in the store the checkouts share pointed at another
+    ref -- and every reading behind the proof resolves through it, so what was
+    cleared is that other ref's commit and not anything this name holds.
+
+    Fail-closed, like every read at this boundary: `symbolic-ref --quiet`
+    exits 1 for a ref that is not symbolic and for one that is not there, and
+    anything else is a reading that established nothing about what deleting
+    this name would take.
+    """
+    named = commands._git_hardened(
+        "symbolic-ref", "--quiet", _branch_ref(branch),
+        cwd=artifacts.spec.target_root,
+    )
+    if named.returncode == _GIT_NOT_SYMBOLIC:
+        return False
+    log.warning(
+        "issue=#%d keeping the local branch %r: it is not a branch this "
+        "orchestrator would have made (%s)",
+        artifacts.issue_number, branch, (named.stdout or "").strip(),
+    )
+    return True
 
 
 def _checkouts_holding(artifacts: IssueArtifacts, branch: str) -> bool:
