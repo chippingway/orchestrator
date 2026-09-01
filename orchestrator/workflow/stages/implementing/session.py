@@ -114,13 +114,13 @@ def _check_and_increment_retry_budget(
     Caller writes pinned state after this returns; on the False branch we have
     already parked, so caller's pinned-state write commits the park.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import UTC, datetime, timedelta
 
     cap = config.MAX_RETRIES_PER_DAY
     if cap <= 0:
         return True
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     window_start_raw = state.get(_state._RETRY_WINDOW_START)
     window_start: datetime | None = None
     if window_start_raw:

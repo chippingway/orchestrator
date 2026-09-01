@@ -13,7 +13,7 @@ trigger a `validating` flip ahead of the fresh-feedback scan."""
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -105,7 +105,7 @@ class _FreshFeedbackFixtureMixin(_PatchedWorkflowMixin):
                 id=DRIFT_FEEDBACK_ID,
                 body="please tighten the docstring",
                 user=FakeUser(HUMAN_LOGIN),
-                created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                created_at=datetime.now(UTC) - timedelta(hours=1),
             ),
         )
         github.add_issue(issue)
@@ -158,7 +158,7 @@ class InReviewRoutesFreshFeedbackToFixingTest(
                     id=PR_FEEDBACK_ID,
                     body="please tighten the integration test",
                     user=FakeUser(HUMAN_LOGIN),
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 ),
             ],
         )
@@ -193,7 +193,7 @@ class InReviewRoutesFreshFeedbackToFixingTest(
         # after the watermarks advance past it. Seed feedback that spans all
         # three id namespaces with more than one item per surface so a
         # max-only bookmark would lose the lower members.
-        old = datetime.now(timezone.utc) - timedelta(hours=1)
+        old = datetime.now(UTC) - timedelta(hours=1)
         pr = FakePR(
             number=FRESH_FEEDBACK_PR,
             head_branch=FRESH_FEEDBACK_BRANCH,

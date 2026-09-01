@@ -91,7 +91,7 @@ class RunsTableHtmlTest(unittest.TestCase):
             "Backend", "Round", "Steps", "Tool calls", "Recorded",
         ):
             with self.subTest(header=header):
-                self.assertIn(">{0}</th>".format(header), rendered)
+                self.assertIn(f">{header}</th>", rendered)
         self.assertIn("#42", rendered)
         self.assertIn(f">{REPO}</td>", rendered)
         # Two steps, one of which is a tool call.

@@ -15,7 +15,7 @@ from __future__ import annotations
 import contextlib
 import tempfile
 from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
@@ -40,7 +40,7 @@ _YEAR = 2026
 
 # The pinned comparison point every prune in these tests is handed, so the
 # ages below mean the same thing on any day the suite runs.
-PRUNE_NOW = datetime(_YEAR, 5, _PRUNE_NOW_DAY, _PRUNE_NOW_HOUR, 0, 0, tzinfo=timezone.utc)
+PRUNE_NOW = datetime(_YEAR, 5, _PRUNE_NOW_DAY, _PRUNE_NOW_HOUR, 0, 0, tzinfo=UTC)
 
 FRESH_RECORD_AGE_DAYS = 1
 

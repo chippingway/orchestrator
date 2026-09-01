@@ -117,7 +117,7 @@ class FlushRowcountTest(unittest.TestCase):
         cursor = NegativeRowcountCursor()
         counters = SyncCounters()
         batch = [("a",), ("b",), ("c",)]
-        ingest.flush_batch(cursor, _INSERT_STATEMENT, batch, counters, start=float())
+        ingest.flush_batch(cursor, _INSERT_STATEMENT, batch, counters, start=float(0))
         self.assertEqual(counters.inserted, len(cursor.calls[0]))
         self.assertEqual(counters.skipped_duplicate, 0)
         # The buffer is cleared so the caller can refill it, and the whole
@@ -128,7 +128,7 @@ class FlushRowcountTest(unittest.TestCase):
     def test_an_empty_batch_never_reaches_the_driver(self) -> None:
         counters = SyncCounters()
         ingest.flush_batch(
-            RejectingBatchCursor(), _INSERT_STATEMENT, [], counters, start=float(),
+            RejectingBatchCursor(), _INSERT_STATEMENT, [], counters, start=float(0),
         )
         self.assertEqual(counters.inserted, 0)
         self.assertEqual(counters.skipped_duplicate, 0)

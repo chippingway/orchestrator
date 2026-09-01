@@ -9,7 +9,7 @@ import re
 import unittest
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from orchestrator.observability.analytics.sync import cli
@@ -147,7 +147,7 @@ class CommandClockTest(unittest.TestCase):
         )
         # Cross-check the shared clock against UTC itself: a local-time
         # formatter would agree with a local-time summary and still be wrong.
-        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        now_utc = datetime.now(UTC).replace(tzinfo=None)
         self.assertLess(
             abs((printed_at - now_utc).total_seconds()),
             _CLOCK_TOLERANCE_SECONDS,

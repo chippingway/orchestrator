@@ -174,7 +174,7 @@ class StageFigureTest(unittest.TestCase):
         figure = cost_stage.cost_by_stage((_UNSPLIT_ROW,))
         no_cache_trace, cache_trace = figure.data
         self.assertEqual(list(no_cache_trace.x), [_DEAREST_TOTAL])
-        self.assertEqual(list(cache_trace.x), [float()])
+        self.assertEqual(list(cache_trace.x), [float(0)])
 
     def test_nothing_to_split_is_one_bar_tall(self) -> None:
         # An empty split is the shared placeholder at the height a single-row

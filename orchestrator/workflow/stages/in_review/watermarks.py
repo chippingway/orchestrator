@@ -25,7 +25,7 @@ stamps `created_at`, and the fakes can leave either unset.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from github.Issue import Issue
 
@@ -50,7 +50,7 @@ def _comment_created_at(comment) -> datetime | None:
     if ca is None:
         return None
     if ca.tzinfo is None:
-        return ca.replace(tzinfo=timezone.utc)
+        return ca.replace(tzinfo=UTC)
     return ca
 
 

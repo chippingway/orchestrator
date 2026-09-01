@@ -46,7 +46,7 @@ _RISING_ARROW = "▲"
 
 _FALLING_ARROW = "▼"
 
-_ZERO = float()
+_ZERO = float(0)
 
 # The window a banner and a filter line are drawn over, and what ran in it.
 _REPOS = 3

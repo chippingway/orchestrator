@@ -82,7 +82,7 @@ def render_no_data(*, st: Any, extent: DataExtent, theme: Any) -> None:
             extent=extent,
             distinct_repos=0,
             total_events=0,
-            spend_in_range=float(),
+            spend_in_range=float(0),
             fmt_money_exact=theme.fmt_money_exact,
             fmt_num=theme.fmt_num,
         ),

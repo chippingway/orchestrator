@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from types import MappingProxyType
 
 from orchestrator.observability.analytics.query.rollup_reads import (
@@ -40,7 +40,7 @@ _DAY = date(_YEAR, 5, _DAY_NUMBER)
 
 _NEXT_DAY = date(_YEAR, 5, _NEXT_DAY_NUMBER)
 
-_WIDENED_DAY = datetime(_YEAR, 5, _DAY_NUMBER, 0, 0, tzinfo=timezone.utc)
+_WIDENED_DAY = datetime(_YEAR, 5, _DAY_NUMBER, 0, 0, tzinfo=UTC)
 
 # One `(day, event)` cell at its full width: count / cost / input / output /
 # cache_read / cache_write, and the fields each column has to land in.

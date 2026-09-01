@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -69,7 +69,7 @@ class _HumanFeedbackHandoffFixtureMixin(_PatchedWorkflowMixin):
             ],
         )
         gh.add_issue(issue)
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         pr = FakePR(
             number=HUMAN_FEEDBACK_PR,
             head_branch=HUMAN_FEEDBACK_BRANCH,
@@ -167,7 +167,7 @@ class ValidatingHandoffPreservesHumanFeedbackTest(
 class _PrePickupHandoffFixtureMixin(_PatchedWorkflowMixin):
     def _setup(self):
         gh = FakeGitHubClient()
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         issue = make_issue(
             PRE_PICKUP_ISSUE,
             label=LABEL_VALIDATING,
@@ -214,7 +214,7 @@ class _PrePickupHandoffFixtureMixin(_PatchedWorkflowMixin):
         return gh, issue, pr
 
     def _run_after_handoff(self, github, issue, pr):
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         for comment in list(pr.issue_comments):
             if comment.created_at is None:
                 comment.created_at = long_ago

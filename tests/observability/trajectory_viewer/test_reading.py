@@ -27,7 +27,7 @@ def _write_lines(path: Path, lines) -> None:
     with path.open("w", encoding="utf-8") as trajectory_file:
         for line in lines:
             written = line if isinstance(line, str) else json.dumps(line)
-            trajectory_file.write("{0}\n".format(written))
+            trajectory_file.write(f"{written}\n")
 
 
 class _WrittenFileTest(unittest.TestCase):

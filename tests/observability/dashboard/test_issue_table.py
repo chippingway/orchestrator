@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.run_models import (
     IssueSummaryRow,
@@ -24,9 +24,9 @@ from orchestrator.observability.dashboard import issue_table
 
 _YEAR = 2026
 
-_FIRST_SEEN = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+_FIRST_SEEN = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
-_LAST_SEEN = datetime(_YEAR, 5, 2, tzinfo=timezone.utc)
+_LAST_SEEN = datetime(_YEAR, 5, 2, tzinfo=UTC)
 
 _REPO = "acme/orchestrator"
 

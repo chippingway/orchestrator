@@ -14,7 +14,7 @@ the markup raw can be told from one the page shortened.
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
@@ -36,9 +36,9 @@ _YEAR = 2026
 
 _MAY = 5
 
-_WINDOW_START = datetime(_YEAR, _MAY, 1, tzinfo=timezone.utc)
+_WINDOW_START = datetime(_YEAR, _MAY, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, _MAY, 8, tzinfo=timezone.utc)
+_WINDOW_END = datetime(_YEAR, _MAY, 8, tzinfo=UTC)
 
 # The half-open window's own dates, and the day the footer closes on: the reads
 # beneath the page stop before `end`, so the last day any of them covered is

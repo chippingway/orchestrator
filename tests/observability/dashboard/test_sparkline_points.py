@@ -35,7 +35,7 @@ _RISING = (1.0, 2.0, 3.0)
 
 _FLAT = (5.0, 5.0)
 
-_ZERO = float()
+_ZERO = float(0)
 
 _WITH_A_NULL = (1.0, None, 3.0)
 

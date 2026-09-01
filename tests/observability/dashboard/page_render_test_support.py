@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from contextlib import ExitStack
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock, patch
@@ -30,9 +30,9 @@ _YEAR = 2026
 
 _MAY = 5
 
-WINDOW_START = datetime(_YEAR, _MAY, 1, tzinfo=timezone.utc)
+WINDOW_START = datetime(_YEAR, _MAY, 1, tzinfo=UTC)
 
-WINDOW_END = datetime(_YEAR, _MAY, 8, tzinfo=timezone.utc)
+WINDOW_END = datetime(_YEAR, _MAY, 8, tzinfo=UTC)
 
 WINDOW = windows.DateWindow(start=WINDOW_START, end=WINDOW_END)
 

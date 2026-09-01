@@ -95,7 +95,7 @@ def cost_per_resolved(totals: KpiTotals) -> str:
     """What one resolved issue cost, or an em dash when none were."""
     if totals.resolved <= 0:
         return "—"
-    return "${0}".format(format(totals.cost / totals.resolved, ",.2f"))
+    return "${}".format(format(totals.cost / totals.resolved, ",.2f"))
 
 
 def kpi_strip_entries(
@@ -152,7 +152,7 @@ def build_kpi_strip_data(inputs: KpiInputs) -> KpiStripData:
     rework_share = (
         totals.rework_cost / totals.review_cost
         if totals.review_cost > 0
-        else float()
+        else float(0)
     )
     daily = daily_kpi_series(
         ts_points=inputs.ts_points,

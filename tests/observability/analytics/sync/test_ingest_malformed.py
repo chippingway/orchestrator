@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import timezone
+from datetime import UTC
 
 from orchestrator.observability.analytics.sync import columns
 from tests.observability.analytics.sync.sync_fake_driver import FakeConnection
@@ -89,7 +89,7 @@ class MalformedLineTest(unittest.TestCase):
         self.assertEqual(sync_result.inserted, 1)
         _, row_values = fake.inserts[0]
         ts_cell = row_values[columns.PROMOTED_COLUMNS.index("ts")]
-        self.assertEqual(ts_cell.tzinfo, timezone.utc)
+        self.assertEqual(ts_cell.tzinfo, UTC)
 
 
 if __name__ == "__main__":

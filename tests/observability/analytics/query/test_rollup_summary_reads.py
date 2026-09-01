@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import MappingProxyType
 
 from orchestrator.observability.analytics.query.overview_models import Summary
@@ -43,11 +43,11 @@ _YEAR = 2026
 
 _WINDOW_END_DAY = 28
 
-_PREVIOUS_START = datetime(_YEAR, 4, 1, tzinfo=timezone.utc)
+_PREVIOUS_START = datetime(_YEAR, 4, 1, tzinfo=UTC)
 
-_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=timezone.utc)
+_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=UTC)
 
 # The totals branch at its full width, in the order the cast list maps it:
 # kind / label / events / issues / repos / cost / input / output / runs /

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -79,7 +79,7 @@ class StageEventEmissionTest(unittest.TestCase, support._PatchedWorkflowMixin):
                 support.EVENT_STAGE_ENTER,
                 7,
                 support.TEST_REPO_SLUG,
-                timezone.utc,
+                UTC,
             )
             for stage in (
                 support.STAGE_IMPLEMENTING,

@@ -56,6 +56,14 @@ class TopbarRequest:
     fmt_money_exact: Any
     fmt_num: Any
 
+    def range_label(self) -> str:
+        """The span of recorded data the banner reports under its title."""
+        if self.extent.min_ts is None or self.extent.max_ts is None:
+            return "no data recorded yet"
+        first_day = self.extent.min_ts.date().isoformat()
+        last_day = self.extent.max_ts.date().isoformat()
+        return f"{first_day} → {last_day} available"
+
 
 def plural_s(count: int) -> str:
     """The suffix a counted noun beside one of these figures takes."""
@@ -76,21 +84,15 @@ def delta_pill(*args: Any, **kwargs: Any) -> str:
     delta_value = bound.arguments["value"]
     if delta_value is None or delta_value == 0:
         return ""
-    percentage_text = "{0:.1f}%".format(abs(delta_value) * 100)
+    percentage = abs(delta_value) * 100
     css_class, arrow = delta_style(delta_value, bound.arguments["invert"])
-    return f'<span class="orch-delta {css_class}">{arrow} {percentage_text}</span>'
+    return f'<span class="orch-delta {css_class}">{arrow} {percentage:.1f}%</span>'
 
 
 def topbar_html(*args: Any, **kwargs: Any) -> str:
     """Render the topbar through its historical keyword-only surface."""
     request = TopbarRequest(**TOPBAR_SIGNATURE.bind(*args, **kwargs).arguments)
-    if request.extent.min_ts is None or request.extent.max_ts is None:
-        range_label = "no data recorded yet"
-    else:
-        range_label = "{0} → {1} available".format(
-            request.extent.min_ts.date().isoformat(),
-            request.extent.max_ts.date().isoformat(),
-        )
+    range_label = request.range_label()
     subtitle = (
         f"{html.escape(range_label)} · "
         f"{request.distinct_repos} repo{plural_s(request.distinct_repos)} · "
@@ -146,7 +148,7 @@ def kpi_strip_html(kpis: Sequence[dict]) -> str:
             f'<span>{html.escape(str(kpi.get("sub", "")))}</span>'
             f"{spark_html}</div></div>"
         )
-    return '<div class="orch-kpis">{0}</div>'.format("".join(cells))
+    return '<div class="orch-kpis">{}</div>'.format("".join(cells))
 
 
 DELTA_SIGNATURE = Signature(

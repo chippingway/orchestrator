@@ -12,9 +12,9 @@ sink itself is configured by.
 
 Both surfaces are pinned to UTC and say so. The formatter converts with
 `time.gmtime` and stamps an explicit `UTC` suffix, and the summary is built
-from `datetime.now(timezone.utc)`, so a piped `2>&1` on a host whose local
-clock is offset stays one time-ordered stream rather than two that disagree by
-hours. The converter is set on the formatter instance rather than on
+from `datetime.now(UTC)`, so a piped `2>&1` on a host whose local clock is
+offset stays one time-ordered stream rather than two that disagree by hours.
+The converter is set on the formatter instance rather than on
 `logging.Formatter`, whose attribute is process-wide and would drag every other
 formatter -- a test's own included -- into UTC with it. The handler replaces
 whatever the root already carried, because `basicConfig` silently keeps the
@@ -32,7 +32,7 @@ import argparse
 import logging
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from orchestrator.observability.analytics.sync.models import SyncResult
@@ -91,7 +91,7 @@ def cli_parser() -> argparse.ArgumentParser:
 
 def print_cli_result(sync_result: SyncResult, cli_start: float) -> None:
     """Print the UTC summary retained even when structured logs are hidden."""
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     duration_s = sync_result.duration_s or round(time.monotonic() - cli_start, 3)
     sys.stdout.write(
         f"{timestamp} analytics_sync: inserted={sync_result.inserted} "

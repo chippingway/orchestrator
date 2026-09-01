@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import unittest
 from collections.abc import Callable, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
@@ -46,11 +46,11 @@ _MAY = 5
 
 _NOON = 12
 
-_WINDOW_START = datetime(_YEAR, _MAY, 1, tzinfo=timezone.utc)
+_WINDOW_START = datetime(_YEAR, _MAY, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, _MAY, 8, tzinfo=timezone.utc)
+_WINDOW_END = datetime(_YEAR, _MAY, 8, tzinfo=UTC)
 
-_EVENT_AT = datetime(_YEAR, _MAY, 4, _NOON, tzinfo=timezone.utc)
+_EVENT_AT = datetime(_YEAR, _MAY, 4, _NOON, tzinfo=UTC)
 
 _EVENTS = ("stage_entered", "agent_exit")
 

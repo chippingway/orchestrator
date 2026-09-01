@@ -60,7 +60,7 @@ def build_record(
     don't carry them.
     """
     rec: dict[str, typing.Any] = {
-        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(
+        "ts": datetime.datetime.now(datetime.UTC).isoformat(
             timespec="seconds",
         ),
         "repo": repo,

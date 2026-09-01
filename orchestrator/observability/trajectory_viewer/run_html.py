@@ -51,7 +51,7 @@ def meta_html(run: TrajectoryRun) -> str:
         for label, cell in fields
         if cell
     ]
-    return '<div class="orch-traj-meta">{0}</div>'.format("".join(cells))
+    return '<div class="orch-traj-meta">{}</div>'.format("".join(cells))
 
 
 def labeled_chips_html(

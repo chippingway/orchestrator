@@ -60,7 +60,7 @@ _EVEN_CACHE_ROW = BackendEfficiencyRow(
 # A backend the window carries no work for, so every ratio behind the card
 # divides by zero unless the guard answers first.
 _EMPTY_ROW = BackendEfficiencyRow(
-    backend=BACKEND_CODEX, runs=0, total_cost_usd=float(),
+    backend=BACKEND_CODEX, runs=0, total_cost_usd=float(0),
 )
 
 _UNSAFE_BACKEND = "ba<ck>"
@@ -89,9 +89,9 @@ class BackendEfficiencyMetricsTest(unittest.TestCase):
     def test_an_empty_window_reports_zero_everywhere(self) -> None:
         metrics = backend_card.backend_efficiency_metrics(_EMPTY_ROW)
         self.assertEqual(metrics.tokens, 0)
-        self.assertEqual(metrics.cost_per_million, float())
-        self.assertEqual(metrics.cost_per_run, float())
-        self.assertEqual(metrics.cache_hit_pct, float())
+        self.assertEqual(metrics.cost_per_million, float(0))
+        self.assertEqual(metrics.cost_per_run, float(0))
+        self.assertEqual(metrics.cache_hit_pct, float(0))
 
 
 class BackendEfficiencyCardHtmlTest(unittest.TestCase):

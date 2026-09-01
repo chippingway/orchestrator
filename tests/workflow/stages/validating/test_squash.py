@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -59,7 +59,7 @@ class _MeasurementPark:
 class _SquashApprovalFixtureMixin(_PatchedWorkflowMixin):
     def _setup(self):
         gh = FakeGitHubClient()
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         issue = make_issue(
             APPROVAL_ISSUE,
             label="workflow:validating",
@@ -151,7 +151,7 @@ class _SquashApprovalFixtureMixin(_PatchedWorkflowMixin):
         )
 
     def _run_review_after_squash(self, github, issue, pr):
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         for comment in list(issue.comments) + list(pr.issue_comments):
             if comment.created_at is None:
                 comment.created_at = long_ago

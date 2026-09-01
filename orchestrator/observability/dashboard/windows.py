@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from types import MappingProxyType
 
 from orchestrator.observability.analytics.query.overview_models import DataExtent
@@ -74,11 +74,11 @@ def default_date_range(
 def to_window(start_date: date, end_date: date) -> DateWindow:
     if end_date < start_date:
         start_date, end_date = end_date, start_date
-    start_datetime = datetime.combine(start_date, time.min, tzinfo=timezone.utc)
+    start_datetime = datetime.combine(start_date, time.min, tzinfo=UTC)
     end_datetime = datetime.combine(
         end_date + timedelta(days=1),
         time.min,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
     return DateWindow(start=start_datetime, end=end_datetime)
 

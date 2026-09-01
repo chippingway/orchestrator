@@ -29,7 +29,7 @@ _COLOR = "#111"
 
 _RISING = (1.0, 2.0, 3.0)
 
-_ZERO = float()
+_ZERO = float(0)
 
 _ZEROS = (_ZERO, _ZERO)
 

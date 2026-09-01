@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -36,7 +36,7 @@ class BuildEventRecordTest(unittest.TestCase):
             stage=_STAGE,
         )
         stamped = datetime.fromisoformat(record.pop(_TS_KEY))
-        self.assertEqual(stamped.tzinfo, timezone.utc)
+        self.assertEqual(stamped.tzinfo, UTC)
         self.assertEqual(stamped.microsecond, 0)
         self.assertEqual(
             record,

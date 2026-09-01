@@ -178,7 +178,7 @@ class SkillTriggerRateReadTest(unittest.TestCase):
         )
         # A cohort that never triggered is a real 0% rate rather than a
         # dropped category -- which is the case the panel exists to surface.
-        assert_row_fields(self, rows[1], {"skill_runs": 0, "rate": float()})
+        assert_row_fields(self, rows[1], {"skill_runs": 0, "rate": float(0)})
 
     def test_the_scan_probes_and_sums_the_count(self) -> None:
         # `skill_runs` is a key-presence test, so a run that recorded an empty

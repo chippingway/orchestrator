@@ -54,7 +54,7 @@ class KpiStripHtmlTest(unittest.TestCase):
         self.assertIn("orch-kpis", rendered)
         for label in ("Runs", "Issues", "Repos", "Tool calls", "Total cost"):
             with self.subTest(label=label):
-                self.assertIn(">{0}</span>".format(label), rendered)
+                self.assertIn(f">{label}</span>", rendered)
         self.assertIn("1 truncated", rendered)
         # Exact cents even above $10 -- the compact `fmt_money` would read
         # `$12`, dropping the authoritative figure's cents.

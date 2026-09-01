@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -32,7 +32,7 @@ REVIEW_DEBOUNCE_SECONDS = 600
 
 
 def _hour_ago():
-    return datetime.now(timezone.utc) - timedelta(hours=1)
+    return datetime.now(UTC) - timedelta(hours=1)
 
 
 @dataclass(frozen=True)

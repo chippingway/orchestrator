@@ -53,14 +53,14 @@ HUMAN_REPLACEMENT = "a human rewrote the description mid-hold"
 # changed under one reads it as a human's own description, and the copy it
 # replaced is then never put back.
 CURRENT_HOLD = (
-    "<!--orchestrator-late-hold:cycle={cycle}-->\n"
+    f"<!--orchestrator-late-hold:cycle={CYCLE_ID}-->\n"
     ":hourglass: **Held by the orchestrator.** The committed implementation "
-    "for issue #{issue} measured past the size ceiling, so it is being "
+    f"for issue #{LATE_ISSUE_NUMBER} measured past the size ceiling, so it is being "
     "adjudicated before anything is published. Do not merge this pull "
     "request while the hold stands.\n\n"
     "This description is temporary. The original is preserved in the issue's "
     "pinned orchestrator state and is restored when adjudication finishes."
-).format(cycle=CYCLE_ID, issue=LATE_ISSUE_NUMBER)
+)
 
 # The hold exactly as the binary before this one wrote it: marked by
 # generation as well as cycle, and quoting what the candidate measured.
@@ -69,21 +69,15 @@ CURRENT_HOLD = (
 # -- an upgrade meets them unchanged, and a spelling this binary cannot
 # recognize is a hold it can never take back off.
 SUPERSEDED_HOLD = (
-    "<!--orchestrator-late-hold:cycle={cycle}:generation={generation}-->\n"
+    f"<!--orchestrator-late-hold:cycle={CYCLE_ID}:generation={GENERATION_NUMBER}-->\n"
     ":hourglass: **Held by the orchestrator.** The committed implementation "
-    "for issue #{issue} measures {additions} added lines against a ceiling "
-    "of {threshold}, so it is being adjudicated before anything is "
+    f"for issue #{LATE_ISSUE_NUMBER} measures {ADDITIONS} added lines against a ceiling "
+    f"of {THRESHOLD}, so it is being adjudicated before anything is "
     "published. Do not merge this pull request while the hold "
     "stands.\n\n"
     "This description is temporary. The original is preserved in the "
     "issue's pinned orchestrator state and is restored when adjudication "
     "finishes."
-).format(
-    cycle=CYCLE_ID,
-    generation=GENERATION_NUMBER,
-    issue=LATE_ISSUE_NUMBER,
-    additions=ADDITIONS,
-    threshold=THRESHOLD,
 )
 
 # What a human editing the notice rather than replacing it leaves behind:
@@ -106,7 +100,7 @@ HEADROOM_UNDER_THE_CEILING = 4000
 
 # An operator's command line, long enough that the record built from it is
 # what decides whether a preserved body still fits.
-LONG_SPEC = "claude {0}".format("--flag " * SPEC_FLAGS)
+LONG_SPEC = "claude {}".format("--flag " * SPEC_FLAGS)
 
 WORKFLOW_LOG = "orchestrator.workflow"
 

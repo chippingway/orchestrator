@@ -46,7 +46,7 @@ class BackendEfficiencyMetrics:
 
 def safe_ratio(numerator: float, denominator: float) -> float:
     if denominator <= 0:
-        return float()
+        return float(0)
     return numerator / denominator
 
 

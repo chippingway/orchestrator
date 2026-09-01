@@ -7,7 +7,7 @@ surface."""
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -345,7 +345,7 @@ class InReviewReadyPingRoutingTest(
             id=CONCURRENT_COMMENT_ID,
             body="please hold off, doing one more pass",
             user=FakeUser(HUMAN_LOGIN),
-            created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+            created_at=datetime.now(UTC) - timedelta(hours=1),
         )
         with patch.object(
             _comments,
@@ -449,7 +449,7 @@ class InReviewFeedbackRoutingTest(
                         id=FEEDBACK_COMMENT_ID,
                         body="please tighten the docstring",
                         user=FakeUser(HUMAN_LOGIN),
-                        created_at=datetime.now(timezone.utc),
+                        created_at=datetime.now(UTC),
                     ),
                 ],
             ),
@@ -485,7 +485,7 @@ class InReviewFeedbackRoutingTest(
                         id=FEEDBACK_COMMENT_ID,
                         body="rename foo to bar",
                         user=FakeUser(HUMAN_LOGIN),
-                        created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                        created_at=datetime.now(UTC) - timedelta(hours=1),
                     ),
                 ],
             ),

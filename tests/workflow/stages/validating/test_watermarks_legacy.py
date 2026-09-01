@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -51,7 +51,7 @@ CHECKS_SUCCESS = "success"
 PR_LAST_COMMENT_ID = "pr_last_comment_id"
 DEBOUNCE_SETTING = "IN_REVIEW_DEBOUNCE_SECONDS"
 RUN_AGENT = "run_agent"
-LONG_AGO = datetime.now(timezone.utc) - timedelta(hours=1)
+LONG_AGO = datetime.now(UTC) - timedelta(hours=1)
 ORCHESTRATOR_MARKER = _comments._ORCH_COMMENT_MARKER
 
 

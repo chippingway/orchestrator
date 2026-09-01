@@ -11,7 +11,7 @@ the columns and their order can be read straight back off it.
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from orchestrator.observability.analytics.query.run_models import AgentExitRow
 from orchestrator.observability.dashboard import recent_runs
@@ -23,7 +23,7 @@ _MAY = 5
 
 _NOON = 12
 
-_UTC_NOON = datetime(_YEAR, _MAY, 4, _NOON, tzinfo=timezone.utc)
+_UTC_NOON = datetime(_YEAR, _MAY, 4, _NOON, tzinfo=UTC)
 
 _OFFSET_HOURS = 3
 
