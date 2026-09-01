@@ -105,6 +105,7 @@ def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess:
         text=True,
         errors=_UNDECODABLE_BYTES,
         env={**os.environ, **_GIT_NO_PROMPT_ENV},
+        check=False,
     )
 
 
@@ -170,6 +171,7 @@ def _git_hardened(
         text=True,
         errors=_UNDECODABLE_BYTES,
         env=env,
+        check=False,
     )
 
 
@@ -199,6 +201,7 @@ def _unsafe_local_transport_config(cwd: Path) -> str:
             "GIT_CONFIG_SYSTEM": os.devnull,
             "GIT_CONFIG_NOSYSTEM": "1",
         },
+        check=False,
     )
     if probe.returncode == 0 and probe.stdout.strip():
         return probe.stdout.strip()

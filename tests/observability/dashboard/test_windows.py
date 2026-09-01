@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import unittest
+from datetime import UTC
+from unittest.mock import patch
 
 from orchestrator.observability.dashboard import windows
 from tests.observability.dashboard import dashboard_test_support as fixtures
@@ -26,6 +28,15 @@ class DefaultDateRangeTest(unittest.TestCase):
     def test_days_one_yields_today_only(self) -> None:
         start, end = windows.default_date_range(today=fixtures.MAY28, days=1)
         self.assertEqual(start, end)
+
+    def test_unnamed_today_is_read_off_the_utc_clock(self) -> None:
+        # The window this day becomes is midnight-aligned UTC, so the host's
+        # own zone may not decide which day the page opens on.
+        with patch.object(windows, "datetime") as clock:
+            clock.now.return_value = fixtures.utc_midnight(fixtures.MAY28)
+            start, end = windows.default_date_range(days=_WINDOW_DAYS)
+            clock.now.assert_called_once_with(UTC)
+        self.assertEqual((start, end), (fixtures.MAY22, fixtures.MAY28))
 
     def test_days_zero_clamps_to_today_only(self) -> None:
         # `days=0` is non-sensical (an empty window) so the helper clamps to

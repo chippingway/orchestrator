@@ -91,7 +91,7 @@ def _paused_during_agent_run(gh: GitHubClient, issue: Issue) -> bool:
     """
     try:
         fresh = gh.get_issue(issue.number)
-    except Exception:
+    except Exception:  # noqa: BLE001 - the guard is additive and must not strand a finished run
         log.debug(
             "issue=#%d not retrievable for post-agent pause check; proceeding",
             issue.number,

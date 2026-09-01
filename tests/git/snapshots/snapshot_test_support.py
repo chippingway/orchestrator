@@ -106,6 +106,7 @@ def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess:
     completed = subprocess.run(
         [GIT, *args], cwd=str(cwd), capture_output=True, text=True,
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        check=False,
     )
     if completed.returncode != 0:
         raise AssertionError(f"git {args} failed: {completed.stderr}")

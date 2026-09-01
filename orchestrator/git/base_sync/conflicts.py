@@ -57,7 +57,7 @@ def _post_conflict_route_notice(context: _ConflictRouteContext) -> None:
             "orchestrator is attempting auto-resolution via the dev "
             f"agent (label: `{WorkflowLabel.RESOLVING_CONFLICT}`).",
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - the PR notice is best effort at the GitHub boundary
         log.exception(
             "issue=#%s could not post auto-rebase notice to PR #%s",
             context.issue.number, context.pr_number,

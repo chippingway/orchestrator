@@ -132,6 +132,7 @@ def _create_squash_commit(
         capture_output=True,
         text=True,
         env=_squash_commit_env(),
+        check=False,
     )
 
 

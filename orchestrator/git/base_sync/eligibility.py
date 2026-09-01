@@ -121,7 +121,7 @@ def _open_auto_rebase_pr(
     """Return the open PR or leave terminal and unreadable PRs untouched."""
     try:
         pr = context.gh.get_pr(context.pr_number)
-    except Exception:
+    except Exception:  # noqa: BLE001 - an unreadable PR is retried on the next tick
         log.debug(
             "issue=#%d could not fetch PR #%d for refresh rebase; "
             "leaving label alone, handler will retry next tick",

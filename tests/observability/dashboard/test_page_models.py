@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import FrozenInstanceError, fields
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, get_type_hints
 
 from orchestrator.observability.dashboard import page_models, windows
@@ -17,9 +17,9 @@ _ISSUE = 1174
 
 _YEAR = 2026
 
-_WINDOW_START = datetime(_YEAR, 5, 1)
+_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, 5, 8)
+_WINDOW_END = datetime(_YEAR, 5, 8, tzinfo=UTC)
 
 _WINDOW_DAYS = 7
 

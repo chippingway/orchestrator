@@ -126,7 +126,7 @@ def maybe_record_trajectory(
         return
     try:
         persist_trajectory_record(context, metrics, codex_catalog)
-    except Exception:
+    except Exception:  # noqa: BLE001 - the trajectory is dropped, never the baseline record
         sink.log.exception(
             "issue=#%d analytics: trajectory record(%s) failed; baseline agent_exit record is unaffected",
             context.issue,

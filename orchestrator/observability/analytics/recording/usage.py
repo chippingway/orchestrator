@@ -27,7 +27,7 @@ def parse_agent_exit_usage(
             context.agent_result.stdout,
             fallback_model=context.fallback_model,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - an unreadable stream cancels the record, not the tick
         sink.log.exception(
             "issue=#%d analytics: parse_agent_usage(%s) failed; skipping record",
             context.issue,

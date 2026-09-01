@@ -138,6 +138,7 @@ class BranchRefFormatTest(unittest.TestCase):
                 [GIT, "check-ref-format", "--branch", branch],
                 capture_output=True,
                 text=True,
+                check=False,
             )
             self.assertEqual(
                 git_result.returncode,

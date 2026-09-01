@@ -180,7 +180,7 @@ def _post_recovered_rebase_notice(
         _comments._post_pr_comment(
             context.gh, context.pr_number, context.state, notice,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - the PR notice is best effort at the GitHub boundary
         log.exception(
             "issue=#%s could not post auto-rebase recovery notice to "
             "PR #%s", context.issue.number, context.pr_number,

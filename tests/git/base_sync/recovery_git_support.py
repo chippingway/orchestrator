@@ -128,6 +128,7 @@ def _local_fetch(_spec, refspec: str, *, cwd: Path):
         capture_output=True,
         text=True,
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        check=False,
     )
 
 
@@ -155,6 +156,7 @@ class _LocalLeasePush:
             capture_output=True,
             text=True,
             env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+            check=False,
         )
         return pushed.returncode == 0
 

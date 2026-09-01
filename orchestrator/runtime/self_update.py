@@ -24,6 +24,7 @@ def git(*args: str) -> subprocess.CompletedProcess:
         cwd=str(config.REPO_ROOT),
         capture_output=True,
         text=True,
+        check=False,
     )
 
 

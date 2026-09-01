@@ -51,6 +51,7 @@ def _local_fetch(spec, branch):
         capture_output=True,
         text=True,
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        check=False,
     )
 
 
@@ -86,6 +87,7 @@ class _LocalBranchPusher:
             capture_output=True,
             text=True,
             env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+            check=False,
         )
         return push_result.returncode == 0
 

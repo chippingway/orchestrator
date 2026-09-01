@@ -53,7 +53,7 @@ def prune_with_retention_logging() -> None:
     """
     try:
         removed = prune_old_records()
-    except Exception:
+    except Exception:  # noqa: BLE001 - observability may never abort the polling loop
         log.exception("analytics retention prune raised; continuing")
         return
     if removed:

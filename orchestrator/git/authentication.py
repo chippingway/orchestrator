@@ -199,6 +199,7 @@ def _authed_fetch(
             capture_output=True,
             text=True,
             env=auth_session.env,
+            check=False,
         )
 
 
@@ -277,6 +278,7 @@ def _authed_target_fetch(
             capture_output=True,
             text=True,
             env=auth_session.env,
+            check=False,
         )
 
 
@@ -337,6 +339,7 @@ def _remote_branch_sha(
         capture_output=True,
         text=True,
         env=auth_session.env,
+        check=False,
     )
     if ls_remote.returncode != 0:
         scrubbed = (ls_remote.stderr or "").replace(
@@ -377,6 +380,7 @@ def _push_with_auth(
         capture_output=True,
         text=True,
         env=auth_session.env,
+        check=False,
     )
     if push_result.returncode == 0:
         return True
@@ -665,6 +669,7 @@ def _authed_ref_update(
                 capture_output=True,
                 text=True,
                 env=auth_session.env,
+                check=False,
             )
         if updated.returncode == 0:
             return True

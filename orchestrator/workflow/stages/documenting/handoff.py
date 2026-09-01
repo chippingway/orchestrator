@@ -78,7 +78,7 @@ def _ratchet_in_review_watermark_for_final_docs(
         return
     try:
         pr = gh.get_pr(int(pr_number))
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - an unreadable PR leaves the watermark to in_review
         log.warning(
             "issue=#%s could not fetch PR #%s to ratchet "
             "`pr_last_comment_id` on the final-docs handoff: %s",

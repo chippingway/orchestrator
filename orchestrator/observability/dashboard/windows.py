@@ -66,7 +66,10 @@ def default_date_range(
     today: date | None = None,
     days: int = DEFAULT_WINDOW_DAYS,
 ) -> tuple[date, date]:
-    range_end = today or date.today()
+    # Named on the same clock the window it becomes is aligned to. A local
+    # `today` in a zone ahead of UTC names a day the midnight-UTC bounds have
+    # not reached, and one behind it stops short of the newest events.
+    range_end = today or datetime.now(UTC).date()
     range_start = range_end - timedelta(days=max(days - 1, 0))
     return range_start, range_end
 

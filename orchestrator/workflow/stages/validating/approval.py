@@ -67,7 +67,7 @@ def _seed_in_review_handoff_watermarks(
         return
     try:
         pr = gh.get_pr(int(pr_number))
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - an unreadable PR falls back to the legacy watermark
         # Surface the failure but skip the traceback -- it adds no signal.
         log.warning(
             "issue=#%s could not snapshot PR #%s for in_review "
