@@ -133,11 +133,13 @@ _OWNER_ONLY_NAMES = (
 # gates ordering the three, what a verdict clearing no commit for a branch
 # leaves, the line an unfindable leftover is reported on, and the pass that
 # finishes what an earlier one wrote down -- classification, the commit it
-# clears now, and all -- with the ledger under it: the namespace, the repository's
-# own room inside it, the ref one branch is recorded at, the write, the
-# read-back and the parse beneath it, and the discharge -- and the second
-# reading a refused branch deletion is told apart by. Naming the whole surface makes a helper added to an owner
-# an edit here rather than a definition site nothing checks.
+# clears now, and all -- with the ledger under it: the namespace, the
+# repository's own room inside it, the ref one branch is recorded at, the
+# write, the value a record carries when nothing was cleared and the reminder
+# written at it, the read-back and the parse beneath it, and the discharge --
+# and the second reading a refused branch deletion is told apart by. Naming
+# the whole surface makes a helper added to an owner an edit here rather than
+# a definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
     ("ArtifactReclamation", models),
@@ -175,6 +177,7 @@ _OWNER_DEFINED = (
     ("_RECORD_FIELDS", obligations),
     ("_RECORD_FORMAT", obligations),
     ("_REF_SEPARATOR", attribution),
+    ("_REMINDER_MARK", obligations),
     ("_REMOTE", reclamation),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
@@ -270,6 +273,8 @@ _OWNER_DEFINED = (
     ("_records_prefix", obligations),
     ("_refused_delete", reclamation),
     ("_refused_push", reclamation),
+    ("_remind", obligations),
+    ("_reminded", reclamation),
     ("_removal_under_lock", reclamation),
     ("_remove_issue_worktree", cleanup),
     ("_removed_checkout", reclamation),

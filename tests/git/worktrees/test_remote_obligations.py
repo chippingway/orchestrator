@@ -155,6 +155,67 @@ class RecordedRemoteTest(_ReclaimTestCase):
         self.assertEqual(_tip(self.clone, BASE_BRANCH), stood_at)
         self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
+    def test_a_branch_back_before_teardown_is_owed(self) -> None:
+        # The classification found the branch on neither host, so it cleared
+        # no commit for it, and something published it again before the
+        # teardown reached the remote. Nothing may be deleted on that showing
+        # and nothing local names the issue any more, so what carries it is
+        # the reminder -- and the pass that reads that reminder back asks the
+        # classification, which by then clears the branch and takes it.
+        cleared = self.verdict()
+        self.world.publish(self.clone, self.branch, BASE_BRANCH)
+
+        stopped = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(stopped), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertEqual(
+            inventory._local_issue_inventory((self.spec,)).issues, (),
+        )
+        self.assertEqual(
+            tuple(
+                owed.subject
+                for owed in obligations._recorded_obligations(self.spec)
+            ),
+            (self.branch,),
+        )
+
+        self.assertEqual(
+            _settled(_swept(self.gh, self.spec)),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, CLEANED),),
+        )
+        self.assertFalse(self.standing()[2])
+        self.assertEqual(_swept(self.gh, self.spec), ())
+
+    def test_a_remote_nobody_could_read_is_owed(self) -> None:
+        # The other way a proofless branch ends the teardown: the remote would
+        # not say whether there is anything under that name at all. A reading
+        # that established nothing is written down like the other, and it
+        # clears itself on the first later pass that finds nothing there.
+        cleared = self.verdict()
+        unread = BranchTip(answer=ProbeAnswer.UNREADABLE)
+
+        with patch.object(evidence, "_published_tip", return_value=unread):
+            stopped = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(stopped), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertEqual(
+            tuple(
+                owed.subject
+                for owed in obligations._recorded_obligations(self.spec)
+            ),
+            (self.branch,),
+        )
+
+        self.assertEqual(
+            _settled(_swept(self.gh, self.spec)),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, ABSENT),),
+        )
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+
     def test_a_record_that_will_not_write_stops_it(self) -> None:
         # A deletion nothing could write down first is one whose failure
         # nothing would carry, so it is not attempted at all.

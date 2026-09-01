@@ -363,10 +363,12 @@ orchestrator/
                         written down before the remote is asked anything at all, since the reads are among the
                         things that fail and a record written after them is one those failures never reach. It
                         is let go only once the branch is gone from the remote; one that could not be written
-                        down stops the deletion, a branch no verdict cleared a commit for is neither deleted nor
-                        recorded -- and is a success when the remote does not carry it either, since a candidate
-                        whose artifacts are all demonstrably gone must not be reported as a failure nothing
-                        could settle -- and the second entry point here finishes the records rather than the
+                        down stops the deletion, and a branch no verdict cleared a commit for is not deleted at
+                        all: a remote with nothing under that name is the success a candidate whose artifacts
+                        are all demonstrably gone deserves, and anything else -- the branch published again
+                        since, or a remote that would not answer -- is written down as a reminder, the local
+                        copy being gone by then and nothing else able to lead a later pass back to it. The
+                        second entry point here finishes the records rather than the
                         candidates, which is the pass a restart reaches for. That pass takes a client, because a
                         record is a reminder and never a permission: the ledger is a ref store the agents this
                         orchestrator runs can write, so each record is put back through the classification --
@@ -382,9 +384,12 @@ orchestrator/
                         the only failure here that no later pass can reach
       obligations.py    the ledger those records live in: one ref per branch under
                         `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
-                        classification cleared, so what a later pass may spend it on is a deletion of exactly
-                        that commit. A ref rather than a file, because that is where this domain's durable state
-                        already lives and it is written under the same lock; outside `refs/heads/`, so the
+                        classification cleared -- or, for a branch it cleared none for, at git's empty tree, an
+                        object every repository knows and no branch is ever at, which is how a reminder to ask
+                        again is told from a commit somebody adjudicated. Neither value authorizes anything: the
+                        pass that reads one back asks the classification for that. A ref rather than a file,
+                        because that is where this domain's durable state already lives and it is written under
+                        the same lock; outside `refs/heads/`, so the
                         artifact scan does not read one as a candidate of its own, and outside the snapshot
                         namespace, which is published. Written and taken away without dereferencing, since a
                         record pointed at somebody's branch would otherwise have this host's note to itself land

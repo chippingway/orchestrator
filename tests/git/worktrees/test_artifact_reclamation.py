@@ -306,8 +306,9 @@ class VerdictPermissionTest(_ReclaimTestCase):
 
     def test_a_branch_back_on_the_remote_is_left(self) -> None:
         # The same verdict, and the branch published again after it was taken.
-        # What is under that name now is work nobody adjudicated: it is not
-        # deleted, and nothing is written down for it either.
+        # What is under that name now is work nobody adjudicated, so it is not
+        # deleted -- and the local copy is gone as well, so what would lead a
+        # later pass back to it is the reminder written in its place.
         cleared = self.verdict()
         self.world.publish(self.clone, self.branch, BASE_BRANCH)
 
@@ -317,7 +318,13 @@ class VerdictPermissionTest(_ReclaimTestCase):
             self.outcomes(reclaimed), _surfaces(None, FAILED, ABSENT),
         )
         self.assertTrue(self.standing()[2])
-        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+        self.assertEqual(
+            tuple(
+                owed.subject
+                for owed in obligations._recorded_obligations(self.spec)
+            ),
+            self.branches,
+        )
 
 
 class ArtifactOwnershipTest(_ReclaimTestCase):

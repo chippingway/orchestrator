@@ -88,6 +88,7 @@ per-file-ignores =
     orchestrator/git/worktrees/eligibility.py:WPS202
     orchestrator/git/worktrees/evidence.py:WPS202
     orchestrator/git/worktrees/models.py:WPS202
+    orchestrator/git/worktrees/obligations.py:WPS202
     orchestrator/git/worktrees/paths.py:WPS202
     orchestrator/git/worktrees/reclamation.py:WPS202
     orchestrator/github/issues.py:WPS202,WPS214

@@ -20,10 +20,20 @@ of its own -- and neither is the snapshot namespace, which is a published
 surface with a policy of its own. This is a sibling of that one under the
 `refs/orchestrator/` root nothing else writes.
 
-The value is the commit the classification cleared, which is what makes the
-record enough on its own: what it authorizes is a deletion pinned to that
-commit, so a branch the remote has moved on to since is not one anybody may
-spend this record on.
+The value is the commit the classification cleared, which is what a caller
+reports and what a fresh deletion is measured against. It is not what any of
+them is authorized by: the pass that reads a record back asks the
+classification again, so the value says where the branch was last known to
+stand rather than what may be done to it.
+
+That is what lets a record be written for a branch nothing cleared at all --
+one the classification found on neither host and something has published
+again since, or one the remote would not answer for. There is no commit to
+name there, so the value is `_REMINDER_MARK`: git's empty tree, an object
+every repository has and no branch is ever at. What it says is the whole of
+what such a record is for -- go and ask about this branch again -- and a later
+pass reaches the same answer it reaches for any other record, since none of
+them carries a permission.
 
 The name says which repository owes it, and that is not decoration. Several
 `REPOS` entries may share one `target_root` -- a clone with a public and a
@@ -68,6 +78,15 @@ _RECORD_FORMAT = "--format=%(refname) %(objectname)"
 
 _RECORD_FIELDS = 2
 
+# The value a record carries when this host has never had a commit cleared
+# for the branch it names. Git's empty tree, which every repository knows
+# without being told -- it resolves in a clone with no objects in it at all --
+# and which no branch is ever at, so a reader can tell a reminder from a
+# commit somebody adjudicated. A repository whose objects are named by another
+# hash refuses the write, which is the fail-closed answer a caller already
+# handles: the reminder is not there, and the pass says so.
+_REMINDER_MARK = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
 # What keeps a write to a record from travelling somewhere else. The ref store
 # these live in is one the per-issue checkouts share, so a record can be made
 # a symbolic ref pointing anywhere -- and every update-ref that does not say
@@ -106,7 +125,7 @@ def _obligation_ref(spec: config.RepoSpec, branch: str) -> str:
 def _record_obligation(
     spec: config.RepoSpec, branch: str, sha: str,
 ) -> bool:
-    """Write down the deletion this host is about to attempt on the remote.
+    """Write down that this host has unfinished business with one branch.
 
     Answered as whether the record IS there, because of what the caller does
     next: the deletion this covers is the one that can fail after the last
@@ -140,6 +159,19 @@ def _record_obligation(
         branch, (recorded.stderr or "").strip(),
     )
     return False
+
+
+def _remind(spec: config.RepoSpec, branch: str) -> bool:
+    """Write down that one branch is unfinished business, cleared or not.
+
+    The record a teardown leaves when it has no commit to name: the branch was
+    on neither host when the classification ran, and by the time the teardown
+    reached the remote there was something under that name again -- or nobody
+    could say. Neither is a deletion this may run, and both are leftovers with
+    nothing on this host left to find them by, so what carries them to a later
+    pass is this.
+    """
+    return _record_obligation(spec, branch, _REMINDER_MARK)
 
 
 def _discharge_obligation(spec: config.RepoSpec, branch: str) -> bool:

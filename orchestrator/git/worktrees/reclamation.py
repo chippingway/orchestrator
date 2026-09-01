@@ -529,16 +529,47 @@ def _unproven_remote(
     failure no later pass could settle, since there is nothing left anywhere
     for one to find.
 
-    A branch that is back is the other answer. Something published it after
-    the proof was taken, so what is under that name is work nobody
-    adjudicated: it is not deleted, and nothing is written down for it either.
+    Anything else is a leftover this pass may not touch and must not lose. A
+    branch that is back was published after the proof was taken, so what is
+    under that name is work nobody adjudicated; a remote that would not answer
+    has established nothing at all. Neither is deleted, and both are written
+    down, because by here the local copy is gone as well and a reminder is the
+    only thing that would lead a later pass to either.
     """
     published = evidence._published_tip(spec, branch)
-    if published.answer is not ProbeAnswer.CONFIRMED:
-        return _unresolved(issue_number, branch, published, _REMOTE)
+    if published.answer is ProbeAnswer.REFUTED:
+        return SurfaceOutcome.ABSENT
+    return _reminded(spec, issue_number, branch, published)
+
+
+def _reminded(
+    spec: config.RepoSpec,
+    issue_number: int,
+    branch: str,
+    published: BranchTip,
+) -> SurfaceOutcome:
+    """Note that one branch is unfinished business, and keep it.
+
+    A reminder rather than an obligation, because no commit was cleared here
+    and a record naming one would be saying otherwise. What it carries is the
+    name; the pass that reads it back asks the classification for everything
+    else, exactly as it does for a record written after a proof.
+
+    Self-clearing, which is what makes it safe to write on a reading that
+    established nothing: the first later pass that finds the branch gone from
+    the remote lets it go again.
+
+    A reminder that could not be written is not answered here. The branch step
+    above reports what is left of this issue, and it is the one that knows
+    whether anything at all still names it.
+    """
+    obligations._remind(spec, branch)
     log.warning(
-        "issue=#%d keeping %r on the remote: it is back at %r and nothing "
-        "cleared a commit for it", issue_number, branch, published.sha,
+        "issue=#%d keeping %r on the remote (%s), with nothing cleared for "
+        "it: written down to be asked about again",
+        issue_number,
+        branch,
+        published.sha or "the remote would not say what it is at",
     )
     return SurfaceOutcome.FAILED
 
