@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 import unittest
 
 from orchestrator.git.snapshots import namespace
@@ -24,6 +25,17 @@ _BIG = 1000000000000
 # is a value `int(...)` would happily convert, which is the whole reason the
 # builder refuses rather than converts.
 NOT_IDENTITIES = (True, 0, -1, 2.9, "41", None)
+
+# The same for the generation, which is a counter rather than an identity and
+# so floors one lower: zero is a real generation, and only the shapes that are
+# not whole numbers at all -- plus a negative one -- are refused.
+NOT_COUNTERS = (True, -1, 2.9, "1", None)
+
+# The three fields a whole ref is built from, spelled as the builder is called
+# with them so a test can damage exactly one of them.
+WHOLE_IDENTITY = (
+    ("issue_number", ISSUE), ("cycle_id", CYCLE), ("generation", GENERATION),
+)
 
 
 class SnapshotRefTest(unittest.TestCase):
@@ -48,43 +60,45 @@ class SnapshotRefTest(unittest.TestCase):
             ),
         )
 
-    def test_a_root_generation_is_a_ref(self) -> None:
-        # Generation 0 is a cycle that froze a candidate before adjudicating
-        # it: a counter rather than an identity, so zero is a real value.
+    def test_the_floor_of_each_component_is_a_ref(self) -> None:
+        # Where the two numeric policies part. An identity floors at 1, and
+        # the generation floors at 0 -- a cycle that froze a candidate before
+        # adjudicating it is a counter rather than an identity, so zero is a
+        # real value there and not one an issue or a cycle may take.
         self.assertEqual(
             namespace.snapshot_ref(
-                issue_number=ISSUE, cycle_id=CYCLE, generation=0,
+                issue_number=1, cycle_id=1, generation=0,
             ),
-            "refs/orchestrator/late-split/issue-41/cycle-3/gen-0",
+            "refs/orchestrator/late-split/issue-1/cycle-1/gen-0",
         )
 
     def test_a_damaged_identity_builds_no_ref(self) -> None:
         # The fields come out of a pinned comment a human can edit, and every
         # one of these would otherwise be interpolated into a ref this
-        # orchestrator pushed and could not recognize again.
-        for damaged in NOT_IDENTITIES:
-            with self.subTest(given=damaged):
-                with self.assertRaises(namespace.InvalidSnapshotRef):
-                    namespace.snapshot_ref(
-                        issue_number=damaged,
-                        cycle_id=CYCLE,
-                        generation=GENERATION,
-                    )
-                with self.assertRaises(namespace.InvalidSnapshotRef):
-                    namespace.snapshot_ref(
-                        issue_number=ISSUE,
-                        cycle_id=damaged,
-                        generation=GENERATION,
+        # orchestrator pushed and could not recognize again. The refusal names
+        # the field it was handed, so a log says which one arrived damaged.
+        for field in ("issue_number", "cycle_id"):
+            for damaged in NOT_IDENTITIES:
+                with self.subTest(field=field, given=damaged):
+                    self._assert_refused(
+                        f"{field} is not an identity", **{field: damaged},
                     )
 
     def test_a_damaged_generation_builds_no_ref(self) -> None:
-        for damaged in (True, -1, 2.9, "1", None):
-            with self.subTest(given=damaged), self.assertRaises(namespace.InvalidSnapshotRef):
-                namespace.snapshot_ref(
-                    issue_number=ISSUE,
-                    cycle_id=CYCLE,
-                    generation=damaged,
+        for damaged in NOT_COUNTERS:
+            with self.subTest(given=damaged):
+                self._assert_refused(
+                    "generation is not a counter", generation=damaged,
                 )
+
+    def _assert_refused(self, message: str, **damaged: object) -> None:
+        """One damaged field refuses the whole ref, and says which it was."""
+        fields = dict(WHOLE_IDENTITY)
+        fields.update(damaged)
+        whole = rf"\A{re.escape(message)}\Z"
+
+        with self.assertRaisesRegex(namespace.InvalidSnapshotRef, whole):
+            namespace.snapshot_ref(**fields)
 
 
 class SnapshotRefRecognitionTest(unittest.TestCase):
