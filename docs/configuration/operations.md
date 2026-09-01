@@ -144,17 +144,24 @@ logger it can resolve back to `logging` itself, which is why a guard logging thr
 directive where the identical one beside its own `getLogger` call does not.
 
 `lint.external` in [`../../pyproject.toml`](../../pyproject.toml) is what keeps those inline answers from reading as
-dead. `RUF100` reports a `# noqa` naming a rule the run has not enabled and offers to delete it, and on the default
-run `BLE001` and `N802` -- the one directive outside the blind-handler family, on the test double that mimics
-`pandas.DataFrame` -- are exactly that. Listing the two codes there tells Ruff they are enforced by an audit rather
-than by the selected set, so the default run leaves every directive in place and
-`ruff check orchestrator tests --select=BLE001` still honours each one.
+dead. `RUF100` reports a `# noqa` naming a rule the run has not enabled and offers to delete it, and the default run
+selects neither `BLE001` nor `N802`, so without the entry every directive in the tree reads as exactly that. Listing
+the two codes leaves each directive in place with the rule that would strip it still on, which is what has the
+blind-handler waivers above survive to answer `ruff check orchestrator tests --select=BLE001`.
+
+The two entries are not the same claim, though, and only `BLE001` names an audit the tree passes: every blanket
+handler either carries a directive or is exempt, so opting into the rule reports nothing. `N802` answers for the one
+directive there is — on the `DataFrame` method of the test double standing in for the `pd` handle a dashboard page is
+handed — and for nothing wider. `ruff check orchestrator tests --select=N802` reports two deliberate names the
+convention does not reach, a test spelling codex's `-C` flag and a shouted stub that raises where a call is expected,
+so the tree is not held to that rule the way it is held to `BLE001`.
+
 [`../../tests/repository/test_noqa_directives.py`](../../tests/repository/test_noqa_directives.py) holds both halves
-of that. It runs Ruff itself over the two trees under the configured selectors plus `RUF100` -- which rules a selector
-like `F` enables is Ruff's answer and not one a prefix test could reproduce, since `F` covers `F401` and not `FLY002`
--- so a directive naming a rule that is neither selected nor listed fails there rather than surviving until someone
-strips it. The other half is the one Ruff has no reading of: a listed code no directive carries suppresses nothing,
-and is read off the tree instead.
+of the declaration. It runs Ruff itself over the two trees under the configured selectors plus `RUF100` — which rules
+a selector enables is Ruff's answer and not one a prefix test could reproduce, since `F` covers `F401` and not
+`FLY002` — so a directive naming a rule that is neither selected nor listed fails there rather than surviving until
+someone strips it. The other half is the one Ruff has no reading of: a listed code no directive carries suppresses
+nothing, and is read off the tree instead.
 
 The CI workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
