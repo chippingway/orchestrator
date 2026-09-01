@@ -92,11 +92,11 @@ class _InReviewRoutingFixtureMixin(_PatchedWorkflowMixin):
         return gh, issue
 
     def _open_pr(self, **kwargs):
-        defaults = dict(
-            number=ROUTING_PR,
-            head_branch=_issue_branch(ROUTING_ISSUE),
-            head=FakePRRef(sha=REVIEWED_SHA),
-        )
+        defaults = {
+            "number": ROUTING_PR,
+            "head_branch": _issue_branch(ROUTING_ISSUE),
+            "head": FakePRRef(sha=REVIEWED_SHA),
+        }
         defaults.update(kwargs)
         return FakePR(**defaults)
 

@@ -20,12 +20,12 @@ class VerifyGateFixtureMixin(_PatchedWorkflowMixin):
         gh = FakeGitHubClient()
         issue = make_issue(ISSUE, label=LABEL_VALIDATING)
         gh.add_issue(issue)
-        defaults = dict(
-            pr_number=PR_NUMBER,
-            branch=_issue_branch(ISSUE),
-            codex_session_id=DEV_SESSION,
-            review_round=0,
-        )
+        defaults = {
+            "pr_number": PR_NUMBER,
+            "branch": _issue_branch(ISSUE),
+            "codex_session_id": DEV_SESSION,
+            "review_round": 0,
+        }
         defaults.update(state)
         gh.seed_state(ISSUE, **defaults)
         _open_pr_for(gh, issue_number=ISSUE, pr_number=defaults["pr_number"])

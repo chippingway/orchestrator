@@ -299,7 +299,7 @@ class CrashedDiscussionRelabelTest(
     """
 
     def test_an_unreported_round_refuses_the_relabel(self) -> None:
-        gh, refusal = self._relabel_over_crash(
+        _gh, refusal = self._relabel_over_crash(
             _CRASHED_ROUND_ISSUE_NUMBER, **{KEY_ROUND_OPEN: True},
         )
 
@@ -308,7 +308,7 @@ class CrashedDiscussionRelabelTest(
         self.assertIn(HEAD_BEFORE_ROUND, refusal)
 
     def test_an_unfinished_publication_refuses(self) -> None:
-        gh, refusal = self._relabel_over_crash(
+        _gh, refusal = self._relabel_over_crash(
             _CRASHED_PUBLISH_ISSUE_NUMBER,
             **{KEY_PUBLISHING_SHA: HEAD_AFTER_COMMIT},
         )
@@ -359,7 +359,7 @@ class CrashedDiscussionRelabelTest(
         # guard has to prove is the checkout's own.
         for issue_number, record in _DETACHED_CRASHES:
             with self.subTest(record=record):
-                gh, refusal = self._relabel_over_crash(
+                _gh, refusal = self._relabel_over_crash(
                     issue_number, evidence=_DETACHED_CHECKOUT, **record,
                 )
 

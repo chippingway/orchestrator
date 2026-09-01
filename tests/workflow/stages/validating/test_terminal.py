@@ -153,15 +153,15 @@ class _ApprovalHandoffFixtureMixin(_PatchedWorkflowMixin):
             head=FakePRRef(sha=SQUASHED_SHA),
         )
         gh.add_pr(pr)
-        state = dict(
-            pr_number=APPROVAL_PR,
-            branch=APPROVAL_BRANCH,
-            dev_agent="claude",
-            dev_session_id="dev-sess",
-            review_round=0,
-            pickup_comment_id=PICKUP_COMMENT_ID,
-            orchestrator_comment_ids=[PICKUP_COMMENT_ID, PR_OPEN_COMMENT_ID],
-        )
+        state = {
+            "pr_number": APPROVAL_PR,
+            "branch": APPROVAL_BRANCH,
+            "dev_agent": "claude",
+            "dev_session_id": "dev-sess",
+            "review_round": 0,
+            "pickup_comment_id": PICKUP_COMMENT_ID,
+            "orchestrator_comment_ids": [PICKUP_COMMENT_ID, PR_OPEN_COMMENT_ID],
+        }
         state.update(extra_state)
         gh.seed_state(APPROVAL_ISSUE, **state)
         return gh, issue, pr
@@ -174,7 +174,7 @@ class ApprovalThroughDocumentingTest(
     """Hand approval to documenting only after verify and squash succeed."""
 
     def test_approval_relabels_to_documenting(self) -> None:
-        gh, issue, pr = self._setup()
+        gh, issue, _pr = self._setup()
 
         with patch.object(config, "SQUASH_ON_APPROVAL", True):
             self._run_validating(
@@ -209,7 +209,7 @@ class ApprovalThroughDocumentingTest(
         # Local-verify gate fires BEFORE the approval/squash/handoff, so
         # a failed verify must leave the issue parked on `validating`
         # with no relabel to documenting or in_review.
-        gh, issue, pr = self._setup()
+        gh, issue, _pr = self._setup()
         with patch.object(config, "VERIFY_COMMANDS", ("pytest -q",)):
             self._run_validating(
                 gh,
@@ -235,7 +235,7 @@ class ApprovalThroughDocumentingTest(
         # relabel to documenting fires, since the original commits (now
         # stale w.r.t. the operator's intended squashed head) sit on
         # the branch and the operator has to adjudicate.
-        gh, issue, pr = self._setup()
+        gh, issue, _pr = self._setup()
 
         with patch.object(config, "SQUASH_ON_APPROVAL", True):
             self._run_validating(

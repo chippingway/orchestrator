@@ -110,7 +110,7 @@ class ValidatingHandoffPreservesHumanFeedbackTest(
     """Keep concurrent human PR feedback visible after handoff."""
 
     def test_human_pr_comment_survives_handoff(self) -> None:
-        gh, issue, pr = self._setup()
+        gh, issue, _pr = self._setup()
 
         # Step 1: validating approves. The orchestrator's approval comment
         # lands AFTER the human's. With the fix, the watermark stops at

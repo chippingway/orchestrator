@@ -89,24 +89,24 @@ class _FixingWorktreeDriftFixtureMixin:
             state=STATE_OPEN,
         )
         gh.add_pr(pr)
-        state = dict(
-            pr_number=pr.number,
-            branch=f"orchestrator/issue-{number}",
-            dev_agent=BACKEND_CLAUDE,
-            dev_session_id=DEV_SESSION,
-            awaiting_human=True,
+        state = {
+            "pr_number": pr.number,
+            "branch": f"orchestrator/issue-{number}",
+            "dev_agent": BACKEND_CLAUDE,
+            "dev_session_id": DEV_SESSION,
+            "awaiting_human": True,
             # Default: a stuck validating-route transient (`push_failed`)
             # with no `pending_fix_at` so the validating-route recovery
             # branch fires. Per-test overrides exercise the other shapes
             # the router must refuse to auto-recover.
-            park_reason=park_reason,
-            pending_fix_at=pending_fix_at,
+            "park_reason": park_reason,
+            "pending_fix_at": pending_fix_at,
             # Watermarks above any seeded comment so the rescan finds nothing.
-            pr_last_comment_id=DRIFT_FEEDBACK_WATERMARK,
-            pr_last_review_comment_id=0,
-            pr_last_review_summary_id=0,
-            review_round=1,
-        )
+            "pr_last_comment_id": DRIFT_FEEDBACK_WATERMARK,
+            "pr_last_review_comment_id": 0,
+            "pr_last_review_summary_id": 0,
+            "review_round": 1,
+        }
         gh.seed_state(number, **state)
 
     @contextlib.contextmanager

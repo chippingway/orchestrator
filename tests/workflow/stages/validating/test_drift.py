@@ -115,16 +115,16 @@ class _TransientParkFixtureMixin(
         # set by `_park_awaiting_human` (it bumps to the latest comment id).
         issue = make_issue(VALIDATING_ISSUE, label="workflow:validating")
         gh.add_issue(issue)
-        seed = dict(
-            pr_number=VALIDATING_PR,
-            branch=VALIDATING_BRANCH,
-            dev_agent="claude",
-            dev_session_id=DEV_SESSION,
-            review_round=1,
-            awaiting_human=True,
-            park_reason=park_reason,
-            last_action_comment_id=ACTION_WATERMARK,
-        )
+        seed = {
+            "pr_number": VALIDATING_PR,
+            "branch": VALIDATING_BRANCH,
+            "dev_agent": "claude",
+            "dev_session_id": DEV_SESSION,
+            "review_round": 1,
+            "awaiting_human": True,
+            "park_reason": park_reason,
+            "last_action_comment_id": ACTION_WATERMARK,
+        }
         seed.update(extra_state)
         gh.seed_state(VALIDATING_ISSUE, **seed)
         _open_pr_for(

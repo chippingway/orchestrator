@@ -41,12 +41,12 @@ class FinalizeIfIssueClosedUsageVerdictTest(unittest.TestCase, _PatchedWorkflowM
         # No linked PR: the closed issue flips straight to `rejected`; the
         # receipt still surfaces the cumulative verdict, tracked before the
         # single write.
-        seed = dict(
-            issue_agent_runs=2,
-            issue_total_tokens=USAGE_TOKEN_COUNT,
-            issue_total_cost_usd=USAGE_COST_USD,
-            issue_cost_sources=["reported"],
-        )
+        seed = {
+            "issue_agent_runs": 2,
+            "issue_total_tokens": USAGE_TOKEN_COUNT,
+            "issue_total_cost_usd": USAGE_COST_USD,
+            "issue_cost_sources": ["reported"],
+        }
         gh.seed_state(USAGE_ISSUE, **seed)
         self._state = PinnedState(comment_id=None, data=dict(seed))
 

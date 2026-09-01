@@ -82,16 +82,16 @@ def _seed_timeout_park(*, reply: str = "", **overrides):
             ),
         )
     gh.add_issue(issue)
-    state = dict(
-        awaiting_human=True,
-        park_reason=PARK_AGENT_TIMEOUT,
-        pre_implement_sha=PRE_TIMEOUT_SHA,
-        last_action_comment_id=ACTION_COMMENT_ID,
-        dev_agent=RECOVERY_AGENT,
-        dev_session_id=RECOVERY_SESSION,
-        branch=RECOVERY_BRANCH,
-        user_content_hash=_drift._compute_user_content_hash(issue, set()),
-    )
+    state = {
+        "awaiting_human": True,
+        "park_reason": PARK_AGENT_TIMEOUT,
+        "pre_implement_sha": PRE_TIMEOUT_SHA,
+        "last_action_comment_id": ACTION_COMMENT_ID,
+        "dev_agent": RECOVERY_AGENT,
+        "dev_session_id": RECOVERY_SESSION,
+        "branch": RECOVERY_BRANCH,
+        "user_content_hash": _drift._compute_user_content_hash(issue, set()),
+    }
     state.update(overrides)
     gh.seed_state(4, **state)
     return gh, issue

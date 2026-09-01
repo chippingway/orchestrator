@@ -105,7 +105,7 @@ _run_recovery = _run_blocked
 
 class HandleBlockedResolutionTest(unittest.TestCase, _PatchedWorkflowMixin):
     def test_all_children_done_flips_parent_to_ready(self) -> None:
-        gh, parent, children = _seed_parent_with_children(
+        gh, parent, _children = _seed_parent_with_children(
             parent_number=ALL_DONE_PARENT_NUMBER,
             child_labels=[LABEL_DONE, LABEL_DONE],
         )
@@ -122,7 +122,7 @@ class HandleBlockedResolutionTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
 
     def test_some_children_in_progress_no_op(self) -> None:
-        gh, parent, children = _seed_parent_with_children(
+        gh, parent, _children = _seed_parent_with_children(
             parent_number=IN_PROGRESS_PARENT_NUMBER,
             child_labels=[LABEL_DONE, LABEL_IMPLEMENTING],
         )

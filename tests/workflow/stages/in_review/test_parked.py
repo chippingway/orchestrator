@@ -92,9 +92,9 @@ class AwaitingHumanParkStaysParkedTest(
         # stay silent and let the refresh own the comment; otherwise
         # the in_review -> fixing route consumes it as a fix trigger
         # and silently drops the retry intent.
-        gh, issue, pr = self._parked_issue(
+        gh, issue, _pr = self._parked_issue(
             park_reason="auto_base_rebase_push_failed",
-            pr_kwargs=dict(mergeable=True, check_state=CHECKS_SUCCESS),
+            pr_kwargs={"mergeable": True, "check_state": CHECKS_SUCCESS},
         )
         # Fresh human comment past the watermark.
         gh._issues[PARKED_ISSUE].comments.append(
@@ -132,9 +132,9 @@ class AwaitingHumanParkStaysParkedTest(
         # conflict, branch protection dropped), the handler does NOT
         # auto-recover -- the orchestrator never merges from in_review.
         # Park flags stay so the operator notices and drives the merge.
-        gh, issue, pr = self._parked_issue(
+        gh, issue, _pr = self._parked_issue(
             park_reason="unmergeable",
-            pr_kwargs=dict(mergeable=True, check_state=CHECKS_SUCCESS),
+            pr_kwargs={"mergeable": True, "check_state": CHECKS_SUCCESS},
         )
 
         mocks = self._run_in_review(
@@ -160,13 +160,13 @@ class _ClosedInReviewFixtureMixin(_PatchedWorkflowMixin):
         issue = make_issue(CLOSED_ISSUE, label=LABEL_IN_REVIEW)
         issue.closed = True  # human closed the issue, PR still open
         gh.add_issue(issue)
-        defaults = dict(
-            number=CLOSED_ISSUE_PR,
-            head_branch=_issue_branch(CLOSED_ISSUE),
-            head=FakePRRef(sha=REVIEWED_SHA),
-            mergeable=True,
-            check_state=CHECKS_SUCCESS,
-        )
+        defaults = {
+            "number": CLOSED_ISSUE_PR,
+            "head_branch": _issue_branch(CLOSED_ISSUE),
+            "head": FakePRRef(sha=REVIEWED_SHA),
+            "mergeable": True,
+            "check_state": CHECKS_SUCCESS,
+        }
         defaults.update(pr_kwargs)
         pr = FakePR(**defaults)
         gh.add_pr(pr)
@@ -190,7 +190,7 @@ class ManuallyClosedInReviewIssueTest(
     """Treat a manually closed issue with an open PR as rejected."""
 
     def test_open_pr_marks_rejected(self) -> None:
-        gh, issue, pr = self._setup()
+        gh, issue, _pr = self._setup()
 
         mocks = self._run_in_review(
             gh,

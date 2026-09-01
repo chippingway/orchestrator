@@ -131,7 +131,7 @@ class LegacyInReviewWatermarkSeedTest(
     """Seed legacy watermarks without replaying historical feedback."""
 
     def test_first_tick_does_not_replay_history(self) -> None:
-        gh, issue, pr = self._legacy_setup()
+        gh, issue, _pr = self._legacy_setup()
 
         with patch.object(
             config,

@@ -223,7 +223,7 @@ class OrchestratorContinueCommandTest(
         # pushed fix routes back to `validating` with the round reset.
         for reason in (PARK_AGENT_SILENT, PARK_AGENT_TIMEOUT):
             with self.subTest(reason=reason):
-                gh, issue, pr = self._seed_parked_with_batch(
+                gh, issue, _pr = self._seed_parked_with_batch(
                     _ContinueSeed(park_reason=reason),
                 )
 
@@ -248,7 +248,7 @@ class OrchestratorContinueCommandTest(
         # A generic continue carries none of the answer, so refuse: stay
         # parked, consume the command so the refusal does not re-fire, and
         # leave the preserved batch intact for a genuine human reply.
-        gh, issue, pr = self._seed_parked_with_batch(
+        gh, issue, _pr = self._seed_parked_with_batch(
             _ContinueSeed(park_reason=None),
         )
 
@@ -279,7 +279,7 @@ class OrchestratorContinueCommandTest(
         # Eligible reason but nothing on file to replay (bookmarks gone). A
         # bare continue would strand the review feedback, so refuse rather
         # than resume on the command text.
-        gh, issue, pr = self._seed_parked_with_batch(
+        gh, issue, _pr = self._seed_parked_with_batch(
             _ContinueSeed(
                 park_reason=PARK_AGENT_SILENT,
                 with_batch_ids=False,
@@ -311,7 +311,7 @@ class OrchestratorContinueCommandTest(
             body="use option B, not A",
             user=FakeUser(DAVE),
         )
-        gh, issue, pr = self._seed_parked_with_batch(
+        gh, issue, _pr = self._seed_parked_with_batch(
             _ContinueSeed(
                 park_reason=None,
                 extra_issue_comments=(genuine,),
@@ -343,7 +343,7 @@ class OrchestratorContinueCommandTest(
         # parked. This is the #742 negative case -- the anchor is absent.
         for reason in (PARK_AGENT_SILENT, PARK_AGENT_TIMEOUT):
             with self.subTest(reason=reason):
-                gh, issue, pr = self._seed_parked_with_batch(
+                gh, issue, _pr = self._seed_parked_with_batch(
                     _ContinueSeed(
                         park_reason=reason,
                         pending_fix_at=None,

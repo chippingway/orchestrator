@@ -70,15 +70,15 @@ class _FreshFeedbackFixtureMixin(_PatchedWorkflowMixin):
                 check_state=CHECKS_SUCCESS,
             )
         gh.add_pr(pr)
-        seed_state = dict(
-            pr_number=pr.number,
-            branch=FRESH_FEEDBACK_BRANCH,
-            dev_agent="claude",
-            dev_session_id="dev-sess",
-            pr_last_comment_id=FEEDBACK_WATERMARK,
-            pr_last_review_comment_id=0,
-            pr_last_review_summary_id=0,
-        )
+        seed_state = {
+            "pr_number": pr.number,
+            "branch": FRESH_FEEDBACK_BRANCH,
+            "dev_agent": "claude",
+            "dev_session_id": "dev-sess",
+            "pr_last_comment_id": FEEDBACK_WATERMARK,
+            "pr_last_review_comment_id": 0,
+            "pr_last_review_summary_id": 0,
+        }
         if extra_state:
             seed_state.update(extra_state)
         gh.seed_state(FRESH_FEEDBACK_ISSUE, **seed_state)

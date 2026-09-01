@@ -255,7 +255,7 @@ class SquashOnApprovalTest(
         # the issue in `validating`, and does NOT seed watermarks (the
         # original commits remain on the branch and a human can decide
         # what to do).
-        gh, issue, pr = self._setup()
+        gh, issue, _pr = self._setup()
 
         mocks = self._run_squash_approval(
             gh,

@@ -35,7 +35,7 @@ class ResolvingConflictEventEmissionTest(
     """
 
     def test_clean_rebase_emits_merge_success(self) -> None:
-        gh, issue, pr = self._seed()
+        gh, issue, _pr = self._seed()
         self._run_with_merge(
             gh,
             issue,
@@ -52,7 +52,7 @@ class ResolvingConflictEventEmissionTest(
         self.assertEqual(event[CONFLICT_ROUND], 0)
 
     def test_merge_attempt_conflict_on_unmerged_paths(self) -> None:
-        gh, issue, pr = self._seed()
+        gh, issue, _pr = self._seed()
         self._run_with_merge(
             gh,
             issue,
@@ -65,7 +65,7 @@ class ResolvingConflictEventEmissionTest(
         self.assertEqual(attempts[0]["result"], "conflict")
 
     def test_clean_rebase_push_bumps_round(self) -> None:
-        gh, issue, pr = self._seed()
+        gh, issue, _pr = self._seed()
         self._run_with_merge(
             gh,
             issue,
@@ -81,7 +81,7 @@ class ResolvingConflictEventEmissionTest(
         self.assertEqual(rounds[0]["sha"], MERGED_HEAD)
 
     def test_up_to_date_noop_bumps_round(self) -> None:
-        gh, issue, pr = self._seed()
+        gh, issue, _pr = self._seed()
         self._run_with_merge(
             gh,
             issue,
@@ -93,7 +93,7 @@ class ResolvingConflictEventEmissionTest(
         self.assertEqual(rounds[0]["outcome"], "base_up_to_date")
 
     def test_agent_resolution_bumps_round(self) -> None:
-        gh, issue, pr = self._seed()
+        gh, issue, _pr = self._seed()
         self._run_with_merge(
             gh,
             issue,
@@ -107,7 +107,7 @@ class ResolvingConflictEventEmissionTest(
         self.assertEqual(rounds[0]["outcome"], "agent_resolved")
 
     def test_pr_merged_event_on_external_merge(self) -> None:
-        gh, issue, pr = self._seed(pr_state="closed", pr_merged=True)
+        gh, issue, _pr = self._seed(pr_state="closed", pr_merged=True)
         self._run_with_merge(gh, issue)
         merged = _events_of(gh, EVENT_PR_MERGED)
         self.assertEqual(len(merged), 1)
@@ -117,7 +117,7 @@ class ResolvingConflictEventEmissionTest(
         self.assertEqual(_events_of(gh, "merge_attempt"), [])
 
     def test_pr_closed_without_merge_event(self) -> None:
-        gh, issue, pr = self._seed(pr_state="closed", pr_merged=False)
+        gh, issue, _pr = self._seed(pr_state="closed", pr_merged=False)
         self._run_with_merge(gh, issue)
         closed = _events_of(gh, EVENT_PR_CLOSED_WITHOUT_MERGE)
         self.assertEqual(len(closed), 1)

@@ -127,7 +127,7 @@ class ResolvingConflictDivergedReplyTest(
         # baseline where it is takes the awaiting-human road instead of the
         # body-edit one, and it is refused by the same reading: the checkout
         # it would resolve in is not what the pull request carries.
-        github, mocks = self._replied_to_the_park(rebaselined=True)
+        _github, mocks = self._replied_to_the_park(rebaselined=True)
 
         mocks[RUN_AGENT].assert_not_called()
         mocks[PUSH_BRANCH].assert_not_called()
