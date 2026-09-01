@@ -47,13 +47,13 @@ last is held by the loader itself rather than by a check.
   `git/snapshots/` replaced nothing and hold the surface assertion anyway.
 - **Operator log channels.** Four names are spelled literally rather than derived from `__name__`, because an
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/authentication.py`,
-  `git/snapshots/refs.py`, and the two `git/measurement/` owners that log, which all report on the same `ls-remote`,
-  fetch, push, and diff plumbing),
+  `git/credentials.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that log, which all report on
+  the same token, `ls-remote`, fetch, push, and diff plumbing),
   `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the nine `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
-  `tests/git/test_authentication.py`, `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`, and
-  `tests/git/publication/test_imports.py`.
+  `tests/git/test_authentication.py` and `tests/git/test_credentials.py`, `tests/git/base_sync/test_state.py`,
+  `tests/git/worktrees/test_imports.py`, and `tests/git/publication/test_imports.py`.
 - **Import cost.** `import orchestrator` costs the root module and no owner behind it, and importing a `runtime/`
   owner plants neither the CLI nor an app — `tests/runtime/test_imports.py` and `tests/apps/test_imports.py`.
 - **Direction inside `skills/`.** Neither owner may reach the workflow engine, a stage, or an application entry
@@ -148,12 +148,15 @@ orchestrator/
                         worker holds the issue costs an observation rather than a turn, and the workflow keeps that
                         reading where its own stage handlers can reach it
   git/
-    authentication.py   the per-repo token and askpass session, the authenticated fetches, the remote-ref reads that
-                        answer what a branch or a whole refname is at without a local one, the lease-pinned branch
-                        push, and the lease-pinned ref write and delete an immutable namespace is owned through
+    authentication.py   the authenticated fetches, the remote-ref reads that answer what a branch or a whole refname
+                        is at without a local one, the lease-pinned branch push, and the lease-pinned ref write and
+                        delete an immutable namespace is owned through -- each spending one credential session
     commands.py         plain / hardened git execution, the argv hardening and no-prompt environment, the per-call
                         environment pin a caller adds over it, the absolute `--work-tree` argument a working-tree
                         operation names its tree with, and the unsafe local-transport probe
+    credentials.py      the per-repo token lookup, the owner-only askpass script that outlives no operation, and
+                        the session record a token-bearing call is spawned from -- the detached environment, the
+                        URL naming only the `x-access-token` username, and the token the transport redacts with
     locks.py            the per-target-root re-entrant lock registry and its accessor
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked

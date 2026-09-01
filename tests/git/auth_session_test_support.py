@@ -23,7 +23,7 @@ import os
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.git import authentication
+from orchestrator.git import credentials
 
 
 class _LocalAuthSession:
@@ -41,7 +41,7 @@ class _LocalAuthSession:
 
     @contextlib.contextmanager
     def __call__(self, spec, token, **_options):
-        yield authentication._GitAuthSession(
+        yield credentials._GitAuthSession(
             token=token, auth_url=self._urls[spec.slug], env=self._env(),
         )
 
@@ -53,7 +53,7 @@ class _LocalAuthSession:
             with patch.object(
                 config, "_resolve_github_token", return_value="token",
             ), patch.object(
-                authentication, "_git_auth_session", self,
+                credentials, "_git_auth_session", self,
             ):
                 yield
         finally:
