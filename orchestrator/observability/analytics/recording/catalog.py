@@ -81,7 +81,7 @@ def discover_codex_catalog(context: AgentExitContext) -> CodexCatalog:
         return catalog
     try:
         populate_codex_catalog(context, catalog)
-    except Exception:
+    except Exception:  # noqa: BLE001 - discovery is optional; the record is emitted without it
         sink.log.exception(
             "issue=#%d analytics: codex out-of-band discovery failed; leaving skills_available / levels / tools empty",
             context.issue,

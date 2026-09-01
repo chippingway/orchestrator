@@ -144,4 +144,5 @@ class _WrapperScenario:
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,
         )

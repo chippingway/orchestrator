@@ -43,6 +43,7 @@ def _branch_exists(fixture: CleanupFixture) -> bool:
         env=_git_env(),
         capture_output=True,
         text=True,
+        check=False,
     )
     return branch_probe.returncode == 0
 

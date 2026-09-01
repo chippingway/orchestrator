@@ -188,7 +188,7 @@ class _FamilySlotProbe:
     def release_after_fanout(self) -> None:
         try:
             self._wait_for_overlap()
-        except BaseException as error:
+        except BaseException as error:  # noqa: BLE001 - re-raised by the test
             self.releaser_errors.append(error)
         finally:
             self._slow_family_release.set()

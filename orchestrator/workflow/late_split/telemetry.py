@@ -78,7 +78,7 @@ def emit_late_event(
     """
     try:
         recordable = _recordable(event, generation, stage)
-    except Exception as refused:
+    except Exception as refused:  # noqa: BLE001 - a refused record may not break the tick that emitted it
         _report_refusal(event, generation, refused)
         return {}
     payload, tag = recordable

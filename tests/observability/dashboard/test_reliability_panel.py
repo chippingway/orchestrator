@@ -30,7 +30,7 @@ module was imported.
 from __future__ import annotations
 
 import unittest
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -68,8 +68,8 @@ _YEAR = 2026
 # A week-long window, spelled as the half-open pair every read below the page
 # is issued under so the last day an operator asked for is not its end.
 _WINDOW = windows.DateWindow(
-    start=datetime(_YEAR, 3, 1),
-    end=datetime(_YEAR, 3, 8),
+    start=datetime(_YEAR, 3, 1, tzinfo=UTC),
+    end=datetime(_YEAR, 3, 8, tzinfo=UTC),
 )
 
 _LAST_DRAWN_DAY = date(_YEAR, 3, 7)

@@ -75,7 +75,7 @@ def _post_auto_rebase_notice(
             f"Routing `{context.label}` -> `{WorkflowLabel.VALIDATING}` so "
             f"the reviewer re-runs against the new head (`{after_short}`).",
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - the PR notice is best effort at the GitHub boundary
         log.exception(
             "issue=#%s could not post auto-rebase notice to PR #%s",
             context.issue.number,

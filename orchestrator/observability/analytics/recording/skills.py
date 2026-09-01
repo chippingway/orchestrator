@@ -97,7 +97,7 @@ def parse_agent_exit_skills(
         return AgentExitSkillFields()
     try:
         return read_agent_exit_skills(context, codex_catalog)
-    except Exception:
+    except Exception:  # noqa: BLE001 - the opt-in fields are dropped, never the baseline record
         sink.log.exception(
             "issue=#%d analytics: parse_agent_skills(%s) failed; emitting record without skill fields",
             context.issue,

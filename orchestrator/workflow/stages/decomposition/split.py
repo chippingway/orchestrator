@@ -137,7 +137,7 @@ def _create_planned_child(
             parent_number=issue.number,
             labels=_child_initial_labels(),
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - the failed create is parked for a human, not raised through
         _park_child_create_failure(gh, issue, state, idx, child)
         return False
     plan.record(idx, new_issue.number, child)

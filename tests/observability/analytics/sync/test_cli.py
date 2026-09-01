@@ -79,7 +79,11 @@ def _utc_timestamp(test_case: unittest.TestCase, text: str) -> datetime:
     """Read the first UTC stamp out of one surface's output."""
     matched = _TIMESTAMP.search(text)
     test_case.assertIsNotNone(matched, f"no UTC timestamp in {text!r}")
-    return datetime.strptime(matched.group(1), _TIMESTAMP_FORMAT)
+    # The zone rides the ` UTC` marker the pattern matched, not the stamp
+    # itself, so it is attached here rather than parsed out of the digits.
+    return datetime.strptime(
+        matched.group(1), _TIMESTAMP_FORMAT,
+    ).replace(tzinfo=UTC)
 
 
 class CommandOutcomeTest(unittest.TestCase):
@@ -150,7 +154,7 @@ class CommandClockTest(unittest.TestCase):
         )
         # Cross-check the shared clock against UTC itself: a local-time
         # formatter would agree with a local-time summary and still be wrong.
-        now_utc = datetime.now(UTC).replace(tzinfo=None)
+        now_utc = datetime.now(UTC)
         self.assertLess(
             abs((printed_at - now_utc).total_seconds()),
             _CLOCK_TOLERANCE_SECONDS,

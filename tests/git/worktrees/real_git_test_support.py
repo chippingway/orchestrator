@@ -94,6 +94,7 @@ class _LocalTransport:
             capture_output=True,
             text=True,
             env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+            check=False,
         )
 
     def tip(self, spec, worktree, branch):

@@ -69,7 +69,7 @@ def _base_sync_issue(
     """Return the issue for a worktree, or None when it is not retrievable."""
     try:
         return gh.get_issue(issue_number)
-    except Exception:
+    except Exception:  # noqa: BLE001 - an unretrievable issue is skipped, not raised through
         log.debug(
             "issue=#%d not retrievable; skipping base sync", issue_number,
         )
