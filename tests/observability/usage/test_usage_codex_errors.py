@@ -56,14 +56,12 @@ class CodexUsageErrorTest(unittest.TestCase):
             output=5,
         )
         good = json.dumps(good_event)
-        stdout = "\n".join(
-            [
-                "codex starting...",
-                '{"truncated":',
-                "",
-                good,
-                "trailing-noise",
-            ]
+        stdout = _jsonl.stdout_lines(
+            "codex starting...",
+            '{"truncated":',
+            "",
+            good,
+            "trailing-noise",
         )
         metrics = _metrics.parse_codex_usage(stdout)
         self.assertEqual(metrics.input_tokens, 10)

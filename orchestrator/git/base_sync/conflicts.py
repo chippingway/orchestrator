@@ -44,10 +44,8 @@ def _post_conflict_route_notice(context: _ConflictRouteContext) -> None:
     # package, so binding it at module load would make every git-side
     # import pay for the GitHub client and prompt state it pulls in.
     from orchestrator.workflow.engine import comments as _comments
-    base_ref = "/".join((
-        context.spec.remote_name,
-        context.spec.base_branch,
-    ))
+    spec = context.spec
+    base_ref = f"{spec.remote_name}/{spec.base_branch}"
     try:
         _comments._post_pr_comment(
             context.gh, context.pr_number, context.state,

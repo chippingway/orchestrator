@@ -32,14 +32,18 @@ _EXPECTED_SIGNATURES = (
     (
         recovery,
         "_recover_pending_auto_base_rebase",
-        "(gh, spec, issue, state, worktree, *, pr_number, label, "
-        "pending_pre_rebase_sha, behind=0, unparking_consumed_max=None)",
+        (
+            "(gh, spec, issue, state, worktree, *, pr_number, label, "
+            "pending_pre_rebase_sha, behind=0, unparking_consumed_max=None)"
+        ),
     ),
     (
         conflicts,
         "_route_pr_worktree_to_resolving_conflict",
-        "(gh, spec, issue, state, pr_number, *, label, behind, "
-        "conflicted_files, pr_head_sha)",
+        (
+            "(gh, spec, issue, state, pr_number, *, label, behind, "
+            "conflicted_files, pr_head_sha)"
+        ),
     ),
 )
 

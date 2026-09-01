@@ -90,13 +90,11 @@ class CodexSkillEvidenceTest(unittest.TestCase):
 
     def test_malformed_lines_are_skipped(self) -> None:
         good = json.dumps(_codex.command(_usage_cases.ITEM_ONE_ID, _usage_cases.DEVELOP_SKILL_READ_COMMAND))
-        stdout = "\n".join(
-            [
-                "codex starting...",
-                '{"truncated":',
-                good,
-                "trailing-noise",
-            ]
+        stdout = _jsonl.stdout_lines(
+            "codex starting...",
+            '{"truncated":',
+            good,
+            "trailing-noise",
         )
         skills = _skills.parse_codex_skills(stdout)
         self.assertEqual(skills.triggered, _usage_cases.DEVELOP_ONLY)

@@ -53,9 +53,7 @@ def _finalize_documenting_terminal(
     """
     if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
         return True
-    if _terminals._finalize_if_issue_closed(gh, spec, issue, state):
-        return True
-    return False
+    return _terminals._finalize_if_issue_closed(gh, spec, issue, state)
 
 
 def _documenting_parked_no_input(
@@ -88,9 +86,7 @@ def _documenting_parked_no_input(
     # Only a trusted reply wakes a parked docs pass: with `ALLOWED_ISSUE_AUTHORS`
     # set an outsider comment must read as silence so the park survives instead
     # of falling through to the docs resume in `_run_documenting_dev`.
-    if not filter_trusted(gh.comments_after(issue, last_action_id)):
-        return True
-    return False
+    return not filter_trusted(gh.comments_after(issue, last_action_id))
 
 
 def _refuse_parked_continue_command(

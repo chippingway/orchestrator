@@ -49,7 +49,7 @@ class CostCellTest(unittest.TestCase):
         for empty_cell in (
             cost_cell(("only-one",), _MISSING_INDEX),
             cost_cell((None,), 0),
-            cost_cell((Decimal("0"),), 0),
+            cost_cell((Decimal(0),), 0),
         ):
             self.assertEqual(empty_cell, float(0))
             self.assertIsInstance(empty_cell, float)

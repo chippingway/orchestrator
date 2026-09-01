@@ -64,12 +64,12 @@ def fmt_tokens(*args: Any, **kwargs: Any) -> str:
     if tokens >= 1_000:
         thousands = tokens / 1_000
         return f"{thousands:.0f}K"
-    return str(int(round(tokens)))
+    return str(round(tokens))
 
 
 def fmt_num(*args: Any, **kwargs: Any) -> str:
     """Integer with thousands separators."""
-    number = int(round(float(_numeric_value(args, kwargs) or 0)))
+    number = round(float(_numeric_value(args, kwargs) or 0))
     return format(number, ",")
 
 

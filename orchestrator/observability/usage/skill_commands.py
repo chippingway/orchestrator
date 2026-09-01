@@ -36,10 +36,10 @@ def codex_reads(tokens: list[str]) -> bool:
         verb = token.rsplit("/", 1)[-1]
         if verb not in READER_VERBS:
             return False
+        if verb != "sed":
+            return True
         arguments = tokens[index + 1:]
-        if verb == "sed" and any(SED_INPLACE_RE.match(argument) for argument in arguments):
-            return False
-        return True
+        return not any(SED_INPLACE_RE.match(argument) for argument in arguments)
     return False
 
 

@@ -74,11 +74,11 @@ def _reviewer_no_verdict_park(review) -> tuple[str, str]:
     the one park a human has to read, and it stays `reviewer_no_verdict`.
     """
     if _agent_sessions.is_transient_provider_failure(review):
-        return (
-            _state._REASON_REVIEWER_FAILED,
+        outage = (
             "the model provider is temporarily unavailable and the review "
-            "will be retried on a later tick.",
+            "will be retried on a later tick."
         )
+        return _state._REASON_REVIEWER_FAILED, outage
     if not (review.last_message or "").strip() and review.exit_code != 0:
         return _state._REASON_REVIEWER_FAILED, "manual adjudication needed."
     return "reviewer_no_verdict", "manual adjudication needed."

@@ -632,10 +632,11 @@ def _unfinished_publication_triggers(state: PinnedState) -> tuple[str, ...]:
     in_flight = state.get(_PUBLISHING_SHA)
     if not in_flight:
         return ()
-    return (
+    handover = (
         f"`{in_flight}` mid-publication -- possibly already pushed, with a "
-        "pull request open against it",
+        "pull request open against it"
     )
+    return (handover,)
 
 
 def _checkout_triggers(

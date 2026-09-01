@@ -69,13 +69,11 @@ class CodexTrajectoryErrorTest(unittest.TestCase):
                 aggregated_output=_usage_cases.COMMAND_OUTPUT,
             )
         )
-        stdout = "\n".join(
-            [
-                "codex starting...",
-                '{"truncated":',
-                good,
-                "trailing-noise",
-            ]
+        stdout = _jsonl.stdout_lines(
+            "codex starting...",
+            '{"truncated":',
+            good,
+            "trailing-noise",
         )
         trajectory = _trajectory.parse_codex_trajectory(stdout)
         self.assertEqual(

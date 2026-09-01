@@ -143,6 +143,19 @@ escapes a worker thread so the main thread can assert on it. Ruff exempts a blin
 logger it can resolve back to `logging` itself, which is why a guard logging through an imported `log` carries a
 directive where the identical one beside its own `getLogger` call does not.
 
+`lint.external` in [`../../pyproject.toml`](../../pyproject.toml) is what keeps those inline answers from reading as
+dead. `RUF100` reports a `# noqa` naming a rule the run has not enabled and offers to delete it, and on the default
+run `BLE001` and `N802` -- the one directive outside the blind-handler family, on the test double that mimics
+`pandas.DataFrame` -- are exactly that. Listing the two codes there tells Ruff they are enforced by an audit rather
+than by the selected set, so the default run leaves every directive in place and
+`ruff check orchestrator tests --select=BLE001` still honours each one.
+[`../../tests/repository/test_noqa_directives.py`](../../tests/repository/test_noqa_directives.py) holds both halves
+of that. It runs Ruff itself over the two trees under the configured selectors plus `RUF100` -- which rules a selector
+like `F` enables is Ruff's answer and not one a prefix test could reproduce, since `F` covers `F401` and not `FLY002`
+-- so a directive naming a rule that is neither selected nor listed fails there rather than surviving until someone
+strips it. The other half is the one Ruff has no reading of: a listed code no directive carries suppresses nothing,
+and is read off the tree instead.
+
 The CI workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
 scope.

@@ -29,9 +29,7 @@ def iter_events(stdout: str) -> list[dict[str, Any]]:
 
 def token_count(raw_count: Any) -> int:
     number = 0
-    if isinstance(raw_count, bool):
-        number = int(raw_count)
-    elif isinstance(raw_count, (int, float)):
+    if isinstance(raw_count, (int, float)):
         number = int(raw_count)
     elif isinstance(raw_count, str):
         with contextlib.suppress(ValueError):

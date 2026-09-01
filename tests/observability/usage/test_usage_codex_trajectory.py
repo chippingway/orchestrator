@@ -275,12 +275,12 @@ class CodexToolItemStepsTest(unittest.TestCase):
                 status=_usage_cases.COMPLETED_STATUS,
             ),
         )
-        stdout = "\n".join((
+        stdout = _jsonl.stdout_lines(
             wrapper,
             _tool_events.WEB_SEARCH_STARTED_LINE,
             _tool_events.WEB_SEARCH_COMPLETED_LINE,
             closing_wrapper,
-        ))
+        )
         trajectory = _trajectory.parse_codex_trajectory(stdout)
         self.assertEqual(
             trajectory.steps,

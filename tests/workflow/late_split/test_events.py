@@ -186,8 +186,10 @@ class VerdictCategoryTest(unittest.TestCase):
         # names files and quotes its own reasoning, and none of that may reach
         # a sink. Everything unrecognized groups under one member instead.
         prose = (
-            "Generated Artifacts?! docs/architecture.md and "
-            "orchestrator/cli.py look wrong to commit",
+            (
+                "Generated Artifacts?! docs/architecture.md and "
+                "orchestrator/cli.py look wrong to commit"
+            ),
             _PROSE,
             "",
             None,

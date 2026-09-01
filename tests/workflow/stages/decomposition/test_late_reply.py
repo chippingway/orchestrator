@@ -151,8 +151,10 @@ class ModeSeparationTest(unittest.TestCase):
             ),
             (
                 f"{_initial_block(SINGLE_PAYLOAD)}\ntrailing",
-                "orchestrator-manifest must be the final block; "
-                "found content after the closing fence",
+                (
+                    "orchestrator-manifest must be the final block; "
+                    "found content after the closing fence"
+                ),
             ),
         )
         for reply, expected in cases:

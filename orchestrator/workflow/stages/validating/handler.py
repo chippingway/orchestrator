@@ -47,9 +47,7 @@ def _finalize_validating_terminal(
     """
     if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
         return True
-    if _terminals._finalize_if_issue_closed(gh, spec, issue, state):
-        return True
-    return False
+    return _terminals._finalize_if_issue_closed(gh, spec, issue, state)
 
 
 def _handle_validating(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
@@ -75,9 +73,8 @@ def _handle_validating(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) ->
     # "spawn_reviewer" -> fall through to the round-cap check and reviewer
     # spawn below.
     if state.get("awaiting_human"):
-        if _awaiting_resume._handle_validating_awaiting_human(
-            gh, spec, issue, state
-        ) == _state._OUTCOME_RETURN:
+        outcome = _awaiting_resume._handle_validating_awaiting_human(gh, spec, issue, state)
+        if outcome == _state._OUTCOME_RETURN:
             return
 
     reviewer_run = _reviewer._run_reviewer_round(gh, spec, issue, state, pr_number)

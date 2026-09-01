@@ -65,8 +65,9 @@ class RankingTest(unittest.TestCase):
         bars = cost_horizontal.horizontal_bars_data(_ROWS, None, False)
         self.assertEqual(tuple(bars.labels), _RANKED_LABELS)
         self.assertEqual(tuple(bars.costs), _RANKED_COSTS)
-        self.assertEqual(tuple(bars.subs)[0], _CHEAPEST_SUB)
-        self.assertEqual(tuple(bars.subs)[1], _MIDDLE_SUB)
+        subs = tuple(bars.subs)
+        self.assertEqual(subs[0], _CHEAPEST_SUB)
+        self.assertEqual(subs[1], _MIDDLE_SUB)
 
     def test_a_caller_s_own_order_is_kept(self) -> None:
         # A family that already ranked its rows -- by stage, by review round --

@@ -197,15 +197,13 @@ class ClaudeUsageErrorTest(unittest.TestCase):
                 model=_usage_cases.SONNET, usage=_claude.usage(input=10, output=_usage_cases.TOKEN_COUNT_TWENTY)
             )
         )
-        stdout = "\n".join(
-            [
-                "starting claude...",
-                '{"type":"assistant","message"',
-                good,
-                "",
-                "  ",
-                "not json either",
-            ]
+        stdout = _jsonl.stdout_lines(
+            "starting claude...",
+            '{"type":"assistant","message"',
+            good,
+            "",
+            "  ",
+            "not json either",
         )
         metrics = _metrics.parse_claude_usage(stdout)
         self.assertEqual(metrics.input_tokens, 10)

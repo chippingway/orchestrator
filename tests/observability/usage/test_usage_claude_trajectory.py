@@ -218,13 +218,11 @@ class ClaudeTrajectoryTest(unittest.TestCase):
                 ],
             )
         )
-        stdout = "\n".join(
-            [
-                "starting claude...",
-                '{"type":"assistant","message"',
-                good,
-                "not json either",
-            ]
+        stdout = _jsonl.stdout_lines(
+            "starting claude...",
+            '{"type":"assistant","message"',
+            good,
+            "not json either",
         )
         trajectory = _trajectory.parse_claude_trajectory(stdout)
         self.assertEqual(len(trajectory.steps), 1)
