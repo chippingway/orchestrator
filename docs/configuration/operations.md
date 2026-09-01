@@ -160,21 +160,21 @@ rule and offers to delete it. The blind-handler directives above need no entry, 
 and the run reads them itself. `N802` is the one code outside it, and listing it is what leaves the single directive
 naming it in place with the rule that would strip it still on.
 
-That one entry is a narrow claim rather than a clean bill. `N802` answers for the one directive there is — on
-the `DataFrame` method of the test double standing in for the `pd` handle a dashboard page is handed — and for nothing
+That one entry is a narrow claim rather than a clean bill. `N802` answers for the one directive there is — on the
+`DataFrame` method of the test double standing in for the `pd` handle a dashboard page is handed — and for nothing
 wider. `ruff check orchestrator tests --select=N802` reports two deliberate names the convention does not reach, a
 test spelling codex's `-C` flag and a shouted stub that raises where a call is expected, so the tree is not held to
 that rule the way the default run holds it to `BLE001`.
 
-[`../../tests/repository/test_noqa_directives.py`](../../tests/repository/test_noqa_directives.py) holds both halves
-of the declaration. It runs Ruff itself over the two trees under the configured selectors plus `RUF100` — which rules
-a selector enables is Ruff's answer and not one a prefix test could reproduce, since `F` covers `F401` and not
-`FLY002` — so a directive naming a rule that is neither selected nor listed fails there rather than surviving until
-someone strips it. The other half is the one Ruff has no reading of: a listed code no directive carries suppresses
-nothing, and is read off the tree instead. A third check sits under both: it tokenizes every module and fails on a
-comment that opens a suppression and names no rule for it, line-level `# noqa` or file-wide `# ruff: noqa` alike. Ruff
-honours either spelling and reports neither, so a blanket waiver is the one suppression the two halves above would let
-through.
+[`../../tests/repository/test_noqa_directives.py`](../../tests/repository/test_noqa_directives.py) holds three
+readings, two of them the halves of that declaration. It runs Ruff itself over the two trees under the configured
+selectors plus `RUF100` — which rules a selector enables is Ruff's answer and not one a prefix test could reproduce,
+since `F` covers `F401` and not `FLY002` — so a directive naming a rule that is neither selected nor listed fails
+there rather than surviving until someone strips it. The other half is the one Ruff has no reading of: a listed code
+no directive carries suppresses nothing, and is read off the tree instead. The third sits under both and is what the
+contract above needs beyond them: it tokenizes every module and fails on a comment that opens a suppression and names
+no rule for it, line-level `# noqa` or file-wide `# ruff: noqa` alike. Ruff honours either spelling and reports
+neither, so a blanket waiver is the one suppression the two halves would let through.
 
 Import order is Ruff's answer too, under `[tool.ruff.lint.isort]` in [`../../pyproject.toml`](../../pyproject.toml),
 and `I001` is in the default set with the two rules above, so the run CI makes is what holds that order. One setting
