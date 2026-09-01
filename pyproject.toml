@@ -55,30 +55,35 @@ testpaths = ["tests"]
 line-length = 120
 
 [tool.ruff.lint]
-# Keep the lint contract independent of changes to Ruff's default rule set.
-select = ["E4", "E7", "E9", "F"]
-# E501 (line too long) is not in the selected baseline; opt into it so
-# the line-length target above is actually enforced.
+# No `select` here on purpose: the contract is Ruff's own default rule set --
+# whatever the `ruff` version resolved in `uv.lock` ships -- plus the one rule
+# opted into below. The `ruff>=` in `[dependency-groups]` above names a floor
+# and not a version, so the lockfile is what settles the rule set and a
+# regenerated lock is what moves it. A `select` here would be a copy of those
+# defaults taken on the day it was written, and a copy cannot follow them:
+# every rule the tool adds afterwards stays off, unreported, and unanswered.
+#
+# E501 (line too long) is the one rule the defaults leave out that this repo
+# wants: opting into it is what enforces the line-length target above.
 extend-select = ["E501"]
-# The two rules a `# noqa` in this tree names but the selected set does not
-# enable: BLE001 on the blind handlers that must stay blind, N802 on the one
-# test double that mimics a third-party method name. Naming them keeps RUF100
-# from reading those directives as dead, and leaves each live for the audit it
-# was written for -- `ruff check orchestrator tests --select=BLE001` still
-# honours every one of them.
-external = ["BLE001", "N802"]
+# The one rule a `# noqa` in this tree names that the default set does not
+# enable: N802 on the single test double that mimics a third-party method
+# name. Naming it keeps RUF100 -- which the default set does enable -- from
+# reading that directive as dead, and leaves it live for the audit it was
+# written for, `ruff check orchestrator tests --select=N802`. Every other rule
+# a directive names is one the run enables itself, so it earns no entry here.
+external = ["N802"]
 
-# PLC0414 (`import X as X`) sits outside the baseline above, and the audit
-# that runs it -- `ruff check orchestrator tests --select=PLC0414` -- reads
-# these entries. The rule stands against the convention F401 is answered
-# with here: a same-name alias is what declares an import an explicit
-# re-export, and the import that drops it is what F401 reports as dead. Each
-# path below is a module whose job is to bind names it does not itself read
-# -- the theme a dashboard page hands every panel, and the stage fixtures a
-# sibling test module reaches its scenario types through -- so every alias in
-# it is load-bearing. Exact paths rather than a glob, so a neighbouring or
-# future module is still held to the rule: an alias on a name its own module
-# already reads earns no F401 exemption and is removed instead.
+# PLC0414 (`import X as X`) is in the default set, so these entries answer the
+# run itself rather than an audit beside it. The rule stands against the
+# convention F401 is answered with here: a same-name alias is what declares an
+# import an explicit re-export, and the import that drops it is what F401
+# reports as dead. Each path below is a module whose job is to bind names it
+# does not itself read -- the theme a dashboard page hands every panel, and the
+# stage fixtures a sibling test module reaches its scenario types through -- so
+# every alias in it is load-bearing. Exact paths rather than a glob, so a
+# neighbouring or future module is still held to the rule: an alias on a name
+# its own module already reads earns no F401 exemption and is removed instead.
 [tool.ruff.lint.per-file-ignores]
 "orchestrator/observability/dashboard/theme.py" = ["PLC0414"]
 "tests/workflow/stages/conflicts/conflict_resume_test_support.py" = ["PLC0414"]
@@ -87,13 +92,13 @@ external = ["BLE001", "N802"]
 "tests/workflow/stages/fixing/published_gate_support.py" = ["PLC0414"]
 "tests/workflow/stages/validating/recovered_gate_support.py" = ["PLC0414"]
 
-# I001 (unsorted imports) sits outside the baseline above too, so the audit
-# that opts into it -- `ruff check orchestrator tests --select=I001` -- is what
-# this setting is read by. Ruff's default splits an aliased member onto an
-# import statement of its own, which turns the one statement a module is read
-# through into as many statements as it has aliases; the tree's modules read
-# most of their neighbours under an alias, so the default would push whole
-# files past the ceiling WPS201 holds them to. Combining keeps every member a
-# module is read for on the single statement that names it.
+# I001 (unsorted imports) is in the default set too, so the run reads every
+# import block and this setting is what says how they are spelled. Ruff's
+# default splits an aliased member onto an import statement of its own, which
+# turns the one statement a module is read through into as many statements as
+# it has aliases; the tree's modules read most of their neighbours under an
+# alias, so the default would push whole files past the ceiling WPS201 holds
+# them to. Combining keeps every member a module is read for on the single
+# statement that names it.
 [tool.ruff.lint.isort]
 combine-as-imports = true

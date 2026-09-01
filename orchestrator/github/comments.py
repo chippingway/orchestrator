@@ -84,9 +84,9 @@ def is_trusted_author(
     return login.lower() in allowed_lower
 
 
-def filter_trusted[_CommentT](
-    comments: Iterable[_CommentT], *, allowed: Iterable[str] | None = None
-) -> list[_CommentT]:
+def filter_trusted[CommentT](
+    comments: Iterable[CommentT], *, allowed: Iterable[str] | None = None
+) -> list[CommentT]:
     """Keep only comments whose author is trusted (see `is_trusted_author`).
 
     Each item is any object exposing a `.user` attribute. Input order is

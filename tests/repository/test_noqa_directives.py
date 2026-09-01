@@ -2,14 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """Which rules an inline `# noqa` in the two linted trees may name.
 
-`RUF100` reads a directive for a rule the run has not enabled as dead and
-offers to delete it. Two rules are answered a line at a time here rather than
-by the selected set -- `BLE001` on the handlers that must catch blind, `N802`
-on the one test double that mimics a third-party method name -- so on the
-default run they are exactly that kind of directive, and `lint.external` in
-`pyproject.toml` is what says so.
+The run is Ruff's own default rule set plus `E501`, and `RUF100` -- which that
+set enables -- reads a directive naming a rule the run has not enabled as dead
+and offers to delete it. One rule is answered a line at a time outside the run
+instead: `N802`, on the one test double that mimics a third-party method name.
+On the default run its directive is exactly that kind of directive, and
+`lint.external` in `pyproject.toml` is what says so. The handlers that must
+catch blind need no entry beside it, because the default set selects `BLE001`
+itself.
 
-The declaration stays honest only while both of its halves are held, and only
+That declaration stays honest only while both of its halves are held, and only
 one of them can be read off the tree. Which rules a selector enables is Ruff's
 own answer and nobody else's -- `F` covers `F401` and not `FLY002`, and a
 prefix test here would wave both through -- so the directives are checked by
@@ -17,6 +19,14 @@ running Ruff under this repository's configured selectors plus `RUF100`, and a
 directive naming a rule that is neither selected nor declared fails there. The
 half Ruff has no reading of is the stale entry: a code `lint.external` lists
 that no directive carries suppresses nothing, and is read off the tree below.
+
+Under both halves sits the reading neither of them makes: that a directive
+names any rule at all. One that names none suppresses whatever its line
+reports now and whatever the next edit to that line makes it report, and the
+file-wide `# ruff: noqa` spelling does the same for everything under it. Ruff
+honours both and reports neither, so a blanket waiver is the one suppression
+nothing above would notice, and the last check below is what keeps either
+spelling out of the two trees.
 """
 from __future__ import annotations
 
@@ -24,8 +34,11 @@ import json
 import re
 import subprocess
 import sys
+import tokenize
 import tomllib
 import unittest
+from collections.abc import Iterator
+from pathlib import Path
 
 from tests.repository.layout_test_support import (
     PACKAGE_ROOT,
@@ -37,6 +50,11 @@ _REPO_ROOT = PACKAGE_ROOT.parent
 
 # The codes a directive lists, up to the ` - <reason>` the convention ends on.
 _DIRECTIVE = re.compile(r"#\s*noqa\s*:\s*([A-Z]+[0-9]+(?:\s*,\s*[A-Z]+[0-9]+)*)")
+
+# A comment that opens a suppression, line-level or file-wide, and the codes it
+# has to go on to name for that suppression to be one somebody chose.
+_SUPPRESSION = re.compile(r"^#\s*(?:ruff\s*:\s*|flake8\s*:\s*)?noqa\b", re.IGNORECASE)
+_NAMES_A_RULE = re.compile(r"noqa\s*:\s*[A-Z]+[0-9]+", re.IGNORECASE)
 
 _ENCODING = "utf-8"
 
@@ -64,6 +82,31 @@ def _carried_codes() -> frozenset[str]:
             for codes in _DIRECTIVE.findall(module.read_text(encoding=_ENCODING)):
                 listed.update(code.strip() for code in codes.split(","))
     return frozenset(listed)
+
+
+def _blanket_lines(module: Path) -> Iterator[str]:
+    """Where a comment in one module waives every rule at once.
+
+    Tokenizing rather than scanning the text is what keeps a prose mention of
+    a directive -- this module's own docstring above all -- from reading as
+    one.
+    """
+    with module.open("rb") as module_file:
+        for token in tokenize.tokenize(module_file.readline):
+            if token.type != tokenize.COMMENT:
+                continue
+            opens = _SUPPRESSION.match(token.string)
+            if opens and not _NAMES_A_RULE.search(token.string):
+                yield f"{module}:{token.start[0]}"
+
+
+def _blanket_suppressions() -> list[str]:
+    """Every line in the two linted trees a blanket waiver sits on."""
+    located: list[str] = []
+    for root in (PACKAGE_ROOT, TESTS_ROOT):
+        for module in python_files(root):
+            located.extend(_blanket_lines(module))
+    return located
 
 
 def _ruff_run() -> subprocess.CompletedProcess[str]:
@@ -116,6 +159,9 @@ class NoqaDirectiveTest(unittest.TestCase):
 
         self.assertIn(completed.returncode, _LINT_EXIT_CODES, completed.stderr)
         self.assertEqual(_dead_directives(completed), [])
+
+    def test_no_suppression_is_blanket(self) -> None:
+        self.assertEqual(_blanket_suppressions(), [])
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ _COLUMNS = (
 class _RecordingPandas:
     """The `pd` handle the page passes in, framing rows as the rows."""
 
-    def DataFrame(self, rows):  # noqa: N802
+    def DataFrame(self, rows):  # noqa: N802 - the pandas method name the page calls
         return rows
 
 

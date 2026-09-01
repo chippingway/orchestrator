@@ -40,7 +40,14 @@ Every source file (`*.py`, `*.sh`, `pyproject.toml`) starts with:
 
 Before committing, run each of these and fix what they report:
 
-- `.venv/bin/python -m ruff check orchestrator tests` — recurring CI breakers:
+- `.venv/bin/python -m ruff check orchestrator tests` — the lint contract is **Ruff's own default rule set plus
+  `E501`**. `[tool.ruff.lint]` in `pyproject.toml` declares no `select`, so the run enforces whatever the `ruff`
+  resolved in `uv.lock` ships as its defaults; do not add one back, and do not answer a new diagnostic by narrowing
+  the selection. Re-resolving that lock can bring rules with it — fix what they report, in the same commit as the
+  bump. There is no tree-wide waiver either: the only suppressions are the exact-path entries under
+  `[tool.ruff.lint.per-file-ignores]` and inline `# noqa: <CODE> - <reason>` directives, each naming the rule it
+  covers and why, and `tests/repository/test_noqa_directives.py` fails on a bare `# noqa` or a file-wide
+  `# ruff: noqa`. Recurring CI breakers:
   - **F401** (unused import): if the name is meant to be a re-export from a package facade that binds its
     surface with imports (`orchestrator/agents/`, `github/`, `scheduler/`, `observability/usage/`), alias it with
     `... as <name>` so ruff treats it as an explicit re-export instead of dead code. A name the initializer
@@ -51,10 +58,14 @@ Before committing, run each of these and fix what they report:
   - **F541** (f-string without placeholders): use a plain string.
   - **F841** (unused local).
   - **E402** (module-level import not at top of file).
-- `uv run ruff check orchestrator tests --select=I001 --fix` — the run above does not select `I001`, so this is what
-  keeps a new import in sorted order; `tests/repository/test_import_sorting.py` fails on a block left unsorted. Never
-  split one module's names across several `from ... import` statements to duck **WPS235** — the sorter merges every
-  statement reading from the same module back into one.
+  - **BLE001** (blind `except Exception`): only a handler that must catch blind gets a `# noqa: BLE001 - <reason>`
+    naming what the catch protects; anything narrower catches the exception it means.
+  - The defaults also carry the modernization and simplification families — **UP**, **B**, **SIM**, **C4**, **RET**,
+    **RUF** — so a diagnostic from one of those is a rewrite, not a waiver.
+- `uv run ruff check orchestrator tests --select=I001 --fix` — `I001` is in the run above, so this is just the fixer
+  for it; `tests/repository/test_import_sorting.py` fails on a block left unsorted too. Never split one module's names
+  across several `from ... import` statements to duck **WPS235** — the sorter merges every statement reading from the
+  same module back into one.
 - `uv run flake8 orchestrator tests --select=WPS` — all WPS naming, complexity, consistency, bug-prevention,
   refactoring, and OOP rules must pass.
 - `git diff --check origin/main...HEAD` — catches trailing whitespace and stray blank lines at EOF.

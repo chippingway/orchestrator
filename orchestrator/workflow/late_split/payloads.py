@@ -96,7 +96,7 @@ def as_text(raw: Any) -> str | None:
     return raw if isinstance(raw, str) else None
 
 
-def as_member[_Member: StrEnum](members: type[_Member], raw: Any) -> _Member | None:
+def as_member[Member: StrEnum](members: type[Member], raw: Any) -> Member | None:
     """Return the vocabulary member a wire string names, or None.
 
     An unknown spelling is a field this binary cannot act on, and answering
