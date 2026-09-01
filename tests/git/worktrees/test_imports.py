@@ -134,13 +134,17 @@ _OWNER_ONLY_NAMES = (
 # leaves, the line an unfindable leftover is reported on, and the pass that
 # finishes what an earlier one wrote down -- classification, the commit it
 # clears now, and all -- with the ledger under it: the namespace, the
-# repository's own room inside it, the ref one branch is recorded at, the
-# write, the value a record carries when nothing was cleared and the reminder
-# written at it, the read-back and the parse beneath it, and the discharge --
+# repository's own key and the room it opens, the ref one branch is recorded
+# at, the write and the delete every note goes through, the value a record
+# carries when nothing was cleared and the reminder written at it, the
+# read-back and the parse beneath it, the discharge, and the anchor a removal
+# pins what it is about to take under -- its namespace, its ref, its write,
+# its read-back, and its discard --
 # and the second reading a refused branch deletion is told apart by. Naming
 # the whole surface makes a helper added to an owner an edit here rather than
 # a definition site nothing checks.
 _OWNER_DEFINED = (
+    ("ANCHOR_NAMESPACE", obligations),
     ("ArtifactInventory", models),
     ("ArtifactReclamation", models),
     ("ArtifactSurface", models),
@@ -161,9 +165,11 @@ _OWNER_DEFINED = (
     ("_BRANCH_REF_PREFIX", reclamation),
     ("_CLEANLINESS_REASONS", eligibility),
     ("_CLONE", reclamation),
+    ("_DIGEST_MARK", obligations),
     ("_GIT_NEGATIVE", evidence),
     ("_GIT_NOT_SYMBOLIC", reclamation),
     ("_HEAD", evidence),
+    ("_HEAD", obligations),
     ("_IDENTITY_REASONS", eligibility),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
@@ -186,8 +192,13 @@ _OWNER_DEFINED = (
     ("_VERIFY_REF", creation),
     ("_WORKTREE_ADD", creation),
     ("_WORKTREE_REMOVE_FORCE", creation),
+    ("_anchor_checkout", obligations),
     ("_anchor_pr_worktree", creation),
+    ("_anchor_ref", obligations),
+    ("_anchor_settled", reclamation),
     ("_anchor_target", creation),
+    ("_anchored_commit", obligations),
+    ("_anchored_removal", reclamation),
     ("_artifact_reading", eligibility),
     ("_artifact_verdict", eligibility),
     ("_attributed_issues", attribution),
@@ -227,8 +238,10 @@ _OWNER_DEFINED = (
     ("_delete_local_issue_branch", cleanup),
     ("_deleted_local_branch", reclamation),
     ("_deleted_remote_branch", reclamation),
+    ("_discard_anchor", obligations),
     ("_discharge_obligation", obligations),
     ("_discharged", reclamation),
+    ("_dropped_note", obligations),
     ("_ended_retentions", claims),
     ("_ensure_decompose_worktree", decomposition),
     ("_ensure_pr_worktree", creation),
@@ -280,6 +293,7 @@ _OWNER_DEFINED = (
     ("_removed_checkout", reclamation),
     ("_repo_worktrees_root", paths),
     ("_reported", reclamation),
+    ("_repository_key", obligations),
     ("_resolve_branch_name", paths),
     ("_resolved_commit", creation),
     ("_resolved_root", inventory),
@@ -308,6 +322,7 @@ _OWNER_DEFINED = (
     ("_workflow_members", claims),
     ("_worktree_issue_numbers", probes),
     ("_worktree_path", paths),
+    ("_written_note", obligations),
 )
 
 # The owners that report, each binding the channel an operator's level and

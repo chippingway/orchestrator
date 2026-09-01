@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The remote deletions this host has begun and not finished.
+"""The notes this host keeps while it takes one issue's artifacts down.
 
 One ref per branch, in a namespace of this orchestrator's own, written before
 the deletion it is about and taken away once that deletion has happened or
@@ -43,9 +43,18 @@ all derive is the legacy flat `orchestrator/issue-<n>`, which is exactly why
 the attribution behind the scan refuses to charge it to any of them; a ledger
 keyed on the branch alone would hand that record to whichever entry read it
 first, and the deletion it authorizes would go to a remote that never carried
-the branch. So every record sits under the repository's own ref-safe segment,
-the same one its branches are namespaced by, and a repository reads back only
-what it wrote.
+the branch. So every note sits under `_repository_key`, and a repository reads
+back only what it wrote.
+
+The second kind of note is an anchor, and it is about a commit rather than a
+branch: what a checkout was standing on at the moment it was removed. A
+linked worktree holds its HEAD and its own reflog and nothing else has to,
+so a commit made in one between the reading that cleared it and the removal
+that follows would be reachable from neither afterwards. The anchor is
+written from inside the checkout, one process before the removal, and read
+back after it: equal to what the verdict cleared, it is dropped, and anything
+else is work somebody made in that window -- kept under the anchor, and said
+so.
 
 Nothing here reads a remote or deletes anything on one. This owner writes the
 record, reads it back, and takes it away; what is done about one belongs to
@@ -55,6 +64,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+from pathlib import Path
 
 from orchestrator import config
 from orchestrator.git import commands, locks
@@ -72,6 +82,21 @@ log = logging.getLogger("orchestrator.worktree_lifecycle")
 # than for the branch family it is about, so nothing that walks branches or
 # snapshots walks these.
 RECLAIM_NAMESPACE = "refs/orchestrator/remote-reclaim"
+
+# Where the commit a removal was about to take is pinned. Beside the records
+# rather than under them, so a listing of what is owed is not a listing of
+# what was preserved.
+ANCHOR_NAMESPACE = "refs/orchestrator/reclaim-anchor"
+
+# What separates the readable half of a repository's key from the digest that
+# makes it exact, in the spelling the branch namespace already uses for its
+# own lossy rewrites.
+_DIGEST_MARK = "__h"
+
+# What an anchor is written at: whatever the checkout it is taken from is
+# standing on, resolved by git in the same process that writes it, so nothing
+# lands between the reading and the note.
+_HEAD = "HEAD"
 
 # What one record answers with: the ref, and the commit it was written at.
 _RECORD_FORMAT = "--format=%(refname) %(objectname)"
@@ -95,18 +120,39 @@ _REMINDER_MARK = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 _NO_DEREF = "--no-deref"
 
 
+def _repository_key(spec: config.RepoSpec) -> str:
+    """One ref-safe name per repository, and never one name for two.
+
+    The branch namespace's segment is readable and NOT injective. The
+    filesystem-safe sanitizer under it rewrites every character outside its
+    own alphabet to `_`, and the digest that would tell two rewrites apart is
+    appended only when the ref-safety rules changed something -- so
+    `acme/wid:get` and `acme/wid_get` come back as one segment. That is
+    precisely the ambiguity the attribution behind the scan refuses to
+    resolve, and a ledger keyed on the segment would resolve it silently and
+    wrongly: either entry's pass would read the other's notes, classify them
+    against its own GitHub, and delete on its own remote.
+
+    So the segment is kept for what it is good for -- an operator reading
+    `git for-each-ref` sees whose note this is -- and the digest of the
+    untransformed slug is appended unconditionally to make it exact. Two
+    slugs that sanitize alike still hash apart, which is the whole property
+    the key exists for.
+    """
+    return (
+        f"{paths._sanitize_branch_segment(spec.slug)}"
+        f"{_DIGEST_MARK}{paths._slug_digest(spec.slug)}"
+    )
+
+
 def _records_prefix(spec: config.RepoSpec) -> str:
     """Where one repository's records live, and nowhere else's.
 
-    The repository's own ref-safe segment -- the same derivation its branches
-    are namespaced by, so what keeps two entries off one another's branches
-    keeps them off one another's records. The trailing separator is what makes
-    the prefix a namespace rather than a name: the ref spelling this segment
-    itself, were somebody to create it, is not one of the records beneath it.
+    The trailing separator is what makes the prefix a namespace rather than a
+    name: the ref spelling this repository's key itself, were somebody to
+    create it, is not one of the records beneath it.
     """
-    return (
-        f"{RECLAIM_NAMESPACE}/{paths._sanitize_branch_segment(spec.slug)}/"
-    )
+    return f"{RECLAIM_NAMESPACE}/{_repository_key(spec)}/"
 
 
 def _obligation_ref(spec: config.RepoSpec, branch: str) -> str:
@@ -141,22 +187,47 @@ def _record_obligation(
     write land on whatever it points at, and a note to self would become an
     edit to somebody's branch.
     """
+    return _written_note(
+        spec.target_root,
+        spec,
+        _obligation_ref(spec, branch),
+        sha,
+        f"the remote deletion of {branch!r}",
+    )
+
+
+def _written_note(
+    root: Path,
+    spec: config.RepoSpec,
+    ref: str,
+    written_at: str,
+    subject: str,
+) -> bool:
+    """Put one note where this host will find it again, or say it is not there.
+
+    Undereferenced, because the store these live in is one the per-issue
+    checkouts share: a note somebody made a symbolic ref would otherwise have
+    this write land on whatever it points at, turning a note to self into an
+    edit to somebody's branch.
+
+    `root` is the tree the write runs in -- the clone for a record, and the
+    checkout for an anchor, since only from inside one does `HEAD` mean that
+    checkout's own. The lock is the clone's either way: what is being written
+    is the ref store the clone keeps.
+    """
     try:
         with locks._target_root_lock(spec.target_root):
-            recorded = commands._git_hardened(
-                "update-ref", _NO_DEREF, _obligation_ref(spec, branch), sha,
-                cwd=spec.target_root,
+            written = commands._git_hardened(
+                "update-ref", _NO_DEREF, ref, written_at, cwd=root,
             )
     except Exception:
-        log.exception(
-            "the remote deletion of %r could not be recorded", branch,
-        )
+        log.exception("%s could not be written down", subject)
         return False
-    if recorded.returncode == 0:
+    if written.returncode == 0:
         return True
     log.warning(
-        "the remote deletion of %r could not be recorded: %s",
-        branch, (recorded.stderr or "").strip(),
+        "%s could not be written down: %s",
+        subject, (written.stderr or "").strip(),
     )
     return False
 
@@ -187,25 +258,99 @@ def _discharge_obligation(spec: config.RepoSpec, branch: str) -> bool:
     symbolic ref would otherwise have this take away the branch it names
     rather than the record.
     """
+    return _dropped_note(
+        spec,
+        _obligation_ref(spec, branch),
+        f"the record of the remote deletion of {branch!r}",
+    )
+
+
+def _dropped_note(spec: config.RepoSpec, ref: str, subject: str) -> bool:
+    """Take one note away, whether or not it was there to take."""
     try:
         with locks._target_root_lock(spec.target_root):
-            discharged = commands._git_hardened(
-                "update-ref", "-d", _NO_DEREF, _obligation_ref(spec, branch),
+            dropped = commands._git_hardened(
+                "update-ref", "-d", _NO_DEREF, ref, cwd=spec.target_root,
+            )
+    except Exception:
+        log.exception("%s could not be taken away", subject)
+        return False
+    if dropped.returncode == 0:
+        return True
+    log.warning(
+        "%s could not be taken away: %s",
+        subject, (dropped.stderr or "").strip(),
+    )
+    return False
+
+
+def _anchor_ref(spec: config.RepoSpec, issue_number: int) -> str:
+    """The ref one issue's checkout is pinned under while it is removed."""
+    return f"{ANCHOR_NAMESPACE}/{_repository_key(spec)}/issue-{issue_number}"
+
+
+def _anchor_checkout(
+    spec: config.RepoSpec, worktree: Path, issue_number: int,
+) -> bool:
+    """Pin whatever this checkout is standing on, from inside the checkout.
+
+    One process, and that is the point of it: git resolves the HEAD of the
+    tree it is run in and writes the note in the same command, so nothing can
+    land between the reading and the note. What the note is for is the window
+    after it -- a `worktree remove` takes the tree's HEAD and its reflog with
+    it, and a commit those two alone were holding would be reachable from
+    nothing afterwards.
+
+    The ref is shared rather than per-worktree, which is what lets it outlive
+    the checkout it was taken from: `refs/orchestrator/...` lives in the store
+    the clone keeps, and only `HEAD`, `refs/bisect/`, and `refs/worktree/` are
+    a worktree's own.
+
+    Answered as whether the note IS there, because a caller that could not
+    take it has to leave the checkout alone: removing it is what would strand
+    whatever it turns out to have been holding.
+    """
+    return _written_note(
+        worktree,
+        spec,
+        _anchor_ref(spec, issue_number),
+        _HEAD,
+        f"the checkout of #{issue_number}",
+    )
+
+
+def _anchored_commit(spec: config.RepoSpec, issue_number: int) -> str:
+    """The commit one issue's anchor pinned, or "" when nobody could say.
+
+    The empty string covers both an anchor that is not there and a read that
+    failed, because a caller spends them the same way: what it has to
+    establish is that the commit taken with the checkout is the one that was
+    cleared, and neither answer establishes it.
+    """
+    try:
+        with locks._target_root_lock(spec.target_root):
+            resolved = commands._git_hardened(
+                "rev-parse", "--verify", "--quiet",
+                _anchor_ref(spec, issue_number),
                 cwd=spec.target_root,
             )
     except Exception:
-        log.exception(
-            "the record of the remote deletion of %r could not be taken away",
-            branch,
+        log.exception("the anchor of #%d could not be read", issue_number)
+        return ""
+    if resolved.returncode != 0:
+        log.warning(
+            "the anchor of #%d did not resolve: %s",
+            issue_number, (resolved.stderr or "").strip(),
         )
-        return False
-    if discharged.returncode == 0:
-        return True
-    log.warning(
-        "the record of the remote deletion of %r could not be taken away: %s",
-        branch, (discharged.stderr or "").strip(),
+        return ""
+    return (resolved.stdout or "").strip()
+
+
+def _discard_anchor(spec: config.RepoSpec, issue_number: int) -> bool:
+    """Let go of an anchor that pinned nothing anybody has to keep."""
+    return _dropped_note(
+        spec, _anchor_ref(spec, issue_number), f"the anchor of #{issue_number}",
     )
-    return False
 
 
 def _read_records(spec: config.RepoSpec) -> subprocess.CompletedProcess | None:

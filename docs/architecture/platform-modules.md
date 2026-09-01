@@ -345,6 +345,10 @@ orchestrator/
                         spent, never re-derived, and everything it established is established again at the
                         boundary it is about to be spent at -- the checkout still this issue's own, still clean,
                         and still on the commit that was cleared before a `worktree remove` that does not force,
+                        which runs with that checkout's HEAD pinned to an anchor one process before it and read
+                        back one process after, since no reading covers what a tree does next: a commit somebody
+                        raced into that window comes down with the checkout, and the anchor is what keeps it
+                        nameable and has the surface report the removal as the failure it was. Then
                         the local branch deleted through an `update-ref -d` naming the old value and refused
                         while any live worktree of the clone is still standing on it, since that one protection
                         `branch -D` has and the ref update does not -- and refused again when the name is a
@@ -393,12 +397,16 @@ orchestrator/
                         artifact scan does not read one as a candidate of its own, and outside the snapshot
                         namespace, which is published. Written and taken away without dereferencing, since a
                         record pointed at somebody's branch would otherwise have this host's note to itself land
-                        on that branch or take it away. The repository segment is the same ref-safe slug the
-                        branch namespace is built from, and it is what keeps two entries sharing a clone off one
-                        another's records: the flat legacy branch they both derive is exactly the name the
-                        attribution refuses to charge to either, so a ledger keyed on the branch alone would
-                        send one entry's deletion to the other's remote. The read-back answers "could not read"
-                        apart from "nothing owed" -- a listing that warned, a line that did not parse, and a ref
+                        on that branch or take it away. The repository key is the branch namespace's readable
+                        segment plus a digest of the untransformed slug, and the digest is the half that
+                        matters: two entries sharing a clone derive one legacy branch name, which is why a
+                        ledger keyed on the branch alone would send one entry's deletion to the other's remote
+                        -- and the segment alone is no better, since `acme/wid:get` and `acme/wid_get` sanitize
+                        to one segment, the very collision the attribution refuses to resolve. Beside the
+                        records, one anchor per issue holds what a checkout was standing on while it came down,
+                        written from inside that checkout so git resolves and records its HEAD in one command.
+                        The read-back answers "could not read" apart from "nothing owed" -- a listing that
+                        warned, a line that did not parse, and a ref
                         outside the repository's own namespace all refuse the whole answer, since a ledger short
                         by one entry is indistinguishable from a complete one. Nothing here reads a remote or
                         deletes anything on one

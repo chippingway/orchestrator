@@ -25,6 +25,7 @@ from orchestrator.git.worktrees import (
     evidence,
     inventory,
     obligations,
+    paths,
     reclamation,
 )
 from orchestrator.git.worktrees.models import (
@@ -36,6 +37,7 @@ from orchestrator.git.worktrees.models import (
 )
 from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,
+    COLLIDING_SLUGS,
     GADGET_SLUG,
     _legacy_branch,
     _namespaced_branch,
@@ -509,6 +511,32 @@ class LedgerOwnershipTest(_ReclaimTestCase):
         self.assertEqual(
             _settled(_swept(self.gh, self.spec)),
             ((ArtifactSurface.REMOTE_BRANCH, legacy, CLEANED),),
+        )
+
+    def test_a_record_of_a_colliding_slug_is_not_read(self) -> None:
+        # The two slugs the ref-safe sanitizer cannot tell apart, which is
+        # the pair the attribution behind the scan refuses to attribute
+        # anything to. Their branches are one name, so a ledger keyed the way
+        # the branch namespace is would be one room -- and either entry would
+        # read the other's note, classify it against its own GitHub, and
+        # delete on its own remote. The digest of the untransformed slug is
+        # what keeps the two apart.
+        one, other = (_spec(slug, self.clone) for slug in COLLIDING_SLUGS)
+        owed = paths._branch_name(one, ISSUE_NUMBER)
+        obligations._record_obligation(one, owed, self.published(owed))
+
+        self.assertNotEqual(
+            obligations._records_prefix(one),
+            obligations._records_prefix(other),
+        )
+        self.assertEqual(obligations._recorded_obligations(other), ())
+        self.assertEqual(_swept(self.gh, other), ())
+        self.assertEqual(
+            tuple(
+                record.subject
+                for record in obligations._recorded_obligations(one)
+            ),
+            (owed,),
         )
 
     def test_a_record_this_host_does_not_own_stays(self) -> None:

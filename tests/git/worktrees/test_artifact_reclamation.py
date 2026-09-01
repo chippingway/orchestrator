@@ -440,6 +440,45 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.assertEqual(_tip(self.clone, self.branch), made)
 
 
+    def raced(self, worktree) -> ProbeAnswer:
+        """Commit in the checkout, on no branch, where a racer would.
+
+        Installed in place of the last reading the removal is gated on, which
+        is the window no reading covers: the tree answers clean, and a moment
+        later it is carrying a commit that nothing but its own HEAD names.
+        """
+        _run_git("checkout", "-q", "--detach", cwd=worktree)
+        _run_git("commit", "-q", "--allow-empty", "-m", "raced", cwd=worktree)
+        self.raced_at = _tip(worktree, "HEAD")
+        return ProbeAnswer.CONFIRMED
+
+    def test_a_commit_raced_into_the_window_is_kept(self) -> None:
+        # The lock this teardown holds is this process's own, and the agent or
+        # human writing in a checkout is neither. A commit made after every
+        # reading and left on no branch is clean, so the removal that follows
+        # takes it without complaint -- and the anchor written one process
+        # before that removal is what keeps it, and what tells this pass that
+        # what came down was not what anybody cleared.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        with patch.object(evidence, "_clean_worktree", self.raced):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
+        )
+        self.assertFalse(worktree.exists())
+        self.assertTrue(_holds(self.spec, self.branch))
+        self.assertEqual(
+            _tip(
+                self.clone,
+                obligations._anchor_ref(self.spec, ISSUE_NUMBER),
+            ),
+            self.raced_at,
+        )
+
     def test_a_checkout_added_mid_teardown_keeps_it(self) -> None:
         # The tree this issue's checkout was removed from is a tree anything
         # may be added back into, and `update-ref` deletes a branch out from

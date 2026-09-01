@@ -274,6 +274,13 @@ def _removal_under_lock(
     made redundant by that -- it tells a tree that PROVED it is carrying
     nothing from one nobody could read -- but between a reading and a deletion
     there is no such thing as too many ways to say no.
+
+    What no reading covers is what the tree does next. The lock this runs
+    under is this process's own, and the agents and humans who write in a
+    checkout are neither: a commit made after the readings and left on no
+    branch is clean, is removed without complaint, and is reachable from
+    nothing afterwards. So the removal goes through the anchor, which is not a
+    reading at all.
     """
     present = _checkout_present(worktree)
     if present is ProbeAnswer.REFUTED:
@@ -282,14 +289,76 @@ def _removal_under_lock(
         artifacts, worktree, proven_sha,
     ):
         return SurfaceOutcome.FAILED
+    return _anchored_removal(artifacts, worktree, proven_sha)
+
+
+def _anchored_removal(
+    artifacts: IssueArtifacts, worktree: Path, proven_sha: str | None,
+) -> SurfaceOutcome:
+    """Remove the checkout with what it is holding pinned first.
+
+    The anchor is taken one process before the removal and read back one
+    process after it, which is what turns a race into a report: whatever the
+    checkout was standing on at the moment the note was written outlives the
+    removal, so a commit somebody made after the readings is preserved rather
+    than stranded, and this pass can say that it was not the commit anybody
+    cleared.
+
+    An anchor that could not be written stops the removal. What it covers is
+    exactly the thing a caller cannot check for afterwards, so a removal that
+    ran without one would be a removal nobody could say the cost of.
+    """
+    spec = artifacts.spec
+    if not obligations._anchor_checkout(
+        spec, worktree, artifacts.issue_number,
+    ):
+        log.warning(
+            "issue=#%d keeping the checkout %s: what it is standing on could "
+            "not be pinned first", artifacts.issue_number, worktree,
+        )
+        return SurfaceOutcome.FAILED
     removed = commands._git_hardened(
-        "worktree", "remove", str(worktree), cwd=artifacts.spec.target_root,
+        "worktree", "remove", str(worktree), cwd=spec.target_root,
     )
-    if removed.returncode == 0:
+    if removed.returncode != 0:
+        log.warning(
+            "issue=#%d worktree remove of %s failed: %s",
+            artifacts.issue_number, worktree, (removed.stderr or "").strip(),
+        )
+        obligations._discard_anchor(spec, artifacts.issue_number)
+        return SurfaceOutcome.FAILED
+    return _anchor_settled(artifacts, proven_sha)
+
+
+def _anchor_settled(
+    artifacts: IssueArtifacts, proven_sha: str | None,
+) -> SurfaceOutcome:
+    """What the removal took, measured against what the verdict cleared.
+
+    Equal is the ordinary answer, and the anchor goes: the commit it pinned is
+    the one the classification proved survives its artifact, so nothing here
+    is the only thing holding it.
+
+    Anything else is work made in the window no reading covers, and it is kept
+    under the anchor and reported at error. The checkout is gone by then --
+    that is what the anchor exists for -- but the commit is not, and the
+    surface coming back failed is what keeps the branch beside it standing, so
+    the issue is still one a later pass finds. A commit nobody can name is
+    reported the same way: an anchor that would not read back establishes
+    nothing about what was taken.
+    """
+    spec = artifacts.spec
+    anchored = obligations._anchored_commit(spec, artifacts.issue_number)
+    if anchored and anchored == proven_sha:
+        obligations._discard_anchor(spec, artifacts.issue_number)
         return SurfaceOutcome.CLEANED
-    log.warning(
-        "issue=#%d worktree remove of %s failed: %s",
-        artifacts.issue_number, worktree, (removed.stderr or "").strip(),
+    log.error(
+        "issue=#%d the checkout was on %r rather than the %r this verdict "
+        "cleared when it came down; that commit is kept at %s",
+        artifacts.issue_number,
+        anchored or "a commit nobody could read back",
+        proven_sha,
+        obligations._anchor_ref(spec, artifacts.issue_number),
     )
     return SurfaceOutcome.FAILED
 
