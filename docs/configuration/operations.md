@@ -128,6 +128,21 @@ because Ruff never reports the rule there. Each key is an exact path rather than
 against the tree: a self-alias in a module the list does not name, one on a name its own module already reads, or a
 key that globs fails there.
 
+`BLE001` is answered a line at a time instead. The rule reports a blanket `except Exception` / `except BaseException`,
+and like `PLC0414` it sits outside the selected set, so the audit that opts into it
+(`ruff check orchestrator tests --select=BLE001`) is what the answers are written for. No per-file entry would fit:
+what earns a waiver is one handler rather than the file around it, so each carries an inline
+`# noqa: BLE001 - <reason>` naming what its blanket catch protects, and every other handler beside it stays held to
+the rule. Three families earn one. The GitHub-API calls — the best-effort PR notices, the issue and pull-request
+reads, and the child-issue create under `orchestrator/git/base_sync/` and `orchestrator/workflow/` — catch blind
+because PyGithub raises its own `GithubException` and the transport errors underneath it alike, and a narrower
+handler would turn a connection reset into a stranded run. The fail-open guards under
+`orchestrator/observability/analytics/` and in `orchestrator/workflow/late_split/telemetry.py` catch blind so a parser
+bug or an unwritable sink costs the record and never the tick that produced it. And two test helpers keep whatever
+escapes a worker thread so the main thread can assert on it. Ruff exempts a blind handler that reports through a
+logger it can resolve back to `logging` itself, which is why a guard logging through an imported `log` carries a
+directive where the identical one beside its own `getLogger` call does not.
+
 The CI workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
 scope.
