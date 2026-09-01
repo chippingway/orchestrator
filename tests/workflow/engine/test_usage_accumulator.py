@@ -58,7 +58,7 @@ _MULTI_RUN_TOTAL_COST = 3.0
 
 
 def _usage(**overrides) -> UsageMetrics:
-    base = dict(backend=_BACKEND_CLAUDE, cost_source=_COST_SOURCE_ESTIMATED)
+    base = {"backend": _BACKEND_CLAUDE, "cost_source": _COST_SOURCE_ESTIMATED}
     base.update(overrides)
     return UsageMetrics(**base)
 

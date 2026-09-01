@@ -304,7 +304,7 @@ class ValidatingContinueCommandTest(
         # session -- not refuse with "no preserved PR-feedback batch".
         for reason in (PARK_AGENT_SILENT, PARK_AGENT_TIMEOUT):
             with self.subTest(reason=reason):
-                gh, issue, pr = self._seed_validating_route_anchored_park(
+                gh, issue, _pr = self._seed_validating_route_anchored_park(
                     park_reason=reason,
                 )
 
@@ -331,7 +331,7 @@ class ValidatingContinueCommandTest(
         # fresh session -- and carries the accompanying guidance verbatim
         # (reaching the dev directly, not just via the fresh-spawn preamble
         # that omits PR-conversation comments), so nothing is dropped.
-        gh, issue, pr = self._seed_parked_with_batch(
+        gh, issue, _pr = self._seed_parked_with_batch(
             _ContinueSeed(
                 park_reason=PARK_AGENT_SILENT,
                 command_body=("please handle the PR conv case\n/orchestrator continue"),

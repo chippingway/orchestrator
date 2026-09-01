@@ -101,12 +101,12 @@ def _documentation_seed(**state):
     github = FakeGitHubClient()
     issue = make_issue(_DOCUMENTATION_ISSUE_NUMBER, label="workflow:documenting")
     github.add_issue(issue)
-    defaults = dict(
-        pr_number=_DOCUMENTATION_PR_NUMBER,
-        branch="orchestrator/chippingway__orchestrator/issue-702",
-        dev_agent="codex",
-        dev_session_id=_DEV_SESSION_ID,
-    )
+    defaults = {
+        "pr_number": _DOCUMENTATION_PR_NUMBER,
+        "branch": "orchestrator/chippingway__orchestrator/issue-702",
+        "dev_agent": "codex",
+        "dev_session_id": _DEV_SESSION_ID,
+    }
     defaults.update(state)
     github.seed_state(_DOCUMENTATION_ISSUE_NUMBER, **defaults)
     return github, issue

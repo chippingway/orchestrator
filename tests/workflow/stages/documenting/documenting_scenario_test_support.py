@@ -190,20 +190,20 @@ class _ParkedDocumentingFixture(_DocumentingWorkflowMixin):
         gh = FakeGitHubClient()
         issue = make_issue(self.issue_number, label=DOCUMENTING)
         gh.add_issue(issue)
-        defaults = dict(
-            pr_number=self.pr_number,
-            branch=_branch(self.issue_number),
-            dev_agent=DEV_AGENT,
-            dev_session_id=DEV_SESSION,
-            awaiting_human=True,
-            last_action_comment_id=PARKED_FIXTURE_WATERMARK,
+        defaults = {
+            PR_NUMBER: self.pr_number,
+            "branch": _branch(self.issue_number),
+            "dev_agent": DEV_AGENT,
+            "dev_session_id": DEV_SESSION,
+            "awaiting_human": True,
+            "last_action_comment_id": PARKED_FIXTURE_WATERMARK,
             # The seeded baseline keeps first-encounter drift persistence
             # out of tests that assert an already-parked tick writes nothing.
-            user_content_hash=_drift._compute_user_content_hash(
+            "user_content_hash": _drift._compute_user_content_hash(
                 issue,
                 set(),
             ),
-        )
+        }
         defaults.update(state)
         gh.seed_state(self.issue_number, **defaults)
         if defaults[PR_NUMBER] not in gh.pulls:
@@ -227,14 +227,14 @@ class _DocumentingDriftFixture(_DocumentingWorkflowMixin):
             body=ORIGINAL_BODY,
         )
         gh.add_issue(issue)
-        defaults = dict(
-            pr_number=self.pr_number,
-            branch=_branch(self.issue_number),
-            dev_agent=DEV_AGENT,
-            dev_session_id=DEV_SESSION,
-            user_content_hash="stale-hash-from-original-body",
-            review_round=2,
-        )
+        defaults = {
+            PR_NUMBER: self.pr_number,
+            "branch": _branch(self.issue_number),
+            "dev_agent": DEV_AGENT,
+            "dev_session_id": DEV_SESSION,
+            "user_content_hash": "stale-hash-from-original-body",
+            "review_round": 2,
+        }
         defaults.update(state)
         gh.seed_state(self.issue_number, **defaults)
         if defaults[PR_NUMBER] not in gh.pulls:
@@ -255,14 +255,14 @@ class _FinalDocsFixture(_DocumentingWorkflowMixin):
         gh = FakeGitHubClient()
         issue = make_issue(self.issue_number, label=DOCUMENTING)
         gh.add_issue(issue)
-        defaults = dict(
-            pr_number=self.pr_number,
-            branch=self.branch_name,
-            dev_agent=DEV_AGENT,
-            dev_session_id=DEV_SESSION,
-            review_round=2,
-            pr_last_comment_id=FINAL_DOCS_PR_WATERMARK,
-        )
+        defaults = {
+            PR_NUMBER: self.pr_number,
+            "branch": self.branch_name,
+            "dev_agent": DEV_AGENT,
+            "dev_session_id": DEV_SESSION,
+            "review_round": 2,
+            "pr_last_comment_id": FINAL_DOCS_PR_WATERMARK,
+        }
         defaults.update(state)
         gh.seed_state(self.issue_number, **defaults)
         if defaults[PR_NUMBER] not in gh.pulls:

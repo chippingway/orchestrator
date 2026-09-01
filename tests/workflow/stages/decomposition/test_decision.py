@@ -239,12 +239,7 @@ class HandleDecomposingDecisionTest(
 
         self.assertEqual(
             gh.pinned_data(SPLIT_DECISION_ISSUE_NUMBER).get(KEY_CHILDREN),
-            list(
-                map(
-                    lambda created_child: created_child.number,
-                    gh.created_child_issues,
-                )
-            ),
+            [created_child.number for created_child in gh.created_child_issues],
         )
         # No deps -> dep_graph not persisted.
         self.assertNotIn(

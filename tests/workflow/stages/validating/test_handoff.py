@@ -77,13 +77,13 @@ class _ValidatingHandoffFixtureMixin(_PatchedWorkflowMixin):
             comments=list(comments),
         )
         gh.add_issue(issue)
-        defaults = dict(
-            pr_number=PR_NUMBER_OFFSET + issue_number,
-            branch=f"orchestrator/chippingway__orchestrator/issue-{issue_number}",
-            dev_agent="claude",
-            dev_session_id=DEV_SESSION,
-            review_round=0,
-        )
+        defaults = {
+            "pr_number": PR_NUMBER_OFFSET + issue_number,
+            "branch": f"orchestrator/chippingway__orchestrator/issue-{issue_number}",
+            "dev_agent": "claude",
+            "dev_session_id": DEV_SESSION,
+            "review_round": 0,
+        }
         defaults.update(state)
         gh.seed_state(issue_number, **defaults)
         if not gh.pulls.get(defaults["pr_number"]):

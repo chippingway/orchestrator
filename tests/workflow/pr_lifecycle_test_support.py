@@ -122,11 +122,11 @@ def _only_event(gh: FakeGitHubClient, event_name: str) -> dict:
 
 
 def _open_pr(**kwargs) -> FakePR:
-    defaults = dict(
-        number=PR_NUMBER,
-        head_branch=PR_BRANCH,
-        head=FakePRRef(sha="abc12345"),
-    )
+    defaults = {
+        "number": PR_NUMBER,
+        "head_branch": PR_BRANCH,
+        "head": FakePRRef(sha="abc12345"),
+    }
     defaults.update(kwargs)
     return FakePR(**defaults)
 
@@ -137,12 +137,12 @@ def _seed_in_review(issue_number=50, *, pr=None, extra_state=None):
     github.add_issue(issue)
     if pr is not None:
         github.add_pr(pr)
-    state = dict(
-        branch=PR_BRANCH,
-        dev_agent=BACKEND_CLAUDE,
-        dev_session_id="dev-sess",
-        review_round=1,
-    )
+    state = {
+        "branch": PR_BRANCH,
+        "dev_agent": BACKEND_CLAUDE,
+        "dev_session_id": "dev-sess",
+        "review_round": 1,
+    }
     if pr is not None:
         state[KEY_PR_NUMBER] = pr.number
     if extra_state:

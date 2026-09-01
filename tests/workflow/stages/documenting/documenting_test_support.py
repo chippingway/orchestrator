@@ -166,12 +166,12 @@ class _BasicDocumentingFixture(_DocumentingWorkflowMixin):
         gh = FakeGitHubClient()
         issue = make_issue(self.issue_number, label=DOCUMENTING)
         gh.add_issue(issue)
-        defaults = dict(
-            pr_number=self.pr_number,
-            branch=_branch(self.issue_number),
-            dev_agent=DEV_AGENT,
-            dev_session_id=DEV_SESSION,
-        )
+        defaults = {
+            "pr_number": self.pr_number,
+            "branch": _branch(self.issue_number),
+            "dev_agent": DEV_AGENT,
+            "dev_session_id": DEV_SESSION,
+        }
         defaults.update(state)
         gh.seed_state(self.issue_number, **defaults)
         if defaults["pr_number"] not in gh.pulls:

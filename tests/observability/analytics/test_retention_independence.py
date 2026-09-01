@@ -63,7 +63,7 @@ class SinkPruneIndependenceTest(unittest.TestCase):
 
     def test_trajectory_prune_spares_analytics(self) -> None:
         with tempfile.TemporaryDirectory() as sink_dir:
-            analytics, (analytics_path, trajectory_path) = _both_sinks(sink_dir)
+            _analytics, (analytics_path, trajectory_path) = _both_sinks(sink_dir)
             untouched = _read_text(analytics_path)
             self.assertEqual(
                 retention.prune_trajectory_records(now=_PRUNE_NOW), 1,
@@ -73,7 +73,7 @@ class SinkPruneIndependenceTest(unittest.TestCase):
 
     def test_analytics_prune_spares_trajectory(self) -> None:
         with tempfile.TemporaryDirectory() as sink_dir:
-            analytics, (analytics_path, trajectory_path) = _both_sinks(sink_dir)
+            _analytics, (analytics_path, trajectory_path) = _both_sinks(sink_dir)
             untouched = _read_text(trajectory_path)
             self.assertEqual(retention.prune_old_records(now=_PRUNE_NOW), 1)
             self.assertEqual(_read_text(analytics_path), "")

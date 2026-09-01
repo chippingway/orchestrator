@@ -417,7 +417,7 @@ class ConflictAheadCheckoutTest(unittest.TestCase, _ResolvingConflictMixin):
     """
 
     def test_an_ahead_checkout_publishes_first(self) -> None:
-        github, mocks = self._edited_while_ahead()
+        _github, mocks = self._edited_while_ahead()
 
         mocks[RUN_AGENT].assert_not_called()
         self.assertEqual(

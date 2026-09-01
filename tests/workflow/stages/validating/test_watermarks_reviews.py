@@ -106,7 +106,7 @@ class ValidatingHandoffSeedsAllWatermarksTest(
         # case: it doesn't trip `pr_has_changes_requested` so the HITL
         # ping would happily advertise the PR as ready if the in_review
         # tick advanced its watermark past the body.
-        gh, issue, pr, _ = self._setup(
+        gh, issue, _pr, _ = self._setup(
             reviews=[
                 FakePRReview(
                     id=REVIEW_FEEDBACK_ID,
@@ -164,7 +164,7 @@ class ValidatingHandoffSeedsAllWatermarksTest(
         # Same shape, inline-review surface. The orchestrator never posts
         # there either, so handoff has to seed pr_last_review_comment_id
         # explicitly.
-        gh, issue, pr, _ = self._setup(
+        gh, issue, _pr, _ = self._setup(
             review_comments=[
                 FakeComment(
                     id=INLINE_REVIEW_COMMENT_ID,

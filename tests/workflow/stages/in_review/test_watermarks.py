@@ -114,12 +114,12 @@ class _SplitWatermarkFixtureMixin(_PatchedWorkflowMixin):
             review_comments=list(review_comments),
         )
         gh.add_pr(pr)
-        state = dict(
-            pr_number=SPLIT_WATERMARK_PR,
-            branch=SPLIT_WATERMARK_BRANCH,
-            dev_agent="claude",
-            dev_session_id="dev-sess",
-        )
+        state = {
+            "pr_number": SPLIT_WATERMARK_PR,
+            "branch": SPLIT_WATERMARK_BRANCH,
+            "dev_agent": "claude",
+            "dev_session_id": "dev-sess",
+        }
         if state_extra:
             state.update(state_extra)
         gh.seed_state(SPLIT_WATERMARK_ISSUE, **state)
@@ -169,7 +169,7 @@ class InReviewSplitWatermarkTest(
         # be silently filtered out; with split watermarks it gets through
         # and triggers the route to `fixing`.
         long_ago = datetime.now(UTC) - timedelta(hours=1)
-        gh, issue, pr = self._setup(
+        gh, issue, _pr = self._setup(
             review_comments=[
                 FakeComment(
                     id=5,

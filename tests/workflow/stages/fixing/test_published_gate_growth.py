@@ -170,7 +170,7 @@ class GrowingPullRequestTest(unittest.TestCase, _GrownPullRequestMixin):
         # request unmeasured -- which is the way past the ceiling a cumulative
         # count exists to close. Each round publishes its own commit, leased
         # to the head the round before it left the pull request on.
-        scenario, rounds = self._grown((UNDER_THE_CEILING, AT_THE_CEILING))
+        _scenario, rounds = self._grown((UNDER_THE_CEILING, AT_THE_CEILING))
 
         for index, mocks in enumerate(rounds):
             with self.subTest(round=index):

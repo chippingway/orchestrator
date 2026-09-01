@@ -139,7 +139,7 @@ class HandleUmbrellaResolutionTest(unittest.TestCase, _PatchedWorkflowMixin):
         umbrella_handler.assert_called_once_with(gh, _TEST_SPEC, issue)
 
     def test_all_children_done_closes_as_done(self) -> None:
-        gh, parent, children = _seed_umbrella_with_children(
+        gh, parent, _children = _seed_umbrella_with_children(
             parent_number=ALL_DONE_PARENT_NUMBER,
             child_labels=[LABEL_DONE, LABEL_DONE],
         )
@@ -171,7 +171,7 @@ class HandleUmbrellaResolutionTest(unittest.TestCase, _PatchedWorkflowMixin):
         # The decomposer runs accrue on the umbrella parent, so its close
         # comment carries the cumulative verdict appended to the existing
         # "all children resolved" line (one comment, not two).
-        gh, parent, children = _seed_umbrella_with_children(
+        gh, parent, _children = _seed_umbrella_with_children(
             parent_number=USAGE_PARENT_NUMBER,
             child_labels=[LABEL_DONE, LABEL_DONE],
             issue_agent_runs=2,
@@ -194,7 +194,7 @@ class HandleUmbrellaResolutionTest(unittest.TestCase, _PatchedWorkflowMixin):
     def test_close_omits_verdict_without_counters(self) -> None:
         # An umbrella that never accrued a counted run closes with the bare
         # resolution line -- no zero receipt appended.
-        gh, parent, children = _seed_umbrella_with_children(
+        gh, parent, _children = _seed_umbrella_with_children(
             parent_number=NO_USAGE_PARENT_NUMBER,
             child_labels=[LABEL_DONE, LABEL_DONE],
         )
@@ -208,7 +208,7 @@ class HandleUmbrellaResolutionTest(unittest.TestCase, _PatchedWorkflowMixin):
         self.assertNotIn(":receipt:", close_comments[0])
 
     def test_some_children_in_progress_no_op(self) -> None:
-        gh, parent, children = _seed_umbrella_with_children(
+        gh, parent, _children = _seed_umbrella_with_children(
             parent_number=IN_PROGRESS_PARENT_NUMBER,
             child_labels=[LABEL_DONE, LABEL_IMPLEMENTING],
         )
