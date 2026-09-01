@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -52,7 +52,7 @@ RUN_AGENT = "run_agent"
 class _AllWatermarksHandoffFixtureMixin(_PatchedWorkflowMixin):
     def _setup(self, *, reviews=(), review_comments=()):
         gh = FakeGitHubClient()
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         issue = make_issue(
             ALL_WATERMARKS_ISSUE,
             label=LABEL_VALIDATING,
@@ -114,7 +114,7 @@ class ValidatingHandoffSeedsAllWatermarksTest(
                     state="COMMENTED",
                     user=FakeUser(HUMAN_LOGIN),
                     submitted_at=(
-                        datetime.now(timezone.utc)
+                        datetime.now(UTC)
                         - timedelta(hours=1)
                     ),
                     commit_id=REVIEWED_SHA,
@@ -171,7 +171,7 @@ class ValidatingHandoffSeedsAllWatermarksTest(
                     body="line 4: rename foo to bar",
                     user=FakeUser(HUMAN_LOGIN),
                     created_at=(
-                        datetime.now(timezone.utc)
+                        datetime.now(UTC)
                         - timedelta(hours=1)
                     ),
                 ),
@@ -230,7 +230,7 @@ class HandoffInlineIdCollisionTest(unittest.TestCase, _PatchedWorkflowMixin):
                     body=PICKUP_MESSAGE,
                     user=FakeUser(BOT_LOGIN),
                     created_at=(
-                        datetime.now(timezone.utc)
+                        datetime.now(UTC)
                         - timedelta(hours=1)
                     ),
                 ),
@@ -252,7 +252,7 @@ class HandoffInlineIdCollisionTest(unittest.TestCase, _PatchedWorkflowMixin):
                     body="please rename foo to bar",
                     user=FakeUser(HUMAN_LOGIN),
                     created_at=(
-                        datetime.now(timezone.utc)
+                        datetime.now(UTC)
                         - timedelta(hours=1)
                     ),
                 ),

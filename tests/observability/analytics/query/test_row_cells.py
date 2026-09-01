@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from orchestrator.observability.analytics.query.row_cells import (
@@ -25,7 +25,7 @@ _DAY_NUMBER = 25
 
 _DAY = date(_YEAR, 5, _DAY_NUMBER)
 
-_WIDENED_DAY = datetime(_YEAR, 5, _DAY_NUMBER, 0, 0, tzinfo=timezone.utc)
+_WIDENED_DAY = datetime(_YEAR, 5, _DAY_NUMBER, 0, 0, tzinfo=UTC)
 
 
 class RowValueTest(unittest.TestCase):
@@ -51,7 +51,7 @@ class CostCellTest(unittest.TestCase):
             cost_cell((None,), 0),
             cost_cell((Decimal("0"),), 0),
         ):
-            self.assertEqual(empty_cell, float())
+            self.assertEqual(empty_cell, float(0))
             self.assertIsInstance(empty_cell, float)
 
     def test_a_recorded_cost_converts_to_its_float(self) -> None:

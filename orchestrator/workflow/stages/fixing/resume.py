@@ -31,7 +31,7 @@ belongs to the final-docs handoff after reviewer approval.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from orchestrator import config
@@ -73,7 +73,7 @@ def _fixing_debounce_open(
     """
     if replay_batch is not None:
         return False
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     latest_ts: datetime | None = None
     for feedback_item in feedback.all_items:
         ts = _in_review_watermarks._comment_created_at(feedback_item)

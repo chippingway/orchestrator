@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator.workflow.stages.documenting import handoff as _handoff
@@ -275,7 +275,7 @@ class HandleDocumentingFinalDocsHandoffTest(unittest.TestCase, _FinalDocsFixture
         # feedback, and bounces to `fixing` over work the docs pass
         # already addressed.
         gh = FakeGitHubClient()
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         issue = make_issue(
             WATERMARK_ISSUE_NUMBER,
             label=DOCUMENTING,

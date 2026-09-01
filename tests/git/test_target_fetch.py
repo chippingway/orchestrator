@@ -151,22 +151,25 @@ class AuthedTargetFetchTest(unittest.TestCase):
             repo = stack.enter_context(
                 _temp_git_repo_with_local_config([(SSL_VERIFY_KEY, "false")]),
             )
-            spec = config.RepoSpec(
-                slug="chippingway/orchestrator",
-                target_root=repo,
-                base_branch=MAIN_BRANCH,
-            )
             stack.enter_context(
                 patch.object(config, TOKEN_RESOLVER, return_value=SECRET_TOKEN),
             )
             log_capture.records = stack.enter_context(
                 self.assertLogs(authentication.log, level="ERROR"),
             )
-            fetch = authentication._authed_target_fetch(spec, MAIN_BRANCH)
+            fetch = authentication._authed_target_fetch(
+                config.RepoSpec(
+                    slug="chippingway/orchestrator",
+                    target_root=repo,
+                    base_branch=MAIN_BRANCH,
+                ),
+                MAIN_BRANCH,
+            )
         self.assertNotEqual(fetch.returncode, 0)
+        logged = log_capture.records.output
         self.assertTrue(
-            any("sslverify" in line.lower() for line in log_capture.records.output),
-            "expected sslVerify in refusal log, got {!r}".format(log_capture.records.output),
+            any("sslverify" in line.lower() for line in logged),
+            f"expected sslVerify in refusal log, got {logged!r}",
         )
 
     def test_missing_token_fails_without_subprocess(self) -> None:
@@ -193,9 +196,10 @@ class AuthedTargetFetchTest(unittest.TestCase):
         subprocess_run.assert_not_called()
         self.assertNotEqual(fetch.returncode, 0)
         # Slug is in the log so the operator knows which token file to fix.
+        logged = log_capture.records.output
         self.assertTrue(
-            any(PRIVATE_REPO_SLUG in line for line in log_capture.records.output),
-            "expected slug in log output, got {!r}".format(log_capture.records.output),
+            any(PRIVATE_REPO_SLUG in line for line in logged),
+            f"expected slug in log output, got {logged!r}",
         )
 
 

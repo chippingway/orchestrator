@@ -7,7 +7,7 @@ last_action_comment_id."""
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -53,7 +53,7 @@ RUN_AGENT = "run_agent"
 class _LegacyWatermarkFixtureMixin(_PatchedWorkflowMixin):
     def _legacy_setup(self):
         gh = FakeGitHubClient()
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         # Three historical orchestrator comments on the issue thread plus
         # one historical PR conversation comment (the validating handoff
         # approval) -- exactly the shape of an in-flight in_review issue
@@ -244,7 +244,7 @@ class LegacyMigrationPersistsEmptyWatermarksTest(
                 id=FIRST_INLINE_REVIEW_ID,
                 body="line 7: rename foo to bar",
                 user=FakeUser(HUMAN_LOGIN),
-                created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                created_at=datetime.now(UTC) - timedelta(hours=1),
             ),
         )
 
@@ -298,7 +298,7 @@ class LegacyMigrationPersistsEmptyWatermarksTest(
                 body="please tighten the spec",
                 state="COMMENTED",
                 user=FakeUser(HUMAN_LOGIN),
-                submitted_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                submitted_at=datetime.now(UTC) - timedelta(hours=1),
                 commit_id=REVIEWED_SHA,
             ),
         )
@@ -334,7 +334,7 @@ class ZeroWatermarkSurvivesFallbackTest(unittest.TestCase, _PatchedWorkflowMixin
 
     def test_zero_does_not_use_last_action(self) -> None:
         gh = FakeGitHubClient()
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         # The implementing-time park comment (id 920) sits between a human
         # "do not merge yet" comment (id 910) and the validating-handoff
         # state. last_action_comment_id was set to 920 by the prior park.

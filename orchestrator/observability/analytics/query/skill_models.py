@@ -58,7 +58,7 @@ class SkillTriggerRateRow:
         zero; the reader only emits rows for groups with at least one
         `agent_exit` run, so the guard is defensive.
         """
-        return self.skill_runs / self.runs if self.runs else float()
+        return self.skill_runs / self.runs if self.runs else float(0)
 
 
 @dataclass(frozen=True)
@@ -127,7 +127,7 @@ class SkillTriggerMatrixRow:
         `0.0` rate is the offered-but-never-triggered catalog signal and
         carries the same `TRACK_SKILL_TRIGGERS`-off caveat.
         """
-        return self.skill_runs / self.runs if self.runs else float()
+        return self.skill_runs / self.runs if self.runs else float(0)
 
 
 @dataclass(frozen=True)
@@ -208,4 +208,4 @@ class SkillAdoptionRow:
         incidental reference, or a load whose session reported a
         different availability set) never divides by zero.
         """
-        return self.adopted / self.sessions if self.sessions else float()
+        return self.adopted / self.sessions if self.sessions else float(0)

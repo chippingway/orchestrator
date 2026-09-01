@@ -12,7 +12,7 @@ a case names more of them than an import list should carry.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from orchestrator.observability.analytics.query.overview_models import DataExtent
 
@@ -62,7 +62,7 @@ MAY26, MAY28, MAY29 = (
 
 def utc_midnight(day: date) -> datetime:
     """The instant a window boundary on `day` is aligned to."""
-    return datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+    return datetime(day.year, day.month, day.day, tzinfo=UTC)
 
 
 def data_extent(first: date, last: date) -> DataExtent:
@@ -75,6 +75,6 @@ def data_extent(first: date, last: date) -> DataExtent:
             last.day,
             _LAST_HOUR,
             _LAST_MINUTE,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )

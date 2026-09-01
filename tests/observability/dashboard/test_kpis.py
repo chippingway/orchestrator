@@ -105,6 +105,9 @@ _INITIAL_COST = 50.0
 
 _REWORK_COST = 20.0
 
+# What both halves of the split report when no round was recorded.
+_NO_SPEND = float(0)
+
 _ROUND_ONE = "1"
 
 # The two buckets whose runs are not a second pass: the initial development
@@ -260,7 +263,7 @@ class ReworkTotalsTest(unittest.TestCase):
                 self.assertAlmostEqual(rework, _REWORK_COST)
 
     def test_an_empty_breakdown_is_zero(self) -> None:
-        self.assertEqual(kpis.rework_totals(()), (float(), float()))
+        self.assertEqual(kpis.rework_totals(()), (_NO_SPEND, _NO_SPEND))
 
 
 if __name__ == "__main__":

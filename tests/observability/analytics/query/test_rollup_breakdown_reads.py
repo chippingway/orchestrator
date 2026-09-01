@@ -142,8 +142,8 @@ class StageBreakdownReadTest(unittest.TestCase):
                     rows[0],
                     {
                         **expected_runs,
-                        "cache_cost_usd": float(),
-                        "no_cache_cost_usd": float(),
+                        "cache_cost_usd": float(0),
+                        "no_cache_cost_usd": float(0),
                     },
                 )
 

@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.overview_models import (
     DataExtent,
@@ -45,10 +45,10 @@ _EXTENT_MAX_DAY = 27
 
 _EXTENT_MAX_HOUR = 12
 
-_EXTENT_MIN = datetime(_YEAR, 4, 1, tzinfo=timezone.utc)
+_EXTENT_MIN = datetime(_YEAR, 4, 1, tzinfo=UTC)
 
 _EXTENT_MAX = datetime(
-    _YEAR, 5, _EXTENT_MAX_DAY, _EXTENT_MAX_HOUR, 0, tzinfo=timezone.utc,
+    _YEAR, 5, _EXTENT_MAX_DAY, _EXTENT_MAX_HOUR, 0, tzinfo=UTC,
 )
 
 

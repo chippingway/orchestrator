@@ -24,7 +24,7 @@ never sees.
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.cost_models import (
     BackendEfficiencyRow,
@@ -57,7 +57,7 @@ _REPO = "acme/orchestrator"
 
 _YEAR = 2026
 
-_SEEN = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+_SEEN = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
 # One issue per cost, handed over out of order so the ranking has to reorder
 # them and a case can name the amount it expects on top.

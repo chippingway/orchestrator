@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from orchestrator.github import PinnedState
@@ -17,7 +17,7 @@ from tests.workflow.repo_values import (
 
 
 def _iso_hours_ago(hours: int) -> str:
-    return (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat(
+    return (datetime.now(UTC) - timedelta(hours=hours)).isoformat(
         timespec="seconds",
     )
 

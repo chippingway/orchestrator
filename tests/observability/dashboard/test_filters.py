@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from orchestrator.observability.dashboard import filters, windows
 from tests.observability.dashboard import dashboard_test_support as fixtures
@@ -28,7 +28,7 @@ _ISSUE_NUMBER = 42
 
 _NOON_UTC = datetime(
     fixtures.MAY01.year, fixtures.MAY01.month, fixtures.MAY01.day, _NOON,
-    tzinfo=timezone.utc,
+    tzinfo=UTC,
 )
 
 _NOON_NAIVE = _NOON_UTC.replace(tzinfo=None)

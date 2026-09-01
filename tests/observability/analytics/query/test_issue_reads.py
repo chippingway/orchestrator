@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.issue_summaries import SORT_BY_COST
 from orchestrator.observability.analytics.query.raw_reads import (
@@ -77,19 +77,19 @@ _LATEST_SEEN_MINUTE = 30
 
 _WINDOW_END_DAY = 28
 
-_EVENT_TS = datetime(_YEAR, 5, _EVENT_TS_DAY, 10, 0, tzinfo=timezone.utc)
+_EVENT_TS = datetime(_YEAR, 5, _EVENT_TS_DAY, 10, 0, tzinfo=UTC)
 
-_NOON_TS = datetime(_YEAR, 5, _EVENT_TS_DAY, _NOON_HOUR, 0, tzinfo=timezone.utc)
+_NOON_TS = datetime(_YEAR, 5, _EVENT_TS_DAY, _NOON_HOUR, 0, tzinfo=UTC)
 
-_LATER_SEEN = datetime(_YEAR, 5, _LATER_SEEN_DAY, 9, 0, tzinfo=timezone.utc)
+_LATER_SEEN = datetime(_YEAR, 5, _LATER_SEEN_DAY, 9, 0, tzinfo=UTC)
 
 _LATEST_SEEN = datetime(
-    _YEAR, 5, _LATER_SEEN_DAY, 9, _LATEST_SEEN_MINUTE, tzinfo=timezone.utc,
+    _YEAR, 5, _LATER_SEEN_DAY, 9, _LATEST_SEEN_MINUTE, tzinfo=UTC,
 )
 
-_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=timezone.utc)
+_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=UTC)
 
 # A row from before the review-round and retry columns existed: everything the
 # SELECT list gained since reads back as unset rather than as a measured zero.

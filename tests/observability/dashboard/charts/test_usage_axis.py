@@ -95,7 +95,7 @@ class RoundedAxisMaximumTest(unittest.TestCase):
         # nothing in it would come back as a chart with no scale rather than
         # an empty chart with one.
         steps = usage_axis.USAGE_GRID_STEPS
-        for data_max in (float(), -1.0):
+        for data_max in (float(0), -1.0):
             with self.subTest(data_max=data_max):
                 self.assertEqual(
                     usage_axis.nice_axis_max(data_max, steps), float(steps),

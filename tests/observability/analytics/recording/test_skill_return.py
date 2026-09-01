@@ -85,7 +85,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
                 agent_spec=_CLAUDE,
                 resume_session_id=None,
                 result=_agent_exit_result(stdout),
-                duration_s=float(),
+                duration_s=float(0),
                 review_round=0,
                 retry_count=1,
             )
@@ -117,7 +117,7 @@ class _RecordAgentExitSkillSupport(unittest.TestCase):
                 agent_spec=backend,
                 resume_session_id=None,
                 result=_agent_exit_result(stdout),
-                duration_s=float(),
+                duration_s=float(0),
                 review_round=0,
                 retry_count=1,
             )

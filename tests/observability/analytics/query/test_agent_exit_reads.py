@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.raw_reads import get_recent_agent_exits
 from tests.observability.analytics.analytics_assertions import assert_row_fields
@@ -54,11 +54,11 @@ _EXIT_TS_HOUR = 12
 
 _WINDOW_END_DAY = 28
 
-_EXIT_TS = datetime(_YEAR, 5, _EXIT_TS_DAY, _EXIT_TS_HOUR, 0, tzinfo=timezone.utc)
+_EXIT_TS = datetime(_YEAR, 5, _EXIT_TS_DAY, _EXIT_TS_HOUR, 0, tzinfo=UTC)
 
-_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=timezone.utc)
+_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=UTC)
 
 # One row of the fifteen-column SELECT list, in the order the projection
 # unpacks it.

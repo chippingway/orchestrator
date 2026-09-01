@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from orchestrator.observability.analytics.sink import log
@@ -57,7 +57,7 @@ def prune_timestamp(raw_line: str) -> datetime | None:
     except ValueError:
         return None
     if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
+        timestamp = timestamp.replace(tzinfo=UTC)
     return timestamp
 
 

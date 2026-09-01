@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import FrozenInstanceError
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from inspect import signature
 from types import MappingProxyType
 from typing import Any
@@ -33,8 +33,8 @@ _YEAR = 2026
 _MAY = 5
 
 _WINDOW = windows.DateWindow(
-    start=datetime(_YEAR, _MAY, 1, tzinfo=timezone.utc),
-    end=datetime(_YEAR, _MAY, 8, tzinfo=timezone.utc),
+    start=datetime(_YEAR, _MAY, 1, tzinfo=UTC),
+    end=datetime(_YEAR, _MAY, 8, tzinfo=UTC),
 )
 
 _EVENTS = ("stage_entered", "agent_exit")

@@ -7,7 +7,7 @@ on the route to fixing."""
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
@@ -244,7 +244,7 @@ class ManuallyClosedInReviewIssueTest(
         # Even with new PR feedback past the watermark, a manually-closed
         # issue should not spawn a dev fix -- the human closing the issue
         # superseded any open feedback.
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         gh, issue, pr = self._setup()
         pr.issue_comments.append(
             FakeComment(
@@ -313,7 +313,7 @@ class StaleParkReasonClearedOnFixingRouteTest(unittest.TestCase, _PatchedWorkflo
                     id=STALE_PARK_COMMENT_ID,
                     body="any update?",
                     user=FakeUser("alice"),
-                    created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                    created_at=datetime.now(UTC) - timedelta(hours=1),
                 ),
             ],
         )

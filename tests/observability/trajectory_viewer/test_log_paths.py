@@ -89,7 +89,7 @@ class SettingsHolderTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as work_dir:
             path = Path(work_dir) / "traj.jsonl"
             written = json.dumps(record(issue=ISSUE))
-            path.write_text("{0}\n".format(written), encoding="utf-8")
+            path.write_text(f"{written}\n", encoding="utf-8")
             with patch.object(analytics_settings, _LOG_PATH_ATTR, path):
                 configured = log_paths.configured_path(analytics_settings)
                 runs = reading.read_trajectories(configured)

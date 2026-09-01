@@ -68,7 +68,7 @@ class HeadlineCountTest(unittest.TestCase):
                 summary.truncated_runs,
                 summary.total_cost_usd,
             ),
-            (0, 0, 0, 0, 0, float()),
+            (0, 0, 0, 0, 0, float(0)),
         )
 
 

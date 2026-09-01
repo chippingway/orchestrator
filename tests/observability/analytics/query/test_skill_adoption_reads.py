@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.skill_reads import get_skill_adoption
 from tests.observability.analytics.analytics_assertions import assert_column_values, assert_row_fields
@@ -65,9 +65,9 @@ _DRILL_DOWN_ISSUE = 551
 
 _YEAR = 2026
 
-_WINDOW_START = datetime(_YEAR, 6, 1, tzinfo=timezone.utc)
+_WINDOW_START = datetime(_YEAR, 6, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, 6, 24, tzinfo=timezone.utc)
+_WINDOW_END = datetime(_YEAR, 6, 24, tzinfo=UTC)
 
 # The two selections that leave a scan pinned to `agent_exit` nothing to match.
 _EXIT_FREE_SELECTIONS = ([_STAGE_ENTER], [])

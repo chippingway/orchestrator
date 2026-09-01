@@ -178,7 +178,7 @@ class RecordAgentExitTrajectorySupport(unittest.TestCase):
                     stdout=case.stdout,
                     stderr="",
                 ),
-                duration_s=float(),
+                duration_s=float(0),
                 review_round=TRAJECTORY_REVIEW_ROUND,
                 retry_count=TRAJECTORY_RETRY_COUNT,
                 prompt=case.prompt,

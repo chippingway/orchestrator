@@ -47,7 +47,7 @@ def fmt_money(*args: Any, **kwargs: Any) -> str:
 def fmt_money_exact(*args: Any, **kwargs: Any) -> str:
     """Whole-dollar formatter with thousands separators (`$12,345`)."""
     amount = round(float(_numeric_value(args, kwargs) or 0))
-    return "${0}".format(format(amount, ","))
+    return "${}".format(format(amount, ","))
 
 
 def fmt_tokens(*args: Any, **kwargs: Any) -> str:
@@ -56,11 +56,11 @@ def fmt_tokens(*args: Any, **kwargs: Any) -> str:
     if tokens >= _BILLION:
         decimals = 0 if tokens >= 10 * _BILLION else 2
         billions = tokens / _BILLION
-        return "{0}B".format(format(billions, ".{0}f".format(decimals)))
+        return "{}B".format(format(billions, f".{decimals}f"))
     if tokens >= _MILLION:
         decimals = 0 if tokens >= 10 * _MILLION else 1
         millions = tokens / _MILLION
-        return "{0}M".format(format(millions, ".{0}f".format(decimals)))
+        return "{}M".format(format(millions, f".{decimals}f"))
     if tokens >= 1_000:
         thousands = tokens / 1_000
         return f"{thousands:.0f}K"

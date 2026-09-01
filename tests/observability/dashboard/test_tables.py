@@ -38,7 +38,7 @@ _FULL_WIDTH = 100.0
 
 _HALF_WIDTH = 50.0
 
-_NO_BAR = float()
+_NO_BAR = float(0)
 
 _DASH = "—"
 
@@ -91,7 +91,7 @@ class TableMarkupTest(unittest.TestCase):
                 head=_HEAD_MARKER,
                 rows=_ROWS,
             ),
-            "{0}<table class=\"{1}\">{2}<tbody>{3}</tbody></table>".format(
+            "{}<table class=\"{}\">{}<tbody>{}</tbody></table>".format(
                 _CSS_MARKER, _ISSUES_CLASS, _HEAD_MARKER, "".join(_ROWS),
             ),
         )

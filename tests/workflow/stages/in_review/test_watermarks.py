@@ -6,7 +6,7 @@ watermark bump and the split issue / inline-review id namespaces."""
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 
 from tests.support.fakes import (
@@ -139,7 +139,7 @@ class InReviewSplitWatermarkTest(
                     id=INLINE_COMMENT_ID,
                     body="line 12: rename foo to bar",
                     user=FakeUser("alice"),
-                    created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                    created_at=datetime.now(UTC) - timedelta(hours=1),
                 ),
             ],
             # Inline-review watermark just below the comment id so it
@@ -168,7 +168,7 @@ class InReviewSplitWatermarkTest(
         # watermark (1000). With one merged-id watermark this comment would
         # be silently filtered out; with split watermarks it gets through
         # and triggers the route to `fixing`.
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         gh, issue, pr = self._setup(
             review_comments=[
                 FakeComment(

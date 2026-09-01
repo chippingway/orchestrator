@@ -64,7 +64,7 @@ class ProgressLogTest(unittest.TestCase):
         self.assertIn("completed in", "\n".join(log_lines))
         # The result carries the same wall-clock, so the CLI prints it without
         # timing the call a second time.
-        self.assertGreaterEqual(sync_result.duration_s, float())
+        self.assertGreaterEqual(sync_result.duration_s, float(0))
 
     def test_a_no_op_never_claims_a_connection(self) -> None:
         # The connect pair implies a dial actually happened, so a configured

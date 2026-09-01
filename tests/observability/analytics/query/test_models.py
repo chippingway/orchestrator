@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import is_dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.activity_models import (
     BackendDailyTokensRow,
@@ -59,7 +59,7 @@ _ADOPTION_RATE = "adoption_rate"
 
 _YEAR = 2026
 
-_TS = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+_TS = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
 # One cohort and the part of it that counted, shared by the three shares so the
 # expected quotient is written once.
@@ -139,7 +139,7 @@ _DIVIDED_SHARES = (
             runs=_COHORT,
         ),
         _RATE,
-        float(),
+        float(0),
     ),
 )
 
@@ -214,7 +214,7 @@ class EmptyReadShapeTest(unittest.TestCase):
     def test_an_unset_database_zero_values_totals(self) -> None:
         summary = Summary()
         self.assertEqual(summary.total_events, 0)
-        self.assertEqual(summary.total_cost_usd, float())
+        self.assertEqual(summary.total_cost_usd, float(0))
         self.assertEqual(summary.timed_out_agent_runs, 0)
         self.assertEqual(summary.by_event, {})
         self.assertEqual(summary.by_stage, {})
@@ -244,7 +244,7 @@ class DerivedShareTest(unittest.TestCase):
     def test_an_empty_cohort_never_divides(self) -> None:
         for row, attribute in _EMPTY_SHARES:
             with self.subTest(row=type(row).__name__):
-                self.assertEqual(getattr(row, attribute), float())
+                self.assertEqual(getattr(row, attribute), float(0))
 
 
 class TraceResultAliasTest(unittest.TestCase):

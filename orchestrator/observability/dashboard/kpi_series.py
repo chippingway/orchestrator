@@ -66,7 +66,7 @@ def daily_point_totals(ts_points: Sequence[Any]) -> dict[date, list[float]]:
     """
     totals: dict[date, list[float]] = {}
     for point in ts_points:
-        daily = totals.setdefault(point.day, [float(), float()])
+        daily = totals.setdefault(point.day, [float(0), float(0)])
         daily[0] += float(point.cost_usd or 0)
         daily[1] += time_series_total_tokens(point)
     return totals

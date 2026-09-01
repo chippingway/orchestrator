@@ -12,7 +12,7 @@ removed, when a later tick re-discovers the feedback and republishes."""
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
@@ -50,7 +50,7 @@ def _paused_view(number: int) -> object:
 
 
 def _seed_fixing_pause(gh: FakeGitHubClient) -> object:
-    old = datetime.now(timezone.utc) - timedelta(hours=1)
+    old = datetime.now(UTC) - timedelta(hours=1)
     issue = make_issue(ISSUE, label="workflow:fixing")
     issue.comments.append(
         FakeComment(

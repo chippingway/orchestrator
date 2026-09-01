@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from orchestrator.observability.analytics.sync import columns, records, rows
@@ -91,7 +91,7 @@ class RequiredFieldParseTest(unittest.TestCase):
         # still has to hash and land where the offset-carrying one does.
         parsed = records.parse_ts(_SAMPLE_TS.removesuffix("+00:00"))
         self.assertEqual(parsed, records.parse_ts(_SAMPLE_TS))
-        self.assertEqual(parsed.tzinfo, timezone.utc)
+        self.assertEqual(parsed.tzinfo, UTC)
 
     def test_unusable_timestamp_reads_as_none(self) -> None:
         for raw in ("", "not-a-timestamp", None, 1748174400):

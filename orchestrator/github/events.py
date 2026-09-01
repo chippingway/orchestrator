@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +42,7 @@ def build_event_record(
 ) -> dict:
     """Build a second-precision UTC audit record without null extras."""
     event_record: dict[str, Any] = {
-        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "ts": datetime.now(UTC).isoformat(timespec="seconds"),
         "repo": repo,
         "issue": int(issue_number),
         "event": event,

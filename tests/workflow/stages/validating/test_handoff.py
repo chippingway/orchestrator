@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -375,7 +375,7 @@ class _ValidatingToInReviewFixtureMixin(_PatchedWorkflowMixin):
         return gh, issue, pr
 
     def _backdate_comments(self, issue, pr) -> None:
-        long_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        long_ago = datetime.now(UTC) - timedelta(hours=1)
         for comment in list(issue.comments) + list(pr.issue_comments):
             comment.created_at = long_ago
 

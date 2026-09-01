@@ -6,7 +6,7 @@ from __future__ import annotations
 import unittest
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib.util import find_spec
 from types import SimpleNamespace
 from typing import Any
@@ -41,8 +41,8 @@ _LAST_DAY = 28
 # An extent with rows behind it, and the empty one an un-ingested database
 # answers with.
 _EXTENT = DataExtent(
-    min_ts=datetime(_YEAR, _MAY, 1, tzinfo=timezone.utc),
-    max_ts=datetime(_YEAR, _MAY, _LAST_DAY, tzinfo=timezone.utc),
+    min_ts=datetime(_YEAR, _MAY, 1, tzinfo=UTC),
+    max_ts=datetime(_YEAR, _MAY, _LAST_DAY, tzinfo=UTC),
 )
 
 _NO_ROWS = DataExtent(min_ts=None, max_ts=None)

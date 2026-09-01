@@ -60,7 +60,7 @@ def table_head_html(columns: Sequence[tuple[str, bool]]) -> str:
     for label, right_aligned in columns:
         css_class = ' class="r"' if right_aligned else ""
         cells.append(f"<th{css_class}>{html.escape(label)}</th>")
-    return "<thead><tr>{0}</tr></thead>".format("".join(cells))
+    return "<thead><tr>{}</tr></thead>".format("".join(cells))
 
 
 def table_html(
@@ -83,7 +83,7 @@ def table_html(
 
 def relative_width_pct(magnitude: float, maximum: float) -> float:
     """The width an in-row bar is drawn at, as a share of the widest one."""
-    return magnitude / maximum * 100 if maximum > 0 else float()
+    return magnitude / maximum * 100 if maximum > 0 else float(0)
 
 
 def short_repo_name(repo: str) -> str:
@@ -102,4 +102,4 @@ def money_or_dash(raw: object) -> str:
     """The amount a cell reports, with an unpriced one drawn as a dash."""
     if raw is None:
         return "—"
-    return "${0}".format(format(raw, ",.2f"))
+    return "${}".format(format(raw, ",.2f"))

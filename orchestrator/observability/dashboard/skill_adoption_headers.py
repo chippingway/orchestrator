@@ -82,4 +82,4 @@ def skill_adoption_header_html(
         skill_adoption_header_cell(column, active_key, descending)
         for column in SKILL_ADOPTION_COLUMNS
     )
-    return "<thead><tr>{0}</tr></thead>".format("".join(cells))
+    return "<thead><tr>{}</tr></thead>".format("".join(cells))

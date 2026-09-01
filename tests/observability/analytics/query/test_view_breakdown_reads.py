@@ -55,6 +55,9 @@ _UNPRICED_TOKENS = 60_000
 
 _CLAUDE_DAY_ONE_TOKENS = 12_000
 
+# What a cost column reads as when the fixture predates it.
+_NO_COST = float(0)
+
 # The four token columns each of these three sums, so a volume read off any of
 # them is measured against the same billable bands.
 _TOKEN_COLUMNS = (
@@ -200,13 +203,13 @@ class ReviewRoundReadTest(unittest.TestCase):
             self,
             rows[0],
             {
-                "total_cost_usd": float(),
-                "developer_cost_usd": float(),
-                "reviewer_cost_usd": float(),
-                "developer_cache_cost_usd": float(),
-                "developer_no_cache_cost_usd": float(),
-                "reviewer_cache_cost_usd": float(),
-                "reviewer_no_cache_cost_usd": float(),
+                "total_cost_usd": _NO_COST,
+                "developer_cost_usd": _NO_COST,
+                "reviewer_cost_usd": _NO_COST,
+                "developer_cache_cost_usd": _NO_COST,
+                "developer_no_cache_cost_usd": _NO_COST,
+                "reviewer_cache_cost_usd": _NO_COST,
+                "reviewer_no_cache_cost_usd": _NO_COST,
             },
         )
 

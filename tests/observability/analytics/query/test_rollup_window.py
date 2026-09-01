@@ -10,7 +10,7 @@ binding, or the cleared-multiselect contract the other six keep.
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.rollup_reads import (
     get_backend_efficiency,
@@ -41,9 +41,9 @@ _YEAR = 2026
 
 _WINDOW_END_DAY = 28
 
-_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=timezone.utc)
+_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=UTC)
 
 _ROLLUP_READS = (
     get_summary,

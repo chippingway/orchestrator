@@ -111,9 +111,7 @@ def turn_usage_html(usage: TurnUsageView) -> str:
     segments = []
     if usage.model:
         segments.append(
-            '<span class="orch-traj-turn-model">{0}</span>'.format(
-                html.escape(usage.model),
-            )
+            f'<span class="orch-traj-turn-model">{html.escape(usage.model)}</span>',
         )
     estimated_cost = (
         "est. n/a"

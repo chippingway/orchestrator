@@ -114,9 +114,10 @@ class AuthedFetchHardeningTest(unittest.TestCase):
                 cwd=repo,
             )
         self.assertNotEqual(fetch.returncode, 0)
+        logged = log_capture.records.output
         self.assertTrue(
-            any(HTTP_PROXY_KEY in line for line in log_capture.records.output),
-            "expected http.proxy in refusal log, got {!r}".format(log_capture.records.output),
+            any(HTTP_PROXY_KEY in line for line in logged),
+            f"expected http.proxy in refusal log, got {logged!r}",
         )
 
     def test_no_token_fails_without_subprocess(self) -> None:
@@ -195,9 +196,10 @@ class AuthedFetchHardeningTest(unittest.TestCase):
         # Fetch aborted before any subprocess ran.
         subprocess_run.assert_not_called()
         self.assertNotEqual(fetch.returncode, 0)
+        logged = log_capture.records.output
         self.assertTrue(
-            any(REPOSITORY_SLUG in line for line in log_capture.records.output),
-            "expected slug 'acme/widgets' in log output, got {!r}".format(log_capture.records.output),
+            any(REPOSITORY_SLUG in line for line in logged),
+            f"expected slug 'acme/widgets' in log output, got {logged!r}",
         )
 
 

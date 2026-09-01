@@ -56,6 +56,9 @@ _THIRD_REV_CACHE = 4.0
 
 _UNROUNDED_DEV_NO_CACHE = 5.0
 
+# The amount a series carries in a round it drew no bar for.
+_NO_SPEND = float(0)
+
 _INITIAL_DEV_RUNS = 6
 
 _INITIAL_REV_RUNS = 4
@@ -237,15 +240,15 @@ class ReviewFigureTest(unittest.TestCase):
         # Every column is flipped together, or a round's amounts would part
         # company with the label they belong to.
         expected = (
-            (float(), float(), _FIRST_REV_NO_CACHE, _INITIAL_REV_NO_CACHE),
-            (float(), _THIRD_REV_CACHE, _FIRST_REV_CACHE, _INITIAL_REV_CACHE),
+            (_NO_SPEND, _NO_SPEND, _FIRST_REV_NO_CACHE, _INITIAL_REV_NO_CACHE),
+            (_NO_SPEND, _THIRD_REV_CACHE, _FIRST_REV_CACHE, _INITIAL_REV_CACHE),
             (
                 _UNROUNDED_DEV_NO_CACHE,
-                float(),
+                _NO_SPEND,
                 _FIRST_DEV_NO_CACHE,
                 _INITIAL_DEV_NO_CACHE,
             ),
-            (float(), _THIRD_DEV_CACHE, _FIRST_DEV_CACHE, _INITIAL_DEV_CACHE),
+            (_NO_SPEND, _THIRD_DEV_CACHE, _FIRST_DEV_CACHE, _INITIAL_DEV_CACHE),
         )
         traces = cost_review.cost_by_review_round(_ROWS).data
         for trace, amounts in zip(traces, expected):

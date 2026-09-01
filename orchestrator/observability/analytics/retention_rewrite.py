@@ -20,7 +20,7 @@ import contextlib
 import os
 import tempfile
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from orchestrator.observability.analytics.sink import log
@@ -136,5 +136,5 @@ def prune_jsonl_records(
     if not probe_exists(path):
         return 0
 
-    cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=days)
+    cutoff = (now or datetime.now(UTC)) - timedelta(days=days)
     return rewrite_pruned_file(path, cutoff, lock)

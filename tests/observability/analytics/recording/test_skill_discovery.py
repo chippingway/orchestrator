@@ -288,7 +288,7 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
                     result=_agent_exit_result(
                         _claude_stdout_with_skills(skills=()),
                     ),
-                    duration_s=float(),
+                    duration_s=float(0),
                     review_round=0,
                     retry_count=0,
                     cwd=cwd,
@@ -319,7 +319,7 @@ class RecordAgentExitCodexSkillDiscoveryTest(unittest.TestCase):
                 agent_spec=case.backend,
                 resume_session_id=None,
                 result=_agent_exit_result(_codex_trajectory_stdout()),
-                duration_s=float(),
+                duration_s=float(0),
                 review_round=1,
                 retry_count=0,
                 prompt="review this",

@@ -37,7 +37,7 @@ MIRROR = (
 # `owner/name` at nothing, so this is a shape an operator may really write.
 _OVERLONG = namespace.MAX_REPOSITORY_SEGMENT * 3
 
-LONG_SLUG = "owner/{0}".format("n" * _OVERLONG)
+LONG_SLUG = "owner/{}".format("n" * _OVERLONG)
 
 # What git exits with when a command fails outright instead of answering.
 _FATAL = 128

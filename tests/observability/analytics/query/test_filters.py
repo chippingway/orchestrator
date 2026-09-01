@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from orchestrator.observability.analytics.query.conditions import (
     agent_event_excluded,
@@ -32,9 +32,9 @@ _YEAR = 2026
 
 _WINDOW_END_DAY = 28
 
-_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=timezone.utc)
+_WINDOW_START = datetime(_YEAR, 5, 1, tzinfo=UTC)
 
-_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=timezone.utc)
+_WINDOW_END = datetime(_YEAR, 5, _WINDOW_END_DAY, tzinfo=UTC)
 
 # The clause a cleared multiselect collapses to, and the required conditions
 # the splices are checked with.

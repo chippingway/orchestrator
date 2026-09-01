@@ -41,10 +41,10 @@ DailyTokenValues = dict[date, dict[str, float]]
 def empty_token_bucket() -> dict[str, float]:
     """Return a fresh zeroed token and cost accumulator."""
     return {
-        INPUT_BAND: float(),
-        OUTPUT_BAND: float(),
-        CACHE_BAND: float(),
-        COST_BAND: float(),
+        INPUT_BAND: float(0),
+        OUTPUT_BAND: float(0),
+        CACHE_BAND: float(0),
+        COST_BAND: float(0),
     }
 
 

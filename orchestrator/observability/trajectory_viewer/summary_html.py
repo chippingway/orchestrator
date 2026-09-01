@@ -62,8 +62,8 @@ def topbar_html(total_runs: int, shown_runs: int) -> str:
 
 def fmt_cost_usd(amount: float, *, decimals: int = 2) -> str:
     """Render an exact dollar figure with the requested precision."""
-    number_format = ",.{0}f".format(decimals)
-    return "${0}".format(format(amount, number_format))
+    number_format = f",.{decimals}f"
+    return f"${format(amount, number_format)}"
 
 
 def trajectory_kpis(summary: TrajectorySummary) -> tuple[_TrajectoryKpi, ...]:
@@ -104,4 +104,4 @@ def trajectory_kpi_html(kpi: _TrajectoryKpi) -> str:
 def kpi_strip_html(summary: TrajectorySummary) -> str:
     """Render the five trajectory KPI tiles."""
     cells = (trajectory_kpi_html(kpi) for kpi in trajectory_kpis(summary))
-    return '<div class="orch-kpis">{0}</div>'.format("".join(cells))
+    return '<div class="orch-kpis">{}</div>'.format("".join(cells))
