@@ -33,6 +33,15 @@ reports. `_commit_contains` is the same pair of ids asked a different question,
 and the one a caller about to overwrite a ref needs: whether what is on that
 ref survives being replaced by this commit.
 
+`_ignored_paths` is the same tree read for the one thing `status` leaves out of
+every answer above. Untracked and modified are what git itself calls dirty, and
+they are what `worktree remove` refuses over; an ignored path is neither, so a
+tree carrying nothing but those reports clean and a removal that does not force
+takes them with it. A caller about to publish has no use for that -- ignored
+output is exactly what it should not be pushing -- but one about to DELETE a
+tree does: what the rules hide is still somebody's, and an `.env` beside a
+build directory is not something to throw away on a repository's say-so.
+
 `_worktree_status` and `_worktree_dirty_files` are the same read with different
 answers for the same failure. The list form says "the paths git named", which
 is what a caller refusing on a positive result wants; the status form says
@@ -69,6 +78,14 @@ from orchestrator.git import commands as _commands
 _UNTRACKED_ALL = "--untracked-files=all"
 
 _IGNORE_SUBMODULES_NONE = "--ignore-submodules=none"
+
+# What has `status` report the paths its ignore rules hide, and how each of
+# those is spelled in the report. Directories come back collapsed under this
+# mode, so a tree holding a large build root answers with the root rather than
+# with everything under it.
+_IGNORED_ENTRIES = "--ignored"
+
+_IGNORED_STATUS = "!! "
 
 # What keeps a READ from writing. `git status` refreshes the index as it goes
 # and writes the refreshed stat data back, which is a change to the repository
@@ -249,6 +266,47 @@ def _worktree_status(worktree: Path) -> _WorktreeStatus:
             paths=tuple(dict.fromkeys(reported + list(suppressed))),
         )
     return _WorktreeStatus(readable=True, paths=tuple(reported))
+
+
+def _ignored_paths(worktree: Path) -> tuple[str, ...] | None:
+    """Every path this tree carries that its ignore rules hide, or None.
+
+    The one thing `_worktree_status` cannot report, and it is left out of that
+    answer rather than folded into it because the two are spent differently: a
+    caller deciding whether to publish is right to pass over ignored output,
+    and a caller deciding whether to DELETE a tree is not. Git draws the same
+    line -- `worktree remove` refuses a tree with untracked or modified files
+    and takes an ignored one without a word -- so this is the read that stands
+    between a reclamation and somebody's `.env`.
+
+    `None` is the read that established nothing, kept apart from the empty
+    answer for the reason every probe here keeps them apart: only an empty
+    list proves the tree is hiding nothing, and a caller that read a failure
+    as one would delete on the strength of a question nobody put.
+
+    The same envelope as the status read above, and for the same reasons: the
+    tree is named on the command line so per-worktree `core.worktree` cannot
+    point the read at another one, optional locks are off so asking leaves no
+    trace, and the report is NUL-delimited so a path cannot arrive quoted or
+    joined. What the detached global config drops here is a global
+    `core.excludesFile`, which costs nothing: a path hidden only by that file
+    is not hidden from the untracked read beside this one, so between the two
+    of them nothing on disk goes unreported.
+    """
+    listed = _commands._git_hardened(
+        _commands._work_tree_arg(worktree),
+        _NO_OPTIONAL_LOCKS,
+        "status", "--porcelain", _NUL_DELIMITED,
+        _IGNORED_ENTRIES, _IGNORE_SUBMODULES_NONE,
+        cwd=worktree,
+    )
+    if listed.returncode != 0:
+        return None
+    return tuple(
+        record[len(_IGNORED_STATUS):]
+        for record in (listed.stdout or "").split(_NUL_SEPARATOR)
+        if record.startswith(_IGNORED_STATUS)
+    )
 
 
 def _reported_paths(status_stdout: str) -> list[str]:

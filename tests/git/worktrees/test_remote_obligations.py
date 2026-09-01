@@ -93,7 +93,7 @@ UNKNOWN_COMMIT = "1111111111111111111111111111111111111111"
 
 def _swept(gh, spec) -> tuple:
     """One pass over the records one repository wrote."""
-    return reclamation._reclaim_recorded_remotes(gh, spec)
+    return reclamation._reclaim_recorded_notes(gh, spec)
 
 
 def _settled(

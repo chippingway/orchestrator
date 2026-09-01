@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator.git import authentication, commands
@@ -42,7 +43,10 @@ from tests.git.worktrees.artifact_test_support import (
     WIDGET_SLUG,
     _namespaced_branch,
 )
-from tests.git.worktrees.candidate_host_test_support import _branch_at
+from tests.git.worktrees.candidate_host_test_support import (
+    _branch_at,
+    _track_file,
+)
 from tests.git.worktrees.eligibility_test_support import (
     ISSUE_NUMBER,
     _candidate,
@@ -87,6 +91,60 @@ _RECORD_SEAM = "_record_obligation"
 
 # Where a checkout is moved to for the case about a link left in its place.
 MOVED_CHECKOUT = "moved-checkout"
+
+# The rule file, the path it hides, and what is in it, for the cases about a
+# tree carrying something no status reports.
+IGNORE_FILE = ".gitignore"
+
+HIDDEN_FILE = "secrets.env"
+
+HIDDEN_CONTENT = "TOKEN=an operator's own\n"
+
+# The directory git cannot delete and the modes that make it so: an empty
+# directory is invisible to every status, and a parent this process may not
+# write in is one `remove_dir_recursively` stops inside.
+STUCK_DIR = "stuck"
+
+STUCK_INNER = "inner"
+
+READ_ONLY_DIR = 0o500
+
+WRITABLE_DIR = 0o700
+
+RACED_MESSAGE = "raced"
+
+
+def _unstick(stuck: Path) -> None:
+    """Give back the directory a case made unremovable, if it is still there.
+
+    Suppressed rather than checked, because whether git got to it is the very
+    thing the case is about: a removal that took the whole tree leaves nothing
+    to hand back.
+    """
+    with contextlib.suppress(OSError):
+        stuck.chmod(WRITABLE_DIR)
+
+
+class _RacedCommit:
+    """A commit landing in the window no reading covers.
+
+    Installed in place of the last reading the removal is gated on: the tree
+    answers clean, and a moment later it is carrying a commit that nothing but
+    its own HEAD names. Standing in for that reading rather than patching a
+    clock is what makes the race a case rather than a hope.
+    """
+
+    def __init__(self) -> None:
+        self.made = ""
+
+    def __call__(self, worktree: Path) -> ProbeAnswer:
+        """Commit on no branch where a racer would, and answer clean."""
+        _run_git("checkout", "-q", "--detach", cwd=worktree)
+        _run_git(
+            "commit", "-q", "--allow-empty", "-m", RACED_MESSAGE, cwd=worktree,
+        )
+        self.made = _tip(worktree, "HEAD")
+        return ProbeAnswer.CONFIRMED
 
 
 class _DestructiveCalls:
@@ -456,18 +514,6 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.assertEqual(_tip(self.clone, self.branch), made)
 
 
-    def raced(self, worktree) -> ProbeAnswer:
-        """Commit in the checkout, on no branch, where a racer would.
-
-        Installed in place of the last reading the removal is gated on, which
-        is the window no reading covers: the tree answers clean, and a moment
-        later it is carrying a commit that nothing but its own HEAD names.
-        """
-        _run_git("checkout", "-q", "--detach", cwd=worktree)
-        _run_git("commit", "-q", "--allow-empty", "-m", "raced", cwd=worktree)
-        self.raced_at = _tip(worktree, "HEAD")
-        return ProbeAnswer.CONFIRMED
-
     def racing(self, spec, worktree, issue_number: int) -> bool:
         """Pin the checkout, then commit where a racer would.
 
@@ -511,8 +557,9 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
+        racer = _RacedCommit()
 
-        with patch.object(evidence, "_clean_worktree", self.raced):
+        with patch.object(evidence, "_clean_worktree", racer):
             reclaimed = self.spend(cleared)
 
         self.assertEqual(
@@ -525,8 +572,29 @@ class DivergentWorkTest(_ReclaimTestCase):
                 self.clone,
                 obligations._anchor_ref(self.spec, ISSUE_NUMBER),
             ),
-            self.raced_at,
+            racer.made,
         )
+
+    def test_an_ignored_file_written_since_keeps_it(self) -> None:
+        # The one thing git does not refuse for itself. `worktree remove`
+        # stops over an untracked or modified file and takes an ignored one
+        # without a word, so a checkout carrying nothing else passes every
+        # other reading here -- and what a repository calls derived is still
+        # somebody's `.env` when an unattended pass is the one deleting it.
+        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        hidden = worktree / HIDDEN_FILE
+        hidden.write_text(HIDDEN_CONTENT)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
+        )
+        self.assertEqual(hidden.read_text(), HIDDEN_CONTENT)
+        self.assertTrue(_holds(self.spec, self.branch))
 
 
 class StepFailureTest(_ReclaimTestCase):
@@ -662,6 +730,126 @@ class StepFailureTest(_ReclaimTestCase):
             self.outcomes(reclaimed), _surfaces(None, FAILED, FAILED),
         )
         self.assertEqual(self.standing()[1:], (True, True))
+
+
+class AnchorReconciliationTest(_ReclaimTestCase):
+    """What becomes of the commit a removal pinned, on this pass and after.
+
+    An anchor outlives the checkout it was taken from, so the pass that
+    settles one is never the pass that wrote it. These are the passes after:
+    the removal that could not finish, the scan that has nothing left to
+    report, and the ledger that goes on naming what this host is holding.
+    """
+
+    def stuck(self, worktree: Path) -> Path:
+        """Leave one directory in this checkout that git cannot delete.
+
+        What makes `worktree remove` fail HALFWAY rather than refuse. An empty
+        directory is invisible to every status, so nothing about the tree
+        reads as dirty and the removal is attempted; a parent this process may
+        not write in is one the recursive delete stops inside. Git takes what
+        it can, says so, and goes on to delete the administrative directory
+        anyway -- which is what leaves a checkout whose HEAD and reflog are
+        gone while the surface reports failure.
+        """
+        stuck = worktree / STUCK_DIR
+        (stuck / STUCK_INNER).mkdir(parents=True)
+        stuck.chmod(READ_ONLY_DIR)
+        self.addCleanup(_unstick, stuck)
+        return stuck
+
+    def test_a_failed_removal_keeps_what_it_pinned(self) -> None:
+        # A non-zero result is not a checkout still standing. The command
+        # deletes the tree and then deletes the administrative directory
+        # beside it whatever the first half did, so by the time it reports
+        # failure the HEAD and the reflog that held a raced commit are already
+        # gone -- and the note is the only name that commit has left.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.stuck(worktree)
+        racer = _RacedCommit()
+
+        with patch.object(evidence, "_clean_worktree", racer):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertEqual(
+            _tip(self.clone, obligations._anchor_ref(self.spec, ISSUE_NUMBER)),
+            racer.made,
+        )
+
+    def test_a_note_outliving_its_artifacts_is_named(self) -> None:
+        # The checkout came down and what it was standing on was not what
+        # anybody cleared, so the note stays. The pass after takes the
+        # branches -- there is no checkout left to hold them back -- and the
+        # scan then reports nothing at all for this issue, which is the state
+        # the ledger exists for: it goes on naming the commit this host is the
+        # only name for, pass after pass, until somebody settles it.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        racer = _RacedCommit()
+
+        with patch.object(evidence, "_clean_worktree", racer):
+            self.spend(cleared)
+
+        for candidate in eligibility._classified_candidates(
+            _github(), inventory._local_issue_inventory((self.spec,)).issues,
+        ):
+            self.spend(candidate)
+
+        self.assertEqual(
+            inventory._local_issue_inventory((self.spec,)).issues, (),
+        )
+        named = tuple(
+            (taken.surface, taken.outcome)
+            for taken in reclamation._reclaim_recorded_notes(
+                self.gh, self.spec,
+            ) + reclamation._reclaim_recorded_notes(self.gh, self.spec)
+        )
+
+        self.assertEqual(
+            named, ((ArtifactSurface.ANCHOR, FAILED),) * 2,
+        )
+        self.assertEqual(
+            _tip(self.clone, obligations._anchor_ref(self.spec, ISSUE_NUMBER)),
+            racer.made,
+        )
+
+    def test_a_note_that_would_not_go_is_not_settled(self) -> None:
+        # The checkout is gone and the note over it is not, which is a
+        # teardown that has left something behind: reported settled, the
+        # branch beside it would go on the next pass and the note would be
+        # left with nothing naming it. What it holds is the commit that was
+        # cleared, so the sweep afterwards finds the base carrying it and lets
+        # it go.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        with patch.object(
+            obligations, "_discard_anchor", return_value=False,
+        ):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertFalse(reclaimed.settled)
+        self.assertFalse(worktree.exists())
+
+        swept = reclamation._reclaim_recorded_notes(self.gh, self.spec)
+
+        self.assertEqual(
+            tuple((taken.surface, taken.outcome) for taken in swept),
+            ((ArtifactSurface.ANCHOR, CLEANED),),
+        )
+        self.assertEqual(
+            obligations._anchored_commit(self.spec, ISSUE_NUMBER), "",
+        )
 
 
 class ReconciliationTest(_ReclaimTestCase):

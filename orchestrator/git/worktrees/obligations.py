@@ -56,8 +56,14 @@ back after it: equal to what the verdict cleared, it is dropped, and anything
 else is work somebody made in that window -- kept under the anchor, and said
 so.
 
+Both kinds are read back the same way, off their own namespace, because both
+outlive what they are about. A record outlives the branch it names and an
+anchor outlives the checkout it was taken from, so a pass that walked this
+host's artifacts would find neither -- the ledger is where a leftover of
+either kind is still named after everything else has gone.
+
 Nothing here reads a remote or deletes anything on one. This owner writes the
-record, reads it back, and takes it away; what is done about one belongs to
+note, reads it back, and takes it away; what is done about one belongs to
 ``reclamation``.
 """
 from __future__ import annotations
@@ -97,6 +103,10 @@ _DIGEST_MARK = "__h"
 # standing on, resolved by git in the same process that writes it, so nothing
 # lands between the reading and the note.
 _HEAD = "HEAD"
+
+# How an anchor names the issue it is about, which is the spelling the reader
+# of the namespace parses the number back out of.
+_ISSUE_SEGMENT = "issue-"
 
 # The lease that says the ref must not exist yet, which is the only lease an
 # anchor may be written under: one already there is holding a commit an
@@ -294,9 +304,19 @@ def _dropped_note(spec: config.RepoSpec, ref: str) -> bool:
     return False
 
 
+def _anchors_prefix(spec: config.RepoSpec) -> str:
+    """Where one repository's anchors live, and nowhere else's.
+
+    The trailing separator makes it a namespace rather than a name, exactly as
+    it does for the records: the ref spelling this repository's key itself is
+    not one of the notes beneath it.
+    """
+    return f"{ANCHOR_NAMESPACE}/{_repository_key(spec)}/"
+
+
 def _anchor_ref(spec: config.RepoSpec, issue_number: int) -> str:
     """The ref one issue's checkout is pinned under while it is removed."""
-    return f"{ANCHOR_NAMESPACE}/{_repository_key(spec)}/issue-{issue_number}"
+    return f"{_anchors_prefix(spec)}{_ISSUE_SEGMENT}{issue_number}"
 
 
 def _anchor_checkout(
@@ -376,8 +396,10 @@ def _discard_anchor(spec: config.RepoSpec, issue_number: int) -> bool:
     return _dropped_note(spec, _anchor_ref(spec, issue_number))
 
 
-def _read_records(spec: config.RepoSpec) -> subprocess.CompletedProcess | None:
-    """Run the record listing in this clone, or report that it never ran.
+def _read_notes(
+    spec: config.RepoSpec, prefix: str,
+) -> subprocess.CompletedProcess | None:
+    """Run one namespace's note listing in this clone, or say it never ran.
 
     Hardened and lock-held for the reason every read of this clone is: the
     worktrees hanging off it are trees agents write in, and a planted
@@ -389,45 +411,67 @@ def _read_records(spec: config.RepoSpec) -> subprocess.CompletedProcess | None:
                 "for-each-ref",
                 _RECORD_FORMAT,
                 "--end-of-options",
-                _records_prefix(spec),
+                prefix,
                 cwd=spec.target_root,
             )
     except OSError as spawn_error:
         log.warning(
-            "could not run the reclaim record listing in %s: %s",
-            spec.target_root, spawn_error,
+            "could not run the note listing for %s in %s: %s",
+            prefix, spec.target_root, spawn_error,
         )
         return None
 
 
-def _recorded_obligations(
-    spec: config.RepoSpec,
+def _recorded_notes(
+    spec: config.RepoSpec, prefix: str,
 ) -> tuple[ProvenTip, ...] | None:
-    """Every remote deletion this clone still carries a record of.
+    """Every note this clone carries under one of the two namespaces.
 
-    Each one as the branch it is about and the commit it was cleared at, which
-    is the same pair a verdict hands over -- a record IS a proven tip somebody
-    wrote down, so a caller settling one spends it exactly as it spends the
-    verdict's own.
+    Each one as the name it is filed under and the commit it was written at,
+    which is the same pair a verdict hands over -- a note IS a proven tip
+    somebody wrote down, so a caller settling one spends it exactly as it
+    spends the verdict's own.
 
-    `None` when the records could not be read, which is not the empty answer a
-    clone owing nothing gives: a caller reading the second as the first would
-    conclude that every deletion this host began has finished. A listing that
+    `None` when the notes could not be read, which is not the empty answer a
+    clone holding none gives: a caller reading the second as the first would
+    conclude that everything this host began has finished. A listing that
     warned is answered the same way, because git skips a ref it cannot parse
-    and still exits zero -- the answer comes back short by exactly the record
+    and still exits zero -- the answer comes back short by exactly the note
     something is wrong with, and short is the one thing a caller cannot see.
     """
-    listed = _read_records(spec)
+    listed = _read_notes(spec, prefix)
     if listed is None:
         return None
     complaint = (listed.stderr or "").strip()
     if listed.returncode != 0 or complaint:
         log.warning(
-            "could not read the reclaim records in %s: %s",
-            spec.target_root, complaint,
+            "could not read the notes under %s in %s: %s",
+            prefix, spec.target_root, complaint,
         )
         return None
-    return _parsed_records(listed.stdout or "", _records_prefix(spec))
+    return _parsed_records(listed.stdout or "", prefix)
+
+
+def _recorded_obligations(
+    spec: config.RepoSpec,
+) -> tuple[ProvenTip, ...] | None:
+    """Every remote deletion this clone still carries a record of."""
+    return _recorded_notes(spec, _records_prefix(spec))
+
+
+def _recorded_anchors(
+    spec: config.RepoSpec,
+) -> tuple[ProvenTip, ...] | None:
+    """Every commit this clone is still holding an anchor over.
+
+    Read back the way the records beside them are, and for the same reason: an
+    anchor outlives the checkout it was taken from, so once that checkout and
+    the branches beside it are gone the ledger is the only place the commit is
+    named at all. What comes back is the issue segment the note is filed under
+    and the commit it pinned; whether it still has to be held is the caller's
+    question, not this one's.
+    """
+    return _recorded_notes(spec, _anchors_prefix(spec))
 
 
 def _parsed_records(

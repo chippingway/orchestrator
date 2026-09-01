@@ -60,6 +60,9 @@ PR_NUMBER = 42
 OTHER_ISSUE_NUMBER = 315
 LOOSE_FILE = "left-behind.txt"
 LOOSE_CONTENT = "an agent's unfinished work\n"
+IGNORE_FILE = ".gitignore"
+HIDDEN_FILE = "secrets.env"
+HIDDEN_CONTENT = "TOKEN=an operator's own\n"
 TRACKED_FILE = "tracked.txt"
 TRACKED_CONTENT = "committed work\n"
 # A timestamp no checkout was ever made at, so the entry git cached at
@@ -258,17 +261,30 @@ class RemoteGateTest(_CandidateTestCase):
 class CheckoutStateTest(_CandidateTestCase):
     """What the checkout itself has to be before it may be removed."""
 
-    def test_loose_work_in_the_checkout_keeps_it(self) -> None:
+    def test_what_the_checkout_carries_keeps_it(self) -> None:
+        # Two reads because git draws the line between them. A path the
+        # repository's own rules hide is not what it calls dirty and not what
+        # a removal refuses over, so a tree carrying only that answers clean
+        # to every status -- and is still an `.env` somebody left there. They
+        # are charged apart for what an operator is sent to look at: `git
+        # status` shows them nothing about the first.
+        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
         self.landed()
         worktree = self.checkout()
-        (worktree / LOOSE_FILE).write_text(LOOSE_CONTENT)
+        (worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
 
-        verdict = self.classify(worktree=worktree)
+        hiding = self.classify(worktree=worktree)
 
         self.assertEqual(
-            _reasons(verdict.retentions), (RetentionReason.WORKTREE_DIRTY,),
+            _reasons(hiding.retentions), (RetentionReason.WORKTREE_IGNORED,),
         )
-        self.assertEqual(verdict.retentions[0].subject, str(worktree))
+        self.assertEqual(hiding.retentions[0].subject, str(worktree))
+
+        (worktree / LOOSE_FILE).write_text(LOOSE_CONTENT)
+
+        self.assertEqual(
+            self.kept(worktree=worktree), (RetentionReason.WORKTREE_DIRTY,),
+        )
 
     def test_a_checkout_that_is_not_ours_keeps_it(self) -> None:
         # A repository of somebody else's at the path this issue's checkout

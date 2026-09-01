@@ -62,7 +62,12 @@ failures needing it never reach -- and let go only once the branch is gone
 from the remote; a deletion that could not be written down first is not
 attempted at all. Finishing those records is this module's second entry point,
 and it needs no candidate: it reads what this host wrote down rather than what
-it still holds.
+it still holds. The anchors are read there too, and for the same reason. One
+outlives the checkout it was taken from, so the pass that would find it
+standing is the pass with no checkout left to find it by -- and the branches
+beside it go on the tick after, which leaves nothing on this host reporting a
+commit this host is still the only name for. Off the ledger it is named every
+pass, and let go on the day the base carries what it holds.
 
 That pass is also the one place here that fetches, and it fetches for the
 classification's sake rather than its own. A branch somebody recreated on the
@@ -437,9 +442,9 @@ def _removal_while_held(
             "issue=#%d worktree remove of %s failed: %s",
             artifacts.issue_number, worktree, (removed.stderr or "").strip(),
         )
-        _anchor_let_go(spec, artifacts.issue_number)
-        return SurfaceOutcome.FAILED
-    return _anchor_settled(artifacts, proven_sha)
+    return _anchor_settled(
+        artifacts, proven_sha, removed=removed.returncode == 0,
+    )
 
 
 def _anchor_taken(
@@ -528,7 +533,7 @@ def _anchor_let_go(spec: config.RepoSpec, issue_number: int) -> bool:
 
 
 def _anchor_settled(
-    artifacts: IssueArtifacts, proven_sha: str | None,
+    artifacts: IssueArtifacts, proven_sha: str | None, *, removed: bool,
 ) -> SurfaceOutcome:
     """What the removal took, measured against what the verdict cleared.
 
@@ -546,21 +551,39 @@ def _anchor_settled(
     the issue is still one a later pass finds. A commit nobody can name is
     reported the same way: an anchor that would not read back establishes
     nothing about what was taken.
+
+    Asked on a removal that FAILED as squarely as on one that finished, which
+    is what `removed` is for and nothing else. `worktree remove` is not one
+    step: it deletes the tree, and then deletes the administrative directory
+    beside it whatever the first half did -- there is no going back from a
+    half-deleted checkout, so it does not try. A commit raced into the window
+    is then held by an anchor whose reflog and HEAD have already gone, and a
+    pass that let the note go because the command came back non-zero would
+    take the last name that commit has. So the note is settled on what it
+    pins, and only the answer this surface reports turns on whether the tree
+    is actually gone.
+
+    A note that would not go leaves the surface failed even when everything
+    else finished. What is left behind is created and never overwritten, so it
+    stands in front of every later removal for this issue -- and a teardown
+    reporting itself settled over one would have the branch beside it deleted
+    on the next pass and the note left with nothing naming it.
     """
     spec = artifacts.spec
     anchored = obligations._anchored_commit(spec, artifacts.issue_number)
-    if anchored and anchored == proven_sha:
-        _anchor_let_go(spec, artifacts.issue_number)
-        return SurfaceOutcome.CLEANED
-    log.error(
-        "issue=#%d the checkout was on %r rather than the %r this verdict "
-        "cleared when it came down; that commit is kept at %s",
-        artifacts.issue_number,
-        anchored or "a commit nobody could read back",
-        proven_sha,
-        obligations._anchor_ref(spec, artifacts.issue_number),
-    )
-    return SurfaceOutcome.FAILED
+    if not anchored or anchored != proven_sha:
+        log.error(
+            "issue=#%d the checkout was on %r rather than the %r this verdict "
+            "cleared; that commit is kept at %s",
+            artifacts.issue_number,
+            anchored or "a commit nobody could read back",
+            proven_sha,
+            obligations._anchor_ref(spec, artifacts.issue_number),
+        )
+        return SurfaceOutcome.FAILED
+    if not _anchor_let_go(spec, artifacts.issue_number):
+        return SurfaceOutcome.FAILED
+    return SurfaceOutcome.CLEANED if removed else SurfaceOutcome.FAILED
 
 
 def _checkout_present(worktree: Path) -> ProbeAnswer:
@@ -619,8 +642,8 @@ def _still_cleared(
 
     Then the readings the classification took, taken again. The tree is a
     worktree of the configured clone and on a branch this issue publishes
-    under, its HEAD is on the commit that was cleared, and it is carrying
-    nothing loose.
+    under, its HEAD is on the commit that was cleared, and it is holding
+    nothing the removal would take with it.
 
     The tip is compared rather than merely resolved, which is what makes work
     made after the proof survive: the commit somebody cleared is somewhere the
@@ -652,10 +675,35 @@ def _still_cleared(
             "cleared", artifacts.issue_number, worktree, proven_sha,
         )
         return False
+    return _holding_nothing(artifacts, worktree)
+
+
+def _holding_nothing(artifacts: IssueArtifacts, worktree: Path) -> bool:
+    """Whether this tree PROVED there is nothing in it a removal would take.
+
+    Two reads, because git draws the line between them and this boundary must
+    not. Untracked and modified paths are what it calls dirty and what
+    `worktree remove` refuses over without being asked; a path the
+    repository's own ignore rules cover is neither, so a checkout holding
+    nothing but those -- an `.env`, a key, a build root somebody is mid-way
+    through -- answers clean to every other reading here and comes down with
+    all of it inside.
+
+    Stricter than git on purpose. What that command refuses is what a human
+    running it interactively needs to be stopped over; what this refuses is
+    what an unattended pass may destroy with nobody watching, and the two are
+    not the same list.
+    """
     if evidence._clean_worktree(worktree) is not ProbeAnswer.CONFIRMED:
         log.warning(
             "issue=#%d keeping %s: it has not proved it is carrying nothing "
             "loose", artifacts.issue_number, worktree,
+        )
+        return False
+    if evidence._nothing_ignored(worktree) is not ProbeAnswer.CONFIRMED:
+        log.warning(
+            "issue=#%d keeping %s: it has not proved it is hiding nothing "
+            "under its own ignore rules", artifacts.issue_number, worktree,
         )
         return False
     return True
@@ -987,18 +1035,32 @@ def _discharged(
     return outcome
 
 
-def _reclaim_recorded_remotes(
+def _reclaim_recorded_notes(
+    gh: GitHubClient, spec: config.RepoSpec,
+) -> tuple[SurfaceResult, ...]:
+    """Settle everything this host wrote down and did not finish.
+
+    The pass that needs no candidate, over both kinds of note. What the scan
+    in ``inventory`` reports is what this host still holds, and the leftovers
+    this exists for are the ones with nothing left to hold: a remote branch
+    whose local artifacts went before the deletion that was to follow them,
+    and a commit an anchor is the last name of once the checkout it was taken
+    from has come down. So this reads what was written down rather than what
+    is on disk, which is what makes the retry survive a restart rather than a
+    tick -- and it takes a client, because what a record cannot carry is the
+    permission.
+
+    Both kinds in one pass and behind one name, because a caller that had to
+    remember two would eventually run one of them: a leftover nobody asks
+    about is the state this whole ledger exists to prevent.
+    """
+    return _reclaimed_records(gh, spec) + _reclaimed_anchors(spec)
+
+
+def _reclaimed_records(
     gh: GitHubClient, spec: config.RepoSpec,
 ) -> tuple[SurfaceResult, ...]:
     """Finish the remote deletions this host wrote down and did not complete.
-
-    The pass that needs no candidate. What the scan in ``inventory`` reports is
-    what this host still holds, and the leftover this exists for is the one
-    with nothing left to hold: a remote branch whose local artifacts went
-    before the deletion that was to follow them. So this reads what was
-    written down rather than what is on disk, which is what makes the retry
-    survive a restart rather than a tick -- and it takes a client, because
-    what a record cannot carry is the permission.
 
     Every record is put back through the steps the teardown that wrote it was
     on, the classification included -- because a record is a note about a
@@ -1027,6 +1089,92 @@ def _reclaim_recorded_remotes(
                 _reclaimed_record(gh, spec, issue_number, owed),
             ))
     return tuple(settled)
+
+
+def _reclaimed_anchors(spec: config.RepoSpec) -> tuple[SurfaceResult, ...]:
+    """Settle or report every commit this host is still holding an anchor on.
+
+    The half of the ledger no candidate reaches. An anchor is written over a
+    checkout and outlives it, so the pass that finds one standing is exactly
+    the pass with no checkout left to find it by -- and the branches beside it
+    go on the tick after, which leaves the scan reporting nothing at all while
+    this host is still holding a commit for that issue. Read off the ledger
+    instead, it is named on every pass until somebody settles it.
+
+    No client and no issue is asked about. What an anchor holds is a commit,
+    and the only question about a commit is whether anything else would still
+    name it -- which is the base's answer and nobody else's. An anchor whose
+    commit the base carries is a note over nothing, whether it was left by a
+    removal whose discard failed or by a pass that stopped before it could let
+    go; one the base does not carry is holding the only reference that commit
+    has, and it is kept and reported for as long as that is true.
+
+    The base is asked once for the lot, and only when there is something to
+    measure -- a clone holding no anchors pays for no round trip.
+
+    Only this repository's own notes are read, and inside them only a name
+    this repository's own derivation produces: the namespace is keyed by
+    repository, and a ref somebody wrote by hand under it is nobody's to
+    settle.
+    """
+    anchored = obligations._recorded_anchors(spec)
+    if anchored is None:
+        return (SurfaceResult(
+            ArtifactSurface.ANCHOR,
+            obligations.ANCHOR_NAMESPACE,
+            SurfaceOutcome.FAILED,
+        ),)
+    if not anchored:
+        return ()
+    base = evidence._published_tip(spec, spec.base_branch)
+    settled = []
+    for held in anchored:
+        issue_number = paths._issue_segment_number(held.subject)
+        if issue_number is not None:
+            settled.append(SurfaceResult(
+                ArtifactSurface.ANCHOR,
+                held.subject,
+                _reclaimed_anchor(spec, base, issue_number, held.sha),
+            ))
+    return tuple(settled)
+
+
+def _reclaimed_anchor(
+    spec: config.RepoSpec,
+    base: BranchTip,
+    issue_number: int,
+    anchored_sha: str,
+) -> SurfaceOutcome:
+    """What one anchor is still holding, and whether it has to go on holding it.
+
+    The base is the whole of the test, and it is the same test the
+    classification runs on any other commit: a tip the base already carries is
+    work that has landed, and a ref over it names nothing that would otherwise
+    be lost. Anything else -- a commit the base does not carry, a base nobody
+    could read -- leaves the note where it is, since the alternative is
+    dropping the last name a commit has on the strength of a question that was
+    never answered.
+
+    Nothing is deleted here either way. The note goes or it stays; what it
+    pins is a commit, and this pass has no business doing anything to one.
+    """
+    ref = obligations._anchor_ref(spec, issue_number)
+    if evidence._base_contains(
+        spec, base, anchored_sha,
+    ) is not ProbeAnswer.CONFIRMED:
+        log.warning(
+            "issue=#%d %s is still holding %r: the base does not carry that "
+            "commit, and nothing else on this host names it",
+            issue_number, ref, anchored_sha,
+        )
+        return SurfaceOutcome.FAILED
+    if _anchor_let_go(spec, issue_number):
+        log.info(
+            "issue=#%d let go of %s: the base carries the %r it was holding",
+            issue_number, ref, anchored_sha,
+        )
+        return SurfaceOutcome.CLEANED
+    return SurfaceOutcome.FAILED
 
 
 def _reclaimed_record(

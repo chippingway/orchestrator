@@ -47,6 +47,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from itertools import chain
+from pathlib import Path
 from types import MappingProxyType
 
 from orchestrator.git.worktrees import claims, evidence
@@ -80,6 +81,14 @@ _CLEANLINESS_REASONS = MappingProxyType({
     ProbeAnswer.REFUTED: RetentionReason.WORKTREE_DIRTY,
 })
 
+# What a tree hiding files under its own ignore rules costs. Apart from the
+# table above because what an operator does with it differs: `git status` shows
+# them nothing, and what they have to go and look at is what the rules cover.
+_HIDDEN_REASONS = MappingProxyType({
+    ProbeAnswer.UNREADABLE: RetentionReason.WORKTREE_UNREADABLE,
+    ProbeAnswer.REFUTED: RetentionReason.WORKTREE_IGNORED,
+})
+
 
 def _checkout_retentions(artifacts: IssueArtifacts) -> tuple[Retention, ...]:
     """Why this issue's checkout may not be removed, if it may not.
@@ -99,17 +108,39 @@ def _checkout_retentions(artifacts: IssueArtifacts) -> tuple[Retention, ...]:
     worktree = artifacts.worktree
     if worktree is None:
         return ()
+    kept_for = _checkout_reason(artifacts, worktree)
+    if kept_for is None:
+        return ()
+    return (Retention(kept_for, str(worktree)),)
+
+
+def _checkout_reason(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> RetentionReason | None:
+    """The first thing about this checkout that keeps it, if anything does.
+
+    Three reads in the order they may be spent, each skipped once one before
+    it has refused. Identity gates both of the others for the reason given
+    above; the two about what the tree holds are asked in the order git
+    itself would meet them, since a tree that is dirty is one `worktree
+    remove` refuses without being asked anything further.
+
+    What is hidden is asked at all because git does not ask it. Untracked and
+    modified paths are what a removal that does not force refuses over; a path
+    the repository's own rules cover is neither, so a tree carrying nothing
+    else answers clean and comes down with whatever is under those rules
+    inside it.
+    """
     identity = evidence._checkout_identity(
         artifacts.spec, artifacts.issue_number, worktree,
     )
     kept_for = _IDENTITY_REASONS.get(identity)
-    if kept_for is None:
-        kept_for = _CLEANLINESS_REASONS.get(
-            evidence._clean_worktree(worktree),
-        )
-    if kept_for is None:
-        return ()
-    return (Retention(kept_for, str(worktree)),)
+    if kept_for is not None:
+        return kept_for
+    kept_for = _CLEANLINESS_REASONS.get(evidence._clean_worktree(worktree))
+    if kept_for is not None:
+        return kept_for
+    return _HIDDEN_REASONS.get(evidence._nothing_ignored(worktree))
 
 
 def _checkout_tip_retentions(

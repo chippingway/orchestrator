@@ -130,9 +130,10 @@ class RetentionReason(StrEnum):
 
     The three families the classifier fails closed on are all here and stay
     apart. What was ASKED and answered no -- an open pull request, a dirty
-    tree, commits nothing accounts for -- is a fact about the artifact. What
-    could not be asked -- an issue, a pinned comment, a pull-request lookup,
-    a git read -- is the absence of one. And what was asked and answered
+    tree, a tree hiding files its own rules cover, commits nothing accounts
+    for -- is a fact about the artifact. What could not be asked -- an issue,
+    a pinned comment, a pull-request lookup, a git read -- is the absence of
+    one. And what was asked and answered
     something nobody here can act on -- an issue in two workflow states at
     once, a pinned comment carrying something that is not a state, a checkout
     on a branch this issue never published -- is neither.
@@ -156,6 +157,7 @@ class RetentionReason(StrEnum):
     FOREIGN_CHECKOUT = "foreign_checkout"
     WORKTREE_UNREADABLE = "worktree_unreadable"
     WORKTREE_DIRTY = "worktree_dirty"
+    WORKTREE_IGNORED = "worktree_ignored"
     BRANCH_UNREADABLE = "branch_unreadable"
     BASE_UNREADABLE = "base_unreadable"
     REMOTE_UNREADABLE = "remote_unreadable"
@@ -232,18 +234,26 @@ class ArtifactVerdict:
 
 
 class ArtifactSurface(StrEnum):
-    """The three places one finished issue's artifacts have to be taken from.
+    """The four places a finished issue leaves something to be taken from.
 
     Named beside the subject rather than folded into it, because two of them
     carry the same subject: a branch this host holds and the branch of that
     name on the remote are one name over two hosts, and a report saying only
     that `orchestrator/acme__widget/issue-7` is still there does not say
     which of them an operator has to go and look at.
+
+    The first three are the artifacts themselves. `ANCHOR` is what a teardown
+    can leave behind rather than something it found: the commit a checkout was
+    standing on when it came down, kept under a ref of this orchestrator's own
+    because nothing else names it. It is reported like the rest because the
+    same thing is true of it -- until somebody settles it, this host is still
+    holding something for that issue.
     """
 
     WORKTREE = "worktree"
     LOCAL_BRANCH = "local_branch"
     REMOTE_BRANCH = "remote_branch"
+    ANCHOR = "anchor"
 
 
 class SurfaceOutcome(StrEnum):

@@ -265,7 +265,10 @@ orchestrator/
       probes.py         the HEAD reads, the porcelain status in both its answers (the paths, whether git could be
                         asked, and the `is_clean` a caller whose next step is a push asks instead of truth-testing
                         the list) -- taken without optional locks, so asking what a tree holds does not refresh
-                        and rewrite its index -- and the two a named commit is judged by
+                        and rewrite its index -- the ignored-path read beside it, which is what git leaves out of
+                        every one of those and out of its own refusal to remove a dirty worktree, so a caller
+                        about to DELETE a tree can be told about the `.env` a caller about to publish rightly
+                        passes over, and the two a named commit is judged by
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
@@ -306,14 +309,19 @@ orchestrator/
                         derives, or whose read failed left out of the answer rather than reported empty -- and
                         still put to the attribution, since a repository this scan will not answer for is one the
                         flat branch on its clone could equally belong to
-      evidence.py       the seven hardened reads a candidate is judged by -- a checkout that is a worktree of
+      evidence.py       the eight hardened reads a candidate is judged by -- a checkout that is a worktree of
                         this clone and on one of this issue's own branch names, a tree that PROVED it carries
-                        nothing loose, a local branch tip, the commit the checkout's own HEAD stands on and which
+                        nothing loose and one that PROVED it hides nothing besides, a local branch tip, the commit
+                        the checkout's own HEAD stands on and which
                         branch that HEAD is, what the REMOTE
                         says a branch is at, whether this clone's own object store has a given commit at all, and
                         whether the base the remote named already contains a given tip
                         -- each answering "could not read" apart from git's own no, and a base nobody named
-                        counted as the first. The object-store read is what tells a commit only the remote
+                        counted as the first. Loose and hidden are two reads because git treats them as two:
+                        untracked and modified paths are what it calls dirty and what `worktree remove` refuses
+                        over, while a path the repository's own rules cover is neither -- so a tree carrying
+                        nothing else answers clean and comes down with all of it inside.
+                        The object-store read is what tells a commit only the remote
                         carries from a repository that would not open, which the ancestry read below it answers
                         alike; it peels to a commit, since `rev-parse --verify` hands a full object id back
                         without ever looking the object up. The two remote questions go over the authenticated
@@ -362,11 +370,20 @@ orchestrator/
                         writing it and removing anything leaves behind. That one is spent and taken again, since
                         reusing a ref an agent could have planted would make it the pinning the removal is
                         measured against; a note nobody could take away refuses the removal too, the write after
-                        it being refused by the same ref. The path itself is read before any of that, and
+                        it being refused by the same ref, and one that would not go after the removal leaves the
+                        surface unsettled rather than reported clear. The note is measured the same way whatever
+                        the removal answered, since `worktree remove` deletes the tree and then deletes the
+                        administrative directory beside it whatever the first half did: a non-zero result is not
+                        a checkout still standing, and letting the note go over one would take the last name a
+                        raced commit has. The path itself is read before any of that, and
                         anything at it that is not a directory of its own is refused: `worktree remove` resolves
                         what it is handed and deletes the registered tree at the far end, so a symlink left where
                         the checkout belongs would have it take a directory outside the tree this orchestrator
-                        owns — and every reading in front of the removal follows the link and agrees. Then
+                        owns — and every reading in front of the removal follows the link and agrees. What the
+                        tree carries is read twice for the same reason: git refuses a removal over an untracked
+                        or modified path and takes an ignored one without a word, so a checkout holding nothing
+                        but what its own rules cover passes every other reading and comes down with all of it
+                        inside. Then
                         the local branch deleted through an `update-ref -d` naming the old value and refused
                         while any live worktree of the clone is still standing on it, since that one protection
                         `branch -D` has and the ref update does not -- and refused again when the name is a
@@ -390,8 +407,15 @@ orchestrator/
                         are all demonstrably gone deserves, and anything else -- the branch published again
                         since, or a remote that would not answer -- is written down as a reminder, the local
                         copy being gone by then and nothing else able to lead a later pass back to it. The
-                        second entry point here finishes the records rather than the
-                        candidates, which is the pass a restart reaches for. That pass takes a client, because a
+                        second entry point here finishes the notes rather than the
+                        candidates, which is the pass a restart reaches for. Both kinds are settled there and
+                        behind one name, a caller that had to remember two being a caller that eventually runs
+                        one: the records, and the anchors — which no candidate reaches, since one outlives the
+                        checkout it was taken from and the branches beside it go on the tick after, leaving the
+                        scan reporting nothing while this host is still the only name a commit has. Each anchor
+                        is measured against the base and against nothing else, no client and no issue being
+                        asked: a commit the base carries is one the note names for nothing, and one it does not
+                        keeps the note and is reported for as long as that is true. That pass takes a client, because a
                         record is a reminder and never a permission: the ledger is a ref store the agents this
                         orchestrator runs can write, so each record is put back through the classification --
                         the issue ended, nobody standing on the branch, the commit surviving its deletion -- and
@@ -414,7 +438,8 @@ orchestrator/
                         written down as the reminder instead, whose value is an object every repository knows
                         without being told. Only a ledger that will take nothing at all is reported at error
                         level, being the one failure here that no later pass can reach
-      obligations.py    the ledger those records live in: one ref per branch under
+      obligations.py    the ledger those notes live in, both kinds read back off their own namespace: one ref per
+                        branch under
                         `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
                         classification cleared -- or, for a branch it cleared none for, at git's empty tree, an
                         object every repository knows and no branch is ever at, which is how a reminder to ask

@@ -96,7 +96,7 @@ _OWNER_ONLY_NAMES = (
     "_decompose_worktree_path",
     "_local_issue_inventory",
     "_reclaim_artifacts",
-    "_reclaim_recorded_remotes",
+    "_reclaim_recorded_notes",
     "_recorded_obligations",
     "_remove_issue_worktree",
     "_resolve_branch_name",
@@ -120,12 +120,15 @@ _OWNER_ONLY_NAMES = (
 # the clone resolution, the grouping over it and the shape that grouping
 # takes, and the per-clone, per-repository, and per-issue assembly. Then the
 # classification over what that scan found: the three-answer probe vocabulary
-# and the two records a verdict is made of, the seven fail-closed reads -- the
-# object-store one and the peel that makes it go there among them -- and the
+# and the two records a verdict is made of, the eight fail-closed reads -- the
+# ignored-path one that answers for what a status leaves out, the object-store
+# one and the peel that makes it go there among them -- and the
 # three runners under them, the clone-side revision read the last of those
 # shares included, the issue, pinned-state, and pull-request reads
 # GitHub answers with and the boundaries around each of them, and the
-# composition that turns both into one verdict per candidate. Then the
+# composition that turns both into one verdict per candidate, with the
+# checkout's own three-read order and the tables each of those is charged
+# through. Then the
 # teardown that spends one: the surfaces a candidate is taken from and what
 # each was left in, the checkout's presence, ownership, and revalidation
 # reads, the two lease-pinned deletions and the boundaries around them, the
@@ -134,16 +137,19 @@ _OWNER_ONLY_NAMES = (
 # the second readings a refused deletion is told apart by on either host, the
 # gates ordering the three, what a verdict clearing no commit for a branch
 # leaves, the line an unfindable leftover is reported on, and the pass that
-# finishes what an earlier one wrote down -- classification, the fetch that
-# puts a commit only the remote has within reach of one, the commit it clears
-# now, and all -- with the ledger under it: the namespace, the
+# finishes what an earlier one wrote down, over both kinds of note -- the
+# records with their classification, the fetch that puts a commit only the
+# remote has within reach of one, and the commit it clears now; then the
+# anchors, each measured against the base that would still name what it holds
+# -- with the ledger under it: the namespace, the
 # repository's own key and the room it opens, the ref one branch is recorded
 # at, the write and the delete every note goes through, the value a record
 # carries when nothing was cleared and the reminder written at it, the
 # read-back and the parse beneath it, the discharge, and the anchor a removal
 # pins what it is about to take under -- its namespace, its ref, its write,
 # its read-back, the status a read of one that is not there answers with, its
-# discard, the lease that only ever creates one, and the
+# discard, the room it opens and the segment it names an issue by, the lease
+# that only ever creates one, and the
 # git directory, locks, and held removal that keep a checkout still while it
 # comes down, with the take, the discard, and the reconciliation of a note an
 # earlier pass left standing --
@@ -181,7 +187,9 @@ _OWNER_DEFINED = (
     ("_GIT_NOT_SYMBOLIC", reclamation),
     ("_HEAD", evidence),
     ("_HEAD", obligations),
+    ("_HIDDEN_REASONS", eligibility),
     ("_IDENTITY_REASONS", eligibility),
+    ("_ISSUE_SEGMENT", obligations),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
@@ -210,6 +218,7 @@ _OWNER_DEFINED = (
     ("_anchor_settled", reclamation),
     ("_anchor_target", creation),
     ("_anchor_taken", reclamation),
+    ("_anchors_prefix", obligations),
     ("_anchored_commit", obligations),
     ("_anchored_removal", reclamation),
     ("_artifact_reading", eligibility),
@@ -233,6 +242,7 @@ _OWNER_DEFINED = (
     ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
     ("_checkout_present", reclamation),
+    ("_checkout_reason", eligibility),
     ("_checkout_retentions", eligibility),
     ("_checkout_tip", evidence),
     ("_checkout_tip_retentions", eligibility),
@@ -268,6 +278,7 @@ _OWNER_DEFINED = (
     ("_head_is_own_branch", evidence),
     ("_head_ref", evidence),
     ("_held_still", reclamation),
+    ("_holding_nothing", reclamation),
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
@@ -278,6 +289,7 @@ _OWNER_DEFINED = (
     ("_matching_owners", attribution),
     ("_merged", inventory),
     ("_move_branch_onto", creation),
+    ("_nothing_ignored", evidence),
     ("_obligation_ref", obligations),
     ("_open_pull_request_retentions", claims),
     ("_owed_issue", reclamation),
@@ -286,18 +298,23 @@ _OWNER_DEFINED = (
     ("_proven_tips", eligibility),
     ("_published_tip", evidence),
     ("_read_orchestrator_refs", probes),
-    ("_read_records", obligations),
+    ("_read_notes", obligations),
     ("_read_state", claims),
     ("_reclaim_artifacts", reclamation),
-    ("_reclaim_recorded_remotes", reclamation),
+    ("_reclaim_recorded_notes", reclamation),
+    ("_reclaimed_anchor", reclamation),
+    ("_reclaimed_anchors", reclamation),
     ("_reclaimed_branch", reclamation),
     ("_reclaimed_checkout", reclamation),
     ("_reclaimed_local_branch", reclamation),
     ("_reclaimed_record", reclamation),
+    ("_reclaimed_records", reclamation),
     ("_reclaimed_remote_branch", reclamation),
     ("_record_attribution", attribution),
     ("_record_obligation", obligations),
     ("_recorded_deletion", reclamation),
+    ("_recorded_anchors", obligations),
+    ("_recorded_notes", obligations),
     ("_recorded_obligations", obligations),
     ("_recorded_pull_request", claims),
     ("_records_prefix", obligations),
