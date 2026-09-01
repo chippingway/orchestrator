@@ -130,9 +130,9 @@ _OWNER_ONLY_NAMES = (
 # live-checkout read the local one is refused by and the `worktree list`
 # spellings it is written in, the gates ordering the three, the refusals a
 # verdict that clears nothing gets, and the pass that finishes what an earlier
-# one wrote down -- with the ledger under it: the namespace, the ref one
-# branch is recorded at, the write, the read-back and the parse beneath it,
-# and the discharge. Naming the whole surface makes a helper added to an owner
+# one wrote down -- with the ledger under it: the namespace, the repository's
+# own room inside it, the ref one branch is recorded at, the write, the
+# read-back and the parse beneath it, and the discharge. Naming the whole surface makes a helper added to an owner
 # an edit here rather than a definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
@@ -161,7 +161,6 @@ _OWNER_DEFINED = (
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
-    ("_NAMESPACE_PREFIX", obligations),
     ("_ON_BRANCH", reclamation),
     ("_OPEN_PULL_REQUEST", claims),
     ("_ORCHESTRATOR_BRANCH_REFS", probes),
@@ -190,6 +189,7 @@ _OWNER_DEFINED = (
     ("_branch_reasons", eligibility),
     ("_branch_ref", reclamation),
     ("_branch_retentions", eligibility),
+    ("_branch_tip", eligibility),
     ("_branch_surfaces", reclamation),
     ("_candidate_issue_branches", recovery),
     ("_carrying_pull_request", claims),
@@ -257,6 +257,7 @@ _OWNER_DEFINED = (
     ("_record_obligation", obligations),
     ("_recorded_deletion", reclamation),
     ("_recorded_obligations", obligations),
+    ("_records_prefix", obligations),
     ("_recorded_pull_request", claims),
     ("_removal_under_lock", reclamation),
     ("_remove_issue_worktree", cleanup),

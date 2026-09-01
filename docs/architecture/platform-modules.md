@@ -335,8 +335,12 @@ orchestrator/
                         reflog alone -- and is excused only when a reported branch is standing on that same
                         commit, so the three shapes one issue can be reported in reach one verdict. Inside the
                         proof the remote is asked before the base ancestry can release anything, since a merged
-                        tip can still sit under a branch the remote has been pushed past. Reported as one verdict
-                        per candidate carrying every reason it is kept for
+                        tip can still sit under a branch the remote has been pushed past. A branch this clone no
+                        longer holds is proven through the copy the remote carries rather than waved through:
+                        the scan named it moments earlier and something deleted it since, and a remote copy
+                        nobody proved is one the teardown may neither delete nor write down. Reported as one
+                        verdict per candidate carrying every reason it is kept for, and -- when it keeps none --
+                        the commit each artifact was cleared at
       reclamation.py    the destructive step, and the only writer in the artifact domain: an eligible verdict is
                         spent, never re-derived, and everything it established is established again at the
                         boundary it is about to be spent at -- the checkout still this issue's own, still clean,
@@ -351,20 +355,27 @@ orchestrator/
                         artifacts are what the scan finds a half-finished teardown back by. What that ordering
                         cannot cover -- a local artifact somebody took before the teardown reached it, leaving
                         nothing to hold back -- is covered by the record beneath: every remote deletion is
-                        written down before it is attempted and let go once it has happened or stopped being
-                        owed, one that could not be written down is not attempted, and the second entry point
+                        written down before it is attempted and let go only once the branch is gone from the
+                        remote, one that could not be written down is not attempted, and the second entry point
                         here finishes the records rather than the candidates, which is the pass a restart
-                        reaches for
+                        reaches for. A remote that moved past what was cleared deletes nothing and keeps its
+                        record: the branch is still standing there, and the record is the only thing that would
+                        lead anybody back to it
       obligations.py    the ledger those records live in: one ref per branch under
-                        `refs/orchestrator/remote-reclaim/`, valued at the commit the classification cleared, so
-                        what a later pass may spend it on is a deletion of exactly that commit. A ref rather
-                        than a file, because that is where this domain's durable state already lives and it is
-                        written under the same lock; outside `refs/heads/`, so the artifact scan does not read
-                        one as a candidate of its own, and outside the snapshot namespace, which is published.
-                        The read-back answers "could not read" apart from "nothing owed" -- a listing that
-                        warned, a line that did not parse, and a ref outside the namespace all refuse the whole
-                        answer, since a ledger short by one entry is indistinguishable from a complete one.
-                        Nothing here reads a remote or deletes anything on one
+                        `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
+                        classification cleared, so what a later pass may spend it on is a deletion of exactly
+                        that commit. A ref rather than a file, because that is where this domain's durable state
+                        already lives and it is written under the same lock; outside `refs/heads/`, so the
+                        artifact scan does not read one as a candidate of its own, and outside the snapshot
+                        namespace, which is published. The repository segment is the same ref-safe slug the
+                        branch namespace is built from, and it is what keeps two entries sharing a clone off one
+                        another's records: the flat legacy branch they both derive is exactly the name the
+                        attribution refuses to charge to either, so a ledger keyed on the branch alone would
+                        send one entry's deletion to the other's remote. The read-back answers "could not read"
+                        apart from "nothing owed" -- a listing that warned, a line that did not parse, and a ref
+                        outside the repository's own namespace all refuse the whole answer, since a ledger short
+                        by one entry is indistinguishable from a complete one. Nothing here reads a remote or
+                        deletes anything on one
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends

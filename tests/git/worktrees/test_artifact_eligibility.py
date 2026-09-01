@@ -26,6 +26,7 @@ from orchestrator.git.worktrees import eligibility, evidence, paths
 from orchestrator.git.worktrees.models import (
     BranchTip,
     ProbeAnswer,
+    ProvenTip,
     RetentionReason,
 )
 from tests.git.worktrees.artifact_test_support import (
@@ -117,7 +118,13 @@ class _CandidateTestCase(unittest.TestCase):
 
 
 class ArtifactShapeTest(_CandidateTestCase):
-    """Each of the three shapes a scan reports is classified as itself."""
+    """Each shape a scan reports is classified as itself.
+
+    The three a candidate arrives in, and the fourth one it can have turned
+    into by the time this pass runs: a branch the scan named and something
+    deleted from this clone in between, which is a branch the remote may
+    still be carrying.
+    """
 
     def test_every_shape_is_eligible(self) -> None:
         # The three shapes a scan reports -- a checkout on its own, a branch
@@ -148,6 +155,32 @@ class ArtifactShapeTest(_CandidateTestCase):
         for artifacts in self.shapes(worktree):
             with self.subTest(shape=tuple(artifacts)):
                 self.assertEqual(self.classify(**artifacts).retentions, ())
+
+    def test_a_branch_only_the_remote_has_is_proven(self) -> None:
+        # The window between the scan naming a branch and this pass judging
+        # it: something deleted it here in between, and the copy the remote
+        # carries is an artifact of this issue exactly as the local one was.
+        # What the verdict clears, and hands over, is the commit that copy
+        # stands on -- without it the reclamation of the remote branch would
+        # be a deletion nobody proved and nothing recorded.
+        tip = self.landed()
+        self.world.publish(self.clone, self.branch, self.branch)
+        _branch_at(self.clone, self.branch)
+
+        verdict = self.classify()
+
+        self.assertTrue(verdict.eligible)
+        self.assertEqual(verdict.proven, (ProvenTip(self.branch, tip),))
+
+    def test_a_branch_only_the_remote_has_must_prove(self) -> None:
+        # And it owes what any tip owes: this one is ahead of base and on no
+        # pull request, so the copy left on the remote keeps the candidate.
+        self.world.publish(self.clone, self.branch, self.commit())
+        _branch_at(self.clone, self.branch)
+
+        self.assertEqual(
+            self.kept(), (RetentionReason.UNACCOUNTED_COMMITS,),
+        )
 
     def test_a_legacy_branch_is_read_too(self) -> None:
         # An issue in flight when namespacing landed publishes under both
@@ -406,9 +439,9 @@ class BranchTipProofTest(_CandidateTestCase):
         self.assertEqual(self.kept(), (RetentionReason.REMOTE_DIVERGENCE,))
 
     def test_a_branch_already_gone_is_nothing(self) -> None:
-        # The scan named it and it has been deleted since. There is nothing
-        # left to reclaim, and a retention over it is one no operator could
-        # ever settle.
+        # Gone from this clone and never on the remote. There is nothing left
+        # to reclaim, and a retention over it is one no operator could ever
+        # settle.
         self.assertTrue(self.classify().eligible)
 
 

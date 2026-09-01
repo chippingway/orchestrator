@@ -38,7 +38,10 @@ it may delete, and that answer has to be no.
 What an eligible verdict hands back is the commits it cleared, not only the
 permission. The proof is about an object id and the artifact standing on it,
 so the teardown that spends the verdict can tell the branch that was cleared
-from the branch of that name it finds when it gets there.
+from the branch of that name it finds when it gets there. Every artifact this
+scan reported gets one, the branch that has since been deleted from this clone
+included: the remote may still carry that branch, and a copy nobody proved is
+a copy the teardown may neither delete nor write down.
 """
 from __future__ import annotations
 
@@ -220,16 +223,41 @@ def _branch_retentions(
     branch has to know what it is standing on to tell whether the branch is
     already holding it.
 
-    A branch that has gone since the scan named it is eligible rather than a
-    problem. There is nothing left to delete, and the alternative -- keeping
-    an issue back over an artifact that no longer exists -- is a retention no
-    operator could ever settle.
+    A branch that has gone from BOTH hosts since the scan named it is eligible
+    rather than a problem. There is nothing left to delete, and the
+    alternative -- keeping an issue back over an artifact that no longer
+    exists -- is a retention no operator could ever settle. Which hosts still
+    have it is `_branch_tip`'s answer, not this one's: what arrives here is
+    the commit the branch is standing on wherever it still stands.
     """
     if tip.answer is ProbeAnswer.UNREADABLE:
         return (Retention(RetentionReason.BRANCH_UNREADABLE, branch),)
     if tip.answer is ProbeAnswer.REFUTED:
         return ()
     return _tip_retentions(gh, artifacts, base, branch, tip.sha)
+
+
+def _branch_tip(artifacts: IssueArtifacts, branch: str) -> BranchTip:
+    """The commit one of this issue's branches stands on, wherever it stands.
+
+    The clone's own ref first, because a branch this host holds is the
+    artifact a teardown takes and the commit it would take with it. A branch
+    the clone no longer has is not the same thing as an artifact that has
+    gone: the scan named it moments earlier, something deleted it since, and
+    the copy the remote carries is an artifact of this issue exactly as the
+    local one was. So the remote is asked, and what it answers is what the
+    proof runs on -- which is what lets an eligible verdict hand over a commit
+    for that branch at all. Without one, the reclamation of the copy left on
+    the remote would be a deletion nobody had proved and nothing had recorded.
+
+    Both readings that failed come back as the tip that could not be read.
+    Which side would not answer is not something an operator settles
+    differently, and the retention over it names the branch either way.
+    """
+    tip = evidence._local_branch_tip(artifacts.spec, branch)
+    if tip.answer is not ProbeAnswer.REFUTED:
+        return tip
+    return evidence._published_tip(artifacts.spec, branch)
 
 
 def _checkout_head(
@@ -309,8 +337,7 @@ def _artifact_reading(
         artifacts.spec, artifacts.spec.base_branch,
     )
     tips = tuple(
-        evidence._local_branch_tip(artifacts.spec, branch)
-        for branch in artifacts.branches
+        _branch_tip(artifacts, branch) for branch in artifacts.branches
     )
     head = _checkout_head(artifacts, checkout)
     if not checkout:

@@ -30,7 +30,9 @@ from orchestrator.git.worktrees.models import (
 
 from tests.git.worktrees.artifact_test_support import (
     GADGET_SLUG,
+    _legacy_branch,
     _namespaced_branch,
+    _spec,
 )
 from tests.git.worktrees.candidate_host_test_support import _branch_at
 from tests.git.worktrees.eligibility_test_support import ISSUE_NUMBER
@@ -49,6 +51,11 @@ _REMOTE_DELETE_SEAM = "_delete_remote_ref"
 _RECORD_SEAM = "_record_obligation"
 
 _READ_SEAM = "_recorded_obligations"
+
+
+def _swept(spec) -> tuple:
+    """One pass over the records one repository wrote."""
+    return reclamation._reclaim_recorded_remotes(spec)
 
 
 def _settled(
@@ -91,7 +98,7 @@ class RecordedRemoteTest(_ReclaimTestCase):
 
         self.assertTrue(reclaimed.settled)
         self.assertEqual(obligations._recorded_obligations(self.spec), ())
-        self.assertEqual(reclamation._reclaim_recorded_remotes(self.spec), ())
+        self.assertEqual(_swept(self.spec), ())
 
     def test_the_record_is_there_before_the_push(self) -> None:
         tip = self.published()
@@ -155,7 +162,7 @@ class ObligationSweepTest(_ReclaimTestCase):
             inventory._local_issue_inventory((self.spec,)).issues, (),
         )
 
-        swept = reclamation._reclaim_recorded_remotes(self.spec)
+        swept = _swept(self.spec)
 
         self.assertEqual(
             _settled(swept),
@@ -164,6 +171,35 @@ class ObligationSweepTest(_ReclaimTestCase):
         self.assertFalse(self.standing()[2])
         self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
+    def test_a_branch_gone_before_the_verdict_is_owed(self) -> None:
+        # The other window: the branch goes between the scan naming it and
+        # the classification judging it, so what the verdict clears is the
+        # copy the remote carries. The teardown writes that deletion down
+        # like any other -- which is the whole difference between a leftover
+        # a later pass finds and one nothing on this host can name.
+        self.published()
+        _branch_at(self.clone, self.branch)
+
+        with patch.object(
+            authentication, _REMOTE_DELETE_SEAM, return_value=False,
+        ):
+            stopped = self.spend(self.verdict())
+
+        self.assertEqual(
+            self.outcomes(stopped), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertEqual(
+            inventory._local_issue_inventory((self.spec,)).issues, (),
+        )
+
+        swept = _swept(self.spec)
+
+        self.assertEqual(
+            _settled(swept),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, CLEANED),),
+        )
+        self.assertFalse(self.standing()[2])
+
     def test_a_remote_gone_since_is_let_go(self) -> None:
         # Absent is success here as everywhere: the deletion the record was
         # for has happened, whoever did it, and a record kept over it would
@@ -171,7 +207,7 @@ class ObligationSweepTest(_ReclaimTestCase):
         owed = self.owed(self.published())
         self.world.unpublish(self.clone, self.branch)
 
-        swept = reclamation._reclaim_recorded_remotes(self.spec)
+        swept = _swept(self.spec)
 
         self.assertEqual(
             _settled(swept),
@@ -179,22 +215,52 @@ class ObligationSweepTest(_ReclaimTestCase):
         )
         self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
-    def test_a_remote_moved_since_is_let_go(self) -> None:
-        # What a record authorizes is a deletion of one commit. The branch
-        # carries somebody's work now, so the record is void rather than
-        # outstanding -- and the branch is left exactly where it is.
-        self.owed(self.published())
+    def test_a_remote_moved_since_is_kept(self) -> None:
+        # The branch carries somebody's work now, so this deletes nothing --
+        # and it keeps the record, which is the only thing that would lead
+        # anybody back to a branch still standing there. What the record says
+        # is which commit this host was cleared to delete, and that stays true
+        # however far the remote moves, so the pass after this one -- all a
+        # restart has -- reports the leftover again rather than nothing.
+        owed = self.owed(self.published())
         ahead = f"{self.branch}-ahead"
         self.world.commit_on(self.clone, ahead, start=self.branch)
         self.world.publish(self.clone, self.branch, ahead)
 
-        swept = reclamation._reclaim_recorded_remotes(self.spec)
+        swept = _swept(self.spec)
+        again = _swept(self.spec)
 
         self.assertEqual(
-            tuple(taken.outcome for taken in swept), (FAILED,),
+            tuple(taken.outcome for taken in swept + again),
+            (FAILED, FAILED),
         )
-        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+        self.assertEqual(obligations._recorded_obligations(self.spec), (owed,))
         self.assertTrue(self.standing()[2])
+
+
+class LedgerOwnershipTest(_ReclaimTestCase):
+    """Which records a repository may read, and which it may not."""
+
+    def test_a_record_of_a_clone_mate_is_not_read(self) -> None:
+        # Two repositories on one clone derive the same legacy branch name,
+        # which is why the attribution behind the scan refuses to charge that
+        # name to either of them. Their records are told apart by the
+        # repository they were written under instead, so the deletion this one
+        # runs goes to the remote that actually carries the branch -- and the
+        # entry beside it never sees the record at all.
+        legacy = _legacy_branch(ISSUE_NUMBER)
+        obligations._record_obligation(
+            self.spec, legacy, self.published(legacy),
+        )
+        clone_mate = _spec(GADGET_SLUG, self.clone)
+
+        self.assertEqual(
+            _swept(clone_mate), (),
+        )
+        self.assertEqual(
+            _settled(_swept(self.spec)),
+            ((ArtifactSurface.REMOTE_BRANCH, legacy, CLEANED),),
+        )
 
     def test_a_record_this_host_does_not_own_stays(self) -> None:
         # The ledger is one clone's, and several repositories may share a
@@ -205,7 +271,7 @@ class ObligationSweepTest(_ReclaimTestCase):
             self.spec, stranger, self.published(stranger),
         )
 
-        swept = reclamation._reclaim_recorded_remotes(self.spec)
+        swept = _swept(self.spec)
 
         self.assertEqual(swept, ())
         self.assertEqual(
@@ -221,7 +287,7 @@ class ObligationSweepTest(_ReclaimTestCase):
         # Nothing owed and nobody could say are one answer to a caller that
         # would otherwise report this host as finished.
         with patch.object(obligations, _READ_SEAM, return_value=None):
-            swept = reclamation._reclaim_recorded_remotes(self.spec)
+            swept = _swept(self.spec)
 
         self.assertEqual(
             _settled(swept),

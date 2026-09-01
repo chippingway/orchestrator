@@ -435,9 +435,14 @@ def _reclaimed_remote_branch(
     merged pull request's head branch is deleted there -- and it is success.
 
     A branch the remote carries at some other commit is nobody's to delete on
-    the strength of what was cleared, and it is the one answer that ends the
-    obligation as well: what a record entitles is a deletion at that commit,
-    and the remote has moved past it.
+    the strength of what was cleared, and it keeps every record standing that
+    was written for it. Letting one go there would be quietest exactly where
+    quiet is wrong: the branch is still on the remote, this host may have
+    nothing left that names its issue, and a pass that dropped the record
+    would come back empty about a leftover that is still there. It is not
+    stale, either -- what it says is which commit this host was cleared to
+    delete, and that stays true however far the remote moves. The branch going
+    from the remote is what finally settles it.
 
     Taken as a commit and a name rather than as a candidate, so the pass that
     reads a record back spends it through exactly these steps.
@@ -452,7 +457,7 @@ def _reclaimed_remote_branch(
             "issue=#%d keeping %r on the remote: it carries %r where what was "
             "cleared is %r", issue_number, branch, published.sha, cleared_sha,
         )
-        return _discharged(spec, branch, SurfaceOutcome.FAILED)
+        return SurfaceOutcome.FAILED
     return _recorded_deletion(spec, issue_number, branch, published.sha)
 
 
@@ -508,10 +513,14 @@ def _discharged(
 ) -> SurfaceOutcome:
     """Let go of the record for a deletion nobody owes any more, and answer.
 
-    Called wherever this pass has established that the remote need not be
-    asked about that commit again: it went, it was already gone, or the branch
-    has moved past what was cleared. A record left behind any of those is one
-    every later pass would spend a round trip on and reach the same answer.
+    Called on the two answers that end the matter: the branch went, or it was
+    already gone. Both say the remote has nothing of this issue's left under
+    that name, so a record kept over either is one every later pass would
+    spend a round trip on to reach the same answer.
+
+    Nothing else discharges. A record is the only thing that leads a later
+    pass back to a branch this host may no longer name, so it outlives every
+    answer short of the branch being gone.
 
     A record that would not go away does not change the answer. What it
     covered is settled either way, and the pass after this one asks the remote
@@ -538,10 +547,11 @@ def _reclaim_recorded_remotes(
     the commit that was cleared, the deletion pinned to it -- because a record
     is a note about a moment too, and the moment has passed.
 
-    A record this repository does not own is passed over rather than reported.
-    Several `REPOS` entries may share a clone and so this ledger, and a branch
-    another of them publishes has a remote this one knows nothing about; a ref
-    naming something no entry publishes is nobody's to spend either.
+    Only this repository's own records are read: several `REPOS` entries may
+    share a clone and so this ledger, and a branch another of them published
+    has a remote this one knows nothing about. Inside that namespace, a name
+    no derivation here produces is passed over rather than reported -- a ref
+    somebody wrote by hand is nobody's to spend.
     """
     recorded = obligations._recorded_obligations(spec)
     if recorded is None:
@@ -572,6 +582,12 @@ def _owed_issue(spec: config.RepoSpec, branch: str) -> int | None:
     out of the name, and the name has to be one of the two this repository
     publishes that issue under. Everything else answers None, and a caller
     that has to delete something on a remote may not act on any of them.
+
+    Which repository is asking is settled before this by where the record was
+    read from -- the ledger is written under each repository's own segment,
+    so the flat legacy name every entry on a shared clone derives is never one
+    entry reading another's record. What is left for this to catch is a name
+    inside that namespace which no derivation here produces.
     """
     issue_number = paths._issue_segment_number(
         branch.rsplit("/", 1)[-1],

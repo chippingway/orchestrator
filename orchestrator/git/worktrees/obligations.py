@@ -25,6 +25,18 @@ record enough on its own: what it authorizes is a deletion pinned to that
 commit, so a branch the remote has moved on to since is not one anybody may
 spend this record on.
 
+The name says which repository owes it, and that is not decoration. Several
+`REPOS` entries may share one `target_root` -- a clone with a public and a
+private remote is the shape the branch namespacing already exists for -- and
+their ref stores are then the same store. The one branch name those entries
+all derive is the legacy flat `orchestrator/issue-<n>`, which is exactly why
+the attribution behind the scan refuses to charge it to any of them; a ledger
+keyed on the branch alone would hand that record to whichever entry read it
+first, and the deletion it authorizes would go to a remote that never carried
+the branch. So every record sits under the repository's own ref-safe segment,
+the same one its branches are namespaced by, and a repository reads back only
+what it wrote.
+
 Nothing here reads a remote or deletes anything on one. This owner writes the
 record, reads it back, and takes it away; what is done about one belongs to
 ``reclamation``.
@@ -36,6 +48,7 @@ import subprocess
 
 from orchestrator import config
 from orchestrator.git import commands, locks
+from orchestrator.git.worktrees import paths
 from orchestrator.git.worktrees.models import ProvenTip
 
 # The channel is named for the worktree-lifecycle domain rather than for this
@@ -50,26 +63,37 @@ log = logging.getLogger("orchestrator.worktree_lifecycle")
 # snapshots walks these.
 RECLAIM_NAMESPACE = "refs/orchestrator/remote-reclaim"
 
-# The pattern form the listing matches by, and the prefix a recorded name is
-# read back through: a trailing separator, so the ref `RECLAIM_NAMESPACE`
-# itself -- were somebody to create it -- is not one of the records beneath it.
-_NAMESPACE_PREFIX = f"{RECLAIM_NAMESPACE}/"
-
 # What one record answers with: the ref, and the commit it was written at.
 _RECORD_FORMAT = "--format=%(refname) %(objectname)"
 
 _RECORD_FIELDS = 2
 
 
-def _obligation_ref(branch: str) -> str:
+def _records_prefix(spec: config.RepoSpec) -> str:
+    """Where one repository's records live, and nowhere else's.
+
+    The repository's own ref-safe segment -- the same derivation its branches
+    are namespaced by, so what keeps two entries off one another's branches
+    keeps them off one another's records. The trailing separator is what makes
+    the prefix a namespace rather than a name: the ref spelling this segment
+    itself, were somebody to create it, is not one of the records beneath it.
+    """
+    return (
+        f"{RECLAIM_NAMESPACE}/{paths._sanitize_branch_segment(spec.slug)}/"
+    )
+
+
+def _obligation_ref(spec: config.RepoSpec, branch: str) -> str:
     """The ref one branch's outstanding remote deletion is recorded under.
 
-    The branch spelled in full after the namespace, so the name reads back to
-    exactly the branch it is about. Every branch this orchestrator publishes
-    is already a valid ref path, which is what lets one be carried inside
-    another's name without a rewrite that could lose a distinction.
+    The branch spelled in full after the repository's own namespace, so the
+    name reads back to exactly the branch it is about, and only for the
+    repository whose remote that branch was published to. Every branch this
+    orchestrator publishes is already a valid ref path, which is what lets one
+    be carried inside another's name without a rewrite that could lose a
+    distinction.
     """
-    return f"{_NAMESPACE_PREFIX}{branch}"
+    return f"{_records_prefix(spec)}{branch}"
 
 
 def _record_obligation(
@@ -89,7 +113,7 @@ def _record_obligation(
     try:
         with locks._target_root_lock(spec.target_root):
             recorded = commands._git_hardened(
-                "update-ref", _obligation_ref(branch), sha,
+                "update-ref", _obligation_ref(spec, branch), sha,
                 cwd=spec.target_root,
             )
     except Exception:
@@ -118,7 +142,7 @@ def _discharge_obligation(spec: config.RepoSpec, branch: str) -> bool:
     try:
         with locks._target_root_lock(spec.target_root):
             discharged = commands._git_hardened(
-                "update-ref", "-d", _obligation_ref(branch),
+                "update-ref", "-d", _obligation_ref(spec, branch),
                 cwd=spec.target_root,
             )
     except Exception:
@@ -149,7 +173,7 @@ def _read_records(spec: config.RepoSpec) -> subprocess.CompletedProcess | None:
                 "for-each-ref",
                 _RECORD_FORMAT,
                 "--end-of-options",
-                _NAMESPACE_PREFIX,
+                _records_prefix(spec),
                 cwd=spec.target_root,
             )
     except OSError as spawn_error:
@@ -187,17 +211,19 @@ def _recorded_obligations(
             spec.target_root, complaint,
         )
         return None
-    return _parsed_records(listed.stdout or "")
+    return _parsed_records(listed.stdout or "", _records_prefix(spec))
 
 
-def _parsed_records(listed: str) -> tuple[ProvenTip, ...] | None:
+def _parsed_records(
+    listed: str, prefix: str,
+) -> tuple[ProvenTip, ...] | None:
     """The records one listing reports, or None when one of them did not read.
 
-    A line that does not carry a ref under this namespace and a commit beside
-    it is not a record this understands, and one unreadable line refuses the
-    whole listing rather than the line: what a caller spends the answer on is
-    finishing everything this host began, and a listing quietly short by one
-    is indistinguishable from one that is complete.
+    A line that does not carry a ref under this repository's own namespace and
+    a commit beside it is not a record this understands, and one unreadable
+    line refuses the whole listing rather than the line: what a caller spends
+    the answer on is finishing everything this host began, and a listing
+    quietly short by one is indistinguishable from one that is complete.
     """
     records = []
     for line in listed.splitlines():
@@ -206,8 +232,8 @@ def _parsed_records(listed: str) -> tuple[ProvenTip, ...] | None:
             log.warning("a reclaim record did not read: %r", line)
             return None
         ref, sha = fields
-        if not ref.startswith(_NAMESPACE_PREFIX):
+        if not ref.startswith(prefix):
             log.warning("a reclaim record named %r, outside its own name", ref)
             return None
-        records.append(ProvenTip(ref[len(_NAMESPACE_PREFIX):], sha))
+        records.append(ProvenTip(ref[len(prefix):], sha))
     return tuple(records)
