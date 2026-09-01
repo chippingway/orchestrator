@@ -64,14 +64,16 @@ def _holds(spec: config.RepoSpec, branch: str) -> bool:
     return tip.answer is ProbeAnswer.CONFIRMED
 
 
-def _publishes(spec: config.RepoSpec, branch: str) -> bool:
-    """Whether the remote still carries `branch`, asked of the remote."""
-    return evidence._published_tip(spec, branch).answer is ProbeAnswer.CONFIRMED
-
-
 def _tip(clone: Path, branch: str) -> str:
     """The commit this clone has `branch` on, read straight from git."""
     return _revision(clone, branch)
+
+
+def _dirty(worktree: Path) -> Path:
+    """Leave one file in this checkout that nothing tracks, and name it."""
+    loose = worktree / LOOSE_FILE
+    loose.write_text(LOOSE_CONTENT)
+    return loose
 
 
 def _lock_checkout(clone: Path, worktree: Path) -> None:
@@ -96,6 +98,30 @@ def _surfaces(
     if checkout is None:
         return reported
     return ((ArtifactSurface.WORKTREE, checkout), *reported)
+
+
+class _ReaddedCheckout:
+    """A checkout put back on the branch while a teardown is between steps.
+
+    Installed in place of the remote deletion, which is the step that runs
+    between the removal of this issue's checkout and the deletion of the
+    branch it stood on: the window a `worktree add` from another thread lands
+    in. Standing in for that step rather than patching a clock is what makes
+    the race a case rather than a hope.
+
+    The tree is written in as well, so what the branch deletion would strand
+    is a checkout carrying work nobody has seen -- and the deletion still has
+    to be refused for the plain reason that something is standing on it.
+    """
+
+    def __init__(self, add_checkout) -> None:
+        self.loose = None
+        self._add_checkout = add_checkout
+
+    def __call__(self, *args, **options) -> bool:
+        """Put the checkout back, and report the step this replaced done."""
+        self.loose = _dirty(self._add_checkout())
+        return True
 
 
 class _ReclaimTestCase(unittest.TestCase):
@@ -160,5 +186,7 @@ class _ReclaimTestCase(unittest.TestCase):
         return (
             worktree is not None and worktree.exists(),
             _holds(self.spec, self.branch),
-            _publishes(self.spec, self.branch),
+            evidence._published_tip(
+                self.spec, self.branch,
+            ).answer is ProbeAnswer.CONFIRMED,
         )

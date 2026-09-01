@@ -32,9 +32,11 @@ from orchestrator.git.worktrees.models import (
 )
 
 from tests.git.worktrees.artifact_test_support import (
+    LIFECYCLE_LOGGER,
     WIDGET_SLUG,
     _namespaced_branch,
 )
+from tests.git.worktrees.candidate_host_test_support import _branch_at
 from tests.git.worktrees.eligibility_test_support import (
     ISSUE_NUMBER,
     _candidate,
@@ -42,11 +44,11 @@ from tests.git.worktrees.eligibility_test_support import (
     _terminal_issue,
 )
 from tests.git.worktrees.reclamation_test_support import (
-    LOOSE_CONTENT,
-    LOOSE_FILE,
     OTHER_ISSUE_NUMBER,
+    _dirty,
     _holds,
     _lock_checkout,
+    _ReaddedCheckout,
     _ReclaimTestCase,
     _surfaces,
     _tip,
@@ -57,13 +59,21 @@ ABSENT = SurfaceOutcome.ABSENT
 FAILED = SurfaceOutcome.FAILED
 
 # The three destructive calls, in the spelling the recorder notes them by: the
-# local two are the first two words of their argv, and the remote one is the
-# transport call that carries the lease.
+# local two are the head of their argv, and the remote one is the transport
+# call that carries the lease. The heads are matched whole, so the reads these
+# steps take -- a `worktree list` under the same first word -- are not one of
+# them.
 _WORKTREE_REMOVE = "worktree remove"
 _LOCAL_DELETE = "update-ref -d"
 _REMOTE_DELETE = "push --delete"
 
-_DESTRUCTIVE_ARGV = ("worktree", "update-ref")
+_DESTRUCTIVE_ARGV = (("worktree", "remove"), ("update-ref", "-d"))
+
+# The transport seam both the refusing and the racing case stand in for.
+_REMOTE_DELETE_SEAM = "_delete_remote_ref"
+
+# What the one leftover no later pass can reach is reported as.
+_STRANDED = "no later pass will find what is left"
 
 
 class _DestructiveCalls:
@@ -96,7 +106,7 @@ class _DestructiveCalls:
 
     def hardened(self, *args: str, **options):
         """One local git call, noted when it is one of the two that destroy."""
-        if args[0] in _DESTRUCTIVE_ARGV:
+        if args[:2] in _DESTRUCTIVE_ARGV:
             self.taken.append(" ".join(args[:2]))
         return self._ran_git(*args, **options)
 
@@ -257,7 +267,7 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
-        (worktree / LOOSE_FILE).write_text(LOOSE_CONTENT)
+        _dirty(worktree)
 
         reclaimed = self.spend(cleared)
 
@@ -301,6 +311,28 @@ class DivergentWorkTest(_ReclaimTestCase):
             self.outcomes(reclaimed), _surfaces(None, CLEANED, FAILED),
         )
         self.assertEqual(_tip(self.clone, self.branch), made)
+
+
+    def test_a_checkout_added_mid_teardown_keeps_it(self) -> None:
+        # The tree this issue's checkout was removed from is a tree anything
+        # may be added back into, and `update-ref` deletes a branch out from
+        # under a live checkout where `branch -D` refuses. So the worktrees
+        # are asked again with the deletion: what the pass opened by reading
+        # is not what is standing on the branch by the time it gets here.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        readded = _ReaddedCheckout(self.checkout)
+
+        with patch.object(authentication, _REMOTE_DELETE_SEAM, readded):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(CLEANED, CLEANED, FAILED),
+        )
+        self.assertTrue(_holds(self.spec, self.branch))
+        self.assertTrue(readded.loose.exists())
 
 
 class StepFailureTest(_ReclaimTestCase):
@@ -352,7 +384,40 @@ class StepFailureTest(_ReclaimTestCase):
 
 
 class ReconciliationTest(_ReclaimTestCase):
-    """A teardown that stopped halfway is finished by the pass after it."""
+    """A teardown that stopped halfway is finished by the pass after it.
+
+    Or, when the artifact that would have led it back is already gone, says
+    so where an operator will find it: the one case no later pass can reach.
+    """
+
+    def test_a_branch_gone_before_a_failed_delete(self) -> None:
+        # The anchor was taken by somebody else between the reading and the
+        # deletion it was for, so this pass has nothing to hold back -- and
+        # the remote copy it could not delete is now nameless on this host.
+        # The pair does not come back half settled, and the leftover is
+        # reported where the record survives the caller.
+        self.published()
+        cleared = self.verdict()
+        _branch_at(self.clone, self.branch)
+
+        with patch.object(
+            authentication, _REMOTE_DELETE_SEAM, return_value=False,
+        ), self.assertLogs(LIFECYCLE_LOGGER, "WARNING") as watched:
+            reclaimed = self.spend(cleared)
+            reported = watched.output
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, FAILED, FAILED),
+        )
+        self.assertFalse(reclaimed.settled)
+        self.assertEqual(self.standing()[1:], (False, True))
+        self.assertTrue(
+            any(
+                self.branch in line and _STRANDED in line
+                for line in reported
+            ),
+            msg=reported,
+        )
 
     def test_a_half_finished_teardown_is_found_again(self) -> None:
         # Nothing is carried between the two passes. The second rebuilds the
@@ -364,7 +429,7 @@ class ReconciliationTest(_ReclaimTestCase):
         worktree = self.checkout()
 
         with patch.object(
-            authentication, "_delete_remote_ref", return_value=False,
+            authentication, _REMOTE_DELETE_SEAM, return_value=False,
         ):
             first = self.spend(
                 self.verdict(worktree=worktree, branches=self.branches),

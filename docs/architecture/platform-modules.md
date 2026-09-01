@@ -340,13 +340,18 @@ orchestrator/
                         spent, never re-derived, and everything it established is established again at the
                         boundary it is about to be spent at -- the checkout still this issue's own, still clean,
                         and still on the commit that was cleared before a `worktree remove` that does not force,
-                        the local branch deleted through an `update-ref -d` naming the old value, and the remote
-                        branch through the same lease-pinned delete the snapshot namespace is reclaimed under.
-                        Ownership is re-derived for every ref, so only the two names this issue publishes under
-                        and the one path its creators derive can be touched. Already-absent is success; the
-                        checkout comes down before the branch it is on, and the remote branch before the local
-                        one, since the local artifacts are what the scan finds a half-finished teardown back by
-                        -- which is the whole of the retry, no failure being remembered anywhere else
+                        the local branch deleted through an `update-ref -d` naming the old value and refused
+                        while any live worktree of the clone is still standing on it, since that one protection
+                        `branch -D` has and the ref update does not, and the remote branch through the same
+                        lease-pinned delete the snapshot namespace is reclaimed under. Ownership is re-derived
+                        for every ref, so only the two names this issue publishes under and the one path its
+                        creators derive can be touched. Already-absent is success; the checkout comes down
+                        before the branch it is on, and the remote branch before the local one, since the local
+                        artifacts are what the scan finds a half-finished teardown back by -- which is the whole
+                        of the retry, no failure being remembered anywhere else. A branch's two halves settle
+                        together: the local one never reports success while the remote one has not, and the
+                        shape where the ref is already gone and nothing can be held back says so in the log,
+                        being the only record of it there will be
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends

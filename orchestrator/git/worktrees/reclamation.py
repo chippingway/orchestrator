@@ -19,7 +19,11 @@ the same commit.
 
 Nothing is forced. The removal runs without `--force` and both deletions state
 what they expect, so the worst this can do to work nobody adjudicated is fail
-to delete something.
+to delete something. The one protection a stated expectation does not carry is
+git's own refusal to delete a branch some checkout is on -- `update-ref` has
+no such refusal where `branch -D` does -- so the worktrees of the clone are
+asked, under the lock and immediately before the deletion, whether any of them
+is still standing on it.
 
 **Absent is success.** A checkout already gone and a branch already deleted
 are the ordinary shape of a second pass, and reporting them as failures would
@@ -33,6 +37,13 @@ branch, so a local artifact deleted while a remote one survives takes with it
 the last thing that would have led anybody back to the remote. Every step
 therefore refuses while a surface behind it is still standing, and a teardown
 that failed halfway leaves this host holding the thread.
+
+A branch is one artifact on two hosts, so its two surfaces settle together or
+not at all. The local half never comes back a success while the remote half is
+unsettled -- not even when the ref is already gone from this clone, which is
+the one shape where holding the anchor back is not available: nothing on this
+host names that issue any more, so no later scan will reach what is left on
+the remote, and this pass saying so is the only record there will be.
 
 That is the whole of the retry, too: nothing is remembered here. A surface
 that failed is an artifact still on disk or still on the remote, so the next
@@ -76,6 +87,13 @@ _BRANCH_REF_PREFIX = "refs/heads/"
 _CLONE = "the clone"
 
 _REMOTE = "the remote"
+
+# How `worktree list --porcelain` spells the two things a caller about to
+# delete a branch has to tell apart: the checkout that is on it, and the
+# registration whose directory is gone from under it.
+_ON_BRANCH = "branch"
+
+_PRUNABLE = "prunable"
 
 
 def _branch_ref(branch: str) -> str:
@@ -359,8 +377,7 @@ def _reclaimed_branch(
     if _unmoved(artifacts, branch, tip, cleared_sha):
         remote = _reclaimed_remote_branch(artifacts, branch, cleared_sha)
     return _branch_surfaces(branch, remote, _reclaimed_local_branch(
-        artifacts, branch, tip,
-        released=freed and remote is not SurfaceOutcome.FAILED,
+        artifacts, branch, tip, remote=remote, freed=freed,
     ))
 
 
@@ -451,26 +468,70 @@ def _reclaimed_local_branch(
     branch: str,
     tip: BranchTip,
     *,
-    released: bool,
+    remote: SurfaceOutcome,
+    freed: bool,
 ) -> SurfaceOutcome:
     """Delete one local branch, once nothing is standing on it any more.
 
-    Last of the three, and the only one gated on the others. The checkout that
-    was on it has to be gone, which is git's own rule; the remote's copy has
-    to be settled, which is this domain's -- an issue is found again by the
-    branch and the checkout this host holds, so deleting the branch while a
-    remote artifact survives is what makes that artifact unfindable.
+    Last of the three, and the only one gated on the others. The remote's copy
+    of this branch has to have settled, which is this domain's rule -- an
+    issue is found again by the branch and the checkout this host holds, so
+    letting go of the branch while a remote artifact survives is what makes
+    that artifact unfindable. The checkout that was on it has to be gone too,
+    which is git's rule and this one's both.
+
+    A read that established nothing is answered before either gate, because it
+    is the one answer that is about this branch rather than about what is
+    standing beside it.
     """
-    if tip.answer is not ProbeAnswer.CONFIRMED:
+    if tip.answer is ProbeAnswer.UNREADABLE:
         return _unresolved(artifacts, branch, tip, _CLONE)
-    if not released:
+    if remote is SurfaceOutcome.FAILED:
+        return _kept_for_the_remote(artifacts, branch, tip)
+    if tip.answer is ProbeAnswer.REFUTED:
+        return SurfaceOutcome.ABSENT
+    if not freed:
         log.warning(
-            "issue=#%d keeping the local branch %r: a surface ahead of it is "
-            "still standing, and this branch is what leads back to it",
-            artifacts.issue_number, branch,
+            "issue=#%d keeping the local branch %r: the checkout that stood "
+            "on it is still there", artifacts.issue_number, branch,
         )
         return SurfaceOutcome.FAILED
     return _deleted_local_branch(artifacts, branch, tip.sha)
+
+
+def _kept_for_the_remote(
+    artifacts: IssueArtifacts, branch: str, tip: BranchTip,
+) -> SurfaceOutcome:
+    """The local half of a branch whose copy on the remote is still standing.
+
+    Never a success, whichever way the local half went, because these two
+    surfaces are one branch on two hosts: a local half reported done beside a
+    remote half nobody could delete would have the pair read as half
+    reclaimed and half clean, and the caller act on the second.
+
+    A branch this host still holds is kept, which is the ordinary shape: it is
+    what the next scan finds the candidate by, and through the candidate the
+    remote copy this pass could not take.
+
+    A branch already gone is the shape nothing can be held back for, and it is
+    said out loud for exactly that reason. The artifact on the remote has
+    outlived every name this host had for the issue, so no later pass will
+    reach it and this line is the only record that it is there.
+    """
+    if tip.answer is ProbeAnswer.REFUTED:
+        log.warning(
+            "issue=#%d %r is gone from this clone while the remote still "
+            "carries it: nothing here names that issue any more, so no later "
+            "pass will find what is left",
+            artifacts.issue_number, branch,
+        )
+        return SurfaceOutcome.FAILED
+    log.warning(
+        "issue=#%d keeping the local branch %r: its copy on the remote is "
+        "still standing, and this branch is what leads back to it",
+        artifacts.issue_number, branch,
+    )
+    return SurfaceOutcome.FAILED
 
 
 def _deleted_local_branch(
@@ -484,13 +545,23 @@ def _deleted_local_branch(
     a `branch -D` standing behind the same reading would take whatever it
     found there.
 
-    Lock-held for the reason every ref this clone holds is written under that
-    lock: a concurrent `worktree add` on another thread is writing the same
-    store, and the two racing leave one of them reporting a failure that is
-    nothing but the collision.
+    The one thing naming the old value does not buy is what `branch -D` gets
+    for free: git refuses that one while a checkout is on the branch, and
+    `update-ref` deletes it out from under a live tree and leaves its HEAD
+    naming nothing. So the worktrees are asked here, inside the lock and with
+    the deletion, rather than left to the reading of this issue's own checkout
+    that the pass opened with -- a tree added or moved onto this branch since
+    then is a tree that reading never saw.
+
+    Lock-held for that and for the reason every ref this clone holds is
+    written under that lock: a concurrent `worktree add` on another thread is
+    writing the same store, and the two racing leave one of them reporting a
+    failure that is nothing but the collision.
     """
     try:
         with locks._target_root_lock(artifacts.spec.target_root):
+            if _checkouts_holding(artifacts, branch):
+                return SurfaceOutcome.FAILED
             deleted = commands._git_hardened(
                 "update-ref", "-d", _branch_ref(branch), expected,
                 cwd=artifacts.spec.target_root,
@@ -508,6 +579,57 @@ def _deleted_local_branch(
         artifacts.issue_number, branch, (deleted.stderr or "").strip(),
     )
     return SurfaceOutcome.FAILED
+
+
+def _checkouts_holding(artifacts: IssueArtifacts, branch: str) -> bool:
+    """Whether a live checkout of this clone is still standing on `branch`.
+
+    The refusal `update-ref` does not make for itself. Every worktree of the
+    clone is asked rather than only the path this issue's own checkout belongs
+    at, because what a dangling HEAD costs does not depend on who made the
+    tree that carries it.
+
+    A worktree git reports as prunable is not one of them. Its registration
+    outlived the directory it names, so nothing is standing on the branch and
+    holding it back would leave a candidate that can never settle -- a
+    checkout somebody removed by hand would keep its branch forever.
+
+    Fail-closed on a listing that could not be taken: a deletion this refuses
+    is found again on the next pass, and one it allows on the strength of an
+    answer nobody gave is not.
+    """
+    listed = commands._git_hardened(
+        "worktree", "list", "--porcelain", cwd=artifacts.spec.target_root,
+    )
+    if listed.returncode != 0:
+        log.warning(
+            "issue=#%d keeping %r: the worktrees of %s would not be listed: "
+            "%s",
+            artifacts.issue_number,
+            branch,
+            artifacts.spec.target_root,
+            (listed.stderr or "").strip(),
+        )
+        return True
+    holding = any(
+        _standing_on(entry, branch)
+        for entry in (listed.stdout or "").split("\n\n")
+    )
+    if holding:
+        log.warning(
+            "issue=#%d keeping the local branch %r: a checkout of %s is "
+            "standing on it",
+            artifacts.issue_number, branch, artifacts.spec.target_root,
+        )
+    return holding
+
+
+def _standing_on(entry: str, branch: str) -> bool:
+    """Whether one `worktree list` entry is a live checkout of `branch`."""
+    reported = entry.splitlines()
+    if any(line.startswith(_PRUNABLE) for line in reported):
+        return False
+    return f"{_ON_BRANCH} {_branch_ref(branch)}" in reported
 
 
 def _unresolved(

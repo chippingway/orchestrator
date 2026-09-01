@@ -122,8 +122,10 @@ _OWNER_ONLY_NAMES = (
 # teardown that spends one: the surfaces a candidate is taken from and what
 # each was left in, the checkout's presence, ownership, and revalidation
 # reads, the two lease-pinned deletions and the boundaries around them, the
-# gates ordering the three, and the refusals a verdict that clears nothing
-# gets. Naming the whole surface makes a helper added to an owner an edit here
+# live-checkout read the local one is refused by and the `worktree list`
+# spellings it is written in, the gates ordering the three, the local half a
+# stranded remote keeps, and the refusals a verdict that clears nothing gets.
+# Naming the whole surface makes a helper added to an owner an edit here
 # rather than a definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
@@ -151,8 +153,10 @@ _OWNER_DEFINED = (
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
+    ("_ON_BRANCH", reclamation),
     ("_OPEN_PULL_REQUEST", claims),
     ("_ORCHESTRATOR_BRANCH_REFS", probes),
+    ("_PRUNABLE", reclamation),
     ("_REF_SEPARATOR", attribution),
     ("_REMOTE", reclamation),
     ("_SAFE_CHAR", paths),
@@ -185,6 +189,7 @@ _OWNER_DEFINED = (
     ("_checkout_retentions", eligibility),
     ("_checkout_tip", evidence),
     ("_checkout_tip_retentions", eligibility),
+    ("_checkouts_holding", reclamation),
     ("_classified_candidates", eligibility),
     ("_classify_artifacts", eligibility),
     ("_clean_worktree", evidence),
@@ -213,6 +218,7 @@ _OWNER_DEFINED = (
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
+    ("_kept_for_the_remote", reclamation),
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
@@ -252,6 +258,7 @@ _OWNER_DEFINED = (
     ("_slugs_by_worktrees_root", attribution),
     ("_spec_inventory", inventory),
     ("_specs_by_clone", inventory),
+    ("_standing_on", reclamation),
     ("_still_cleared", reclamation),
     ("_terminal_retentions", claims),
     ("_tip_retentions", eligibility),
