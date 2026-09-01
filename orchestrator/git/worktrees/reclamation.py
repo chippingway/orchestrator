@@ -148,6 +148,11 @@ _ON_BRANCH = "branch"
 
 _PRUNABLE = "prunable"
 
+# How `worktree list --porcelain` opens each entry, which is the path that
+# entry is about. Read for a prunable one, where whether that path is still
+# there is what says if anything is standing on the branch beside it.
+_WORKTREE_ENTRY = "worktree "
+
 # What keeps a deletion from travelling down a symbolic ref to whatever it
 # names. `update-ref` follows one by default, so a branch made symbolic in the
 # store the checkouts share would have the deletion take its target instead.
@@ -171,6 +176,14 @@ _CHECKOUT_LOCKS = ("index.lock", "HEAD.lock")
 # checkout's HEAD is on, it is what stops that branch moving under the anchor
 # -- an `update-ref` on it answers to neither of the two above.
 _REF_LOCK = ".lock"
+
+# The file in a checkout's administrative directory that says where that
+# checkout is, and the bits taken off it while one comes down. It is what
+# `worktree remove` reads to decide what to delete and what `worktree repair`
+# rewrites, and nothing locks it -- so the mode is the hold.
+_REGISTRATION = "gitdir"
+
+_WRITABLE = 0o222
 
 # What a branch nobody cleared a commit for is left with, in the two answers
 # the ledger gives. Said apart because an operator reading the line has to be
@@ -388,7 +401,68 @@ def _anchored_removal(
         if not held:
             return SurfaceOutcome.FAILED
         holding.callback(_let_go, held)
+        was = _registration_frozen(artifacts, gitdir)
+        if was is None:
+            return SurfaceOutcome.FAILED
+        holding.callback(_thawed, gitdir / _REGISTRATION, was)
         return _removal_while_held(artifacts, worktree, proven_sha)
+
+
+def _registration_frozen(
+    artifacts: IssueArtifacts, gitdir: Path,
+) -> int | None:
+    """Hold the registration still, and answer with the mode it had.
+
+    What `worktree remove` deletes is not the path it is handed. That path
+    only selects a registration, and what comes down is the path the
+    registration names -- so the one thing that decides where the destruction
+    lands is a file in the administrative directory, and `worktree repair` is
+    a single command that rewrites it.
+
+    Held by taking its write bits away, which is the only hold there is:
+    nothing locks that file, and a `repair` that cannot open it for writing
+    fails outright and leaves the registration naming what it named. Every
+    reading in front of the removal is then about the tree the removal will
+    actually take.
+
+    `None` when the mode could not be read or could not be changed, which
+    stops the removal. A registration nobody can hold still is one that can be
+    pointed anywhere between here and the command, and a removal aimed by a
+    file somebody else is free to rewrite is aimed at nothing in particular.
+    """
+    registration = gitdir / _REGISTRATION
+    try:
+        was = _made_read_only(registration)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: %s could not be held still (%s)",
+            artifacts.issue_number, registration, refused,
+        )
+        return None
+    return was
+
+
+def _made_read_only(registration: Path) -> int:
+    """Take the write bits off one file, and answer with the mode it had."""
+    was = registration.stat().st_mode
+    registration.chmod(was & ~_WRITABLE)
+    return was
+
+
+def _thawed(registration: Path, was: int) -> None:
+    """Give the registration the mode it had back, if it is still there.
+
+    A removal that succeeded took the whole administrative directory with it,
+    which is the ordinary way this ends.
+    """
+    try:
+        registration.chmod(was)
+    except FileNotFoundError:
+        return
+    except OSError as refused:
+        log.warning(
+            "%s could not be given its mode back: %s", registration, refused,
+        )
 
 
 def _checkout_gitdir(
@@ -1048,6 +1122,47 @@ def _stranded(
     _marked_again(artifacts, branch, cleared_sha)
 
 
+def _marked_at(
+    spec: config.RepoSpec,
+    issue_number: int,
+    branch: str,
+    published: BranchTip,
+) -> bool:
+    """Put the branch back at what the remote says it is at, as the marker.
+
+    For the leftover no proof covers: nothing was cleared for this branch, so
+    there is no adjudicated commit to name it by, and the only commit anybody
+    can name is the one the remote is standing on. Brought within reach first,
+    since a clone that has never had that commit cannot write a ref at it.
+
+    What this restores is a candidate rather than a permission. The next scan
+    reports the issue, the classification reads the same commit off both hosts
+    and asks what accounts for it, and a commit nothing accounts for is a
+    retention an operator can see -- which is the state this host was in
+    before somebody took the branch away.
+    """
+    if published.answer is not ProbeAnswer.CONFIRMED:
+        return False
+    _within_reach(spec, issue_number, branch, published)
+    return _branch_restored(spec, branch, published.sha)
+
+
+def _branch_restored(spec: config.RepoSpec, branch: str, sha: str) -> bool:
+    """Write one of this issue's branches back, if the name is free.
+
+    The one write in this module that is not a deletion, and every caller of
+    it is putting back what a step of its own could not finish. Written
+    through the ledger's own primitive, which is what makes it a marker rather
+    than a publication: undereferenced, under the clone's lock, and leased
+    against the ref existing, so a name something has since put back itself is
+    one this leaves alone.
+    """
+    return obligations._written_note(
+        spec.target_root, spec, _branch_ref(branch), sha,
+        lease=obligations._ABSENT_LEASE,
+    )
+
+
 def _marked_again(
     artifacts: IssueArtifacts, branch: str, cleared_sha: str | None,
 ) -> None:
@@ -1060,15 +1175,17 @@ def _marked_again(
     commit that classification cleared, so what a later pass finds is a
     candidate rather than a note it has to interpret.
 
-    Written through the ledger's own primitive, which is what makes it a
-    marker rather than a publication: undereferenced, under the clone's lock,
-    and leased against the ref existing, so nothing somebody else put there
-    can be moved by it.
+    A branch already back is one this leaves alone and says nothing about: the
+    step that put it there has reported it, and the scan needs no second name.
+
     """
     spec = artifacts.spec
-    marked = cleared_sha is not None and obligations._written_note(
-        spec.target_root, spec, _branch_ref(branch), cleared_sha,
-        lease=obligations._ABSENT_LEASE,
+    if evidence._local_branch_tip(
+        spec, branch,
+    ).answer is ProbeAnswer.CONFIRMED:
+        return
+    marked = cleared_sha is not None and _branch_restored(
+        spec, branch, cleared_sha,
     )
     if marked:
         log.warning(
@@ -1198,12 +1315,21 @@ def _reminded(
     established nothing: the first later pass that finds the branch gone from
     the remote lets it go again.
 
-    A reminder that could not be written is not answered here, but it is not
-    reported as one that was either: the branch step above is what decides
-    what happens next, and an operator reading this line has to be able to
-    tell a leftover something is carrying from one nothing is.
+    A reminder that could not be written is not the end of it. The branch is
+    gone from this clone by the time this runs -- that is what got the remote
+    asked at all -- so a ledger that would not take the note leaves nothing on
+    this host naming the leftover, and the pass after would come back empty
+    over a branch still standing there. What is tried next is the branch
+    itself, put back where the scan reads its candidates from at the commit
+    the REMOTE says it is at.
+
+    Reported as what actually happened either way, since an operator reading
+    this line has to be able to tell a leftover something is carrying from one
+    nothing is.
     """
-    written = obligations._remind(spec, branch)
+    written = obligations._remind(spec, branch) or _marked_at(
+        spec, issue_number, branch, published,
+    )
     log.warning(
         "issue=#%d keeping %r on the remote (%s), with nothing cleared for "
         "it: %s",
@@ -1826,16 +1952,11 @@ def _put_back(
     pointing at this ref, so putting the ref back where it was is what makes
     that tree whole again.
 
-    Created and never overwritten, so a name something has since put back
-    itself is one this leaves alone -- and reported as a failure either way,
-    the branch being one this pass has not settled and the issue one a later
-    pass has to come back to.
+    Reported as a failure either way, the branch being one this pass has not
+    settled and the issue one a later pass has to come back to.
     """
     spec = artifacts.spec
-    if obligations._written_note(
-        spec.target_root, spec, _branch_ref(branch), expected,
-        lease=obligations._ABSENT_LEASE,
-    ):
+    if _branch_restored(spec, branch, expected):
         log.warning(
             "issue=#%d put %r back at %r: a checkout arrived on it while it "
             "was being deleted", artifacts.issue_number, branch, expected,
@@ -1949,11 +2070,43 @@ def _checkouts_holding(artifacts: IssueArtifacts, branch: str) -> bool:
 
 
 def _standing_on(entry: str, branch: str) -> bool:
-    """Whether one `worktree list` entry is a live checkout of `branch`."""
+    """Whether one `worktree list` entry is a checkout still on `branch`."""
     reported = entry.splitlines()
-    if any(line.startswith(_PRUNABLE) for line in reported):
+    if f"{_ON_BRANCH} {_branch_ref(branch)}" not in reported:
         return False
-    return f"{_ON_BRANCH} {_branch_ref(branch)}" in reported
+    if not any(line.startswith(_PRUNABLE) for line in reported):
+        return True
+    return not _pruned_away(reported)
+
+
+def _pruned_away(reported: list[str]) -> bool:
+    """Whether a registration git calls prunable names nothing on disk.
+
+    Prunable covers more than a checkout somebody deleted. A tree whose `.git`
+    file went missing is prunable with every one of its files still there, and
+    so is one whose administrative directory names a path that has moved --
+    and a tree still on disk is a tree that can be carrying work, whose HEAD
+    still names this branch and which nothing here can read to find out.
+    Deleting the ref under one of those leaves exactly what the refusal in
+    front of it exists to prevent: a checkout standing on a name nothing
+    resolves.
+
+    So the path is asked, and only its being gone releases the branch. A
+    registration that names no path, and one whose path could not be read, are
+    both kept -- what a caller does next is delete a ref, and neither of those
+    established that nothing is standing on it.
+    """
+    named = next(
+        (
+            line[len(_WORKTREE_ENTRY):]
+            for line in reported
+            if line.startswith(_WORKTREE_ENTRY)
+        ),
+        "",
+    )
+    if not named:
+        return False
+    return _checkout_present(Path(named)) is ProbeAnswer.REFUTED
 
 
 def _unresolved(

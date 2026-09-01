@@ -383,9 +383,13 @@ orchestrator/
                         registration repaired and a link left in its place would have it take a directory
                         outside the tree this orchestrator owns. The two are compared as filesystem objects
                         rather than as spellings, an operator whose worktrees root sits under a link of their
-                        own having every checkout answer a resolved path that is not the derived one. And a
-                        removal that came back clean over a path still standing is reported as the failure it
-                        is, since what came down was not what this named. The note is measured the same way whatever
+                        own having every checkout answer a resolved path that is not the derived one. What the
+                        command actually deletes is not the path it is handed, though — that path only selects
+                        a registration, and the registration names the tree that comes down — so the file
+                        holding that name is held still for the length of a removal by having its write bits
+                        taken off: nothing locks it, and the `worktree repair` a swap needs to aim the removal
+                        elsewhere cannot open it. And a removal that came back clean over a path still standing
+                        is reported as the failure it is, since what came down was not what this named. The note is measured the same way whatever
                         the removal answered, since `worktree remove` deletes the tree and then deletes the
                         administrative directory beside it whatever the first half did: a non-zero result is not
                         a checkout still standing, and letting the note go over one would take the last name a
@@ -400,7 +404,10 @@ orchestrator/
                         inside. Then
                         the local branch deleted through an `update-ref -d` naming the old value and refused
                         while any live worktree of the clone is still standing on it, since that one protection
-                        `branch -D` has and the ref update does not — and asked again once the deletion has
+                        `branch -D` has and the ref update does not — a registration git calls prunable
+                        releasing the branch only when the path it names is genuinely gone, since a tree whose
+                        `.git` file went missing is prunable with every one of its files still there and its
+                        HEAD still naming that branch — and asked again once the deletion has
                         landed, the lock being this process's own and a `worktree add` from outside it needing
                         no permission: a tree is reported on the branch its HEAD names whatever became of that
                         ref, so the branch goes back at the commit it was taken from and the tree that arrived
@@ -461,8 +468,13 @@ orchestrator/
                         leftover a commit-valued record cannot carry -- a local copy taken before the teardown
                         reached it, and a ledger that would not take a note at the commit that was cleared -- is
                         written down as the reminder instead, whose value is an object every repository knows
-                        without being told. Only a ledger that will take nothing at all is reported at error
-                        level, being the one failure here that no later pass can reach
+                        without being told. Where even that name is refused, the branch itself goes back under
+                        `refs/heads/` — at the commit the verdict cleared, or, for the proofless leftover that
+                        has no cleared commit at all, at the one the remote says the branch is at, brought
+                        within reach first. That is a different ref and the one the scan reads its candidates
+                        from, so the pass after finds a candidate to judge afresh rather than a note. Only a
+                        host that will take no ref at all is reported at error level, being the one failure
+                        here that no later pass can reach
       obligations.py    the ledger those notes live in, both kinds read back off their own namespace: one ref per
                         branch under
                         `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the

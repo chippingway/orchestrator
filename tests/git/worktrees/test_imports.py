@@ -162,9 +162,13 @@ _OWNER_ONLY_NAMES = (
 # its own two and the one git takes for the branch under its HEAD -- the
 # exclusive creation each is taken by, the held removal itself, the readings
 # retaken one process before it and the comparison telling a path that IS a
-# tree from one that merely leads to it, the last word on whether the path
-# named is gone, and the take, the discard, and the reconciliation of a note
-# an earlier pass left standing --
+# tree from one that merely leads to it, the registration held still while the
+# removal aims by it and the mode change either side of that, the last word on
+# whether the path named is gone, the reading that tells a prunable
+# registration naming nothing from one naming a tree still there, the branch
+# written back where the scan reads its candidates from and the two callers
+# that reach for it, and the take, the discard, and the reconciliation of a
+# note an earlier pass left standing --
 # and the second reading a refused branch deletion is told apart by. Naming
 # the whole surface makes a helper added to an owner an edit here rather than
 # a definition site nothing checks.
@@ -216,6 +220,7 @@ _OWNER_DEFINED = (
     ("_RECORD_FIELDS", obligations),
     ("_RECORD_FORMAT", obligations),
     ("_REF_SEPARATOR", attribution),
+    ("_REGISTRATION", reclamation),
     ("_REMINDER_MARK", obligations),
     ("_REF_LOCK", reclamation),
     ("_REMOTE", reclamation),
@@ -226,7 +231,9 @@ _OWNER_DEFINED = (
     ("_VERIFY_QUIETLY", evidence),
     ("_VERIFY_REF", creation),
     ("_WORKTREE_ADD", creation),
+    ("_WORKTREE_ENTRY", reclamation),
     ("_WORKTREE_REMOVE_FORCE", creation),
+    ("_WRITABLE", reclamation),
     ("_anchor_accounted", reclamation),
     ("_anchor_checkout", obligations),
     ("_anchor_let_go", reclamation),
@@ -248,6 +255,7 @@ _OWNER_DEFINED = (
     ("_branch_name", paths),
     ("_branch_reasons", eligibility),
     ("_branch_ref", reclamation),
+    ("_branch_restored", reclamation),
     ("_branch_retentions", eligibility),
     ("_branch_surfaces", reclamation),
     ("_branch_tip", eligibility),
@@ -307,7 +315,9 @@ _OWNER_DEFINED = (
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
+    ("_made_read_only", reclamation),
     ("_marked_again", reclamation),
+    ("_marked_at", reclamation),
     ("_matching_owners", attribution),
     ("_merged", inventory),
     ("_move_branch_onto", creation),
@@ -319,6 +329,7 @@ _OWNER_DEFINED = (
     ("_owed_issue", reclamation),
     ("_parsed_records", obligations),
     ("_pr_branch_start_point", creation),
+    ("_pruned_away", reclamation),
     ("_proven_tips", eligibility),
     ("_published_tip", evidence),
     ("_read_orchestrator_refs", probes),
@@ -347,6 +358,7 @@ _OWNER_DEFINED = (
     ("_refused_delete", reclamation),
     ("_refused_push", reclamation),
     ("_remind", obligations),
+    ("_registration_frozen", reclamation),
     ("_reminded", reclamation),
     ("_removal_under_lock", reclamation),
     ("_removal_while_held", reclamation),
@@ -381,6 +393,7 @@ _OWNER_DEFINED = (
     ("_symbolic_branch", reclamation),
     ("_taken_exclusively", reclamation),
     ("_terminal_retentions", claims),
+    ("_thawed", reclamation),
     ("_tip_retentions", eligibility),
     ("_unmoved", reclamation),
     ("_unproven_remote", reclamation),

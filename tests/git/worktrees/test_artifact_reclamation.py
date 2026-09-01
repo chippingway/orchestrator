@@ -94,6 +94,10 @@ _RECORD_SEAM = "_record_obligation"
 # host whose ref store takes nothing.
 _NOTE_SEAM = "_written_note"
 
+# The ledger write a proofless branch is carried by, for the case about it
+# refusing.
+_REMIND_SEAM = "_remind"
+
 # The local git runner every case that stands in front of one patches.
 _HARDENED_SEAM = "_git_hardened"
 
@@ -103,8 +107,17 @@ _CLEAN_SEAM = "_clean_worktree"
 
 _UPDATE_REF = "update-ref"
 
-# Where a checkout is moved to for the case about a link left in its place.
+# Where a checkout is moved to for the cases about a link left in its place,
+# and what is left inside it so its survival is something a case can read.
 MOVED_CHECKOUT = "moved-checkout"
+
+MOVED_FILE = "someone-else-s-work.txt"
+
+MOVED_CONTENT = "a tree nobody adjudicated\n"
+
+# What a linked checkout keeps at its root, and what a case removes to leave
+# a registration git calls prunable over a tree that is still there.
+GIT_FILE = ".git"
 
 # The rule file, the path it hides, and what is in it, for the cases about a
 # tree carrying something no status reports.
@@ -132,6 +145,11 @@ RACED_MESSAGE = "raced"
 RACED_BRANCH = "-raced"
 
 PR_NUMBER = 42
+
+
+def _read(moved: Path) -> str:
+    """What one file in a tree this pass must not have taken still says."""
+    return (moved / MOVED_FILE).read_text()
 
 
 def _unstick(stuck: Path) -> None:
@@ -183,12 +201,27 @@ class _MovedCheckout:
     def __init__(self, worktree: Path, elsewhere: Path, clone: Path) -> None:
         self.worktree = worktree
         self.elsewhere = elsewhere
+        self.repaired = None
         self._clone = clone
 
     def __call__(self, *args, **options) -> ProbeAnswer:
-        """Move the tree, point the registration at it, and link it back."""
+        """Move the tree, point the registration at it, and link it back.
+
+        The repair is the step the whole sequence turns on -- what comes down
+        is the path the registration names -- so its status is kept rather
+        than insisted on: a case run while that file is held still is one
+        where git refuses it, and the answer says so.
+
+        A file is left in the tree once it has moved, so what a case asserts
+        about the far end is that its contents are still there rather than
+        that some directory is. Written after the move, since a tree carrying
+        it beforehand is one every reading in front of the removal refuses.
+        """
         self.worktree.rename(self.elsewhere)
-        _run_git("worktree", "repair", str(self.elsewhere), cwd=self._clone)
+        (self.elsewhere / MOVED_FILE).write_text(MOVED_CONTENT)
+        self.repaired = _ran_git(
+            self._clone, "worktree", "repair", str(self.elsewhere),
+        )
         self.worktree.symlink_to(self.elsewhere)
         return ProbeAnswer.CONFIRMED
 
@@ -607,6 +640,26 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.assertTrue(reclaimed.settled)
         self.assertEqual(cleared.proven[0].sha, tip)
 
+    def test_a_checkout_git_calls_prunable_keeps_it(self) -> None:
+        # Prunable is not the same as gone. A checkout whose `.git` file went
+        # missing is prunable with every one of its files still on disk, and
+        # git goes on reporting it on the branch it was put on -- so a pass
+        # that read the word alone would delete the ref under a tree it
+        # cannot read and may be carrying work.
+        self.published()
+        cleared = self.verdict()
+        worktree = self.checkout()
+        _dirty(worktree)
+        (worktree / GIT_FILE).unlink()
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, CLEANED, FAILED),
+        )
+        self.assertTrue(_holds(self.spec, self.branch))
+        self.assertTrue(worktree.is_dir())
+
     def test_a_commit_raced_into_the_window_is_kept(self) -> None:
         # The lock this teardown holds is this process's own, and the agent or
         # human writing in a checkout is neither. A commit made after every
@@ -948,15 +1001,19 @@ class MovedCheckoutTest(_ReclaimTestCase):
         self.assertEqual(
             self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
         )
-        self.assertTrue(moved.elsewhere.is_dir())
+        self.assertEqual(moved.repaired, 0)
+        self.assertEqual(_read(moved.elsewhere), MOVED_CONTENT)
         self.assertTrue(worktree.is_symlink())
 
-    def test_a_tree_moved_at_the_last_moment_is_told(self) -> None:
-        # The window no reading can close, since the removal resolves its own
-        # argument. What is left is not to lie about it: a path still standing
-        # once the command came back clean is a path whose tree was not what
-        # came down, and a surface reported cleaned over one would settle the
-        # issue and leave whatever is there named by nothing.
+    def test_a_tree_moved_at_the_last_moment_stays(self) -> None:
+        # The window no reading can close, since the command resolves its own
+        # argument. What closes it instead is that the argument only picks a
+        # registration: what comes down is the path that registration names,
+        # and while a removal is running this pass holds that file still. The
+        # repair the swap needs is refused, so the removal is left aimed at
+        # the path it was always aimed at -- a link by then, which git will
+        # not delete as a directory -- and the tree at the far end is
+        # untouched.
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
@@ -966,10 +1023,12 @@ class MovedCheckoutTest(_ReclaimTestCase):
         with patch.object(commands, _HARDENED_SEAM, self.removing):
             reclaimed = self.spend(cleared)
 
+        self.assertNotEqual(self.moved.repaired, 0)
         self.assertEqual(
             self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
         )
         self.assertFalse(reclaimed.settled)
+        self.assertEqual(_read(self.moved.elsewhere), MOVED_CONTENT)
         self.assertTrue(worktree.is_symlink())
 
 
@@ -1298,6 +1357,35 @@ class ReconciliationTest(_ReclaimTestCase):
             self.spend(candidate)
 
         self.assertEqual(self.standing(), (False, False, False))
+
+    def test_a_branch_no_reminder_took_comes_back(self) -> None:
+        # The proofless leftover: nothing was cleared for this branch, the
+        # local copy is gone, and the ledger will not take the note. There is
+        # no adjudicated commit to mark it by, so what goes back is what the
+        # remote says the branch is at -- a candidate for the pass after to
+        # judge, not a permission -- and without it no later pass of this host
+        # would name the branch still standing there.
+        cleared = self.verdict()
+        published = self.world.publish(self.clone, self.branch, BASE_BRANCH)
+        _branch_at(self.clone, self.branch)
+
+        with patch.object(obligations, _REMIND_SEAM, return_value=False):
+            stopped = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(stopped), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+        self.assertEqual(_tip(self.clone, self.branch), published)
+        self.assertEqual(
+            tuple(
+                found.issue_number
+                for found in inventory._local_issue_inventory(
+                    (self.spec,),
+                ).issues
+            ),
+            (ISSUE_NUMBER,),
+        )
 
     def test_a_half_finished_teardown_is_found_again(self) -> None:
         # Nothing is carried between the two passes. The second rebuilds the
