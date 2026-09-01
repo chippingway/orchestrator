@@ -113,6 +113,21 @@ rule; the first-party
 applies it to tracked Markdown/text files, exempting fenced code blocks, single unbreakable tokens (e.g. long URLs),
 binary assets, the lockfile, and the verbatim `LICENSE`.
 
+`[tool.ruff.lint.per-file-ignores]` in that same file carries one waiver, `PLC0414`, over six exact paths. The rule
+reports `import X as X`, which is the spelling `F401` is answered with here: a name aliased to itself is a re-export
+both Ruff and a reader can see, and the import that drops the alias reads as dead. Only one of the six is nothing but
+a facade: `orchestrator/observability/dashboard/theme.py` implements nothing and reads the five style owners back
+under one name, which is the theme object a dashboard page hands every panel. The other five seed and drive a stage's
+scenarios and carry the re-export beside that work — the types, the mid-run effects, and the publication heads a
+sibling test module reads a case back through, bound there and read only there. A waiver covers the whole file rather
+than the import that earned it, so what holds the rest of the file to the rule is the check below rather than the
+entry. `PLC0414` sits outside the selected set CI runs, so those entries answer the audit that opts into it
+(`ruff check orchestrator tests --select=PLC0414`) rather than the default run; a package initializer needs no entry,
+because Ruff never reports the rule there. Each key is an exact path rather than a glob, and
+[`../../tests/repository/test_reexport_aliases.py`](../../tests/repository/test_reexport_aliases.py) holds the list
+against the tree: a self-alias in a module the list does not name, one on a name its own module already reads, or a
+key that globs fails there.
+
 The CI workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
 scope.

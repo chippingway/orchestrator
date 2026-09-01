@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from unittest import mock
 
-from orchestrator import config as config
+from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
 from tests.support import fakes

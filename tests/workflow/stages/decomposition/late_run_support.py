@@ -32,13 +32,16 @@ from orchestrator.workflow.stages.decomposition import (
 )
 
 from tests.workflow.fixtures import _TEST_SPEC, _agent
+# The two recorders come back out of this module for the cases that read
+# what a run held or spawned. Nothing here calls either, so the same-name
+# alias is what declares each import a re-export instead of a dead one.
 from tests.workflow.stages.decomposition.late_recorder_support import (
     HoldSnapshot as HoldSnapshot,
     SpawnSnapshot as SpawnSnapshot,
 )
 from tests.workflow.stages.decomposition.late_seam_support import (
-    SnapshotSeed as SnapshotSeed,
-    WorktreeSeed as WorktreeSeed,
+    SnapshotSeed,
+    WorktreeSeed,
     hold_late_seams,
 )
 from tests.workflow.stages.decomposition.late_test_support import (

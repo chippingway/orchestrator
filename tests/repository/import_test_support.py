@@ -78,3 +78,34 @@ def every_import(path: Path) -> frozenset[str]:
         if isinstance(node, _IMPORT_NODES)
         for target in _imported_targets(node)
     )
+
+
+def same_name_aliases(path: Path) -> frozenset[str]:
+    """The names a module imports under their own spelling.
+
+    `from owner import X as X` is how a module declares an import nothing
+    below it reads to be a re-export rather than a leftover: the alias is what
+    `F401` reads as deliberate, and what `PLC0414` reads as redundant.
+    """
+    return frozenset(
+        alias.name
+        for node in ast.walk(parsed(path))
+        if isinstance(node, _IMPORT_NODES)
+        for alias in node.names
+        if alias.asname == alias.name
+    )
+
+
+def loaded_names(path: Path) -> frozenset[str]:
+    """Every bare name the module's own code reads.
+
+    An imported name missing from this set is one the module binds for
+    somebody else, which is the reading that costs it to `F401` the moment the
+    alias declaring it comes off. A name only assigned to is not a read: the
+    import binding it stays unused however many times something rebinds it.
+    """
+    return frozenset(
+        node.id
+        for node in ast.walk(parsed(path))
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+    )

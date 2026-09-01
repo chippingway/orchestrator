@@ -28,7 +28,7 @@ from tests.workflow.repo_values import (
     MEASURED_CANDIDATE_SHA,
 )
 from tests.workflow.stages.conflicts.conflicts_test_support import (
-    CONFLICT_PR_HEAD_SHA as CONFLICT_PR_HEAD_SHA,
+    CONFLICT_PR_HEAD_SHA,
     MOVED_PR_HEAD_SHA as MOVED_PR_HEAD_SHA,
     RESOLVED_HEAD_SHA as RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin as _ResolvingConflictMixin,
