@@ -295,11 +295,10 @@ class MergedPrBranchTest(unittest.TestCase):
             return_value=_git_result(returncode=1, stderr=FETCH_FAILURE),
         )
 
-        with patch.object(authentication, AUTHED_TARGET_FETCH, failed_fetch):
-            with self.assertRaises(RuntimeError):
-                creation._ensure_pr_worktree(
-                    self._repo.spec, ISSUE_NUMBER, branch=ISSUE_BRANCH,
-                )
+        with patch.object(authentication, AUTHED_TARGET_FETCH, failed_fetch), self.assertRaises(RuntimeError):
+            creation._ensure_pr_worktree(
+                self._repo.spec, ISSUE_NUMBER, branch=ISSUE_BRANCH,
+            )
 
     def test_a_stale_ref_a_failed_fetch_left(self) -> None:
         # The ref outlives the fetch that wrote it. This clone has
@@ -320,11 +319,10 @@ class MergedPrBranchTest(unittest.TestCase):
             return_value=_git_result(returncode=1, stderr=FETCH_FAILURE),
         )
 
-        with patch.object(authentication, AUTHED_TARGET_FETCH, failed_fetch):
-            with self.assertRaises(RuntimeError):
-                creation._ensure_pr_worktree(
-                    amended.spec, ISSUE_NUMBER, branch=ISSUE_BRANCH,
-                )
+        with patch.object(authentication, AUTHED_TARGET_FETCH, failed_fetch), self.assertRaises(RuntimeError):
+            creation._ensure_pr_worktree(
+                amended.spec, ISSUE_NUMBER, branch=ISSUE_BRANCH,
+            )
 
     def test_a_live_branch_comes_from_remote(self) -> None:
         # The same host with the fetch working: the branch comes back from the

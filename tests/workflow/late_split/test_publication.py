@@ -95,11 +95,10 @@ class PublicationEntryTest(unittest.TestCase):
             (_PUBLISHED_SHA, None),
         )
         for field, damaged in refused:
-            with self.subTest(field=field, damaged=damaged):
-                with self.assertRaises(InvalidLateValue):
-                    _support.measured_generation().with_publication(
-                        **_entered_at(**{field: damaged}),
-                    )
+            with self.subTest(field=field, damaged=damaged), self.assertRaises(InvalidLateValue):
+                _support.measured_generation().with_publication(
+                    **_entered_at(**{field: damaged}),
+                )
 
     def test_a_stage_nothing_publishes_from_refuses(self) -> None:
         # Being a workflow state is not enough for the one field that says
@@ -108,11 +107,10 @@ class PublicationEntryTest(unittest.TestCase):
         # publishes onto no pull request, the group would send a later tick to
         # push a candidate no post-publication stage ever committed.
         for named in _UNPUBLISHED_STAGES:
-            with self.subTest(named=named):
-                with self.assertRaises(InvalidLateValue):
-                    _support.measured_generation().with_publication(
-                        **_entered_at(stage=str(named)),
-                    )
+            with self.subTest(named=named), self.assertRaises(InvalidLateValue):
+                _support.measured_generation().with_publication(
+                    **_entered_at(stage=str(named)),
+                )
 
     def test_a_hand_edited_stage_names_no_publication(self) -> None:
         # The read side of the same rule, because the write is not the only

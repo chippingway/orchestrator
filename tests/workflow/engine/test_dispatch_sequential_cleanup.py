@@ -97,9 +97,8 @@ class SequentialTickRefetchTest(unittest.TestCase):
         github = self._owner_holding_a_ref()
         deleted = Mock()
 
-        with patch.object(_snapshot_refs, "delete_snapshot_ref", deleted):
-            with self.assertLogs(_WORKFLOW_LOG):
-                self._sequential_tick(github)
+        with patch.object(_snapshot_refs, "delete_snapshot_ref", deleted), self.assertLogs(_WORKFLOW_LOG):
+            self._sequential_tick(github)
 
         deleted.assert_not_called()
         self.assertTrue(github.pinned_data(_OWNER_NUMBER)["late_cancelled"])
@@ -130,9 +129,8 @@ class SequentialTickRefetchTest(unittest.TestCase):
         deleted = Mock(return_value=_snapshot_refs.SnapshotOutcome.DELETED)
         stage = Mock()
 
-        with patch.object(_snapshot_refs, "delete_snapshot_ref", deleted):
-            with _intercepted(_UMBRELLA_TARGET, stage):
-                self._sequential_tick(github, polled_closed=False)
+        with patch.object(_snapshot_refs, "delete_snapshot_ref", deleted), _intercepted(_UMBRELLA_TARGET, stage):
+            self._sequential_tick(github, polled_closed=False)
 
         stage.assert_not_called()
         self.assertEqual(

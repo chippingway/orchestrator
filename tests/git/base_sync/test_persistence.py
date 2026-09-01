@@ -189,15 +189,14 @@ class ResetClearAndParkTest(unittest.TestCase):
         recorder = _OrderedCall(ordered, fixtures.GIT_HARDENED, hardened)
         with _recorded_calls(
             ordered, context.gh, ISSUE_COMMENT, EMIT_EVENT, WRITE_STATE,
-        ):
-            with patch.object(commands, fixtures.GIT_HARDENED, recorder):
-                persistence._reset_clear_and_park(
-                    context,
-                    fixtures.PRE_REBASE_SHA,
-                    message=PARK_MESSAGE,
-                    reason=reason,
-                    clean=clean,
-                )
+        ), patch.object(commands, fixtures.GIT_HARDENED, recorder):
+            persistence._reset_clear_and_park(
+                context,
+                fixtures.PRE_REBASE_SHA,
+                message=PARK_MESSAGE,
+                reason=reason,
+                clean=clean,
+            )
         return context, hardened, ordered
 
 

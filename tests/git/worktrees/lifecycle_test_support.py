@@ -168,15 +168,15 @@ def _worktree_fixture(
     """
     recorder = _GitRecorder(**recorder_options)
     fetches = _AuthedFetchRecorder()
-    with tempfile.TemporaryDirectory(prefix="orch-worktree-") as temp_dir:
-        with (
-            patch.object(config, "WORKTREES_DIR", Path(temp_dir)),
-            patch.object(commands, "_git", recorder),
-            patch.object(authentication, "_authed_target_fetch", fetches),
-            patch.object(
-                authentication, "_remote_branch_tip", return_value=remote_tip,
-            ),
-        ):
-            yield _WorktreeFixture(
-                git=recorder, fetches=fetches, spec=_spec(),
-            )
+    with (
+        tempfile.TemporaryDirectory(prefix="orch-worktree-") as temp_dir,
+        patch.object(config, "WORKTREES_DIR", Path(temp_dir)),
+        patch.object(commands, "_git", recorder),
+        patch.object(authentication, "_authed_target_fetch", fetches),
+        patch.object(
+            authentication, "_remote_branch_tip", return_value=remote_tip,
+        ),
+    ):
+        yield _WorktreeFixture(
+            git=recorder, fetches=fetches, spec=_spec(),
+        )

@@ -77,13 +77,12 @@ class LabelEligibilityTest(unittest.TestCase):
     def test_every_detour_label_is_eligible(self) -> None:
         recover = _handled()
         for label in DETOUR_LABELS:
-            with self.subTest(label=label):
-                with _patched(**{RECOVER: recover}):
-                    self.assertTrue(
-                        eligibility._auto_rebase_label_is_eligible(
-                            fixtures._sync_context(label=label),
-                        ),
-                    )
+            with self.subTest(label=label), _patched(**{RECOVER: recover}):
+                self.assertTrue(
+                    eligibility._auto_rebase_label_is_eligible(
+                        fixtures._sync_context(label=label),
+                    ),
+                )
         # An eligible label stays on the normal flow, so the anchor it may
         # carry is settled by the rebase itself.
         recover.assert_not_called()
@@ -340,14 +339,16 @@ class NormalStartTest(unittest.TestCase):
 
     def test_clean_worktree_starts_only_when_behind(self) -> None:
         for behind, expected in ((0, False), (fixtures.BEHIND_BY, True)):
-            with self.subTest(behind=behind):
-                with _patched(**{DIRTY_FILES: MagicMock(return_value=[])}):
-                    self.assertEqual(
-                        eligibility._normal_auto_rebase_can_start(
-                            fixtures._sync_context(behind=behind),
-                        ),
-                        expected,
-                    )
+            with (
+                self.subTest(behind=behind),
+                _patched(**{DIRTY_FILES: MagicMock(return_value=[])}),
+            ):
+                self.assertEqual(
+                    eligibility._normal_auto_rebase_can_start(
+                        fixtures._sync_context(behind=behind),
+                    ),
+                    expected,
+                )
 
 
 if __name__ == "__main__":

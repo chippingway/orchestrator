@@ -57,9 +57,8 @@ class LineageDepthTest(unittest.TestCase):
         # 2.5 is the case a plain range check gets wrong: it is under the
         # bound, and adding one to it would hand a child depth 3.5.
         for depth in (MAX_LINEAGE_DEPTH, MAX_LINEAGE_DEPTH + 1, -1, None, 2.5):
-            with self.subTest(depth=depth):
-                with self.assertRaises(_identity.LineageDepthExceeded):
-                    _identity.child_lineage_depth(depth)
+            with self.subTest(depth=depth), self.assertRaises(_identity.LineageDepthExceeded):
+                _identity.child_lineage_depth(depth)
 
 
 class ResourceFingerprintTest(unittest.TestCase):

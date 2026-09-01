@@ -151,9 +151,8 @@ class HoldBeforeSpawnTest(LateCase, unittest.TestCase):
             self.github, "edit_pr_body", side_effect=RuntimeError,
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                outcome, spawn = self._adjudicate()
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            outcome, spawn = self._adjudicate()
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         spawn.assert_not_called()
@@ -175,9 +174,8 @@ class HoldBeforeSpawnTest(LateCase, unittest.TestCase):
             _RefusedFirstWrite(self.github),
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                outcome, spawn = self._adjudicate()
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            outcome, spawn = self._adjudicate()
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         spawn.assert_not_called()
@@ -206,9 +204,8 @@ class HoldBeforeSpawnTest(LateCase, unittest.TestCase):
             self.github, "edit_pr_body", side_effect=RuntimeError,
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                self._adjudicate()
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            self._adjudicate()
 
         recorded = self._events_named(EVENT_LATE_FAILURE)
         self.assertEqual(len(recorded), 1)

@@ -169,11 +169,10 @@ class LabelWriteTypoGuardTest(unittest.TestCase):
         # control label (never seeded at creation) both raise here.
         gh = FakeGitHubClient()
         for label in ("blokced", "backlog"):
-            with self.subTest(label=label):
-                with self.assertRaises(ValueError):
-                    gh.create_child_issue(
-                        title="t", body="b", parent_number=1, labels=[label],
-                    )
+            with self.subTest(label=label), self.assertRaises(ValueError):
+                gh.create_child_issue(
+                    title="t", body="b", parent_number=1, labels=[label],
+                )
 
 
 class TransitionTableTest(unittest.TestCase):

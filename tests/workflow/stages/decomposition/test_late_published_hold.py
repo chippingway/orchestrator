@@ -202,9 +202,11 @@ class PublishedHoldBoundaryTest(_PublishedHoldCase):
         held = self._crossed_hold()
         published_body = self.published_pr.body
 
-        with patch.object(self.github, EDIT_PR_BODY, side_effect=RuntimeError):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR_LEVEL):
-                hold = self._reconcile(held)
+        with (
+            patch.object(self.github, EDIT_PR_BODY, side_effect=RuntimeError),
+            self.assertLogs(WORKFLOW_LOG, level=ERROR_LEVEL),
+        ):
+            hold = self._reconcile(held)
 
         self.assertTrue(hold.failed)
         self.assertFalse(hold.held)
@@ -314,9 +316,8 @@ class PublishedHoldBeforeSpawnTest(_PublishedHoldCase):
             self.github, EDIT_PR_BODY, side_effect=RuntimeError,
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR_LEVEL):
-                outcome, spawn = adjudicate(self.github, self.issue)
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR_LEVEL):
+            outcome, spawn = adjudicate(self.github, self.issue)
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         spawn.assert_not_called()

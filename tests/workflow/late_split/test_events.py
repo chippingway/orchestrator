@@ -55,18 +55,16 @@ class FamilySchemaTest(unittest.TestCase):
             },
         )
         for fields in unowned:
-            with self.subTest(family=str(fields[_FAMILY_KEY])):
-                with self.assertRaises(_REFUSED):
-                    _events.LateEvent(**fields)
+            with self.subTest(family=str(fields[_FAMILY_KEY])), self.assertRaises(_REFUSED):
+                _events.LateEvent(**fields)
 
     def test_a_missing_required_field_is_refused(self) -> None:
         for family in (
             _FAMILY.VERDICT, _FAMILY.FAILURE, _FAMILY.SNAPSHOT,
             _FAMILY.CLEANUP, _FAMILY.RESTART,
         ):
-            with self.subTest(family=str(family)):
-                with self.assertRaises(_REFUSED):
-                    _events.LateEvent(family=family)
+            with self.subTest(family=str(family)), self.assertRaises(_REFUSED):
+                _events.LateEvent(family=family)
 
     def test_a_family_that_is_not_a_member_is_refused(self) -> None:
         with self.assertRaises(_REFUSED):
@@ -125,9 +123,8 @@ class DetailTypeTest(unittest.TestCase):
             {"verdict": LateVerdict.QUESTION, "category": "generated_artifacts"},
         )
         for fields in lookalikes:
-            with self.subTest(fields=sorted(fields)):
-                with self.assertRaises(_REFUSED):
-                    _support.verdict_event(**fields)
+            with self.subTest(fields=sorted(fields)), self.assertRaises(_REFUSED):
+                _support.verdict_event(**fields)
 
     def test_prose_cannot_enter_through_a_typed_field(self) -> None:
         # The adversarial case the closed vocabulary exists for: an
@@ -139,11 +136,10 @@ class DetailTypeTest(unittest.TestCase):
 
     def test_a_count_must_be_a_real_count(self) -> None:
         for counted in (True, 2.5, "4", -1):
-            with self.subTest(counted=counted):
-                with self.assertRaises(_REFUSED):
-                    _support.verdict_event(
-                        verdict=LateVerdict.SPLIT, child_count=counted,
-                    )
+            with self.subTest(counted=counted), self.assertRaises(_REFUSED):
+                _support.verdict_event(
+                    verdict=LateVerdict.SPLIT, child_count=counted,
+                )
 
     def test_a_resource_is_checked_through(self) -> None:
         # The kind is what a record reports, so a resource built with a string
@@ -158,9 +154,8 @@ class DetailTypeTest(unittest.TestCase):
             LateResource(kind=LateResourceKind.BRANCH, target=_MULTILINE),
         )
         for resource in untyped:
-            with self.subTest(kind=str(resource.kind)):
-                with self.assertRaises(_REFUSED):
-                    _support.cleanup_event(resource)
+            with self.subTest(kind=str(resource.kind)), self.assertRaises(_REFUSED):
+                _support.cleanup_event(resource)
 
     def test_a_typed_resource_is_accepted(self) -> None:
         recorded = _support.cleanup_event(

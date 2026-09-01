@@ -255,9 +255,8 @@ class PublishedSupersessionRefusalTest(
         # A fetched pull request is lazy, so the request that fails is as
         # likely to be the read as the write behind it -- and by then the
         # children are already live.
-        with refusing(self.github, GET_PR):
-            with self.assertLogs(level=ERROR):
-                outcome = self._transact(generation=self.generation)
+        with refusing(self.github, GET_PR), self.assertLogs(level=ERROR):
+            outcome = self._transact(generation=self.generation)
 
         self._assert_left_alone(outcome)
 
@@ -267,9 +266,8 @@ class PublishedSupersessionRefusalTest(
         # is what the order between the two exists to prevent.
         held = self.held_publication()
 
-        with refusing(self.github, EDIT_PR_BODY):
-            with self.assertLogs(level=ERROR):
-                outcome = self._transact(generation=held)
+        with refusing(self.github, EDIT_PR_BODY), self.assertLogs(level=ERROR):
+            outcome = self._transact(generation=held)
 
         self._assert_left_alone(outcome)
         self.assertEqual(self.published_pr.body, _late_hold._hold_body(held))
@@ -487,9 +485,8 @@ class PublishedSupersessionRaceTest(PublishedSplitCase, unittest.TestCase):
         # retirement stands in. Waved through, this pass would clear the
         # pointer, let the children loose, and delete the branch behind a
         # pull request that is open and carrying the superseded work.
-        with interleaved_after(_late_transaction, SUPERSEDED, self.reopened):
-            with self.assertLogs(level=ERROR):
-                outcome = self._transact(generation=self.generation)
+        with interleaved_after(_late_transaction, SUPERSEDED, self.reopened), self.assertLogs(level=ERROR):
+            outcome = self._transact(generation=self.generation)
 
         self._assert_held_back(outcome)
         self.assertEqual(self.published_pr.state, STATE_OPEN)
@@ -506,9 +503,8 @@ class PublishedSupersessionRaceTest(PublishedSplitCase, unittest.TestCase):
 
     def _moved_inside_the_close(self, moved):
         """One pass with the world moving between the proof and the close."""
-        with interleaved_after(_late_transaction, PROVED, moved):
-            with self.assertLogs(level=ERROR):
-                return self._transact(generation=self.generation)
+        with interleaved_after(_late_transaction, PROVED, moved), self.assertLogs(level=ERROR):
+            return self._transact(generation=self.generation)
 
     def _assert_held_back(self, outcome) -> None:
         """Parked with nothing past the supersession allowed to happen."""
@@ -550,9 +546,8 @@ class PublishedRetirementRaceTest(PublishedSplitCase, unittest.TestCase):
         # cannot close. The label lands, because that write is what the window
         # IS. Nothing after it does: the children stay blocked for the
         # umbrella's own walk, and the branch stays on the ledger.
-        with interleaved_after(_late_transaction, HOLDS, self.reopened):
-            with self.assertLogs(level=ERROR):
-                outcome = self._transact(generation=self.generation)
+        with interleaved_after(_late_transaction, HOLDS, self.reopened), self.assertLogs(level=ERROR):
+            outcome = self._transact(generation=self.generation)
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(
@@ -568,9 +563,8 @@ class PublishedRetirementRaceTest(PublishedSplitCase, unittest.TestCase):
         # barrier in front of it is one the walk behind it has already
         # outlived. What answers for each relabel is the reading taken
         # immediately before that relabel, which is the walk's own.
-        with interleaved_after(_parents, CHILD_SCAN, self.reopened):
-            with self.assertLogs(level=ERROR):
-                self._transact(generation=self.generation)
+        with interleaved_after(_parents, CHILD_SCAN, self.reopened), self.assertLogs(level=ERROR):
+            self._transact(generation=self.generation)
 
         self.assertEqual(
             first_child(self.github).labels[0].name, WorkflowLabel.BLOCKED,
@@ -584,9 +578,8 @@ class PublishedRetirementRaceTest(PublishedSplitCase, unittest.TestCase):
         # child scan, and one relabel per child stand in between. Deleting the
         # ref behind a change somebody reopened is the one act here no later
         # pass could undo, so the branch stays even though the children ran.
-        with interleaved_after(_late_transaction, ACTIVATED, self.reopened):
-            with self.assertLogs(level=ERROR):
-                self._transact(generation=self.generation)
+        with interleaved_after(_late_transaction, ACTIVATED, self.reopened), self.assertLogs(level=ERROR):
+            self._transact(generation=self.generation)
 
         self.assertNotEqual(
             first_child(self.github).labels[0].name, WorkflowLabel.BLOCKED,

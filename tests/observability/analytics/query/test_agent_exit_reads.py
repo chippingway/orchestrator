@@ -169,12 +169,11 @@ class RecentAgentExitsTest(unittest.TestCase):
         # Deselecting `agent_exit`, or clearing the stage multiselect, leaves
         # no row this table could show -- so no connection is opened either.
         for selection in ({"events": [_STAGE_ENTER]}, {"stages": []}):
-            with self.subTest(selection=selection):
-                with configured_db_url():
-                    self.assertEqual(
-                        get_recent_agent_exits(connect=FakeConnect(), **selection),
-                        [],
-                    )
+            with self.subTest(selection=selection), configured_db_url():
+                self.assertEqual(
+                    get_recent_agent_exits(connect=FakeConnect(), **selection),
+                    [],
+                )
 
 
 if __name__ == "__main__":

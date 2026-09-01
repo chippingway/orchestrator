@@ -222,9 +222,8 @@ class _RecoveredPublicationMixin(
         run_options.setdefault("head_shas", (STRANDED_CANDIDATE,) * 6)
         with patch.object(
             _worktree_paths, WORKTREE_PATH, return_value=worktree,
-        ):
-            with patch.object(config, DECOMPOSE, True):
-                return self._run_validating(
-                    scenario.github, scenario.issue,
-                    run_agent=fixtures._agent(), **run_options,
-                )
+        ), patch.object(config, DECOMPOSE, True):
+            return self._run_validating(
+                scenario.github, scenario.issue,
+                run_agent=fixtures._agent(), **run_options,
+            )

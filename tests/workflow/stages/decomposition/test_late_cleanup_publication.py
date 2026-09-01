@@ -178,13 +178,12 @@ class ReopenedDuringCleanupTest(PublishedSplitCase, unittest.TestCase):
     def _retried(self, *, moved=None) -> RecordedDelete:
         """One more umbrella tick, with a human moving things or not."""
         remote = RecordedDelete(SnapshotOutcome.DELETED)
-        with remote.answering(), local_teardown():
-            with interleaved_after(
-                _snapshot_refs, SNAPSHOT_PROBE, moved or _nothing,
-            ):
-                _umbrella._handle_umbrella(
-                    self.github, _TEST_SPEC, self.issue,
-                )
+        with remote.answering(), local_teardown(), interleaved_after(
+            _snapshot_refs, SNAPSHOT_PROBE, moved or _nothing,
+        ):
+            _umbrella._handle_umbrella(
+                self.github, _TEST_SPEC, self.issue,
+            )
         return remote
 
     def _branch_states(self) -> list:
@@ -217,13 +216,12 @@ class _ResolvedUmbrellaCase(PublishedSplitCase):
         that stands between the settlement's ask and the retirement write.
         """
         remote = RecordedDelete(SnapshotOutcome.DELETED)
-        with remote.answering(), local_teardown():
-            with interleaved_after(
-                _umbrella, RESOLUTION_SAID, moved or _nothing,
-            ):
-                _umbrella._handle_umbrella(
-                    self.github, _TEST_SPEC, self.issue,
-                )
+        with remote.answering(), local_teardown(), interleaved_after(
+            _umbrella, RESOLUTION_SAID, moved or _nothing,
+        ):
+            _umbrella._handle_umbrella(
+                self.github, _TEST_SPEC, self.issue,
+            )
 
     def _parent_comments(self) -> list:
         """What this tick said on the PARENT, receipts to children aside."""

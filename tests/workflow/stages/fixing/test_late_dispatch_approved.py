@@ -112,9 +112,8 @@ class ReceiptCarriedRoundTest(unittest.TestCase, _FrozenPairMixin):
         github = scenario.github
         crashing = _CrashesOnceTheReceiptIsWritten(github.write_pinned_state)
 
-        with patch.object(github, WRITE_PINNED_STATE, crashing):
-            with self.assertRaises(RuntimeError):
-                self._run_fix_round(scenario)
+        with patch.object(github, WRITE_PINNED_STATE, crashing), self.assertRaises(RuntimeError):
+            self._run_fix_round(scenario)
 
         pinned = _pinned(github)
         self.assertEqual(pinned[KEY_RECEIPT_SHA], MEASURED_CANDIDATE_SHA)
@@ -156,9 +155,8 @@ class ReceiptCarriedRoundTest(unittest.TestCase, _FrozenPairMixin):
         github = scenario.github
         crashing = _CrashesOnceTheReceiptIsWritten(github.write_pinned_state)
 
-        with patch.object(github, WRITE_PINNED_STATE, crashing):
-            with self.assertRaises(RuntimeError):
-                self._run_fix_round(scenario)
+        with patch.object(github, WRITE_PINNED_STATE, crashing), self.assertRaises(RuntimeError):
+            self._run_fix_round(scenario)
         return github
 
     def _run_the_stage(self, github):
@@ -185,9 +183,8 @@ class _RacedCheckoutMixin(_FrozenPairMixin):
             self._run_fix_round(scenario, **run_options)
             return github
         stopped = _CrashesOnceTheReceiptIsWritten(github.write_pinned_state)
-        with patch.object(github, WRITE_PINNED_STATE, stopped):
-            with self.assertRaises(RuntimeError):
-                self._run_fix_round(scenario, **run_options)
+        with patch.object(github, WRITE_PINNED_STATE, stopped), self.assertRaises(RuntimeError):
+            self._run_fix_round(scenario, **run_options)
         return github
 
     def _run_the_stage(self, github, **run_options):
@@ -337,9 +334,8 @@ class ApprovedRetryEndToEndTest(unittest.TestCase, _FrozenPairMixin):
 
         with patch.object(
             _late_push, PUBLICATION_PAID, _DiesPastTheReceipt(),
-        ):
-            with self.assertRaises(RuntimeError):
-                self._run_the_stage(github)
+        ), self.assertRaises(RuntimeError):
+            self._run_the_stage(github)
 
         pinned = _pinned(github)
         self.assertEqual(pinned[KEY_RECEIPT_SHA], MEASURED_CANDIDATE_SHA)

@@ -93,12 +93,10 @@ class _RefetchedCloseCase(ObservedCloseCase):
         """Run one pass whose cancellation write GitHub will not take."""
         with self.assertLogs(_WORKFLOW_LOG), patch.object(
             self.github, _GET_ISSUE, side_effect=_ClosingOnRefetch(self.github),
-        ):
-            with patch.object(
-                self.github, _PINNED_WRITE, side_effect=_REFUSED,
-            ):
-                with self.assertRaises(RuntimeError):
-                    dispatched()
+        ), patch.object(
+            self.github, _PINNED_WRITE, side_effect=_REFUSED,
+        ), self.assertRaises(RuntimeError):
+            dispatched()
 
     def _cancelled(self) -> bool:
         """Whether the owner's own record now says the cycle ended."""

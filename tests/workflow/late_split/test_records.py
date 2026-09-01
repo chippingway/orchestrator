@@ -220,9 +220,8 @@ class RefusedRecordTest(unittest.TestCase):
         # so only the format check keeps a sentence -- and the path inside it
         # -- out of a field an analysis reads as a commit.
         for sha_field in ("candidate_sha", "base_sha"):
-            with self.subTest(field=sha_field):
-                with self.assertRaises(_REFUSED):
-                    _payload(_MEASUREMENT, **{sha_field: _PROSE})
+            with self.subTest(field=sha_field), self.assertRaises(_REFUSED):
+                _payload(_MEASUREMENT, **{sha_field: _PROSE})
 
     def test_a_phase_that_is_not_a_member_is_refused(self) -> None:
         with self.assertRaises(_REFUSED):
@@ -234,9 +233,8 @@ class RefusedRecordTest(unittest.TestCase):
 
     def test_a_count_that_is_not_a_count_is_refused(self) -> None:
         for counted in (True, 2.5, "4000", -1):
-            with self.subTest(counted=counted):
-                with self.assertRaises(_REFUSED):
-                    _payload(_MEASUREMENT, threshold=counted)
+            with self.subTest(counted=counted), self.assertRaises(_REFUSED):
+                _payload(_MEASUREMENT, threshold=counted)
 
     def test_a_depth_past_the_bound_is_refused(self) -> None:
         with self.assertRaises(_REFUSED):

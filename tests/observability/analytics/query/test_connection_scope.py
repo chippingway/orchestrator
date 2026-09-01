@@ -99,9 +99,8 @@ class ConnectionEvictionTest(_ConnectionScopeCase):
         second = FakeConnection()
         connect = FakeConnect(first, second)
         with configured_db_url():
-            with self.assertRaises(OperationalError):
-                with analytics_connection(connect=connect):
-                    raise OperationalError("server closed the connection")
+            with self.assertRaises(OperationalError), analytics_connection(connect=connect):
+                raise OperationalError("server closed the connection")
             self.assertEqual(first.close_called, 1)
             self.assertIs(_opened_with(connect), second)
         self.assertEqual(second.close_called, 0)
@@ -110,9 +109,8 @@ class ConnectionEvictionTest(_ConnectionScopeCase):
         cached = FakeConnection()
         connect = FakeConnect(cached)
         with configured_db_url():
-            with self.assertRaises(ValueError):
-                with analytics_connection(connect=connect):
-                    raise ValueError("not a broken socket")
+            with self.assertRaises(ValueError), analytics_connection(connect=connect):
+                raise ValueError("not a broken socket")
             self.assertEqual(cached.close_called, 0)
             self.assertIs(_opened_with(connect), cached)
 

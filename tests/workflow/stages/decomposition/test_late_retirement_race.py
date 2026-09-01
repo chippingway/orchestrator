@@ -184,9 +184,8 @@ class _RetiredRecordCase(ObservedCloseCase, LateCase):
         """Retire the cycle, poll behind the write, and end the process."""
         with self.assertLogs(_WORKFLOW_LOG), _PollsAfterTheRetirement(
             self.github, LATE_ISSUE_NUMBER, dying=True,
-        ).answering():
-            with self.assertRaises(RuntimeError):
-                self._adjudicate(agent_reply(SINGLE_REPLY))
+        ).answering(), self.assertRaises(RuntimeError):
+            self._adjudicate(agent_reply(SINGLE_REPLY))
 
     def _guarded(self) -> bool:
         """Ask the dispatcher's own cancelled-cycle guard about this owner."""

@@ -82,11 +82,10 @@ class SwitchedOffRecoveryPushTest(unittest.TestCase):
         counted = _oversized_count()
         push = MagicMock(return_value=True)
 
-        with _gate_switched_off(counted):
-            with self._push_patches(push):
-                pushed = recovery._retry_recovery_push(
-                    fixtures._recovery_context(), fixtures._snapshot(ahead=1),
-                )
+        with _gate_switched_off(counted), self._push_patches(push):
+            pushed = recovery._retry_recovery_push(
+                fixtures._recovery_context(), fixtures._snapshot(ahead=1),
+            )
 
         self.assertTrue(pushed)
         counted.assert_not_called()
@@ -97,14 +96,12 @@ class SwitchedOffRecoveryPushTest(unittest.TestCase):
         """A clean checkout, a watched push, and a finalize that is a no-op."""
         with patch.object(
             verification_probes, DIRTY_FILES, MagicMock(return_value=[]),
+        ), patch.object(authentication, PUSH_BRANCH, push), patch.object(
+            persistence,
+            FINALIZE_HELPER,
+            MagicMock(return_value=True),
         ):
-            with patch.object(authentication, PUSH_BRANCH, push):
-                with patch.object(
-                    persistence,
-                    FINALIZE_HELPER,
-                    MagicMock(return_value=True),
-                ):
-                    yield
+            yield
 
 
 if __name__ == "__main__":

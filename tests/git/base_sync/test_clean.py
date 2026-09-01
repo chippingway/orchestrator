@@ -137,11 +137,10 @@ class CleanRebaseRoutingUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCase
         self._seed_pr_issue(label=LABEL_VALIDATING)
         scenario = _clean_rebase_scenario()
 
-        with patch.object(config, MAX_ADDED_LINES, CEILING):
-            with patch.object(
-                _measurement, COUNT_ADDED_LINES, _oversized(),
-            ):
-                scenario.run(self)
+        with patch.object(config, MAX_ADDED_LINES, CEILING), patch.object(
+            _measurement, COUNT_ADDED_LINES, _oversized(),
+        ):
+            scenario.run(self)
 
         scenario[PUSH_PATCH].assert_not_called()
         self.assertIn((ISSUE, LABEL_DECOMPOSING), self.gh.label_history)

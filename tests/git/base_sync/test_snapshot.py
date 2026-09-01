@@ -98,13 +98,12 @@ class FetchRecoverySnapshotTest(unittest.TestCase):
         context = fixtures._recovery_context()
         fetch = MagicMock(return_value=fixtures._git_result())
 
-        with patch.object(authentication, AUTHED_FETCH, fetch):
-            with patch.object(
-                verification_probes,
-                HEAD_SHA,
-                MagicMock(return_value=fixtures.RECOVERED_SHA),
-            ):
-                fetched = snapshot._fetch_recovery_snapshot(context)
+        with patch.object(authentication, AUTHED_FETCH, fetch), patch.object(
+            verification_probes,
+            HEAD_SHA,
+            MagicMock(return_value=fixtures.RECOVERED_SHA),
+        ):
+            fetched = snapshot._fetch_recovery_snapshot(context)
 
         # The explicit refspec is what makes a single-branch clone update
         # `refs/remotes/...` instead of leaving the payload in FETCH_HEAD,
@@ -126,9 +125,11 @@ class FetchRecoverySnapshotTest(unittest.TestCase):
         )
         abort = MagicMock(return_value=True)
 
-        with patch.object(authentication, AUTHED_FETCH, failed):
-            with patch.object(snapshot, "_abort_recovery_unverified", abort):
-                fetched = snapshot._fetch_recovery_snapshot(context)
+        with (
+            patch.object(authentication, AUTHED_FETCH, failed),
+            patch.object(snapshot, "_abort_recovery_unverified", abort),
+        ):
+            fetched = snapshot._fetch_recovery_snapshot(context)
 
         # Without the fetch there is no remote head to compare against, so
         # the recovery aborts rather than trusting a stale tracking ref.
@@ -172,11 +173,10 @@ class ReadRemoteRecoveryHeadTest(unittest.TestCase):
 
         with patch.object(
             commands, fixtures.GIT_HARDENED, MagicMock(return_value=unreadable),
-        ):
-            with patch.object(snapshot, "_abort_recovery_unverified", abort):
-                remote_head = snapshot._read_remote_recovery_head(
-                    fixtures._recovery_context(), fixtures.BRANCH,
-                )
+        ), patch.object(snapshot, "_abort_recovery_unverified", abort):
+            remote_head = snapshot._read_remote_recovery_head(
+                fixtures._recovery_context(), fixtures.BRANCH,
+            )
 
         self.assertIsNone(remote_head)
         self.assertIn(REMOTE_REF, abort.call_args.args[1])
@@ -226,16 +226,15 @@ class CompleteRecoverySnapshotTest(unittest.TestCase):
             snapshot,
             "_read_remote_recovery_head",
             MagicMock(return_value=remote_head),
+        ), patch.object(
+            publication_probes, DIVERGENCE, ahead_behind,
         ):
-            with patch.object(
-                publication_probes, DIVERGENCE, ahead_behind,
-            ):
-                return snapshot._complete_recovery_snapshot(
-                    fixtures._recovery_context(),
-                    fixtures._snapshot(
-                        local_head=fixtures.RECOVERED_SHA, remote_head="",
-                    ),
-                )
+            return snapshot._complete_recovery_snapshot(
+                fixtures._recovery_context(),
+                fixtures._snapshot(
+                    local_head=fixtures.RECOVERED_SHA, remote_head="",
+                ),
+            )
 
 
 if __name__ == "__main__":

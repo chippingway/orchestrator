@@ -99,14 +99,13 @@ class ScriptPathLaunchTest(unittest.TestCase):
         # without importing `orchestrator.*` first, so the real package
         # resolves even with a decoy parent behind the script dir on the path.
         for parts in _SCRIPTS:
-            with self.subTest(script=parts[-1]):
-                with tempfile.TemporaryDirectory() as decoy_root:
-                    # A bare `orchestrator` package with none of the real
-                    # submodules, standing in for a stale install.
-                    decoy_package = Path(decoy_root) / _ORCH
-                    decoy_package.mkdir()
-                    (decoy_package / "__init__.py").write_text("")
-                    self.assertIn("main", self._launched(parts, decoy_root))
+            with self.subTest(script=parts[-1]), tempfile.TemporaryDirectory() as decoy_root:
+                # A bare `orchestrator` package with none of the real
+                # submodules, standing in for a stale install.
+                decoy_package = Path(decoy_root) / _ORCH
+                decoy_package.mkdir()
+                (decoy_package / "__init__.py").write_text("")
+                self.assertIn("main", self._launched(parts, decoy_root))
 
     def _launched(
         self,
@@ -142,18 +141,17 @@ class StrayHelperShadowTest(unittest.TestCase):
 
     def _imported_past_the_strays(self, module_name: str) -> None:
         """Import one entry path with every bare name booby-trapped."""
-        with _launch_sandbox(_is_launch_world):
-            with tempfile.TemporaryDirectory() as stray_dir:
-                for helper in _BARE_HELPERS:
-                    # A stray that detonates on import, so a bare probe fails
-                    # loudly instead of silently binding the wrong helper.
-                    stray = Path(stray_dir) / f"{helper}.py"
-                    stray.write_text(_STRAY_HELPER)
-                sys.path.insert(0, stray_dir)
-                _drop_modules(_is_launch_world)
-                self.assertTrue(hasattr(import_module(module_name), "main"))
-                for helper in _BARE_HELPERS:
-                    self.assertNotIn(helper, sys.modules)
+        with _launch_sandbox(_is_launch_world), tempfile.TemporaryDirectory() as stray_dir:
+            for helper in _BARE_HELPERS:
+                # A stray that detonates on import, so a bare probe fails
+                # loudly instead of silently binding the wrong helper.
+                stray = Path(stray_dir) / f"{helper}.py"
+                stray.write_text(_STRAY_HELPER)
+            sys.path.insert(0, stray_dir)
+            _drop_modules(_is_launch_world)
+            self.assertTrue(hasattr(import_module(module_name), "main"))
+            for helper in _BARE_HELPERS:
+                self.assertNotIn(helper, sys.modules)
 
 
 class LazyDependencyTest(unittest.TestCase):
@@ -172,12 +170,11 @@ class LazyDependencyTest(unittest.TestCase):
 
     def _imported_hermetically(self, module_name: str) -> None:
         """Import one entry path into a world holding none of the optionals."""
-        with _launch_sandbox(_is_dependency_world):
-            with patch.dict(os.environ, _hermetic_env(), clear=True):
-                _drop_modules(_is_dependency_world)
-                import_module(module_name)
-                for absent in (*_DASHBOARD_GROUP, _CHARTS):
-                    self.assertNotIn(absent, sys.modules)
+        with _launch_sandbox(_is_dependency_world), patch.dict(os.environ, _hermetic_env(), clear=True):
+            _drop_modules(_is_dependency_world)
+            import_module(module_name)
+            for absent in (*_DASHBOARD_GROUP, _CHARTS):
+                self.assertNotIn(absent, sys.modules)
 
 
 if __name__ == "__main__":

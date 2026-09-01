@@ -137,9 +137,8 @@ class PublicSurfaceTest(unittest.TestCase):
 
     def test_facade_hides_owner_only_names(self) -> None:
         for owner_only_name in _OWNER_ONLY_NAMES:
-            with self.subTest(name=owner_only_name):
-                with self.assertRaises(AttributeError):
-                    getattr(_github, owner_only_name)
+            with self.subTest(name=owner_only_name), self.assertRaises(AttributeError):
+                getattr(_github, owner_only_name)
 
     def test_trust_owner_defines_the_gated_names(self) -> None:
         # The facade hides both names, so the owner is the one import site

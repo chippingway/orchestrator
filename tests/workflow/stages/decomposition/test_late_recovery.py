@@ -260,9 +260,8 @@ class RetriedHoldTest(LateCase, unittest.TestCase):
         refused = patch.object(
             self.github, "comment", side_effect=RuntimeError,
         )
-        with refused:
-            with self.assertRaises(RuntimeError):
-                self._adjudicate(agent_reply(QUESTION_REPLY))
+        with refused, self.assertRaises(RuntimeError):
+            self._adjudicate(agent_reply(QUESTION_REPLY))
         self.assertEqual(self._pinned().get(KEYS.verdict), QUESTION_VERDICT)
         self._fail_the_hold()
 
@@ -317,9 +316,8 @@ class RetriedHoldTest(LateCase, unittest.TestCase):
         refused = patch.object(
             self.github, EDIT_PR_BODY, side_effect=RuntimeError,
         )
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level="ERROR"):
-                adjudicate(self.github, self.issue)
+        with refused, self.assertLogs(WORKFLOW_LOG, level="ERROR"):
+            adjudicate(self.github, self.issue)
         self.assertTrue(self._pinned().get(KEYS.awaiting))
 
 

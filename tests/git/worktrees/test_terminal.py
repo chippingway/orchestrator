@@ -196,32 +196,30 @@ class CleanupQuestionWorktreeRealGitTest(unittest.TestCase):
     """
 
     def test_removes_worktree_and_local_branch(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="cqw-both-") as td:
-            # Stand up a worktree at the path `_worktree_path` will
-            # compute. Patch WORKTREES_DIR so the slug-derived
-            # subdirectory lives inside this temp dir.
-            with patch.object(
-                config,
-                "WORKTREES_DIR",
-                Path(td) / "wts",
-            ):
-                fixture = _seed_cleanup_fixture(
-                    Path(td),
-                    CLEANUP_WORKTREE_ISSUE_NUMBER,
-                    create_worktree=True,
-                )
-                self.assertTrue(fixture.worktree.exists())
-                # Branch should exist locally.
-                self.assertTrue(_branch_exists(fixture))
+        # Stand up a worktree at the path `_worktree_path` will
+        # compute. Patch WORKTREES_DIR so the slug-derived
+        # subdirectory lives inside this temp dir.
+        with (
+            tempfile.TemporaryDirectory(prefix="cqw-both-") as td,
+            patch.object(config, "WORKTREES_DIR", Path(td) / "wts"),
+        ):
+            fixture = _seed_cleanup_fixture(
+                Path(td),
+                CLEANUP_WORKTREE_ISSUE_NUMBER,
+                create_worktree=True,
+            )
+            self.assertTrue(fixture.worktree.exists())
+            # Branch should exist locally.
+            self.assertTrue(_branch_exists(fixture))
 
-                terminal._cleanup_question_worktree(
-                    fixture.spec,
-                    CLEANUP_WORKTREE_ISSUE_NUMBER,
-                )
+            terminal._cleanup_question_worktree(
+                fixture.spec,
+                CLEANUP_WORKTREE_ISSUE_NUMBER,
+            )
 
-                self.assertFalse(fixture.worktree.exists())
-                # Local branch is gone.
-                self.assertFalse(_branch_exists(fixture))
+            self.assertFalse(fixture.worktree.exists())
+            # Local branch is gone.
+            self.assertFalse(_branch_exists(fixture))
 
     def test_idempotent_when_nothing_exists(self) -> None:
         # No worktree on disk, no local branch -- the cleanup must
@@ -243,26 +241,25 @@ class CleanupQuestionWorktreeRealGitTest(unittest.TestCase):
         # or partial cleanup) but the local branch survived. The cleanup
         # must still tear the branch down so a later `_ensure_worktree`
         # cannot reuse it.
-        with tempfile.TemporaryDirectory(prefix="cqw-branchOnly-") as td:
-            with patch.object(
-                config,
-                "WORKTREES_DIR",
-                Path(td) / "wts",
-            ):
-                fixture = _seed_cleanup_fixture(
-                    Path(td),
-                    BRANCH_ONLY_ISSUE_NUMBER,
-                    create_worktree=False,
-                )
-                # Sanity: worktree path does not exist.
-                self.assertFalse(fixture.worktree.exists())
+        with tempfile.TemporaryDirectory(prefix="cqw-branchOnly-") as td, patch.object(
+            config,
+            "WORKTREES_DIR",
+            Path(td) / "wts",
+        ):
+            fixture = _seed_cleanup_fixture(
+                Path(td),
+                BRANCH_ONLY_ISSUE_NUMBER,
+                create_worktree=False,
+            )
+            # Sanity: worktree path does not exist.
+            self.assertFalse(fixture.worktree.exists())
 
-                terminal._cleanup_question_worktree(
-                    fixture.spec,
-                    BRANCH_ONLY_ISSUE_NUMBER,
-                )
+            terminal._cleanup_question_worktree(
+                fixture.spec,
+                BRANCH_ONLY_ISSUE_NUMBER,
+            )
 
-                self.assertFalse(_branch_exists(fixture))
+            self.assertFalse(_branch_exists(fixture))
 
 
 if __name__ == "__main__":

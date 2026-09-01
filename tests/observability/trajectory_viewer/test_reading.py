@@ -110,16 +110,15 @@ class UnreadableFileTest(unittest.TestCase):
         # `FileNotFoundError` -- so the read takes the warn-and-empty branch.
         # The warning carries the `orchestrator.trajectory_reader` name an
         # operator's log filter is keyed on.
-        with tempfile.TemporaryDirectory() as work_dir:
-            with self.assertLogs(_READER_LOGGER, level="WARNING") as captured:
-                self.assertEqual(reading.read_trajectories(Path(work_dir)), [])
-                self.assertEqual(
-                    [entry.name for entry in captured.records],
-                    [_READER_LOGGER],
-                )
-                self.assertIn(
-                    "could not read trajectory log", captured.output[0],
-                )
+        with tempfile.TemporaryDirectory() as work_dir, self.assertLogs(_READER_LOGGER, level="WARNING") as captured:
+            self.assertEqual(reading.read_trajectories(Path(work_dir)), [])
+            self.assertEqual(
+                [entry.name for entry in captured.records],
+                [_READER_LOGGER],
+            )
+            self.assertIn(
+                "could not read trajectory log", captured.output[0],
+            )
 
 
 if __name__ == "__main__":

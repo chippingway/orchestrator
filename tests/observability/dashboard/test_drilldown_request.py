@@ -93,9 +93,8 @@ class CallShapeTest(unittest.TestCase):
         # One object behind both, so what `inspect.signature` says and what a
         # call is accepted under cannot become two descriptions.
         for unbound in ({}, {"repo_filter": None}):
-            with self.subTest(call=unbound):
-                with self.assertRaises(TypeError):
-                    drilldown_request.render_drilldown(**unbound)
+            with self.subTest(call=unbound), self.assertRaises(TypeError):
+                drilldown_request.render_drilldown(**unbound)
 
     def test_every_keyword_is_keyword_only(self) -> None:
         # Seven arguments of which four are optional selections: positional

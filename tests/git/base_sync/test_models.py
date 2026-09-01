@@ -137,9 +137,8 @@ class FrozenModelTest(unittest.TestCase):
             (_request(_StubClient(None), PinnedState(state_data={})), "behind"),
         )
         for instance, field_name in frozen_cases:
-            with self.subTest(model=type(instance).__name__):
-                with self.assertRaises(dataclasses.FrozenInstanceError):
-                    setattr(instance, field_name, "edited")
+            with self.subTest(model=type(instance).__name__), self.assertRaises(dataclasses.FrozenInstanceError):
+                setattr(instance, field_name, "edited")
 
 
 if __name__ == "__main__":

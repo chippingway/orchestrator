@@ -121,14 +121,13 @@ class StageTest(unittest.TestCase):
         # state an issue was in.
         gh = FakeGitHubClient()
         appended: list = []
-        with patch(_ANALYTICS_APPEND, appended.append):
-            with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
-                payload = _telemetry.emit_late_event(
-                    gh,
-                    _VERDICT_EVENT,
-                    _support.measured_generation(),
-                    stage=_PROSE,
-                )
+        with patch(_ANALYTICS_APPEND, appended.append), self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
+            payload = _telemetry.emit_late_event(
+                gh,
+                _VERDICT_EVENT,
+                _support.measured_generation(),
+                stage=_PROSE,
+            )
         self.assertEqual(payload, {})
         self.assertEqual(gh.recorded_events, [])
         self.assertEqual(appended, [])
@@ -140,26 +139,26 @@ class FailingSinkTest(unittest.TestCase):
     def test_a_failed_audit_still_records_metrics(self) -> None:
         gh = FakeGitHubClient()
         appended: list = []
-        with patch.object(gh, _EMIT_EVENT, side_effect=OSError):
-            with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
-                _emit(gh, appended)
+        with patch.object(gh, _EMIT_EVENT, side_effect=OSError), self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
+            _emit(gh, appended)
         self.assertEqual(appended[-1][_EVENT_KEY], _LATE_VERDICT)
 
     def test_a_failed_analytics_still_audits(self) -> None:
         gh = FakeGitHubClient()
-        with patch(_ANALYTICS_APPEND, side_effect=RuntimeError):
-            with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
-                _emit_verdict(gh)
+        with patch(_ANALYTICS_APPEND, side_effect=RuntimeError), self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
+            _emit_verdict(gh)
         self.assertEqual(gh.recorded_events[-1][_EVENT_KEY], _LATE_VERDICT)
 
     def test_both_sinks_failing_does_not_raise(self) -> None:
         # Workflow disposition is reconciled from pinned state, never from
         # what a sink accepted, so the emission cannot raise into a tick.
         gh = FakeGitHubClient()
-        with patch.object(gh, _EMIT_EVENT, side_effect=OSError):
-            with patch(_ANALYTICS_APPEND, side_effect=OSError):
-                with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
-                    payload = _emit_verdict(gh)
+        with (
+            patch.object(gh, _EMIT_EVENT, side_effect=OSError),
+            patch(_ANALYTICS_APPEND, side_effect=OSError),
+            self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR),
+        ):
+            payload = _emit_verdict(gh)
         self.assertEqual(payload["verdict"], "single")
 
 

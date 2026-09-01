@@ -65,11 +65,10 @@ class BeginRestartTest(unittest.TestCase):
         # Writing it would put a label nobody chose into the pinned comment
         # for a later tick to obey.
         for target in ("workflow:done", "banana", None, _support.CANDIDATE_SHA):
-            with self.subTest(target=target):
-                with self.assertRaises(_REFUSED):
-                    _restart.begin_restart(
-                        _support.measured_generation(), target=target,
-                    )
+            with self.subTest(target=target), self.assertRaises(_REFUSED):
+                _restart.begin_restart(
+                    _support.measured_generation(), target=target,
+                )
 
     def test_a_standing_marker_checks_the_target(self) -> None:
         # The argument is a bug whether or not a restart is already in

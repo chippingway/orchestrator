@@ -234,9 +234,8 @@ class UmbrellaCleanupRefusalTest(_UmbrellaCleanupCase, unittest.TestCase):
         # the entry reads `failed` either way.
         seeded = split_umbrella(LateResourceState.PENDING)
 
-        with refusing(seeded.github, "delete_remote_branch"):
-            with self.assertLogs(WORKFLOW_LOG, level=_ERROR):
-                teardown = walk_owner(self, seeded)
+        with refusing(seeded.github, "delete_remote_branch"), self.assertLogs(WORKFLOW_LOG, level=_ERROR):
+            teardown = walk_owner(self, seeded)
 
         self.assertEqual(teardown.issues, [PARENT_NUMBER])
         self.assertEqual(

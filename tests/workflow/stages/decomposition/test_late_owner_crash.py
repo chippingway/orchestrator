@@ -125,9 +125,8 @@ class KilledTickTest(RevisionCase):
         """Seed one issue and run a revision the kill at `seam` cuts short."""
         self._seed(**DEV_PIN)
         reply(self.issue)
-        with killed_at(seam):
-            with self.assertRaises(KeyboardInterrupt):
-                self._revise(measurement=measurement)
+        with killed_at(seam), self.assertRaises(KeyboardInterrupt):
+            self._revise(measurement=measurement)
 
     def _adjudicate_again(self):
         """The next tick, with no agent available to it."""
@@ -135,9 +134,8 @@ class KilledTickTest(RevisionCase):
 
     def _retry_unread(self):
         """The next tick, whose own read fails, log line included."""
-        with unreadable_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                return self._adjudicate_again()
+        with unreadable_owner(self.github), self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            return self._adjudicate_again()
 
     def _assert_owes_the_read(self) -> None:
         """The re-measurement landed, and the read it owes landed with it."""
@@ -196,9 +194,8 @@ class KilledCompletionTest(GuardedLateCase, unittest.TestCase):
         whole tick and the state it leaves is what the next assertion reads.
         """
         self.setUp()
-        with killed_at(OWNER_GUARD):
-            with self.assertRaises(KeyboardInterrupt):
-                self._adjudicate(completion[RUN], worktree=completion[TREE])
+        with killed_at(OWNER_GUARD), self.assertRaises(KeyboardInterrupt):
+            self._adjudicate(completion[RUN], worktree=completion[TREE])
 
 
 class KilledReconciliationTest(RevisionCase):
@@ -233,6 +230,5 @@ class KilledReconciliationTest(RevisionCase):
         """One finished developer run whose checkout could not be read."""
         self._seed(**DEV_PIN)
         reply(self.issue)
-        with killed_at(OWNER_GUARD):
-            with self.assertRaises(KeyboardInterrupt):
-                self._revise(seed=WorktreeSeed(dirty=DIRTY_TREE))
+        with killed_at(OWNER_GUARD), self.assertRaises(KeyboardInterrupt):
+            self._revise(seed=WorktreeSeed(dirty=DIRTY_TREE))

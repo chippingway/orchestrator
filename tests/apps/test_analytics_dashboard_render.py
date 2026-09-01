@@ -130,11 +130,10 @@ class PageChromeTest(unittest.TestCase):
         page = FakePage()
         with patch.object(
             read_mode, "db_unconfigured_message", return_value=_REFUSAL,
-        ):
-            with self.assertRaises(ScriptStopped):
-                analytics_dashboard.stop_if_dashboard_unconfigured(
-                    modules_for(page),
-                )
+        ), self.assertRaises(ScriptStopped):
+            analytics_dashboard.stop_if_dashboard_unconfigured(
+                modules_for(page),
+            )
         self.assertEqual(page.warnings, [_REFUSAL])
 
     def test_a_configured_database_draws_on(self) -> None:

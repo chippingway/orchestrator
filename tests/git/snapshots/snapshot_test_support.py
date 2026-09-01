@@ -138,11 +138,10 @@ class _LocalAuthSession:
         try:
             with patch.object(
                 config, "_resolve_github_token", return_value="token",
+            ), patch.object(
+                authentication, "_git_auth_session", self,
             ):
-                with patch.object(
-                    authentication, "_git_auth_session", self,
-                ):
-                    yield
+                yield
         finally:
             self._urls.pop(slug, None)
 

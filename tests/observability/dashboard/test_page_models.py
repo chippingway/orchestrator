@@ -91,9 +91,8 @@ class ImmutableStateTest(unittest.TestCase):
 
     def test_every_shape_a_render_carries_is_frozen(self) -> None:
         for shape in _PAGE_STATE:
-            with self.subTest(shape=shape.__name__):
-                with self.assertRaises(FrozenInstanceError):
-                    _blank(shape).repo = _REPO
+            with self.subTest(shape=shape.__name__), self.assertRaises(FrozenInstanceError):
+                _blank(shape).repo = _REPO
 
 
 class RuntimeAnnotationTest(unittest.TestCase):

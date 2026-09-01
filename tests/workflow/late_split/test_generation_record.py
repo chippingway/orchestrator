@@ -132,9 +132,8 @@ class ResourceLedgerTest(unittest.TestCase):
         # The ledger decides whether a snapshot may be reclaimed, so a value
         # nobody can ask GitHub about may not be converted into one.
         for damaged in (True, 2.5, "7", 0, -3):
-            with self.subTest(damaged=damaged):
-                with self.assertRaises(InvalidLateValue):
-                    _generation().with_consumers((damaged,))
+            with self.subTest(damaged=damaged), self.assertRaises(InvalidLateValue):
+                _generation().with_consumers((damaged,))
 
     def test_consumers_are_deduplicated_and_ordered(self) -> None:
         # The reclamation sweep walks this ledger, so a child recorded twice

@@ -164,9 +164,8 @@ class UnreconciledPrTest(_PrStateCase, unittest.TestCase):
             self.github, GET_PR, _SecondReadFails(self.github),
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                outcome = self._decide(SINGLE_RUN)
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            outcome = self._decide(SINGLE_RUN)
 
         self._assert_unreconciled(outcome)
 

@@ -77,11 +77,10 @@ class RetirementInFlightTest(ObservedCloseCase, unittest.TestCase):
     def _retired_under_a_worker(self, github: FakeGitHubClient) -> None:
         """Refuse this tick's submit against a record mid-retirement."""
         retiring = observations.retiring(SPEC.slug, OWNER_NUMBER, CYCLE_ID)
-        with self.assertLogs(WORKFLOW_LOG), retiring.held():
-            with patch.object(
-                github, PINNED_READ, side_effect=Retiring(github),
-            ):
-                offered(github, Scheduler(admits=False))
+        with self.assertLogs(WORKFLOW_LOG), retiring.held(), patch.object(
+            github, PINNED_READ, side_effect=Retiring(github),
+        ):
+            offered(github, Scheduler(admits=False))
 
 
 if __name__ == "__main__":

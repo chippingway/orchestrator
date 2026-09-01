@@ -196,9 +196,8 @@ class WorktreeCheckoutNumbersTest(unittest.TestCase):
         self.world.checkout(self.spec, CHECKOUT_ISSUE_NUMBER)
         unstattable = _UnstattablePath(self.world.worktrees)
 
-        with patch.object(config, "WORKTREES_DIR", unstattable):
-            with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
-                self.assertIsNone(probes._worktree_issue_numbers(self.spec))
+        with patch.object(config, "WORKTREES_DIR", unstattable), self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
+            self.assertIsNone(probes._worktree_issue_numbers(self.spec))
 
 
 if __name__ == "__main__":

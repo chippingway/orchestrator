@@ -185,9 +185,8 @@ class PublishedSingleReconciliationTest(
         # request the commit is already on. Read as external movement, the one
         # publication refused forever would be the one this verdict made.
         self._seed_published()
-        with patch.object(self.github, SET_WORKFLOW_LABEL, _CRASHES):
-            with self.assertRaises(RuntimeError):
-                self._decide(SINGLE_RUN)
+        with patch.object(self.github, SET_WORKFLOW_LABEL, _CRASHES), self.assertRaises(RuntimeError):
+            self._decide(SINGLE_RUN)
         # The push landed before the label write died, so the pull request is
         # standing on the accepted candidate when the retry looks.
         self.github.get_pr(PUBLISHED_PR_NUMBER).head.sha = CANDIDATE_SHA
@@ -305,9 +304,8 @@ class PublishedCheckoutProofTest(
     def _seed_landed_push(self) -> None:
         """Leave the settlement whose own push landed and whose tick died."""
         self._seed_published()
-        with patch.object(self.github, SET_WORKFLOW_LABEL, _CRASHES):
-            with self.assertRaises(RuntimeError):
-                self._decide(SINGLE_RUN)
+        with patch.object(self.github, SET_WORKFLOW_LABEL, _CRASHES), self.assertRaises(RuntimeError):
+            self._decide(SINGLE_RUN)
         self.github.get_pr(PUBLISHED_PR_NUMBER).head.sha = CANDIDATE_SHA
 
 

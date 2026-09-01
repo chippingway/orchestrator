@@ -128,17 +128,16 @@ class FixingPostFeedbackRoutingTest(unittest.TestCase, _FixingFixtureMixin):
         gh, issue = self._seed(pr=pr)
         # Replace `get_pr` so the call raises. PyGithub-side failures
         # (rate limit, 5xx, network blip) are typically transient.
-        with patch.object(gh, "get_pr", side_effect=RuntimeError("github api down")):
-            with patch.object(
-                config,
-                DEBOUNCE_CONFIG,
-                DEBOUNCE_SECONDS,
-            ):
-                mocks = self._run_fixing(
-                    gh,
-                    issue,
-                    run_agent=_agent(),
-                )
+        with patch.object(gh, "get_pr", side_effect=RuntimeError("github api down")), patch.object(
+            config,
+            DEBOUNCE_CONFIG,
+            DEBOUNCE_SECONDS,
+        ):
+            mocks = self._run_fixing(
+                gh,
+                issue,
+                run_agent=_agent(),
+            )
 
         # No agent spawn, no label change, no park comment -- just a
         # quiet bail so the next tick retries.

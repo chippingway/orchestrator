@@ -182,11 +182,10 @@ class LocalInventoryRefusalTest(unittest.TestCase):
             _namespaced_branch(GADGET_SLUG, GADGET_ISSUE_NUMBER),
         )
 
-        with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
-            with _listing(branches):
-                scanned = inventory._local_issue_inventory(
-                    (*colliding, healthy),
-                )
+        with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING), _listing(branches):
+            scanned = inventory._local_issue_inventory(
+                (*colliding, healthy),
+            )
 
         self.assertEqual(scanned.refused, tuple(sorted(COLLIDING_SLUGS)))
         self.assertEqual(_found(scanned), ((GADGET_SLUG, GADGET_ISSUE_NUMBER),))

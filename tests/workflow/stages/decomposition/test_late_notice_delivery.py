@@ -75,9 +75,8 @@ class SupersededNoticeTest(HeldPlanPrCase, unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.plan_pr.body = HUMAN_REWRITE
-        with RefusedComment(self.github):
-            with self.assertRaises(RuntimeError):
-                self._adjudicate(SINGLE_RUN)
+        with RefusedComment(self.github), self.assertRaises(RuntimeError):
+            self._adjudicate(SINGLE_RUN)
 
     def test_the_refusal_stands_with_nothing_said(self) -> None:
         pinned = self._pinned()
@@ -135,15 +134,17 @@ class StrandedGuardNoticeTest(GuardedLateCase, unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        with RefusedComment(self.github), unreadable_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                with self.assertRaises(RuntimeError):
-                    self._adjudicate(SPLIT_RUN)
+        with (
+            RefusedComment(self.github),
+            unreadable_owner(self.github),
+            self.assertLogs(WORKFLOW_LOG, level=ERROR),
+            self.assertRaises(RuntimeError),
+        ):
+            self._adjudicate(SPLIT_RUN)
 
     def test_a_failing_read_says_the_stranded_one(self) -> None:
-        with unreadable_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                outcome, spawn = self._adjudicate()
+        with unreadable_owner(self.github), self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            outcome, spawn = self._adjudicate()
 
         spawn.assert_not_called()
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)

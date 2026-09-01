@@ -151,9 +151,8 @@ class UnmeasuredDebtTest(unittest.TestCase, _SizeGateFixtureMixin):
         with patch.object(
             _late_push, PUBLICATION_PAID,
             _DiesAroundTheSettlement(settling=settling),
-        ):
-            with self.assertRaises(RuntimeError):
-                self._run_fix_round(scenario)
+        ), self.assertRaises(RuntimeError):
+            self._run_fix_round(scenario)
 
     def _exempt_publication(self):
         """A fix round publishing a commit an adjudication already accepted.

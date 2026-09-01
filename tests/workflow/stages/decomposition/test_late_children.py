@@ -128,9 +128,8 @@ class ChildCreationOrderTest(SplitChildrenCase, unittest.TestCase):
         )
 
     def test_a_refused_creation_records_what_exists(self) -> None:
-        with refusing(self.github, "create_child_issue"):
-            with self.assertLogs(level="ERROR"):
-                outcome = self._transact()
+        with refusing(self.github, "create_child_issue"), self.assertLogs(level="ERROR"):
+            outcome = self._transact()
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(
@@ -141,9 +140,8 @@ class ChildCreationOrderTest(SplitChildrenCase, unittest.TestCase):
     def test_a_refused_seed_keeps_the_record(self) -> None:
         # The child exists on GitHub by then, so the parent must already know
         # about it -- otherwise the retry creates a second one beside it.
-        with refusing_child_writes(self.github):
-            with self.assertLogs(level="ERROR"):
-                outcome = self._transact()
+        with refusing_child_writes(self.github), self.assertLogs(level="ERROR"):
+            outcome = self._transact()
 
         created = first_child(self.github).number
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)

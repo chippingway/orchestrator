@@ -85,14 +85,16 @@ def _routed(
     issue = make_issue(_OWNER_NUMBER, label=label, closed=closed)
     github.add_issue(issue)
     reached = (Mock(), Mock())
-    with _intercepted(dispatch._CLEANUP_SWEEP_TARGET, reached[0]):
-        with _intercepted(dispatch._STAGE_HANDLER_TARGETS[label], reached[1]):
-            dispatch._route_issue_to_handler(
-                github, _SPEC, issue, label,
-                reading=dispatch._PollReading(
-                    cleanup_only=cleanup_only, closed=closed,
-                ),
-            )
+    with (
+        _intercepted(dispatch._CLEANUP_SWEEP_TARGET, reached[0]),
+        _intercepted(dispatch._STAGE_HANDLER_TARGETS[label], reached[1]),
+    ):
+        dispatch._route_issue_to_handler(
+            github, _SPEC, issue, label,
+            reading=dispatch._PollReading(
+                cleanup_only=cleanup_only, closed=closed,
+            ),
+        )
     return reached
 
 

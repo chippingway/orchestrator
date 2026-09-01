@@ -108,9 +108,8 @@ class ApprovedRetryTest(unittest.TestCase, _SizeGateFixtureMixin):
         github = scenario.github
         crashing = _CrashesOnceTheReceiptIsWritten(github.write_pinned_state)
 
-        with patch.object(github, WRITE_PINNED_STATE, crashing):
-            with self.assertRaises(RuntimeError):
-                self._run_fix_round(scenario)
+        with patch.object(github, WRITE_PINNED_STATE, crashing), self.assertRaises(RuntimeError):
+            self._run_fix_round(scenario)
 
         pinned = github.pinned_data(ISSUE)
         self.assertIsNone(pinned.get(support.KEY_APPROVED_SHA))
@@ -228,9 +227,8 @@ class LostReceiptTest(unittest.TestCase, _SizeGateFixtureMixin):
         github = scenario.github
         rejecting = _RejectsTheReceiptWrite(github.write_pinned_state)
 
-        with patch.object(github, WRITE_PINNED_STATE, rejecting):
-            with self.assertRaises(RuntimeError):
-                self._run_fix_round(scenario)
+        with patch.object(github, WRITE_PINNED_STATE, rejecting), self.assertRaises(RuntimeError):
+            self._run_fix_round(scenario)
 
         pinned = github.pinned_data(ISSUE)
         self.assertEqual(pinned[support.KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA)

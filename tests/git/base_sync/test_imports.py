@@ -193,9 +193,8 @@ class PackageSurfaceTest(unittest.TestCase):
 
     def test_initializer_exposes_no_owner_names(self) -> None:
         for owner_only_name in _OWNER_ONLY_NAMES:
-            with self.subTest(name=owner_only_name):
-                with self.assertRaises(AttributeError):
-                    getattr(base_sync, owner_only_name)
+            with self.subTest(name=owner_only_name), self.assertRaises(AttributeError):
+                getattr(base_sync, owner_only_name)
 
 
 class OwnerImportSiteTest(unittest.TestCase):

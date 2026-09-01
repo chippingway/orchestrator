@@ -122,9 +122,8 @@ class OrphanAdoptionTest(OrphanAdoptionCase, unittest.TestCase):
         self._crashed()
         created = list(self.github.created_child_issues)
 
-        with refusing(self.github, FIND_ISSUE):
-            with self.assertLogs(level=ERROR):
-                outcome = self._resume()
+        with refusing(self.github, FIND_ISSUE), self.assertLogs(level=ERROR):
+            outcome = self._resume()
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(self.github.created_child_issues, created)
@@ -217,9 +216,8 @@ class RealShapedOrphanTest(OrphanAdoptionCase, unittest.TestCase):
 
         with patch.object(
             self.github, FIND_ISSUE, return_value=_RealShapedOrphan(orphan),
-        ):
-            with self.assertLogs(level=ERROR):
-                outcome = self._resume()
+        ), self.assertLogs(level=ERROR):
+            outcome = self._resume()
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(len(self.github.created_child_issues), 1)

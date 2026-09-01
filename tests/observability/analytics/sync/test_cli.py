@@ -117,9 +117,12 @@ class CommandOutcomeTest(unittest.TestCase):
     def test_a_failed_replay_exits_nonzero(self) -> None:
         # A driver error has to reach the scheduler as a code rather than a
         # traceback, since that is what an unattended run branches on.
-        with patch.object(cli, _ENTRY_POINT, side_effect=RuntimeError("boom")):
-            with patch(_STDOUT, io.StringIO()), patch(_STDERR, io.StringIO()):
-                self.assertEqual(cli.main([]), 1)
+        with (
+            patch.object(cli, _ENTRY_POINT, side_effect=RuntimeError("boom")),
+            patch(_STDOUT, io.StringIO()),
+            patch(_STDERR, io.StringIO()),
+        ):
+            self.assertEqual(cli.main([]), 1)
 
 
 class CommandClockTest(unittest.TestCase):

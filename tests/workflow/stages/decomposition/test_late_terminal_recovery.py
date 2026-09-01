@@ -84,9 +84,8 @@ class _TerminalCase(ObservedCloseCase, _PatchedWorkflowMixin):
         """Resolve the umbrella, ending the process before its label write."""
         with patch.object(
             self.seeded.github, _SET_LABEL, side_effect=_DIED,
-        ):
-            with self.assertRaises(RuntimeError):
-                walk_owner(self, self.seeded)
+        ), self.assertRaises(RuntimeError):
+            walk_owner(self, self.seeded)
         self.seeded.parent.closed = True
 
 
@@ -239,9 +238,8 @@ class DiedInsideTheRetirementTest(_TerminalCase, unittest.TestCase):
     def _died_inside_the_retirement(self) -> None:
         """Retire the cycle, poll behind the write, and end the process."""
         github = self.seeded.github
-        with self.assertRaises(RuntimeError):
-            with _PollsAfterTheRetirement(github, dying=True).answering():
-                walk_owner(self, self.seeded)
+        with self.assertRaises(RuntimeError), _PollsAfterTheRetirement(github, dying=True).answering():
+            walk_owner(self, self.seeded)
 
     def _receipts(self) -> list:
         """Every close receipt on this owner's thread for its own cycle."""
@@ -285,9 +283,8 @@ class DiedBeforeTheTerminalTest(_TerminalCase, unittest.TestCase):
         self._fresh_process()
         with patch.object(
             self.seeded.github, _SET_LABEL, side_effect=_DIED,
-        ):
-            with self.assertLogs(_WORKFLOW_LOG):
-                self.seeded.swept(self)
+        ), self.assertLogs(_WORKFLOW_LOG):
+            self.seeded.swept(self)
         self.assertEqual(self._label(), WorkflowLabel.UMBRELLA)
 
         with self.assertLogs(_WORKFLOW_LOG):

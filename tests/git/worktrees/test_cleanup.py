@@ -158,18 +158,18 @@ class LocalBranchDeletionTest(unittest.TestCase):
             self.assertIn(GIT_FAILURE_STDERR, logged)
 
     def test_swallows_a_raising_delete(self) -> None:
-        with _worktree_fixture() as fixture:
-            with (
-                patch.object(
-                    commands,
-                    GIT_HELPER,
-                    side_effect=OSError(GIT_MISSING_MESSAGE),
-                ),
-                self.assertLogs(cleanup.log, level="ERROR"),
-            ):
-                cleanup._delete_local_issue_branch(
-                    fixture.spec, ISSUE_NUMBER, ISSUE_BRANCH,
-                )
+        with (
+            _worktree_fixture() as fixture,
+            patch.object(
+                commands,
+                GIT_HELPER,
+                side_effect=OSError(GIT_MISSING_MESSAGE),
+            ),
+            self.assertLogs(cleanup.log, level="ERROR"),
+        ):
+            cleanup._delete_local_issue_branch(
+                fixture.spec, ISSUE_NUMBER, ISSUE_BRANCH,
+            )
 
 
 class TargetRootLockTest(unittest.TestCase):

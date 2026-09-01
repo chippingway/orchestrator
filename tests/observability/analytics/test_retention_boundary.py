@@ -60,13 +60,12 @@ class AnalyticsPruneBoundaryTest(unittest.TestCase):
     def test_non_positive_retention_is_no_op(self) -> None:
         ancient = _ts_days_ago(_support.ANCIENT_RECORD_AGE_DAYS, now=_PRUNE_NOW)
         for window in _KEEP_FOREVER:
-            with self.subTest(retention=window):
-                with _support.analytics_sink(window) as path:
-                    _write_json_lines(path, [_record(ancient)])
-                    self.assertEqual(
-                        retention.prune_old_records(now=_PRUNE_NOW), 0,
-                    )
-                    self.assertEqual(len(_read_lines(path)), 1)
+            with self.subTest(retention=window), _support.analytics_sink(window) as path:
+                _write_json_lines(path, [_record(ancient)])
+                self.assertEqual(
+                    retention.prune_old_records(now=_PRUNE_NOW), 0,
+                )
+                self.assertEqual(len(_read_lines(path)), 1)
 
     def test_prune_returns_zero_when_disabled(self) -> None:
         # With the sink off, no file is ever opened and the prune is a silent

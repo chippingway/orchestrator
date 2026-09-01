@@ -164,9 +164,8 @@ class TransientOwnerParkTest(GuardedLateCase, unittest.TestCase):
             _LostClearWrite(self.github, letting_through=WRITES_BEFORE_CLEAR),
         )
 
-        with lost:
-            with self.assertRaises(RuntimeError):
-                self._adjudicate()
+        with lost, self.assertRaises(RuntimeError):
+            self._adjudicate()
 
         # The sentence survived the write that did not.
         self.assertEqual(len(self._followups()), 1)
@@ -202,10 +201,13 @@ class TransientOwnerParkTest(GuardedLateCase, unittest.TestCase):
             self.github, WRITE_PINNED_STATE, _LostNoticeWrite(self.github),
         )
 
-        with unreadable_owner(self.github), lost:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                with self.assertRaises(RuntimeError):
-                    self._decide()
+        with (
+            unreadable_owner(self.github),
+            lost,
+            self.assertLogs(WORKFLOW_LOG, level=ERROR),
+            self.assertRaises(RuntimeError),
+        ):
+            self._decide()
 
         # The park was announced; the record of it having been announced was
         # what the write took down.
@@ -266,9 +268,8 @@ class PendingCheckRetryTest(GuardedLateCase, unittest.TestCase):
         self.assertNotIn(KEYS.owner_check_pending, pinned)
 
     def _decide_unread_run(self):
-        with unreadable_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                return self._adjudicate()
+        with unreadable_owner(self.github), self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            return self._adjudicate()
 
     def _followups(self) -> list:
         return _followups_on(self.github)

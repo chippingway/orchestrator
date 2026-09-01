@@ -85,11 +85,10 @@ class StaticMetadataReaderTest(unittest.TestCase):
             (static_metadata.read_data_extent, _EXTENT),
             (static_metadata.read_filter_options, _OPTIONS),
         ):
-            with self.subTest(reader=reader.__name__):
-                with patch.object(
-                    scoped_reads, _SCOPED_READ_ATTRIBUTE, _answer_read,
-                ):
-                    self.assertEqual(reader(), expected)
+            with self.subTest(reader=reader.__name__), patch.object(
+                scoped_reads, _SCOPED_READ_ATTRIBUTE, _answer_read,
+            ):
+                self.assertEqual(reader(), expected)
 
     def test_neither_reader_takes_an_argument(self) -> None:
         # An empty signature is what makes the cache key empty. A parameter

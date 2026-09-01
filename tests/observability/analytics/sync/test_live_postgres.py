@@ -98,10 +98,9 @@ def _sync_live_records(test_case, db_url: str, records: list[dict]) -> None:
 def _fetch_live_row(db_url: str, query: str, issue: int):
     import psycopg
 
-    with psycopg.connect(db_url) as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(query, (issue,))
-            return cursor.fetchone()
+    with psycopg.connect(db_url) as connection, connection.cursor() as cursor:
+        cursor.execute(query, (issue,))
+        return cursor.fetchone()
 
 
 def _expected_rollup(records: list[dict]) -> dict[str, object]:
@@ -296,10 +295,9 @@ class LiveSchemaTest(unittest.TestCase):
     def _row_count(self) -> int:
         import psycopg
 
-        with psycopg.connect(self.db_url) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM analytics_events")
-                row = cur.fetchone()
+        with psycopg.connect(self.db_url) as conn, conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM analytics_events")
+            row = cur.fetchone()
         return int(row[0]) if row else 0
 
 

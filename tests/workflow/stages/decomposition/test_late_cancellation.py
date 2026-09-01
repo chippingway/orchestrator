@@ -560,9 +560,8 @@ class TerminalTest(ClosedOwnerCase, unittest.TestCase):
         seeded = _unstarted_owner()
         refusing = MagicMock(side_effect=RuntimeError)
 
-        with patch.object(seeded.github, _SET_LABEL, refusing):
-            with self.assertLogs(_WORKFLOW_LOG):
-                self._swept(seeded)
+        with patch.object(seeded.github, _SET_LABEL, refusing), self.assertLogs(_WORKFLOW_LOG):
+            self._swept(seeded)
 
         refusing.assert_called_once()
 

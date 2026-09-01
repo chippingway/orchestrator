@@ -185,9 +185,8 @@ class UmbrellaReclamationTest(_PatchedWorkflowMixin, unittest.TestCase):
             _snapshot_refs.SnapshotOutcome.DELETED,
             raising=KeyboardInterrupt("died"),
         )
-        with self.assertRaises(KeyboardInterrupt):
-            with died.answering():
-                walk_owner(self, seeded)
+        with self.assertRaises(KeyboardInterrupt), died.answering():
+            walk_owner(self, seeded)
         self.assertEqual(died.refs, [SNAPSHOT_REF])
         self.assertEqual(
             resource_states(seeded.github)[SNAPSHOT_REF], STATE_RECLAIMING,

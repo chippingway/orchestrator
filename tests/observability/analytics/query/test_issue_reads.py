@@ -235,9 +235,8 @@ class IssuesOrderingTest(unittest.TestCase):
     def test_an_unknown_ordering_mode_is_refused(self) -> None:
         # A typo never degrades to the default ordering, and the refusal comes
         # before the connection so the caller cannot half-run the read.
-        with configured_db_url():
-            with self.assertRaises(ValueError):
-                get_issues(sort_by="not-a-mode", connect=FakeConnect())
+        with configured_db_url(), self.assertRaises(ValueError):
+            get_issues(sort_by="not-a-mode", connect=FakeConnect())
 
 
 class IssueEventsTest(unittest.TestCase):
@@ -305,17 +304,16 @@ class IssueEventsTest(unittest.TestCase):
         # A cleared multiselect matches no row, so the trace is answered
         # without reaching the database.
         for selection in ({"events": []}, {"stages": []}):
-            with self.subTest(selection=selection):
-                with configured_db_url():
-                    self.assertEqual(
-                        get_issue_events(
-                            repo=_REPO,
-                            issue=_ISSUE,
-                            connect=FakeConnect(),
-                            **selection,
-                        ),
-                        [],
-                    )
+            with self.subTest(selection=selection), configured_db_url():
+                self.assertEqual(
+                    get_issue_events(
+                        repo=_REPO,
+                        issue=_ISSUE,
+                        connect=FakeConnect(),
+                        **selection,
+                    ),
+                    [],
+                )
 
 
 class EventsTableScanTest(unittest.TestCase):

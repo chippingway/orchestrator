@@ -86,13 +86,12 @@ class GitProbeTest(unittest.TestCase):
             (_completed(f"{_START_SHA}\n"), _START_SHA),
             (_completed(returncode=_UNRESOLVED_REVISION), None),
         ):
-            with self.subTest(returncode=answer.returncode):
-                with patch.object(
-                    self_update,
-                    _GIT_ATTR,
-                    FakeGit({_HEAD_COMMAND: answer}),
-                ):
-                    self.assertEqual(self_update.own_head_sha(), expected)
+            with self.subTest(returncode=answer.returncode), patch.object(
+                self_update,
+                _GIT_ATTR,
+                FakeGit({_HEAD_COMMAND: answer}),
+            ):
+                self.assertEqual(self_update.own_head_sha(), expected)
 
 
 class SelfModifyingMergeTest(unittest.TestCase):
@@ -133,15 +132,14 @@ class SelfModifyingMergeTest(unittest.TestCase):
                 {_DIFF_COMMAND: _completed(_UNRELATED_CHANGE)},
             ),
         ):
-            with self.subTest(reason=reason):
-                with patch.object(
-                    self_update,
-                    _GIT_ATTR,
-                    _moved_upstream(overrides),
-                ):
-                    self.assertFalse(
-                        self_update.self_modifying_merge_happened(_START_SHA),
-                    )
+            with self.subTest(reason=reason), patch.object(
+                self_update,
+                _GIT_ATTR,
+                _moved_upstream(overrides),
+            ):
+                self.assertFalse(
+                    self_update.self_modifying_merge_happened(_START_SHA),
+                )
 
 
 if __name__ == "__main__":

@@ -104,9 +104,8 @@ class RevisionOwnerGuardTest(RevisionCase):
         self._seed(**DEV_PIN)
         reply(self.issue)
 
-        with unreadable_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                revised, _resumed = self._revise()
+        with unreadable_owner(self.github), self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            revised, _resumed = self._revise()
 
         self.assertEqual(revised.disposition, _LateDisposition.PARKED)
         pinned = self._pinned()
@@ -170,11 +169,10 @@ class StalledRevisionGuardTest(RevisionCase):
         """One revision that could not be reconciled, its owner unreadable."""
         self._seed(**DEV_PIN)
         reply(self.issue)
-        with unreadable_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                revised, _resumed = self._revise(
-                    seed=WorktreeSeed(dirty=DIRTY_TREE),
-                )
+        with unreadable_owner(self.github), self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            revised, _resumed = self._revise(
+                seed=WorktreeSeed(dirty=DIRTY_TREE),
+            )
         return revised
 
     def _said(self) -> str:

@@ -76,9 +76,8 @@ class PublicSurfaceTest(unittest.TestCase):
 
     def test_facade_hides_owner_only_names(self) -> None:
         for owner_only_name in _OWNER_ONLY_NAMES:
-            with self.subTest(name=owner_only_name):
-                with self.assertRaises(AttributeError):
-                    getattr(_scheduler, owner_only_name)
+            with self.subTest(name=owner_only_name), self.assertRaises(AttributeError):
+                getattr(_scheduler, owner_only_name)
 
 
 if __name__ == "__main__":
