@@ -98,6 +98,7 @@ from types import MappingProxyType
 from orchestrator import config
 from orchestrator.git import authentication, commands, locks
 from orchestrator.git.worktrees import (
+    claims,
     eligibility,
     evidence,
     obligations,
@@ -162,6 +163,13 @@ _GIT_NOT_SYMBOLIC = 1
 # fails outright while they are ours, so the commit this pass measured is the
 # commit the removal takes.
 _CHECKOUT_LOCKS = ("index.lock", "HEAD.lock")
+
+# What a branch nobody cleared a commit for is left with, in the two answers
+# the ledger gives. Said apart because an operator reading the line has to be
+# able to tell a leftover something is carrying from one nothing is.
+_REMINDED = "written down to be asked about again"
+
+_UNREMINDED = "and nothing written down for it yet"
 
 
 def _branch_ref(branch: str) -> str:
@@ -511,18 +519,25 @@ def _spent_anchor_cleared(
             proven_sha,
         )
         return False
-    return _anchor_let_go(spec, artifacts.issue_number)
+    return _anchor_let_go(spec, artifacts.issue_number, anchored)
 
 
-def _anchor_let_go(spec: config.RepoSpec, issue_number: int) -> bool:
+def _anchor_let_go(
+    spec: config.RepoSpec, issue_number: int, expected: str,
+) -> bool:
     """Take one issue's anchor away, and say so when it would not go.
 
     Answered rather than dropped at every call, because of what a note left
     standing costs the pass after this one: it is created and never
     overwritten, so one nobody could take away is one that has to be
     reconciled before anything else can be pinned for this issue.
+
+    `expected` is what the caller read there and settled on, so a note moved
+    since is one this refuses rather than takes: what an anchor is repointed
+    at is a commit nobody established anything about, and the store it lives
+    in is one an agent can write.
     """
-    if obligations._discard_anchor(spec, issue_number):
+    if obligations._discard_anchor(spec, issue_number, expected):
         return True
     log.warning(
         "issue=#%d %s would not go; the pass after this one settles it before "
@@ -581,7 +596,7 @@ def _anchor_settled(
             obligations._anchor_ref(spec, artifacts.issue_number),
         )
         return SurfaceOutcome.FAILED
-    if not _anchor_let_go(spec, artifacts.issue_number):
+    if not _anchor_let_go(spec, artifacts.issue_number, anchored):
         return SurfaceOutcome.FAILED
     return SurfaceOutcome.CLEANED if removed else SurfaceOutcome.FAILED
 
@@ -748,13 +763,15 @@ def _reclaimed_branch(
             artifacts.spec, artifacts.issue_number, branch, cleared_sha,
         )
     if tip.answer is ProbeAnswer.REFUTED and remote is SurfaceOutcome.FAILED:
-        _stranded(artifacts, branch)
+        _stranded(artifacts, branch, cleared_sha)
     return _branch_surfaces(branch, remote, _reclaimed_local_branch(
         artifacts, branch, tip, remote=remote, freed=freed,
     ))
 
 
-def _stranded(artifacts: IssueArtifacts, branch: str) -> None:
+def _stranded(
+    artifacts: IssueArtifacts, branch: str, cleared_sha: str | None,
+) -> None:
     """Leave something behind for a branch this could not settle by, or say so.
 
     The shape with nothing on this host left to find the issue by. The local
@@ -775,7 +792,22 @@ def _stranded(artifacts: IssueArtifacts, branch: str) -> None:
     branch to go and ask about, and the pass that reads it back asks the
     classification for everything else.
 
-    Only a ledger that will take nothing at all reaches the last line, and it
+    What is tried after THAT is a different ref rather than the same one
+    again, since a second attempt at a name the store has just refused is a
+    second refusal. The branch is put back where the scan reads its candidates
+    from, at the commit this verdict cleared -- which is a commit the
+    classification proved outlives its artifacts, so naming it again strands
+    nothing and loses nothing. What that restores is the ordinary shape: the
+    next scan reports the issue, the classification proves it again, and the
+    teardown finishes the remote deletion this one could not.
+
+    Created and never overwritten, so a branch somebody has put back
+    themselves is one this refuses rather than moves. And attempted only where
+    there is a commit to name: a branch nothing cleared is one this host has
+    established nothing about, and a ref invented over it would be a claim
+    rather than a marker.
+
+    Only a host where neither could be written reaches the last line, and it
     is reported at error for what it costs: every other failure in this pass
     is one a later pass picks up, and this is the one only an operator can.
     """
@@ -790,6 +822,39 @@ def _stranded(artifacts: IssueArtifacts, branch: str) -> None:
             "issue=#%d %r is gone from this clone and was not settled on the "
             "remote; written down to be asked about again, since nothing else "
             "here names it", artifacts.issue_number, branch,
+        )
+        return
+    _marked_again(artifacts, branch, cleared_sha)
+
+
+def _marked_again(
+    artifacts: IssueArtifacts, branch: str, cleared_sha: str | None,
+) -> None:
+    """Put the branch back as the marker, or say nothing names it any more.
+
+    The ledger refused a note and this is the other durable place in the same
+    store: `refs/heads/`, which is where the scan in ``inventory`` reads its
+    candidates from. A branch there is not a second ledger -- it is the
+    artifact that was there when the classification ran, restored at the
+    commit that classification cleared, so what a later pass finds is a
+    candidate rather than a note it has to interpret.
+
+    Written through the ledger's own primitive, which is what makes it a
+    marker rather than a publication: undereferenced, under the clone's lock,
+    and leased against the ref existing, so nothing somebody else put there
+    can be moved by it.
+    """
+    spec = artifacts.spec
+    marked = cleared_sha is not None and obligations._written_note(
+        spec.target_root, spec, _branch_ref(branch), cleared_sha,
+        lease=obligations._ABSENT_LEASE,
+    )
+    if marked:
+        log.warning(
+            "issue=#%d %r is gone from this clone and was not settled on the "
+            "remote, and nothing could be written down for it; put back at "
+            "%r so the next scan finds the issue again",
+            artifacts.issue_number, branch, cleared_sha,
         )
         return
     log.error(
@@ -912,17 +977,19 @@ def _reminded(
     established nothing: the first later pass that finds the branch gone from
     the remote lets it go again.
 
-    A reminder that could not be written is not answered here. The branch step
-    above reports what is left of this issue, and it is the one that knows
-    whether anything at all still names it.
+    A reminder that could not be written is not answered here, but it is not
+    reported as one that was either: the branch step above is what decides
+    what happens next, and an operator reading this line has to be able to
+    tell a leftover something is carrying from one nothing is.
     """
-    obligations._remind(spec, branch)
+    written = obligations._remind(spec, branch)
     log.warning(
         "issue=#%d keeping %r on the remote (%s), with nothing cleared for "
-        "it: written down to be asked about again",
+        "it: %s",
         issue_number,
         branch,
         published.sha or "the remote would not say what it is at",
+        _REMINDED if written else _UNREMINDED,
     )
     return SurfaceOutcome.FAILED
 
@@ -950,7 +1017,9 @@ def _recorded_deletion(
     """
     published = evidence._published_tip(spec, branch)
     if published.answer is ProbeAnswer.REFUTED:
-        return _discharged(spec, branch, SurfaceOutcome.ABSENT)
+        return _discharged(
+            spec, branch, SurfaceOutcome.ABSENT, cleared_sha,
+        )
     if published.answer is ProbeAnswer.UNREADABLE:
         return _unresolved(issue_number, branch, published, _REMOTE)
     if published.sha != cleared_sha:
@@ -960,12 +1029,14 @@ def _recorded_deletion(
         )
         return SurfaceOutcome.FAILED
     if _deleted_remote_branch(spec, issue_number, branch, cleared_sha):
-        return _discharged(spec, branch, SurfaceOutcome.CLEANED)
-    return _refused_push(spec, issue_number, branch)
+        return _discharged(
+            spec, branch, SurfaceOutcome.CLEANED, cleared_sha,
+        )
+    return _refused_push(spec, issue_number, branch, cleared_sha)
 
 
 def _refused_push(
-    spec: config.RepoSpec, issue_number: int, branch: str,
+    spec: config.RepoSpec, issue_number: int, branch: str, cleared_sha: str,
 ) -> SurfaceOutcome:
     """What a refused deletion left on the remote, asked a second time.
 
@@ -983,7 +1054,9 @@ def _refused_push(
     """
     published = evidence._published_tip(spec, branch)
     if published.answer is ProbeAnswer.REFUTED:
-        return _discharged(spec, branch, SurfaceOutcome.ABSENT)
+        return _discharged(
+            spec, branch, SurfaceOutcome.ABSENT, cleared_sha,
+        )
     log.warning(
         "issue=#%d the remote would not let go of %r", issue_number, branch,
     )
@@ -1014,7 +1087,10 @@ def _deleted_remote_branch(
 
 
 def _discharged(
-    spec: config.RepoSpec, branch: str, outcome: SurfaceOutcome,
+    spec: config.RepoSpec,
+    branch: str,
+    outcome: SurfaceOutcome,
+    expected: str,
 ) -> SurfaceOutcome:
     """Let go of the record for a deletion nobody owes any more, and answer.
 
@@ -1029,9 +1105,12 @@ def _discharged(
 
     A record that would not go away does not change the answer. What it
     covered is settled either way, and the pass after this one asks the remote
-    once more, finds nothing owed, and lets it go then.
+    once more, finds nothing owed, and lets it go then. `expected` is what
+    this pass read the record at, so one another pass has written again since
+    is left where it is rather than taken: what that pass is owed is its own
+    to settle.
     """
-    obligations._discharge_obligation(spec, branch)
+    obligations._discharge_obligation(spec, branch, expected)
     return outcome
 
 
@@ -1054,7 +1133,7 @@ def _reclaim_recorded_notes(
     remember two would eventually run one of them: a leftover nobody asks
     about is the state this whole ledger exists to prevent.
     """
-    return _reclaimed_records(gh, spec) + _reclaimed_anchors(spec)
+    return _reclaimed_records(gh, spec) + _reclaimed_anchors(gh, spec)
 
 
 def _reclaimed_records(
@@ -1091,7 +1170,9 @@ def _reclaimed_records(
     return tuple(settled)
 
 
-def _reclaimed_anchors(spec: config.RepoSpec) -> tuple[SurfaceResult, ...]:
+def _reclaimed_anchors(
+    gh: GitHubClient, spec: config.RepoSpec,
+) -> tuple[SurfaceResult, ...]:
     """Settle or report every commit this host is still holding an anchor on.
 
     The half of the ledger no candidate reaches. An anchor is written over a
@@ -1101,13 +1182,14 @@ def _reclaimed_anchors(spec: config.RepoSpec) -> tuple[SurfaceResult, ...]:
     this host is still holding a commit for that issue. Read off the ledger
     instead, it is named on every pass until somebody settles it.
 
-    No client and no issue is asked about. What an anchor holds is a commit,
-    and the only question about a commit is whether anything else would still
-    name it -- which is the base's answer and nobody else's. An anchor whose
-    commit the base carries is a note over nothing, whether it was left by a
-    removal whose discard failed or by a pass that stopped before it could let
-    go; one the base does not carry is holding the only reference that commit
-    has, and it is kept and reported for as long as that is true.
+    What an anchor holds is a commit, and the only question about a commit is
+    whether anything else would still name it after the ref goes -- which is
+    the proof the classification runs on any tip, and it is run here for the
+    same reason. An anchor whose commit is accounted for is a note over
+    nothing, whether it was left by a removal whose discard failed or by a
+    pass that stopped before it could let go; one nothing accounts for is
+    holding the only reference that commit has, and it is kept and reported
+    for as long as that is true.
 
     The base is asked once for the lot, and only when there is something to
     measure -- a clone holding no anchors pays for no round trip.
@@ -1134,12 +1216,13 @@ def _reclaimed_anchors(spec: config.RepoSpec) -> tuple[SurfaceResult, ...]:
             settled.append(SurfaceResult(
                 ArtifactSurface.ANCHOR,
                 held.subject,
-                _reclaimed_anchor(spec, base, issue_number, held.sha),
+                _reclaimed_anchor(gh, spec, base, issue_number, held.sha),
             ))
     return tuple(settled)
 
 
 def _reclaimed_anchor(
+    gh: GitHubClient,
     spec: config.RepoSpec,
     base: BranchTip,
     issue_number: int,
@@ -1147,34 +1230,70 @@ def _reclaimed_anchor(
 ) -> SurfaceOutcome:
     """What one anchor is still holding, and whether it has to go on holding it.
 
-    The base is the whole of the test, and it is the same test the
-    classification runs on any other commit: a tip the base already carries is
-    work that has landed, and a ref over it names nothing that would otherwise
-    be lost. Anything else -- a commit the base does not carry, a base nobody
-    could read -- leaves the note where it is, since the alternative is
-    dropping the last name a commit has on the strength of a question that was
-    never answered.
+    The same question the classification puts to any other commit, and it has
+    the same two answers. The base already carrying it is the first, and the
+    cheaper: it is a local comparison against a tip the remote named, and a
+    commit that has landed is one this ref names for nothing.
+
+    A pull request that has ended carrying it is the second, and leaving it
+    out would keep a whole family of anchors standing forever. A rejected
+    issue's work is never in any base -- that is what rejected means -- so an
+    anchor left behind by an interrupted discard over one would be measured
+    against the only test it can never pass, on this pass and on every pass
+    after it. GitHub holds that commit exactly as the base would.
+
+    Anything else leaves the note where it is: a commit neither side accounts
+    for, a base nobody could read, a lookup that failed. Dropping the last
+    name a commit has on the strength of a question that was never answered is
+    the one thing this must not do.
 
     Nothing is deleted here either way. The note goes or it stays; what it
     pins is a commit, and this pass has no business doing anything to one.
     """
     ref = obligations._anchor_ref(spec, issue_number)
-    if evidence._base_contains(
-        spec, base, anchored_sha,
-    ) is not ProbeAnswer.CONFIRMED:
+    if not _anchor_accounted(gh, spec, base, issue_number, anchored_sha):
         log.warning(
-            "issue=#%d %s is still holding %r: the base does not carry that "
+            "issue=#%d %s is still holding %r: nothing accounts for that "
             "commit, and nothing else on this host names it",
             issue_number, ref, anchored_sha,
         )
         return SurfaceOutcome.FAILED
-    if _anchor_let_go(spec, issue_number):
+    if _anchor_let_go(spec, issue_number, anchored_sha):
         log.info(
-            "issue=#%d let go of %s: the base carries the %r it was holding",
+            "issue=#%d let go of %s: the %r it was holding is accounted for",
             issue_number, ref, anchored_sha,
         )
         return SurfaceOutcome.CLEANED
     return SurfaceOutcome.FAILED
+
+
+def _anchor_accounted(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    base: BranchTip,
+    issue_number: int,
+    anchored_sha: str,
+) -> bool:
+    """Whether anything besides this note would still name the commit.
+
+    The base first, because it costs a local comparison where the other costs
+    a round trip -- and because the commit an ordinary removal pins is the
+    branch tip, which for a merged issue is exactly what the base carries.
+
+    Then the pull requests, asked under both names this repository publishes
+    the issue under: which of them the work went out on is not something the
+    note records, and a lookup by object id is what makes asking under the
+    wrong one harmless. One that accounts for it settles the matter; a lookup
+    that could not be taken does not, and comes back as the retention it is.
+    """
+    if evidence._base_contains(
+        spec, base, anchored_sha,
+    ) is ProbeAnswer.CONFIRMED:
+        return True
+    return any(
+        not claims._commit_accounting(gh, branch, anchored_sha)
+        for branch in paths._issue_branch_names(spec, issue_number)
+    )
 
 
 def _reclaimed_record(
@@ -1215,7 +1334,9 @@ def _reclaimed_record(
     """
     published = evidence._published_tip(spec, owed.subject)
     if published.answer is ProbeAnswer.REFUTED:
-        return _discharged(spec, owed.subject, SurfaceOutcome.ABSENT)
+        return _discharged(
+            spec, owed.subject, SurfaceOutcome.ABSENT, owed.sha,
+        )
     _within_reach(spec, issue_number, owed.subject, published)
     verdict = eligibility._classify_artifacts(gh, IssueArtifacts(
         spec=spec,

@@ -82,7 +82,9 @@ _IGNORE_SUBMODULES_NONE = "--ignore-submodules=none"
 # What has `status` report the paths its ignore rules hide, and how each of
 # those is spelled in the report. Directories come back collapsed under this
 # mode, so a tree holding a large build root answers with the root rather than
-# with everything under it.
+# with everything under it. It reports what the untracked walk classified, so
+# it is only ever asked beside `_UNTRACKED_ALL`: local config can stop that
+# walk, and a stopped walk empties this half of the report too.
 _IGNORED_ENTRIES = "--ignored"
 
 _IGNORED_STATUS = "!! "
@@ -292,12 +294,21 @@ def _ignored_paths(worktree: Path) -> tuple[str, ...] | None:
     `core.excludesFile`, which costs nothing: a path hidden only by that file
     is not hidden from the untracked read beside this one, so between the two
     of them nothing on disk goes unreported.
+
+    `--untracked-files=all` is stated here even though nothing untracked is
+    read off the answer, and it is the load-bearing flag. `--ignored` reports
+    what the untracked walk turned up and then classified, so the local
+    `status.showUntrackedFiles=no` an agent can write into the repository the
+    checkouts share stops that walk and empties this report -- the ignored
+    entries with it. Asked for defaults, a tree holding an ignored secret
+    answers that it holds nothing, which is the one answer that gets it
+    deleted.
     """
     listed = _commands._git_hardened(
         _commands._work_tree_arg(worktree),
         _NO_OPTIONAL_LOCKS,
         "status", "--porcelain", _NUL_DELIMITED,
-        _IGNORED_ENTRIES, _IGNORE_SUBMODULES_NONE,
+        _IGNORED_ENTRIES, _UNTRACKED_ALL, _IGNORE_SUBMODULES_NONE,
         cwd=worktree,
     )
     if listed.returncode != 0:

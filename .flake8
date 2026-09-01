@@ -93,7 +93,7 @@ per-file-ignores =
     orchestrator/git/worktrees/reclamation.py:WPS201,WPS202
     orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
-    tests/git/worktrees/test_artifact_reclamation.py:WPS201,WPS202
+    tests/git/worktrees/test_artifact_reclamation.py:WPS201,WPS202,WPS204
     tests/git/worktrees/test_remote_obligations.py:WPS204
     tests/workflow/patch_models.py:WPS202
     tests/workflow/stages/conflicts/test_settled_round.py:WPS202

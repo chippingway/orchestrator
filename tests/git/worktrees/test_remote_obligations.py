@@ -155,7 +155,9 @@ class RecordedRemoteTest(_ReclaimTestCase):
         # The ledger lives in the store the per-issue checkouts share, so a
         # record can be pointed at somebody's branch -- and an update-ref that
         # followed it would write this host's note to itself onto that branch,
-        # or take it away. Neither half follows one.
+        # or take it away. Neither half follows one, and the delete refuses
+        # outright: what it says it expects is the value this host wrote, and
+        # a note standing at somebody else's commit is not it.
         self.published()
         stood_at = _tip(self.clone, BASE_BRANCH)
         elsewhere = self.world.commit_on(self.clone, f"{self.branch}-other")
@@ -172,10 +174,16 @@ class RecordedRemoteTest(_ReclaimTestCase):
         )
 
         _run_git("symbolic-ref", record, base, cwd=self.clone)
-        obligations._discharge_obligation(self.spec, self.branch)
 
+        self.assertFalse(
+            obligations._discharge_obligation(
+                self.spec, self.branch, elsewhere,
+            ),
+        )
         self.assertEqual(_tip(self.clone, BASE_BRANCH), stood_at)
-        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+        self.assertNotEqual(
+            obligations._recorded_obligations(self.spec), (),
+        )
 
     def test_a_branch_back_before_teardown_is_owed(self) -> None:
         # The classification found the branch on neither host, so it cleared
@@ -603,7 +611,34 @@ class RecordedPermissionTest(_ReclaimTestCase):
 
 
 class LedgerOwnershipTest(_ReclaimTestCase):
-    """Which records a repository may read, and which it may not."""
+    """Which records a repository may read, and which it may take away."""
+
+    def test_a_record_rewritten_since_is_not_taken(self) -> None:
+        # The ledger is a store the per-issue checkouts share, so a record can
+        # be written again between the pass that read it and the deletion that
+        # would take it away -- by a pass owed a commit of its own, or by a
+        # reminder saying the branch has to be asked about again. The delete
+        # states what it read, so the note that arrived after it stays; stated
+        # correctly, the same delete takes it.
+        tip = self.published()
+        obligations._record_obligation(self.spec, self.branch, tip)
+        rewritten = self.world.commit_on(self.clone, f"{self.branch}-again")
+        obligations._record_obligation(self.spec, self.branch, rewritten)
+
+        self.assertFalse(
+            obligations._discharge_obligation(self.spec, self.branch, tip),
+        )
+        self.assertEqual(
+            obligations._recorded_obligations(self.spec),
+            (ProvenTip(self.branch, rewritten),),
+        )
+
+        self.assertTrue(
+            obligations._discharge_obligation(
+                self.spec, self.branch, rewritten,
+            ),
+        )
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
     def test_a_record_of_a_clone_mate_is_not_read(self) -> None:
         # Two repositories on one clone derive the same legacy branch name,

@@ -26,6 +26,14 @@ them is authorized by: the pass that reads a record back asks the
 classification again, so the value says where the branch was last known to
 stand rather than what may be done to it.
 
+It is also what every note is taken away under. These refs live in the store
+the per-issue checkouts share, and each caller here reads a note before
+deciding what to do about it, so a deletion that did not say what it expected
+would take whatever the window between the two left there -- an anchor
+repointed onto a commit nothing else names, a record another pass wrote again.
+The lease makes the reading and the deletion one step, and a note that has
+already gone is told from one that moved by asking a second time.
+
 That is what lets a record be written for a branch nothing cleared at all --
 one the classification found on neither host and something has published
 again since, or one the remote would not answer for. There is no commit to
@@ -269,33 +277,53 @@ def _remind(spec: config.RepoSpec, branch: str) -> bool:
     return _record_obligation(spec, branch, _REMINDER_MARK)
 
 
-def _discharge_obligation(spec: config.RepoSpec, branch: str) -> bool:
+def _discharge_obligation(
+    spec: config.RepoSpec, branch: str, expected: str,
+) -> bool:
     """Take away the record of a deletion nobody owes any more.
 
-    Idempotent by git's own answer: `update-ref -d` succeeds on a ref that is
-    not there, which is what a second pass over a record another one already
-    settled finds. No old value is named, unlike every other deletion in this
-    domain -- what would be pinned is this host's own note to itself, and a
-    note somebody rewrote is not work that could be lost.
+    `expected` is the value the caller read and acted on, and it is stated for
+    the reason every deletion in this domain states one: between the read and
+    this, another pass can have written the record again -- at a commit of its
+    own, or as the reminder that says the branch has to be asked about again
+    -- and a deletion that took whatever it found would drop the note that
+    second pass is relying on.
 
     Undereferenced for the reason the write is: a record turned into a
     symbolic ref would otherwise have this take away the branch it names
     rather than the record.
     """
-    return _dropped_note(spec, _obligation_ref(spec, branch))
+    return _dropped_note(spec, _obligation_ref(spec, branch), expected)
 
 
-def _dropped_note(spec: config.RepoSpec, ref: str) -> bool:
-    """Take one note away, whether or not it was there to take."""
+def _dropped_note(spec: config.RepoSpec, ref: str, expected: str) -> bool:
+    """Take one note away, if it is still the note the caller read.
+
+    Named old value rather than a bare delete, because these refs live in the
+    store the per-issue checkouts share and every caller here has read the
+    note before deciding what to do about it. An anchor repointed in that
+    window is holding a commit nothing else names -- the very thing it exists
+    for -- and a delete that did not say what it expected would take it.
+
+    Still idempotent, and by a second reading rather than by git's own answer:
+    a leased delete is refused for a ref that has ALREADY gone as squarely as
+    for one that moved, and the first of those is this deletion having
+    happened. So a refusal is asked about once more, and a name nothing
+    resolves is the success it looks like from every other angle.
+    """
     try:
         with locks._target_root_lock(spec.target_root):
             dropped = commands._git_hardened(
-                "update-ref", "-d", _NO_DEREF, ref, cwd=spec.target_root,
+                "update-ref", "-d", _NO_DEREF, ref, expected,
+                cwd=spec.target_root,
             )
+            if dropped.returncode == 0:
+                return True
+            gone = not _note_at(spec, ref)
     except Exception:
         log.exception("%s could not be taken away", ref)
         return False
-    if dropped.returncode == 0:
+    if gone:
         return True
     log.warning(
         "%s could not be taken away: %s",
@@ -358,42 +386,59 @@ def _anchor_checkout(
 
 
 def _anchored_commit(spec: config.RepoSpec, issue_number: int) -> str:
-    """The commit one issue's anchor pinned, or "" when nobody could say.
+    """The commit one issue's anchor pinned, or "" when nobody could say."""
+    return _note_at(spec, _anchor_ref(spec, issue_number))
 
-    The empty string covers both an anchor that is not there and a read that
+
+def _note_at(spec: config.RepoSpec, ref: str) -> str:
+    """What one note in this clone stands at, or "" when nobody could say.
+
+    The empty string covers both a note that is not there and a read that
     failed, because a caller spends them the same way: what it has to
-    establish is that the commit taken with the checkout is the one that was
-    cleared, and neither answer establishes it.
+    establish is that the note it is about to act on is the one it read, and
+    neither answer establishes it.
 
     Only the second is reported. An issue with no anchor is what every removal
     that has not started yet looks like -- the read runs before the write, so
     the note it is looking for is the one about to be made -- and a line on
     each of those would bury the one about a note nobody could read.
+
+    The lock is re-entrant, so the leased deletion that reads a ref back after
+    a refusal pays nothing for asking inside the lock it already holds -- and
+    what answers is the store that deletion just ran against rather than one
+    another thread has since moved on.
     """
     try:
         with locks._target_root_lock(spec.target_root):
             resolved = commands._git_hardened(
-                "rev-parse", "--verify", "--quiet",
-                _anchor_ref(spec, issue_number),
+                "rev-parse", "--verify", "--quiet", ref,
                 cwd=spec.target_root,
             )
     except Exception:
-        log.exception("the anchor of #%d could not be read", issue_number)
+        log.exception("%s could not be read", ref)
         return ""
     if resolved.returncode == _GIT_NO_SUCH_REF:
         return ""
     if resolved.returncode != 0:
         log.warning(
-            "the anchor of #%d did not resolve: %s",
-            issue_number, (resolved.stderr or "").strip(),
+            "%s did not resolve: %s", ref, (resolved.stderr or "").strip(),
         )
         return ""
     return (resolved.stdout or "").strip()
 
 
-def _discard_anchor(spec: config.RepoSpec, issue_number: int) -> bool:
-    """Let go of an anchor that pinned nothing anybody has to keep."""
-    return _dropped_note(spec, _anchor_ref(spec, issue_number))
+def _discard_anchor(
+    spec: config.RepoSpec, issue_number: int, expected: str,
+) -> bool:
+    """Let go of an anchor that pinned nothing anybody has to keep.
+
+    `expected` is the commit the caller read there and established was safe to
+    stop naming. An anchor moved between that reading and this is one holding
+    something nobody has established anything about -- the store it lives in
+    is one the agents this orchestrator runs can write -- so the lease is what
+    keeps the safety check and the deletion one decision.
+    """
+    return _dropped_note(spec, _anchor_ref(spec, issue_number), expected)
 
 
 def _read_notes(

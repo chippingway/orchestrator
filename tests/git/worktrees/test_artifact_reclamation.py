@@ -51,6 +51,7 @@ from tests.git.worktrees.eligibility_test_support import (
     ISSUE_NUMBER,
     _candidate,
     _github,
+    _pull_request,
     _terminal_issue,
 )
 from tests.git.worktrees.reclamation_test_support import (
@@ -89,6 +90,10 @@ _REMOTE_DELETE_SEAM = "_delete_remote_ref"
 
 _RECORD_SEAM = "_record_obligation"
 
+# The write every note and every marker goes through, for the case about a
+# host whose ref store takes nothing.
+_NOTE_SEAM = "_written_note"
+
 # Where a checkout is moved to for the case about a link left in its place.
 MOVED_CHECKOUT = "moved-checkout"
 
@@ -112,6 +117,12 @@ READ_ONLY_DIR = 0o500
 WRITABLE_DIR = 0o700
 
 RACED_MESSAGE = "raced"
+
+# The branch a racer's commit is parked on, and the closed pull request that
+# accounts for work no base will ever carry.
+RACED_BRANCH = "-raced"
+
+PR_NUMBER = 42
 
 
 def _unstick(stuck: Path) -> None:
@@ -640,18 +651,19 @@ class StepFailureTest(_ReclaimTestCase):
         )
         self.assertEqual(_tip(self.clone, BASE_BRANCH), tip)
 
-    def test_a_record_that_will_not_write_is_told(self) -> None:
+    def test_a_host_that_writes_nothing_is_told(self) -> None:
         # The local copy is already gone, so there is nothing left to keep
-        # back, and the ledger will not take the note that would have led a
-        # later pass here. Nothing is deleted -- the remote is left exactly as
-        # it was found -- and the pass says so where an operator reads it,
-        # which is the only trace a host that will not write can keep.
+        # back, and this host will take no ref at all: not the note that would
+        # have led a later pass here, and not the branch that would have had
+        # the scan find the issue again. Nothing is deleted -- the remote is
+        # left exactly as it was found -- and the pass says so where an
+        # operator reads it, which is the only trace such a host can keep.
         self.published()
         cleared = self.verdict()
         _branch_at(self.clone, self.branch)
 
         with patch.object(
-            obligations, _RECORD_SEAM, return_value=False,
+            obligations, _NOTE_SEAM, return_value=False,
         ), self.assertLogs(LIFECYCLE_LOGGER, "ERROR") as watched:
             reclaimed = self.spend(cleared)
             reported = watched.output
@@ -757,6 +769,78 @@ class AnchorReconciliationTest(_ReclaimTestCase):
         stuck.chmod(READ_ONLY_DIR)
         self.addCleanup(_unstick, stuck)
         return stuck
+
+    def repointing(self, spec, issue_number: int) -> str:
+        """Read the anchor, then move it where a racer would.
+
+        Installed in place of the read the discard is decided on, which is the
+        window the lease exists for: what the caller acts on is the commit it
+        read, and by the time the deletion runs the note is holding somebody
+        else's. Nothing happens before there is a note to move, so the read
+        the removal is gated on still answers for an issue with none.
+        """
+        ref = obligations._anchor_ref(spec, issue_number)
+        anchored = obligations._note_at(spec, ref)
+        if anchored:
+            self.repointed = self.world.commit_on(
+                self.clone, f"{self.branch}{RACED_BRANCH}",
+            )
+            _run_git("update-ref", ref, self.repointed, cwd=self.clone)
+        return anchored
+
+    def test_an_anchor_moved_since_the_read_is_kept(self) -> None:
+        # The store these notes live in is one the agents this orchestrator
+        # runs can write, so an anchor can be repointed between the read that
+        # cleared it and the deletion that read allows. What it is repointed
+        # at is a commit nobody established anything about -- which is the
+        # very thing an anchor exists to hold -- so the deletion states what
+        # it expects and git refuses it.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        with patch.object(obligations, "_anchored_commit", self.repointing):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertEqual(
+            _tip(self.clone, obligations._anchor_ref(self.spec, ISSUE_NUMBER)),
+            self.repointed,
+        )
+
+    def test_a_rejected_issue_s_note_is_let_go(self) -> None:
+        # Rejected work is never in any base -- that is what rejected means --
+        # so an anchor an interrupted discard left over one would be measured
+        # against the only test it can never pass, on this pass and on every
+        # pass after it. What accounts for the commit is the pull request it
+        # went out on, which is the same second proof the classification runs.
+        tip = self.world.commit_on(self.clone, self.branch)
+        self.world.publish(self.clone, self.branch, self.branch)
+        self.gh.add_pr(_pull_request(PR_NUMBER, self.branch, tip))
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        with patch.object(
+            obligations, "_discard_anchor", return_value=False,
+        ):
+            self.spend(cleared)
+
+        self.assertEqual(
+            _tip(self.clone, obligations._anchor_ref(self.spec, ISSUE_NUMBER)),
+            tip,
+        )
+
+        swept = reclamation._reclaim_recorded_notes(self.gh, self.spec)
+
+        self.assertEqual(
+            tuple((taken.surface, taken.outcome) for taken in swept),
+            ((ArtifactSurface.ANCHOR, CLEANED),),
+        )
+        self.assertEqual(
+            obligations._anchored_commit(self.spec, ISSUE_NUMBER), "",
+        )
 
     def test_a_failed_removal_keeps_what_it_pinned(self) -> None:
         # A non-zero result is not a checkout still standing. The command
@@ -958,6 +1042,33 @@ class ReconciliationTest(_ReclaimTestCase):
             self.outcomes(kept)[0], (ArtifactSurface.WORKTREE, FAILED),
         )
         self.assertTrue(worktree.exists())
+
+    def test_a_branch_the_ledger_lost_comes_back(self) -> None:
+        # The local copy went before the teardown reached it and the ledger
+        # would not take a note for it, so nothing on this host would name the
+        # leftover on the remote. What is left to write is a different ref:
+        # the branch goes back where the scan reads its candidates from, at
+        # the commit this verdict cleared -- so the pass after this one has a
+        # candidate to find, proves it again, and finishes the deletion.
+        tip = self.published()
+        cleared = self.verdict()
+        _branch_at(self.clone, self.branch)
+
+        with patch.object(obligations, _RECORD_SEAM, return_value=False):
+            stopped = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(stopped), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+        self.assertEqual(_tip(self.clone, self.branch), tip)
+
+        for candidate in eligibility._classified_candidates(
+            _github(), inventory._local_issue_inventory((self.spec,)).issues,
+        ):
+            self.spend(candidate)
+
+        self.assertEqual(self.standing(), (False, False, False))
 
     def test_a_half_finished_teardown_is_found_again(self) -> None:
         # Nothing is carried between the two passes. The second rebuilds the

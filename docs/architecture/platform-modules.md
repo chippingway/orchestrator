@@ -413,9 +413,13 @@ orchestrator/
                         one: the records, and the anchors — which no candidate reaches, since one outlives the
                         checkout it was taken from and the branches beside it go on the tick after, leaving the
                         scan reporting nothing while this host is still the only name a commit has. Each anchor
-                        is measured against the base and against nothing else, no client and no issue being
-                        asked: a commit the base carries is one the note names for nothing, and one it does not
-                        keeps the note and is reported for as long as that is true. That pass takes a client, because a
+                        is put to the same proof a tip is: the base first, since that is a local comparison and
+                        the commit an ordinary removal pins is the branch tip a merge carries there, and then
+                        the pull requests that have ended, under both names the issue publishes — rejected work
+                        is in no base by definition, so an anchor over it would otherwise be measured against
+                        the only test it can never pass. A commit either accounts for is one the note names for
+                        nothing; anything else keeps the note, and is reported for as long as that is true. That
+                        pass takes a client, because a
                         record is a reminder and never a permission: the ledger is a ref store the agents this
                         orchestrator runs can write, so each record is put back through the classification --
                         the issue ended, nobody standing on the branch, the commit surviving its deletion -- and

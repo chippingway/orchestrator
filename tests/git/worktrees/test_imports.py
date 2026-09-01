@@ -140,14 +140,18 @@ _OWNER_ONLY_NAMES = (
 # finishes what an earlier one wrote down, over both kinds of note -- the
 # records with their classification, the fetch that puts a commit only the
 # remote has within reach of one, and the commit it clears now; then the
-# anchors, each measured against the base that would still name what it holds
-# -- with the ledger under it: the namespace, the
+# anchors, each measured against whatever would still name what it holds -- the
+# base, and then the pull requests that account for work no base ever carries
+# -- and the branch put back where the scan reads its candidates from when the
+# ledger will take no note at all -- with the ledger under it: the namespace,
+# the
 # repository's own key and the room it opens, the ref one branch is recorded
 # at, the write and the delete every note goes through, the value a record
 # carries when nothing was cleared and the reminder written at it, the
 # read-back and the parse beneath it, the discharge, and the anchor a removal
 # pins what it is about to take under -- its namespace, its ref, its write,
-# its read-back, the status a read of one that is not there answers with, its
+# its read-back and the resolution under it, the status a read of one that is
+# not there answers with, its
 # discard, the room it opens and the segment it names an issue by, the lease
 # that only ever creates one, and the
 # git directory, locks, and held removal that keep a checkout still while it
@@ -211,6 +215,7 @@ _OWNER_DEFINED = (
     ("_VERIFY_REF", creation),
     ("_WORKTREE_ADD", creation),
     ("_WORKTREE_REMOVE_FORCE", creation),
+    ("_anchor_accounted", reclamation),
     ("_anchor_checkout", obligations),
     ("_anchor_let_go", reclamation),
     ("_anchor_pr_worktree", creation),
@@ -286,10 +291,12 @@ _OWNER_DEFINED = (
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
+    ("_marked_again", reclamation),
     ("_matching_owners", attribution),
     ("_merged", inventory),
     ("_move_branch_onto", creation),
     ("_nothing_ignored", evidence),
+    ("_note_at", obligations),
     ("_obligation_ref", obligations),
     ("_open_pull_request_retentions", claims),
     ("_owed_issue", reclamation),
